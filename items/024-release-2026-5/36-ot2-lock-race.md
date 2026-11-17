@@ -1,14 +1,14 @@
 # 024-36. OT2: the Linux "directory in use" race, fixed
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `c49351e1`.
+`main` since `54e0a1b9`.
 
 Frans, 2026-11-12, 14:33: "OT2; fix it." OT2 (024-01, section 11.2;
 024-35, finding 1; 006-17, section 6.2; 2026.4's Known issues: "The fix
 is for 2026.5"): `FileStream.unlockDir()` closed `bergdb.lock` before it
 removed the directory from `LOCKED_DIRS`, so a start in the same JVM
 right after a close could find a new directory still listed and refuse
-it as in use. Only the test half went in on 11-10 (`d99ff27c`).
+it as in use. Only the test half went in on 11-10 (`85bed824`).
 
 Done by the agent "ot2" of the day's coordinator, in its own clone, on
 branch `ot2-unlock-race`.
@@ -24,7 +24,7 @@ branch `ot2-unlock-race`.
   file since 11-09); the comment is new.
 * A new unit test fails before the fix on macOS, deterministically,
   without a reused inode, and passes after.
-* Gates on the branch's head `6103608d`: BEFORE COMMIT OK, LEVEL 1 OK.
+* Gates on the branch's head `0b18ddf4`: BEFORE COMMIT OK, LEVEL 1 OK.
 * s1, JDK 17, 006-17's probe on today's code without the test fix: 19
   refusals in 60,000 tests before the fix, 0 after (section 5).
 
@@ -122,7 +122,7 @@ on Linux is 006-17's probe.
 
 ## 4. Gates
 
-On the branch's head `6103608d` (F53, each in a slot):
+On the branch's head `0b18ddf4` (F53, each in a slot):
 
 | Gate                   | Result                                                 |
 |---|---|
@@ -145,7 +145,7 @@ s1 (ext4, 2 cores, JDK 17.0.21, idle before), 14:39 to 14:52, in
 * `LockWindowProbe` is 006-17's probe
   (`/Users/f/fl/bench/2026-11-10/jdk17-f/probe/`): it loops
   `FileStreamPowerLossTester`'s three failure tests, 10,000 rounds of 3
-  tests a JVM. The tests themselves no longer race since `d99ff27c`, so
+  tests a JVM. The tests themselves no longer race since `85bed824`, so
   the jars are the branch's head with that test fix reverted
   (`git apply -R test-fix.patch`), "without the fix" also with
   `unlockDir()`'s `synchronized (LOCKED_DIRS)` taken out; built on F53,
@@ -189,7 +189,7 @@ JVM and a reused inode at once; a retry works.
 Done, 2026-11-12, 14:55.
 
 * Clone `/Users/f/fl/bench/2026-11-12/ot2/clone`, branch
-  `ot2-unlock-race`, head `6103608d`, one commit on `main` `2cf42560`:
+  `ot2-unlock-race`, head `0b18ddf4`, one commit on `main` `5ae523f2`:
   `FileStream.java` (the fix, its comment, the test) and
   `releases/next.md` (Known issues: OT2 fixed, what is left).
 * Gated on that head: BEFORE COMMIT OK, LEVEL 1 OK. s1 probe: 19 to 0.

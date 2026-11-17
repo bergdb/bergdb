@@ -174,7 +174,7 @@ are not done. A redesign of the storage for SSDs and flash, which would
 need disk performance on several targets, embedded included, is out of
 scope (Frans).
 
-**The sweep.** On F53 (M1 Pro, SSD, macOS), commit 9d909cc, three rounds of
+**The sweep.** On F53 (M1 Pro, SSD, macOS), commit ba10cb6, three rounds of
 [performance-bufftime.suite](../../java/stress/performance-bufftime.suite),
 each with every buffer time, 12:30 to 13:22. Round 1 began while another
 session's night run had two Lean checks running (78 percent idle; the
@@ -191,7 +191,7 @@ rounds, the full table in [13-buffer-time/table.md](13-buffer-time/table.md):
 | **20 ms (the new default)** | **35 ms** | **29 / 456 / 1,813** | **271k / 105k / 112k** |
 
 The last row is the changed code with the default (no `bufftime=`), on
-4b459df: [default-check.suite](13-buffer-time/tools/default-check.suite),
+856b12a: [default-check.suite](13-buffer-time/tools/default-check.suite),
 three runs each, in `13-buffer-time/runs/default20/` (86 percent idle, so
 marked not quiet).
 

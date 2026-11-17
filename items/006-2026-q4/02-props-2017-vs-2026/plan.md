@@ -36,10 +36,10 @@ The versions
 
 | Name | Commit | What |
 |---|---|---|
-| 2015-12-28 | `bc11dbf` (original history, F1-007's `bergdb-git.bundle`) | The commit that recorded "Typical output (2015-12-28)" in `Props.java` |
-| 2017-07-29 | `dbf131a` (same) | The code of the last Props run on cissi, 2017-07-29 (F1-007 `bergdb/log.md`) |
-| 2017-08-01 | `195cf88` (this repository; identical to the original `49aa48d`, checked) | **The 2017 version**: the import that the 2026 work started from |
-| 2026-10-19 | `11ea2f6` (this repository, HEAD; production source as at `ed60789`) | **The 2026 code** |
+| 2015-12-28 | `358ad6b` (original history, F1-007's `bergdb-git.bundle`) | The commit that recorded "Typical output (2015-12-28)" in `Props.java` |
+| 2017-07-29 | `b64383a` (same) | The code of the last Props run on cissi, 2017-07-29 (F1-007 `bergdb/log.md`) |
+| 2017-08-01 | `0257e0b` (this repository; identical to the original `50786b2`, checked) | **The 2017 version**: the import that the 2026 work started from |
+| 2026-10-19 | `0e7292d` (this repository, HEAD; production source as at `313345c`) | **The 2026 code** |
 
 The two older ones are added because a pilot (below) showed that the 2017
 import is not the code that was measured on cissi: two days of an unfinished

@@ -10,7 +10,7 @@
  * got-dirty nodes: the index nodes that got dirty in it, in order. The
  * list keeps the sums D (the got-dirty nodes) and O (the own bytes).
  *
- * The take (ts_take, TransSeq.take, the paced take since f89846d): before
+ * The take (ts_take, TransSeq.take, the paced take since b8ac8a1): before
  * a record is written, it takes whole transactions from D, oldest first,
  * as many as the record's share and the deadline ask for, within a byte
  * budget, and gives the new startup position. In 64-bit integers, as

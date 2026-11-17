@@ -188,7 +188,7 @@ makes one bin (a 32 kB array).
 
 | Tree | G4 emptied / twin | G4 | G5 emptied / twin | G5 |
 |---|---|---|---|---|
-| main (c91443d8), no BUFFER | 8,514,776 / 2,721,392 | 3.129 | 7,152,856 / 610,416 | 11.718 |
+| main (f2009ee4), no BUFFER | 8,514,776 / 2,721,392 | 3.129 | 7,152,856 / 610,416 | 11.718 |
 | `idByPos` forgotten        | 4,790,064 / 2,721,528 | 1.760 | 3,431,776 / 610,592 | 5.620  |
 | and the old bins go        | 2,905,744 / 2,688,320 | 1.081 | 1,377,824 / 610,536 | 2.257  |
 | and a new bin at a cut     | 2,926,872 / 2,721,184 | 1.076 | 899,672 / 610,536   | 1.474  |
@@ -205,7 +205,7 @@ which ST6's own gate holds to the tables' floor (024-33), and
 
 ## 6. Gates
 
-On `67ba0aed` (`main` `92ab6713` merged; the commits after it are
+On `f57e4c51` (`main` `a447fcfb` merged; the commits after it are
 items only). Logs in /Users/f/fl/bench/2026-11-13/idpos/:
 
 * `before-commit.sh`: BEFORE COMMIT OK (91 s), `before-commit.log`.
@@ -260,11 +260,11 @@ and level3 (the coordinator, /Users/f/fl/bench/2026-11-13/idpos/land-l3.txt).
 
 2026-11-13, 10:58. **Done, ready to land.** Clone
 /Users/f/fl/bench/2026-11-13/idpos/clone, branch `026-10-idbypos`:
-`104502a3` (the change: `Db.cutDecided`, `forgetIdsBelow`,
-`forgetUpTo`, the tests, `CountGates`' plain heaps), `cd21bbae` (merge
-of `main`), `990bd997` (`KeyModSet`'s new bin at a cut), `67ba0aed`
-(merge of `main` `92ab6713`), and item commits. Every gate of section 6
-OK on `67ba0aed`. Open: Frans's Q1 and Q2 (section 7), each decided
+`13007862` (the change: `Db.cutDecided`, `forgetIdsBelow`,
+`forgetUpTo`, the tests, `CountGates`' plain heaps), `35f88407` (merge
+of `main`), `8b250edd` (`KeyModSet`'s new bin at a cut), `f57e4c51`
+(merge of `main` `a447fcfb`), and item commits. Every gate of section 6
+OK on `f57e4c51`. Open: Frans's Q1 and Q2 (section 7), each decided
 here by its recommendation; Q2 would be a 028 entry, not made here.
 
 
@@ -274,4 +274,4 @@ Log
 2026-11-13. Registered by coord-1113 (026-07's Q4; Frans, 09:48).
 
 2026-11-13. Made by idpos (coord-1113) on branch `026-10-idbypos`;
-gates OK on `67ba0aed` (section 6). Done, ready to land.
+gates OK on `f57e4c51` (section 6). Done, ready to land.

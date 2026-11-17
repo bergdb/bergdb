@@ -75,8 +75,8 @@ blog. Short names below:
 * `log.md`: f1 `a/007-bergdb-261012/bergdb/log.md`, the main log, 2013 to
   2017; entries are headed YYMMDD/days.
 * Old Git: f1 `a/007-bergdb-261012/bergdb-git.bundle`, 2013-06-06 to
-  2017-08-01, files under `bergdb/`, at `49aa48d` unless a commit is named.
-  The first commit, `76c4792` (2013-06-06), imported the older code, so
+  2017-08-01, files under `bergdb/`, at `50786b2` unless a commit is named.
+  The first commit, `1f4d0b6` (2013-06-06), imported the older code, so
   "by 2013-06-06" means written on that day or before.
 * The paper: "Self-indexed Streams: Append-only Storage for Large Indexed
   Data Sets", [self-indexed_streams_v5_130704.pdf](../../docs/sources/self-indexed_streams_v5_130704.pdf)
@@ -153,8 +153,8 @@ The worst case, 2008 to 2015:
   thought about worst-case could also be relevant."
 * `Db.warmup`'s javadoc, old Git `bergdb/src/bergdb/core/Db.java`, still in
   `java/src/bergdb/core/Db.java` today. The first sentence is there by
-  2013-06-06, the rest since 2014-10-31 (`eb765de`), worded as here since
-  2015-08-05 (`7d13dca`):
+  2013-06-06, the rest since 2014-10-31 (`908353f`), worded as here since
+  2015-08-05 (`505c429`):
 
   > We want to minimize the time holding this.writeLock. [...] But, until
   > proven important enough, we keep variability as low as possible and
@@ -299,7 +299,7 @@ philosophy of BergDB, and asks it of the cache, not only of the stream.
   philosophy of BergDB. For testability etc, we want perfect determinism.
   We also want a cache that keeps track of exact sizes." With the to-do "*
   Implement a deterministic cache (ref counting)." (`Cache3`, old Git
-  `9d9a038`, 2017-07-30: "A deterministic node cache; size is known, weak
+  `e5a21cb`, 2017-07-30: "A deterministic node cache; size is known, weak
   references are *not* used.")
 * 2015-01-03, `doc/2015/2015-q1-notes.txt` lines 100-101: "Note that if we
   wrap INode in a SoftReference, we loose our deterministic approach. JVM
@@ -880,8 +880,8 @@ Today a large database needs a startup distance chosen for it, 200 to
 * 2012-01, `doc/2012/2012-01-study-on-trees-for-kissdb.txt` lines 51-52:
   "We want writes to be very fast and limited by disk. We want the stream
   to be space efficient."
-* The `bergdb.dev` package doc, at `49aa48d`; the sentence on one code base
-  is from 2014-07-20 (`f66bdc6`): "The database performance is optimized
+* The `bergdb.dev` package doc, at `50786b2`; the sentence on one code base
+  is from 2014-07-20 (`d5be5d5`): "The database performance is optimized
   for a modern 64-bit server. Typically 4 to 16 cores. 1 to 2 CPUs. SSD or
   ordinary disk(s). But the database also has good performance on very
   small devices. There is only one code based; no differentiation between

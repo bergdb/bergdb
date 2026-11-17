@@ -2,7 +2,7 @@
 # 009-04's two runs (items/009-handles/04-shenandoah-degenerated.md, section 6, points 1 and 2),
 # scheduled by Frans for 2026-10-26, 22:30: P4's soak under Shenandoah (1) generational with a
 # 12 GB heap, (2) without generations (satb) with P4's 8 GB heap; each about 50 minutes, after
-# 004-02's quiet.sh. The branch's worktree build (a04a418, the code merged into main as 178a0d4).
+# 004-02's quiet.sh. The branch's worktree build (f4e93d8, the code merged into main as 98981f8).
 # Usage: sh f53-009d.sh DIR WORKTREE
 D=$1
 W=$2

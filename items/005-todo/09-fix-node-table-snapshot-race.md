@@ -15,7 +15,7 @@ it, and passed when run again. So a gate can fail on it.
 
 It is not 005-02's. Repeated under load (four JVMs per build beside four
 busy loops, 150 runs each), the test failed once in 600 runs on the code
-before 005-02 (`8c5a106`), with the same message, and in none of 600 with
+before 005-02 (`0739170`), with the same message, and in none of 600 with
 005-02. The other three gates' unit runs passed it.
 
 INV-CAN (the audit, `Audit.check`) says that the node table names canonical
@@ -28,7 +28,7 @@ version from the slot's position.
 A likely cause
 --------------
 
-From reading the code at `8c5a106`, not tested:
+From reading the code at `0739170`, not tested:
 
 * A reader's follow of a stream pointer
   (`NodeCollection.followStreamPointer`) takes the canonical object from the
@@ -111,10 +111,10 @@ Outcome
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-20, at
 Frans's request ("Fix 005-09"). Other sessions worked on bergdb at the same
 time (a nightly run, and 005-13's buffer time sweep), so the builds, the
-checks and the measurements ran in a local clone of `8039d4a` with the
+checks and the measurements ran in a local clone of `aa234bc` with the
 change, and the measurements waited until the machine was free of the other
 sessions' runs. Before it was copied here, the clone was brought to
-`f2a1c18` (005-13's buffer time, which touches other files) and
+`fd8b403` (005-13's buffer time, which touches other files) and
 `before-commit.sh` was run again there. Left for Frans to commit.
 
 **The cause** is the one above. A reader's follow of a stream pointer
@@ -189,7 +189,7 @@ The criteria of "Done when", point by point:
   `level4.sh quick`: EvictionInvariance OK in its three configurations
   (node8, node8-r, rec-every1; 0 audit failures), and `LEVEL 4 OK`.
   `before-commit.sh`: `BEFORE COMMIT OK` (934 unit tests, 59 f-tests), on
-  `8039d4a` and on `f2a1c18` with the change.
+  `aa234bc` and on `fd8b403` with the change.
 * **No loss of performance: met.** Props, eight runs a build in ABBA
   order (four blocks), medians and ranges, the same for both builds:
 

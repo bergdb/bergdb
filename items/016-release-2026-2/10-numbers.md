@@ -41,7 +41,7 @@ assumed that the tools likely still run; four of five do not, as they are.
     `builds/LABEL/harness-SHA12`; `ab` dies if the two harness hashes
     differ (line 452).
   * `Perf.java` line 20 imports `bergdb.pub.util.SyncLevel` (005-56,
-    `04f1546`), which 2026.1's jar does not have (it has
+    `8752cf0`), which 2026.1's jar does not have (it has
     `bergdb.core.SyncLevel`). The compile against 2026.1 fails.
   * The fix, used before by 005-48's `night/run-s1.sh`: compile the
     running tree's harness with that import changed to
@@ -53,7 +53,7 @@ assumed that the tools likely still run; four of five do not, as they are.
     is what a user gets, and the notes say it.
   * The 2026.1 preserved builds that exist
     (`/Users/f/fl/repos/bergdb-009/java/build/perf/builds/2026.1`, and
-    `/Users/f/fl/bench/006-09/w1/head/...`) are rebuilds of `a42947c` with
+    `/Users/f/fl/bench/006-09/w1/head/...`) are rebuilds of `8e579c6` with
     older harness hashes. A new one is made (step N2).
 * **ScaleBench** (`items/004-indirect-swizzling/02-scale-tests/`, package
   `bergdb.core`) is in no jar and is compiled per jar.
@@ -67,7 +67,7 @@ assumed that the tools likely still run; four of five do not, as they are.
     `ScaleBench-065.diff`, makes a `src-pub/` copy with the
     `bergdb.pub.util.SyncLevel` import for jars that have that class, and
     compiles with `--release 17` per jar. It last compiled against
-    `988fe1a` and `5a6befd` (2026-10-29, in
+    `52aeb04` and `bb25185` (2026-10-29, in
     `/Users/f/fl/bench/006-10/e65-builds`).
   * Its startup distance is `sb.sd`, default 10,000,000. 2026.1's baseline
     passed none, so its ScaleBench figures are at 10 MB. Both versions'
@@ -77,10 +77,10 @@ assumed that the tools likely still run; four of five do not, as they are.
     `m < 300 && m + NEED > 120`). No step of this plan calls `quiet.sh`;
     the conductor checks.
 * **PauseProbe** (`java/stress/PauseProbe.java`) does not compile against
-  2026.1 since `eaec93e` (005-46): `TimedIo` extends
+  2026.1 since `1165c90` (005-46): `TimedIo` extends
   `bergdb.stream.FileStreamIo` and calls `new FileStream(dir, io)`, both
   package-private in 2026.1 (javap). The last version that runs on both is
-  `e23c96e`'s, which 009-03 used; it imports only `bergdb.stream.FileStream`
+  `732e567`'s, which 009-03 used; it imports only `bergdb.stream.FileStream`
   and reads `cacheStats` and `takeWriteBufferWaits` by reflection.
 * **StreamDigest** (`java/stress/StreamDigest.java`, compiled into
   `build/stress` by `build.sh`, not in the jar) imports
@@ -229,7 +229,7 @@ Times are tonight's, 2026-11-03 to 04. "Agent" is the numbers agent, in
     `bergdb.pub.util.SyncLevel` import if `unzip -l JAR` lists
     `bergdb/pub/util/SyncLevel.class`; compiled with `javac --release 17
     -cp JAR` together with `java/stress/PerfUtil.java`, into `OUTDIR/sb`;
-  * PauseProbe from `git show e23c96e:java/stress/PauseProbe.java`, the same
+  * PauseProbe from `git show 732e567:java/stress/PauseProbe.java`, the same
     way, into `OUTDIR/pp`;
   * StreamDigest from the running tree, with the import changed for a jar
     without `bergdb/pub/util/SyncLevel.class`, into `OUTDIR/sd`.
@@ -287,7 +287,7 @@ The scripts:
   (`Eviction.stats()`'s "sweep", which is a batch of at most 2 ms in
   2026.2), the longest GC pause and the full collections. SMOKE: 100k keys,
   one C run per jar.
-* **`pp.sh`** (10 minutes). Each version's compiled `e23c96e` PauseProbe:
+* **`pp.sh`** (10 minutes). Each version's compiled `732e567` PauseProbe:
   `-cp JAR:TOOLS/pp bergdb.core.PauseProbe` with `-Dkeys=1000000
   -Dbudget=100 -Dreaders=4 -Dseconds=60 -Dtsize=1,1000`,
   `-Xms1200m -Xmx1200m -XX:+AlwaysPreTouch`, G1 then ZGC, ABBA, a fresh
@@ -461,14 +461,14 @@ after the block (A). The tools agent started.
 2026-11-03, 16:30, the tools agent (all in `/Users/f/fl/bench/016/numbers/`,
 N below):
 
-* N1 done: `N/tag` (release-2026.1), `N/cand` (main at 323a54a), and
+* N1 done: `N/tag` (release-2026.1), `N/cand` (main at c8e2f1e), and
   `N/jars/2026.1.jar` (SHA-256 OK).
 * N2 done: `N/tag`'s `performance.sh build 2026.1` has the release jar's
   classes (`diff -r` of both unzipped: the same), so the rebuild is kept;
   copied to `N/cand`; `N/harness131.sh` compiles the harness against both
   builds (2026.1 with the import changed). The `ab` smoke is still to run.
 * N3 done: `N/prep-tools.sh JAR OUTDIR [TREE]` compiles ScaleBench (both
-  diffs), e23c96e's PauseProbe, StreamDigest and pidio against 2026.1's jar
+  diffs), 732e567's PauseProbe, StreamDigest and pidio against 2026.1's jar
   and the candidate's (`N/tools/2026.1`, `N/tools/cand`).
 * N4: the scripts are in `N/night/` (`lib.sh`, `props.sh`, `sb-m.sh`,
   `sb-c.sh`, `pp.sh`, `quick-ab.sh`, `s1-w7.sh`, `tables.sh` with
@@ -478,10 +478,10 @@ N below):
   digests only, 015-08) are written; their rehearsal on a scratch commit A
   waits for a gap in the other agents' gates.
 * 16:52: `prep-a.sh` rehearsed on a scratch commit A (`b90eff7`: main's
-  `f2cb23b` with BuildInfo at 2026.2, in `R/cand` only; `MARK=0`, `REL=N/rel-rehearsal`):
+  `bfc2a9d` with BuildInfo at 2026.2, in `R/cand` only; `MARK=0`, `REL=N/rel-rehearsal`):
   `PREP A OK: 5 of 5 steps would be READY`, 256 s with the other agents'
   load. It found that ScaleBench no longer compiled on main's jar: 005-79
-  (`dde82e8`) replaced `Eviction.LOW` by `Eviction.lowOf(budget)`;
+  (`bb7b6fa`) replaced `Eviction.LOW` by `Eviction.lowOf(budget)`;
   `prep-tools.sh` now uses `lowOf` in that one line for a jar without `LOW`.
 * 16:35: the s1 half rehearsed with `SMOKE=1` (016-09's `s1-chain.sh`):
   `S1 W7 DONE (SMOKE): 4 runs OK`.
@@ -496,7 +496,7 @@ N below):
   scenario for the quick `ab` (`quick-ab.sh` changed; still 22 minutes).
   Open: N6 (`prep-a.sh`, about 4 minutes, writes the markers) and N8
   (`digests.sh`) at about 01:50, after 016-09's `build-a.sh`.
-* 17:18: 016-09's `rehearse.sh` on main's `437cb48`: `PREP A OK` (5 of 5)
+* 17:18: 016-09's `rehearse.sh` on main's `60b7074`: `PREP A OK` (5 of 5)
   and `DIGESTS OK`.
 
 2026-11-03, 17:20, the tools agent stopped (usage). N1 to N5 are done.
@@ -1042,6 +1042,6 @@ Frans, 07:43, on both points above: "As recommended".
 * **Point 2, B**: the 133 MB runs are out of the notes, with one sentence
   in Baseline (a 600 MB heap does not start a 10M database at a 200 MB
   startup distance, in either version; 019-45), also for s1's D at 10M.
-  No rerun. 019-45 was registered before (2026-11-07, `d642f14`).
+  No rerun. 019-45 was registered before (2026-11-07, `223c653`).
 * Not done: `docs/levels.md` and 2026.1's notes are not touched; no
   `news.sh` (no figure the notes cite moved by more than 20 percent).

@@ -27,7 +27,7 @@ Reliability (005-73 twice, 005-75, 005-74), API changes (005-73, 005-70,
 `Factory` constructor, no .NET), Format (005-50) and Performance (005-46,
 005-57, 005-49 with 007-07, 005-76, 005-64).
 
-A walk of `git log release-2026.1..df6ad50` (245 commits; the 49 that
+A walk of `git log release-2026.1..9d34ac1` (245 commits; the 49 that
 touch `java/` read one by one, with the diff of `bergdb.pub` and
 `bergdb.pub.util`, and the 32 that touch `lean/`) found these changes
 missing. Each goes into next.md with its ID and date, as next.md's own
@@ -36,25 +36,25 @@ rule says, in the section named.
 **Requirements** (a new section, first in the notes):
 
 * Java 17 or later is required: `build.sh` and `performance.sh` compile
-  with `javac --release 17`, where 2026.1 had `--release 8` (`b10e072`,
+  with `javac --release 17`, where 2026.1 had `--release 8` (`bb7e189`,
   2026-10-25, 009 step 1-0). The incompatible change, so it goes first.
 * The collector: ZGC, or Shenandoah without generations. G1 pauses for
   hundreds of milliseconds and runs full collections under eviction, and
   generational Shenandoah stopped for 821 ms (docs/levels.md, section 7;
-  004-04; 009-04; `62ad470`, `3c02f11`, `45c5e43`, 2026-10-26 and 27).
+  004-04; 009-04; `b4fd961`, `7b5cbb8`, `38501b8`, 2026-10-26 and 27).
 
 **Performance**:
 
-* Handles (009), merged in `178a0d4` (2026-10-26; branch tip `a04a418`):
+* Handles (009), merged in `98981f8` (2026-10-26; branch tip `f4e93d8`):
   * eviction without the sweep: CLOCK over the node table, in batches
     that end after 2 ms (`Eviction.BATCH_NANOS`), and a reader's load over
-    the trigger waits up to 2 ms (`LOAD_WAIT_NANOS`) (`4a1fc5e`,
-    `66c8f3a`, `a04a418`);
-  * reads of resident nodes without a lock (`19a8c58`); the pointer locks
-    gone (`7831909`);
+    the trigger waits up to 2 ms (`LOAD_WAIT_NANOS`) (`85e9283`,
+    `15125d8`, `f4e93d8`);
+  * reads of resident nodes without a lock (`21a210e`); the pointer locks
+    gone (`de99c4f`);
   * the node table in 4,096 maps with a lock each: a resize stops one map
-    for 0.23 ms, where it took 11.6 ms (`be4534a`); reads no longer
-    synchronize on `readSync` (`463d6ee`);
+    for 0.23 ms, where it took 11.6 ms (`b97eb87`); reads no longer
+    synchronize on `readSync` (`c992714`);
   * figures (009-03; docs/levels.md): the longest get from the OS cache at
     10M keys under ZGC 3.45 ms, against 7.3 s in 2026.1; gets in memory
     from 8 threads 101 and 61 percent more (G1, ZGC), from one thread 3
@@ -62,24 +62,24 @@ rule says, in the section named.
     soak: the longest commit 5.1 ms, the longest read 3.6 ms. The
     figures the notes cite are tonight's (016-10), with these as context.
 * MEM 129 to 130 bytes per KV since handles, against 191; `level1.sh`'s
-  limit from 228 to 131 (`f648f96`, 2026-10-29). SS limits raised after
-  007-07 (`f6fc56b`, 2026-10-29).
-* Group commit (005-48, `e611709`, 2026-10-27): a sync that waits has the
+  limit from 228 to 131 (`5dda08b`, 2026-10-29). SS limits raised after
+  007-07 (`b68bb55`, 2026-10-29).
+* Group commit (005-48, `d8ed1aa`, 2026-10-27): a sync that waits has the
   buffer written at once (`BufferedStream.flushSoon`), and transactions
   that arrive during a force go out together. On s1 one thread's durable
-  commits went from 38 to 213 a second (`3950a96`). next.md names it only
+  commits went from 38 to 213 a second (`1ad7cdc`). next.md names it only
   inside 005-64's entry.
 * An idle eviction thread waits with no timeout, where it woke once a
   second; `close()` returns after it has ended, also after `stop()`
-  (005-51, `c2aab10`, 2026-10-27; 1.4 ms of CPU a minute before, none
-  after, `78a6723`).
+  (005-51, `043a09c`, 2026-10-27; 1.4 ms of CPU a minute before, none
+  after, `8732bfc`).
 * A reader's load skips the eviction monitor when a request to the
-  eviction thread is pending (005-65, `988fe1a`, 2026-10-29).
+  eviction thread is pending (005-65, `52aeb04`, 2026-10-29).
 
 **Reliability**:
 
 * Reclaim spaces its iterations by the live startup distance (005-61,
-  `a175840`, 2026-10-27). Before, it used the builder's value, taken
+  `4085e2e`, 2026-10-27). Before, it used the builder's value, taken
   before `start()` read the stream's, so a database made with a small
   distance and opened with the default builder nearly stopped reclaiming.
   A fault of 2026.1 (W2).
@@ -88,54 +88,54 @@ rule says, in the section named.
 
 * `Database.PRIMARY` is `Util.identity("primary")`: the same value, but no
   longer a compile-time constant, so a `case` label with it no longer
-  compiles (005-56, `04f1546`, 2026-10-28).
+  compiles (005-56, `8752cf0`, 2026-10-28).
 * `Db.setCacheSizeIndicator(long)` and `getCacheSizeIndicator()`, the Core's
-  side of 005-52 (`fd8f513`, 2026-10-28).
+  side of 005-52 (`decc677`, 2026-10-28).
 * Internal only, a line at most: `PointerLocks` and
-  `Db.Internal.getPointerLocks()` gone (`7831909`); `Db.Internal.cacheStats()`,
-  `writersWaiting()` and `takeWriteBufferWaits()` added (`e23c96e`);
+  `Db.Internal.getPointerLocks()` gone (`de99c4f`); `Db.Internal.cacheStats()`,
+  `writersWaiting()` and `takeWriteBufferWaits()` added (`732e567`);
   `bergdb.stream.FileStreamIo` and `FileStream(File, FileStreamIo)` public,
-  for the power-loss tester (`3c807f1`).
+  for the power-loss tester (`df53f4e`).
 
 **Documentation** (a new section, or under API changes):
 
 * The Javadoc of `Database.stop()` and `Db.stop()` corrected: 2026.1 said
   that the files are not forced and that only `sync(STRONG)` forces them;
   `FileStream` forces every append, so `sync()` waits until the data is on
-  the device, and `STRONG` adds the replicas (`a515af3`, 2026-10-26).
+  the device, and `STRONG` adds the replicas (`d9d350d`, 2026-10-26).
 * `DatabaseBuilder.startupDistanceInMb`'s Javadoc said 5 to 100 MB; the
-  code has always clamped to 5 to 1000 (`fd8f513`).
+  code has always clamped to 5 to 1000 (`decc677`).
 * Replication's wording (016-04).
 
 **Build and tools**:
 
 * `java/javadoc-pub.sh`: the Pub API's Javadoc, with doclint, failing on
-  any warning (`216fc8b`, 2026-10-29).
+  any warning (`f342bd4`, 2026-10-29).
 * `java/deps.py`: `before-commit.sh` checks the package dependencies
-  against each `package.html` (005-56, `04f1546`).
+  against each `package.html` (005-56, `8752cf0`).
 * `java/stress/core-build.sh`: the Core Layer built alone, `night.sh`'s
-  step 2 (005-56, `43e631f`, 2026-10-28).
-* `java/stress/PauseProbe.java` (`e23c96e`); jcstress tests in
-  `java/stress/jcstress/` (`19a8c58`, `a04a418`).
+  step 2 (005-56, `3380c21`, 2026-10-28).
+* `java/stress/PauseProbe.java` (`732e567`); jcstress tests in
+  `java/stress/jcstress/` (`21a210e`, `f4e93d8`).
 
 **The Lean model** (a new section; Frans, 15:31: Lean is a tool, not an
 output of the release):
 
-* the model of handles, `SIS/Handle.lean` (`74af34c`, 2026-10-25);
+* the model of handles, `SIS/Handle.lean` (`72e7d9d`, 2026-10-25);
   T-CACHE, T-READ, T2-C, T-READ with restarts and T-PIN over handles
-  (`38586b3`, `059d741`, 2026-10-26); the checker's C-H compares Java's
-  handle state with the model (`851acdf`, `e712874`);
+  (`d9a74a3`, `00a75e4`, 2026-10-26); the checker's C-H compares Java's
+  handle state with the model (`2966bca`, `b5e8f2b`);
 * rule 4 by position proved to link what rule 4 by node id links (005-58,
-  `7c1ce2f`, `0965377`), also after a cut (`96e371a`, `8ce4f12`);
-* T9 and T12 over handles (005-62, `bba91dd`, `a506b34`); the model before
-  handles removed, and startup with handles proved (005-62, `bee5065`,
-  `7f81169`, `073366a`, 2026-10-28);
-* T3 for BergDB's take (007-08, `db1eca8`, `8b6669f`, `3d21792`,
-  `9cf8a82`).
+  `4e63e3d`, `3332a9c`), also after a cut (`5bf5bb5`, `7a51d84`);
+* T9 and T12 over handles (005-62, `e2213c2`, `99ef913`); the model before
+  handles removed, and startup with handles proved (005-62, `847b968`,
+  `43733b2`, `9cb1ca1`, 2026-10-28);
+* T3 for BergDB's take (007-08, `4f759c7`, `e4c2b9f`, `fbc3b09`,
+  `0d8d8a3`).
 
-**Not for the notes**: `52d1e1f` (news.sh), `27ec238` (a suite comment),
-`899c5e6` (`BuildInfo` 2026.2-dev), the tests only (`b0661ba`, `dad6bd2`,
-the test parts of `cec0032`), and comments only (`df6ad50`'s `Reclaim`
+**Not for the notes**: `716778e` (news.sh), `ceef804` (a suite comment),
+`5da2354` (`BuildInfo` 2026.2-dev), the tests only (`f74fece`, `82966f8`,
+the test parts of `14022ad`), and comments only (`9d34ac1`'s `Reclaim`
 and `AppendOnlyStream`).
 
 **Rightly absent so far** (no code since the tag): 005-69, 005-71,
@@ -144,10 +144,10 @@ and `AppendOnlyStream`).
 
 **Entries of next.md to correct:**
 
-* No date, against its rule: 005-59 (`f9c3b09`, 2026-10-27), 005-46's two
-  entries (`eaec93e`, 2026-10-27), 005-50 (`bf19075`, 2026-10-27), 005-57
-  (`07b6375`, 2026-10-27).
-* No ID: "`Factory` has no public constructor" and "No .NET" (`216fc8b`,
+* No date, against its rule: 005-59 (`7dabc2c`, 2026-10-27), 005-46's two
+  entries (`1165c90`, 2026-10-27), 005-50 (`c1f1f15`, 2026-10-27), 005-57
+  (`e773562`, 2026-10-27).
+* No ID: "`Factory` has no public constructor" and "No .NET" (`f342bd4`,
   2026-10-29); the commit names none, so they keep the date only.
 * 005-64: "the same throughput, latency and CPU; a sync is not slower".
   The entry's own conclusion says that 50 ms "costs up to 22 % on a rare
@@ -157,18 +157,18 @@ and `AppendOnlyStream`).
   them `DEFAULT_BUFFER_TIME`); the Core's replicas keep 2,000 ms.
 * 005-52: "in batches of at most 2 ms" is the limit (`BATCH_NANOS`), not
   a measured bound: 009-03, section 0, measured 3 to 4 ms on s1, and up to
-  17 ms with 8 readers on F53 before `988fe1a`. Say "batches that end
-  after 2 ms". 005-80's race, in the same setter, was fixed in `988fe1a`;
+  17 ms with 8 readers on F53 before `52aeb04`. Say "batches that end
+  after 2 ms". 005-80's race, in the same setter, was fixed in `52aeb04`;
   it never was in a release, so it is a line in this entry, not a fault
   of 2026.1.
-* 005-76: dated 2026-11-02, but its code is in `df6ad50` (2026-11-03).
+* 005-76: dated 2026-11-02, but its code is in `9d34ac1` (2026-11-03).
 * 005-70 is a fault fixed; it belongs under Reliability.
 * 005-49: "the largest record of a run is 2 to 10 times smaller" is not
   what docs/levels.md says (0.34 to 1.9 MB against 2.6 to 4.6 MB). Take
   docs/levels.md's figures. Its 24, 36 and 13 percent agree.
 
-Checked and right: the four hashes cited (`cec0032`, `eaec93e`, `bf19075`,
-`07b6375`); 005-57's 214 to 46 s and 210 to 51 s; the clamps (5 to 1000
+Checked and right: the four hashes cited (`14022ad`, `1165c90`, `c1f1f15`,
+`e773562`); 005-57's 214 to 46 s and 210 to 51 s; the clamps (5 to 1000
 MB, 4 to 100,000 MB); `FileStream-cut`, `bergdb.lock`,
 `DirectoryInUseException`, `VersioningStreamException` and the 200 kB
 transaction; 005-73 to 005-75.
@@ -295,8 +295,8 @@ the entries; the agent confirms or corrects each:
   the list at 01:00.
 
 Also a post-release note on 2026.1's own "How to compare a later
-version": since 005-56 (`04f1546`) moved `SyncLevel` and 005-46
-(`eaec93e`) made `PauseProbe` use `FileStreamIo`, one compiled copy of
+version": since 005-56 (`8752cf0`) moved `SyncLevel` and 005-46
+(`1165c90`) made `PauseProbe` use `FileStreamIo`, one compiled copy of
 StreamDigest, PauseProbe or `performance.sh`'s harness no longer runs on
 both 2026.1 and later jars; 016-10, section 1 says what does.
 
@@ -358,18 +358,18 @@ Each line: what the fault is, its effect on 2026.1, where it was fixed
 ## 6. State
 
 2026-11-03, 16:05: the plan is written; section 1's walk is done (up to
-`df6ad50`); nothing of N1 to N6 is done. Open: N3's checks against
+`9d34ac1`); nothing of N1 to N6 is done. Open: N3's checks against
 2026.1's code; 005-82 and 005-69 are checked, the others' expectations
 are from their entries.
 
 2026-11-03, 20:10, the notes agent (in `/Users/f/fl/bench/016/docs/repo`,
-with 016-04): **N1 done**, on `main` at `5c9d0f6`. `releases/next.md` has
+with 016-04): **N1 done**, on `main` at `d7988d8`. `releases/next.md` has
 section 1's entries, in new sections Requirements, Documentation, Build
 and tools and The Lean model; the corrections of section 1 (the dates and
-commits, `Factory` and .NET with `216fc8b`, 005-64's figures and replicas,
+commits, `Factory` and .NET with `f342bd4`, 005-64's figures and replicas,
 005-52's batches with 005-80's line, 005-76's date and commit, 005-70
 under Reliability, 005-49's figures from docs/levels.md); and the commits
-of tonight up to `c72a02b`: 005-82, 015-07, 015-12, 015-01 with 015-06's
+of tonight up to `08a389e`: 005-82, 015-07, 015-12, 015-01 with 015-06's
 part, 005-69 under Reliability; 015-17 in 005-73's close entry, 015-24 in
 005-63's, 015-10 in 005-52's and with 015-15 in Handles' (faults of the
 development, never in a release); 005-79 under Format;
@@ -377,14 +377,14 @@ development, never in a release); 005-79 under Format;
 `lower` and the growth's jcstress test under Build and tools. The walk is
 `/Users/f/fl/bench/016/docs/walk.sh` (outside the repository; `walk.sh
 REPO`); its list of commits not for the notes, with reasons, adds to
-section 1's: `7f3dab4` (a `@throws` line), `cc8effb`, `b348922`,
-`413f72c`, `6180a32` (comments and citations), `d91b619` and `cf6c8e7`
-(tests only, 015-09 and 015-16). `27ec238` is 005-64's code, not only a
+section 1's: `b0b4732` (a `@throws` line), `4e0a849`, `248b9d0`,
+`d8fb5bc`, `922d8d0` (comments and citations), `5ed54b4` and `63a9e88`
+(tests only, 015-09 and 015-16). `ceef804` is 005-64's code, not only a
 suite comment, and is cited. It printed nothing at 20:10. Hand-off:
 `/Users/f/fl/bench/016/docs/handoff-N1/`.
 
 2026-11-03, 20:16, the notes agent: **N2 done**, from `next.md` at
-`e5bd275`. The draft is `/Users/f/fl/bench/016/docs/out/readme.md` (not
+`8c6b8bd`. The draft is `/Users/f/fl/bench/016/docs/out/readme.md` (not
 `notes/out/`: this agent's directory is `docs/`), with section 2's layout;
 `out/markers.txt` says where each of its 34 markers comes from (016-09's
 R2 to R8, 016-10's N8 and `tables.md`) and lists the five `N4-*` markers,
@@ -395,7 +395,7 @@ section 4.2, without 005-82 and 015-01 (fixed), with 005-78, 015-05,
 tonight (015-13, 015-14, 015-20, 015-22) move to the changes in N4 if they
 get in. Every table's data rows are aligned and at most 100 characters.
 
-2026-11-03, 20:27, the notes agent: **N3 done** on `main` at `b6515aa`.
+2026-11-03, 20:27, the notes agent: **N3 done** on `main` at `2d7daae`.
 `releases/2026.1/readme.md`, "Post-release notes", replaces "None yet."
 Each fault was checked against 2026.1's code (`git show
 release-2026.1:PATH` of the files its fix changed; for the fixes, a script
@@ -438,20 +438,20 @@ N3 found no fault that was not registered already, so section 4's stop
 does not apply: the faults of 2026.1 left open are 016-02's item 7.
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-N3/`.
 
-2026-11-04, 07:59, the notes agent: **N4 done** on `main` at `94cb406`,
+2026-11-04, 07:59, the notes agent: **N4 done** on `main` at `5fd8dfe`,
 from the coordinator's list of 07:56.
 
 * `next.md`: lines for 015-14, 015-20, 015-21 and 015-22, 015-40
   (Reliability); 015-56 in 005-66's entry; 015-13 and 015-25 in Handles'
   (015-25 new in 2026.2); 015-12's entry says that 015-14 made the array
   fields volatile and removed the fence. 015-10 was in since N1. `walk.sh`
-  on `main` at `94cb406`: printed nothing. (Before the lines, it passed
-  4e10aa2 only because next.md named 015-14; each commit now has its own
+  on `main` at `5fd8dfe`: printed nothing. (Before the lines, it passed
+  ca02b5e only because next.md named 015-14; each commit now has its own
   line.)
 * The draft (`/Users/f/fl/bench/016/docs/out/readme.md`): the changes
   above; Lean: the night's fixes changed Java only, and are outside the
   model or in the eviction schedule it proves for any value; Verification:
-  `night.sh` on `3386ade` (NIGHT OK, 38 minutes; the release commit adds
+  `night.sh` on `c846c0c` (NIGHT OK, 38 minutes; the release commit adds
   015-56 and `BuildInfo`), the reviews R1 to R3, R7, R8, S1, S2 and the
   index fixes' review, which faults have a second check, the fixes, and
   016-08's tests; Release Props and Baseline: the numbers follow, from the
@@ -469,7 +469,7 @@ from the coordinator's list of 07:56.
   entries, by the reviewers' checks at the tag, not checked again here.
 
 2026-11-04, 08:31, the notes agent: the draft's markers filled from the
-coordinator's facts of 08:30 (commit A `95bde62`, `build-a.txt`,
+coordinator's facts of 08:30 (commit A `d5b1bda`, `build-a.txt`,
 `tests-f53.out`, the axioms, the digests, `git ls-files` at A for the
 lines), all but `[[R5-TESTS-S1]]` (s1's tests on the jar, about 10:30);
 the W7 numbers are said to come in a later commit (016-10), and reviews

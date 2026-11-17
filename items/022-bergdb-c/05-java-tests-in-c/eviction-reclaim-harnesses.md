@@ -5,7 +5,7 @@ Created 2026-11-09 by Frans Lundberg (worker t14 of the session
 C; the session writes its index.
 
 Java's test classes of this part, as `bergdb.core` has them on `main` at
-`2566df1` (2026-11-09 17:18): Eviction, Reclaim, NodeCollection,
+`e875a34` (2026-11-09 17:18): Eviction, Reclaim, NodeCollection,
 NodeStreamTester, FileStreamPowerLossTester, CapacityTester,
 EvictionReaderTester, Residents, ReclaimRetentionTester,
 ReclaimReaderTester, InterruptTester, CorruptStreamTester,

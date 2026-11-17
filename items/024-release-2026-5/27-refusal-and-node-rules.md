@@ -1,7 +1,7 @@
 # 024-27. Refused calls, theta's floor and the largest node size
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `a7dfb6f7`, QR1's Javadoc since `10408f2b`; QR1 and QR2
+`main` since `6ebd8bb1`, QR1's Javadoc since `59250b9d`; QR1 and QR2
 decided.
 
 Four decisions of Frans, 2026-11-12, 07:36, made in Java, Lean and the
@@ -269,12 +269,12 @@ brief says (the first two follow from Q4, the rest from U26-5):
 
 | Commit     | Test                                               | Change                      |
 |---|---|---|
-| `33e0a97c` | `DeadKlongTester.testTheta`                        | theta at 8: 1 becomes 2     |
-| `cedbcde3` | `Eviction.testLoweredBudgetAfterPinsFell`          | 520 transactions become 550 |
-| `bc446d74` | `DbTesterJavadoc.testRangeArguments`               | a builder a refused call    |
-| `bc446d74` | `DbTesterJavadoc.testTransBuilderNullArguments`    | a builder a refused call    |
-| `ffe004ee` | `DbTesterLimits.testValueBytes`                    | its other put not written   |
-| `cb5dab4a` | `PubTesterJavadocRest.testWBuilderOneTransaction`  | a builder a refused call    |
+| `d23379b8` | `DeadKlongTester.testTheta`                        | theta at 8: 1 becomes 2     |
+| `61e1a251` | `Eviction.testLoweredBudgetAfterPinsFell`          | 520 transactions become 550 |
+| `d947e555` | `DbTesterJavadoc.testRangeArguments`               | a builder a refused call    |
+| `d947e555` | `DbTesterJavadoc.testTransBuilderNullArguments`    | a builder a refused call    |
+| `4598cfd2` | `DbTesterLimits.testValueBytes`                    | its other put not written   |
+| `b78e5f31` | `PubTesterJavadocRest.testWBuilderOneTransaction`  | a builder a refused call    |
 
 * **testLoweredBudgetAfterPinsFell** is not an expected value but its
   setup: 520 transactions at node size 8 reached its state (resident
@@ -293,8 +293,8 @@ brief says (the first two follow from Q4, the rest from U26-5):
 
 ## 7. Gates
 
-On the branch's head `40275fd7` (section 9), each once, in a slot of
-its own (before-commit on `cb5dab4a`, the head but for releases/next.md):
+On the branch's head `b8f75d14` (section 9), each once, in a slot of
+its own (before-commit on `b78e5f31`, the head but for releases/next.md):
 
 | Gate                                  | When           | Result                              |
 |---|---|---|
@@ -336,10 +336,10 @@ Written 08:14, 2026-11-12, by "rules" of coord-1112. **Done**; every
 gate of the brief OK (section 7). Nothing runs; no slot is held.
 
 * **Clone** `/Users/f/fl/bench/2026-11-12/rules/clone`, branch
-  `024-27-rules` from main `c0a8cadf`, head **`40275fd7`**, working tree
-  clean. Commits: `ac0e4bdf` (the code, Lean, Javadoc, docs/levels.md,
-  new tests), the five test commits of section 6 (`33e0a97c`,
-  `cedbcde3`, `bc446d74`, `ffe004ee`, `cb5dab4a`), and `40275fd7`
+  `024-27-rules` from main `db54d0c1`, head **`b8f75d14`**, working tree
+  clean. Commits: `718005ad` (the code, Lean, Javadoc, docs/levels.md,
+  new tests), the five test commits of section 6 (`d23379b8`,
+  `61e1a251`, `d947e555`, `4598cfd2`, `b78e5f31`), and `b8f75d14`
   (releases/next.md).
 * **Main tree**: this file, and 024-02's section 6 (the node size
   paragraph, the table row, "Checked on reading") and 11.3 (two bullets).

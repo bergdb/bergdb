@@ -1,6 +1,6 @@
 # 020-30-04. The options outside the write path: format, Lean, C, tests
 
-By agent f30 of coord-1110, 2026-11-10, read-only, from `main` at `12fcb7ba`.
+By agent f30 of coord-1110, 2026-11-10, read-only, from `main` at `772c1e5a`.
 Phase 1: an overview of costs, not a proposal. A: the delete goes upward. B:
 reclaim cleans up. C: both. D: merging underfull nodes. B has three parts here.
 B1: reclaim does not copy nodes that are unreachable at every time from the

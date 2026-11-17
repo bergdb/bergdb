@@ -2,7 +2,7 @@
 =========================================================================
 
 By Claude (Opus 5.5, Claude Code), 2026-10-28, for 006-10's W4.2: a
-reading of `main` at `b1111f4` (D4:B in the core since `f89846d`), and the
+reading of `main` at `f34f31f` (D4:B in the core since `b8ac8a1`), and the
 numbers of 007-06, 007-07 and 005-52's first step. No code changed, no run
 made. The options are in full in the entries,
 [005-53](../53-startup-distance-on-the-fly.md) and
@@ -43,7 +43,7 @@ made. The options are in full in the entries,
   the write lock sets the field, sets the in-memory meta block's value and
   commits a transaction with a 200 kB value under `DbConstants.DUMMY_KEY`
   (`RecoverableStream.META_BLOCK_DISTANCE`), so that a meta block in the
-  stream holds the new value. Its Javadoc since `f89846d`: one call, no
+  stream holds the new value. Its Javadoc since `b8ac8a1`: one call, no
   steps; the section comes down as transactions are committed. Two details
   for a Pub method:
   * The field and the meta block change before `execute` checks the state
@@ -138,7 +138,7 @@ at 200 MB (005-57).
 
 ### 2.2 The cache size (005-52, the first step)
 
-F53, 10M keys, jar `a6cd234`, `setBudget` from 664 MB resident:
+F53, 10M keys, jar `e747323`, `setBudget` from 664 MB resident:
 
 | run | new budget | reached after | eviction thread's CPU | longest batch | longest get | longest commit |
 |---|---|---|---|---|---|---|

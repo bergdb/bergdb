@@ -4,11 +4,11 @@ Created 2026-11-13 by Frans Lundberg. Status: diagnosed; the fix is
 proposed, not made (nothing lands before the morning's commit B).
 
 The release night of 2026.5 (024-38, section 3) failed its Android step,
-`java/stress/android.sh` (006-18-03) on commit A `bf9ab5af`, with one
+`java/stress/android.sh` (006-18-03) on commit A `3611130c`, with one
 failure among about 1,700 unit tests:
 `PubTesterJavadocNewUsers.testClosedDatabasesHoldLittleHeap`, "heap grew
 by 48923 KB for 10 closed databases" (the bound is 30 MB). The test came
-with 020-24's U10-3 (commit `2e9ea7db`, 2026-11-09). This file says why,
+with 020-24's U10-3 (commit `d10bcce2`, 2026-11-09). This file says why,
 made by the agent "andr" of the coordinator coord-1112, during the night.
 
 
@@ -22,7 +22,7 @@ made by the agent "andr" of the coordinator coord-1112, during the night.
   whatever garbage the background collector has not yet taken: the
   closed databases' released 10 MB write buffers. Whether the test
   passes depends on when ART's concurrent collector happened to run.
-* **It came with `2e9ea7db`** (020-24, U10-3), the commit that added the
+* **It came with `d10bcce2`** (020-24, U10-3), the commit that added the
   test, which is in release 2026.4. 2026.4's release night passed it by
   chance.
 * **Android only.** On a JVM `System.gc()` calls `Runtime.gc()`, a full
@@ -31,14 +31,14 @@ made by the agent "andr" of the coordinator coord-1112, during the night.
 * **The fix:** in `heapAfterGc()`, `Runtime.getRuntime().gc()` instead
   of `System.gc()`. One line in the test, no product code; the same
   change, for the same reason, that 006-18-03 made in
-  `PubTester.testConnectionOfEndedThreadNotKept` (commit `2dad3950`,
+  `PubTester.testConnectionOfEndedThreadNotKept` (commit `58f20922`,
   whose comment says it). On a JVM nothing changes.
 
 
 ## 2. Evidence
 
 All runs on the emulator of android.sh (AVD bergdb34, API 34, arm64), on
-port 5592, with A's build and with release 2026.4's (`bb8da6dc`, the tag's commit), each
+port 5592, with A's build and with release 2026.4's (`76f66f89`, the tag's commit), each
 dexed as android.sh does. F53 ran the night's frac step meanwhile.
 
 **2.1. The test alone fails at the same rate on 2026.4 and on A.** Unit
@@ -46,8 +46,8 @@ with `-c PubTesterJavadocNewUsers -m testClosedDatabasesHoldLittleHeap`:
 
 | Build             | Runs | Failures | "heap grew by" in the failures, KB |
 |-------------------|------|----------|------------------------------------|
-| A `bf9ab5af`      | 83   | 26       | about 38,600 or 48,700             |
-| 2026.4 `bb8da6dc` | 60   | 21       | about 38,000 or 48,000             |
+| A `3611130c`      | 83   | 26       | about 38,600 or 48,700             |
+| 2026.4 `76f66f89` | 60   | 21       | about 38,000 or 48,000             |
 
 (Batches: A 9 of 20, 1 of 3, 7 of 30, 9 of 30; 2026.4 11 of 30, 10 of
 30, and a first batch of 20 with 5 failures in the 10 runs whose lines
@@ -140,7 +140,7 @@ release 2026.4.
 2026-11-13 00:25. The emulator is stopped. Done: the cause, its commit, Android only, the fix
 proposed (section 4). Not done: the fix itself (not allowed tonight: no
 change to the test, nothing lands before commit B). No branch was made;
-the clones `/Users/f/fl/bench/2026-11-12/andr/clone` (A, `bf9ab5af`,
+the clones `/Users/f/fl/bench/2026-11-12/andr/clone` (A, `3611130c`,
 detached) and `.../andr/c2` (release-2026.4) are unchanged. To continue:
 make a branch from main after commit B, apply section 4's change, run
 before-commit.sh, then `tools/build.sh` and `tools/run.sh JAR 30` on the

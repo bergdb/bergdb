@@ -1,8 +1,8 @@
 #!/bin/sh
 # 009-03's ScaleBench from the device (D) on s1 after 005-46 (009-03, section 9), as s1-009.sh
-# ran it for section 6: the 10M key24 load with a budget of 600 MB on HEAD's jar (4f7cd60),
+# ran it for section 6: the 10M key24 load with a budget of 600 MB on HEAD's jar (f9e295d),
 # then D at 133 MB with its cold start (caches dropped, a cgroup of the heap and 300 MB),
-# HEAD, bf19075 (005-50, the commit before 005-46) and 2026.1 in turns, G1 and then ZGC, on
+# HEAD, c1f1f15 (005-50, the commit before 005-46) and 2026.1 in turns, G1 and then ZGC, on
 # the same database. 004-02's ScaleBench with 009-03's port and its sb.sh; one source,
 # compiled against each jar. Written 2026-10-27 by Claude (Opus 5.5, Claude Code).
 # Usage: sh s1-46.sh. Expects /opt/bergdb-bench/009-46/: jar-head.jar, jar-bf19075.jar,
@@ -25,7 +25,7 @@ SBFLAGS=
 if (sb_load s1-l-key24-10m-head key24 10000000 2500m 600000000 ""); then
     for gc in G1 Z; do
         if [ $gc = Z ]; then SBFLAGS=-XX:+UseZGC; else SBFLAGS=; fi
-        for j in head bf19075 2026.1; do
+        for j in head c1f1f15 2026.1; do
             CP=$R/jar-$j.jar:$R/classes-$j
             (sb_get s1-d-key24-10m-b133-$j-$gc key24 10000000 600m 133000000 D $P) \
                 || echo "$(date '+%F %T') FAILED s1-d-key24-10m-b133-$j-$gc, going on" >> "$OUT/runs.txt"

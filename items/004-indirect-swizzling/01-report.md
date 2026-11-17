@@ -7,7 +7,7 @@ the possibility of using this in BergDB, the pros and the cons. Study this deep,
 than we have in this session. Lookup references." It follows a discussion the same
 morning about Level 4's caching: the sweeps, the multiple parents of the DAG, and a
 pointer that goes through "a middle element" that always points to a node's latest
-object. Code at bergdb `cfa50e5` (`java/build/bergdb.jar` of 06:59; `java/src` has not
+object. Code at bergdb `651ed45` (`java/build/bergdb.jar` of 06:59; `java/src` has not
 changed since). Nothing outside this item was changed. The measurements were first made
 on a machine shared with item 001's long trace checks, then repeated the same afternoon on
 the quiet machine at Frans's request; the report's figures are the quiet ones (section

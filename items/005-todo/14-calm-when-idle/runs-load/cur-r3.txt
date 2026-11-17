@@ -7,7 +7,7 @@ d-t64-def (write, 1 runs)
   d-t64-def run 1: WRITE 6400 commits (6400 puts) in 3.06 s: 2094 commits/s, bytes appended per user byte 1.20, append p50 569.3 us p99.9 3113.0 us max 3.14 ms|
 a-1k-def (write, 1 runs)
   a-1k-def run 1: WRITE 500000 commits (500000 puts) in 4.80 s: 104175 commits/s, bytes appended per user byte 1.22, append p50 7.6 us p99.9 34.3 us max 0.11 ms|
-Session load-check.suite-g1-8g-cur-r3  (fdee60888e629dfdbe9c74bcc9a6cdb15256dba7)
+Session load-check.suite-g1-8g-cur-r3  (82aa58ea39b523a301bf10411cb55e03bb27a6eb)
 
 a-1k-def  [write, 1 runs, workload a61a88e605daed07]
   metric                                         n           median              min              max      CV

@@ -835,7 +835,7 @@ decided (09:33):
   at six places (a field, an array element, an `Object` field, a nested
   object's array, nested arrays, an array put as an object), from the
   Builder for a value and a field name, and a pair stored and a `char[]`
-  with lone surrogates read back exactly. On `HEAD`'s code (fd94108) it
+  with lone surrogates read back exactly. On `HEAD`'s code (cd9e2df) it
   fails: "AssertionError: no exception, 'names[1]'".
 * The rule in the Javadoc: in full in the package doc of `bergdb.pub`,
   section "Strings" (what, for which strings, what is refused, why, that
@@ -852,7 +852,7 @@ decided (09:33):
   format's spec does not exist yet (020-01, F1, question 5), and 021-06
   carries the rule there. 020-01, section 4, still says that a lone
   surrogate in an object is stored as '?': an inventory read at
-  `92844c2`, not updated.
+  `2b8ef00`, not updated.
 * `releases/next.md`: a Pub API bullet (objects) and a Documentation
   bullet (the rule).
 * The two questions became 021-05 (the Core's String puts, done the same

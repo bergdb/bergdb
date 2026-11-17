@@ -27,8 +27,8 @@ State
 -----
 
 2026-11-03, 20:45: option A done as R1-F2 proposes, in
-`/Users/f/fl/bench/016/015-13b/repo` (`main` at `912e84f` with agent K's
-work-in-progress commit brought over and finished, rebased on `4e10aa2`,
+`/Users/f/fl/bench/016/015-13b/repo` (`main` at `04d257c` with agent K's
+work-in-progress commit brought over and finished, rebased on `ca02b5e`,
 015-14): the count, three
 tests, the mutations, docs/levels.md, section 7, and `before-commit.sh`;
 handed off for review in `/Users/f/fl/bench/016/015-13/handoff/`. Open:
@@ -94,12 +94,12 @@ straight-forward and you have a proposal, fix it before the release." So
 option A, R1-F2's proposal, before the release, by agent K after 015-15.
 
 2026-11-03, about 17:00 to 17:26, by agent K (016-05), in
-`/Users/f/fl/bench/016/015-13/repo` (`main` at `a047815` with 015-15's
+`/Users/f/fl/bench/016/015-13/repo` (`main` at `4948ec6` with 015-15's
 commit cherry-picked, `813f1b6`): a work-in-progress commit, `959371d`,
 not built or tested. Its State note, as K left it:
 
 > 2026-11-03, 17:26, by agent K, stopped at the coordinator's request (usage),
-> in `/Users/f/fl/bench/016/015-13/repo`: `main` at `a047815` with 015-15's
+> in `/Users/f/fl/bench/016/015-13/repo`: `main` at `4948ec6` with 015-15's
 > commit cherry-picked (`813f1b6`), and a work-in-progress commit on top.
 > Not built, not tested, not gated.
 >
@@ -132,7 +132,7 @@ not built or tested. Its State note, as K left it:
 > * Base it again on `main` once 015-15 is committed there.
 
 2026-11-03, 20:31 to 20:45, by agent F1-b (016-05), in
-`/Users/f/fl/bench/016/015-13b/repo` (a clone of `main` at `912e84f`,
+`/Users/f/fl/bench/016/015-13b/repo` (a clone of `main` at `04d257c`,
 after 015-15 and 015-10; K's commit cherry-picked without conflicts):
 
 * **K's change checked**: `bytesOf`, `handleIn`, the swizzle under the
@@ -183,7 +183,7 @@ after 015-15 and 015-10; K's commit cherry-picked without conflicts):
   `Residents`, `Eviction`, `CapacityTester` and `EvictionReaderTester` 3
   times alone (35 tests, SUCCESS each) and the f-tests of the last three
   (17, SUCCESS). With 015-10's tests among them: unchanged, passing.
-* **Rebased** on `main` at `4e10aa2` (015-14: the fast path's acquire
+* **Rebased** on `main` at `ca02b5e` (015-14: the fast path's acquire
   reads; `NodeCollection`, `KeyNode`, `TopNode`), without conflicts: 015-14
   left step 5's swizzle as it was, and `getPointee`, which `bytesOf` reads
   under the object's monitor, is now an acquire read. `before-commit.sh`

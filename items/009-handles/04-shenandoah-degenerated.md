@@ -22,7 +22,7 @@ commits a second, three readers at 5,000 reads a second each, reclaim with a
 retention of 300 s, one restart, a budget of 1.6 GB, an 8 GB heap
 (`-Xms8g -Xmx8g`), 30 measured minutes. Generational Shenandoah
 (`-XX:+UseShenandoahGC -XX:ShenandoahGCMode=generational`), JDK 27
-(Homebrew), F53. The branch at `a04a418`. 2026-10-26, 06:33 to 07:19, after
+(Homebrew), F53. The branch at `f4e93d8`. 2026-10-26, 06:33 to 07:19, after
 the same soak under ZGC (05:32 to 06:19).
 
 `SOAK OK`: every get and scan checked, 200.0 commits and 14,624 reads a
@@ -141,7 +141,7 @@ Until (1) and (2) ran, the guidance that 004-04 gave stayed: for pauses near
 
 # 7. The two soaks of section 6
 
-P4's soak as in section 1, the same jar (the branch at `a04a418`, which
+P4's soak as in section 1, the same jar (the branch at `f4e93d8`, which
 `main` merged), JDK 27, F53, after the quiet check (load 1.9, the other
 sessions idle), on 2026-10-26:
 

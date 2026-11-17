@@ -52,7 +52,7 @@ measurements for larger databases, that is."
 
 ## 3. Measured at 10M keys, 2026-11-12 night
 
-On commit A of 2026.5 (bf9ab5af), in the release night (024-38, step
+On commit A of 2026.5 (3611130c), in the release night (024-38, step
 frac, 23:20 to 00:25), with 024-29's program at 10M keys; counts. Outputs
 in `04-reclaim-fraction-settings/10m-work-*.txt`. K = the stream kept
 beyond the user's records within R, in units of the twin's fresh stream

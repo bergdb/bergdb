@@ -405,7 +405,7 @@ for 2026.3: they are experimental (D2).
 * Scope decided on 2026-11-06 (Frans, 11:46, Option 1 of 006-13): the
   eight jcstress tests of `java/stress/jcstress/` rerun on today's code
   on F53 and s1; tests added only for the shared fields that review R7 of
-  006-13 flags, and it flags none. See 018-08. On s1 (`e446bb2`), each
+  006-13 flags, and it flags none. See 018-08. On s1 (`4e741b4`), each
   `[OK]`, no forbidden outcome; F53's run is scheduled for the night of
   2026-11-06 to 07.
 
@@ -559,7 +559,7 @@ format, with Frans's approval (section 2). Sections 3.1 and 6.1 updated;
 2026-11-05, 21:06. 015-51 decided by Frans, to the coordinator of the
 night 006-12 (21:03: "'a' for 015-51. And also add the possibility of a
 refusal to the to-consider list of the long-term item."): R7's first
-option, the contract written down and the code unchanged (8427ff0). A
+option, the contract written down and the code unchanged (b185a73). A
 value transformation's result above the value limit is the caller's
 fault, as an exception from it is, and one whose record does not fit
 fails the database (P7). It leaves section 3.1's list, as 015-27 and
@@ -637,12 +637,12 @@ read, with a `StreamFormatException`, where an assert or a
 section 5.4). Section 6.1 updated.
 
 2026-11-07, 07:43. "Ready", 6: Frans, "Yes, make the release." "Ready", 1
-to 5 held at commit A, `929fa33`: no fault of the Core open (019's open
+to 5 held at commit A, `9a0bf5e`: no fault of the Core open (019's open
 entries at A, 019-35 and 019-36, were Investigates of performance, closed
 after A without a change of the code); `night.sh large` NIGHT OK on A,
 the harnesses (jcstress 8 of 8 on F53, on A), the jar's tests on F53 and
 s1 with JDK 27 and 17; StreamDigest's differing configurations all named
-by next.md; the documentation read through (8996de0); the notes' known
+by next.md; the documentation read through (165bb9e); the notes' known
 issues are the experimental code, Frans's decisions and the limits.
 Released: the tag `release-2026.3` on A, and commit B (018-09, section
 8).

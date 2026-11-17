@@ -1,4 +1,4 @@
-"""bergdb 005-67. Instruments the BufferedStream of 2015-07-23 (7c458d1 of the 2013 to 2017
+"""bergdb 005-67. Instruments the BufferedStream of 2015-07-23 (c08e4ce of the 2013 to 2017
 history) for Old2015.java: two sleeps set by system properties in milliseconds (0, the
 default, changes nothing), for a buffer under 10,000 bytes only (the test's replica):
 

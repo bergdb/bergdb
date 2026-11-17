@@ -73,7 +73,7 @@ The line `hplus:` counts the transactions whose writer at the trace's own
 H makes a key node outside G and H (its `W.outside` at the end; nothing
 removes a node from it, so one taken back is counted), and gives the
 least k that covers them. Without the option the checker is as before:
-on the 205 traces below its output is that of the checker of `295b0dbd`,
+on the 205 traces below its output is that of the checker of `f06e1e6b`,
 byte for byte. The model's definitions do not change, nor does the
 checker's library (Check/): the new definitions are in TreeCheck.lean,
 which no statement imports, so the gate's fingerprint of the trusted
@@ -121,7 +121,7 @@ transactions make a key node outside the trace's G and H, again in
 d-long3b only (seeds 21, 22 and 29, H = 3): each one node in segment 0 at
 height 4, made by a delete and taken back by the same delete, as above.
 All 330 check at H + 1, with no failure of NoOutside or SameTree, and the
-default output is that of `295b0dbd`. The medium set was started too and
+default output is that of `f06e1e6b`. The medium set was started too and
 stopped: its larger traces take over 5 minutes each to check.
 
 **What it means for step 2.** On these runs a node above the trace's H
@@ -160,7 +160,7 @@ probe that finds the operation that makes the node (probe/).
   not in Check/, so that 025-02's gate passes as it is, with no change
   of its fingerprint to judge.
 
-**The gate.** 025-02's gate.sh passed at `036bedd0` (the trusted
+**The gate.** 025-02's gate.sh passed at `81d3c55b` (the trusted
 closure's fingerprint and the top theorem's statement as the base's, the
 axiom audit, the trace checker's tests), and level2.sh quick passed in
 the clone. The checks of section 3.1 ran again with that commit's
@@ -245,7 +245,7 @@ change, nor does anything proved.
 
 **The gate.** A copy of 025-02's gate (f1/thm/gate.sh): it also audits the
 new theorem, and it allows the trusted closure to differ from the base's by
-the line of `NoOutside` only. It differed by that line. Passed at `ad4e9cf5`
+the line of `NoOutside` only. It differed by that line. Passed at `5f20913a`
 (the step's commit with main merged), landed.
 
 **Decided by rule**, for Frans to overturn:

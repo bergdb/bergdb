@@ -85,7 +85,7 @@
    217  total lines
     16  declaration lines (theorem, lemma, def, abbrev, structure) among them
 
-# 5. The main line the same night: files added to main's lean/SIS/Tree, 308299c5..454c05c3
+# 5. The main line the same night: files added to main's lean/SIS/Tree, dcf72462..e014b401
    459  HtbDefs
    262  HtbExc
    231  HtbExcFrame

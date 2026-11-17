@@ -23,7 +23,7 @@ budget of 40 MB, a fifth of the read scenario's latest values), reads are
 `SUITE=quick java/stress/performance.sh ab l34-base current`, matched (ABBA,
 3 runs a scenario each), on the quiet machine (95.9 and 95.4 percent idle at
 the start; nothing else of this work ran): `l34-base` is the Level 3 code of
-the reference `quick-2026-10-16-post-task1`; `current` is bergdb `4a2fc72`
+the reference `quick-2026-10-16-post-task1`; `current` is bergdb `52da9e6`
 (J1 to J9) with `performance.sh`'s `JFLAGS`. Perf's databases are built with
 `DbBuilder.noEvict()`, so:
 

@@ -20,7 +20,7 @@ invariants they rely on, the proof obligations, and what the targeted test
 [RestartInvariance.java](../../java/stress/RestartInvariance.java) showed in those
 experiments. The linked harness and Java files have since been repaired;
 for unmodified source use the baseline commit of this repository (the 2017
-source, original commit `49aa48d`). The initial harness and experiment patch,
+source, original commit `50786b2`). The initial harness and experiment patch,
 [restart-experiments.diff](../../java/stress/restart-experiments.diff), were made
 against a source that already included the first delete repair, so that
 source is not the unmodified baseline.

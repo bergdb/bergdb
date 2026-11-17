@@ -7,14 +7,14 @@ import bergdb.storage.StorageManager;
 import bergdb.stream.MemoryStream;
 
 /**
- * bergdb 005-67. testAddReplica2 as it was before Frans's note of 2015-07-23 (7c458d1^ of
+ * bergdb 005-67. testAddReplica2 as it was before Frans's note of 2015-07-23 (c08e4ce^ of
  * the 2013 to 2017 history: no assertions between the append and close()), run N times;
  * prints how often each pair of lengths after close() came. With the BufferedStream of
  * 2015 (old2015.py) before the jar on the class path, it shows where the replica's 1200
  * bytes of the note came from.
  *
  * The BufferedStream of 2015, from the 2013 to 2017 history (F1-007's bundle, or a clone of it):
- *   git show 7c458d1:bergdb/src/bergdb/storage/BufferedStream.java > BufferedStream.java
+ *   git show c08e4ce:bergdb/src/bergdb/storage/BufferedStream.java > BufferedStream.java
  *   python3 -I old2015.py BufferedStream.java
  *   javac -nowarn -cp bergdb.jar -d old2015/cls BufferedStream.java
  *

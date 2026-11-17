@@ -49,7 +49,7 @@ against the Java code before it is called a fault. No change to BergDB.
 
 ## 2. The model
 
-From the code at `83e8e13` (main, 2026-11-09), with 020-18's five fixes:
+From the code at `4ff84fb` (main, 2026-11-09), with 020-18's five fixes:
 `IndexManager`, `IndexBuilderImp`, `RwEnvironmentImp`, `RwTransaction`,
 `WTransaction`.
 
@@ -360,7 +360,7 @@ deletion, so the scans after the last key deleted have found them all.
 ## 7. Findings
 
 1. **No design fault found.** Within the bounds of section 5, the design
-   of 020-10 with 020-18's F1, F3, F4 and F5, as the code at `83e8e13`
+   of 020-10 with 020-18's F1, F3, F4 and F5, as the code at `4ff84fb`
    does it, keeps every invariant of section 3: at every lookup time an
    active index's entries are exactly f over the directory's values; no
    entry of a live generation is ever stale, also while it builds; no
@@ -437,7 +437,7 @@ Log
 ===
 
 2026-11-09. Created by coord-1109's agent m26 (12:41), at Frans's word
-(12:40). The model from 020-10, 020-18 and the code at `83e8e13`; TLC
+(12:40). The model from 020-10, 020-18 and the code at `4ff84fb`; TLC
 1.7.4 downloaded and its SHA-1 checked against the release notes. Runs
 from 12:57 to 15:11 on F53, one JVM at a time, 4 workers, under the day's
 load (sections 5 and 6): no design fault; each of the eleven planted

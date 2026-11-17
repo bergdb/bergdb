@@ -70,7 +70,7 @@ own", and section 7):
 
 From the release night of 2026.4 (2026-11-10):
 
-* **Done 2026-11-12 (0420c72e; 024-25, section 12).** **A time klong's
+* **Done 2026-11-12 (90184540; 024-25, section 12).** **A time klong's
   unused bits** (56 to 61) are not checked:
   `StoredKeyNode.parse` should refuse a time klong whose bits 56 to 61 are
   not zero ("Bad time klong", a `StreamFormatException`, beside its check
@@ -142,7 +142,7 @@ Files
   range); with 10M keys the last step's record 29 kB, not 206 MB; the
   mechanism, the options, the theorems T-COVER and T-LATEST in Lean, the
   checker's touchPath and CUT-live, the numbers before and after, two
-  changed tests. On main since a780b957. Outputs in 07-last-touch/.
+  changed tests. On main since 36924319. Outputs in 07-last-touch/.
 * 08-mem-at-10m.md. 024-08, MEM's 327 bytes a KV at 10M keys explained:
   the shape of MEM's keys, not their count (a key of exactly 7 bytes is
   two segments and gets a key node of its own, about 226 heap bytes);
@@ -156,7 +156,7 @@ Files
   configurations and UnlinkFuzz in the gates (level2.sh, conformance.sh
   drain, unlinkfuzz.sh in night.sh), which P5's head with fault 12 now
   fails; PhysStep proved in Lean; A6 checked; Lean's javaTake made
-  Java's integer rule (015-03). On main since 379d8acf. Outputs in
+  Java's integer rule (015-03). On main since 773c2105. Outputs in
   09-tie/.
 * 10-last-operation-wins.md. 024-10, the builder's rule "the last
   operation wins" (CA1) in Java: the rule made exact (R1 for the calls
@@ -164,7 +164,7 @@ Files
   one key: the later call), the 34 cases of which 11 differ from 2026.4,
   the change, its tests, two expected values changed, the same stream
   bytes without repeated keys, what C must change; questions QL1 to QL5.
-  On main since a780b957 (024-13); R2 replaced by 024-16's refusal.
+  On main since 36924319 (024-13); R2 replaced by 024-16's refusal.
 * 11-underfill.md. 024-11, the design study of the underfill's fix
   (OP2/ST2 of 024-05): the bound BU1 (every key node that is not a
   segment tree's root holds at least a quarter of a node's klongs, after
@@ -179,8 +179,8 @@ Files
 * 13-integration.md. 024-13, the integration branch of the day's
   approved changes, gated as one tree: `doubles.py` in 3 s, not 188 s
   (before-commit.sh about 80 s again), 024-10 and 024-07 merged; the
-  gates' results. Landed as a780b957; then 024-09 merged and gated,
-  landed as 379d8acf; later 1e77cfc6, 47c93e34, b84cf761 and 67925924.
+  gates' results. Landed as 36924319; then 024-09 merged and gated,
+  landed as 773c2105; later 6b6f04de, e6e93272, ab1b9e42 and 67925924.
   Done.
 * 12-tree-model.md. 024-12, the model of BergDB's key tree in Lean, run
   against Java (024-06's B0 to B2): trace format 3 with keys; the tree
@@ -191,7 +191,7 @@ Files
   `level2.sh`: on 115 traces the model's own run writes Java's records;
   `treetest`, exhaustive at small node sizes; 27 stated properties, a
   few proved. Branch 024-12-tree-model. Approved by Frans 2026-11-11,
-  14:28; on main since 14:56, the merge of 480f83da (gated: lake build,
+  14:28; on main since 14:56, the merge of a935b6e0 (gated: lake build,
   treetest, no sorry or axiom, test-traces, before-commit, level1 to
   level3 full). Open: the proofs go on (section 6: TP7, TP10, TP11).
 * 14-merge-thresholds.md. 024-14, the merge's thresholds measured in
@@ -208,7 +208,7 @@ Files
   costs a key node of its own (about 226 heap bytes) and what eviction
   does instead; `Mem` with `-n` and `-keys`; two checks in `level1.sh`
   (SEG at most 230; MEM10M at most 131, full run only); docs/levels.md.
-  On main since the merge of 251cd1e0.
+  On main since the merge of c9bc3854.
 * 16-one-operation-a-key.md. 024-16, one operation a key in a
   transaction, strictly (Frans, 2026-11-11): in a builder the last call
   on a key as written wins; a transaction whose key transformations make
@@ -218,7 +218,7 @@ Files
   removed; no stale index entry possible (024-10's F1); six tests'
   expected values changed. Branch 024-16-one-operation-a-key; its
   review in 16-one-operation-a-key/. On main since 2026-11-11, 14:12,
-  the merge of 3af7513e (gated: before-commit, level1 to level4 full,
+  the merge of 51edfdcf (gated: before-commit, level1 to level4 full,
   unlinkfuzz, conformance drain).
 * 17-limits.md. 024-17, the limits of BergDB: of a transaction, a key,
   a value, a record. The discussion with Frans (limits in the user's
@@ -260,7 +260,7 @@ Files
   thresholds 8/17/17 at node size 30 (024-14, QT1), named constants,
   BU1's check, dirtyNodeBound with CB2. Its review in
   21-merges-java/review.md (land with fixes, made). On main since
-  2026-11-11, 16:54, with 024-22: the merge of 2679622e (landing
+  2026-11-11, 16:54, with 024-22: the merge of f3f2ac05 (landing
   delegated by Frans, 14:48; gates in 024-13, section 9). QJ1 to QJ3.
 * 22-merges-lean.md. 024-22, merges at the delete in 024-12's Lean model
   of the key tree, at 8/17/17; Java equal to it on 260 traces (54,877
@@ -271,7 +271,7 @@ Files
   the Lean tree model and in Java, at most theta dead klongs a node
   after every write; Java equal to the model on 222 traces; reviewed in
   23-dead-klongs-option2/review.md (land with fixes, made). On main
-  since 2026-11-11, 18:16: the merge of e0fb9d77. QO1 to QO3; six
+  since 2026-11-11, 18:16: the merge of 335a3c40. QO1 to QO3; six
   changed tests (section 4.1) accepted by the coordinator for Frans to
   see.
 * 24-limits-implemented.md. 024-24, the limits of 024-17 implemented
@@ -279,11 +279,11 @@ Files
   111 bytes refused, the reader reading a record's header first, the
   count with q in Lean); its review in 24-limits-implemented/review.md
   (land with fixes, made). On main since 2026-11-11, 20:19, the merge
-  of 829d6135. Q1, Q2.
+  of b0d41461. Q1, Q2.
 * 25-crc32c.md. 024-25, CRC32C in place of Fletcher-16 as the node
   checksum (024-17, QL9): the node header 12 bytes, node formats 3/3/5;
   reviewed (25-crc32c/review.md, land with fixes, made). On main since
-  2026-11-11, 19:24, the merge of e1a87bec. QC1 to QC3.
+  2026-11-11, 19:24, the merge of 8c7fbff1. QC1 to QC3.
 * 26-user-apps.md. 024-26, AI-as-the-user apps against 2026.5's new
   algorithms (merges, option 2, CRC32C, the limits): no bug; Javadoc
   findings U26-1 to U26-8 (U26-5 decided 2026-11-12: a refused call
@@ -315,18 +315,18 @@ Files
   2 sd in the share (c = 2); at 10M keys from 1000 to 100 MB the largest
   record 1.90 to 0.99 MB, the catch-up 4.5 times longer; the stream
   unchanged with a constant setting (StreamDigest 48 of 48). On main
-  since 2026-11-12, c1137b69 (Frans, 13:09).
+  since 2026-11-12, 69b91fd7 (Frans, 13:09).
 * 32-maintain.md. 024-32, `Db.maintain()` and `Database.maintain()`:
   optional, bounded calls that drive reclaim, the take, the cut and the
   dead hand while the application does not write (Frans, 2026-11-12,
   12:10); G5, back to empty by maintain() alone, at 1M keys. Q32-1 to
-  Q32-5, as built. On main since 2026-11-12, 94edfe6b.
+  Q32-5, as built. On main since 2026-11-12, f4ccbcdc.
 * 33-cache-tables.md. 024-33, the cache's tables shrink (ST6): 1.06
   times a hello-world twin's slots after back to empty, was 3.76. On
-  main since 2026-11-12, a156fd51.
+  main since 2026-11-12, 75baf383.
 * 34-reclaim-reads.md. 024-34, a reclaim step reads a key again only
   when its value is before pCut (OP8): second reads halved, stream bytes
-  unchanged. On main since 2026-11-12, a156fd51. Q34-1 open, for Frans.
+  unchanged. On main since 2026-11-12, 75baf383. Q34-1 open, for Frans.
 * 35-release-sweep.md. 024-35, a double-check before the candidate
   (2026-11-12, 14:19): OT2's Linux lock race not fixed, a Core put under
   the Core's own keys that stops every later start (R5), the notes
@@ -339,12 +339,12 @@ Files
 * 37-core-keys.md. 024-37, CA3 fixed (010-04, R5): the Core refuses a
   caller's puts and deletes under its own keys (/#i/-dummy and
   /#i/dreclaim/); its own writes pass. On main since 2026-11-12.
-* 38-release.md. 024-38, the release of 2026.5: commit A (bf9ab5af, on
+* 38-release.md. 024-38, the release of 2026.5: commit A (3611130c, on
   release-2026.5-a, gated), the release night from 2026-11-12, 15:18 (F53:
   night.sh large, the performance comparison with 2026.4, jcstress,
   checks, Android, the queue; s1: JDK 27 and 17, the OT2 probe, fuzz),
   the morning's scripts without the tag. Done 2026-11-13: the tag
-  `release-2026.5` on A, commit B `e9ed4ac9`.
+  `release-2026.5` on A, commit B `3e85ce8b`.
 
 
 Log
@@ -422,9 +422,9 @@ to 026. In particular this 024-20 should move there."); a stub left at
 proposed for it is listed in 026's readme.
 
 2026-11-13. Release 2026.5 made: the tag `release-2026.5` on A
-`bf9ab5af` (Frans, 06:27, pushed), commit B `e9ed4ac9`, `releases/2026.5/`
+`3611130c` (Frans, 06:27, pushed), commit B `3e85ce8b`, `releases/2026.5/`
 (024-38). The release night was clean but for one Android test, a test
-artifact fixed in `3c1f0756`.
+artifact fixed in `f6dc49f2`.
 
 2026-11-13. The subitems' statuses set after the release (coord-1113;
 Frans, 08:03: "yes do it"), each from its State and the landing commits.

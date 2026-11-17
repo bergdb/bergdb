@@ -32,7 +32,7 @@ wrote the value while it is available, else a refusal with a true
 message; or, if none is small and safe, Javadoc and message that say
 exactly what happens, and the alternatives here for Frans; the Javadoc of
 U6-2, U6-3, U6-4, U6-6 and U6-7 made true (what 020-24's x24 wrote today,
-67b9e2b..381d26a, not repeated); `BEFORE COMMIT OK` and `JAVADOC PUB OK`
+7decb09..efe8a7f, not repeated); `BEFORE COMMIT OK` and `JAVADOC PUB OK`
 under the gate lock; lines in `releases/next.md`.
 
 First step: what a reclaim step's record keeps of the copied value.
@@ -43,10 +43,10 @@ Log
 
 2026-11-09. Registered by coord-1109 from 020-24-06's U6-1 (and the
 Javadoc findings U6-2 to U6-4, U6-6, U6-7), and taken by its agent r17
-(clone `clone-r17`, on main's 772e09b).
+(clone `clone-r17`, on main's 629e1c6).
 
 2026-11-09. Done by r17: commits 579f7d9 (021-17, U6-1) and 6e336b6
-(020-24, U6-2 to U6-4, U6-6, U6-7) in `clone-r17`, on main's 772e09b, to
+(020-24, U6-2 to U6-4, U6-6, U6-7) in `clone-r17`, on main's 629e1c6, to
 land. Severity: medium, as 020-24-06 gave it. In 2026.1 to 2026.3
 (005-42; before it the call gave reclaim's step, its time and its row).
 

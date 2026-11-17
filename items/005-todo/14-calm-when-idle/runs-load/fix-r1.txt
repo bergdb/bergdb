@@ -1,4 +1,4 @@
-Building current-fdee6088-2191f65e from fdee60888e629dfdbe9c74bcc9a6cdb15256dba7 (dirty: true) in /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/idle/fix/java/build/perf/builds/current-fdee6088-2191f65e
+Building current-fdee6088-2191f65e from 82aa58ea39b523a301bf10411cb55e03bb27a6eb (dirty: true) in /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/idle/fix/java/build/perf/builds/current-fdee6088-2191f65e
 Built /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/idle/fix/java/build/perf/builds/current-fdee6088-2191f65e
        3 scenarios from load-check.suite
 CPU idle before the runs: 95.83%
@@ -9,7 +9,7 @@ d-t64-def (write, 1 runs)
   d-t64-def run 1: WRITE 6400 commits (6400 puts) in 3.05 s: 2097 commits/s, bytes appended per user byte 1.20, append p50 483.3 us p99.9 3080.2 us max 3.20 ms|
 a-1k-def (write, 1 runs)
   a-1k-def run 1: WRITE 500000 commits (500000 puts) in 4.92 s: 101701 commits/s, bytes appended per user byte 1.22, append p50 7.7 us p99.9 35.6 us max 59.86 ms|
-Session load-check.suite-g1-8g-fix-r1  (fdee60888e629dfdbe9c74bcc9a6cdb15256dba7 + working-tree diff)
+Session load-check.suite-g1-8g-fix-r1  (82aa58ea39b523a301bf10411cb55e03bb27a6eb + working-tree diff)
 
 a-1k-def  [write, 1 runs, workload a61a88e605daed07]
   metric                                         n           median              min              max      CV

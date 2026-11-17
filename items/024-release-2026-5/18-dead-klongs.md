@@ -92,7 +92,7 @@ and (from 12:53) on 024-21's merges on `main` (section 6.2); not at 10M
 
 ## 2. A dead klong, from the code
 
-`main` at `0016b9a5`: `Dag`, `KeyNode`, `Klong`, `StoredKeyNode`,
+`main` at `558cdfe3`: `Dag`, `KeyNode`, `Klong`, `StoredKeyNode`,
 `Reclaim`, `Eviction`. 024-14's build with merges (`Dag.merge` on
 `024-14-thresholds`) for the events of a merge.
 
@@ -229,7 +229,7 @@ The workloads, 1M keys:
   deletes of the oldest keys and 50 puts of new keys at the end.
 
 Each with R = 1 s (1,000 transactions; "r1") and with R forever ("r0":
-reclaim off). Builds: `main` (`0016b9a5`, built as it is); 024-14's
+reclaim off). Builds: `main` (`558cdfe3`, built as it is); 024-14's
 frozen build `b1` with merges (P5's merge with fault 12's fix,
 `024-14-thresholds` at `bff5e810`) with its recommended set m8, 8/17/17;
 and the prototypes of sections 4 and 5, on `main` and on `b1` (State
@@ -653,7 +653,7 @@ dead klongs a live one, against 2.89) for +3 % bytes.
 ### 6.2 On 024-21's build (merges on `main`), 1M keys
 
 Both patches applied as they are to 024-21's `024-21-merges` at
-`f507148d` (P5's thresholds, format 7), branch `024-18-on-024-21`; run
+`4ef56d44` (P5's thresholds, format 7), branch `024-18-on-024-21`; run
 12:53 to 13:12. "cold" and "over" have no deletes and match `main` to the node;
 "sparsecold" is now the case with merges. Every run ends with its value
 check passed.
@@ -814,10 +814,10 @@ recommended (option 2 gives the bound with R forever).
 13:49.
 
 * **Clone** `/Users/f/fl/bench/2026-11-11/dead/clone` from `main` at
-  `0016b9a5`; measuring branches, none for landing as they are
+  `558cdfe3`; measuring branches, none for landing as they are
   (worktrees beside the clone):
   * `024-18-on-024-21` (`g-wt`, committed `d64aab58`): both patches on
-    024-21's `024-21-merges` at `f507148d` (merges, format 7, P5's
+    024-21's `024-21-merges` at `4ef56d44` (merges, format 7, P5's
     thresholds), applied by the two scripts as they are (build `dead/bg`;
     sets g0, g7, g3, g3c in `tools/job8.sh`).
   * `024-18-option2-main` (`o2m-wt`, committed `5e0ab160`): option 2

@@ -296,7 +296,7 @@ format change of the delete bitmap.
   values, 100 a transaction) with a node size and a key shape.
 * **Build** (from 2026-11-12, 00:41): branch `024-19-nsize` in
   `/Users/f/fl/bench/2026-11-11/nsize/clone`, rebased onto main
-  `40aa66cb` (record format 7: 024-21's merges at the delete with
+  `7cd6ff47` (record format 7: 024-21's merges at the delete with
   8/17/17 at B = 30, 024-23's option 2 with theta 7 at 30, 024-25's
   CRC32C, 024-24's limits), one commit for sizes above 62 on workloads
   without deletes: `Klong.DELETE_BITS` 256 long with bits only for 0 to
@@ -305,7 +305,7 @@ format change of the delete bitmap.
   into a node of more than 62 klongs), and the array classes 254 and
   510 added; a second commit adds `-Dnsize.theta=T` (theta forced to T
   at every size, section 4.5). Without the property and at B ≤ 62 the
-  build behaves as main. The runs of 2026-11-11 (main `1076235c`, no
+  build behaves as main. The runs of 2026-11-11 (main `2105baa7`, no
   merges, no option 2, Fletcher-16) are kept in `out/pre-merges/`.
 * **The thresholds at each size**, as format 7 scales them (`Dag`:
   v B / 30 by integer division; m at least 2; theta at least 1 from B =
@@ -856,7 +856,7 @@ is held, the data directory `/Users/f/fl/bench/2026-11-11/nsize/data`
 is empty. Nothing committed in the main tree; the coordinator commits
 this file and `19-node-size/`.
 
-* **Ran**: the build rebased onto main `40aa66cb` and checked (the
+* **Ran**: the build rebased onto main `7cd6ff47` and checked (the
   probe on format 7; set D at 126 refused at its first delete bit
   beyond 61; at ≤ 62 deletes, merges and option 2 run); 1M sets A to I
   and M (section 4.2), theta at 8, 14, 30, 62 (section 4.5), set A at
@@ -870,7 +870,7 @@ this file and `19-node-size/`.
   (`DeadKlongTester.testTheta`, 1 to 2 at 8) and Lean's `Params.theta`.
 * **Build**: branch `024-19-nsize` in
   `/Users/f/fl/bench/2026-11-11/nsize/clone`, head `db0685a2`, two
-  commits over main `40aa66cb`: `5d25dba7` (delete bits, array classes
+  commits over main `7cd6ff47`: `5d25dba7` (delete bits, array classes
   254 and 510) and `db0685a2` (`-Dnsize.theta=T`); a measuring build,
   not for main. Built (`java/build/bergdb.jar`); the probe
   (`19-node-size/NS.java`, now with a `DAG` line of merges and

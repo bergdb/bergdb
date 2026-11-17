@@ -9,7 +9,7 @@ What: `TransSeq.take` stops at the first transaction whose taken nodes
 do not fit in `maxBytes`, the room left in the record, also after the
 deadline (its Javadoc: "It matters for records near the record limit
 only"). Today's Lean (prover "t44", 007, `SIS/BoundTakeBytes.lean`,
-checkpoint 183c2ec7) proves T3's bound for this take when the debt's
+checkpoint 2e004828) proves T3's bound for this take when the debt's
 nodes always fit (`T3_takeB`: nodeB·|D| ≤ maxB before every
 transaction), and refutes it without that, by two runs checked by
 running (`BoundTakeBytesExample`): a transaction whose nodes never fit
@@ -43,7 +43,7 @@ largest debt in bytes.
 -------------
 
 **No, not in Java's runs.** In none of the 18 runs here (counts, on main
-`f4282972`) did the byte limit stop a take at a transaction past the
+`73606ac1`) did the byte limit stop a take at a transaction past the
 deadline (a "stop"). 007-06's and 007-07's runs did not count stops, but
 their debt stayed below 1 GB, under half the room, so none of them could
 stop either. Without a stop, the limit only holds back the pace, and T3
@@ -269,7 +269,7 @@ L5 makes every record's own part at most 1.6 percent of the room, and the
 debt stays near sd.
 
 What `T3_takeB_count` adds (SIS/BoundTakeBytesCountTheorems.lean,
-checkpoint 418ab85d; the coordinator's question (b)). With 005-31's
+checkpoint 54266937; the coordinator's question (b)). With 005-31's
 premise, the take with the limit keeps the section at fewer than 2M/m + 2
 transactions, m the least record. In Java m is about 100 bytes (a single
 put's record), so at sd 50 MB the count bound allows about a million
@@ -331,7 +331,7 @@ Log
 2026-11-13. Evaluated by an agent of coord-1113 (takebytes, branch
 028-12-take-bytes): no stop in Java's runs; the probe and 18 runs (1M and
 10M keys at the real limit, 1M keys scaled); the coordinator's two
-questions from `T3_takeB_count` (checkpoint 418ab85d) answered in sections
+questions from `T3_takeB_count` (checkpoint 54266937) answered in sections
 2 and 5; proposal A for Frans.
 
 2026-11-14, 11:58. Frans: "Decisions 4 and 5, as recommended." For this

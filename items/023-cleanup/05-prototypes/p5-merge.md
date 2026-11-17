@@ -294,7 +294,7 @@ without, and the whole unit suite once (`wt-build`).
 ## 4. Measurements
 
 All counts, from CleanupRule (023-03's prototype with the changes of 2.3)
-on frozen builds: `main` (`99089978` and 023-03's tests), "P4" (this
+on frozen builds: `main` (`1901394c` and 023-03's tests), "P4" (this
 branch with `-Dbergdb.p5.merge=false`: P4's code with the retarget, which
 changes no count here), and P5. Runs and output:
 `/Users/f/fl/bench/2026-11-10/p5/runs/` (`main-*`, `off-*`, and `h2-*` and

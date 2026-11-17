@@ -26,7 +26,7 @@ nothing gets the database going again short of editing its files.
   right (005-11's
   [runs/p11-metaedge.txt](11-replication/runs/p11-metaedge.txt) and
   [p11-metaedge-small.txt](11-replication/runs/p11-metaedge-small.txt);
-  the same on `78cc5f3`).
+  the same on `63fa5de`).
 * Such a stream comes from a crash, not only from a test's cut: P2 met one,
   a replica's image of exactly 14,400,000 bytes that a flush of its
   `BufferedStream` had left. The main stream is written the same way.
@@ -143,12 +143,12 @@ P11's streams are as long as before.
   sized by the put before it, ends exactly at 200,000. The stream cut there
   starts with the state after that put, takes another put, and restarts
   right; so does the stream cut just after the meta block (200,128), and
-  the one cut at 400,000, in a put that crosses that position. On `f206e58`
+  the one cut at 400,000, in a put that crosses that position. On `faa4269`
   it fails: `IllegalArgumentException: spos >= streamSize, 200128, 200000`.
 * `RecoverableStream.Tester.crashAtMetaBlockPosition` (unit): the same at
   the storage layer. After recovery the stream is 200,128 bytes, the last
   valid meta block is the first one, and a transaction appended after
-  recovery is read back after another recovery. On `f206e58` it fails the
+  recovery is read back after another recovery. On `faa4269` it fails the
   same way.
 * `CrashTest`: after its 100 cuts per round, a cut at the end of each
   transaction that ends at a meta block's position, and 20 cuts
@@ -156,7 +156,7 @@ P11's streams are as long as before.
   before, 1 and 127 bytes into the block, 128 and 129 bytes after. The Done
   line counts the first kind. Such transactions are rare: in `level2.sh`'s
   full run, seeds 5, 11 and 1004 have one each (at 2,200,000, 2,400,000
-  and 4,000,000), and on `f206e58` those three cuts fail with the same
+  and 4,000,000), and on `faa4269` those three cuts fail with the same
   exception
   ([runs/crashtest-edges.txt](27-fix-meta-block-edge/runs/crashtest-edges.txt)).
   The quick run's seeds have none, nor have Levels 3 and 4, which cut only
@@ -171,17 +171,17 @@ P11's streams are as long as before.
   a put that ends at 1,200,000, the end of FileStream's sixth file of
   200,000 bytes. The images without the next file and with it empty start,
   read right, take a put (the new file holds the 128 bytes of the invalid
-  block and the put) and restart right; on `f206e58` both fail to start
+  block and the put) and restart right; on `faa4269` both fail to start
   ([runs/file-boundary.txt](27-fix-meta-block-edge/runs/file-boundary.txt)).
 
-**Gates**, one after the other, on a clone of `e2c0dc0` (HEAD, with 005-28
+**Gates**, one after the other, on a clone of `a10ebf9` (HEAD, with 005-28
 and 005-29) with this change
 ([gates.txt](27-fix-meta-block-edge/gates.txt)): `before-commit.sh`, BEFORE
 COMMIT OK (980 unit tests, 63 f-tests); `level1.sh` to `level4.sh`, full:
 LEVEL 1 OK (129 s), LEVEL 2 OK (768 s; 70 of 70 traces `TRACECHECK OK`),
 LEVEL 3 OK (499 s; 25 of 25 traces with cuts) and LEVEL 4 OK (871 s; 33 of
 33 traces; 149,711 audits in its crash tests, none failed). Earlier, the
-same and StreamDigest on `f6bc3ce` with 005-28's change and this one.
+same and StreamDigest on `1a329d1` with 005-28's change and this one.
 `CrashTest`'s steps took 10 to 15 s in Levels 2 and 3 and 37 s in Level 4,
 against 8 to 13 s and 34 s in 005-01's run, for the 20 more cuts a round.
 

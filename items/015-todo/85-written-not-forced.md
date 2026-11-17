@@ -38,7 +38,7 @@ Today: hard sync only
   a persistent stream given to `StorageManager` must force the bytes, and
   any new file names, before `append` returns, as that completion
   advances the durable frontier.
-* This came on 2026-10-14 (commit 506510d,
+* This came on 2026-10-14 (commit 2709e27,
   [docs/level3-durability.md](../011-docs-archive/07-level3-durability.md)). Before
   it, and in the 2013 to 2017 code, `FileStream` opened its files with
   mode `"rws"`, a synchronous write through the OS on every write, with
@@ -409,7 +409,7 @@ Done
 * **Perf.** `-Dperf.noforce=1` (through `JFLAGS` in `performance.sh`)
   makes Perf's `FileStream` without per-append forces; in the workload ID
   only when given.
-* **Gates**, on `16fb228` (005-11's removal) with this change:
+* **Gates**, on `bd77904` (005-11's removal) with this change:
   `java/before-commit.sh` printed `BEFORE COMMIT OK` (unit 1133, f 81
   tests); `java/stress/level3.sh` (full) printed `LEVEL 3 OK`, with
   PowerLossTest's line: "8 seeds, 440 cold recoveries; without per-append
@@ -424,7 +424,7 @@ Sync latency on s1
 
 2026-11-04, 19:12 to 19:17, by Claude (Opus 5.5, Claude Code). s1 was
 idle before (load 0.06, no JVM), and each run checked that no other JVM
-ran. The jar of `188facf`, built on s1 from `git archive` with its
+ran. The jar of `9b67a82`, built on s1 from `git archive` with its
 OpenJDK 27 (`/opt/bergdb-bench/jdk-27`; s1 has no `unzip`, so a Python
 shim for `build.sh` in `/opt/bergdb-bench/005-47/bin`). `d-1k-t1` of
 `performance.suite` run directly by `/opt/bergdb-bench/005-47/run.sh`:
@@ -466,7 +466,7 @@ sessions held their builds, and macOS's `mediaanalysisd` was paused at
 Frans's word (07:32) for the block, 08:00:48 to 08:31:41. Not quite
 quiet: at the limit the 1-minute load was 1.77 (the block's rule: quiet
 is below 1.5 twice; below 2.0 it runs, recorded as not quiet), with no
-other JVM or gate. The loop of "Left" in the clone at `188facf`
+other JVM or gate. The loop of "Left" in the clone at `9b67a82`
 (`/Users/f/fl/bench/005-47-f53-2026-11-05/clone/java`), OpenJDK 27,
 forcing on and off in turns, 10 runs each, 5 s apart; every run printed
 `PERF OK`. Full outputs in `/Users/f/fl/bench/005-47-f53-2026-11-05/out/`,
@@ -504,7 +504,7 @@ Left
   `FileStream`'s Javadoc and docs/levels.md, section 8.
 * **The sync latency on F53**, with forcing on and off, in a quiet block
   (not measured on 2026-11-04: the 005-52 agent's gates and timing runs
-  had the machine). The same runs as on s1, in a clone at `188facf` or
+  had the machine). The same runs as on s1, in a clone at `9b67a82` or
   later, from its `java/`, after `JAVA_HOME=/opt/homebrew/opt/openjdk
   ./build.sh`:
 
@@ -535,7 +535,7 @@ Left
   not below 2, so both of the block's runs were skipped, as the block's
   rule says. Nothing ran; nothing to compare with s1.
 
-  Ready for the next quiet block: the clone at `188facf`, built
+  Ready for the next quiet block: the clone at `9b67a82`, built
   (`build/bergdb.jar` and `build/stress`), in
   `/Users/f/fl/bench/005-47-f53-2026-11-05/clone/java`, so the loop above
   can run there without `build.sh`; and the block's script

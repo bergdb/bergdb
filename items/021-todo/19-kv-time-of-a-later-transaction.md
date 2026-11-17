@@ -36,7 +36,7 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 020-24-09's U9-3, and taken by
-its agent c18b (clone `clone-c18b`, on main's 62345d3).
+its agent c18b (clone `clone-c18b`, on main's 5cb2807).
 
 2026-11-09. Done by c18b: the commit "021-19: ..." in `clone-c18b`, on
 021-18's, to land. Severity: high for Core users, as 020-24-09 gave it,

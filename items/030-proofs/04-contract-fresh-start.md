@@ -15,7 +15,7 @@ coordinator's record of the discussion, 030, 006-26, 030-01 and 030-03.
 
 - **Paused.** The proof line of today's model (030's D1: `l4`, R3, R4) is
   paused from today (Frans, 09:13 and 11:14). It is frozen at the tag
-  `proofs-2026-11-17` (commit 89c6cc3a, pushed at 11:17). Nothing is
+  `proofs-2026-11-17` (commit f4d73289, pushed at 11:17). Nothing is
   deleted. The level scripts and `night.sh` run as before.
 - **The contract approach** (decided; Frans, 10:56 and 11:14). The writer
   is no longer proved step by step. One statement, the writer's contract,
@@ -299,7 +299,7 @@ in the new package only.**
      checkers are kept.
 5. **Lean in the release** (Frans, 11:14): `lean/` stays, labelled work
    in progress; not in the users' documentation; not a feature. A
-   separate agent does this today (`lean/README.md`: bdeca766).
+   separate agent does this today (`lean/README.md`: 050f6d93).
 
 
 # 7. The spike's brief

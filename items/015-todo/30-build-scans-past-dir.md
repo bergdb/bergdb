@@ -21,4 +21,4 @@ Log
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
-2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a build step reads only the directory's own keys, by the prefix of its files (020-10, 6.1); 5b08db5 (020-10, I2 part 1). The test: PubTesterIndexJobs.testBuildStopsAtDir (a key after the directory and one in a subdirectory are not read), in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a build step reads only the directory's own keys, by the prefix of its files (020-10, 6.1); 4f8210f (020-10, I2 part 1). The test: PubTesterIndexJobs.testBuildStopsAtDir (a key after the directory and one in a subdirectory are not read), in `before-commit.sh`, passing on `main` at `b768ef0` (020-11). Status: done.

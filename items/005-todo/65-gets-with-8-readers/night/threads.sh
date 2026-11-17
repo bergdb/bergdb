@@ -1,8 +1,8 @@
 #!/bin/sh
 # minutes: 30
 # bergdb 005-65: ScaleBench from the OS's cache (C) at 4, 6 and 8 reader threads, 665 MB,
-# ZGC, on three prebuilt builds in turns: bf19075 (005-50, the commit before 005-46), eaec93e
-# (005-46 alone) and 4f7cd60 (006-09's HEAD: 005-46, 005-55, 005-57, 005-51), with the CPU of
+# ZGC, on three prebuilt builds in turns: c1f1f15 (005-50, the commit before 005-46), 1165c90
+# (005-46 alone) and f9e295d (006-09's HEAD: 005-46, 005-55, 005-57, 005-51), with the CPU of
 # the eviction thread, of the readers and of the rest of the process in each threads phase
 # (ScaleBench-065.diff). As 005-46's night/scalebench-c.sh (006-09's quiet block): 10M key24
 # keys, the default startup distance (10 MB), one database loaded by the last build's jar
@@ -14,7 +14,7 @@
 # Usage: sh threads.sh, from any directory. SMOKE=1: 20,000 keys, a startup distance of 100 KB
 # and a budget of 0.5 MB (so that the eviction thread runs), phases of a second, outputs in $B/smoke (about a minute); it checks the parsed summary, not only the exit
 # codes. B (default /Users/f/fl/bench/006-09/d2-009-builds) holds prep.sh's clones (one per
-# build, named by the commit) and sb/. BUILDS (default "bf19075 eaec93e 4f7cd60", the first
+# build, named by the commit) and sb/. BUILDS (default "c1f1f15 1165c90 f9e295d", the first
 # the reference) and ROUNDS (default 2) change the runs; the minutes line does not follow.
 # Outputs: night/out/threads/ (NAME.txt, NAME.json, sb.sh's runs.txt), night/out/runs.txt
 # (start, end, each run), night/out/summary.txt (sum.py); the GC logs in $B/raw/threads.
@@ -44,7 +44,7 @@ else
     KEYS=10000000; KN=10m; LOADHEAP=6g; MINRUN=300; BUDGET=665000000
     EXTRA=
 fi
-BUILDS=${BUILDS:-bf19075 eaec93e 4f7cd60}
+BUILDS=${BUILDS:-bf19075 1165c90 f9e295d}
 ROUNDS=${ROUNDS:-2}
 REVERSED=$(echo $BUILDS | tr ' ' '\n' | tail -r | tr '\n' ' ')
 LAST=$(echo $BUILDS | awk '{print $NF}')

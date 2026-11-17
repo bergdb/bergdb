@@ -37,7 +37,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 19:54 to 20:02, in `/Users/f/fl/bench/016/015-20/repo` (from
-`main` at `c657764`, after 015-20's commit): the fix.
+`main` at `66a80f3`, after 015-20's commit): the fix.
 
 * **The cause** (as R3-F2 and verify-1 say): a build's step
   (`IndexBuilderImp.createStep`) wrote entries under the index's name

@@ -8,7 +8,7 @@ and the outcome. The way of working is 013-02's (the coordinator).
 ## 1. The request
 
 coord-1111's handover (006-22, section 6, and its message of 07:29):
-its finished work on main and pushed (699a98b4); its agent tp32s (TP32
+its finished work on main and pushed (fc6f5c38); its agent tp32s (TP32
 restated, 024-22) to land; U26-5 (024-26) and 024-19's Q4 and Q6 for
 Frans.
 
@@ -37,8 +37,8 @@ high.
 
 | ID | Task | Agent | Result |
 |---|---|---|---|
-| 024-22 | TP32 restated with the premises Java meets (coord-1111's tp32s) | tp32s (xhigh) | landed c0a8cadf |
-| 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | landed a7dfb6f7 |
+| 024-22 | TP32 restated with the premises Java meets (coord-1111's tp32s) | tp32s (xhigh) | landed db54d0c1 |
+| 024-27 | U26-5 B, theta at least 2, 62 the largest size, U26 Javadoc | rules (high) | landed 6ebd8bb1 |
 | 026 | 2026.6 work moved from 024 to 026, 024-20 first (026-01) | move (high) | done 07:42 |
 | 024-27 | QR1 kept as is: RwEnvironment's Javadoc, "Refused calls" | coordinator | landed |
 | 026-02 | A public key check: the options, a recommendation; no code | keychk (high) | done 09:39 |
@@ -46,16 +46,16 @@ high.
 | 010-01 | P14, the Pub API cannot destroy the database's integrity | coordinator | written |
 | 024-28 | The release checklist of 2026.5 | check (high) | done 10:37 |
 | 024-29 | Reclaim's fraction: previous work, how to compare, the default | frac (high) | done 11:15 |
-| 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | checkpoint landed 2a7bdc52 |
+| 024-22 | The open proofs TP32, TP33, TP7, TP30, TP10, TP11, TP31 | second prover | checkpoint landed 01473295 |
 | 024-30 | Count gates G1 (BD1), G2 (BD13), G3 (BD10) at 1M keys, a night step | gates (high) | landed |
-| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed c1137b69 |
-| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | landed 94edfe6b |
-| 024-33 | ST6: the cache's tables shrink | tidy (high) | landed a156fd51 |
-| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed a156fd51 |
+| 024-31 | OP4: a cap on the take's pace after a decrease (015-84) | pace (high) | landed 69b91fd7 |
+| 024-32 | maintain(), in Core and Pub, with G5 (back to empty by maintain()) | maint (high) | landed f4ccbcdc |
+| 024-33 | ST6: the cache's tables shrink | tidy (high) | landed 75baf383 |
+| 024-34 | OP8: reclaim reads only what it rewrites | tidy (high) | landed 75baf383 |
 | 017-11 | A startup distance that follows the database's size: known, plan | sdk (xhigh) | done 13:03 |
-| 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 3ffe0b51 |
+| 021-27 | Db.getTrans inside a record fails the database: refused instead | gtr (high) | landed 9dd125f3 |
 | 024-35 | A double-check for open work forgotten for 2026.5 | sweep (high) | done 14:19 |
-| 027 | The algorithms of BergDB: skeleton; docs/ moved in as a snapshot | docsmv (high) | landed 734742dc |
+| 027 | The algorithms of BergDB: skeleton; docs/ moved in as a snapshot | docsmv (high) | landed f4f86126 |
 | 024-36 | OT2, the Linux "directory in use" race, fixed | ot2 (high) | |
 | 024-37 | CA3: the Core refuses a caller's writes to the Core's own keys | ca3 (high) | |
 
@@ -73,7 +73,7 @@ from them.
 ## 5. Progress
 
 * 07:28 coord-1112 started; coord-1111 closing (07:29), closed at 07:37.
-* 07:37 tp32s done (head cb57e5c8); landed as c0a8cadf after the
+* 07:37 tp32s done (head 5d22defc); landed as db54d0c1 after the
   coordinator's check (the logs of its lake build, 215 jobs; no sorry or
   axiom in the diff; `#print axioms` standard; the statement diff as
   briefed). Left open by tp32s: MergeParamsOK (TP28) is not a premise of
@@ -86,11 +86,11 @@ from them.
   else of 2026.5 was decided for 2026.6; what is only proposed for it
   (024-19 Q5, 024-22 QM1, 024-02 section 21, 024-01 OT4, PA5, PA9) is
   listed in 026's readme for Frans.
-* 08:13 rules done: branch 024-27-rules, head 40275fd7, gates on it
+* 08:13 rules done: branch 024-27-rules, head b8f75d14, gates on it
   before-commit (62 s), lake build (215 jobs), level1, level2 (with the
   Lean conformance) OK; five changed tests, each its own commit; QR1
   (spoil an rw() action that catches a refused put?), QR2 (550 in the
-  Eviction test). 08:14 landed as a7dfb6f7, pushed; 024-23's QO2 marked decided.
+  Eviction test). 08:14 landed as 6ebd8bb1, pushed; 024-23's QO2 marked decided.
 * 08:51 Frans: QR2 as recommended (keep 550).
 * 09:16 Frans on QR1, the line between the user's and the database's
   responsibility: "use of the Pub API must keep the integrity of the
@@ -101,7 +101,7 @@ from them.
   fundamental rules like this one to be proposed and discussed first; a
   todo for a public key check, studied by an agent at high, for the next
   release (026-02). keychk started; the Javadoc by the coordinator in
-  /Users/f/fl/bench/2026-11-12/qr1/clone (5a7f644d), before-commit
+  /Users/f/fl/bench/2026-11-12/qr1/clone (dd4c5614), before-commit
   OK (64 s), landed 09:36 and pushed.
 * 09:39 keychk done (026-02): recommended a class bergdb.pub.Limits
   (the limits as constants, keyBytes, checkKey, levelBytes; one checking
@@ -276,7 +276,7 @@ from them.
   makes (each segment below 2^62, its lowest three bits zero), after the
   prover's run; recorded in 024-12.
 * 13:46 The second prover stopped at its own usage limit (resets
-  16:17). Its first checkpoint landed 13:50 (2a7bdc52; lake build 248
+  16:17). Its first checkpoint landed 13:50 (01473295; lake build 248
   jobs, 275 theorems, axioms at most propext, Classical.choice,
   Quot.sound; only imports added to an existing file): TP1 and TP9
   proved, TP30 reduced to TP7, TP31 and TP33 to stated premises, TP11
@@ -292,7 +292,7 @@ from them.
   single way to do a maintain step.
 * 13:52 Frans: "For 2026.5, land maintain() as built." The single step
   and the simple form registered as 026-03.
-* 14:01 maint: main merged into 024-32 (head 5edb773a); before-commit,
+* 14:01 maint: main merged into 024-32 (head 1806eb93); before-commit,
   level1, level3, level4 quick, count-gates, e-r-maint OK. G5 found a
   floor of ST6 since 024-33: a used map keeps at least 16 slots, so an
   emptied database keeps up to 4,096 x 16 slots (about 256 kB) whatever
@@ -307,7 +307,7 @@ from them.
   double-check." sweep started 14:12 (024-35).
 * 14:16 gtr done with Q27-1: above 1 MiB the public getTrans confirms a
   record's start by walking the record headers before making its array;
-  before-commit and level1 OK; landed 4dadb80c.
+  before-commit and level1 OK; landed ba7583b9.
 * 14:17 Frans: coherent documentation of the algorithms is missing; he
   wants it as a proper, maintained item. The coordinator: agree; an item
   "The algorithms of BergDB", kept current like 024-02; a skeleton first.
@@ -328,7 +328,7 @@ from them.
 * 14:34 Frans: "CA3, as recommended." ca3 started 14:35 (024-37).
 * 14:37 Frans: the release notes agent as recommended, after docsmv,
   ot2 and ca3 have landed.
-* 14:40 docsmv done, landed 734742dc: 027's skeleton (14 planned
+* 14:40 docsmv done, landed f4f86126: 027's skeleton (14 planned
   sections), 027-01 the snapshot of docs/, 027-02 the trace format kept
   current; docs/ holds only log.md; references in code comments, the
   level scripts, AGENTS.md, README.md and items/readme.md; old items
@@ -337,7 +337,7 @@ from them.
   don't see it as a bug, but something to change anyhow." In 026's
   readme and R5's cases; 2026.5's notes name it as a known issue.
 * 14:45 Frans: 027 a placeholder only, no planned sections (done,
-  106c7c60).
+  9771565c).
 * 14:49 Frans left ("I need to go. Ready to work unattended?"; /effort
   high). Unattended until 2026-11-13 07:00, with the defaults of the
   coordinator's 14:46 message: the release night of 2026.5 (after ot2,
@@ -348,12 +348,12 @@ from them.
   fetched as the branch 020-29-index-proof (23 commits, not merged);
   night failures fixed and landed when gated and no expected value
   changes; no new optional work above 92 % of the week.
-* 14:54 OT2 landed (c49351e1); 15:02 CA3 landed (335e2578): every
+* 14:54 OT2 landed (54e0a1b9); 15:02 CA3 landed (96e66c71): every
   change for 2026.5's candidate on main.
 * 15:03 rel5 started (024-38): the release notes completed, commit A, the
   night's conductor as 2026.4's (020-31), the morning's scripts without
   the tag (Frans tags).
-* 15:29 rel5 done (024-38): commit A bf9ab5af (BuildInfo 2026.5,
+* 15:29 rel5 done (024-38): commit A 3611130c (BuildInfo 2026.5,
   next.md complete, StreamDigest's digests before and after; gated:
   before-commit, lake build); the conductor runs since 15:18, night.sh
   large since 15:20; s1's JDK runs, the OT2 probe and the fuzz beside
@@ -372,7 +372,7 @@ from them.
   segments (for Frans); the compare values' encoding proved through the
   whole writer and every run. To land after commit B, after Frans looks.
 * 23:12 The release night: night.sh large NIGHT OK (420 minutes) on A
-  bf9ab5af; the performance comparison with 2026.4's quick suite: no
+  3611130c; the performance comparison with 2026.4's quick suite: no
   alerts (run with FORCE, the machine 86 % idle: not a reference; writes
   of 1 kB values 119 to 142 % more commits a second, a restart 30 %
   faster); jcstress 8 of 8 OK; s1: JDK 27 and 17 OK, the OT2 probe OK,
@@ -403,14 +403,14 @@ from them.
 Written 2026-11-13, 06:35, by coord-1112 (closing; coord-1113 started
 06:33).
 
-**Release 2026.5 made, except the tag** (Frans tags): commit A bf9ab5af
-in main (b38586e0), commit B e9ed4ac9 with `releases/2026.5/`, the notes
-final in 0edf7fde (024-38). The release night: 9 of 10 steps OK
+**Release 2026.5 made, except the tag** (Frans tags): commit A 3611130c
+in main (cfd4366f), commit B 3e85ce8b with `releases/2026.5/`, the notes
+final in 5529d392 (024-38). The release night: 9 of 10 steps OK
 (night.sh large, the performance comparison, jcstress, checks, the queue,
 s1's JDK 27 and 17, the OT2 probe, s1's fuzz of 85,700 seeds); Android's
-one failure a test artifact, fixed (3c1f0756) and rerun OK. The writes'
+one failure a test artifact, fixed (f6dc49f2) and rerun OK. The writes'
 gain over 2026.4 (+119 to +152 %) comes from CRC32C, checked before and
-after 79f35aa3; the durability is unchanged.
+after 3dd38b23; the durability is unchanged.
 
 **Landed on 12 November:** 024-27 (a refused call spoils a builder,
 theta at least 2, 62 the largest node size, rw()'s Javadoc), 024-22's

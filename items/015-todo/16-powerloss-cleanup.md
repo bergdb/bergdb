@@ -6,7 +6,7 @@ Status: done. Kind: Investigate. Created 2026-11-03 by Frans Lundberg.
 For release 2026.2, if it is a fault of BergDB.
 
 What: in 016-08's F3 (the stress programs with fresh seeds, on F53, main
-at `323a54a`), `PowerLossTest 111010062 2 1500 3` failed after 1 s:
+at `c8e2f1e`), `PowerLossTest 111010062 2 1500 3` failed after 1 s:
 `java.io.IOException: cannot delete test file
 /var/folders/.../bergdb-power-recovery-.../00000000000024.bergdb` at
 `FileStreamPowerLossTester.remove` (679), from `verify` (558) and
@@ -42,7 +42,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 17:07 to 17:26, by agent J (016-05), in
-`/Users/f/fl/bench/016/015-16/repo` from `ef6be47`: the cause, the
+`/Users/f/fl/bench/016/015-16/repo` from `c12af6e`: the cause, the
 interleaving and the probes, as follows.
 
 1. `db.stop()` in `verify()`'s finally returns at once; `Db-close-N`
@@ -67,4 +67,4 @@ images are verified, and its finally); `remove()` stays strict. Not
 changed, a doubt: `manager.stop()` before `remove(dir)` in two other
 tests of the same tester (`StorageManager.stop()` also closes in the
 background); no failure of them is on record. Gated with 015-09 on
-`main` at `b9ba427`.
+`main` at `b1651a5`.

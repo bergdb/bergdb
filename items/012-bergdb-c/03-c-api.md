@@ -22,7 +22,7 @@ Done when:
    compiles alone with the flags of 012-01, 6.1 (012-04's build checks
    it).
 2. This file holds the table of `Db`'s public methods (45 since
-   `fd8f513`, with 005-52's setter and getter of the cache size; count
+   `decc677`, with 005-52's setter and getter of the cache size; count
    them again at the start), `DbBuilder`'s settings and the inner types
    (`Trans.Builder`, `GetData`, `GetMany` with its stop conditions,
    `StoredTrans`, `StartInfo`, `SyncLevel`), each with its C counterpart
@@ -117,7 +117,7 @@ them; this task checks only the design.
 `c/include/bergdb.h` is the API: its top comment has the rules (sections
 A to G), and each declaration says what it does, its errors and who owns
 what. This section maps Java onto it and gives the reasons. Java's
-reference: `main` at `0b6d08e`, `java/` as of `fd8f513` (section 7).
+reference: `main` at `d025d95`, `java/` as of `decc677` (section 7).
 
 ## 6.1 The C API in one table
 
@@ -485,7 +485,7 @@ valid during the call only, no call of the database (D); keys and values
 
 For the conductor, who decides on 005 entries (012-01, section 9: not
 fixed in 012). None changes the stream's bytes. F1 to F4 and F6 are shown
-by a probe on Java's `main` at `0b6d08e` (the Core Layer compiled by
+by a probe on Java's `main` at `d025d95` (the Core Layer compiled by
 `test/cross/java-build.sh`; the probe, `ApiProbe.java`, was a scratch file
 of this task, kept nowhere): `StartInfo.startupDistance=-1`,
 `getCachePutSize=10000`, `getDirtyFraction100` 0.099 after one
@@ -548,8 +548,8 @@ with its reason above.
 # 7. Progress
 
 * **2026-10-28 15:55, start.** In the clone `/Users/f/fl/bench/012/03-c-api`
-  (of `main` at `0b6d08e`). The Java reference: `main` at `0b6d08e`, whose
-  `java/` is as of `fd8f513` (no commit since touches `java/`). `Db` has
+  (of `main` at `d025d95`). The Java reference: `main` at `d025d95`, whose
+  `java/` is as of `decc677` (no commit since touches `java/`). `Db` has
   **45 public methods** there, counted again with
   `grep -E '^    public [^=]*\(' java/src/bergdb/core/Db.java` (the
   constructor is package-private): as 012-01 says.

@@ -1,7 +1,7 @@
 # BryanRepro fails in level2.sh full (006-09, W13)
 
 By Claude (Opus 5.5, Claude Code), 2026-10-27. Code in the clone
-`/Users/f/fl/bench/006-09/w13` (from main at 2eaaa45; main's 49f99a1 has the
+`/Users/f/fl/bench/006-09/w13` (from main at fc8f7c3; main's 3aa7ce6 has the
 same `java/` and `lean/`).
 
 
@@ -17,8 +17,8 @@ same `java/` and `lean/`).
 
 Every run on 005-46's code fails, in cycle 37 to 39: 5 of 5 in the
 bisect's `w10/bryan-runs` (`b-eaec93e`, `b-e611709`, `b-a175840`, `h1`,
-`p1`), and 3 of 3 here on 2eaaa45 (two of them with a FileStream that
-prints, below). eaec93e's parent bf19075 passed twice (`b-bf19075`,
+`p1`), and 3 of 3 here on fc8f7c3 (two of them with a FileStream that
+prints, below). 1165c90's parent c1f1f15 passed twice (`b-bf19075`,
 `b2-bf19075`). `level2.sh quick` passes: its 15 cycles end before the run's
 first cut.
 
@@ -89,7 +89,7 @@ writer's appends (Frans, 2013).
 
 `BryanRepro.runJob` calls `db.close()` (`Database.close()`, 005-59) instead of
 `db.stop()`, with a comment that says why; only `java/stress/BryanRepro.java`
-changes. Commit 107abef in `/Users/f/fl/bench/006-09/w13`, on main's 49f99a1
+changes. Commit 107abef in `/Users/f/fl/bench/006-09/w13`, on main's 3aa7ce6
 (`git diff -w` the same as `git diff`).
 
 

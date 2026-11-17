@@ -6,7 +6,7 @@ A harness that kills the JVM for real, with SIGKILL, during Pub-layer work
 (objects and user indexes), restarts the database in a new JVM, and checks
 what the promises allow: one of the bug hunts before release 2026.4's
 candidate (020). Written by agent k15 of coord-1109 in a clone of `main` at
-`a9e5488`.
+`f8046f3`.
 
 
 ## 1. The request
@@ -178,7 +178,7 @@ the runs counted (false alarms, kept here for whoever extends it):
 ## 4. State
 
 **Done.** The harness, in the clone `/Users/f/fl/bench/2026-11-09/clone-k15`,
-one commit `75be808` on `a9e5488` (BEFORE COMMIT OK, under the gate lock,
+one commit `75be808` on `f8046f3` (BEFORE COMMIT OK, under the gate lock,
 11:20): `java/src/bergdb/pubimp/KillRestartHarness.java` and
 `java/stress/kill-restart.sh`, both new; nothing else changed. For the
 coordinator to take to `main`.

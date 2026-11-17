@@ -74,13 +74,13 @@ discussion, still open:
 The design that was removed
 ===========================
 
-As it was on `19e9409` (2026-11-04), the last commit before the removal,
-and in release 2026.2 (tag `release-2026.2`, `95bde62`), whose replication
-code is the same. It is 2017 code, from the import (`195cf88`), which the
+As it was on `c739237` (2026-11-04), the last commit before the removal,
+and in release 2026.2 (tag `release-2026.2`, `d5b1bda`), whose replication
+code is the same. It is 2017 code, from the import (`0257e0b`), which the
 2026 work changed only in a few lines (the report, "What is 2017 code"; and
 005-32, 005-48, 005-66, 005-67, 015-56, below). To read or run the old code:
-`git show 19e9409:java/src/bergdb/storage/StorageManager.java`, or a
-worktree at `19e9409`; 005-11's probes
+`git show c739237:java/src/bergdb/storage/StorageManager.java`, or a
+worktree at `c739237`; 005-11's probes
 ([tools/ReplicaProbe.java](../../005-todo/11-replication/tools/ReplicaProbe.java))
 compile against that commit's jar, not against today's.
 
@@ -88,7 +88,7 @@ compile against that commit's jar, not against today's.
 Where it was
 ------------
 
-Line numbers are those of `19e9409`.
+Line numbers are those of `c739237`.
 
 * `java/src/bergdb/storage/StorageManager.java` (1,296 lines): the class
   `StorageManager`, an `AppendOnlyStream` over one main storage and zero or
@@ -312,8 +312,8 @@ test had a replica (the report, "What the tests cover"). The probes of
 The faults found
 ----------------
 
-From 005-11's study (the report, "The probes"; on `cbeb9bd` and again on
-`78cc5f3`) and after it:
+From 005-11's study (the report, "The probes"; on `691794d` and again on
+`63fa5de`) and after it:
 
 * **Cuts (P2).** A replica was cut when the main, not the replica, was
   durable past the cut's decision. Of 1,756 replica images that a crash at a

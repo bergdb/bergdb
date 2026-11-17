@@ -18,8 +18,8 @@ pass 026-15): "Yes, good. Go ahead."
 
 # 1. The plan in short
 
-Written 2026-11-14, 13:00 to 13:35, by coord-1114's planning agent, from main at `eb1a04a0`
-(lean/ unchanged up to `4aed39df`). The provers carry it out in the evening of 14 November,
+Written 2026-11-14, 13:00 to 13:35, by coord-1114's planning agent, from main at `b8517e8a`
+(lean/ unchanged up to `b64220c9`). The provers carry it out in the evening of 14 November,
 started by the coordinator; nothing lands on main before 14:30; they end by 22:00, and the
 timing pass 026-15 then has F53.
 
@@ -88,7 +88,7 @@ from 10.5 minutes to about 7. The premises stay 10, with their names and stateme
 
 # 3. Measured before, and the target
 
-At `eb1a04a0` (lines of .lean files, by tools/lines.sh):
+At `b8517e8a` (lines of .lean files, by tools/lines.sh):
 
 - lean/SIS/Tree: 507 files, 227,923 lines; 7,246 declarations, of which 4,567 are reached
   from the roots.
@@ -121,7 +121,7 @@ different statements; joining them is a refactor of the proofs, not a cleanup.
 # 4. The tools
 
 In /Users/f/fl/bench/2026-11-14/cleanup/tools/, written and tried by the planning agent on
-the plan clone (/Users/f/fl/bench/2026-11-14/cleanup/plan-clone, built at `eb1a04a0`).
+the plan clone (/Users/f/fl/bench/2026-11-14/cleanup/plan-clone, built at `b8517e8a`).
 Step 5 copies them into items/025-spare-tokens/02-proof-cleanup/.
 
 - **Reach.lean** (run with `lake env lean`, 30 s): every declaration of SIS/Tree with its
@@ -284,7 +284,7 @@ Step 5 copies them into items/025-spare-tokens/02-proof-cleanup/.
 - **Who lands.** Each prover lands its own step with land.sh, after its gate passes, as last
   night's provers did; then it tells the coordinator ("LANDED step commit"). land.sh:
   - refuses before 14:30 on 14 November (006-26 is written in the main tree until about
-    14:15; 026-16 reads its snapshot at `7ced25db` in its own clone and is not disturbed);
+    14:15; 026-16 reads its snapshot at `55b74a08` in its own clone and is not disturbed);
   - refuses while STOP exists, unless the coordinator runs it with `STOPOK=1`;
   - lands only the gated commit, or one that adds only a merge of main without lean/
     changes after it;
@@ -349,7 +349,7 @@ Step 5 copies them into items/025-spare-tokens/02-proof-cleanup/.
   statement" where a name is reused), removed as an earlier version (with its successor's
   new name), removed as used by no root. Each with the items that cite it. About 212 entries
   from step 1 and 70 from step 3.
-- **Readers:** 026-16 (names as of `7ced25db`; lean/ is the same at `eb1a04a0`) and 006-26
+- **Readers:** 026-16 (names as of `55b74a08`; lean/ is the same at `b8517e8a`) and 006-26
   (names as of this morning) translate through it; neither file is edited by the cleanup.
 
 
@@ -404,8 +404,8 @@ Written 2026-11-14 by step 5 ("close"), from the State notes of the steps in
 
 ## 13.1 The counts
 
-Lines and files of .lean files, by lines.sh; before at `eb1a04a0`, after at the close's commit
-(`295b0dbd`, lean/ as landed):
+Lines and files of .lean files, by lines.sh; before at `b8517e8a`, after at the close's commit
+(`f06e1e6b`, lean/ as landed):
 
 - lean/SIS/Tree: 507 files, 227,923 lines before; 434 files, 140,819 lines after the prune
   (gate-2); 140,807 after the names; 140,528 after the dups; 429 files, 140,264 lines after
@@ -426,7 +426,7 @@ Lines and files of .lean files, by lines.sh; before at `eb1a04a0`, after at the 
 
 ## 13.2 The build
 
-- One clean build of `295b0dbd` (a copy of the clone with lean/.lake/build removed, one heavy
+- One clean build of `f06e1e6b` (a copy of the clone with lean/.lake/build removed, one heavy
   slot, no other slot held; load 2.8 at its start): 11 minutes 7 seconds, 659 jobs, 2,930 s
   of user CPU and 129 s of system (459 %). Before: 10 minutes 30 seconds, 737 jobs, 3,520 s
   of CPU (580 %), from the main tree's older cache (section 3).
@@ -450,13 +450,13 @@ Lines and files of .lean files, by lines.sh; before at `eb1a04a0`, after at the 
 
 Every commit that landed passed gate.sh (section 7); each gate's directory has its summary.txt:
 
-- notes: /Users/f/fl/bench/2026-11-14/cleanup/notes/gate-1, on `627046ab`; landed `5458ac36`
+- notes: /Users/f/fl/bench/2026-11-14/cleanup/notes/gate-1, on `54903211`; landed `5fe46999`
   (a merge of main that brought only items), 14:30.
-- prune: /Users/f/fl/bench/2026-11-14/cleanup/prune/gate-1 on `45603ec5`, and gate-2 on
-  `b8fae26c` (main merged in: the notes step's comments); landed `b8fae26c`, 14:43.
-- names: /Users/f/fl/bench/2026-11-14/cleanup/names/gate-1, on `73852c9b`; landed 14:58.
-- dups: /Users/f/fl/bench/2026-11-14/cleanup/dups/gate-1, on `a04dbd78`; landed 15:17.
-- close: /Users/f/fl/bench/2026-11-14/cleanup/close/gate-1, on `295b0dbd` (its build reused
+- prune: /Users/f/fl/bench/2026-11-14/cleanup/prune/gate-1 on `ff8eb876`, and gate-2 on
+  `4031da13` (main merged in: the notes step's comments); landed `4031da13`, 14:43.
+- names: /Users/f/fl/bench/2026-11-14/cleanup/names/gate-1, on `25a0ad9d`; landed 14:58.
+- dups: /Users/f/fl/bench/2026-11-14/cleanup/dups/gate-1, on `a72fcfc5`; landed 15:17.
+- close: /Users/f/fl/bench/2026-11-14/cleanup/close/gate-1, on `f06e1e6b` (its build reused
   the clean build's cache of the same commit); then level 2 in the clone: LEVEL 2 OK
   in 12 minutes 54 seconds, its Lean steps among them (step 8, treeconf.sh on its small,
   drain and reclaim sets; step 7, A2A3Check2 and the trace checker on 120 traces,
@@ -553,7 +553,7 @@ Setup:
   C=/Users/f/fl/bench/2026-11-14/cleanup; T=$C/tools
   git clone -q /Users/f/fl/repos/bergdb $C/prune/clone; cd $C/prune/clone
   git checkout -q -b 025-02-prune
-  git diff --stat eb1a04a0 HEAD -- lean   # must be empty: reach-decls.tsv is of eb1a04a0;
+  git diff --stat b8517e8a HEAD -- lean   # must be empty: reach-decls.tsv is of b8517e8a;
       # if not, build, then rerun Reach.lean (header of $T/Reach.lean) to a tsv of your own
   cp -Rc $C/plan-clone/lean/.lake lean/.lake
   cp $T/keep.txt $C/prune/keep.txt        # your KEEP file; add names, never remove
@@ -785,7 +785,7 @@ End: 22:00, or when $C/STOP exists (check before each build and every 20 minutes
 
 1. Commit this file (the plan changed nothing else in the main tree; 006-26 is another
    session's work in progress).
-2. Check `git diff --stat eb1a04a0 HEAD -- lean` in the main tree is empty; if not, rebuild
+2. Check `git diff --stat b8517e8a HEAD -- lean` in the main tree is empty; if not, rebuild
    the plan clone at main and rerun Reach.lean and Guard.lean (their headers say how) to
    new reach-decls.tsv and base/guard-base.txt before the start.
 3. Check that every heavy slot is free or held by a running process (heavy2.lock, held

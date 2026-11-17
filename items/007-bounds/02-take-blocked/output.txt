@@ -1,4 +1,4 @@
-TakeStuckProbe on bergdb f6bc3ce, 2026-10-23, F53, JDK 27; record limit 200000, startup distance 20000.
+TakeStuckProbe on bergdb 1a329d1, 2026-10-23, F53, JDK 27; record limit 200000, startup distance 20000.
 
 == every 20-th key
 before: stream 27578096, startup pos 27558000, section 20096

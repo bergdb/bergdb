@@ -18,7 +18,7 @@ Reject the core as written. Keep the delete design, but do not release this comb
 
 ### 2.1 What I checked
 
-Starting commit: `e45fd4c1`. I read the instructions, 023-01 to 023-07, the reports, current Core,
+Starting commit: `53c394b4`. I read the instructions, 023-01 to 023-07, the reports, current Core,
 prototype changes and the model's assumptions, algorithm, dirty invariant and cut definition. SE's
 `eebeb39d` was read in its cited earlier clone; that object is absent here. No other review
 directory was read.

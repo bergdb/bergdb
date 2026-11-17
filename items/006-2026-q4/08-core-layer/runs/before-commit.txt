@@ -1,4 +1,4 @@
-java/before-commit.sh in a clone at cc8effb with 006-08's change, 2026-10-26:
+java/before-commit.sh in a clone at 4e0a849 with 006-08's change, 2026-10-26:
 
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.

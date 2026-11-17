@@ -5,7 +5,7 @@ Written 2026-10-27, about 17:00, by Claude (Opus 5.5, Claude Code), a
 subagent of the session of 006-09, at Frans's choice (16:41) to draft 009's
 closure now and finish it in the morning, after the quiet block (W1.3,
 W1.4, `perf-ab.sh`). Made in the clone /Users/f/fl/bench/006-09/w9 (from
-`0f978f8`); nothing in `java/` or `lean/`. Both diffs pass
+`e6dbc82`); nothing in `java/` or `lean/`. Both diffs pass
 `git apply --check` on the main tree as of 17:00.
 
 Every number that waits for tonight is `[TBD ...]`: 22 in
@@ -63,7 +63,7 @@ for 009 set to done.
    in 009-01 and 009-03, do not apply the done diff, and 005-46 opens
    again (its header says so).
 3. `git apply --check` again: the seven files may have changed since
-   `0f978f8`.
+   `e6dbc82`.
 4. Whether the 2,760 ms get on s1 (009-03, section 9), put down to s1's
    disk or the kernel's reclaim, is accepted as not BergDB's: a judgement
    for Frans that target 2's "met" rests on.

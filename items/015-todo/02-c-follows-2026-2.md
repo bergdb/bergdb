@@ -42,17 +42,17 @@ removed, so it no longer compiles against `main` (015-19).
 
 2026-11-05, 07:30, by Claude (Opus 5.5, Claude Code), at Frans's question
 what it takes to make C match release 2026.2. The Java commits from 012's
-last cross run (`ae4aaf9`) to `release-2026.2` (31 touch `java/`),
+last cross run (`165efea`) to `release-2026.2` (31 touch `java/`),
 sorted by what C has a counterpart for:
 
-* Bytes: 005-79 part B, the take in fixed point (`f04cefe`; one take of
+* Bytes: 005-79 part B, the take in fixed point (`6bc348d`; one take of
   2,158 differs, at a tie in StreamDigest's `l3-node14`).
 * Same bytes at the defaults, but C's answers or decisions: 005-79 part A
   (reclaim's spacing and fraction in units of 2^-16, eviction's low
-  watermark; `dde82e8`), 005-73's F1 (the start's startup distance) and
+  watermark; `bb7b6fa`), 005-73's F1 (the start's startup distance) and
   F4 (NaN refused), 005-69 (`SystemClock`), 005-75 (record times and key
   node times checked before replay; C aborts on a flipped time today).
-* Nothing in C: 005-70 (C changed with Java, `7d967d7`), 005-74 and
+* Nothing in C: 005-70 (C changed with Java, `24a031a`), 005-74 and
   005-82 (C did so already), 015-40 (the Core's `Trans` unchanged), and the
   Java-only fixes: threads and the memory model, the eviction thread, the
   resident count, the lock, the Pub API.
@@ -69,7 +69,7 @@ cross harness compares with release 2026.2 by default (the release's
 source zip), the repo's `java/` on request; `cross.sh full` and the scale
 set not before 08:45, the code and the quick tests before. "Done when"
 is now against `release-2026.2`, not the Java of the day. The work runs in
-a scratch clone of `main` at `9d37877`.
+a scratch clone of `main` at `f232290`.
 
 2026-11-05, 09:40. Done, by Claude (Opus 5.5, Claude Code). The C clone
 (`items/012-bergdb-c/c/`) matches release 2026.2; `c/readme.md` says so,
@@ -112,7 +112,7 @@ What C follows, each as Java does it, with Java's tests ported:
   does: a previous state at that same time made two equal times in a node,
   which 005-75's check refuses.
 
-Nothing in C for: 005-70 (done with Java, `7d967d7`), 005-82 (C failed
+Nothing in C for: 005-70 (done with Java, `24a031a`), 005-82 (C failed
 the database already), 015-40 (the Core's `Trans` unchanged), 015-01 (the
 Pub API's `created.txt`), and the Java-only fixes (threads, the memory
 model, the eviction thread, the resident count, the lock, the Pub API).

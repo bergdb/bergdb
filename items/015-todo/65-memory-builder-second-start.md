@@ -29,7 +29,7 @@ The fix
 (005-63, 015-56); for `memory()` and `mainStream()` the `DbBuilder` keeps
 the one stream, and with a crypto key the `SalsaStream` that the first
 start wrapped around it. Nothing checked that a database still used it.
-The probe (on `main` at `37ce61f`): the second start returns, does not see
+The probe (on `main` at `85d8fa4`): the second start returns, does not see
 the first's unsynced `/a`, each database misses the other's puts, and the
 second's `close()` closes the stream, so the first's `close()` throws
 "Cannot append to closed stream"; the same with a key.

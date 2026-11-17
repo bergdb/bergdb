@@ -79,7 +79,7 @@ added afterwards at Frans's request, made the release build link with
    2026-10-29 macOS's `leaks` hung on F53 for every program (developer
    mode off), and the gates of those hours ran with a stand-in that
    skips only the leak check. Frans enabled developer mode at 14:01; the
-   gate on `44332aa` with the real `/usr/bin/leaks` then passed (`C
+   gate on `0935005` with the real `/usr/bin/leaks` then passed (`C
    BEFORE COMMIT OK (172 s)`, 14:01 to 14:04): unit-release (346 tests)
    and func-release (25 tests) both "0 leaks for 0 total leaked bytes".
    With 012-17's `-flto` in the release build: `C BEFORE COMMIT OK` in
@@ -130,7 +130,7 @@ kept; in an application (`core_demo`, unused code stripped) 151 kB at
 `-Os`, 170 kB at `-O2`, 178 kB at `-O2 -flto`.
 
 **Lines**, all counted (comments and blank lines too), on 2026-10-29 at
-`44332aa`: 53,661 lines in the code files of `c/` (98 `.c`, 49 `.h`, 14
+`0935005`: 53,661 lines in the code files of `c/` (98 `.c`, 49 `.h`, 14
 shell scripts, 12 Java files, the Python scripts):
 
 | Part | Lines |
@@ -188,7 +188,7 @@ remain open: 1, 6's eviction sweep, and 7.
    12:45); 005-72 stays open to consider Q1's option B.
 3. **012-11, Q1** (its section 6.4): C forces the stream itself when a
    cut is pending, so that the disk is freed without a sync. Recommended:
-   yes. **Yes** (07:35); done in `633ad86`.
+   yes. **Yes** (07:35); done in `1c9e888`.
 4. **012-13, Q2** (its section 6.5): a closed handle ends at the close,
    as a `FILE` after `fclose` (implemented). Recommended: confirm.
    **Confirmed, no action** (07:35).
@@ -232,7 +232,7 @@ everything in 012. Tests can start manually. Good for now." At 12:41 on
 * **The format document** stays 012-02 in this item (D6b changed by
   Frans, 2026-10-29: "Do not move the format document"). Being in a done
   item, it is history and is not kept up to date with Java; a change of
-  Java's bytes after `fd8f513` is not in it.
+  Java's bytes after `decc677` is not in it.
 * **The code** stays in `c/` (D1, "indefinitely for now"). Once 012 is
   done, the C clone follows Java no further by itself: a change of Java's
   bytes will make C's cross tests fail, but nothing runs them unless
@@ -316,12 +316,12 @@ The milestones, with their commits:
 
 | Milestone | When | Commit |
 |---|---|---|
-| M1, phase A: format, API, project, harness | 2026-10-28 16:25; 012-02's review 17:06 | `3421e91`, `c1479b7` |
-| M2: C reads Java's databases | 21:40 | `dabaa50` |
-| M3: Levels 0 to 2, C writes and restarts as Java | 23:26 | `e0d5e15`, `e1507b9` |
-| M4: Levels 3 and 4 | 2026-10-29 03:17 | `ca9e583`, `afb47e5` |
-| Phase E: API and durability, measurements | 04:00, 05:06 | `0c910bc`, `9104af2` |
-| 012-11's Q1 (the forced cut), 012-14 done, this report | 09:50, 10:49, 10:49 | `633ad86`, `18a5b2b` |
+| M1, phase A: format, API, project, harness | 2026-10-28 16:25; 012-02's review 17:06 | `a6ba2d7`, `ab2dca4` |
+| M2: C reads Java's databases | 21:40 | `74b08a3` |
+| M3: Levels 0 to 2, C writes and restarts as Java | 23:26 | `1d1e2fb`, `3d9dcca` |
+| M4: Levels 3 and 4 | 2026-10-29 03:17 | `e068fba`, `237d7c1` |
+| Phase E: API and durability, measurements | 04:00, 05:06 | `7fd3704`, `0659ceb` |
+| 012-11's Q1 (the forced cut), 012-14 done, this report | 09:50, 10:49, 10:49 | `1c9e888`, `8dde2aa` |
 
 ## 8.3 The prompts
 

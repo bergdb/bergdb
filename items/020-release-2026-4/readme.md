@@ -66,7 +66,7 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   1b (Frans, 2026-11-07, 14:31: "Now it is ok to design and document"),
   ready for his "ok-and-implement": the rules of the put, the get, the
   constructor check and the indexes; the format and its spec text; the
-  code sites at `7edcbe2`; the tests, old and new; the Javadoc and
+  code sites at `b4cf896`; the tests, old and new; the Javadoc and
   release notes drafted; questions Q1 to Q6 for Frans. No code changed.
   Written for today's format, version 1; what 020-05's option (f)
   changes in it, and what 021-07 and 021-08 did since: its section 11.
@@ -162,11 +162,11 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   to date until the release; since 2026-11-09, afternoon, with every
   fault that the day's bug hunts found and fixed (020-13 to 020-23, 021-11,
   021-12; its section 10) and what they left for a later release (its
-  section 11); since the evening, to `03ce6ec`, with 021-13 to 021-27, Z1
+  section 11); since the evening, to `d00096e`, with 021-13 to 021-27, Z1
   to Z3 and the late fixes, and the day's open questions and API wishes.
 * [12-measurements.md](12-measurements.md). 020-12, format 2 measured,
   020-08's step 4, on a quiet machine (2026-11-09, 03:43 to 04:23):
-  ObjectBench's M1 to M8 at `7231771` against format 1 at `ae68938`, and
+  ObjectBench's M1 to M8 at `5d32e77` against format 1 at `238b249`, and
   `performance.sh`'s quick suite against release 2026.3. A `Payment` is
   36 bytes against 71; the writer takes 0.29 to 0.66 of format 1's time,
   the read of bytes 0.16 to 0.74, a lookup 0.13 to 0.44, a get into
@@ -187,16 +187,16 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   that failed the database in rw(), key replace that deleted another key's
   index entries, and a lost wake-up that made `BufferedStream.close()` wait
   a quarter of the buffer time; `Time`'s lenient parsing left for Frans.
-  On `main` as `c950612`, `42201c2`, `3f61a74` and `4b520f9`, the three
-  tests as `efe1bec`.
+  On `main` as `94d68d3`, `7357ea0`, `f758df6` and `12092e0`, the three
+  tests as `5ad1539`.
 * [14-codex-review.md](14-codex-review.md). 020-14, a Codex review of
   2026.4's code (Codex CLI, GPT-6.1-Sol, effort max; Frans, 09:11), its
   report verbatim: three confirmed findings, X1 (high: key replace in an
   object key's directory left an index wrong), X2 (high: an `Error` of a
   Data Object class's static initializer failed the database in `rw()`)
   and X3 (medium: an inherited field of a package not exported passed the
-  class check); each fixed with a test that failed first (`a03111e`,
-  `987e734`, `ef6a3cf`), X1 by option (a), the refusal, which Frans
+  class check); each fixed with a test that failed first (`ae698d6`,
+  `4883b11`, `88e8a5e`), X1 by option (a), the refusal, which Frans
   confirmed (10:30).
 * [15-kill-restart-harness.md](15-kill-restart-harness.md). 020-15, a
   kill-and-restart harness for the Pub layer (done): `KillRestartHarness`
@@ -204,7 +204,7 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   during work on objects and indexes, each restart checked against what
   the promises allow; 2,993 kills and 78 stops, no fault of BergDB. One
   observation, KR-O1, a creation or deletion that returned can be undone
-  by a crash before it is durable, said in the Javadoc (`f99f4c6`); a step
+  by a crash before it is durable, said in the Javadoc (`52603cb`); a step
   of `night.sh`, 1,000 kills.
 * [16-fuzzing.md](16-fuzzing.md). 020-16, fuzzing of the object format,
   the index keys and the index definitions: `FormatFuzzer`, six areas,
@@ -240,9 +240,9 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
 * [20-spotbugs.md](20-spotbugs.md). 020-20, SpotBugs 4.10.5 over 2026.4's
   code: 655 warnings kept and triaged, none a true defect; outside them,
   T1, a directory that cannot be listed (a `NullPointerException`, or a
-  message that advised removing the database's files), fixed (`6db1ac3`);
+  message that advised removing the database's files), fixed (`4bba305`);
   N1, `CryptoKey.getKeyData()` returns a copy, at Frans's decision
-  (`a3bb07b`).
+  (`b5b1a61`).
 * [21-api-decisions-9-november.md](21-api-decisions-9-november.md).
   020-21, Frans's API decisions of 9 November (10:30: "1 to 5, all as
   recommended"), implemented, each with a test that failed first: a time
@@ -346,21 +346,21 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   020-24-07's U7-1 and U7-3): `DatabaseBuilder.cryptoKey()` and
   `CryptoKey` gone, the code kept internal and tested, an earlier
   release's encrypted database refused; done right later, 017-10.
-* 29-index-proof/, on main since 2026-11-13 (b0cd3ac4, merged after
+* 29-index-proof/, on main since 2026-11-13 (868f353f, merged after
   release 2026.5). 020-29, a Lean proof, for
   every size, of 020-26 section 3's safety invariants (no `sorry`), in a
   wider model (several index names and directories, transactions of any
   keys), and liveness: cleanups end; builds end under strong fairness of
   the build thread, or under weak fairness with finitely many definition
   changes; weak fairness alone is not enough with several names (a model
-  run shows it). 5,231 lines, head `9d33587`.
+  run shows it). 5,231 lines, head `2218432`.
 * [30-deleted-kvs-cost-nothing.md](30-deleted-kvs-cost-nothing.md).
   020-30, a deleted KV eventually costs nothing (Frans's rule, 2026-11-10):
   the index keeps the nodes of deleted keys for ever, so scans and the
   stream are not bounded by the live data (U16-1, U17-1, 021-25); the
   study and the fix. 2026.4 waits for it (Frans, 09:03).
 * [31-release.md](31-release.md). 020-31, the release of 2026.4: commit A
-  (`bb8da6d`, made again after its first night: main with 023-core merged,
+  (`76f66f8`, made again after its first night: main with 023-core merged,
   BuildInfo, two fixes of test races, two of corrupt streams, next.md and
   the docs), its night of 10 to 11 November on F53 and s1, and the morning's
   steps; the tag `release-2026.4`.
@@ -418,7 +418,7 @@ the order 1, 2, 7, 8, 3, 4, 6, about 7 days in all; `createFast()` left
 to 020-10's step I2); a pointer in 020-02, section 5.1b. No code.
 
 2026-11-09. 020-11, the known issues of 2026.4, written in night 006-15
-from `main` at `fd6dd09` at the coordinator's request: twelve open rows
+from `main` at `b768ef0` at the coordinator's request: twelve open rows
 (the format-1 false positive for Strings, two Javadoc points, a String's
 size checked after its encoding, N10's test outside `Pack`, B3, two low
 points of 019-46's review, step 4's measurements, three item updates)
@@ -429,7 +429,7 @@ machine in night 006-15 by the coordinator's agent C; 020-08 done.
 
 2026-11-09. 020-13, the test study before the release cut, at Frans's
 request (08:41), by the coordinator's agent in a clone of `main` at
-`1d1b6f3`: four bugs fixed there with their tests, three tests for the
+`25aac35`: four bugs fixed there with their tests, three tests for the
 faults of its mutation sample that the gate missed, for the coordinator
 to integrate.
 
@@ -442,7 +442,7 @@ runs of the harnesses (020-17), a concurrency review of the indexes
 then Frans's API decisions implemented (020-21), the rules for writes
 through the Core (020-22) and independent reviews of the day's fixes
 (020-23). Every fault found is fixed with a test, on `main` from
-`a9e5488` to `b149d12`, with 021-11 and 021-12. The day's document update
+`f8046f3` to `73dda0a`, with 021-11 and 021-12. The day's document update
 by coord-1109's agent d27: 020-11 brought up to date (sections 10 and
 11), 020-10's sections 6.1 and 6.2, `releases/next.md`, and the Javadoc
 and comments of 020-23's V1-2 and V1-3.
@@ -456,13 +456,13 @@ coord-1109's final items pass.
 deleted keys, so a scan's cost and the stream's size grow with every
 delete (020-24-16, 020-24-17, 021-25). 020-30 created with Frans's rule
 that a deleted KV eventually costs nothing; its study started. The
-candidate `03ce6ec` is not tagged.
+candidate `d00096e` is not tagged.
 
-2026-11-11. Release 2026.4 made: the tag `release-2026.4` on `bb8da6d`,
+2026-11-11. Release 2026.4 made: the tag `release-2026.4` on `76f66f8`,
 after a clean night (020-31).
 
 2026-11-11. Release 2026.4 made (04:55): the tag `release-2026.4` on A'
-bb8da6dc, commit B 04f8863e, pushed; releases/2026.4/ (020-31). The night
+76f66f89, commit B 3e09619b, pushed; releases/2026.4/ (020-31). The night
 on the first A failed one night test, an old weakness against damaged
 streams (020-32); A was made again with two fixes, and A''s own night,
 s1's tests and fuzz were clean.

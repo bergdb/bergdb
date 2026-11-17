@@ -33,7 +33,7 @@ things for the Reclaim to clean up. Either way, a deleted KV must consume
 zero resources eventually after the retain period has passed."
 
 09:03, **the decision**: "This is major. [...] My decision is to pause
-2026.4 until this has been sorted out." The candidate `03ce6ec` is not
+2026.4 until this has been sorted out." The candidate `d00096e` is not
 tagged.
 
 
@@ -68,7 +68,7 @@ whatever was deleted before.
 ## 3. How it works today
 
 As found on 2026-11-10 by the coordinator (coord-1110), from the code on
-`main` (`1d8c5b1d`; the candidate's Core is the same):
+`main` (`9527cf30`; the candidate's Core is the same):
 
 * A delete sets one bit: `Dag.setValue()` (Dag.java:794) calls
   `appendDeleteKlong()` (Dag.java:899) on the segment leaf that holds the
@@ -119,7 +119,7 @@ By d30 for coord-1110, at effort max (Frans, 09:03). Frans changed the
 scope at 09:21: phase 1 is this first overview of the alternatives, by
 10:00; full proposals, with tests and prototypes, come in a phase 2. So no
 new measurement here: the figures are those of the items cited. Read: the
-code of `main` (`0b93d273`, Java as `1d8c5b1d`), 021-25 (with the branch
+code of `main` (`2f018b9e`, Java as `9527cf30`), 021-25 (with the branch
 `021-25-fix-a`), 021-28 (branch `scan-deleted-keys`), 020-24-16 to 18,
 011-01 (Q1, Q7, Q8), Frans's notes of 2012 to 2016 (F1-007), the Lean
 model's definitions (`SIS/Basic.lean`, `Check/Trace.lean`) and
@@ -129,7 +129,7 @@ model's definitions (`SIS/Basic.lean`, `Check/Trace.lean`) and
 
 **State** (09:45): phase 1 done, this section. No code: the clone
 `/Users/f/fl/bench/2026-11-10/d30/clone` has the branch
-`020-30-deleted-kvs` at `main`'s `0b93d273`, unchanged. Next: phase 2, as
+`020-30-deleted-kvs` at `main`'s `2f018b9e`, unchanged. Next: phase 2, as
 the coordinator assigns it.
 
 

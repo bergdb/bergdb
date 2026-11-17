@@ -1,7 +1,7 @@
 # 020-30-03. Option A: the delete goes upward
 
 Agent a30 of coord-1110, 2026-11-10, phase 1 (an overview, not a proposal).
-Read-only study of `main` (`12fcb7ba`). Code places are in `java/src/bergdb/dag/`
+Read-only study of `main` (`772c1e5a`). Code places are in `java/src/bergdb/dag/`
 unless named. KeyNode's search code is the same in `release-2026.3` (only messages differ).
 
 ## 1. How a key maps onto nodes

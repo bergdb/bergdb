@@ -175,8 +175,8 @@ be taken.
 
 # 2. What the code has today
 
-Read on main at 60623acb; `lean/` there is the same bytes as at the
-branch point of `026-17-mt-trial` (`git diff d8da4a35 main -- lean` is
+Read on main at 82c53453; `lean/` there is the same bytes as at the
+branch point of `026-17-mt-trial` (`git diff 00a3a29b main -- lean` is
 empty). `lean/SIS/Tree` has 474 files, 167,243 lines.
 
 ## 2.1 The invariant: its name and its parts
@@ -764,7 +764,7 @@ subtransaction's cost; anything of Java.
 - **The build:** `.lake` copied from a tree whose `lean/` is main's and
   that is built in full, for example
   /Users/f/fl/bench/2026-11-15/day/htb/clone (474 modules of
-  `SIS/Tree` built; `git diff 1de529c4 main -- lean` is empty), then
+  `SIS/Tree` built; `git diff 9c0850d8 main -- lean` is empty), then
   `lake build` and `lake build SIS.Tree.Mt` under one heavy slot
   (`slot.sh`). The clone of 026-17 has only 258 of the 474 modules
   built and main's own tree 127: neither will do.

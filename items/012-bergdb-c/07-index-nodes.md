@@ -343,7 +343,7 @@ As Java's `Handle` (009-02, 4.1), without what serves threads:
 ### 6.4.2 The holders
 
 From a survey of every production field of `dag` and `core` (2026-10-28,
-a helper agent; Java at `5e18316`) that holds a `KeyNode`, `TopNode`,
+a helper agent; Java at `1a45f31`) that holds a `KeyNode`, `TopNode`,
 `ValueNode`, `Node`, `Pointee` or `Handle` beyond one call. *Counted*:
 the field counts as a holder. *Borrowed*: it does not, and the column
 says why that is safe: no safe point while it holds the object, or a
@@ -380,7 +380,7 @@ never read. The task in the last column ports the field.
 
 Each C function keeps the counts itself, so a caller never adjusts a
 count by hand. The ones of this task, with the Java they port and its
-callers (Java line numbers of `5e18316`):
+callers (Java line numbers of `1a45f31`):
 
 * **Key node pointers** (`knode.c`):
   * `kn_add_klong` (`addKlong` 805 to 849): a new TIME klong's slot holds
@@ -534,9 +534,9 @@ Written after the ports (17:15), for 012-08 to 012-12:
 
 # 7. Progress
 
-**Java's reference:** `main` at `5e18316`, `java/` as of `fd8f513`.
+**Java's reference:** `main` at `1a45f31`, `java/` as of `decc677`.
 **Clone:** `/Users/f/fl/bench/012/07-index-nodes/` (a clone of `bergdb` at
-`5e18316`).
+`1a45f31`).
 
 * 2026-10-28 16:19: started. Read 012-01, this plan, the C project, 012-02
   (sections 5 to 8), 012-06's `snode` and `strans` (its clone), and Java's
@@ -580,7 +580,7 @@ Written after the ports (17:15), for 012-08 to 012-12:
   ordinal, the ids given by the listener as Db gives them, the super root
   written now and then) with the stored bytes' hash after each, and 68
   `findRoot`s: all equal (`t_topvec.c`).
-* 17:09: 012-06 in main (`718e4d6`), merged into the clone (`a1ccf2b`;
+* 17:09: 012-06 in main (`dd5c10f`), merged into the clone (`a1ccf2b`;
   `test/unit/main.c` kept both sides' tables).
 * 17:10: **done item 5's round trip** (`t_roundtrip.c`): each node of a
   record parsed by 012-06's `st_parse` (`struct sn_node`), made into an
@@ -607,7 +607,7 @@ Written after the ports (17:15), for 012-08 to 012-12:
   (the sanitizers). The kept directories (48 GB) deleted after.
 * 17:31: C BEFORE COMMIT OK (38 s): 185 unit tests, 6,289,009 checks;
   the quick cross set with C's scanner as side B.
-* F1 is registered already: 005-75 (by 012-02's review, `c1479b7`).
+* F1 is registered already: 005-75 (by 012-02's review, `ab2dca4`).
 
 **Done when**, as it holds at the end (17:30):
 
@@ -639,7 +639,7 @@ file, not in this task's list) lacks this task's nine modules (section
 **Findings** (for the conductor, who registers them in 005):
 
 * **F1. `KeyNode.checkIncreasingTime` checks nothing** (section 5, note
-  1). Probe, against `java/` at `fd8f513` (compiled by
+  1). Probe, against `java/` at `decc677` (compiled by
   `test/cross/java-build.sh`; run with `-ea`):
 
   ```java

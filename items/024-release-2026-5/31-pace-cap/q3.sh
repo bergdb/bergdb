@@ -1,5 +1,5 @@
 #!/bin/sh
-# 024-31 queue 3: the span-based cap (c2s, branch head 4b7c638e): the two decreases at main's
+# 024-31 queue 3: the span-based cap (c2s, branch head 09ec584a): the two decreases at main's
 # worst points, then the steady run at 200 MB, to compare with main's byte for byte.
 cd /Users/f/fl/bench/2026-11-12/pace/w || exit 1
 low() {   # VARIANT FROM_MB TO_MB AT

@@ -122,11 +122,11 @@ kill-restart) it is about 6 h 15 min. So about 100 minutes are left
 after step 3. 022's step5 says 120 minutes. Its line in `steps.txt` has
 a least of 60: it starts with BUDGET, and step5.sh runs the parts that
 fit, in its order. Steps 5 and 6 run only if `night.sh large` ends
-early. 006-16's `2026.4c` build is f3af680, not tonight's candidate.
+early. 006-16's `2026.4c` build is 90ec60a, not tonight's candidate.
 
 **Markers.** A step runs only with its `.READY` marker, written after a
 passed smoke test. The smoke tests ran 13:05 to 13:20 against a build
-of main 82edabf in `N/smoke/`, without timed runs. The markers:
+of main 38a9492 in `N/smoke/`, without timed runs. The markers:
 
 * by n09: `night-large.sh` and `props-006-16.sh`;
 * by freeze.sh, after its build: `jcstress.sh`, `checks.sh` and
@@ -158,7 +158,7 @@ coordinator reads it, this plan's progress, and the State notes of
 
 * 08:54 coord-1109 started; coord-1108 closing (t51 and p48 run in its
   process and report through it).
-* 09:14 020-14: Codex started on a clone at `a9e5488`
+* 09:14 020-14: Codex started on a clone at `f8046f3`
   (`/Users/f/fl/bench/2026-11-09/codex/`).
 * 09:23 020-15 to 020-19 started (agents k15, f16, s17, c18, j19, xhigh).
 
@@ -173,7 +173,7 @@ agent, are in `/Users/f/fl/bench/coord/2026-11-09/state.md`.
 * About 60 faults fixed on 9 November, every one with a failing test
   first, gated, the Core's with `level1.sh` and an independent review;
   about 80 Javadoc corrections. Batches 1 to 44 on `main`; the candidate
-  `03ce6ec` (gate, JAVADOC PUB, LEVEL 1 OK; frozen at 19:03, FREEZE OK),
+  `d00096e` (gate, JAVADOC PUB, LEVEL 1 OK; frozen at 19:03, FREEZE OK),
   pushed without a tag; since then only items.
 * What found the faults: the AI-user applications (020-24, 18 in 6
   rounds; 006-20) found the most, then the C port (022's test ports and
@@ -187,7 +187,7 @@ agent, are in `/Users/f/fl/bench/coord/2026-11-09/state.md`.
   the Core API's nulls and ranges (020-27); Android in scope; misuse of
   the API ends in an exception (021-21, 021-22).
 
-### 6.2. The night (section 3c), on the candidate `03ce6ec`
+### 6.2. The night (section 3c), on the candidate `d00096e`
 
 | Step                  | Result                                                       |
 |---|---|
@@ -208,7 +208,7 @@ on the storage's thread (its `stop()` does not wait for a failed
 storage) and deletes the directory; `FileStream.unlockDir()` closes
 `bergdb.lock` before it removes the key from its set of locked
 directories, and in that moment ext4 gave the next test's new directory
-the same inode. The test has raced since 019-41 (`8f0d117c`, 6 November), which
+the same inode. The test has raced since 019-41 (`37997acf`, 6 November), which
 wakes the waiting sync before the storage's thread closes the stream;
 before, the sync returned at the next 500 ms poll, after the close.
 Reproduced on s1 by a probe that loops the tester's failure tests on the
@@ -231,7 +231,7 @@ settings below the API's least, and one status lag of BergDB (low).
 
 ### 6.3. For Frans to decide (most urgent first)
 
-1. **Tag 2026.4 from `03ce6ec`?** The night is clean but for the JDK 17
+1. **Tag 2026.4 from `d00096e`?** The night is clean but for the JDK 17
    test race above, and the soak's findings block nothing. Rec: yes,
    after 2 and 3.
 2. **Before the tag**: replace `releases/next.md`'s known issue with
@@ -242,7 +242,7 @@ settings below the API's least, and one status lag of BergDB (low).
    (`2bfeb3e3`, `240f2b3e`, `eebeb39d`): a scan ends at its range's end
    instead of walking deleted keys after it (020-24-17, U17-1: 30.7 ms to
    0.01 ms). No stream change: Codex found the appended bytes and read
-   sets identical to `03ce6ec`'s; its round 5 found no high or medium,
+   sets identical to `d00096e`'s; its round 5 found no high or medium,
    the two lows fixed; gate OK, level1 OK. Rec: yes; then a new
    candidate with the gate, level1, level3 quick and the s1 jar tests.
 4. **021-25 fixes (a) and (b) in 2026.5** (decided 19:17). Fix (a)'s

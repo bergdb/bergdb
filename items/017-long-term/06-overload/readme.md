@@ -42,7 +42,7 @@ transactions, read-write actions and durability waits; eviction and
 reclaim as competing maintenance work. The C implementation is not a
 target. 005-81 called replication experimental and left a full replicated
 overload policy as a separate extension; replication was removed on
-2026-11-04 (005-11, `16fb228`), so such a policy would come with a future
+2026-11-04 (005-11, `bd77904`), so such a policy would come with a future
 replication design (017-03).
 
 Keep 006-11's conclusion: concurrent STM actions have demonstrated value.
@@ -51,7 +51,7 @@ general redesign of the write lock.
 
 ## 2. What the code does today: reads, CPU and memory
 
-From 005-81, section 2, reviewed 2026-10-30 against HEAD `7d967d7`; that
+From 005-81, section 2, reviewed 2026-10-30 against HEAD `24a031a`; that
 section holds the review's terms and its qualified conclusion: there are
 deliberately designed controls for the write buffer and eviction, and the
 client paths inspected contain no common admission limit, request deadline
@@ -103,7 +103,7 @@ than a rule based only on CPU percentage or number of cores.
 
 005-65 already studied a relevant case: its quiet runs found CPU saturation
 and contention entering `evictorLock`, not loads waiting for eviction
-batches. A change to avoid redundant monitor entries is in `988fe1a`;
+batches. A change to avoid redundant monitor entries is in `52aeb04`;
 the entry remains open for the specified quiet rerun. Frans accepted the
 remaining scheduler delays at a full machine as outside the earlier
 BergDB pause target. This investigation must respect that decision while

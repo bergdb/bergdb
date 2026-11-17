@@ -11,7 +11,7 @@
 
 S1 is an optional simplification. I found no further failure of the
 unlink, historical reads or restart choices in the checks below.
-Reviewed `59f0cafd...13246f53`, all 14 commits, against the frozen rules
+Reviewed `6d5373d6...80105ef1`, all 14 commits, against the frozen rules
 of 023-08, sections 5 and 7. The design choices are accepted here.
 
 ## 2. Findings
@@ -179,7 +179,7 @@ second way to finish a complete delete. It is not a merge blocker.
   and chain-edge tests still test SE. I found no unexplained expected
   value change.
 
-Validation used an export of exactly `13246f53`, on JDK 27.0.1. The build
+Validation used an export of exactly `80105ef1`, on JDK 27.0.1. The build
 passed, including the release-jar check. Core/Dag unit tests: 619 passed.
 Affected Pub unit tests: 145 passed. Focused eviction and reclaim f-tests:
 19 passed. UnlinkFuzz: seeds 100000 to 100499, long keys, shuffled order,

@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it, from README.md, the overview,
 the Javadoc of `bergdb.pub` and `bergdb.pub.util` and releases/next.md only, against
-`java/build/bergdb-release.jar` of main at b7aa2a0 (020-24's brief). Its subject: threads,
+`java/build/bergdb-release.jar` of main at 0a59cf3 (020-24's brief). Its subject: threads,
 conflicts, retries, interrupts, stop and close, as the Javadoc promises them.
 
 
@@ -231,7 +231,7 @@ above, or name the app's phase.
 ## 5. Fixes
 
 By coord-1109's fixer x24, 2026-11-09, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `ec8d16f`, under Frans's rule for
+`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `740ffdf`, under Frans's rule for
 2026.4 (2026-11-09): fix faults against today's specs and Javadoc, make the Javadoc true
 where the code is as designed, no new API and no change of meaning. Each commit below has
 its tests in `PubTesterJavadoc` and a line in `releases/next.md`, Documentation; JAVADOC

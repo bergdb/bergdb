@@ -1,7 +1,7 @@
 005-79. Implement: integers instead of doubles in the Core's decisions
 ====================================================================
 
-Status: done for release 2026.2 (2026-11-03, Java: Part A `dde82e8`,
+Status: done for release 2026.2 (2026-11-03, Java: Part A `bb7b6fa`,
 Part B the commit after it); Lean and the C clone follow after the
 release (015-03, 015-02). Kind: implement.
 Created 2026-10-29.
@@ -17,7 +17,7 @@ bytes or the memory. Frans's decisions on the questions follow below
 (section Decision, 15:48): option B for the take, an integer for the
 internal fraction's setter, and this entry on its own. Registered only;
 nothing changed; not to be implemented until Frans says so. Code cited at
-`82626eb`.
+`963549d`.
 
 
 The issue
@@ -30,7 +30,7 @@ computations in the Core use `double`; three decide the bytes (012-01,
 
 | Where | Expression | Decides |
 |---|---|---|
-| `TransSeq.take` (005-49, 007-03 step 3, 007-07: `f89846d`) | `share = (double) dirtyCount * recordOwnBytes / ownBytes * (streamLength - currentSp) / startupDistance`; `u = dither(streamLength)`, SplitMix64's finalizer, its top 53 bits times 2^-53; a transaction before the deadline stops the take if `taken + count > share && share - taken <= u * count` | which transactions' dirty nodes a record takes: the bytes |
+| `TransSeq.take` (005-49, 007-03 step 3, 007-07: `b8ac8a1`) | `share = (double) dirtyCount * recordOwnBytes / ownBytes * (streamLength - currentSp) / startupDistance`; `u = dither(streamLength)`, SplitMix64's finalizer, its top 53 bits times 2^-53; a transaction before the deadline stops the take if `taken + count > share && share - taken <= u * count` | which transactions' dirty nodes a record takes: the bytes |
 | `Reclaim.transactionCompleted` | `t.tt - lastTStart() >= (long) (ITERATION_SPACING * retainDuration)`, `ITERATION_SPACING = 0.25` | when an iteration starts: the bytes |
 | `Reclaim.transactionCompleted` | `allowed = (long) (internalFraction * (streamSize - current.pStart)) - rewritten`; `internalFraction` 0.25 by default, set by `Db.setReclaimInternalFraction(double)` and JMX (0.001 to 0.90; NaN passes the check, 005-73) | how much a step may rewrite: the bytes |
 | `Eviction.setBudget` and its constructor | `low = (long) (budget * LOW)`, `LOW = 0.75` | the low watermark: what stays in memory |
@@ -252,7 +252,7 @@ Plan for 2026.2
 
 ### 1. Settled by reading the code
 
-At `6d81050` (`java/` as at `df6ad50`).
+At `f7d1d52` (`java/` as at `9d34ac1`).
 
 **The bounds (question 2).** The take's inputs, and what bounds them:
 
@@ -687,10 +687,10 @@ part).
   * this plan;
   * the scan of the doubles,
     [doubles-scan.txt](79-integers-not-doubles/doubles-scan.txt).
-* **The base** for the work is `main` at the start (`6d81050`, with
-  `java/` and `lean/` as at `df6ad50`).
+* **The base** for the work is `main` at the start (`f7d1d52`, with
+  `java/` and `lean/` as at `9d34ac1`).
 * **Progress** (the implementer, in the clone `/Users/f/fl/bench/016/005-79`):
-  * 15:54. Step 0 done (the clone at `6d81050`). Step 1 done: the base
+  * 15:54. Step 0 done (the clone at `f7d1d52`). Step 1 done: the base
     build preserved in `/Users/f/fl/bench/016/005-79-base/` (`bergdb.jar`,
     `stress/`, `probe/` with ShareProbe); `digest-base.txt` (StreamDigest
     all, 7 s) and `share-base.txt` (sd 800 kB: E[w] 0.92, E[share] 0.92,
@@ -718,11 +718,11 @@ part).
       (3 of 36)`, only there. `digest-compare.py` compares length,
       firstAvailablePos, firstAvailableTime and sha256.
   * By 16:22 (the coordinator): Part A reviewed (H5, no faults) and
-    committed in `main` as `dde82e8`.
+    committed in `main` as `bb7b6fa`.
   * 16:24. Steps 3 to 5 done: **Part B** committed in the clone, then
-    rebased on `main` `f2cb23b`: `2200a1c`. The hand-off is in
+    rebased on `main` `bfc2a9d`: `2200a1c`. The hand-off is in
     `/Users/f/fl/bench/016/005-79/handoff/` (016-05, section 4): BASE
-    `f2cb23b`, `files.txt`, `patch.diff`, `gates.txt`. Files:
+    `bfc2a9d`, `files.txt`, `patch.diff`, `gates.txt`. Files:
     `java/src/bergdb/core/TransSeq.java`, `java/doubles.py` (new),
     `java/deps.py`, `java/before-commit.sh`,
     `items/010-principles/01-principles.md` (P2), `docs/levels.md`
@@ -733,7 +733,7 @@ part).
       unit 1102, f 78; `Doubles: 7 packages, 177 files: no floating point
       outside the allowed places (102 uses in them)`. Before the rebase,
       on `9b3d4a1`: `BEFORE COMMIT OK (149 s)`, 16:24.
-    * The patch applies cleanly to `main` `3e32f02` (005-82), and
+    * The patch applies cleanly to `main` `5672e5a` (005-82), and
       `doubles.py` and `deps.py` pass there; not gated there.
     * See "Part B" below for the take, the digests, the check and the
       tests.
@@ -742,13 +742,13 @@ part).
     OK: 70`.
   * 16:47. B amended (two Javadoc lines in TransSeq: the double take was
     005-49's, never released, not 2026.1's) and rebased on `main`
-    `3e32f02` (005-82): **`ddbba95`**. `before-commit.sh` on it:
+    `5672e5a` (005-82): **`ddbba95`**. `before-commit.sh` on it:
     `BEFORE COMMIT OK (139 s)`, 16:46, unit 1105, f 78. StreamDigest on it:
     the same decided digests as `digest-b.txt`, 36 of 36. The hand-off
-    rewritten for it: BASE `3e32f02`.
+    rewritten for it: BASE `5672e5a`.
   * 17:05. The review's findings answered (Log, 16:58 to 17:05); B
-    amended and rebased on `main` `d5fc369`: **`b550a99`**, `BEFORE COMMIT
-    OK (147 s)`. The hand-off rewritten (BASE `d5fc369`, `review.txt`).
+    amended and rebased on `main` `9d0f33c`: **`b550a99`**, `BEFORE COMMIT
+    OK (147 s)`. The hand-off rewritten (BASE `9d0f33c`, `review.txt`).
 * **Next**: the combined gate and the commit of B (step 7), by the
   coordinator.
 * **For the implementer**:
@@ -847,7 +847,7 @@ deps.py):
 * `deps.py`: `test_regions(code, filename, helpers=True)` and a main guard.
   `doubles.py` does not write `__pycache__` into `java/`.
 * By hand, once:
-  * On the base's `java/src` (`6d81050`), it refuses exactly the four
+  * On the base's `java/src` (`f7d1d52`), it refuses exactly the four
     decisions and the three sizes, 20 uses on their lines
     ([doubles-base.txt](79-integers-not-doubles/doubles-base.txt)).
   * `double x = 0.5;` planted in `TransSeq.take`: `BEFORE COMMIT FAILED:
@@ -922,9 +922,9 @@ Log
   `before-commit.sh` the only gate) are in "Decisions of 2026-11-03".
 * Part A (the implementer, 15:51 to 16:10): the baseline, then Part A, its
   gate and `level3.sh`; amended for the names of Reclaim's int methods;
-  handed over. The coordinator reviewed and committed it (`dde82e8`).
+  handed over. The coordinator reviewed and committed it (`bb7b6fa`).
 * Part B (16:04 to 16:47): the take in fixed point, `doubles.py`, the
-  notes; gated, `level2.sh`; rebased on `main` `3e32f02` as `ddbba95` and
+  notes; gated, `level2.sh`; rebased on `main` `5672e5a` as `ddbba95` and
   gated again; handed over in `/Users/f/fl/bench/016/005-79/handoff/`. A
   finding on the way: StreamDigest's `compare` counts the physical cut,
   which depends on timing (State, Part A).
@@ -939,11 +939,11 @@ Log
      mutant of the new source fails it (`testShare` FAILED, 1 of 18); the
      same one-character change as the reviewer's `review/mut1`.
   2. Text: "in doubles from 005-49 to 2026.1" and "Until 2026.1 it was a
-     double" were wrong: the double pace came in `f89846d` (2026-10-28),
-     after release 2026.1 (`a42947c`), which had no dither. Fixed in
+     double" were wrong: the double pace came in `b8ac8a1` (2026-10-28),
+     after release 2026.1 (`8e579c6`), which had no dither. Fixed in
      `ddbba95` already (005-49 until 005-79), now with the date and the
-     commit: "in doubles from 2026-10-28, f89846d, until then; 2026.1 had
-     no pace", and "From 2026-10-28 (f89846d) until 005-79".
+     commit: "in doubles from 2026-10-28, b8ac8a1, until then; 2026.1 had
+     no pace", and "From 2026-10-28 (b8ac8a1) until 005-79".
   3. Text: lean/README.md's "no longer for Java's take" was half true:
      TakeCheck's 300 cases give exactly `BoundExample.lean`'s `javaTake`s
      on the integer take too; only the bit guards of `dither` and `share`
@@ -969,8 +969,8 @@ Log
      says that the share equalled u times the 6 nodes (297,636 = 49,606 *
      6), in the commit message, Part B and Outcome.
   8. Nit, taken: docs/levels.md's two edited bullets reflowed.
-  * The clone rebased on `main` `d5fc369` (015-07's parsers, PauseProbe):
+  * The clone rebased on `main` `9d0f33c` (015-07's parsers, PauseProbe):
     **`b550a99`**. `before-commit.sh` on it: `BEFORE COMMIT OK (147 s)`,
     17:02:42 to 17:05:09; unit 1112, f 78. StreamDigest on it: the same
     decided digests as `digest-b.txt`, 36 of 36. The hand-off rewritten,
-    BASE `d5fc369`, with `review.txt`.
+    BASE `9d0f33c`, with `review.txt`.

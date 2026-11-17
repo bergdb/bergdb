@@ -128,8 +128,8 @@ Checked against the code (`main`, 2026-11-09) and the items:
    `BufferedStream.Waits.add` takes the JVM's uptime from
    `ManagementFactory.getRuntimeMXBean()` whenever the writer waits for
    room in the write buffer and the wait is among the five longest, so at
-   the first such wait. It came with 005-46 (`eaec93e`, 2026-10-27,
-   11:21), after 006-08's count at `c7c6f10` (07:38). Android has no
+   the first such wait. It came with 005-46 (`1165c90`, 2026-10-27,
+   11:21), after 006-08's count at `f410135` (07:38). Android has no
    `java.lang.management`: one call to change. `VarHandle` is in
    `dag.Handle`, `dag.KeyNode` and `dag.TopNode` (01 names two of them; 02
    adds `Eviction`, which has none).
@@ -139,9 +139,9 @@ Checked against the code (`main`, 2026-11-09) and the items:
    006-08 estimated 35 to 90 kB on a Cortex-M4, as 01 cites. The measured
    151 to 236 kB are on another CPU with other flags, but well above the
    estimate. Whether C fits a microcontroller is open in both.
-3. **022's effort.** 02 counts steps 0 to 4 to `3b0d54b` (11:57): 1.6
+3. **022's effort.** 02 counts steps 0 to 4 to `3271494` (11:57): 1.6
    hours, 3,683 lines added. Step 4's corrupt-stream set landed after it
-   (`dcfd175`, 12:16): about 2 hours from 10:21, 4,840 lines added and 558
+   (`a0ba4b7`, 12:16): about 2 hours from 10:21, 4,840 lines added and 558
    removed in `c/`, 3,571 of the added lines tests. Steps 5 (the long
    runs, about 2 hours of a quiet F53) and 6 (the report) remain.
 4. **The licence.** 01 makes it the first uncertainty; 02 does not

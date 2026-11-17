@@ -14,9 +14,9 @@ ScaleBench's outputs.
 # 0. Where the targets stand
 
 Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
-005-46, against 2026.1 and against `bf19075` (005-50, the commit before
+005-46, against 2026.1 and against `c1f1f15` (005-50, the commit before
 005-46), in turns. Until 2026-10-27 this section gave the branch at step
-3d (`66c8f3a`), as of 2026-10-26, 00:30; those runs are in sections 4 to
+3d (`15125d8`), as of 2026-10-26, 00:30; those runs are in sections 4 to
 7.
 
 * **Target 2, pauses: about 20 ms of BergDB's own code; the collector's
@@ -42,10 +42,10 @@ Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
     005-46, "Confirmed in the quiet block"; the step ran not quiet): with
     ZGC the longest get 6.0 ms with up to 4 threads, but 27 and 36 ms with
     8 threads, with 26 and 22 waits of a reader's load for the eviction
-    thread over 10 ms and batches of up to 17 ms (`bf19075`: 2.8 and 1.4
+    thread over 10 ms and batches of up to 17 ms (`c1f1f15`: 2.8 and 1.4
     ms, no such wait): 005-65 tests whether 8 readers on F53's 8
     performance cores leave the eviction thread behind. With G1 284 ms,
-    G1's full collections of up to 164 ms in the 2,660 MB heap (`bf19075`:
+    G1's full collections of up to 164 ms in the 2,660 MB heap (`c1f1f15`:
     253 ms). At step 3d 3.45 ms with ZGC, 2026.1 7.3 s (section 5).
   * From the device on s1 (section 9): the longest gets 64 to 74 ms, s1's
     disk (single random reads there of up to 42 to 58 ms), with G1's young
@@ -68,8 +68,8 @@ Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
   From the OS cache 1.4 to 4.6 times as many gets a second, from s1's device
   the same on one thread and 32 to 53 percent more with 4 (target: no
   difference beyond the noise); all at step 3d. Since 005-46, from s1's
-  device 15 to 32 percent more than `bf19075` with 2 and 4 threads
-  (section 9). Against `bf19075` on F53 in 006-09's quiet block: Props
+  device 15 to 32 percent more than `c1f1f15` with 2 and 4 threads
+  (section 9). Against `c1f1f15` on F53 in 006-09's quiet block: Props
   CORE the same (means 0.232 and 0.233, lower is faster); ScaleBench C 17
   to 43 percent more gets a second with 1 to 8 threads at 133 MB under G1,
   7 to 81 percent more at 665 MB under G1 and ZGC. `performance.sh ab`
@@ -176,7 +176,7 @@ s1's output: [s1-3c-default.txt](03-measurements/jcstress/s1-3c-default.txt)
 fault of the code or of the argument of 009-02, 3.4; on x86 the hardware
 hides most such faults, so F53's runs are the ones that count.
 
-Again on F53 on the final branch (2026-10-26, 01:25; `fb0c770`, where a
+Again on F53 on the final branch (2026-10-26, 01:25; `7d325b3`, where a
 reader's swizzle is `Node.swizzle`, which HandlePublication now uses): no
 forbidden outcome in 1.1 to 1.9 billion samples a test, the control's race
 168,789 times in 5.6 billion
@@ -204,7 +204,7 @@ compact keys, as it counted a handle on top of today's table.
 
 # 4. The pause probe on s1, step 3d
 
-As section 1, on the jar of the branch at `66c8f3a` (`14692722`),
+As section 1, on the jar of the branch at `15125d8` (`14692722`),
 2026-10-25, 22:31 to 22:41. 2026.1's rows from section 1.
 
 | run | phase | gets | p99.9 | max | commits | p99.9 | max | resident | longest batch |
@@ -229,7 +229,7 @@ As section 1, on the jar of the branch at `66c8f3a` (`14692722`),
   safepoint or batch under them: the readers' reads of the stream file wait
   for the writer's append and its `fsync` on s1's disk (section 7).
 
-Then a batch of the eviction thread also ends when a writer waits (`a04a418`,
+Then a batch of the eviction thread also ends when a writer waits (`f4e93d8`,
 jar `274e4e46`), and again on s1, 2026-10-26, 01:38 to 01:48:
 
 | run | phase | gets | p99.9 | max | commits | p99.9 | max | resident | longest batch |
@@ -412,11 +412,11 @@ with 005-46; the scripts in
 * P4's soak under ZGC (W1.3): are the cuts still the slowest commits and
   reads? No: none of the 20 slowest commits is within 2 s of a measured
   cut; the longest commit 5.1 ms, the longest read 3.6 ms.
-* Props (CORE) and ScaleBench from the OS cache (C), against `bf19075` in
+* Props (CORE) and ScaleBench from the OS cache (C), against `c1f1f15` in
   turns (W1.4): no fewer reads a second. Props CORE the same (HEAD
-  0.22 to 0.24, `bf19075` 0.23 to 0.24; the step exited 1 as its parser missed CORE, read again
+  0.22 to 0.24, `c1f1f15` 0.23 to 0.24; the step exited 1 as its parser missed CORE, read again
   on 2026-10-28); ScaleBench C 7 to 81 percent more gets a second, and no
-  sampled reader blocked on a file (3.4 to 13.3 percent with `bf19075`).
+  sampled reader blocked on a file (3.4 to 13.3 percent with `c1f1f15`).
   But with 8 threads at 665 MB under ZGC gets of 27 and 36 ms, with
   readers' loads waiting for the eviction thread: 005-65.
 * `performance.sh ab` against 2026.1, the quick suite (009-01's done item
@@ -430,16 +430,16 @@ pass in `level4.sh` in full, and so in `night.sh`.
 # 9. ScaleBench on s1 after 005-46
 
 Added 2026-10-27 by Claude (Opus 5.5, Claude Code), for 009-01's target 2
-on s1 (006-09, W1): section 6's runs again, on `main` at `4f7cd60`, with
+on s1 (006-09, W1): section 6's runs again, on `main` at `f9e295d`, with
 005-46 (no read waits for the stream's writer or for another read:
-positional reads without a lock), against `bf19075` (005-50, the commit
-before 005-46) and 2026.1, in turns, on one database. `4f7cd60` also has
+positional reads without a lock), against `c1f1f15` (005-50, the commit
+before 005-46) and 2026.1, in turns, on one database. `f9e295d` also has
 005-57 (rule 4 reads nothing at a start), 005-51 and 005-55.
 [s1-46.sh](03-measurements/s1-scalebench-005-46/s1-46.sh) is section 6's
 `s1-009.sh` with the three jars: the 10M key24 load with a 600 MB budget on
-`4f7cd60`'s jar, then from the device (D: caches dropped, a cgroup of the
+`f9e295d`'s jar, then from the device (D: caches dropped, a cgroup of the
 heap and 300 MB) at 133 MB with the cold startup, G1 and then ZGC, the jars
-in the order `4f7cd60`, `bf19075`, 2026.1; one ScaleBench source (the port
+in the order `f9e295d`, `c1f1f15`, 2026.1; one ScaleBench source (the port
 of section 5) compiled against each jar. 2026-10-27, 12:31 to 13:27, s1 to
 itself. The outputs, without the GC logs, are in
 [s1-scalebench-005-46/](03-measurements/s1-scalebench-005-46/), with
@@ -448,11 +448,11 @@ itself. The outputs, without the GC logs, are in
 
 | run | startup | uniform, 1 thread | timed max | threads 1 | 2 | 4 | longest of the thread phases | sampled readers blocked on a file |
 |---|---|---|---|---|---|---|---|---|
-| D G1, `4f7cd60` | 21.6 s | 1,040 | 2,760 ms | 1,314 | 4,014 | 7,181 | 71 ms | none |
-| D G1, `bf19075` | 169.6 s | 1,315 | 61 ms | 1,205 | 3,450 | 5,445 | 62 ms | 10.9% |
+| D G1, `f9e295d` | 21.6 s | 1,040 | 2,760 ms | 1,314 | 4,014 | 7,181 | 71 ms | none |
+| D G1, `c1f1f15` | 169.6 s | 1,315 | 61 ms | 1,205 | 3,450 | 5,445 | 62 ms | 10.9% |
 | D G1, 2026.1 | 180.3 s | 1,090 | 1,241 ms | 1,179 | 3,202 | 3,787 | 723 ms | 7.4% |
-| D ZGC, `4f7cd60` | 19.6 s | 1,287 | 74 ms | 1,253 | 3,922 | 6,515 | 64 ms | none |
-| D ZGC, `bf19075` | 193.2 s | 1,164 | 50 ms | 1,216 | 3,406 | 4,925 | 80 ms | 10.7% |
+| D ZGC, `f9e295d` | 19.6 s | 1,287 | 74 ms | 1,253 | 3,922 | 6,515 | 64 ms | none |
+| D ZGC, `c1f1f15` | 193.2 s | 1,164 | 50 ms | 1,216 | 3,406 | 4,925 | 80 ms | 10.7% |
 | D ZGC, 2026.1 | 184.9 s | 1,226 | 1,423 ms | 1,078 | 3,003 | 3,149 | 2,780 ms | 7.6% |
 
 The last column is the share of ScaleBench's samples (2 readers, 20 s)
@@ -463,36 +463,36 @@ also blocked on the pointer locks (6.1 and 6.6 percent) and the write lock
 * **No reader waits for another one.** Before 005-46 a read held the
   file's monitor during its device read (`DbFile.read`: `seek` and
   `readFully` on one `RandomAccessFile`), and the sampled readers were
-  blocked on it 10.7 and 10.9 percent of the time with `bf19075` (section
-  6: 10.2 and 11.4 percent at 3d). With `4f7cd60`, never. So it makes more
-  gets a second than `bf19075` with 2 threads (16 and 15 percent more,
+  blocked on it 10.7 and 10.9 percent of the time with `c1f1f15` (section
+  6: 10.2 and 11.4 percent at 3d). With `f9e295d`, never. So it makes more
+  gets a second than `c1f1f15` with 2 threads (16 and 15 percent more,
   G1 and ZGC) and with 4 (32 percent more under both). On one thread the
   device sets the pace: 1,040 to 1,315 gets a second for every jar, run to
   run.
-* **`4f7cd60`'s longest gets, 64 to 74 ms** (the 2,760 ms aside): under
+* **`f9e295d`'s longest gets, 64 to 74 ms** (the 2,760 ms aside): under
   ZGC no collector pause, allocation stall or safepoint over 5 ms; under G1
   the only safepoints over 5 ms are its young collections, 50 to 71 ms on
   the two CPUs, which some of the longest gets overlap. No eviction wait
-  over 10 ms, and batches of at most 3 and 4 ms (`bf19075` under G1: 54
+  over 10 ms, and batches of at most 3 and 4 ms (`c1f1f15` under G1: 54
   ms, with a collection in it). ScaleBench's get phases write nothing, so
   no force, new file or cut can be under a get. So they are the device's: a
   get from the device makes 1.2 to 1.9 reads of s1's virtual disk
   (ScaleBench's disk reads a get), and 004-02's baseline found single
   random 4 KiB reads there of up to 42 to 58 ms (p99.9 14 to 19 ms; its
-  `02-scale-tests/out/s1/c.txt`). `bf19075`'s longest are the same, 50 to
+  `02-scale-tests/out/s1/c.txt`). `c1f1f15`'s longest are the same, 50 to
   80 ms; 2026.1's sweeps add waits of 0.7 to 2.8 s.
-* **One get of 2,760 ms**, with `4f7cd60` under G1 in the one-thread
+* **One get of 2,760 ms**, with `f9e295d` under G1 in the one-thread
   timed pass (uptime 91.6 s), is section 6's 2,690 ms again (3d, G1, the
   same pass): one reader and no writer, no collection or safepoint in the
   GC log from 89.6 to 95.5 s, no eviction wait, steal 0.04 percent. With
   one reader and no writer nothing in BergDB holds a lock for that long,
-  and `bf19075`'s G1 run had no such get. So it is the device or the
+  and `c1f1f15`'s G1 run had no such get. So it is the device or the
   kernel: regime D keeps the run's memory cgroup at its limit of 900 MiB,
   where the kernel reclaimed about 56 times a second (`memory.events`,
-  read during `bf19075`'s ZGC run), so a read may wait for reclaim;
+  read during `c1f1f15`'s ZGC run), so a read may wait for reclaim;
   ScaleBench cannot tell the two apart.
-* **The cold startup** took 21.6 and 19.6 s with `4f7cd60`, 170 to 193 s
-  with `bf19075` and 2026.1 (section 6: 191 to 200 s): 005-57's rule 4
+* **The cold startup** took 21.6 and 19.6 s with `f9e295d`, 170 to 193 s
+  with `c1f1f15` and 2026.1 (section 6: 191 to 200 s): 005-57's rule 4
   without reads.
 * **The load** took 732 s, 13,662 puts a second (section 7: 767 s at 3d,
   2026.1 3,015 s).

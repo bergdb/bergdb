@@ -10,7 +10,7 @@ tests. Its first parts, the build, the tests, the gate and the rules
 below, are 012-04's.
 
 **Which Java.** C is a port of **Java release 2026.4** as released (the
-tag `release-2026.4`, `bb8da6dc`, 2026-11-10; record format 6; bergdb
+tag `release-2026.4`, `76f66f89`, 2026-11-10; record format 6; bergdb
 022-07), not of the Java of the day: it writes that release's bytes,
 opens its databases and refuses what it refuses, with Java's exception
 names and texts, and its API follows `Db`'s public methods there. Where
@@ -31,18 +31,18 @@ compile the harness (`CorruptSet.java` takes 2026.4's
 `CorruptStreamTester.Config`, with its keys), and C no longer reads their
 streams (record format 5). C is kept at one release at a time, and
 follows Java's releases, not its changes in between: this copy began at
-012's `be51a78`, the port of release 2026.2 (bergdb 015-02), which 012
+012's `e1ee402`, the port of release 2026.2 (bergdb 015-02), which 012
 keeps; 022-01 brought it to release 2026.3 (the tag `release-2026.3`,
-`929fa33`, 2026-11-06), whose port, gated against 2026.3, is `c/` as of
-`main`'s `b49606b` (2026-11-09 12:53; `int.git`'s branch `022`,
+`9a0bf5e`, 2026-11-06), whose port, gated against 2026.3, is `c/` as of
+`main`'s `142dabc` (2026-11-09 12:53; `int.git`'s branch `022`,
 `342dcb2`); 022-02 brought it to 2026.4's release candidate, `main` at
-`03ce6ec` (2026-11-09 18:42; record format 5; `int.git`'s branch
+`d00096e` (2026-11-09 18:42; record format 5; `int.git`'s branch
 `2026.4`, `8772b93`), through five pins of `main` (022-02's log, 022-04);
 and 022-07 to the release, after 023 changed the delete path before it
 (the upward unlink at a delete, the empty key first, root collapse and the
 take-back, the sort of a transaction's keys after their transformations,
 record format 6; `src/dag.h`). Until 2026-11-05 C followed `main` as of
-2026-10-29 (`ae4aaf9`), then release 2026.2 until 2026-11-09.
+2026-10-29 (`165efea`), then release 2026.2 until 2026-11-09.
 
 
 # 1. Build and test
@@ -779,7 +779,7 @@ and 022-04 those of the port to 2026.4. Raw output goes to
   the node with `Object.toString`'s identity hash. `quick` (65 copies) is
   in the gate; the whole set (`SEEDS=`, 1 by default, testSample's copies:
   6,253, 2 to 5 minutes under load) by hand. `CONTROL=REV` is the negative
-  control: C at REV (`86dade8`, the port of 2026.2) must differ in every
+  control: C at REV (`d1c5bfe`, the port of 2026.2) must differ in every
   case's base.
 * `test/stress/power.sh`: **power loss**. `bergdb-power` (`power.c`, the
   test build) is `tools/run.c` under a model of the disk behind the test

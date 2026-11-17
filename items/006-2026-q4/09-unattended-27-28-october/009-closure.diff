@@ -68,7 +68,7 @@ index 1fe74c3..bd5d1e3 100644
 +to follow "when 01 approved"; his decisions are in section 8. The work ran
 +from 2026-10-25 to 2026-10-27 ([009-02](02-implementation-plan.md),
 +section 9; [009-03](03-measurements.md)), and Frans merged the branch on
-+2026-10-26 (`178a0d4`). Section 1, "Where the targets stand", says what
++2026-10-26 (`98981f8`). Section 1, "Where the targets stand", says what
 +each target came to.
  
  
@@ -105,7 +105,7 @@ index 1fe74c3..bd5d1e3 100644
 +   and `tp_handles`, with no warnings and no `sorry` (009's log,
 +   2026-10-26).
 +7. [TBD, 006-09's `perf-ab.sh`: met.] The gates at every step and on the
-+   merged tree (`night.sh`: NIGHT OK on `a04a418`). `performance.sh ab`
++   merged tree (`night.sh`: NIGHT OK on `f4e93d8`). `performance.sh ab`
 +   against 2026.1, quick suite, on 2026-10-26: gets on one thread 3 to 9
 +   percent fewer, from 4 threads 19 percent more; again in 006-09's quiet
 +   block, on `main`: [TBD].
@@ -133,7 +133,7 @@ index 3d51f58..d0112a5 100644
  # 0. Where the targets stand
  
 -Targets 2 to 4 of 009-01, section 1, against 2026.1 in turns, with the
--branch at step 3d (`66c8f3a`), as of 2026-10-26, 00:30:
+-branch at step 3d (`15125d8`), as of 2026-10-26, 00:30:
 -
 -* **Target 2, pauses (about 20 ms with ZGC or generational Shenandoah).**
 -  Met with ZGC on F53: in 004-02's run from the OS cache at 10M keys and
@@ -148,9 +148,9 @@ index 3d51f58..d0112a5 100644
 -  not eviction). Not yet run: P4's soak, and ScaleBench with Shenandoah
 -  (planned for F53 after 05:00, section 8).
 +Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
-+005-46, against 2026.1 and against `bf19075` (005-50, the commit before
++005-46, against 2026.1 and against `c1f1f15` (005-50, the commit before
 +005-46), in turns. Until 2026-10-27 this section gave the branch at step
-+3d (`66c8f3a`), as of 2026-10-26, 00:30; those runs are in sections 4 to
++3d (`15125d8`), as of 2026-10-26, 00:30; those runs are in sections 4 to
 +7.
 +
 +* **Target 2, pauses: about 20 ms of BergDB's own code; the collector's
@@ -192,8 +192,8 @@ index 3d51f58..d0112a5 100644
    the same on one thread and 32 to 53 percent more with 4 (target: no
 -  difference beyond the noise).
 +  difference beyond the noise); all at step 3d. Since 005-46, from s1's
-+  device 15 to 32 percent more than `bf19075` with 2 and 4 threads
-+  (section 9). Props (CORE) and ScaleBench C against `bf19075` on F53:
++  device 15 to 32 percent more than `c1f1f15` with 2 and 4 threads
++  (section 9). Props (CORE) and ScaleBench C against `c1f1f15` on F53:
 +  [TBD, W1.4]. `performance.sh ab` against 2026.1, quick suite: on
 +  2026-10-26 gets on one thread 3 to 9 percent fewer, from 4 threads 19
 +  percent more; in 006-09's quiet block [TBD].
@@ -251,7 +251,7 @@ index 3d51f58..d0112a5 100644
 +
 +* P4's soak under ZGC (W1.3): are the cuts still the slowest commits and
 +  reads? [TBD]
-+* Props (CORE) and ScaleBench from the OS cache (C), against `bf19075` in
++* Props (CORE) and ScaleBench from the OS cache (C), against `c1f1f15` in
 +  turns (W1.4): no fewer reads a second. [TBD]
 +* `performance.sh ab` against 2026.1, the quick suite (009-01's done item
 +  7). [TBD]

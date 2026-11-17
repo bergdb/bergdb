@@ -1,6 +1,6 @@
 #!/bin/sh
 # 024-21, section 8: 024-11's probe shapes with 024-14's THR (mgj/probe/thr, with BU1's check),
-# the branch's frozen build b1 against main's build at 1076235c (mainwt). Two JVMs at a time:
+# the branch's frozen build b1 against main's build at 2105baa7 (mainwt). Two JVMs at a time:
 # a job on the branch and the same on main. Counts only. Usage: numbers.sh OUTDIR N...
 M=/Users/f/fl/bench/2026-11-11/mgj
 O=$1; shift

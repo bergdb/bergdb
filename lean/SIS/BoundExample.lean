@@ -36,7 +36,7 @@ def bytes2 (R : Record Val Tr2) : Nat :=
   32 + (if R.trans.isSome then 16 else 0) + 8 * R.gd.length + (R.vers.map vbytes).sum
 
 /-- A sketch of BergDB's take before bergdb 007-07 (`TransSeq.take` until
-`f89846d`), for these checks: from s(i-1) + 1 on, take whole transactions
+`b8ac8a1`), for these checks: from s(i-1) + 1 on, take whole transactions
 while they begin at least d before the end of the stream, and fewer than two
 have been taken or their got-dirty ids are fewer than `lim`. Java's limit was
 4 per value of the transaction and 1 per KB; Java's limit on the size of a
@@ -288,7 +288,7 @@ def takeCase (c : Nat) : Nat :=
 /-- `TakeCheck 300`'s output, JDK 27, on 2026-11-12 with the cap of the
 share's factor at 2 (bergdb 024-31), which changed 56 of the 300, each to
 fewer transactions, all with a span over twice the setting. Before it: on
-2026-10-28 with the double rule (`f89846d`), and the same on 2026-11-11 with
+2026-10-28 with the double rule (`b8ac8a1`), and the same on 2026-11-11 with
 the integer take of release 2026.4 (bergdb 024-09). -/
 def javaTakes : List Nat :=
   [0, 2, 1, 0, 3, 5, 1, 3, 2, 6, 4, 0, 0, 5, 1, 0, 9, 2, 0, 0, 1, 5, 2, 1, 1, 2, 0, 2,

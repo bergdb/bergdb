@@ -1,4 +1,4 @@
-2026-10-21, F53, tools/GarbageTail.java on fdee608: 1000 transactions, close, then the bytes
+2026-10-21, F53, tools/GarbageTail.java on 82aa58e: 1000 transactions, close, then the bytes
 that the faulty flush of 0 bytes appends (the ring buffer from the consumer's position to its
 end, zeros here, then from its start), and a restart.
 

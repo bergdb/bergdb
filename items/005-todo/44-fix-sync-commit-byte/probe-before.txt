@@ -1,4 +1,4 @@
-bergdb 005-44: probe.sh 10 on 7306a4a, before the fix (2026-10-25, F53).
+bergdb 005-44: probe.sh 10 on cdb7861, before the fix (2026-10-25, F53).
 
 run 0: record of 184 bytes, its last byte at 847; sync() returned with the durable length 847; after a crash then: /k = v2, the transaction lost
 run 1: record of 184 bytes, its last byte at 847; sync() returned with the durable length 847; after a crash then: /k = v2, the transaction lost

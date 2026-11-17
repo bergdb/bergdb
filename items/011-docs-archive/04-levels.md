@@ -414,7 +414,7 @@ segment root that a transaction makes and splits in place
 
 The startup bug M18, found 2026-10-15 (transactions that change nothing
 could move the startup pos past every top node version, and the database
-then could not start), is fixed by topPos (above, bergdb `01f386a`).
+then could not start), is fixed by topPos (above, bergdb `52d64a0`).
 
 Open:
 

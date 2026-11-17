@@ -22,8 +22,8 @@ to 012-16 (section 7). On 2026-10-28 Frans took the decisions of section
 (section 4.4) and memory (section 4.5). The implementation starts when he
 says so, in a new Claude Code session that conducts it (D7, section 9.1).
 Reviewed on 2026-10-28 at 13:34, with the task plans, against Java's `main`
-at `f589ba3`: after the paced take (`f89846d`) and 005-53 and 005-52
-(`fd8f513`).
+at `e5dd2fd`: after the paced take (`b8ac8a1`) and 005-53 and 005-52
+(`decc677`).
 
 **The conductor's prompt**, which starts the work (section 9.1):
 
@@ -60,7 +60,7 @@ Done when:
    in C, in Java, and in turns between them, and after a crash at any
    position. With reclaim, from the cut that reclaim decided (section 3.2,
    point 8).
-4. **The API.** Each of `Db`'s 45 public methods (since `fd8f513`) has
+4. **The API.** Each of `Db`'s 45 public methods (since `decc677`) has
    its C function, or is
    left out for a reason written in 012-03. A C version of 006-08's
    `CoreDemo` runs.
@@ -169,7 +169,7 @@ findings:
    stored in the stream. Java checks this for its own runs:
    `RestartInvariance` byte for byte across restarts, `StreamDigest` across
    builds and JVM runs (its 36 digests identical in today's commits, such
-   as `a175840`), `EvictionInvariance` across eviction schedules,
+   as `4085e2e`), `EvictionInvariance` across eviction schedules,
    `CoreSame` across two builds. Nothing in the format is Java's own: no
    Java serialization, no object hashes, no class names. A faithful port of
    the writer can write the same bytes.
@@ -191,7 +191,7 @@ findings:
    entry by entry, and `Dag.dirtyNodeBound` adds up a bound. 012-02 audits
    the rest of the writer, startup and reclaim the same way.
 4. **Floating point.** Reclaim computes `(long) (0.25 * retainDuration)`
-   and `(long) (internalFraction * growth)`. Since `f89846d` (below,
+   and `(long) (internalFraction * growth)`. Since `b8ac8a1` (below,
    point 9) the take decides with doubles too: a record's share of D, a
    chain of products and quotients of longs, and a dither in [0, 1) from
    the stream length, SplitMix64's finalizer (`TransSeq.take`,
@@ -206,7 +206,7 @@ findings:
    (`/#i/dreclaim/-table.txt`), a `StringMap` text of decimal numbers,
    `true`, `false` and `null`. `setStartupDistance` writes a dummy
    transaction of 200,000 zero bytes under `/#i/-dummy`, or nothing when
-   the clamped value is the one in force (005-53, `fd8f513`). C must write
+   the clamped value is the one in force (005-53, `decc677`). C must write
    the same text and the same dummy, in the same cases.
 7. **The 2015 text is out of date in places.** `MetaBlock`'s own comment
    says the valid block's last byte is 1; the code writes 10. The code
@@ -218,11 +218,11 @@ findings:
    `StreamDigest` does, the comparison with reclaim is of the files and
    bytes from the decided cut; without reclaim, of all files and bytes.
 9. **Java moves.** 005-50 put the node size in the meta block on
-   2026-10-27 (`bf19075`); both Java and C refuse databases from before
+   2026-10-27 (`c1f1f15`); both Java and C refuse databases from before
    it. On 2026-10-28 007-03's step 3, the paced take with its deadline,
-   came into `main` (`f89846d`, 007-07): the same format, but every
+   came into `main` (`b8ac8a1`, 007-07): the same format, but every
    stream changed (`StreamDigest`, 36 of 36). The C clone ports the take
-   as it is now. The same day 005-53 and 005-52 came in (`fd8f513`):
+   as it is now. The same day 005-53 and 005-52 came in (`decc677`):
    `setStartupDistance` writes nothing for the value in force, and `Db`
    has a setter and a getter of the cache size, 45 public methods in all;
    `StreamDigest`'s digests did not change. So the C clone follows Java's
@@ -441,7 +441,7 @@ numbers in BergDB's units (100 ns since 1970, as in Java), positions are
 64-bit stream positions, keys are byte strings (bkeys; the conversion to
 segments is BergDB's, `Keys.toSegments`), and every function returns a
 status code. The design, with the types and the error codes, is 012-03.
-The mapping from `Db`'s 45 public methods (at `f589ba3`; 012-03 counts
+The mapping from `Db`'s 45 public methods (at `e5dd2fd`; 012-03 counts
 them again at its start):
 
 | `Db` (Java) | C | Note |

@@ -1,6 +1,6 @@
 # 023-08 Review B of 023-07
 
-Written 2026-11-10, 14:50 to 15:36, from a clone at `main`'s `e45fd4c1`
+Written 2026-11-10, 14:50 to 15:36, from a clone at `main`'s `53c394b4`
 with the prototype branches. What was done: 023-07 read in full against
 023-01 to 023-06 and the reports P4 to P8; the code read on the heads
 023-07 names (`git show` of the branches, nothing checked out); one test

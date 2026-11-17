@@ -41,7 +41,7 @@ Log
 by its agent p15 (clone `clone-p15`).
 
 2026-11-09. Fixed by p15: commit 39db0a8 in `clone-p15`, on main's
-a593b17 (first made as f43afa1 on 3beeb7e), to land.
+7e89eaa (first made as f43afa1 on ea1fa31), to land.
 
 * Confirmed: the third copy of `testFound021_12` was refused with "Bad
   spos of pointer 0 of node K/44 22807:36536 L" and the node's 23 klongs
@@ -90,7 +90,7 @@ a593b17 (first made as f43afa1 on 3beeb7e), to land.
   `DbStarter.testCheckStreamPointersOfKeyNode` checks its text.
 * `releases/next.md`, Core API, a line.
 
-Runs, under the gate lock (2026-11-09): on 39db0a8 (main's a593b17 with
+Runs, under the gate lock (2026-11-09): on 39db0a8 (main's 7e89eaa with
 the fix), `BEFORE COMMIT OK (181 s)` (unit 1549, f 86, demos) and
-`java/stress/level1.sh`: `LEVEL 1 OK`; on f43afa1 (3beeb7e with the fix)
+`java/stress/level1.sh`: `LEVEL 1 OK`; on f43afa1 (ea1fa31 with the fix)
 the same, 201 s.

@@ -60,32 +60,32 @@ Frans's words:
 
 ## 4. Progress
 
-* 08:28 006-28 and this plan created (bb255d4b); W1 started.
+* 08:28 006-28 and this plan created (7e188024); W1 started.
 * 08:39 and 08:43 the agent stopped on API 529 (Fable overloaded); resumed 08:40 and 08:54.
 * 09:07 006-28 done (816 lines; the counts in 28-simpler-algorithms/): top three NW (a writer that computes the net change; a one-day spike in the model before SF10), RT (Rule A with times; measure S1 first), OT (one tree, after `l4`); scan removal: no. Six questions for Frans, section 7.
-* 10:11 006-28's section 7 (Frans's Q1 to Q4: MT, maintenance transactions) committed 1bdda15e.
-* 10:26 2026.6's theme: simpler algorithms (d93d9d7a).
+* 10:11 006-28's section 7 (Frans's Q1 to Q4: MT, maintenance transactions) committed 977cd68e.
+* 10:26 2026.6's theme: simpler algorithms (bf8e2d92).
 * 10:29 Frans's answers to 006-28's questions 7 to 9 recorded in 006-28, section 8; the provers (`l4`, `htbL`) wait for MT's trial.
-* 10:32 028-15 registered (a9001d7e).
+* 10:32 028-15 registered (afe20bcb).
 * 10:47 026-17 registered; agent mtplan started (Fable at high).
 * 11:02 agents t14 (028-14) and t07 (028-07) started (Opus at high).
 * 11:04 026-17's plan written: T0 to T8, about 12.5 agent-hours, 7 to 9 h on the clock, 5 to 10 % of a week; not before the reset; eight questions for Frans (section 11).
-* 11:14 028-07 landed (c925c11e); 028-16 registered (d8da4a35).
+* 11:14 028-07 landed (6695d48c); 028-16 registered (00a3a29b).
 * 11:18 MT's trial: T0 done; agents A (T1) and B (T2) started.
-* 11:32 028-14 landed (b47eae04), the combined tree gated with 028-07 (BEFORE COMMIT OK).
+* 11:32 028-14 landed (105be197), the combined tree gated with 028-07 (BEFORE COMMIT OK).
 * 12:34 MT's trial: T4 (12:05), T7 (12:12), T5 and T6 (12:34) done; all runs pass; the scan finding A1 walked through with Frans (12:32).
 * 13:12 026-18 written down: main transactions and subtransactions, Frans's idea (12:54); a short proof trial proposed, maybe tonight after 22:00.
 * 13:36 MT's trial done (T8): MT passes every check in the model, with one rule added (A1) for Frans; result in 026-17, evidence in 17-mt-trial/, branch 026-17-mt-trial kept.
-* 13:40 026-17 committed (c03296e3), news.md entry.
+* 13:40 026-17 committed (94aa6772), news.md entry.
 * 14:13 026-19's plan written: statements I and I_sub, the fix step's and the readers' theorems, about 14 prover-hours, one night from 22:05 on Frans's go.
-* 14:32 030-proofs made (96918d92): the map of all proof work; Frans: both proof lines tonight.
-* 19:58 night.sh: NIGHT OK (166 minutes) on 5b8f337b, all steps.
+* 14:32 030-proofs made (9789291c): the map of all proof work; Frans: both proof lines tonight.
+* 19:58 night.sh: NIGHT OK (166 minutes) on f278cd57, all steps.
 * 20:18 to 20:43 the preparation for the public release (three agents; details outside this repository).
 * 22:03 the night started: the week reset to 0 %; six agents: PT-A and PT-B (026-19), htbl (`htbL`), l4plan (030-01), d3plan (030-02), all Opus at xhigh; t16 (028-16), Opus at high.
-* 22:10 028-16 landed (4197d95e): a refused second start of one Db closes nothing; BEFORE COMMIT OK, LEVEL 1 OK.
-* 22:26 030-01, `l4`'s plan, written and committed (6f0add3a): route B, additions only, no statement change; prover l4 started on its steps 1, 0 and 2.
-* 22:31 `l4`'s step 1 landed (d10be66a): `invGetScanOK_merges_l4L` from hp, hth, htbL and l4L. 030-02, the bridges' plan, written and committed (54d2d7be): TP14 and TP19 false as stated at the top node ordinal bound, by reading; no D3 prover tonight (not agreed; Frans's question 1 first).
-* 23:12 `l4`'s steps 0 and 2 landed (66143c55, 26571c02): the run check, 0 failures in 15 families; the hole's form; the pilot. Steps 3 to 6 split over two provers, l4a (3, 4) and l4b (5, 6), Opus at xhigh.
+* 22:10 028-16 landed (ccd384ac): a refused second start of one Db closes nothing; BEFORE COMMIT OK, LEVEL 1 OK.
+* 22:26 030-01, `l4`'s plan, written and committed (7d1c65fb): route B, additions only, no statement change; prover l4 started on its steps 1, 0 and 2.
+* 22:31 `l4`'s step 1 landed (703d8282): `invGetScanOK_merges_l4L` from hp, hth, htbL and l4L. 030-02, the bridges' plan, written and committed (a6dc3c43): TP14 and TP19 false as stated at the top node ordinal bound, by reading; no D3 prover tonight (not agreed; Frans's question 1 first).
+* 23:12 `l4`'s steps 0 and 2 landed (cdc20d8e, 480d6997): the run check, 0 failures in 15 families; the hole's form; the pilot. Steps 3 to 6 split over two provers, l4a (3, 4) and l4b (5, 6), Opus at xhigh.
 
 
 ## 5. The night of 16 to 17 November
@@ -164,7 +164,7 @@ passes every check, one rule added, A1); Frans's idea of main
 transactions and subtransactions written down (026-18); the proof
 trial's plan (026-19); the map of all proof work (030); 028-07, 028-14
 and 028-16 fixed and landed; 028-15 registered (the startup distance in
-an internal KV, for 2026.6); `night.sh` OK on 5b8f337b; the preparation
+an internal KV, for 2026.6); `night.sh` OK on f278cd57; the preparation
 for the public release (details outside this repository, 029).
 
 **The night (22:03 to 04:16)**, 13 Opus agents, about 60 landings on

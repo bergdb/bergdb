@@ -7,7 +7,7 @@ randomized harnesses of the Pub layer against their references, run long
 on the VPS s1, with many seeds and larger sizes than the night's runs;
 their blind spots read and the cheap ones closed. Done by coord-1109's
 agent in the clone `/Users/f/fl/bench/2026-11-09/clone-s17` (from `main`
-at `a9e5488`); nothing of it is on `main` yet.
+at `f8046f3`); nothing of it is on `main` yet.
 
 
 ## 1. The request
@@ -76,7 +76,7 @@ one does, decided before each job, as 020-15 and 020-16 also run there.
 
 | Run   | Jar                               | Seeds from | Started | Ended                     |
 |---|---|---|---|---|
-| soak1 | `a9e5488`                         | 1709000    | 09:31   | 09:42, for H3-O1, H3-O2   |
+| soak1 | `f8046f3`                         | 1709000    | 09:31   | 09:42, for H3-O1, H3-O2   |
 | soak2 | `2d2fe01`                         | 1709100    | 09:47   | 10:05, for the options    |
 | soak3 | wip1: `6177a43` but B7, B9        | 1709200    | 10:05   | 10:13, for wip2           |
 | soak4 | wip2: `51d792d` but B16           | 1709300    | 10:13   | 10:29, for `51d792d`      |
@@ -160,7 +160,7 @@ a property for long runs.
 
 ## 5. The blind spots of the harnesses
 
-Read from the code at `a9e5488`. "Added" means in the clone: B1 to B7,
+Read from the code at `f8046f3`. "Added" means in the clone: B1 to B7,
 B9, B12 and B13 in `6177a43`; B8, B10, B14 and B16 in `51d792d`; B17 in
 `ed7ff00`; all in soak6. The defaults of the unit and night tests are
 unchanged (the same seeds give the same operations); WIDE, KEYS, DIR,
@@ -357,7 +357,7 @@ soak6 ended at 18:00 on 9 November, after 72 rounds, on a jar of
 
 Nobody read it that evening. coord-1109's agent triaged it on 10
 November, 06:11 to 06:27, with reruns of the seeds on the candidate
-`03ce6ec` on F53 (files in `/Users/f/fl/bench/2026-11-10/soak-triage/`).
+`d00096e` on F53 (files in `/Users/f/fl/bench/2026-11-10/soak-triage/`).
 None is a fault of BergDB that returns wrong data; none blocks 2026.4.
 
 * **H2-O5, harness (6 FAILs: jobs 96, 111, 156, 211, 231, 336).** "The
@@ -403,7 +403,7 @@ Left: B9's `String`; B18 and B19 (medium); H3's single index
 and definitions (a harness of its own size, not cheap); the fixes of
 section 6.1 (H2-O5, H3-O5, H2-O6 in `harness-soak.sh`).
 
-The clone's commits, all on top of `a9e5488`, none on `main`; each with
+The clone's commits, all on top of `f8046f3`, none on `main`; each with
 BEFORE COMMIT OK under the gate's lock but the two without Java:
 
 | Commit    | What                                                    |

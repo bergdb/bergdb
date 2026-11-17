@@ -36,7 +36,7 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 022's U2-1 and taken by its
-agent h31 (clone `clone-h31`, on main's b3a6b05).
+agent h31 (clone `clone-h31`, on main's ef5b52f).
 
 2026-11-09. Done by h31: commit "021-26" in `clone-h31`, to land.
 
@@ -45,7 +45,7 @@ agent h31 (clone `clone-h31`, on main's b3a6b05).
   of range, the clock back at 2000, a put. Before the fix the last put
   threw the `DbException` above, as in C; with the test's checks of
   `currentTime()` first, "Expected 1001, got 72057594037926911".
-* Why it happened. 020-23's Z1 (6ac9708, today) made `lastReadTime` never
+* Why it happened. 020-23's Z1 (7ad5019, today) made `lastReadTime` never
   decrease and capped the clock's time at `LAST_USER_TIME`, so that the
   times kept for reclaim stay its own. But `currentTime()`'s promise is
   that every later transaction's time is after the time it gives: a
@@ -72,7 +72,7 @@ agent h31 (clone `clone-h31`, on main's b3a6b05).
   `LAST_USER_TIME` with the clock there; its internal transactions still
   take the whole margin.
 * For 022: C's `dbclock_current_time` has the same cap (ported from Z1
-  in 62345d3), and `bergdb.h`'s comment of `bergdb_current_time` ("at
+  in 5cb2807), and `bergdb.h`'s comment of `bergdb_current_time` ("at
   most BERGDB_MAX_TIME - 1024") follows this change.
 * `releases/next.md`, Pub API.
 

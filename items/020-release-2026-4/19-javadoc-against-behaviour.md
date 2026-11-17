@@ -24,7 +24,7 @@ Database, Kv), then the rest.
 ## 2. The method
 
 * The work is in the clone `/Users/f/fl/bench/2026-11-09/clone-j19`, from `main` at
-  `a9e5488`. The other hunts' findings were not read.
+  `f8046f3`. The other hunts' findings were not read.
 * Each Javadoc text was read sentence by sentence, with the implementation behind it
   (`bergdb.pubimp`), and each promise written down (section 3) with the test that shows it:
   an existing tester's, found by name and doc comment, or a new one.
@@ -296,7 +296,7 @@ program), low (a wrong or missing sentence or message, no wrong data).
 
 * **F1** (low). `JobStatus.note()` of a build that ended because its index was deleted
   said "The next start takes it again", which is false: the index is gone
-  (`IndexBuilderImp.java`, `Status.note()`, line 282 at `a9e5488`); `JobStatus.State.FAILED`'s
+  (`IndexBuilderImp.java`, `Status.note()`, line 282 at `f8046f3`); `JobStatus.State.FAILED`'s
   Javadoc said the same of every failure (`JobStatus.java`, line 21). Test:
   `PubTesterIndexJobs.testNoteOfADeletedBuild`, which failed before the fix. Fix: commit
   `dbd6630` in the clone.
@@ -402,7 +402,7 @@ Small things seen on the way, below the bar of a fix in this hunt:
 Done: every public method of the priority classes has its promises checked (section 3);
 one code fault fixed (F1), eight Javadoc faults fixed (J1 to J8), 45 tests added, two
 questions for Frans (Q1, Q2), notes in section 6. The commits are in the clone
-`/Users/f/fl/bench/2026-11-09/clone-j19`, on `main` after `a9e5488`; the coordinator takes
+`/Users/f/fl/bench/2026-11-09/clone-j19`, on `main` after `f8046f3`; the coordinator takes
 them to the main tree.
 
 Gate: `java/before-commit.sh` on `a28687c` (F1, J1 to J6, J8 and their tests): BEFORE

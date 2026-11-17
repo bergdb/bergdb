@@ -1,7 +1,7 @@
 # 024-23. Dead klongs: option 2, theta 7
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `08659847`. QO2 decided (024-19, Q4); QO1 and QO3 as built,
+`main` since `0cb7eff7`. QO2 decided (024-19, Q4); QO1 and QO3 as built,
 not marked answered.
 
 Option 2 of 024-18 (compaction at the write) built as a change of its
@@ -40,11 +40,11 @@ Kept current; section 9 has the exact state. Written 18:16.
   record field: one more rule of format 7. `dirtyNodeBound` counts one
   overflow for a node its klongs can take above theta; 024-16's and
   024-17's bounds do not change.
-* **Model first**: Lean (`aabafc04`): `Params.theta`, `deadOver` in every
+* **Model first**: Lean (`ec3855f6`): `Params.theta`, `deadOver` in every
   write, TP39 and TP40 stated (the local form and theta's values
   proved), treecheck reads theta from a 9-token TREE line, treetest's
   `thetas` set: 205,008 states, 0 failures (5.1). Then Java
-  (`1838b687`): `Dag.theta`, `deadCount`, `deadFull` in every write path,
+  (`b737d772`): `Dag.theta`, `deadCount`, `deadFull` in every write path,
   the count in `dirtyNodeBound`, TP39 in `checkFill` (so UnlinkFuzz's
   strict walk), the TREE line, new tests, docs.
 * **Java equals the model** (5.2): treeconf small, drain, reclaim and
@@ -58,7 +58,7 @@ Kept current; section 9 has the exact state. Written 18:16.
 * **Reviewed** (rev23, 4.2): land with fixes; R1 (a test of mine made
   vacuous) fixed, R3 and R4 done, R2 for the landing message, R5 to R7
   notes.
-* **Gated** (6), head **`e0fb9d77`**: lake build, no sorry or axiom,
+* **Gated** (6), head **`335a3c40`**: lake build, no sorry or axiom,
   test-traces, before-commit, level1 to level4 full, unlinkfuzz,
   conformance small, medium, reclaim, evict and drain: all OK.
 * **At 1M keys** (7): 0.29 to 0.31 dead klongs a live one (the merges
@@ -69,7 +69,7 @@ Kept current; section 9 has the exact state. Written 18:16.
 ## 2. Design note
 
 Written 16:01 to 16:12, from 024-18 (sections 2, 4 and 6), the merges'
-code on `024-13-int-m` (`a78aa498`: `Dag`, `KeyNode`; `Exec.lean`,
+code on `024-13-int-m` (`0520b8c5`: `Dag`, `KeyNode`; `Exec.lean`,
 `Node.lean`, `Bound.lean`) and 024-17, section 5.2.
 
 ### 2.1 Dead klongs, counted
@@ -244,7 +244,7 @@ TP23) counts for each node walked its overflows: 1 + (k + 1 - room - 1)
 
 ## 3. Lean
 
-Commit `aabafc04` on `024-23-option2` (on `024-13-int-m`'s `2679622e`),
+Commit `ec3855f6` on `024-23-option2` (on `024-13-int-m`'s `f3f2ac05`),
 Lean only, before any Java (024-04, section 6).
 
 * **The parameter.** `Params.theta` (0, off, the default: 2026.4's and
@@ -294,7 +294,7 @@ Lean only, before any Java (024-04, section 6).
 
 ## 4. Java
 
-Commit `1838b687`, after the model (section 3); 024-18's prototype
+Commit `b737d772`, after the model (section 3); 024-18's prototype
 (`5e0ab160`, `d64aab58`) ported by hand, not by its patch script, to the
 rule of 2.2.
 
@@ -350,11 +350,11 @@ Each its own commit, for Frans's approval. Option 2 changes the stream
 of every workload that overwrites (at node size 30 from the 8th dead
 klong of a node, at 8 from the 2nd), so tests that pin bytes or shapes
 of a stream moved, as with the merges (024-21, 5.4). Found by
-`before-commit.sh` on `e633004f` (8 failures, 17:04); each change
+`before-commit.sh` on `c680f050` (8 failures, 17:04); each change
 checked by a probe in `o2/probe2/src` against the new build and 024-21's
 frozen merges build (`mgj/b2`), so that the same case is pinned again:
 
-* **`1d38e6f4`, CorruptStreamTester** (four tests; the probes CstRows,
+* **`5efdb3e6`, CorruptStreamTester** (four tests; the probes CstRows,
   CstOne, CstLeaf, CstFlip, CstPtr, Cst11 and 024-21's CstFind, NodeMap,
   NodePtrs): testFound019_32's rows 1, 2 and 8 at their records' new
   places, each with the same refusal (`Bad klong type, 2`, `Bad key of
@@ -371,29 +371,29 @@ frozen merges build (`mgj/b2`), so that the same case is pinned again:
   208 of the record at 26632, and its three refusal texts.
   testFoundDescentCycle in seed 20828, the record at 39248, prevPos
   15800 (CstFind's search, seeds 20767 to 20830).
-* **`c8a59666`, DbTester.testDecreaseOfStartupDistance** (replaces
-  `c6655215`, after the review's R1): the decrease to 450 kB (was 500
+* **`d76d24ab`, DbTester.testDecreaseOfStartupDistance** (replaces
+  `fafe003f`, after the review's R1): the decrease to 450 kB (was 500
   kB), "no jump" counted from the stream's end before the call, as
   before. Probed: at 500 kB the paced take of the call moved the startup
   pos to 3,517,520, past the one transaction that was 1,281 bytes inside
   the point (3,511,608 < 3,512,889); with the merges alone it stopped 4.3
-  kB before its transaction. `c6655215` counted from the end after the
+  kB before its transaction. `fafe003f` counted from the end after the
   call instead, which the review (rev23, R1) showed holds with a planted
   jump too, as the call's own record is about 250 kB: wrong of mine. At
   450 kB the test passes, a planted jump fails it, and the span shrinks
   for 7 commits (rev23's check).
-* **`214d4635`, Eviction.testLoweredBudgetAfterPinsFell**: 520
+* **`2aa3902f`, Eviction.testLoweredBudgetAfterPinsFell**: 520
   transactions (was 500). After 500 the test's own evictions down to P0
   left nothing detachable above the pins (P1 3,183 = resident 3,183, P0
   3,442), so the state it tests (resident between the budget and P0) was
   not reached; probed at 400 to 600, 520 reaches it (P1 3,151, resident
   3,981, P0 4,013). Fragile before too (it depends on where the hand's
   evictions stop).
-* **`7103d741`, EvictionReaderTester.testEvictionKeepsTheRecords**: 40
+* **`ceebca4e`, EvictionReaderTester.testEvictionKeepsTheRecords**: 40
   keys (was 30). The space root at node size 8 is compacted to 2 live
   klongs, so the walk of the top node's and the root's pointers found 1
   clean index node, not the 3 it asks; with 40 keys 6.
-* **`1f9fdb64`, DagTester.testPointerCreationListener** (an f-test,
+* **`d9795adf`, DagTester.testPointerCreationListener** (an f-test,
   found by the second run of `before-commit.sh`, 17:14): the key access
   path is cleared after each put, as Db does. The test never cleared it,
   so it grew over its 10,000 puts; its space root, a segment leaf with
@@ -407,16 +407,16 @@ frozen merges build (`mgj/b2`), so that the same case is pinned again:
 ### 4.2 The review (rev23)
 
 The review in this item's directory, `review.md` (rev23, 17:18 to 17:45, on
-`1f9fdb64`): **land with fixes**; no defect in the rule; planted faults
+`d9795adf`): **land with fixes**; no defect in the rule; planted faults
 in three of the four counting paths, the restart's determinism and
 `dirtyNodeBound`'s term are caught by Java's own tests. Done on top
 (no history rewritten, the gates running):
 
-* **R1** (should fix): `c8a59666` (4.1).
-* **R3**: `e3732d24`, a comment at `emptyKeyNext`'s test: not reached at
+* **R1** (should fix): `d76d24ab` (4.1).
+* **R3**: `b36b51cf`, a comment at `emptyKeyNext`'s test: not reached at
   format 7 from node size 8; the model runs it (treetest, theta forced
   below 8).
-* **R4**: `e3732d24`: docs/levels.md and Dag's comment say that
+* **R4**: `b36b51cf`: docs/levels.md and Dag's comment say that
   reclaim's rewrites compact the cold leaves that they take above theta
   (not every leaf they reach); releases/next.md says its figures are
   024-18's prototype's until section 7's.
@@ -441,7 +441,7 @@ in three of the four counting paths, the restart's determinism and
 
 ### 5.1 treetest (the model alone)
 
-`treetest thetas` (section 3) on `aabafc04`, one core, 16:01 to 16:48
+`treetest thetas` (section 3) on `ec3855f6`, one core, 16:01 to 16:48
 (29 minutes of CPU): after every transaction the invariants' walk with
 DeadOK (TP39), V1, BU1's count, CB1, CB3, A6, TP23 with the count of 2.6
 and TP26; gets at every time and scans; TP19 up to depth 4; the model
@@ -472,7 +472,7 @@ klongs in parents).
 
 ### 5.2 treeconf: Java with option 2 against the model
 
-`java/stress/treeconf.sh` on `1838b687`'s build (the TREE line with
+`java/stress/treeconf.sh` on `b737d772`'s build (the TREE line with
 theta, so treecheck runs the model with Java's theta): the model gives
 Java's change, klongs and records exactly (C-T1 to C-T9), its invariants
 hold on Java's tree after every transaction (TP39 among them), C-T8's
@@ -511,7 +511,7 @@ In a copy of the model (`o2/plant/lean`), each fault alone, treetest:
 
 ## 6. Gates
 
-On `1f9fdb64` (`e633004f` with section 4.1's five test commits), each
+On `d9795adf` (`c680f050` with section 4.1's five test commits), each
 in a slot of its own (`o2/gate.sh`, logs in `o2/logs/`):
 
 | Gate                                      | When           | Result                          |
@@ -530,21 +530,21 @@ in a slot of its own (`o2/gate.sh`, logs in `o2/logs/`):
 | the 1M count (section 7)                  | 18:07 to 18:11 | values checked OK, three shapes |
 | `conformance.sh small`                    | 18:11          | OK, 70 traces TRACECHECK OK     |
 | `conformance.sh drain`                    | 18:12          | OK, 15 traces TRACECHECK OK     |
-| on `e0fb9d77`: lake build, axioms, traces | 18:12          | OK, as above                    |
-| on `e0fb9d77`: `java/before-commit.sh`    | 18:12 to 18:14 | BEFORE COMMIT OK (103 s)        |
+| on `335a3c40`: lake build, axioms, traces | 18:12          | OK, as above                    |
+| on `335a3c40`: `java/before-commit.sh`    | 18:12 to 18:14 | BEFORE COMMIT OK (103 s)        |
 
 * The axioms (`#print axioms` of the README's list and of 024-22's and
   024-23's theorems): Lean's standard ones; `thetaFor_values` none,
   `thetaFor_pos` and `deadOver_false` propext and Quot.sound.
 * before-commit: unit 1,670 tests, f 89, DEMOS OK (14 runs). Its first
-  two runs, on `e633004f` (17:04) and with the four tests of 4.1 changed
+  two runs, on `c680f050` (17:04) and with the four tests of 4.1 changed
   (17:14), failed: 8 unit tests, then 1 f-test (section 4.1).
-* level2 (on `1f9fdb64`'s build): conformance small 70 traces and drain
+* level2 (on `d9795adf`'s build): conformance small 70 traces and drain
   50, TRACECHECK OK (A6 required); A2A3Check2's ten configurations OK
   with A6; treeconf small, drain and reclaim as section 5.2's; take
   TAKECHECK OK; every stress step 0 failures.
-* The gates from level3 on build the head `e3732d24` (the review's fixes,
-  4.2: a test, comments and docs only after `1f9fdb64`).
+* The gates from level3 on build the head `b36b51cf` (the review's fixes,
+  4.2: a test, comments and docs only after `d9795adf`).
 * unlinkfuzz: 32 configurations, 697,388 compactions; the most dead
   klongs of a node after a transaction (its strict walk, TP39) is theta
   exactly in every configuration with theta on (1 at node size 8, 3 at
@@ -552,7 +552,7 @@ in a slot of its own (`o2/gate.sh`, logs in `o2/logs/`):
 * level3: conformance with reclaim 30 traces, C-CUT 0 of 314; level4:
   conformance with eviction 51 traces (C-P 0 of 11,943 transactions,
   C-H 0), EvictionInvariance, LargerThanMemory; every step 0 failures.
-* The final head `e0fb9d77` adds to `e3732d24` only releases/next.md's
+* The final head `335a3c40` adds to `b36b51cf` only releases/next.md's
   figures (section 7); lake build, the axioms, test-traces and
   before-commit ran on it last (unit 1,670 tests, f 89, demos).
 * By `o2/gates-all.sh`, 17:18 to 18:12, each gate in its own slot, one
@@ -563,7 +563,7 @@ in a slot of its own (`o2/gate.sh`, logs in `o2/logs/`):
 
 A sanity check that dead klongs a live klong drop as 024-18 measured, no
 timing: 024-18's probe DK (compiled in `o2/probe/c` against the build of
-`1f9fdb64`, frozen in `o2/b1`), its setup unchanged (1M keys, R = 1 s,
+`d9795adf`, frozen in `o2/b1`), its setup unchanged (1M keys, R = 1 s,
 60,000 transactions after the shape, a census every 20,000 and at each
 iteration's end), one JVM at a time in one slot, 18:06 to 18:11
 (`o2/count1m.sh`; outputs `o2/out1m/`, summed by `o2/dl.py` as 024-18,
@@ -615,7 +615,7 @@ could go on; each is a default that Frans may overturn.
   decide B = 8's theta with 024-14's QT2 and the node-size study
   (024-19).
   **Decided** by 024-19, Q4 (Frans, 2026-11-12, 07:36): theta at least
-  2, so 2 at 8; made in 024-27 (on main since a7dfb6f7). The text above
+  2, so 2 at 8; made in 024-27 (on main since 6ebd8bb1). The text above
   describes theta as first built.
 * **QO3. Databases made between the two landings.** The rule is part of
   format 7 without a new format number: a database written by the
@@ -630,17 +630,17 @@ could go on; each is a default that Frans may overturn.
 the coordinator, who lands it.
 
 * **Clone** `/Users/f/fl/bench/2026-11-11/o2/clone`, branch
-  `024-23-option2`, head **`e0fb9d77`**, working tree clean. On `main`'s
-  `4c75ebf1` (merged at `e633004f`). Commits after the merge base
-  `2679622e`: `aabafc04` (Lean), `1838b687` (Java, tests, docs),
-  `6a24e0f0` (lean/README.md), `e633004f` (merge of `main`), the test
-  commits `1d38e6f4`, `c6655215` (replaced by `c8a59666`), `214d4635`,
-  `7103d741`, `1f9fdb64` (4.1), the review's fixes `c8a59666` and
-  `e3732d24` (4.2), and `bf48bb24`, `e0fb9d77` (releases/next.md's
+  `024-23-option2`, head **`335a3c40`**, working tree clean. On `main`'s
+  `6fb15f58` (merged at `c680f050`). Commits after the merge base
+  `f3f2ac05`: `ec3855f6` (Lean), `b737d772` (Java, tests, docs),
+  `2e1101df` (lean/README.md), `c680f050` (merge of `main`), the test
+  commits `5efdb3e6`, `fafe003f` (replaced by `d76d24ab`), `2aa3902f`,
+  `ceebca4e`, `d9795adf` (4.1), the review's fixes `d76d24ab` and
+  `b36b51cf` (4.2), and `9358f1df`, `335a3c40` (releases/next.md's
   figures).
 * **Gated** (section 6): all of the brief's gates, OK; before-commit and
-  the Lean checks again on `e0fb9d77`.
-* **For Frans**: the six test commits of 4.1 (with `c8a59666`) need his
+  the Lean checks again on `335a3c40`.
+* **For Frans**: the six test commits of 4.1 (with `d76d24ab`) need his
   approval; QO1 to QO3 (section 8); the landing message says that format
   7's meaning changes without a format number (R2, QO3).
 * **Not done, by Frans's decision** (QD1): 10M keys, MEM, reads timed,

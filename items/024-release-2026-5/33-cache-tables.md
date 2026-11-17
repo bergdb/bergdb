@@ -1,7 +1,7 @@
 # 024-33. The cache's tables shrink (ST6)
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `a156fd51`.
+`main` since `75baf383`.
 
 Frans, 2026-11-12, 12:10, for release 2026.5: ST6 "As recommended" (fix
 it). ST6 (024-05, section 3; 023-08, section 4): after a fill and a mass
@@ -38,7 +38,7 @@ this item touches `Cache3` and G4's ST6 lines in `CountGates` and
   runs' spread (CV to 8 %); writes with finite retention (w-uni-100-fin,
   1 run each) +0.3 %. No alerts. A get on the hot path follows handles
   and does not touch the table, so none was expected.
-* **Gates** on `d6e67fa0`, 2026-11-12: before-commit OK (71 s), level1
+* **Gates** on `ab418a6e`, 2026-11-12: before-commit OK (71 s), level1
   OK, level3 (full) OK, level4 quick OK, count-gates OK (G1 to G4, ST6
   counted). No expected value of a test changed.
 
@@ -80,7 +80,7 @@ this item touches `Cache3` and G4's ST6 lines in `CountGates` and
 
 ## 3. Measurements
 
-**G4 at 1M keys** (`count-gates.sh` on `d6e67fa0`), the cache's table
+**G4 at 1M keys** (`count-gates.sh` on `ab418a6e`), the cache's table
 slots, the sum of the 4,096 HashMap tables' lengths, read by reflection:
 
 | Run                      | Slots   | Over the twin |
@@ -89,7 +89,7 @@ slots, the sum of the 4,096 HashMap tables' lengths, read by reflection:
 | emptied, `main` (024-30) | 226,400 | 3.76          |
 | emptied, this change     | 63,744  | 1.058         |
 
-**Timing** (`performance.sh ab ref1446 st6a`, builds of `1446a2da` and
+**Timing** (`performance.sh ab ref1446 st6a`, builds of `325bde75` and
 of this change, ABBA, both slots held, `FORCE=1`: the machine was 63 to
 77 % idle from system daemons, mds_stores and mediaanalysisd, so the
 results are not a reference). Medians:
@@ -115,11 +115,11 @@ None.
 
 ## 5. State
 
-PART 1 GATED, head `d6e67fa0` (branch `024-33-cache-tables`), 12:45.
+PART 1 GATED, head `ab418a6e` (branch `024-33-cache-tables`), 12:45.
 
 * Clone `/Users/f/fl/bench/2026-11-12/tidy/clone`, branch
-  `024-33-cache-tables`, head `d6e67fa0` (one commit on `main`
-  `1446a2da`).
+  `024-33-cache-tables`, head `ab418a6e` (one commit on `main`
+  `325bde75`).
 * Done: the code, the unit test, G4's ST6 as a gate, the gates.
 * Not done: nothing of the brief.
 * To continue: the coordinator lands the branch. 024-34's branch

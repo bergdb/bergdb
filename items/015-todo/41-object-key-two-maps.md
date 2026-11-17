@@ -9,7 +9,7 @@ What: review S1's finding S1-F2 (items/016-release-2026-2/06-reviews/S1.md,
 section S1-F2: where, intended, actual, effect, a proposed fix).
 
 Evidence: its test in `PubTesterS1` (06-reviews/S1/S1-tests.diff) fails on
-`e427a4c`; rerun by the coordinator, 21:26 (17 of 20 fail, as the report
+`0b739f3`; rerun by the coordinator, 21:26 (17 of 20 fail, as the report
 says). The test's premise against the Javadoc is the review's; no second
 agent has checked it.
 

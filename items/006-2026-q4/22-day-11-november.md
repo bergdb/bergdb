@@ -38,11 +38,11 @@ high, xhigh for a hard task. At most 8 agents at a time (Frans,
 | 024-05 | The aim against the known cases: the list, bounds, tests | cases (high) | done 07:10 |
 | 024-06 | The model gap: the Lean model against 2026.4's code | gap (high) | done 07:08 |
 | 026 | Item for release 2026.6, "a stable stream" (preliminary) | coordinator | done |
-| 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, a780b957 |
+| 024-07 | The last touch of a reclaim iteration (CL7): design, fix | touch (xhigh) | on main, 36924319 |
 | 024-08 | MEM 327 at 10M keys against 129.6 at 1M: the cause | mem (high) | done 07:25 |
-| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | on main, 379d8acf |
-| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | on main, 51a7224c |
-| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, a780b957 |
+| 024-09 | The tie of model and code repaired (024-06, A1 to A4) | tie (xhigh) | on main, 773c2105 |
+| 022-07 | The C clone to release 2026.4 as released (CC1) | cc (high) | on main, 54780032 |
+| 024-10 | The builder's rule "the last operation wins" (CA1) | low (high) | on main, 36924319 |
 | 024-11 | The underfill fix: a design study, no code | fill (xhigh) | done 08:18 |
 | 024-12 | The key tree's model in Lean, run against Java | tree (xhigh) | |
 | 024-13 | The integration branch: doubles.py, 024-10, 024-07; gates | int (Opus, high) | landed 10:07 |
@@ -92,7 +92,7 @@ from them.
   algorithms" (section 1).
 * 06:56 Started 024-04, 024-05, 024-06.
 * 06:58 Item 026 created. 07:00 024-04, 026 and this plan committed
-  (bddd9aad); 07:02 the old theme marked in 024-02 and 024-03 (1826cb37).
+  (ab3279ad); 07:02 the old theme marked in 024-02 and 024-03 (1d5b18fa).
 * 07:08 024-06 done. 07:10 024-05 done: MEM 327 probably a matter of key
   shape (7-byte keys make two segments), not of size; 024-03's "25
   versions a get" is wrong (1.9 loads a get); the last touch may reach
@@ -104,7 +104,7 @@ from them.
   push"). 07:24 started fill (024-11).
 * 07:25 024-08 done: the 327 is the shape of MEM's keys (a key of
   exactly 7 bytes gets a key node of its own, 226 heap bytes), not the
-  count; 024-03 and 024-04 corrected; committed 9d134987, pushed.
+  count; 024-03 and 024-04 corrected; committed e3ba6295, pushed.
 * 07:26 low disturbed touch's timing run (07:21 to 07:25) and said so;
   touch told to rerun or mark those times.
 * 07:27 Frans on the order of work: model first, and the proofs wanted
@@ -113,7 +113,7 @@ from them.
   each other.
 * 07:30 Frans: the cost of key shape is within aim 3 ("Yes."); logged
   in 024-04. He left until 09:00.
-* 07:49 024-10 done on its branch (head 3ad9fa1e in
+* 07:49 024-10 done on its branch (head 3fc470c6 in
   /Users/f/fl/bench/2026-11-11/low/clone): before-commit, level1 and
   level2 OK; the stream's bytes the same without repeated keys; two
   expected values changed, for Frans to approve; not landed. Its
@@ -147,8 +147,8 @@ from them.
   branch. The rule on Opus written into the coordinator's skill
   (013-02). Started int (024-13) and thr (024-14), both on Opus.
 * 09:29 Frans: "Feel free to push." (code on main after a landing).
-  09:31 024-07's branch final at 5bbdbf6e; int has merged the
-  doubles.py fix (188 s to 2.9 s), 024-10 and 024-07 (head 524732d8),
+  09:31 024-07's branch final at e11c4791; int has merged the
+  doubles.py fix (188 s to 2.9 s), 024-10 and 024-07 (head 0a873e46),
   its gates wait for the lock. 09:34 Frans: "Sure, do it.": started
   shape (024-15).
 * 09:43 to 09:47 Frans on 024-10's finding F1 and the rule: "One
@@ -166,8 +166,8 @@ from them.
   suggest creating a subitem of 024 to document this." Started limits
   (024-17): the discussion, today's limits, the cost against the batch
   size, a proposal (user limits checked, internal bounds proved).
-* 10:07 **The first landing: main a780b957**, the merge of 024-13-int
-  (524732d8), pushed: doubles.py (188 s to 2.9 s; before-commit.sh 80
+* 10:07 **The first landing: main 36924319**, the merge of 024-13-int
+  (0a873e46), pushed: doubles.py (188 s to 2.9 s; before-commit.sh 80
   s), 024-10, 024-07. Gated as one tree: the Lean build, before-commit,
   level1, level2 and level3 full (C-CUT 0 of 310 cuts). main's java/,
   lean/ and docs/ equal the gated head's.
@@ -191,9 +191,9 @@ from them.
   1 MB is too small for the limit. But 10 MB could work. Ordinary photos
   should fit."; the repo's largest file is 15.6 MB; 16 MiB suggested;
   sent to limits. 10:28 020-33 done: the known issue in 2026.4's notes
-  (65b8bfdc).
+  (8fabbb2e).
 * 10:34 024-09 done: T-SCHEME's argument holds for 2026.4's code; the
-  gates now reach the take-back; PhysStep proved; head e6b6bda6, sent
+  gates now reach the take-back; PhysStep proved; head 43cebf22, sent
   to int to merge and gate (unlinkfuzz, conformance reclaim and evict,
   level3 not yet run after its merge of main).
 * 10:48 Frans: two heavy runs at a time when neither is timing ("Yes.").
@@ -208,8 +208,8 @@ from them.
   Sound very good. Nice to avoid the need to support such a corner
   case."); 015-03 closed when the branch lands ("yes"); the longer gates
   ("Yes, accepted.").
-* 11:24 **The second landing: main 379d8acf**, the merge of 024-13-int
-  (e74bb8ff), pushed: 024-09. Gated: the Lean build, before-commit,
+* 11:24 **The second landing: main 773c2105**, the merge of 024-13-int
+  (61333dc5), pushed: 024-09. Gated: the Lean build, before-commit,
   level1, level3 full, unlinkfuzz.sh (3,226 rounds), conformance.sh
   reclaim (C-CUT 0 of 326) and evict; level2 full on the branch's head,
   whose java/, lean/ and docs/ the merge equals. 015-03 closed.
@@ -244,7 +244,7 @@ from them.
   size: a flat optimum at 1M keys, 30 and 62 within 2 %; the stored
   form: index nodes 57 % of the stream under random overwrites, a
   compact encoding at 41 to 43 % of today's index bytes).
-* 11:56 **The third landing: main 51a7224c**, the C clone at release
+* 11:56 **The third landing: main 54780032**, the C clone at release
   2026.4 as released (022-07; `items/022-bergdb-c/c` only): C's gate OK
   on the head, 0 differences with Java's release on every comparison
   set; no fault of Java's product code, three notes on Java.
@@ -258,19 +258,19 @@ from them.
   fault beside it (a key-replace put over an indexed object leaves a
   stale index entry). The fixes are with the branch's agent.
 * 12:25 **The fourth landing**: 024-15, the cost of key shape documented
-  and bounded (the merge of 251cd1e0): before-commit and level1 full on
+  and bounded (the merge of c9bc3854): before-commit and level1 full on
   the merged tree; SEG 226.4 (at most 230), MEM10M 127.0 (at most 131).
   The usage: 67 % at 12:15.
-* 12:25 024-12 done on its branch (d90586d0): the tree's model writes
+* 12:25 024-12 done on its branch (46478dd5): the tree's model writes
   Java's records on 115 traces; it waits for Frans's approval; int
   prepares it on today's main. 12:23 to 12:33 thr's timing hold
   disturbed by mgl's runs and by dead's scripts, which kept starting
   runs: the coordinator stopped dead's processes.
-* 13:06 024-16's four fixes made (3412ee7a); with int for the full
+* 13:06 024-16's four fixes made (2f81651e); with int for the full
   gates.
-* 13:34 The merge is in the Lean model (63e39de6) and Java with merges
+* 13:34 The merge is in the Lean model (10c8de77) and Java with merges
   (024-21) agrees with it: 15,084 transactions, 9,243 merges, 0
-  differences. 13:37 024-21's head 331dd400 passed before-commit,
+  differences. 13:37 024-21's head 30c393df passed before-commit,
   unlinkfuzz, level1, level2 and level3. The two slots starved mgl and
   thr; an order set by message.
 * 13:50 024-14 done: no threshold set showed a fault or a thrash; the
@@ -279,7 +279,7 @@ from them.
 * 13:57 024-12 gated on today's main (ca3824aa): lake build, no sorry
   or axiom, test-traces, before-commit, level1, treeconf, level3; waits
   for Frans's approval at 14:30.
-* 14:12 024-16 landed: 47c93e34, the merge of 3af7513e, gated with
+* 14:12 024-16 landed: e6e93272, the merge of 51edfdcf, gated with
   before-commit, level1 to level4 full, unlinkfuzz and conformance drain
   (024-13, section 6). Release notes filled (releases/next.md).
   024-12 lands second, after a re-merge and new gates.
@@ -293,7 +293,7 @@ from them.
   its gates; int gets the next free slot.
 * 14:34 Frans: the merge's thresholds 8/17/17 (024-14, QT1; QT2 open),
   and 024-22's QM1 to QM5 as their defaults. 024-22's agent finished
-  (8e78cf65; 239 traces against Java equal).
+  (d39f0e9b; 239 traces against Java equal).
 * 14:45 Frans: a key at most 112 bytes (024-17, QL2; 16 segments; the
   user's rule of thumb "about 100 characters"). 024-17 to be reworked
   for it (L3, L6, the bound's arithmetic with merges, the tests).
@@ -305,7 +305,7 @@ from them.
   night.sh on main after the tree model, if the machine is free. Usage
   ceiling 85 %.
 * 14:48 Frans, on the three things waiting for him (the four re-found
-  CorruptStreamTester copies of 024-21, 906d54d7; the diff of the
+  CorruptStreamTester copies of 024-21, 5fa27223; the diff of the
   trusted Lean statements, LiveAppend in place of PhysRunOK; the merges
   branch before it lands): "Handle these for me as you see fit." And:
   "I am plan to be back 17:00. If not back by 18:00, keep working
@@ -313,8 +313,8 @@ from them.
   (024-21 with 024-22) once fully gated, Java against the model at
   8/17/17, and after an independent review finds nothing that blocks;
   the LiveAppend change lands on its gates, its trusted diff quoted in
-  its item for Frans to read; 906d54d7 goes in with the merges.
-* 14:56 The tree model landed: b84cf761, the merge of 480f83da (024-12
+  its item for Frans to read; 5fa27223 goes in with the merges.
+* 14:56 The tree model landed: ab1b9e42, the merge of a935b6e0 (024-12
   re-merged onto main with 024-16; gates: lake build, treetest, no
   sorry or axiom, test-traces, before-commit, level1 full, level2 full
   with its new treeconf step, level3 full).
@@ -328,11 +328,11 @@ from them.
 * 15:28 The independent review of the merges (024-21, review.md): land
   with fixes; R1 (land with 024-22, the thresholds in the TREE line, the
   combined head gated with level2 to level4), R2 to R6 fixed by mgj
-  (4105fc1a). 15:38 024-21 at 8/17/17 passed before-commit, unlinkfuzz,
+  (54f0a6f5). 15:38 024-21 at 8/17/17 passed before-commit, unlinkfuzz,
   level1 to level4 full; 15:02 to 15:20 Java at 8/17/17 equal to the
   model on 260 traces. 15:45 int combined main + 024-22 + 024-21
-  (a78aa498); its gates running.
-* 16:00 The 024-09 follow-up landed: the merge of 751bb653 (LiveAppend
+  (0520b8c5); its gates running.
+* 16:00 The 024-09 follow-up landed: the merge of 74cb07b5 (LiveAppend
   in place of PhysRunOK in the trusted statements, its diff quoted in
   024-09, section 9.2 for Frans; A6 required by the gates). The merges'
   combined head takes main in and reruns its Lean and level2 to level4
@@ -340,7 +340,7 @@ from them.
 * 16:03 024-23 (option 2, theta 7) started, model first, on the merges'
   combined head. 16:03 to 16:06 mgj and mgl finished (items final).
 * 16:54 The merges at the delete landed: 67925924, the merge of
-  2679622e (main + 024-22 + 024-21 + the 024-09 follow-up; gates: lake
+  f3f2ac05 (main + 024-22 + 024-21 + the 024-09 follow-up; gates: lake
   build, treetest, no sorry or axiom, test-traces, before-commit, level1
   full, unlinkfuzz, level2 full with A6 and treeconf with merges, level3
   full, level4 full, conformance small, medium, reclaim, evict, drain).
@@ -397,7 +397,7 @@ from them.
   024-25 on Opus high, now that usage allows. 18:06 Frans left: "Work
   unattended."
 * 18:16 Option 2 for dead klongs landed: 08659847, the merge of
-  e0fb9d77 (gates: lake build, no sorry or axiom, test-traces,
+  335a3c40 (gates: lake build, no sorry or axiom, test-traces,
   before-commit, level1 to level4 full, unlinkfuzz, conformance small,
   medium, reclaim, evict, drain; the review's R1 fixed). At 1M keys
   0.29 to 0.31 dead klongs a live one (0.48 to 0.85 with the merges
@@ -408,20 +408,20 @@ from them.
   of the limits (land with fixes: R1, a value over L4 through the public
   Trans.kvs failed the database when reclaim rewrote it; docs). Both
   fixed by their agents.
-* 19:24 CRC32C landed: 79f35aa3, the merge of e1a87bec (gates:
+* 19:24 CRC32C landed: 3dd38b23, the merge of 8c7fbff1 (gates:
   before-commit, level1 full, unlinkfuzz, level2 to level4 full,
   conformance small, medium, reclaim, evict, drain, CorruptStreamTester's
   full set; 48 of 48 StreamDigest digests change). Checksum 5.6 to 0.12
   ms a MB; an 8 MiB commit 49-57 to 2-11 ms (rough). Its changed tests
   and level1's raised stream-size limits (QC2) accepted for Frans to see.
-* 20:19 The limits landed: 7c255127, the merge of 829d6135 (main with
+* 20:19 The limits landed: 87afef86, the merge of b0d41461 (main with
   CRC32C merged in; gates: lake build, no sorry or axiom, test-traces,
   before-commit, level1 full, unlinkfuzz, level2 to level4 full,
   conformance small, medium, reclaim, evict, drain). About 30 changed
   tests and programs, each its own commit (024-24, section 3), accepted
   for Frans to see (Q2); the index build over values longer than L6
   gives no entry (Q1, as recommended).
-* 20:19 night.sh started on main (f5ac2600), holding both slots.
+* 20:19 night.sh started on main (8664db0e), holding both slots.
   20:21 024-26 started (Opus high, to 02:00): a round of "AI as the user"
   (006-20) against the new algorithms (merges, option 2, CRC32C, the
   limits): bugs first (024-04, aim 1).
@@ -429,13 +429,13 @@ from them.
   its sandbox makes .git read-only; the coordinator checks and commits).
   22:13 to 23:07 night.sh's four failures, all from the limits, fixed:
   one product bug (L6 refused puts that get no entry), two test
-  generators; landed 1f01c5f6. 00:39 024-26's user apps: seven apps,
+  generators; landed 9dd763df. 00:39 024-26's user apps: seven apps,
   about 900,000 transactions, 3,000 restarts, 1,070 kills, no bug;
   Javadoc findings U26-1 to U26-8. 01:33 024-19 (node size) done on
   format 7: keep B = 30; Q1 to Q6. 01:35 024-20 (compact stored form)
   resumed.
 * 02:30 Codex's second run (23:07 to 02:26, usage limit again) landed
-  after the coordinator's checks (08559fff, Lean only): the writer's
+  after the coordinator's checks (29a03f04, Lean only): the writer's
   frame ported to option 2, merges at most the deletes times the
   greatest height seen, TP32's bound when no node is made above H + 1,
   and two proved counterexamples: MergeOpBound as stated is false for
@@ -444,9 +444,9 @@ from them.
   TP32 for sorted transactions is the third run's goal (04:12).
 * 02:30 024-20 (compact stored form) done on format 7: for 2026.6.
   03:05 a stale constant after CRC32C fixed (reclaim's value-node bytes,
-  6cf6607b). 03:05 to 05:39 night.sh run 2 on main: all OK but one night
+  cbe11242). 03:05 to 05:39 night.sh run 2 on main: all OK but one night
   test: CorruptStreamTester reached 024's open item (a time klong's
-  unused bits not checked); 06:01 fixed and landed (0420c72e; gates
+  unused bits not checked); 06:01 fixed and landed (90184540; gates
   before-commit, CorruptStreamTester's night set, level1, level2).
   04:12 Codex's third run (TP32 for sorted transactions), to 06:40.
 
@@ -456,18 +456,18 @@ from them.
 Written 2026-11-12, 06:35, by coord-1111 (unattended since 2026-11-11,
 17:43).
 
-**Landed on main (all pushed, each on its gates):** a780b957 (024-07
-the last touch, 024-10, doubles.py), 379d8acf (024-09 the tie), 51a7224c
-(022-07 the C clone at 2026.4), 1e77cfc6 (024-15 key shape), 47c93e34
-(024-16 one operation a key), b84cf761 (024-12 the tree model in Lean,
-approved by Frans 14:28), e7488080 (024-09's follow-up: LiveAppend in
+**Landed on main (all pushed, each on its gates):** 36924319 (024-07
+the last touch, 024-10, doubles.py), 773c2105 (024-09 the tie), 54780032
+(022-07 the C clone at 2026.4), 6b6f04de (024-15 key shape), e6e93272
+(024-16 one operation a key), ab1b9e42 (024-12 the tree model in Lean,
+approved by Frans 14:28), 01b14c68 (024-09's follow-up: LiveAppend in
 the trusted statements, A6 in the gates), 67925924 (024-21 and 024-22
 merges at the delete, record format 7, 8/17/17), 08659847 (024-23
-option 2, theta 7), 79f35aa3 (024-25 CRC32C), 7c255127 (024-24 the
-limits), 1f01c5f6 (the night run's fix: L6, one product bug), 08559fff
-(TP32's proof work in Lean and two counterexamples), 6cf6607b (a stale
-constant after CRC32C), 0420c72e (a time klong's unused bits checked),
-and 2c37bfeb (06:41, TP32's groundwork for sorted transactions: 180
+option 2, theta 7), 3dd38b23 (024-25 CRC32C), 87afef86 (024-24 the
+limits), 9dd763df (the night run's fix: L6, one product bug), 29a03f04
+(TP32's proof work in Lean and two counterexamples), cbe11242 (a stale
+constant after CRC32C), 90184540 (a time klong's unused bits checked),
+and a9c72fb2 (06:41, TP32's groundwork for sorted transactions: 180
 theorems). 16 in all.
 
 **Studies done:** 024-14 (thresholds), 024-17 (limits), 024-18 (dead
@@ -484,7 +484,7 @@ coordinator):** the writer's frame, merges bounded by the height seen,
 TP32 under a height premise, and MergeOpBound shown false without the
 premise Java guarantees (sorted, one operation a key). The third run
 (04:12 to 06:37, stopped by its usage limit, which resets at 09:12)
-added the groundwork for sorted transactions (2c37bfeb); TP32 for sorted
+added the groundwork for sorted transactions (a9c72fb2); TP32 for sorted
 transactions is neither proved nor refuted. Its reports:
 /Users/f/fl/bench/2026-11-11/cx/REPORT-tp32*.md.
 
@@ -511,7 +511,7 @@ transactions is neither proved nor refuted. Its reports:
    tests of 024-21 (QJ1), 024-23 (section 4.1), 024-24 (section 3, Q2)
    and 024-25 (QC2, with level1's raised stream-size limits); 024-23's
    QO1 to QO3 as their defaults; the trusted Lean diff in 024-09,
-   section 9.2; the commit message of 08559fff says "written by a second
+   section 9.2; the commit message of 29a03f04 says "written by a second
    prover" (no AI named).
 
 **Corrections by the coordinator:** the key limit's figures given to

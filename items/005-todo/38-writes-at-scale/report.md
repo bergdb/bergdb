@@ -2,7 +2,7 @@
 ==============================
 
 2026-10-26, by Claude (Opus 5.5, Claude Code), for Frans Lundberg. On F53,
-JDK 27, BergDB at `52d1e1f` (handles merged), all in memory. Only bytes and
+JDK 27, BergDB at `716778e` (handles merged), all in memory. Only bytes and
 node counts were measured, no time.
 
 The answer: the stream's growth per key in 004-02 came from its startup

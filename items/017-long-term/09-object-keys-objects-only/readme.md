@@ -10,14 +10,14 @@ value at an object key, so that text and bytes live at keys with a suffix
 (such as `.txt`) and only object puts and deletes reach the index layer.
 Today's suffix rules, what the idea removes, its price, the variants, a
 recommendation and the questions for Frans. Nothing decided; no code
-changed. Code is cited by path and line at `6d9b0fb` (main, 2026-11-09),
-release 2026.3 at its tag (`929fa33`); a path is under `java/src/bergdb/`
+changed. Code is cited by path and line at `4da2dd9` (main, 2026-11-09),
+release 2026.3 at its tag (`9a0bf5e`); a path is under `java/src/bergdb/`
 unless it starts with `java/`.
 
 
 ## 1. What it is about
 
-Since 020-10's step I1 (`249b684`), every put and delete at an object key
+Since 020-10's step I1 (`4a6deee`), every put and delete at an object key
 (a key without a suffix, or with `.obj`), whatever its value and whether
 its directory has an index, follows 020-10, section 5.1's rule:
 
@@ -94,14 +94,14 @@ bytes are an object, a `String` or bytes (`pub/Connection.java`, lines
 **The idea is old.** Until 2013-11-05 BergDB had this rule in the form of
 its time: an object was put only at a `.obj` key, and a `String` or a
 `byte[]` put at a `.obj` key was refused ("Bad key for set of
-String.class, should not end with .obj"). Frans's commit `ce0c574` of
+String.class, should not end with .obj"). Frans's commit `fc9c464` of
 2013-11-05 ("Now, we do not need the ".obj" suffix for object storage")
 made a key without a suffix an object key and dropped both refusals,
 leaving in `RwEnvironmentImp.put` the note "TODO, A. Consider forcing
 special suffix, or at least not EMPTY or ".obj". Or rather:
 !Entries.isObjectKey(ikey)" for a `String`, and "NOTE, No check here, but
 we could force suffix != EMPTY" for a `byte[]`. The TODO went at release
-2013.3 (`e0faeb0`, 2013-11-29) without the check; the note for `byte[]`
+2013.3 (`ff3036a`, 2013-11-29) without the check; the note for `byte[]`
 is still at `RwEnvironmentImp.java`, line 325. (The 2013 to 2017 history:
 F1-007's bundle, `a/007-bergdb-261012/bergdb-git.bundle` in the f1 repo;
 the backlog line "DONE! Remove need for ".obj" suffix. That should be
@@ -139,7 +139,7 @@ and `/d/.h` are not. The harnesses' references copy it apart
 (`IndexReference.isObjectKey`, line 379; `PrimaryHarness.isObjectKey`,
 line 172).
 
-2026.3's rule differed: `Entries.suffix` at `929fa33` (lines 42 to 52)
+2026.3's rule differed: `Entries.suffix` at `9a0bf5e` (lines 42 to 52)
 took the whole key's last '.', so no key under `/v1.2/` was an object key
 (it had the suffix `2/k`), and a ukey `/d/.h` had none
 (`releases/next.md`, lines 180 to 185; 020-11, R3-N2).
@@ -166,7 +166,7 @@ and `RwEnvironment.put`:
 
 ### 3.3. What a put and a delete do, in 2026.3 and 2026.4
 
-| Put or delete | 2026.3 (`929fa33`) | 2026.4 (`6d9b0fb`) |
+| Put or delete | 2026.3 (`9a0bf5e`) | 2026.4 (`4da2dd9`) |
 |---|---|---|
 | object, object key   | object op; `executeRw`; R not fixed | object op; rule; `executeRw`        |
 | object, other key    | refused ("Bad key")                 | the same                            |
@@ -696,6 +696,6 @@ the Javadoc of 5.1 drafted.
 ## 9. Log
 
 2026-11-09. Created at Frans's request: the study of refusing a `String`
-or a `byte[]` at an object key, from the code at `6d9b0fb`, the items
+or a `byte[]` at an object key, from the code at `4da2dd9`, the items
 (015, 016-06, 020) and the 2013 history; options (a) to (f), (a1)
 recommended; no code changed.

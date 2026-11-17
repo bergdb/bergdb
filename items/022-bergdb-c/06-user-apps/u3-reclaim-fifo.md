@@ -68,7 +68,7 @@ back, as it should with 20 s.
 The same workload in the cross harness's format, `bergdb-workload 1`, is
 section 5's generator. Java's `bergdb.cross.Run` and C's `bergdb-run`,
 which take the same text, ran it. The harness was built with
-`JAVA_REF=git:a2fa9df440383c9197181150a10dfbb9e3b839de`, `main` at
+`JAVA_REF=git:4957737397a0cef25350f0ab362c9285b1aae7a3`, `main` at
 2026-11-09 with 021-14. Run's setup is `testSetupExceptStream`: the test
 clock, the test id and no eviction.
 
@@ -184,7 +184,7 @@ The commands, from `items/022-bergdb-c/c` of a clone of int.git's
 `2026.4`:
 
     JAVA_HOME=/opt/homebrew/opt/openjdk \
-        JAVA_REF=git:a2fa9df440383c9197181150a10dfbb9e3b839de test/cross/java-build.sh
+        JAVA_REF=git:4957737397a0cef25350f0ab362c9285b1aae7a3 test/cross/java-build.sh
     python3 fifo-wl.py 300000 5000 > fifo300k.wl
     /opt/homebrew/opt/openjdk/bin/java -ea -Xmx2g -cp build/java/classes \
         bergdb.cross.Run fifo300k.wl DIRJ > java.out
@@ -233,7 +233,7 @@ section 1.1).
 # Log
 
 2026-11-09, 18:00 to 18:15. Worker f1: reproduced U3-1 and U3-2 in C at
-`c6d8628` and in Java at `main`'s `a2fa9df` through the cross harness.
+`c6d8628` and in Java at `main`'s `4957737` through the cross harness.
 C's stream equals Java's. The workload went to the session at 18:05, for
 coord-1109. Nothing in `c/` changed, so the gate was not run
 (022-01, section 5).

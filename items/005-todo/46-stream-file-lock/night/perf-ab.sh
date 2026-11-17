@@ -1,7 +1,7 @@
 #!/bin/sh
 # minutes: 40
 # bergdb 009-01's "done" item 7 (006-09's quiet block): performance.sh ab with the quick suite,
-# release 2026.1 against HEAD (4f7cd60), without a budget, in turns (ABBA), G1, an 8 GB heap:
+# release 2026.1 against HEAD (f9e295d), without a budget, in turns (ABBA), G1, an 8 GB heap:
 # the run that 009-03 could not make on 2026-10-26, as the machine was not quiet (its run with
 # a 4 GB budget had one unconfirmed alert). If this comparison alerts, a second ab run, and a
 # compare of the first reference with both candidate sessions, confirm or dismiss it
@@ -9,7 +9,7 @@
 # with the second run; stopped at 40. Written 2026-10-27 by Claude (Opus 5.5, Claude Code).
 # Usage: sh perf-ab.sh, from any directory (SMOKE=1: perf-ab-smoke.suite, FORCE=1, outputs in
 # /Users/f/fl/bench/006-09/w1/smoke). Needs prep.sh's clone head/ with the preserved builds
-# java/build/perf/builds/2026.1 (a copy of the 009 worktree's, of the release commit a42947c)
+# java/build/perf/builds/2026.1 (a copy of the 009 worktree's, of the release commit 8e579c6)
 # and head-4f7cd60 (performance.sh build), their harness compiled by the smoke test.
 # Outputs: night/out/perf-ab/ (ab-1.txt, ab-2.txt, confirm.txt, the sessions' summaries); the
 # sessions with their raw logs stay in the clone, java/build/perf/runs/. Exit status: 0 when

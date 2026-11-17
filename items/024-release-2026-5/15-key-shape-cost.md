@@ -1,7 +1,7 @@
 # 024-15. The memory cost of key shape: documented and bounded
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `1e77cfc6`.
+`main` since `6b6f04de`.
 
 Option (a) of 024-08, section 9, carried out: the memory cost of a key's
 shape documented where a user and a reader of the algorithm look, and
@@ -96,7 +96,7 @@ commit; no change of the algorithm, no test's expected value changed.
   7.6 s with it; it runs beside MEM and SS). MEM10M runs beside them
   in the full run (024-08: 19 s alone); not timed apart. `level1.sh`
   full took 3 min 51 s at 11:57, with the other heavy-run slot busy.
-* **`level1.sh` full on `877ddf20`**, 11:57 to 12:01, one slot: LEVEL 1
+* **`level1.sh` full on `d6651e15`**, 11:57 to 12:01, one slot: LEVEL 1
   OK, with `MEM:129 (at most 131)`, `SEG:226.9, MEM with keys %07d 356.1
   minus MEM 129.2 (at most 230)`, `MEM10M:127.1, 10M keys /k/%010d (at
   most 131)`. This is also the night check: `night.sh`'s step `level1`
@@ -198,14 +198,14 @@ Written 2026-11-11, 12:02. Status: done; the branch is for the coordinator to la
 * **Done:** the code (`Mem`, `level1.sh`), the documentation
   (`Connection`, `Db`, `levels.md`), committed on the branch; SEG
   measured by hand.
-* **Gates:** `before-commit.sh` on `877ddf20`: BEFORE COMMIT OK (287 s,
-  11:27 to 11:31, one slot); `level1.sh` full on `877ddf20`: LEVEL 1 OK
+* **Gates:** `before-commit.sh` on `d6651e15`: BEFORE COMMIT OK (287 s,
+  11:27 to 11:31, one slot); `level1.sh` full on `d6651e15`: LEVEL 1 OK
   (11:57 to 12:01, one slot), MEM 129.2, SEG 226.9, MEM10M 127.1.
   No slot is held.
 * **Not done:** nothing of this item's task; section 5 lists what is
   left for later (024-08's options (b) and (d), Q3).
 * **Clone:** `/Users/f/fl/bench/2026-11-11/shape/clone`, branch
-  `024-15-key-shape-cost` from main `0da2cdd4`, head `877ddf20`.
+  `024-15-key-shape-cost` from main `f7ffd052`, head `d6651e15`.
 * **To continue:** land the branch on main (the coordinator); nothing
   else is pending in this item.
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # level2.sh's step 7 (conformance with the Lean model), as in level2.sh full, run on
 # its own because level2.sh stopped at step 6 (BryanRepro), which fails on main
-# since eaec93e (005-46) too. Run from java/ in the clone.
+# since 1165c90 (005-46) too. Run from java/ in the clone.
 JAVA=${JAVA:-java}
 CP=build/bergdb.jar:build/stress
 LOG=build/level2

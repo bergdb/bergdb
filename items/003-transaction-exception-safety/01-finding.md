@@ -6,7 +6,7 @@ item 002 while probing the top node ordinal bound
 ([02-report.md](../002-top-node-ordinal-bound/02-report.md), sections 2.3
 and 8). Register row M49 of
 [docs/level4-alignment.md](../001-lean-model-levels-3-4/08-level4-alignment.md). Line numbers are
-at `a3b4421`. No code was changed.
+at `ac95f6e`. No code was changed.
 
 Fixed on 2026-10-22 by bergdb 005-01
 ([../005-todo/01-fix-m49-exception-safety.md](../005-todo/01-fix-m49-exception-safety.md)),
@@ -37,7 +37,7 @@ with their outputs in its `outputs.txt`.
 
 ### 2.1 A value transformation that throws (no bound)
 
-`M46Throw`, today's code (`059dbf1`), in-memory database. Transaction 1
+`M46Throw`, today's code (`0a732c3`), in-memory database. Transaction 1
 puts `/a = a1`, then `/b` with a `ValueTransformation` that throws.
 Transaction 2 puts `/c = c2`. Then a restart from the stream. With and
 without assertions:
@@ -117,7 +117,7 @@ example a `StreamIoException` from `nodeStream.appendNodes`, 1465) comes
 after `dbClock.transactionEnd()`, so the transaction's changes are visible
 while its record may be missing or incomplete, and `x.end()` is skipped.
 
-Update, 2026-10-22 (005-01's first step, at `cbeb9bd`): the causes above
+Update, 2026-10-22 (005-01's first step, at `691794d`): the causes above
 were all still there. What had moved in `executeInner`: `checkSize(t)`
 (005-17) runs before the warm-up; under the lock, the end of the top node
 ordinals is checked (005-02) before `x.begin(t)`; and

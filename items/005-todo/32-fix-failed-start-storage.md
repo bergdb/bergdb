@@ -44,7 +44,7 @@ deprecated finalization for removal in Java 18; with it disabled
 What the probe found
 --------------------
 
-`FailedStartProbe`, on `e2c0dc0`, Java 27
+`FailedStartProbe`, on `a10ebf9`, Java 27
 ([runs/](32-fix-failed-start-storage/runs/)):
 
 * Ten starts through the Pub API with a wrong key, then one with the

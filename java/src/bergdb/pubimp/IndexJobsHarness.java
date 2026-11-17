@@ -1545,7 +1545,7 @@ public final class IndexJobsHarness {
             JobStatus first = job.getStatus();
             // def is read after the start: a build that the start resumed may have ended
             // before, with its count the directory's values (a race of this check, seen once
-            // in 54 runs at 57f88ea).
+            // in 54 runs at 9cbaa50).
             if (def.isActive() && (first.state() != State.ACTIVE
                     || first.count() != 0 && first.count() != own)) {
                 finding("restart", "an index active at the start: its job is " + first.state()
@@ -1873,10 +1873,10 @@ public final class IndexJobsHarness {
      * signature of their findings (the check; the fault at the point): Results lists them
      * apart and does not fail for them; testEveryPointAndFault fails when one is no longer
      * found, so that its fix removes its line here. Each is a fault of IndexManager (020-10,
-     * step I2), found by this harness on 2026-11-09 at 5b08db5.
+     * step I2), found by this harness on 2026-11-09 at 4f8210f.
      */
     static final String[][] KNOWN = {
-        // H3-F1, H3-F2, H3-F3 (found on 2026-11-09 at 5b08db5) were fixed by "020-10, I2
+        // H3-F1, H3-F2, H3-F3 (found on 2026-11-09 at 4f8210f) were fixed by "020-10, I2
         // fixes": an Error in a definition's change fails the database, and after a commit
         // the change is made in memory whatever is thrown.
     };

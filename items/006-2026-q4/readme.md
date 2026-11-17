@@ -209,7 +209,7 @@ embedded target: about 10,000 to 17,000 lines of C and 35 to 90 kB of code
 on a Cortex-M4, by an estimate and the bytes per line of LMDB, littlefs and
 SQLite measured; its open questions are memory and writes at small startup
 distances, a written stream format and power loss on raw flash.
-`core-build.sh` passes at `c7c6f10`. `core-size.sh`, `c-size.sh`,
+`core-build.sh` passes at `f410135`. `core-size.sh`, `c-size.sh`,
 `strip.py`, `lines.py`, `CoreSame.java`.
 
 2026-10-27. 006-09, at Frans's request ("Please suggest a plan for work you

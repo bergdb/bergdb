@@ -1,4 +1,4 @@
-bergdb 005-34: probe.sh on f6bc3ce, before 005-30 (2026-10-23, F53).
+bergdb 005-34: probe.sh on 1a329d1, before 005-30 (2026-10-23, F53).
 
 == values: zeros
 transaction 18 at 196824 to 208007, across the meta block at 200000

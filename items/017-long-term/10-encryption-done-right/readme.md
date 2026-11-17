@@ -61,7 +61,7 @@ reproduction in `/Users/f/fl/bench/2026-11-09/app-u7/`: the application
 `app/VaultApp.java` (run by `app/run.sh`, output `app/run.txt`) and the
 minimal reproductions in `probe/`. They use the API of 2026.3 and of 2026.4
 before 020-28: run them against `releases/2026.3/bergdb-2026.3.jar` or
-`app-u7/bergdb-release.jar` (built from `5d45478`).
+`app-u7/bergdb-release.jar` (built from `4338cda`).
 
 **U7-1, keystream reuse (high).** Two writes at one stream position with
 one key are encrypted with the same keystream, so the XOR of the two
@@ -113,7 +113,7 @@ right key on a damaged stream said "the wrong crypto key";
 `probe/Damage.java`), U7-6 (`parse()` refuses a trailing newline).
 
 e07 made the Javadoc true for 2026.4 (the package's "Encryption" section,
-on main as `8742547`); Frans then chose to remove the encryption instead,
+on main as `9ebffa5`); Frans then chose to remove the encryption instead,
 as a release whose theme is a bug-free database should not offer a
 feature with a known fault of its design. A fix of U7-1 or U7-3 changes
 the stream's format, which 2026.4 does not.
@@ -259,7 +259,7 @@ Internal since 2026.4, not API, with its tests in the unit tests (020-28):
 
 e07's Javadoc of the encryption for 2026.4 (the package's "Encryption"
 section, `DatabaseBuilder.cryptoKey()`, `CryptoKey`, `BadCryptoKey`), true
-for 2026.3's design, is in its commit, `8742547` on main (020-24-07,
+for 2026.3's design, is in its commit, `9ebffa5` on main (020-24-07,
 section 4), before 020-28 removed it: a start for the user documentation
 of a later design.
 

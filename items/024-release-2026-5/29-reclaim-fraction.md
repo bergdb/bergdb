@@ -28,7 +28,7 @@ somehow." So this item looks for (a) one default that works for every
 workload, the Pub API keeping no setter, and (b) three recommended values
 in the Core API that the tests cover.
 
-Read only: the code of `main` at `02e411a7`, the items and notes named
+Read only: the code of `main` at `9b75f819`, the items and notes named
 below, and the 2013 to 2017 Git history (the bundle in F1-007). Nothing
 built or run. By the agent "frac" of coord-1112, 11:05 to 11:20.
 
@@ -45,7 +45,7 @@ built or run. By the agent "frac" of coord-1112, 11:05 to 11:20.
   the share at "something between 0.4 and 0.7" of the user's writes, as
   a fixed value, "not needed as a setting for the end user programmer",
   and named 0.25 as the "small factor" that writes less and keeps more.
-  The code had 0.25 at the first commit of the 2013 Git (`76c4792`,
+  The code had 0.25 at the first commit of the 2013 Git (`1f4d0b6`,
   2013-06-06), as a share of all writes, and it has never changed. No
   note gives a reason or a measurement for it.
 * **What was measured.** Only once was another value tried: 0.5 against
@@ -190,7 +190,7 @@ Core's Javadoc keeps `internalFraction` as the method's name.
   dedicated to this process", and "the rewrite transaction will not
   occupy more than 40% of the stream": f = 0.4 as a share.
 * **2012-08 notes**: "DONE! Stream space reclaim". **2013-06-06**, the first
-  commit of the 2013 Git (`76c4792`, `KissDB/src/kissdb/core/Reclaim.java`):
+  commit of the 2013 Git (`1f4d0b6`, `KissDB/src/kissdb/core/Reclaim.java`):
   `DEFAULT_INTERNAL_FRACTION = 0.25`, "the fraction of the stream allowed
   to be occupied by internal transactions compared to the total stream
   size while a reclaim iteration is running. A small internalFraction
@@ -895,7 +895,7 @@ evidence, the weights are his.
   default at 3/8 against `before-commit.sh` (section 9.6).
   One timing pass of (a) with both slots (13:31 to 13:33, section 9.4).
 * **The code**: clone `/Users/f/fl/bench/2026-11-12/fracm/clone`, branch
-  `024-29-fraction-runs` from `main` at `797267e6`, head `d7bd3bb5`, in
+  `024-29-fraction-runs` from `main` at `d81bc79b`, head `d7bd3bb5`, in
   Frans's name: `java/stress/FracRuns.java` (new) and `CountGates`'s
   `f=` property. `before-commit.sh` on `d7bd3bb5`: BEFORE COMMIT OK
   (65 s, in a slot, 13:34 to 13:35). Not on `main`: the coordinator

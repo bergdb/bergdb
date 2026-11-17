@@ -1,4 +1,4 @@
-bergdb 005-30: mutations.sh on the scratch clone with the fix, on f6bc3ce (2026-10-23, F53).
+bergdb 005-30: mutations.sh on the scratch clone with the fix, on 1a329d1 (2026-10-23, F53).
 
 == mutation A
 bergdb.core.DbTesterFailure .FAILED! bergdb.core.DbTesterFailure.testCorruptNodeInGetMany

@@ -1,6 +1,6 @@
 Level 2 conformance with the fast checker, bergdb item 001, WP C3, 2026-10-16
 (docs/level2-alignment.md, sections 10.5 and 12; the item's plan, 8.4).
-bergdb 130f380 to 3782bc8 (C2 committed; the checker and the exported code are the same
+bergdb dde8f56 to 3fe8069 (C2 committed; the checker and the exported code are the same
 in both), with the work tree's java/stress/conformance.sh (the large set, PAR). Checker:
 lake exe tracecheck (lean/), target mode, with C2's fast versions, proven equal to the
 model's definitions. Four traces at once (PAR=4, the default), in batches of four.

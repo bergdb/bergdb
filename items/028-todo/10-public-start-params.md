@@ -12,7 +12,7 @@ What: the draft of 027-11 found that `Db.start(StartParams)` is public and
 takes a caller's startup pos and startup distance unchecked, and then
 leaves the meta block's lastTrans and sd as read: another startup section
 than the stream's (R5), another next meta block (P2). Only
-`StartParams.NULL` is passed anywhere in `java/` (027-11, at 7e190010).
+`StartParams.NULL` is passed anywhere in `java/` (027-11, at c82bce56).
 
 Why: a caller of the Core API can start a database from a section the
 stream does not name, against R5 (010-04) and P2 (010-01). The Core API is

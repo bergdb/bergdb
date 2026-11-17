@@ -20,8 +20,8 @@
 #   CLONE       the clone whose java/stress/performance.sh runs and holds the builds (default
 #               /Users/f/fl/bench/006-09/d2-007-07)
 #   REF_BUILD   main before 007-07, a directory of CLONE/java/build/perf/builds/ (default below:
-#               cefb473, the base of 007-07's commits in CLONE)
-#   CAND_BUILD  the patched build, the same (default below: f89846d, 007-07's code commit)
+#               fb67f96, the base of 007-07's commits in CLONE)
+#   CAND_BUILD  the patched build, the same (default below: b8ac8a1, 007-07's code commit)
 #   OUT         the results (default out/quick beside this script, out/quick-smoke for SMOKE=1)
 #   JAVA_HOME   default /opt/homebrew/opt/openjdk
 # Writes OUT/: log.txt; ab.txt, performance.sh's output with the comparison of the candidate

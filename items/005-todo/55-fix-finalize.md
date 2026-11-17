@@ -100,7 +100,7 @@ streams and their files, and ends their threads.
 What the probes found
 ---------------------
 
-On `356c058`, the main branch of today, with Java 27 on F53:
+On `80b82e8`, the main branch of today, with Java 27 on F53:
 [55-fix-finalize/run.sh](55-fix-finalize/run.sh), its output in
 [55-fix-finalize/out/](55-fix-finalize/out/).
 
@@ -117,7 +117,7 @@ apart, until the storage thread has ended:
 So finalization is what closes a database that is not stopped, and with
 it disabled nothing does. And a database whose eviction thread has
 started is never collected, finalization or not. The eviction thread,
-`bergdb-evictor` (009, decision T5a; since 009's step 3b, `4a1fc5e`,
+`bergdb-evictor` (009, decision T5a; since 009's step 3b, `85e9283`,
 2026-10-25), holds the `Db` (`Eviction.EvictorRun.db`, and `Db.Internal
 in` on its stack, an inner class that holds the `Db`), and when idle it
 waits a second at a time for as long as the database is active, that is
@@ -305,8 +305,8 @@ Outcome
 -------
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), as decided, at Frans's
-request, with questions 3 and 5 as recommended; in a clone on `bf19075`
-(005-50), and at the end on `eaec93e` (005-46).
+request, with questions 3 and 5 as recommended; in a clone on `c1f1f15`
+(005-50), and at the end on `1165c90` (005-46).
 
 * `Db` has no `finalize()`. Its class Javadoc ("Db shutdown") says that
   `stop()` or `close()` is required and what a database that is not
@@ -327,7 +327,7 @@ request, with questions 3 and 5 as recommended; in a clone on `bf19075`
   [LeakFinder.java](55-fix-finalize/LeakFinder.java), by
   [leaks.sh](55-fix-finalize/leaks.sh), runs a test group with
   finalization disabled and prints, after each test, the storage and
-  eviction threads it left alive. At `bfa2942`: 188 tests in 21 classes,
+  eviction threads it left alive. At `8b3b6b0`: 188 tests in 21 classes,
   211 threads in the unit tests and 102 in the f-tests
   ([out/before/](55-fix-finalize/out/before/)). Each of them now stops its
   databases at its end:
@@ -358,7 +358,7 @@ request, with questions 3 and 5 as recommended; in a clone on `bf19075`
   * `RestartStress` (level 1) and `ReclaimStress` (levels 3 and 4) restart
     without a stop in half of their rounds, "like a crash after sync", and
     left that database running; many rounds run in one JVM. With
-    finalization disabled, at `bf19075`, 40 rounds of `RestartStress` left
+    finalization disabled, at `c1f1f15`, 40 rounds of `RestartStress` left
     276 storage threads and 1,359 MB of heap, 10 rounds of `ReclaimStress`
     85 threads and 141 MB; now each closes the dropped database after the
     restart (it writes to the stream that was copied, not to the copy):
@@ -376,7 +376,7 @@ request, with questions 3 and 5 as recommended; in a clone on `bf19075`
   `stop()` started, then runs a last test,
   `bergdb.dev.NanotestForBergDB.databasesStopped`, which fails if one of
   them is still alive and names the tests that left them. So the suites
-  have one test more each: 1,040 unit tests (1,042 at `eaec93e`, less the
+  have one test more each: 1,040 unit tests (1,042 at `1165c90`, less the
   three `testFinalize`, plus the check) and 73 f-tests. Checked with the
   `close()` of `DbTester.test1` taken out: the unit tests fail with "1
   storage or eviction threads alive after the tests: databases not
@@ -387,7 +387,7 @@ request, with questions 3 and 5 as recommended; in a clone on `bf19075`
   `KvComparison`), the check about 90; the rest is tests and the two
   stress programs.
 
-Checks ([out/after/](55-fix-finalize/out/after/)), on `eaec93e` unless
+Checks ([out/after/](55-fix-finalize/out/after/)), on `1165c90` unless
 noted:
 
 * `build.sh` prints no note. `lint.sh` at `--release 17` finds no use of
@@ -396,7 +396,7 @@ noted:
 * LeakFinder, with finalization disabled: none left by any unit test,
   f-test or night test (005-46's new tests too), and all pass
   (`leaks-*.txt`).
-* `run.sh`, on `bf19075`: `SuiteThreads` finds no storage or eviction
+* `run.sh`, on `c1f1f15`: `SuiteThreads` finds no storage or eviction
   thread after the unit tests and the f-tests, with finalization on and
   disabled, and 7 and 5 MB of heap after the collections (1,083 and 716 MB
   before, disabled). `FinalizeProbe`: in all three cases the dropped

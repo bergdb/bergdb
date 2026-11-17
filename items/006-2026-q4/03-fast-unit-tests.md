@@ -16,7 +16,7 @@ f-tests, replaced the four level scripts as the commit gate.
 Before
 ------
 
-On F53, JDK 27, 2026-10-20, commit `c6ca623`, with another session's gates
+On F53, JDK 27, 2026-10-20, commit `3fdf88b`, with another session's gates
 running (load about 4 on 10 cores):
 
 | Group | Tests | Time |
@@ -89,7 +89,7 @@ each runs the full versions it ran before through the unit tests.
 levels (`testSyncAfterStreamFailure`, `testReadOnlyStream2`,
 `testRestartAfterManyTopNodes`); `level3.sh` does.
 
-The four level scripts pass, full, on `39ab4a8` with the change (141 s, 744 s,
+The four level scripts pass, full, on `2fe87ef` with the change (141 s, 744 s,
 466 s and 858 s).
 
 
@@ -100,7 +100,7 @@ The check before a commit
 the same time, each in its own JVM, and prints `BEFORE COMMIT OK`. It is the
 only requirement before a commit (AGENTS.md, README.md, docs/levels.md); the
 level scripts are deeper checks, run after larger changes. No unit or f-test
-writes to a fixed path, so the two JVMs do not meet. On `9d909cc` with the
+writes to a fixed path, so the two JVMs do not meet. On `ba10cb6` with the
 change: unit 933 tests in 10.0 s, f 59 in 112.0 s, 116 s in all.
 
 What the level scripts check and this does not: the random stress programs
@@ -134,7 +134,7 @@ so it checks the same traces until Java or the checker changes; it has never
 failed (item 001: C3, A-COPY, F1).
 
 A test run, 2026-10-20, of the night run as first written (with
-`conformance.sh all`), from a scratch clone of `9d909cc` with the change:
+`conformance.sh all`), from a scratch clone of `ba10cb6` with the change:
 `before-commit.sh` 116 s, `level1.sh` 130 s, `level2.sh` 745 s, `level3.sh`
 464 s, `level4.sh` 877 s, `night.sh` 254 s, all OK; the small and medium
 conformance sets OK (70 and 9 traces; the medium checks 265 s); stopped in

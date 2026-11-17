@@ -1,7 +1,7 @@
 # 026-11. G4's back-to-empty lag as a gate
 
 Created 2026-11-13 by Frans Lundberg. Status: done; on main since
-2026-11-13 (343fff05).
+2026-11-13 (00eca320).
 
 For release 2026.6: the lag of 024-30's G4 (back to empty after a mass
 delete) becomes a gate of `count-gates.sh`, and so of `night.sh`'s
@@ -19,7 +19,7 @@ The decisions:
   2 R (2,000 transactions at G4's R) is independent of n and has a
   margin of 1.55. Recommended: make it a gate once 026-05 is on `main`".
   Frans, 2026-11-13, 09:41: "Yes to all four." 026-05 (P8) is on `main`
-  since `fe5000ec`, so its runs at 1M, 4M and 10M stand in for Q30-3's
+  since `6816d1ff`, so its runs at 1M, 4M and 10M stand in for Q30-3's
   runs at 100,000 and 3M keys.
 
 
@@ -64,27 +64,27 @@ The change: `java/stress/CountGates.java` (the gate line after M1's in
 
 ## 2. It fails without 026-05, and passes on main
 
-Two runs of the same `CountGates.java` (fe947c7c), each in a slot.
+Two runs of the same `CountGates.java` (eb3b6969), each in a slot.
 Logs in /Users/f/fl/bench/2026-11-13/lag/runs/.
 
 | Build | First cut | Lag | Lag / R | Margin | Result |
 |---|---|---|---|---|---|
-| `main` (c91443d8) with the gate | 1,001 | 1,281 | 1.281 | 1.56 | PASS |
+| `main` (f2009ee4) with the gate | 1,001 | 1,281 | 1.281 | 1.56 | PASS |
 | the same, 026-05 reverted       | 4,117 | 4,395 | 4.395 | 0.46 | FAIL |
 
 * **Without 026-05**: the branch `026-11-nop8` of the clone (worktree
-  /Users/f/fl/bench/2026-11-13/lag/nop8, not to land): fe947c7c with
-  026-05's two commits reverted (`git revert d9822ebe 94421dd0`; only
+  /Users/f/fl/bench/2026-11-13/lag/nop8, not to land): eb3b6969 with
+  026-05's two commits reverted (`git revert 245c953e 4b4999aa`; only
   `Reclaim.java` changes, and the item file 024-02 kept as on `main`).
   `count-gates.sh g4`, 10:12, 21 s: the lag gate fails, with 4,395 and
   the first cut at 4,117 as in 024-30, section 9 (the code before
   026-05); every other G4 gate passes; COUNT GATES FAILED, status 1.
   Logs `nop8-g4.txt`, `nop8-g4-full.txt`.
 * **On `main`**: `count-gates.sh` (all five gates) on the head
-  fe947c7c, 10:13 to 10:15, 152 s: the lag 1,281, as 026-05 measured
+  eb3b6969, 10:13 to 10:15, 152 s: the lag 1,281, as 026-05 measured
   for this workload at 1M and f = 1/4 (026-05, section 6), margin 1.56;
   COUNT GATES OK. The other gates' counts are those of 026-05's run on
-  57cbb21e (G4's M1 0.959, G5's kept 0.015), but for the heaps, which
+  e3f1811b (G4's M1 0.959, G5's kept 0.015), but for the heaps, which
   026-07's buffer changed (026-10). Logs `count-gates.txt`,
   `count-gates-full.txt`.
 
@@ -98,7 +98,7 @@ limit.
 
 ## 3. Gates
 
-On the head fe947c7c (`main` c91443d8 and the gate; `main` had not
+On the head eb3b6969 (`main` f2009ee4 and the gate; `main` had not
 moved at 10:16), each in a slot; logs in
 /Users/f/fl/bench/2026-11-13/lag/runs/ (`gates.sh`, `gates.log`):
 
@@ -114,9 +114,9 @@ No expected value of an existing test changed; no question for Frans.
 
 2026-11-13, 10:17. Done; ready to land. Clone
 /Users/f/fl/bench/2026-11-13/lag/clone, branch `026-11-lag-gate`, from
-`main` at c91443d8: fe947c7c (the gate), then this item and its Files
+`main` at f2009ee4: eb3b6969 (the gate), then this item and its Files
 line in 026's readme (the commit after it). Gates of section 3 OK on
-fe947c7c; the commit after it changes items only. The branch
+eb3b6969; the commit after it changes items only. The branch
 `026-11-nop8` (worktree /Users/f/fl/bench/2026-11-13/lag/nop8) is the
 check without 026-05, not to land.
 

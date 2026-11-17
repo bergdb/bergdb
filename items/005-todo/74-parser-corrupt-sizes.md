@@ -75,7 +75,7 @@ recovery policy, respectively; they remain open as 005-82 and 005-83.
 Outcome
 -------
 
-2026-11-02, by Codex, on `main` from `7f3dab4`:
+2026-11-02, by Codex, on `main` from `b0b4732`:
 
 * `StoredTrans.Parser` checks the record's minimum size, confines nodes
   and the got-dirty list to its declared size, and checks space for the

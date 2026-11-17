@@ -8,7 +8,7 @@ things we have forgotten that should be included in the release. Just a
 double-check." What is open, meant for 2026.5 (or a bug or known issue),
 and neither done, decided nor moved, beyond what 024-28 (the checklist,
 10:37) and 006-23, section 5 (the day's decisions and landings to 14:16)
-already hold. Read only, at `main` `adb096cb`; by the agent "sweep" of
+already hold. Read only, at `main` `af6efacb`; by the agent "sweep" of
 coord-1112, 14:12 to 14:25.
 
 
@@ -38,7 +38,7 @@ Everything else is small, or already covered by 024-28.
    the keys from `LOCKED_DIRS` (`FileStream.java:955`; no commit to the
    file since 2026-11-09). So a new database in a new directory can,
    rarely and on Linux, be refused as in use. Only the test half went
-   in (`d99ff27c`). The product fix is
+   in (`85bed824`). The product fix is
    `/Users/f/fl/bench/2026-11-10/jdk17-f/product-fix-idea.patch`, 43
    lines: close the file and remove the keys under the `LOCKED_DIRS`
    monitor. With it, s1's probe went from 10 failures in 30,000 tests to
@@ -92,7 +92,7 @@ Everything else is small, or already covered by 024-28.
    * Fixed or changed: a leaf's dead entries (by the merges and theta,
      024-21 and 024-23); the long key's quadratic loop (gone with the
      111-byte limit, L2); `getTrans` inside a record (021-27); the time
-     klong (`0420c72e`); the decrease at 50M keys (024-31).
+     klong (`90184540`); the decrease at 50M keys (024-31).
    * Still so: dirty top nodes after a mass delete (fix (a) dropped);
      OT2, unless item 1 is made; a transaction larger than the startup
      distance; Core writes the rules leave undefined, with CA3; the API
@@ -209,7 +209,7 @@ Everything else is small, or already covered by 024-28.
 ## 4. State
 
 2026-11-12, 14:25, by the agent "sweep" of coord-1112. Read only at
-`main` `adb096cb`; nothing built, run or committed; only this file
+`main` `af6efacb`; nothing built, run or committed; only this file
 written.
 
 * **Done:** sections 1 to 3. These were read: 024-28; 006-23, sections

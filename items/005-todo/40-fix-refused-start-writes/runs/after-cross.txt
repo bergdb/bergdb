@@ -1,5 +1,5 @@
-Today's code: 98ac9eb with the fix of 005-40 (not committed when this ran)
-The 2017 code: 195cf88 (the 2017 import)
+Today's code: 52d7e36 with the fix of 005-40 (not committed when this ran)
+The 2017 code: 0257e0b (the 2017 import)
 
 X0. 2017 creates, 2017 starts:
     created, 20 puts; the stream file 1920 bytes

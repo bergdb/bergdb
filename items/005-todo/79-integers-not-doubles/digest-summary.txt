@@ -1,4 +1,4 @@
-StreamDigest all: the base 6d81050 (digest-base.txt) against Part B (digest-b.txt),
+StreamDigest all: the base f7d1d52 (digest-base.txt) against Part B (digest-b.txt),
 005-79, 2026-11-03. Lengths of the plain stream; 'digest' compares the decided fields
 (length, firstAvailablePos, firstAvailableTime, sha256; digest-compare.py), the physical
 cut left out; 'modes' says whether plain, reads and restarts give the same stream

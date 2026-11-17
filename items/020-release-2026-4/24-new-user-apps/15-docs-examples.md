@@ -8,9 +8,9 @@ compiled and run exactly as written, against the release jar alone. Then the doc
 was read as a whole, looking for places that contradict each other, links that lead
 nowhere, and claims about 2026.4 that today's changes made false.
 
-The jar and the Javadoc were built from a clone of main at `b0eba12`, with `java/build.sh`
+The jar and the Javadoc were built from a clone of main at `5c296c5`, with `java/build.sh`
 and `java/javadoc-pub.sh` (JAVADOC PUB OK). Main's `java/`, README.md and
-`releases/next.md` are unchanged since then (main at `48d2b00`), so the line numbers below
+`releases/next.md` are unchanged since then (main at `3cb6677`), so the line numbers below
 hold for both. The implementation was read only to settle which of two texts is right.
 Nothing in BergDB was changed.
 
@@ -111,7 +111,7 @@ The details. Paths are under `java/src/bergdb/` unless given in full.
 * **U15-3. After `close()`, use nothing more, but `sync()` works.**
   * `pub/Database.java:182` (close()): "this Database object must not be used anymore".
   * `:137` (stop()): "After this method, call only close() on this Database".
-  * `:239-242` (sync()), changed today (U10-6, `10335ee`, next.md:651-657): "If it is
+  * `:239-242` (sync()), changed today (U10-6, `41eb7cf`, next.md:651-657): "If it is
     durable, this method returns, also then: after close(), or after stop() once the
     database has closed". next.md's J1 (line 966) says the same of
     `setCacheSizeInMb()` after `stop()`.
@@ -198,7 +198,7 @@ The details. Paths are under `java/src/bergdb/` unless given in full.
     `pub/DbObject.java:38-39`). Fold it into 020-08, or start it with "replaced by".
 * **U15-11. Three `FileStream` test methods are public again.**
   * `stream/FileStream.java:3108`, `:3145` and `:3177` are public static tests that came
-    today with `2557286` (021-20) and `5ca4249` (U10-5).
+    today with `225d936` (021-20) and `49c2db9` (U10-5).
   * next.md:1160-1162 says that the test methods of `FileStream` and the other types of
     Db's signatures are no longer public, so that their Javadoc does not list them.
   * Fix: make the three tests package-private.
@@ -261,44 +261,44 @@ Checked, and in agreement with the text:
 ## 4. Fixes
 
 By fixer x28 for coord-1109, 2026-11-09, in `/Users/f/fl/bench/2026-11-09/clone-x28`, branch
-`x28-rebased` (worktree `clone-x28-rb`), on main at `b3a6b05`. Documentation only: no change
+`x28-rebased` (worktree `clone-x28-rb`), on main at `ef5b52f`. Documentation only: no change
 of behaviour, no API added. The calls after `stop()` and `close()` were probed for U15-3; the
 others were settled by reading the code.
 
-* U15-1, the documentation part: `ebfd835`. The overview, README.md and the package's "The
+* U15-1, the documentation part: `1025955`. The overview, README.md and the package's "The
   API and its jar" say that the documentation of the Core API is its Javadoc in the source,
   from `java/src/bergdb/core/Db.java` on, in the release's source zip; `javadoc-pub.sh` is
   unchanged. Whether to publish it: question Q1 below.
-* U15-2: `ebfd835`. `WBuilder`'s class text, `execute()` and next.md's 020-21 entry say that
+* U15-2: `1025955`. `WBuilder`'s class text, `execute()` and next.md's 020-21 entry say that
   an `execute()` refused because another thread is in a call of the connection leaves the
   builder unspent (`WBuilderImp.execute`: `enter()` throws before `spent` is set).
   `execute()`'s `@throws IllegalStateException` names that case.
-* U15-3: `ebfd835`. A probe of every `Database` call after `stop()`, after the background
+* U15-3: `1025955`. A probe of every `Database` call after `stop()`, after the background
   close, and after `close()`, for a file and a memory database. Every read and transaction
   through any connection, `setRetainDuration()`, `setStartupDistanceInMb()`, `deleteIndex()`
   and an `IndexBuilder`'s `start()` throw `IllegalDbStateException` (`DbStoppingException`).
   `close()`, `stop()`, `sync()`, `setCacheSizeInMb()`, the getters, `connection()`,
   `newConnection()` and `indexJob()` are taken. `stop()` and `close()` now say exactly that.
-* U15-4: `ebfd835`, next.md's 020-08 entry, as proposed.
-* U15-5: `ebfd835`. `DbException`: malformed internal data refuses the read or the start that
+* U15-4: `1025955`, next.md's 020-08 entry, as proposed.
+* U15-5: `1025955`. `DbException`: malformed internal data refuses the read or the start that
   meets it, and a running database goes on. The `InternalDataException`s of a transaction's
   index entries come before its go point (`RwTransaction`); those of reclaim's state come at
   the start (`Reclaim.initFromDb`).
 * U15-6: left. It is an API question: Q2 below.
-* U15-7: `ebfd835`. "a path of create() that is not a directory".
-* U15-8: `ebfd835`. "neither created.txt nor a stream file (*.bergdb) with a byte".
-* U15-9: `ebfd835`. "A connection is used by one thread at a time (Threads, below)."
-* U15-10: `ebfd835`. All six next.md entries. For 021-07, a probe confirmed the text: a
+* U15-7: `1025955`. "a path of create() that is not a directory".
+* U15-8: `1025955`. "neither created.txt nor a stream file (*.bergdb) with a byte".
+* U15-9: `1025955`. "A connection is used by one thread at a time (Threads, below)."
+* U15-10: `1025955`. All six next.md entries. For 021-07, a probe confirmed the text: a
   malformed object in an indexed directory, a put over it and a delete of it worked, and the
   index held the new value.
-* U15-11: `6cdd63f`. The three tests are package-private. Nano's `TestRunner` takes
+* U15-11: `301c4f4`. The three tests are package-private. Nano's `TestRunner` takes
   `getDeclaredMethods()`, and the other tests of `FileStream` are package-private already.
   `unit.sh -c FileStream` ran all 40 unit tests.
-* U15-12: `ebfd835`. `bergdb-2026.4.jar` in the text and in the four command lines.
+* U15-12: `1025955`. `bergdb-2026.4.jar` in the text and in the four command lines.
 * U15-13: left. These are developer notes, and they are not wrong.
-* U15-14: `ebfd835`. `start()`'s `@throws` names the `VersioningStreamException` of a
+* U15-14: `1025955`. `start()`'s `@throws` names the `VersioningStreamException` of a
   database with an index of 2026.3 (`IndexManager.start`). The Data Object rules name X3.
-* From 006-18-03: `b5f6bad`, next.md's Platforms. The 200 MB default budget is the Core's
+* From 006-18-03: `c876e61`, next.md's Platforms. The 200 MB default budget is the Core's
   (`DbBuilder.cacheSizeIndicator()`; the check's `KillDemo` used `Db`), above the 192 MB
   heap, so an application of the Core sets a smaller one, such as 50 MB. The Pub API's
   default is a fifth of the heap (`DatabaseBuilder.cacheSizeInMb()`), about 38 MB, so it

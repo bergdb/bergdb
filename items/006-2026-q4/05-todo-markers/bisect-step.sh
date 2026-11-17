@@ -5,7 +5,7 @@
 # when its second phase pays till 3.0e6 instead of 4.0e6?
 #
 # Usage, in the clone:
-#   git bisect start 49aa48d d7a46d4 --term-old=broken --term-new=fixed
+#   git bisect start 50786b2 2d5c2a3 --term-old=broken --term-new=fixed
 #   git bisect run sh /path/to/bisect-step.sh /path/to/bergdb/java/build.sh
 # The build is bergdb's java/build.sh without its stress tests, run in the
 # clone's bergdb/ (src, src-dev, src-icu, in). Exit 0: broken (the test

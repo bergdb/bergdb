@@ -233,7 +233,7 @@ factor is for Frans; 100M keys was not run.
 
 2026-10-29. 007-07, section 12, by Claude (Opus 5.5, Claude Code) in
 006-10: the quick performance suite and Props, main before 007-07
-(`cefb473`) against 007-07's code (`f89846d`), run on the night of
+(`fb67f96`) against 007-07's code (`b8ac8a1`), run on the night of
 2026-10-28, not quiet. The quick suite: no alerts, throughput within -0.3
 to +1.3 % (gets +4.4 %), the same bytes a put; under finite retention the
 commit's p99 and p99.9 are 9 to 11 percent higher and the startup 1 to 4

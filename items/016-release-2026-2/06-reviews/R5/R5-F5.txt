@@ -1,7 +1,7 @@
 Command (repo/java), after adding the test and its storage/Pack registration:
 java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.storage.BufferedStreamReviewTester -m testR5UnderlyingWritesAreSerialized
 
-At f5a5f66 with only review tests added:
+At abe7785 with only review tests added:
 AssertionError: a valid buffered cut failed: java.io.IOException: R5: pretruncate overlaps append on a single-writer stream
 FAILURE, total: 2, failed: 1. Time: 0.0 s.
 

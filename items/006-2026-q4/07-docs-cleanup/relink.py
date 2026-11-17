@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The references of the docs/ cleanup (bergdb 006-07).
 
-Run from the repository root, after the moves of the first commit (3b60dde),
+Run from the repository root, after the moves of the first commit (e6f2394),
 as it was for the second:
 
     python3 -I items/006-2026-q4/07-docs-cleanup/relink.py            # the diff it would make

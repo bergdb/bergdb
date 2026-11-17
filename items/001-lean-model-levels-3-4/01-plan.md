@@ -5,7 +5,7 @@ Created 2026-10-16 by Claude (Opus 5.5, Claude Code) for Frans Lundberg,
 from the discussion of that day, as an overview. Extended the same day
 (14:05 to 14:48) into the detailed plan, at Frans's request: a plan that
 Claude Code (Opus) can carry out unattended for a long time, to the goal
-below. Based on bergdb at `fb52a14` (read, not changed), bergdb's `docs/`
+below. Based on bergdb at `f050833` (read, not changed), bergdb's `docs/`
 and `lean/`, and the f1 repo's F1-008 (07 to 13, and Codex's review of 09).
 
 **Status: plan only.** No work package has started. Work in bergdb waits

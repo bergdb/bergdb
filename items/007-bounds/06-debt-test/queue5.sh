@@ -1,5 +1,5 @@
 #!/bin/sh
-# 007-06, queue 5: 007-07's step3.diff (on 2eaaa45, clone step3): the steady runs and the one-call
+# 007-06, queue 5: 007-07's step3.diff (on fc8f7c3, clone step3): the steady runs and the one-call
 # decreases at the worst points. No run starts after 21:30 (F53's quiet block from 22:30; hard
 # stop 21:45).
 cd /Users/f/fl/bench/006-09/w8

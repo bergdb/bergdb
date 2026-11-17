@@ -203,7 +203,7 @@ per key after a full collection.
 
 **Flags.** G1, `-Xms` equal to `-Xmx`, `-XX:+AlwaysPreTouch`, assertions off (these are
 performance runs; every value is checked anyway), `gc*` and `safepoint` logged. One
-commit of bergdb (HEAD when the tools are ready; now `f206e58`), built once in a scratch
+commit of bergdb (HEAD when the tools are ready; now `faa4269`), built once in a scratch
 clone; the same jar on both machines, with its commit and SHA-256 in every result.
 
 
@@ -257,7 +257,7 @@ Frans wants everything removed.
 
 Done 2026-10-23 10:20: OpenJDK 27 GA, build 27+35 (F53's Homebrew JDK is version 27 too),
 from jdk.java.net's archive, its SHA-256 checked; 386 MB in `/opt/bergdb-bench/jdk-27`.
-The measured jar is bergdb `f206e58`, built in a scratch clone (`java/build.sh`), SHA-256
+The measured jar is bergdb `faa4269`, built in a scratch clone (`java/build.sh`), SHA-256
 `5357202587f0bf4d6cd8a683c67acbf90530dd9f9c856e9d2c2589d031cb1dba`, the same file on
 both machines.
 

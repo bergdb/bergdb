@@ -1,8 +1,8 @@
 # 024-10. The last operation wins
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `a780b957` (024-13); its rule R2 replaced by 024-16's
-refusal (`47c93e34`); QL1 to QL5 not marked decided.
+`main` since `36924319` (024-13); its rule R2 replaced by 024-16's
+refusal (`e6e93272`); QL1 to QL5 not marked decided.
 
 The builder's rule "the last operation wins", put or delete, in Java, for
 release 2026.5 (024's readme, "Planned so far", first point; 024-01,
@@ -38,7 +38,7 @@ questions QL1 to QL5; cite them as "024-10, T3".
   tests' expected values changed in a commit of their own (section 7).
   No record format change; a transaction that names no key twice
   writes the bytes it wrote before (section 8).
-* **Gates** on the branch's head `3ad9fa1e`: before-commit.sh, level1.sh
+* **Gates** on the branch's head `3fc470c6`: before-commit.sh, level1.sh
   and level2.sh OK (section 9). **State:** section 13.
 * **For Frans:** five questions, each with the choice made (section 5);
   first the approval of the two changed expected values.
@@ -69,7 +69,7 @@ Release 2026.4's rule, for comparison:
   delete if there is no put; a delete never replaces a put, whatever
   their order (015-40; the code's comment since 2013: "Non-deletes take
   precedence over deletes").
-* `Db.sortByKey` (023-09, section 7.1; commit `96a18987`): after the key
+* `Db.sortByKey` (023-09, section 7.1; commit `0b1d59f4`): after the key
   transformations and the stable sort, of the KVs with one key: the last
   put in the order of the keys as written (build's sort), or a delete if
   there is no put.
@@ -281,7 +281,7 @@ Each has the choice made here, so that the work does not wait.
 
 ## 6. The implementation
 
-On the branch, commit `137b35b9` (9 files, 372 lines added, 46 removed,
+On the branch, commit `0b9c9621` (9 files, 372 lines added, 46 removed,
 of which the tests are about 300 lines):
 
 * **`Kv.call`**, new, package-private: the number of the builder's call
@@ -332,7 +332,7 @@ back:
 
 ## 7. Tests
 
-**New**, in commit `137b35b9`; each names every wrong row in its
+**New**, in commit `0b9c9621`; each names every wrong row in its
 failure:
 
 * `DbTesterDelete.testLastOperationWins`: rows B1 to B7 and T1 to T10,
@@ -350,7 +350,7 @@ failure:
   asserts the time.
 
 On `main`'s production code (the new tests with `Db`, `Kv`, `Trans`,
-`KeyTransformation` and `RwEnvironmentImp` of `1826cb37`), 07:22:
+`KeyTransformation` and `RwEnvironmentImp` of `1d5b18fa`), 07:22:
 
 * `testLastOperationWins`: "34 wrong": B3, B6, B7, T2, T3, T6, T7 (`k`)
   and T9 (`$k`), in each of the four checks (two distances, before and
@@ -362,9 +362,9 @@ On `main`'s production code (the new tests with `Db`, `Kv`, `Trans`,
 So exactly the rows marked "Differs" in section 4 fail on `main`.
 
 **Expected values changed on purpose**, in a commit of their own,
-`3ad9fa1e` (QL4, for Frans's approval). With commit `137b35b9` alone the
+`3fc470c6` (QL4, for Frans's approval). With commit `0b9c9621` alone the
 full unit suite (1,648 tests) fails in these two tests and no other;
-with `3ad9fa1e` all 1,648 pass (07:29):
+with `3fc470c6` all 1,648 pass (07:29):
 
 * `DbTesterJavadoc.testTransBuilderOneOperationPerKey`: key "a" (put,
   then delete): "1" becomes no value. Key "f" (put, delete, put,
@@ -386,8 +386,8 @@ is called last and sorts last: kept by both rules).
 * **Without repeated keys: the same bytes.** StreamDigest `all` (12
   configurations of level2.sh's and level3.sh's RestartInvariance, four
   modes each, one operation a key in every transaction), 07:30: `main`'s
-  jar (`1826cb37`, built in a worktree) against the branch's
-  (`3ad9fa1e`), both run with `main`'s compiled StreamDigest, then
+  jar (`1d5b18fa`, built in a worktree) against the branch's
+  (`3fc470c6`), both run with `main`'s compiled StreamDigest, then
   `compare`: "DIGESTS IDENTICAL (48 of 48; of the identical, the
   physical cut differs in 0)". By the code: `build()` keeps every KV of
   such a transaction in the same `TreeMap` order, and `sortByKey` drops
@@ -419,7 +419,7 @@ is called last and sorts last: kept by both rules).
 
 ## 9. Gates
 
-On the branch's head `3ad9fa1e`, in the clone, with the heavy-run lock:
+On the branch's head `3fc470c6`, in the clone, with the heavy-run lock:
 
 | Gate                          | When           | Result                                   |
 |---|---|---|
@@ -514,7 +514,7 @@ changed here. When C is taken to release 2026.5:
   as 020-14's. Not done here.
 * **F2. `java/doubles.py` takes 3 minutes, on `main` too.** Run alone
   (`python3 -I doubles.py`), 07:38 to 07:44: 181.8 s of CPU in the
-  clone, 180.8 s in the worktree of `main` at `1826cb37`; the header of
+  clone, 180.8 s in the worktree of `main` at `1d5b18fa`; the header of
   before-commit.sh says "under a second". So before-commit.sh takes
   about 4.5 minutes where it took 2 (262 s here; 023-09, section 7.3,
   has 283 s). Not caused by this branch, not fixed here. Where the time
@@ -547,7 +547,7 @@ the C clone's `tr_build` (022's `c/src/trans.c`).
 2026-11-11, 07:19 to 07:25. The three new tests, run on `main`'s code
 (the differing rows fail, the others hold); the change; the mutations
 M1 to M4; the full unit suite (two existing tests fail, as read
-beforehand); the first commit (`137b35b9` after two amends: its
+beforehand); the first commit (`0b9c9621` after two amends: its
 message's form, and one sentence in `Connection`'s Javadoc); the two
 tests' expected values changed.
 
@@ -562,7 +562,7 @@ figures in that window. Told to the coordinator at 07:26 (the agent
 the owner file says "timing"; a background command waits for the lock.
 
 2026-11-11, 07:28 to 07:37, with the heavy-run lock (07:28:41 to
-07:37:44): the unit suite on both commits, commit `3ad9fa1e`,
+07:37:44): the unit suite on both commits, commit `3fc470c6`,
 StreamDigest, the two probes (F1 and the Pub stream),
 before-commit.sh, level1.sh; the results are in sections 7 to 9 and 11.
 07:37:51 to 07:48:34: the lock again, for level2.sh full: LEVEL 2 OK.
@@ -577,22 +577,22 @@ coordinator's landing.
 
 * **Done.** The rule (section 3), the table (section 4), the questions
   with the choices made (section 5); the change and the new tests,
-  commit `137b35b9`, and the two existing tests' expected values,
-  commit `3ad9fa1e` (sections 6 and 7); the stream's bytes (section 8);
-  before-commit.sh, level1.sh and level2.sh on `3ad9fa1e`, all OK
+  commit `0b9c9621`, and the two existing tests' expected values,
+  commit `3fc470c6` (sections 6 and 7); the stream's bytes (section 8);
+  before-commit.sh, level1.sh and level2.sh on `3fc470c6`, all OK
   (section 9); what C must change (section 10); F1 seen by a probe and
   F2 measured (section 11).
 * **Not done.** Nothing of the brief. Not asked for and not done: a fix
   of F1 or F2; level3.sh and level4.sh; the C clone; 024's readme
   (its line for this file and its log are the coordinator's).
 * **For Frans.** QL1 to QL5 (section 5); QL4 first: the two changed
-  expected values of commit `3ad9fa1e`.
+  expected values of commit `3fc470c6`.
 * **For the coordinator.** My builds and tests during "touch"'s timing
   run, 07:21 to 07:25 (the log); F2, before-commit.sh's 3 minutes in
   `doubles.py` on `main`.
 * **Where.** Clone `/Users/f/fl/bench/2026-11-11/low/clone`, branch
-  `024-10-last-operation-wins`, from `main` at `1826cb37`, head
-  `3ad9fa1e`, two commits, the working tree clean; nothing pushed. A
+  `024-10-last-operation-wins`, from `main` at `1d5b18fa`, head
+  `3fc470c6`, two commits, the working tree clean; nothing pushed. A
   worktree of `main` for the byte comparison, built:
   `/Users/f/fl/bench/2026-11-11/low/base`. The probes (F1Probe.java,
   PubDigest.java; run with `-cp out:java/build/classes`, as the jar is

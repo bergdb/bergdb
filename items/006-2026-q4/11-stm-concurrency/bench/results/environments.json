@@ -2,7 +2,7 @@
   "main": {
     "started_utc": "2026-10-30T08:24:23.045124+00:00",
     "builds": {
-      "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+      "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
       "production_java_clean": true,
       "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
       "variants": {
@@ -2464,7 +2464,7 @@
   "cost": {
     "started_utc": "2026-10-30T09:05:05.275474+00:00",
     "builds": {
-      "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+      "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
       "production_java_clean": true,
       "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
       "variants": {
@@ -3417,7 +3417,7 @@
   "file": {
     "started_utc": "2026-10-30T09:15:27.264084+00:00",
     "builds": {
-      "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+      "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
       "production_java_clean": true,
       "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
       "variants": {
@@ -4034,7 +4034,7 @@
   "eviction": {
     "started_utc": "2026-10-30T09:23:00.842054+00:00",
     "builds": {
-      "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+      "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
       "production_java_clean": true,
       "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
       "variants": {
@@ -4305,7 +4305,7 @@
   "main-resume": {
     "started_utc": "2026-10-30T08:58:04.787814+00:00",
     "builds": {
-      "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+      "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
       "production_java_clean": true,
       "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
       "variants": {

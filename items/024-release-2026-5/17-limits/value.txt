@@ -1,4 +1,4 @@
-# 11:56:41 main 68c3917e, timing
+# 11:56:41 main 16759d36, timing
 size     what           ms       allocMB  note
 10000000 put0           172.7    13.2     sync 112.9 ms, next small put 0.5 ms, stream +10425096
 10000000 put1           183.0    0.0      sync 25.9 ms, next small put 0.2 ms, stream +10336800

@@ -21,4 +21,4 @@ Log
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
-2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: the pseudo-index "primary" is gone: the primary scan has its own iterator (020-10, P1) and Database.PRIMARY was removed (I3); "primary" is a name like any other; ae68938 (P1), 5b08db5 (I2), 8be9a95 (I3). The test: PubTesterIndexJobs.testIndexNamedPrimary and PubTesterIndex.testScanIndexNamedPrimary, in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: the pseudo-index "primary" is gone: the primary scan has its own iterator (020-10, P1) and Database.PRIMARY was removed (I3); "primary" is a name like any other; 238b249 (P1), 4f8210f (I2), f3c7966 (I3). The test: PubTesterIndexJobs.testIndexNamedPrimary and PubTesterIndex.testScanIndexNamedPrimary, in `before-commit.sh`, passing on `main` at `b768ef0` (020-11). Status: done.

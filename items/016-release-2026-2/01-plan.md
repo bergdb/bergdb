@@ -58,18 +58,18 @@ Done when:
 ## 2. Where main stands, 2026-11-03
 
 * There are 245 commits since `release-2026.1` (2026-10-25), up to
-  `df6ad50` (15:08), Frans's commit of the open work. `main` is clean and
+  `9d34ac1` (15:08), Frans's commit of the open work. `main` is clean and
   pushed. 43 of those commits touch `java/src`: 120 files, 7,441 lines
   added and 2,084 removed.
 * `night.sh` passed every scheduled night since 2026-10-30. The last run
-  was on `3ad171d` (2026-11-03). No night has run yet on `df6ad50`, which
+  was on `afc3d20` (2026-11-03). No night has run yet on `9d34ac1`, which
   adds 005-76's change to `BufferedStream`.
 * Props, 2026-10-28 (007-07, section 12):
   * MEM: about 130 bytes per KV, against 191 at 2026.1. `level1.sh`'s
-    limit was lowered to 131 (`f648f96`).
+    limit was lowered to 131 (`5dda08b`).
   * CORE: about 0.24, against 0.29.
   * SS: 1.51, against 1.50. The limits were raised after 007-07
-    (`f6fc56b`).
+    (`b68bb55`).
 * Databases of 2026.1 are refused (005-50), with no migration (Frans:
   "No need to consider "today's databases". There are none.").
 * Tested on JDK 27, on macOS (F53):
@@ -84,7 +84,7 @@ Done when:
 * **The sweep's stop-the-world**: gone with handles (009). Eviction runs in
   batches of at most 2 ms. 009's target 2 is met in P4's soak and in the
   pause probe. 005-65's case with 8 readers has a fix in `main`
-  (`988fe1a`). Frans accepted the rest of it as a full machine. Its rerun
+  (`52aeb04`). Frans accepted the rest of it as a full machine. Its rerun
   is still to be made (section 4.1).
 * **The read path's cap at about 2 million gets a second**: gone. In
   memory, 4.2 million gets a second with 8 threads, where 2026.1 stops at
@@ -104,13 +104,13 @@ Done when:
 * **Startup not bounded for BergDB's own take**: 007-07 put the deadline
   into the code. T3 for the take is proved (`T3_take`, 007-08); T4 is not.
 * **`BufferedStream` did not wake its consumer**: 005-76, in `main` since
-  `df6ad50`.
+  `9d34ac1`.
 * **Replication**: unchanged, and out of this release (section 3).
 * **Power loss on real hardware**: not established. A new fault class was
   found since: holes in an unforced tail can refuse a start or fail a
   later read (005-83, moved to 014-01). It is out of this release.
 * **Tested on JDK 27 only**: still true, now with Java 17 as the stated
-  minimum (`b10e072`).
+  minimum (`bb7e189`).
 * **The documentation is not reviewed for users**: still true. This is an
   internal release.
 
@@ -245,7 +245,7 @@ proposal. The sources:
    and in 012-05's workload rules; no code. S.
 6. **005-80, Decide: option B**, recommended, under D2. A line in 005-52's
    Outcome, and a test that forces the interleaving and fails on the code
-   before `988fe1a`. S.
+   before `52aeb04`. S.
 7. **005-52, the point that is left.**
    * `PauseProbe` gets two properties, `lower` and `lowerAt`.
    * Four runs in a quiet block, about 15 minutes, and the table.
@@ -262,7 +262,7 @@ proposal. The sources:
     * docs/levels.md's status date, 2026-10-26;
     * docs/levels.md, section 7: 005-65 "not yet explained";
     * docs/levels.md, section 8: "Open: group commit (005-48)", which has
-      been in `main` since `e611709`, and its citation of 005-83, now
+      been in `main` since `d8ed1aa`, and its citation of 005-83, now
       014-01;
     * README.md's latest release;
     * lean/README.md's list of the theorems whose axioms the release
@@ -334,23 +334,23 @@ These go into the notes' "Known issues and limits", with their IDs:
 ## 5. The work
 
 **W1. The release notes complete.** `releases/next.md` was begun on
-2026-10-27 (`565499f`, 005-55). It lacks most changes of the two days
+2026-10-27 (`74bc2dc`, 005-55). It lacks most changes of the two days
 before, and some after. Found in this review:
 
-* **Java 17 or later is required**: `--release 17` since `b10e072`, where
+* **Java 17 or later is required**: `--release 17` since `bb7e189`, where
   2026.1 ran on Java 8. This is the incompatible change, so it goes first
   in the notes.
 * **Handles (009)**: eviction without the sweep, in batches of at most
   2 ms; the lock-free fast path of reads; no stop-the-world of BergDB's
   own. Level 4's status as in docs/levels.md.
-* **Group commit** (005-48, `e611709`): a sync that waits starts the
+* **Group commit** (005-48, `d8ed1aa`): a sync that waits starts the
   flush.
-* **An idle eviction thread does not wake** (005-51, `c2aab10`).
+* **An idle eviction thread does not wake** (005-51, `043a09c`).
 * **Reclaim spaces its iterations by the live startup distance** (005-61,
-  `a175840`).
-* **A reader's load skips the eviction monitor** (005-65, `988fe1a`), and
+  `4085e2e`).
+* **A reader's load skips the eviction monitor** (005-65, `52aeb04`), and
   `setBudget`'s race was fixed there (005-80).
-* **The Pub API's Javadoc** is built by `java/javadoc-pub.sh` (`216fc8b`).
+* **The Pub API's Javadoc** is built by `java/javadoc-pub.sh` (`f342bd4`).
 * **Lean**:
   * the theorems over handles: T-CACHE, T-READ, T2-C, T-PIN, T9 and T12
     (009, 005-62);
@@ -492,7 +492,7 @@ of `java/src`, with the files whole), in four areas:
 * **`night.sh large`**, about 6 hours. No run with handles is recorded.
 * **jcstress** (`java/stress/jcstress`): its tests cover handles'
   publication and the eviction race. It last ran on 009's branch
-  (`fb0c770`), before 005-65 changed the eviction thread's wake. H3 adds a
+  (`7d325b3`), before 005-65 changed the eviction thread's wake. H3 adds a
   test wherever it finds a publication that has none, such as 005-46's
   reads without a lock or 005-76's wake.
 * **The stress programs, with fresh seeds, for some hours**: RestartStress,

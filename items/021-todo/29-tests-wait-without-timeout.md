@@ -14,7 +14,7 @@ section 6.3, point 10; 024-01, TT4, "hangs first"):
 
 Other test threads are joined with no limit too, such as
 `PubTesterOutput.java:246`, `PubTester.java:1652` and `PubTester.java:4245`
-(line numbers of 2026-11-13, main `b3f64bb1`).
+(line numbers of 2026-11-13, main `7f408589`).
 
 Why: a fault in the code under test then hangs the test, and with it
 before-commit.sh or a night step, instead of failing it with a message;
@@ -42,7 +42,7 @@ from coord-1112's handover (006-23, section 6, point 3) and 024-35, finding 9.
 
 2026-11-13. Done by coord-1113's agent "waits": commit "021-29" in
 `/Users/f/fl/bench/2026-11-13/waits/clone`, branch `021-29-test-waits`,
-on main's 59510cb5, to land. Tests only; no product code changed.
+on main's 8815b6c2, to land. Tests only; no product code changed.
 
 * The grep (`waitForEvent()` and `.join()` with no argument in `java/src`
   and `java/src-dev`) found 37 waits of a test on a thread or an event.
@@ -52,7 +52,7 @@ on main's 59510cb5, to land. Tests only; no product code changed.
   t.isAlive())`; `e.waitForEvent(60_000)` and `Assert.assertTrue(msg,
   e.didItHappen())`. `StorageContractTester` has no `Assert` import and
   throws `AssertionError`; `IndexHarness` uses its `check()`.
-* The waits, by line of 59510cb5:
+* The waits, by line of 8815b6c2:
   - `pubimp/PubTesterOutput.java` 190, 198, 201 (the entry's), 246;
   - `pubimp/PubTester.java` 788, 804, 808 (the entry's), 1652, 4245;
   - `pubimp/PubTesterJavadoc.java` 957; `pubimp/PubTesterThreads.java`

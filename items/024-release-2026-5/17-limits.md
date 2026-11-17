@@ -4,7 +4,7 @@ Created 2026-11-11 by Frans Lundberg. Status: decided (2026-11-11):
 every question decided (section 8); made in 024-24 and 024-25.
 
 The limits of a transaction (operations, bytes), of a key, of a value
-and of a record: what they are today (main, `68c3917e`, with 024-07
+and of a record: what they are today (main, `16759d36`, with 024-07
 and 024-10 landed; the same as release 2026.4 in every limit this file
 names), what they should be in
 release 2026.5, and how each is stated, checked and proved. Frans,
@@ -213,7 +213,7 @@ All times 2026-11-11.
 
 ## 2. Today's limits
 
-From the code of main, `68c3917e`; release 2026.4 has the same in every
+From the code of main, `16759d36`; release 2026.4 has the same in every
 row (the record format moved to 6 since, not the limits). Paths are
 under `java/src/bergdb/`.
 
@@ -408,7 +408,7 @@ and time a commit, 4.1: little change from 500 to 1,000).
 
 ## 4. Measurements
 
-On F53 (10 cores, 32 GB), JDK 27, ZGC, main `68c3917e` built in the
+On F53 (10 cores, 32 GB), JDK 27, ZGC, main `16759d36` built in the
 clone. Probes in `17-limits/`: `LimitProbe.java` (4.1),
 `ValueProbe.java` and `CsBench.java` (4.2); outputs `count-*.txt`
 (one heavy-run slot, counts), `time-1000000.txt` and `value.txt` (both
@@ -871,7 +871,7 @@ version, 14:57, after Frans's QL2 of 14:45 (a key at most 112 bytes).
 "a bit more conservative, possibly increasing in a future version");
 L1, L2, L4 and L5 are his numbers, L3 and L6 follow by the rules of the
 fourth version. The fourth version's reasons for 1,000 operations, 112
-bytes, 16 MiB and 64 MiB are in Git (`944e6944`).
+bytes, 16 MiB and 64 MiB are in Git (`562f6d22`).
 
 ### 6.1 The table
 
@@ -1010,7 +1010,7 @@ on, as today's two refusals do.
   30 and H = 22 by the count with q, 7,694 by format 7's TP26 as stated
   (5.2a). These numbers, not the time of a get, are what makes L1
   small.
-* **(e) What changes in code and tests** (a grep of main `b73740fc`,
+* **(e) What changes in code and tests** (a grep of main `a7a8f7e4`,
   14:50 to 14:54, for 112 bytes; restated 17:45 for the decided limits:
   111 bytes, 500 operations, 8 MiB; no edits; a full list comes with the
   implementation, when the checks fail every test that passes them):
@@ -1501,7 +1501,7 @@ study; in the main tree this file and `17-limits/` only.
 
 * **Done.** Sections 0 to 8, after Frans's 10:18 (keys), 10:26 (files)
   and 10:38 (sizes of databases, 6.9). Section 4 measured on main
-  `68c3917e`: the counts at 1M and 10M keys in one slot (11:22 to
+  `16759d36`: the counts at 1M and 10M keys in one slot (11:22 to
   11:25), the times at 1M keys and of large values with both slots
   (11:56 to 11:57).
 * **Not done.** Times at 10M keys with both slots (the counts' run gives
@@ -1514,7 +1514,7 @@ study; in the main tree this file and `17-limits/` only.
   slots), `table.py` (4.1's tables), outputs `count-1000000.txt`,
   `count-10000000.txt`, `time-1000000.txt`, `value.txt`.
 * **The clone** `/Users/f/fl/bench/2026-11-11/limits/clone`, main
-  `68c3917e`, no branch, no commit (probes only); probes compiled to
+  `16759d36`, no branch, no commit (probes only); probes compiled to
   `/Users/f/fl/bench/2026-11-11/limits/probe` and `.../limits/cs`.
 * **To continue:** keep section 8 current with Frans's answers; the
   limits' implementation is a later subitem (checks in `Trans.Builder`

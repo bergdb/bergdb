@@ -570,7 +570,7 @@ directory d, a new value or no value, and commits at the read time R:
    entries, as no index of 2026.4 indexed one, so a put over it and a
    delete of it work; a new value in format 1, of a `byte[]` put, refuses
    the transaction with `DataFormatException` naming the key (020-08,
-   step 3; since 2026-11-09, after the review of `e92a95a`, decided under
+   step 3; since 2026-11-09, after the review of `02995d9`, decided under
    Frans's delegation: the previous value refused it too, so such a key
    could not be written or deleted while the index existed, also after a
    build that failed over it).
@@ -683,7 +683,7 @@ As the code is since 020-18's F1, F3, F4 and F5 and 020-16's F16-3
   writes nothing for it (020-18, F1: such a write takes no index manager's
   lock, and before F1, when every value's hash was in the read set, it
   collided with the step under the lock again and again).
-* **Its tries** (ab06e26, the fix of I1-starve): a step refused by a
+* **Its tries** (37c82cd, the fix of I1-starve): a step refused by a
   conflict is taken again after a wait of 10, 20 and 40 ms, as an `rw()`
   waits; after three refused tries it runs under the index manager's lock
   (5.2), taken again without a wait until it commits. Writers of object
@@ -1145,7 +1145,7 @@ For his information; each with its reason in the section named.
 ## 12. Log
 
 2026-11-08. Written at the coordinator's request after Frans's decisions
-of 22:08 to 22:12 (020-01, section 14.1), from the code at `acac9d2`; the
+of 22:08 to 22:12 (020-01, section 14.1), from the code at `caa8435`; the
 gaps decided under his delegation of 22:17 (section 11). No code changed.
 
 2026-11-09. Section 3.2: `join()` of a FAILED build throws
@@ -1163,7 +1163,7 @@ sections 4.4, 4.5 and 6.1.
 
 2026-11-09. Sections 6.1 and 6.2 describe the build and the cleanup as
 the code is since 020-18's F1, F3, F4 and F5 and 020-16's F16-3 (020-23,
-V1-3), checked against `IndexBuilderImp` and `IndexManager` at `b149d12`:
+V1-3), checked against `IndexBuilderImp` and `IndexManager` at `73dda0a`:
 a step's read set holds the hashes of the values whose entries it puts;
 a step also stops after 1,000,000 bytes of values; the build's end key
 fixed at its first step; the step's tries, the last under the manager's

@@ -71,7 +71,7 @@ a-1k-x100-b100 (write, 1 runs)
   a-1k-x100-b100 run 1: WRITE 10000 commits (1000000 puts) in 9.51 s: 1052 commits/s, bytes appended per user byte 1.17, append p50 868.4 us p99.9 9044.0 us max 13.56 ms|
 a-1k-x100-b200 (write, 1 runs)
   a-1k-x100-b200 run 1: WRITE 10000 commits (1000000 puts) in 15.50 s: 645 commits/s, bytes appended per user byte 1.17, append p50 892.9 us p99.9 35127.3 us max 38.54 ms|
-Session performance-bufftime.suite-g1-8g-round2  (9d909cc18a88e5e19f6f244e048ff6ab72525929 + working-tree diff)
+Session performance-bufftime.suite-g1-8g-round2  (ba10cb6abbf8ca3bfcd32aaa4214a45b09bc8830 + working-tree diff)
 
 a-100-b10  [write, 1 runs, workload 2e1566c9d1641da4]
   metric                                         n           median              min              max      CV

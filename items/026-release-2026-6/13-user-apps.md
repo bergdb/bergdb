@@ -26,10 +26,10 @@ Written 12:45; section 7 has the exact state.
 
 * **Twelve programs**, about 3,600 lines of Java, in
   `/Users/f/fl/bench/2026-11-13/apps/` (a copy in this item's directory,
-  `13-user-apps/`), on the release jar of `main` at `9c9650d6`, and
-  for the last round at `3b05fdf7` (`main` of 12:40, with 026-10's
+  `13-user-apps/`), on the release jar of `main` at `bb3a1fcf`, and
+  for the last round at `7d3961ad` (`main` of 12:40, with 026-10's
   cuts that forget node ids and key hashes); the first runs at
-  `eefd8bb4`.
+  `4dc4273f`.
 * **No bug found in BergDB** on the two jars, in 3.3 million
   transformer commits beside 1.05 million refusals, 3 million Pub
   transactions on 150 databases, 850,000 B1 transactions with 750
@@ -65,7 +65,7 @@ new seeds per N. Each run compiles into `out-MODE-N` and writes in
 `data/MODE-N`, so that two runs side by side share nothing; it needs a
 release jar beside it as `bergdb-release.jar`. Since 026-08 every
 database has the node size 30: the apps' node-size argument must be 30
-(the first quick round, on `eefd8bb4`, still ran 8 to 62).
+(the first quick round, on `4dc4273f`, still ran 8 to 62).
 
 * **B1 BackToEmpty** (026-05; Core API, a clock that the application
   moves, a retain duration of 1 s, a startup distance of 400 kB to 2 MB
@@ -188,7 +188,7 @@ database has the node size 30: the apps' node-size argument must be 30
   syncing every 17th transaction; the parent kills it (SIGKILL) after a
   random delay and checks that each recovery has at least the last
   synced transaction and no fewer than the start before it.
-* **C1 OldNodeSize** (026-08). A database that the jar of `eefd8bb4`
+* **C1 OldNodeSize** (026-08). A database that the jar of `4dc4273f`
   made at the node size 62 (B2's data of the first soak, cut by the
   machine's restart at 11:18) started three times by the Core API: each
   start must throw `StreamFormatException`, and every file must keep its
@@ -212,22 +212,22 @@ The logs are in `results/` of this item's directory.
 
 | When | Jar | What | Result |
 |---|---|---|---|
-| 10:53 to 10:56 | `eefd8bb4` | `run.sh quick` | all OK |
-| 11:12 to 11:18 | `eefd8bb4` | soak 1, node sizes 8 to 62 | 14 B1 and 1 B2 OK; cut by a restart |
-| 11:34 to 11:36 | `9c9650d6` | `run.sh quick`, with C1 | all OK |
-| 11:37 to 11:52 | `9c9650d6` | `run.sh soak 1` | 3 B1 FAILs (U13-4), 1 B3 (the app's) |
-| 11:55 to 11:56 | `9c9650d6` | B3 at 150 databases, the heap curve | OK |
-| 11:56 to 12:09 | `9c9650d6` | `run.sh kill 1` | all OK |
-| 12:10 to 12:25 | `9c9650d6` | `run.sh soak 2` | 2 B1 FAILs (the app's) |
-| 12:14 to 12:15 | `9c9650d6` | B1 seed 206, the drive to 16,000 | OK |
-| 12:25 to 12:28 | `9c9650d6` | `run.sh b1 3`, B1 alone | 1 FAIL (the app's) |
-| 12:28 | `9c9650d6` | B1 seed 341, the drive by the distance in force | OK |
-| 12:28 to 12:42 | `9c9650d6` | `run.sh kill 2` | all OK |
-| 12:30 to 12:32 | `9c9650d6` | `run.sh quick 2`, the final apps | all OK |
-| 12:43 to 12:46 | `3b05fdf7` | `run.sh quick 3` | all OK |
-| 12:43 to 12:58 | `3b05fdf7` | `run.sh kill 3` | all OK |
-| 12:44 | `3b05fdf7` | C2 SlowDrive, both ways | as on `9c9650d6` |
-| 12:46 to 13:02 | `3b05fdf7` | `run.sh soak 3` | all OK |
+| 10:53 to 10:56 | `4dc4273f` | `run.sh quick` | all OK |
+| 11:12 to 11:18 | `4dc4273f` | soak 1, node sizes 8 to 62 | 14 B1 and 1 B2 OK; cut by a restart |
+| 11:34 to 11:36 | `bb3a1fcf` | `run.sh quick`, with C1 | all OK |
+| 11:37 to 11:52 | `bb3a1fcf` | `run.sh soak 1` | 3 B1 FAILs (U13-4), 1 B3 (the app's) |
+| 11:55 to 11:56 | `bb3a1fcf` | B3 at 150 databases, the heap curve | OK |
+| 11:56 to 12:09 | `bb3a1fcf` | `run.sh kill 1` | all OK |
+| 12:10 to 12:25 | `bb3a1fcf` | `run.sh soak 2` | 2 B1 FAILs (the app's) |
+| 12:14 to 12:15 | `bb3a1fcf` | B1 seed 206, the drive to 16,000 | OK |
+| 12:25 to 12:28 | `bb3a1fcf` | `run.sh b1 3`, B1 alone | 1 FAIL (the app's) |
+| 12:28 | `bb3a1fcf` | B1 seed 341, the drive by the distance in force | OK |
+| 12:28 to 12:42 | `bb3a1fcf` | `run.sh kill 2` | all OK |
+| 12:30 to 12:32 | `bb3a1fcf` | `run.sh quick 2`, the final apps | all OK |
+| 12:43 to 12:46 | `7d3961ad` | `run.sh quick 3` | all OK |
+| 12:43 to 12:58 | `7d3961ad` | `run.sh kill 3` | all OK |
+| 12:44 | `7d3961ad` | C2 SlowDrive, both ways | as on `bb3a1fcf` |
+| 12:46 to 13:02 | `7d3961ad` | `run.sh soak 3` | all OK |
 
 Soak 1 (`results/soak-1-1136.log`) ran 14 B1 (12 at 30,000 keys and
 startup distances of 400 kB to 1 MB, one at 200,000 keys with a cache
@@ -304,7 +304,7 @@ wrote 3 startup distances, not 6 (U13-4 once more: 5.8 MB kept, the
 twin 2.2 MB). B1 now takes `getStartupDistance()`; the seed passes, lag
 8.7 R at R = 200 (`results/rerun-341-1228.log`).
 
-The last round, on `3b05fdf7` (`main` at `d6ac8426`, merged at 12:42,
+The last round, on `7d3961ad` (`main` at `583ec275`, merged at 12:42,
 with 026-10, which changes what a cut forgets): quick 3, kill 3 (250
 SIGKILLs in B5, 258 recoveries checked; 60 in B3 kill, 65,267
 committed transactions seen, none lost) and soak 3 (14 B1 with B1's
@@ -415,7 +415,7 @@ findings:
   interfaces and what a key transformation must use.
 
 Confirmed as documented (no finding): a database of the node size 62
-made by `eefd8bb4` is refused by `DbBuilder.start()` with
+made by `4dc4273f` is refused by `DbBuilder.start()` with
 `StreamFormatException`, a clear message ("The database's maximum node
 size is 62, and this start uses 30. ... The start has written nothing")
 and no file changed (C1); `Limits.keyBytes` and `checkKey` agree with
@@ -524,7 +524,7 @@ proposals, studied with G4 and taken only for a clear gain (KISS).
 Written 13:05.
 
 * **Done**: twelve programs; the runs of section 3 on the release jars
-  of `9c9650d6` and `3b05fdf7` (quick three times, soaks 1 to 3, kills
+  of `bb3a1fcf` and `7d3961ad` (quick three times, soaks 1 to 3, kills
   1 to 3, B1's round 3), the last round all OK; the findings U13-1 to
   U13-6, Q1 and five proposed 028-todo entries. No bug found in BergDB.
   The apps, `run.sh`, the logs and the jstack of U13-3 copied into
@@ -545,11 +545,11 @@ Log
 ===
 
 2026-11-13. Created by "apps" of coord-1113; the applications and their
-quick round on `eefd8bb4` (10:53 to 10:56); a first soak, stopped by the
+quick round on `4dc4273f` (10:53 to 10:56); a first soak, stopped by the
 machine's restart at 11:18. A second agent continued from 11:22: the jar
-rebuilt on `9c9650d6`, the apps at node size 30 (026-08), C1 added.
+rebuilt on `bb3a1fcf`, the apps at node size 30 (026-08), C1 added.
 
-2026-11-13. Soak 1 on `9c9650d6` (11:37 to 11:52): U13-4 found as three
+2026-11-13. Soak 1 on `bb3a1fcf` (11:37 to 11:52): U13-4 found as three
 B1 FAILs, reproduced by C2 (11:39); B3's heap check made to count from
 the syncs (B3c, 11:57); kill 1 all OK (12:09); soak 2 (12:10 to 12:25),
 B1 round 3 and quick 2: three app bugs fixed in B1 and Common, all OK

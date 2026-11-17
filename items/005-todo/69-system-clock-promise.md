@@ -35,7 +35,7 @@ system clock is set back.
 increasing itself: `transactionBegin` gives a time later than the last
 transaction's and than the last `currentTime()`, and `currentTime()` never
 goes below the last transaction's time (`DbClock`, read 2026-10-28 at
-`404d2ee`). So no stream, read or test depends on `SystemClock`'s promise.
+`aa0f532`). So no stream, read or test depends on `SystemClock`'s promise.
 `TimeResolver` makes a new `SystemClock` for each call, so the promise could
 not hold there anyway.
 
@@ -133,7 +133,7 @@ Outcome
 -------
 
 2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-69/repo` from
-`main` at `323a54a`:
+`main` at `c8e2f1e`:
 
 * `SystemClock` keeps its promise: `getTime()` calls a package-private
   `synchronized getTime(long millis)` with `System.currentTimeMillis()`,
@@ -161,7 +161,7 @@ Log
 port is a later follow-up (D7). Nothing changed yet.
 
 2026-11-03, 16:05 to 16:07, by F1 (016-05), in
-`/Users/f/fl/bench/016/005-69/repo` from `main` at `323a54a`, steps 1 and 2:
+`/Users/f/fl/bench/016/005-69/repo` from `main` at `c8e2f1e`, steps 1 and 2:
 
 * **The fix**, `SystemClock`: `getTime()` calls a new package-private
   `synchronized getTime(long millis)` with `System.currentTimeMillis()`.

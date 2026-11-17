@@ -4,8 +4,8 @@ Created 2026-11-14 by Frans Lundberg. Status: done.
 
 A standalone report on the state of BergDB's Lean proofs: what is proved, the premises
 that are left, what the model covers and what it does not. Requested by Frans at 12:32 on
-14 November. It describes `main` at `71932de0`, where `lean/` is as the night's last push
-left it (`0c03cb32`, 03:55).
+14 November. It describes `main` at `615f621b`, where `lean/` is as the night's last push
+left it (`14f17be6`, 03:55).
 
 An epub of this report, for reading offline, is
 [26-proofs-status/006-26.epub](26-proofs-status/006-26.epub), made with
@@ -16,7 +16,7 @@ Lundberg"`.
 **Correction, 2026-11-15, 06:15 (coord-1114).** Three of the top
 theorem's 10 premises are false as stated, for every parameter set:
 `hCoU`, `hU` and `hHL` (proved in Lean, SIS/Tree/PremisesFalse.lean,
-1d149b59). Each speaks of every writer state that meets a local
+80828487). Each speaks of every writer state that meets a local
 invariant, and those invariants carry none of the writer's books, so
 an unreachable state refutes it; the run tests saw only reached states.
 So `invGetScanOK_merges` holds vacuously and is not "reduced" as

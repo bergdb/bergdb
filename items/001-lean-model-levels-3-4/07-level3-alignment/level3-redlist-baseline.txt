@@ -1,6 +1,6 @@
 Level 3 red list, WP R7 of bergdb item 001, 2026-10-17 (docs/level3-alignment.md, section 6).
 Medium: 2 of 6 traces here; the four largest were still in the checker at R7's commit.
-bergdb 20e0aa2 (R3), java/ unchanged; R2's reclaim sets (java/stress/reclaimtraces.sh, made
+bergdb c6e0a06 (R3), java/ unchanged; R2's reclaim sets (java/stress/reclaimtraces.sh, made
 2026-10-17 05:41 to 05:43). Checker: lake exe tracecheck (lean/, with R7's changes: TOUCH, FA,
 CUT and PHYSCUT lines, C-CUT), target mode (marking in step 3, Java's still-dirty test, the
 virtual root). Per trace: the verdict; C-A, C-S (with each failing transaction's gd difference,

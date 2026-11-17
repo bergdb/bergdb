@@ -11,7 +11,7 @@ recommendation for each. Then we walk through it one question at a
 time". Nothing here is decided by this file; the decisions already
 taken are quoted in section 2.1, so that they are not asked again.
 
-Sources read (at `main` `eefd8bb4`, items only, nothing run): 026's
+Sources read (at `main` `4dc4273f`, items only, nothing run): 026's
 readme, 026-01, 026-03, 026-05 (its row and bytes), 026-08 and 026-09;
 027-03 (sections 1 to 23: its gaps G1 to G21 and J1 to J8, its questions
 Q1 to Q23, its section 21's V-A to V-D); 024-01 (CL1, CL2, CL4, PF2,
@@ -739,7 +739,7 @@ accepts (2.1, item 2).
 ## 5. State
 
 2026-11-13, written 10:26 to 10:50 by the agent sfplan of coord-1113,
-from the sources named at the top, at `main` `eefd8bb4`: items only, no
+from the sources named at the top, at `main` `4dc4273f`: items only, no
 code read, nothing run. A draft for
 Frans: 11 questions, SF1 to SF11, each with a recommendation; none
 decided. Next: the walk through them with Frans, one at a time, in

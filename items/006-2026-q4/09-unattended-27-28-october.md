@@ -67,7 +67,7 @@ And at 12:03, to two questions of the plan's first hour:
 
 ### W1. 005-46's measurements, to close 005-46 and 009's target 2
 
-005-46 is in the code (`eaec93e`); its "Done when" leaves the
+005-46 is in the code (`1165c90`); its "Done when" leaves the
 measurements, and 009's target 2 (no stop-the-world of BergDB's own longer
 than about 20 ms) waits for them.
 
@@ -81,7 +81,7 @@ than about 20 ms) waits for them.
 3. P4's soak under ZGC on F53 (009-04's soak, about 50 minutes): the cuts
    are no longer its slowest commits and reads (009-04, section 7.3).
 4. Props (CORE) and 009-03's ScaleBench block from the OS's cache (C) on
-   F53, against `bf19075` (before 005-46) in turns: no fewer reads a
+   F53, against `c1f1f15` (before 005-46) in turns: no fewer reads a
    second.
 
 Then the results in 005-46; if its "Done when" is met, 005-46 is set done.
@@ -230,25 +230,25 @@ A usage limit can stop this session and its subagents for hours. So:
 ## 7. Progress
 
 2026-10-27, 11:45. The plan written, from Frans's answers of 11:39, and
-committed (`5ca72dd`). Four subagents started, each in a clone of its
+committed (`3640630`). Four subagents started, each in a clone of its
 own: W1, W2, W3 and W5.
 
-2026-10-27, 11:50. The other sessions: f1-ce's 005-55 is in (`cec0032`),
+2026-10-27, 11:50. The other sessions: f1-ce's 005-55 is in (`14022ad`),
 so W4 started on it, in this session. The session "Startup time"
-committed 005-57 (`07b6375`), has no timed runs planned today or tonight,
+committed 005-57 (`e773562`), has no timed runs planned today or tonight,
 and agreed that 005-58 is cited in 005-57's report and `docs/levels.md`
 when it is proved. The session f1-02, which made 005-46, had Frans's go
 for its remaining checks: it runs W1.1 (the probes on F53) and W1.2 (the
-pause probe on s1, `bf19075` and `cec0032` in turns, G1 and ZGC) this
+pause probe on s1, `c1f1f15` and `14022ad` in turns, G1 and ZGC) this
 afternoon and writes them into 005-46; W1.3 and W1.4 stay in the quiet
 block, prepared by this work's W1 subagent, and the status of 005-46 and
 009 is decided here.
 
-2026-10-27, 12:12. W4 and W6.2 done and committed: 005-51 (`c2aab10`; the
+2026-10-27, 12:12. W4 and W6.2 done and committed: 005-51 (`043a09c`; the
 eviction thread waits with no timeout, the close ends it; a unit test that
 fails on the code before; `before-commit.sh` and `level4.sh` full pass)
-and 005-03, closed as done by 009 (`4f7cd60`). f1-02 committed 005-46's
-measurements of the afternoon (`12d7ec7`): after the change no get waited
+and 005-03, closed as done by 009 (`f9e295d`). f1-02 committed 005-46's
+measurements of the afternoon (`c84e190`): after the change no get waited
 for a force on s1, and on F53 every probe's verdict held by a wide margin;
 the maxima of 10 to 30 ms under the afternoon's load are for the quiet
 block to confirm.
@@ -258,7 +258,7 @@ even if you run out of 5h Claude session usage."): the night conductor
 started and the check-ins scheduled (section 6); `night.sh` left at 02:10.
 
 2026-10-27, 12:19. Frans chose to close 005-46 on the afternoon's
-evidence (f1-02, `1f1e542`). Tonight's soak, Props and ScaleBench are a
+evidence (f1-02, `390f66d`). Tonight's soak, Props and ScaleBench are a
 confirmation: 005-46 is reopened if they show a read or a commit waiting
 for the stream's writer; they are also 009's evidence for target 2.
 
@@ -279,8 +279,8 @@ that faster syncs expose; to be understood before any commit.
 started, an idle database wakes no more than the JVM; the thread used 1.4
 ms of CPU a minute before, none after (005-51, Outcome).
 
-2026-10-27, 13:20. W3 done: 005-58 proved and committed (`7c1ce2f`, the
-Lean files; `0965377`, the entry, the citations in 005-57's report and
+2026-10-27, 13:20. W3 done: 005-58 proved and committed (`4e63e3d`, the
+Lean files; `3332a9c`, the entry, the citations in 005-57's report and
 `docs/levels.md`); the review at max effort found the statements true and
 not vacuous, with one limit written in the entry (the model's startup
 links by node id where Java uses `posToId`, so those branches are proved
@@ -311,53 +311,53 @@ reset. At 0% now. So, go ahead." Both resumed where they stopped, and W6
 started (at high effort, as its pieces are small): 005-53's question 3,
 005-56's check, 005-52's night step.
 
-2026-10-27, 15:45. W6 done (`4f38f52`): 005-53's question 3 found a small
+2026-10-27, 15:45. W6 done (`ce0addd`): 005-53's question 3 found a small
 fault (Reclaim keeps the builder's startup distance); 005-56's check lists
 7 mismatches; 005-52's night step ready.
 
-2026-10-27, 16:15. W5 done: 005-48 in the code (`e611709`, entry
-`78a8d38`); the level3 failure was a race in ReclaimReaders's check, also
+2026-10-27, 16:15. W5 done: 005-48 in the code (`d8ed1aa`, entry
+`94f21dd`); the level3 failure was a race in ReclaimReaders's check, also
 without group commit, fixed there; on s1 one thread's durable commits went
 from 38 to 213 a second; the stream's bytes unchanged. F53's runs tonight.
 
 2026-10-27, 16:38. Frans on 005-58's questions: "1. As recommended. 2. As
-recommended." (`ed852ad`).
+recommended." (`3bd24d8`).
 
 2026-10-27, 16:45. W2 done: 005-49's report recommends a paced take for
-007-03's step 3 (`374f744`). Frans chose three more pieces for the evening
+007-03's step 3 (`80dcf1f`). Frans chose three more pieces for the evening
 ("Fix 005-53's Reclaim fault", "007-03 step 2: debt test", "Draft 009's
 closure"): W7, W8 and W9, at high effort.
 
 2026-10-27, 17:10. W9's draft of 009's closure is ready (two patches and
 notes in [09-unattended-27-28-october/](09-unattended-27-28-october/)), to
 be applied in the morning after the soak. W7 done: 005-61, Reclaim spaces
-its iterations by the database's live startup distance (`a175840`,
-`7fde735`). Frans on 005-49's questions: the setting is the section's
+its iterations by the database's live startup distance (`4085e2e`,
+`cfdda21`). Frans on 005-49's questions: the setting is the section's
 target, the actual startup distance what a start reads from; the default
-stays 50 MB (`82b59a1`).
+stays 50 MB (`ce7ae0f`).
 
 2026-10-27, 17:28. Frans chose three more pieces for the evening: 007-03's
 step 3 as a patch for his review (W10, max effort; not committed to
 `java/`), 005-59's option A (W11), and T9 and T12 over handles in Lean
 (W12, max effort, a new 005 entry). Four agents with W8.
 
-2026-10-27, 17:40. W11 done: 005-59, option A (`f9c3b09`, `2eaaa45`).
+2026-10-27, 17:40. W11 done: 005-59, option A (`7dabc2c`, `fc8f7c3`).
 
 2026-10-27, 18:40. W10 done: 007-07, step 3 as a patch for Frans
-(`49f99a1`; not in `java/`). Found on the way: `level2.sh`'s step 6
-(BryanRepro) failed on `main` from `eaec93e` (005-46) on.
+(`3aa7ce6`; not in `java/`). Found on the way: `level2.sh`'s step 6
+(BryanRepro) failed on `main` from `1165c90` (005-46) on.
 
 2026-10-27, 19:12. W13: the test started a database right after `stop()`
 while the old one's cut thread still deleted files; no data at risk; the
-test now uses `close()` (`b0661ba`, level2 full passes); the API question
-registered as 005-63 (`9fa1789`).
+test now uses `close()` (`f74fece`, level2 full passes); the API question
+registered as 005-63 (`756b512`).
 
 2026-10-27, 19:39. W12 and W14: T9 and T12 over handles proved and
-reviewed at max effort, in `main` (`bba91dd` to `a506b34`, entry
-`422fad4`); what to remove of the old design is for Frans. W8, 007-03's
+reviewed at max effort, in `main` (`e2213c2` to `99ef913`, entry
+`7a8a8ff`); what to remove of the old design is for Frans. W8, 007-03's
 step 2, still runs.
 
-2026-10-27, 20:42. W8 done: 007-06, step 2 of 007-03 (`c143402`). All
+2026-10-27, 20:42. W8 done: 007-06, step 2 of 007-03 (`63814f9`). All
 agents done. The quiet block's steps are ready (READY markers): P4's soak,
 Props, ScaleBench C and `performance.sh ab` (005-46, 009), 005-48's F53
 runs, 005-52's budget step; 005-48's s1 runs ran in the afternoon. The
@@ -380,23 +380,23 @@ and 005-48; the Outcome below; the summary in `news.md`.
 **Done, in `main`** (all in Frans's name; each code change gated on a tree
 with the ones before it):
 
-* 005-51, eviction only on calls (`c2aab10`; measured `78a6723`).
-* 005-03, closed as done by 009 (`4f7cd60`).
-* 005-58, rule 4 by position in Lean (`7c1ce2f`, `0965377`; Frans's
-  decisions `ed852ad`).
-* 005-48, group commit (`e611709`, `78a8d38`): one thread's durable
+* 005-51, eviction only on calls (`043a09c`; measured `8732bfc`).
+* 005-03, closed as done by 009 (`f9e295d`).
+* 005-58, rule 4 by position in Lean (`4e63e3d`, `3332a9c`; Frans's
+  decisions `3bd24d8`).
+* 005-48, group commit (`d8ed1aa`, `94f21dd`): one thread's durable
   commits on s1 from 38 to 213 a second; F53's runs still to make.
-* 005-61, Reclaim's startup distance (`a175840`, `7fde735`), found in
+* 005-61, Reclaim's startup distance (`4085e2e`, `cfdda21`), found in
   005-53's question 3.
-* 005-59, `AutoCloseable`, option A (`f9c3b09`, `2eaaa45`).
-* 005-62, T9 and T12 over handles, proved and reviewed (`bba91dd` to
-  `a506b34`, `422fad4`).
-* BryanRepro's fix in the test, `level2.sh` passes again (`b0661ba`); the
+* 005-59, `AutoCloseable`, option A (`7dabc2c`, `fc8f7c3`).
+* 005-62, T9 and T12 over handles, proved and reviewed (`e2213c2` to
+  `99ef913`, `7a8a8ff`).
+* BryanRepro's fix in the test, `level2.sh` passes again (`f74fece`); the
   API question is 005-63.
-* Reports and steps: 005-49 (`374f744`, Frans's answers `82b59a1`), 007-06
-  (`c143402`), 007-07 as a patch, not applied (`49f99a1`), 009-03's
-  section 9 (`e718347`), 005-53's question 3, 005-56's check and 005-52's
-  first step (`4f38f52`).
+* Reports and steps: 005-49 (`80dcf1f`, Frans's answers `ce7ae0f`), 007-06
+  (`63814f9`), 007-07 as a patch, not applied (`3aa7ce6`), 009-03's
+  section 9 (`a43058f`), 005-53's question 3, 005-56's check and 005-52's
+  first step (`ce0addd`).
 * 005-46: closed by f1-02 at Frans's word; tonight's soak, ScaleBench and
   `performance.sh ab` confirm it (no read or commit waits for the writer).
 
@@ -412,9 +412,9 @@ and 6, plus 012's decisions):
 
 2026-10-28, 09:40: Frans answered 1, 2, 5 and 6 as recommended (09:10
 and 09:12), and 5 with 005-64 for the buffer time. Done: 2 (009 closed,
-`bf9fc7f`; the 8-thread case is 005-65, `fab16db`), 4 (005-63,
-`322c5d1`), 5 (005-48 closed at 20 ms, `3950a96`; 005-64 for 20, 50 or
-100 ms) and 6 (005-56, `04f1546`). Under way: 1 (007-07 with D4:B, in a
+`ffb890a`; the 8-thread case is 005-65, `1cbfaf8`), 4 (005-63,
+`173544a`), 5 (005-48 closed at 20 ms, `1ad7cdc`; 005-64 for 20, 50 or
+100 ms) and 6 (005-56, `8752cf0`). Under way: 1 (007-07 with D4:B, in a
 clone of this session; 006-10 measures it tonight) and 3 (005-62's
 session). Left: 7, 012's decisions.
 
@@ -432,7 +432,7 @@ session). Left: 7, 012's decisions.
    s1's get of 2,760 ms needs your call; the closure is drafted.
    Recommended: s1's get as the machine's (one reader, no writer, no GC,
    the cgroup at its limit); the 8-thread gets to a new 005 entry
-   (ScaleBench C at 4, 6 and 8 threads, HEAD against `bf19075`, with the
+   (ScaleBench C at 4, 6 and 8 threads, HEAD against `c1f1f15`, with the
    eviction thread's CPU), and 009 closed with that said.
 3. 005-62: decided (Frans, 07:24: "1. as proposed, all steps. 2. Prove
    it! ... 3. No, not for now."): the design before handles goes, steps a

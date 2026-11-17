@@ -9,7 +9,7 @@ child's left edge (023-04, 2.2, LE-a); a node that a transaction made and
 emptied is taken back (023-04, X5 (a)); and a root with one live child
 collapses (023-04, 2.3, RC). Reclaim is not changed. The code is on the
 branch `023-p1-relabel` of the clone `/Users/f/fl/bench/2026-11-10/p1/clone`:
-six commits on `main` (`99089978`) and 023-03's test prototype, head
+six commits on `main` (`1901394c`) and 023-03's test prototype, head
 `13b3692f`.
 
 In short:
@@ -528,7 +528,7 @@ Limits:
 take-back, `e60f6c82` root collapse, `0f16daae` the two faults the trace
 checker found, `c00449e9` root collapse takes back a root made by the
 transaction, `13b3692f` a node taken back leaves the node table; on
-`f08b3a88` (023-03's tests) and `main`'s `99089978`. The head passes
+`f08b3a88` (023-03's tests) and `main`'s `1901394c`. The head passes
 `before-commit.sh` and `level1.sh` to `level4.sh`, full (section 2). A
 worktree of branch `023-p1-rc-made` (the same commits) at
 `/Users/f/fl/bench/2026-11-10/p1/wt-rc`. A baseline of `main` with the

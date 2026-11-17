@@ -12,7 +12,7 @@ asking for 009-02 ("Go ahead and adjust 01 and then write 02."), which was
 to follow "when 01 approved"; his decisions are in section 8. The work ran
 from 2026-10-25 to 2026-10-27 ([009-02](02-implementation-plan.md),
 section 9; [009-03](03-measurements.md)), and Frans merged the branch on
-2026-10-26 (`178a0d4`). Section 1, "Where the targets stand", says what
+2026-10-26 (`98981f8`). Section 1, "Where the targets stand", says what
 each target came to.
 
 
@@ -100,7 +100,7 @@ Where the targets stand, 2026-10-28 (the numbers in 009-03, section 0):
    at most (005-46). 004-02's runs at 10M keys: from the OS cache on F53
    with ZGC the longest get 6.0 ms with up to 4 threads (3.45 ms at step
    3d), but 27 and 36 ms with 8 threads, with readers' loads waiting for
-   the eviction thread over 10 ms (`bf19075`: 2.1 ms), which 005-65 is to
+   the eviction thread over 10 ms (`c1f1f15`: 2.1 ms), which 005-65 is to
    explain; from the device on s1 64 to 74 ms, s1's disk, and one get of
    2,760 ms with one reader, no writer and no collection or safepoint
    under it, which Frans accepted as not BergDB's (2026-10-28: the run's
@@ -122,10 +122,10 @@ Where the targets stand, 2026-10-28 (the numbers in 009-03, section 0):
    and `tp_handles`, with no warnings and no `sorry` (009's log,
    2026-10-26).
 7. Met. The gates at every step and on the merged tree (`night.sh`:
-   NIGHT OK on `a04a418`). `performance.sh ab` against 2026.1, quick
+   NIGHT OK on `f4e93d8`). `performance.sh ab` against 2026.1, quick
    suite, on 2026-10-26: gets on one thread 3 to 9 percent fewer, from 4
    threads 19 percent more; again in 006-09's quiet block, on `main`
-   (`4f7cd60`, 2026-10-28, 01:00): no alerts, throughput 1 to 25 percent
+   (`f9e295d`, 2026-10-28, 01:00): no alerts, throughput 1 to 25 percent
    higher (four reader threads 25 percent, the mixed scenario's gets 17
    percent), startup 2 to 4 percent faster; the only flags are G1's pause
    maxima, 24 to 39 ms in r-1k-fin (005-46, "Confirmed in the quiet

@@ -2,7 +2,7 @@
 
 Created 2026-11-07 by Frans Lundberg. Status: open. The design and the
 change plan for 020-02's question 1b, option (d), "null is absence,
-exactly": the rules, the format and its spec, the code sites at `7edcbe2`,
+exactly": the rules, the format and its spec, the code sites at `b4cf896`,
 the tests, the Javadoc and the release notes, so that the implementation
 can start at Frans's "ok-and-implement" without more study. No code is
 changed before it. The study is 020-03; the options and the
@@ -355,7 +355,7 @@ absence, written for a binding in another language:
 
 ## 4. The change plan, file by file
 
-Lines at `7edcbe2`, in `java/src/bergdb/`. Steps A to D are those of
+Lines at `b4cf896`, in `java/src/bergdb/`. Steps A to D are those of
 section 9.
 
 **`pubimp/DbObject.java`**
@@ -861,7 +861,7 @@ add method of the Builder refuses null (section 11).
   removed only after its indexes are deleted (section 3.2).
   *Decided* (Frans, 2026-11-08, 17:06; 020-02, section 4.11): every
   object of 2026.3 and before is refused, with or without a null
-  (020-08, step 3, 38afb1a).
+  (020-08, step 3, 577e867).
 * **Q4. The version byte**: stays 1 (recommended: the new format is a
   subset, 2026.3 reads it, and every start reads index definitions, so a
   version 2 would need a reader of both), or 2, so that an old object is
@@ -987,7 +987,7 @@ and 021-08 (section 11).
 ## 11. Under 020-05's option (f), and since 021-07
 
 Added 2026-11-08. This design was written for DbObject's format version
-1, with section 4's lines at `7edcbe2`. 020-05 recommends since
+1, with section 4's lines at `b4cf896`. 020-05 recommends since
 2026-11-08 a new format, option (f), DbObject's table with Binson's
 values (020-05, section 12b), and Frans leans to it, with no null and a
 binary search for fields (2026-11-08, 15:22; 020-02, sections 4.1 to
@@ -1056,14 +1056,14 @@ Done since, on today's format (2026-11-07):
   writer's limit (1,001 objects, 2,001 objects and arrays).
 * So of section 9's "What can be done before the ok", only the optional
   cache of the eligible fields per class is left. Section 4's line
-  numbers are `7edcbe2`'s; 021-07 and 021-08 moved some.
+  numbers are `b4cf896`'s; 021-07 and 021-08 moved some.
 
 
 ## 12. Log
 
 2026-11-07. Written by coord-1107's agent p04 at Frans's word (14:31:
 "Now it is ok to design and document. Prepare for it."), read-only at
-`7edcbe2`; no code changed. Not decided: Q1 to Q6 wait for Frans.
+`b4cf896`; no code changed. Not decided: Q1 to Q6 wait for Frans.
 
 2026-11-08. Section 11 added by coord-1108's agent d02 (020-02, section
 4): what 020-05's option (f), which Frans leans to, changes in this plan

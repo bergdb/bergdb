@@ -1,7 +1,7 @@
 # 024-34. Reclaim reads only what it rewrites (OP8)
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `a156fd51`. Q34-1 decided (Frans, 2026-11-13, 09:38):
+`main` since `75baf383`. Q34-1 decided (Frans, 2026-11-13, 09:38):
 option (b) in 2026.6, as 026-09, after 026-05; (a) until then.
 
 Frans, 2026-11-12, 12:10, for release 2026.5: OP8 "Do for this release.
@@ -37,7 +37,7 @@ of docs/levels.md, section 6.
   16 kB, and a pointer does not carry the length. Not loading them means
   a different measure of a step's size, so other step boundaries, so
   other bytes. Q34-1 asks Frans; section 6 gives the options.
-* **Gates** on `b85f0e48`, 2026-11-12: StreamDigest against `main`
+* **Gates** on `197398d2`, 2026-11-12: StreamDigest against `main`
   48 of 48 identical (the physical cut too); before-commit OK, level1
   OK, level3 (full; RestartInvariance with reclaim: the stream the same)
   OK, conformance with reclaim OK (30 traces, C-CUT 0 of 318 cuts
@@ -46,7 +46,7 @@ of docs/levels.md, section 6.
 
 ## 2. A step's reads, before
 
-`Reclaim.step` on `main` (`1446a2da`), what it reads and when:
+`Reclaim.step` on `main` (`325bde75`), what it reads and when:
 
 1. **The scan**: a `getMany` at tStart from the row's lastKey, with the
    step's maintenance follower, which reads each version once a step and
@@ -67,7 +67,7 @@ memory.
 
 ## 3. The change
 
-`Reclaim.step` (commit `b85f0e48`), what, when, by whom: in the step's
+`Reclaim.step` (commit `197398d2`), what, when, by whom: in the step's
 loop over the scan's KVs, before the second read, a KV whose `Kvt.spos`
 (the position of the value node the scan followed, at tStart) is a vpos
 (odd: not yet written) or at pCut or later is counted (`kvs`) and passed
@@ -92,7 +92,7 @@ last transaction, constant under the write lock. A step with no second
 read has no read keys, so its readTime is not used (`stmCheckConflicts`
 reads it for read keys only); it is not stored.
 
-Counters for the measurement (commit `f9c6f6e3`, no change of
+Counters for the measurement (commit `8cb383e4`, no change of
 behaviour): `MaintenanceFollower.valueLoads()`, and in
 `Reclaim.Stats.Iteration` `valueLoads`, `scanValueLoadsAtCut` (values
 the scan loaded at pCut or later, from the follower's count between two
@@ -108,7 +108,7 @@ not committed): 1M keys of 100 bytes put in random order, 100 a
 transaction, on a FileStream with the builder's defaults and a test id;
 then R = 1 s (100 transactions) and random overwrites, 10 a transaction,
 until 3 cuts (179,127 transactions, 5 iterations, 73,745 steps). The
-same run on `f9c6f6e3` (before) and `b85f0e48` (after), without eviction
+same run on `8cb383e4` (before) and `197398d2` (after), without eviction
 (`noEvict`) and with a 20 MB cache indicator. Counts over all steps:
 
 | Quantity                   | no evict, before | after     | 20 MB, before | after     |
@@ -133,7 +133,7 @@ tree walks from the root with the follower's cache: CPU, not I/O.
 The Lean model has no reads: a reclaim step in it is its puts (the
 rewritten values) and its row, which this change keeps as they were, so
 the model needs nothing. Conformance with reclaim (`conformance.sh
-reclaim`) on `b85f0e48`: 30 of 30 traces checked, C-CUT 0 of 318 CUT
+reclaim`) on `197398d2`: 30 of 30 traces checked, C-CUT 0 of 318 CUT
 lines failing, C-L 0 of 423,552 FIRST lines, no failed probe.
 
 
@@ -173,10 +173,10 @@ and ReclaimCost as its measure; (a) stays in until then.
 ## 7. State
 
 * Clone `/Users/f/fl/bench/2026-11-12/tidy/clone`, branch
-  `024-34-reclaim-reads` from 024-33's head `d6e67fa0`; commits
-  `f9c6f6e3` (counters) and `b85f0e48` (the change), head `b85f0e48`.
+  `024-34-reclaim-reads` from 024-33's head `ab418a6e`; commits
+  `8cb383e4` (counters) and `197398d2` (the change), head `197398d2`.
 * Done: the change, the measurement, the gates (section 1). PART 2
-  GATED, head `b85f0e48`, 13:26.
+  GATED, head `197398d2`, 13:26.
 * Not done: Q34-1's options (b) or (c), which wait for Frans.
 * To continue: the coordinator lands the branch (it contains 024-33's
   commit); for (b), start from section 6 and measure G3 and ReclaimCost

@@ -1,5 +1,5 @@
 Level 2 conformance, WP F1 of F1-008-11, 2026-10-16 (docs/level2-alignment.md, section 10.5).
-bergdb d5c56dd (D0 and D1 committed), with the work tree's changes to
+bergdb 8f37d88 (D0 and D1 committed), with the work tree's changes to
 java/stress/RestartInvariance.java (options empty and nodel, off by default) and
 java/stress/conformance.sh (time and memory of each run, the verdict per set run).
 Checker: lake exe tracecheck (lean/), target mode (marking in step 3, Java's still-dirty
@@ -29,8 +29,8 @@ CONFORMANCE OK
 
 == 2. The Lean tier, medium: java/stress/conformance.sh medium (9 traces: 3 configurations
 x 3 seeds, every transaction), 10:53:00 to 12:46:32.
-Started at 10:53 on the work tree that Frans committed unchanged as d5c56dd at 11:03, with
-the conformance.sh of 01f386a (no time and memory per run; the total is at the end).
+Started at 10:53 on the work tree that Frans committed unchanged as 8f37d88 at 11:03, with
+the conformance.sh of 52d64a0 (no time and memory per run; the total is at the end).
    m-mixed -Dn=500 -Dkeys=500 -Dmaxnode=8 -Dsd=2000 -Dops=4 -Ddel=20 -Dnodel=5 -Dempty=5 -Dprobe=50
    m-long  -Dn=500 -Dkeys=3000 -Dmaxnode=30 -Dsd=5000 -Dops=8 -Dlong=1 -Ddel=20 -Dprobe=100
    m-big   -Dn=120 -Dkeys=1000 -Dmaxnode=30 -Dsd=10000 -Dops=20 -Dbulk=60 -Dprobe=30
@@ -216,7 +216,7 @@ LOOKUP B (restarts): 0 of 3 checkpoints violate
 
 == 6. RestartInvariance, mostly idle (M18): -Dempty=30 -Dnodel=20 -Ddel=1; idle1: -Dsd=100
 -Dkeys=100 -Devery=1 -Dlong=1 -Dn=400; idle10: -Dsd=100 -Dkeys=500 -Devery=10 -Dlong=1
--Dbigtrans=20 -Dn=2000. a116: bergdb a116ec7 (before D0) with this RestartInvariance.java.
+-Dbigtrans=20 -Dn=2000. a116: bergdb fa13482 (before D0) with this RestartInvariance.java.
 a116 idle1 seed 1: all checks OK: no STARTUP FAILED: restart after trans 33 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
 a116 idle1 seed 2: all checks OK: no STARTUP FAILED: restart after trans 41 failed: bergdb.storage.StreamFormatException: Could not find super node in startu
 a116 idle1 seed 3: all checks OK: no STARTUP FAILED: restart after trans 6 failed: bergdb.storage.StreamFormatException: Could not find super node in startup

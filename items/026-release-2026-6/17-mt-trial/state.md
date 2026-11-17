@@ -7,7 +7,7 @@ times from `date`; on a STOP it writes where it stands here.
   out of usage, restart it at 22:01 tonight."). Defaults of 026-17,
   section 11, stand (node size 30 plus 8).
 * Clone: /Users/f/fl/bench/026-17/bergdb, branch 026-17-mt-trial, from
-  main d8da4a35. lean/.lake copied from the main tree (cp -Rc).
+  main 00a3a29b. lean/.lake copied from the main tree (cp -Rc).
 * STOP: /Users/f/fl/bench/026-17/STOP (usage-watch.sh touches it at a week
   of 99 % before 22:00; the coordinator resumes at 22:01).
 * Build lock: `mkdir /Users/f/fl/bench/026-17/buildlock` before any

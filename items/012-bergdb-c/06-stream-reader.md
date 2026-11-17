@@ -219,9 +219,9 @@ Neither changes a byte that Java writes.
 
 # 8. Progress
 
-**Java reference:** `main` at `0b6d08e`, `java/` as of `fd8f513`.
+**Java reference:** `main` at `d025d95`, `java/` as of `decc677`.
 **Clone:** `/Users/f/fl/bench/012/06-stream-reader/` (a clone of
-`bergdb` at `0b6d08e`), committed locally; the conductor copies the files
+`bergdb` at `d025d95`), committed locally; the conductor copies the files
 in.
 
 * 2026-10-28 16:00: started; read 012-01, this task, 012-05 section 6,

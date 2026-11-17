@@ -185,7 +185,7 @@ the version at r.
 
 In words: the same objects and pointers as `HMem.linkD`, and for a pointer
 that holds no handle, Java's `NodeCollection.linkToCanonical` as committed
-in `07b6375`: a vpos is the node's id; a record in `posToId` gives the id;
+in `e773562`: a vpos is the node's id; a record in `posToId` gives the id;
 with the id, the node's live handle if it holds a canonical object, which
 is rule 4 by node id (`byId`). Otherwise the handle that `byPos` gives. A
 pointer that neither finds stays as it is, except a top node's, which Java
@@ -265,7 +265,7 @@ State, 2026-10-27 12:30
 
 By Claude (Opus 5.5, Claude Code), stopped at the main session's request so
 that another agent can take the work over. Nothing is committed; the work is
-in the clone `/Users/f/fl/bench/006-09/lean58/` (on `565499f`), uncommitted,
+in the clone `/Users/f/fl/bench/006-09/lean58/` (on `74bc2dc`), uncommitted,
 and its patch is
 [58-lean-rule4-by-position/rule4-by-position.diff](58-lean-rule4-by-position/rule4-by-position.diff)
 (`git diff -- lean/` in the clone, the new file included).
@@ -335,8 +335,8 @@ Outcome
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), at max effort: a review of
 the work above, with the code in front of it, and the rest of the work.
-Nothing is in main yet: the work is one commit, `7c1ce2f` (lean/ only, on
-main's `78a6723`), in the clone `/Users/f/fl/bench/006-09/lean58/`, and its
+Nothing is in main yet: the work is one commit, `4e63e3d` (lean/ only, on
+main's `8732bfc`), in the clone `/Users/f/fl/bench/006-09/lean58/`, and its
 patch is
 [58-lean-rule4-by-position/rule4-by-position.diff](58-lean-rule4-by-position/rule4-by-position.diff).
 
@@ -427,7 +427,7 @@ TRACE TESTS OK.
 **4. The review.**
 
 a. *The definitions against Java* (`DbStarter.createMaps` and `linkD`,
-   `NodeCollection.linkToCanonical`, at `07b6375`). They match line by line,
+   `NodeCollection.linkToCanonical`, at `e773562`). They match line by line,
    but for these differences; none changes the claim.
 
    1. `prevPos`. The model has no such field: `inPosToId` takes the record
@@ -503,7 +503,7 @@ b. *The statements* say what questions 1 and 4 ask, for the startup that the
    aligned with Java's. (By the same reasoning Java's rule 4 may never need
    `posToId` for a key node's pointer; not measured.)
 
-c. *Soundness*: as in 3. The trusted files differ from `565499f` by
+c. *Soundness*: as in 3. The trusted files differ from `74bc2dc` by
    additions and two changed comment lines; no definition or statement that
    was there changed. E5's `RInv` has two more fields; it is a proof-side
    invariant, so earlier proofs changed, not their statements.
@@ -524,8 +524,8 @@ finds each kind, the vpos, top nodes), `Rule4Pos_handles` (the memory is
 the model's startup's, a.7, in place of "hold for Java's rule 4 as it is"),
 `HMem.linkDPos` (reclaim, the root) and `runHandlesPos`;
 `runHandlesPos_of_startup`, new; `rule4Counts` and its checks in
-SIS/HandleExample.lean; lean/README.md. The commit is rebased on `78a6723`;
-main's lean/ had not changed since `565499f`.
+SIS/HandleExample.lean; lean/README.md. The commit is rebased on `8732bfc`;
+main's lean/ had not changed since `74bc2dc`.
 
 **5. Questions for Frans.**
 
@@ -547,5 +547,5 @@ Frans's decisions, 2026-10-27, 16:38: "1. As recommended. 2. As
 recommended." The trusted additions stay as they are, and so does the
 check under assertions in `linkToCanonical`.
 
-The main session committed the patch (`7c1ce2f`), and 005-57's report and
-docs/levels.md cite it (`0965377`).
+The main session committed the patch (`4e63e3d`), and 005-57's report and
+docs/levels.md cite it (`3332a9c`).

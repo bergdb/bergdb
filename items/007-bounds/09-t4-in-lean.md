@@ -1,17 +1,17 @@
 # 007-09. T4 and a cold start's reads in Lean
 
 Created 2026-11-13 by Frans Lundberg. Status: for Frans's review; brought
-up to date on 2026-11-14 with the Lean on `main` at `5f413438`.
+up to date on 2026-11-14 with the Lean on `main` at `68887321`.
 
 What was proved on 2026-11-13: T4, the bound on the records at the ends of
 the startup section and on the debt D (007-01, sections 5.1 and 6; 007-03,
 "After the plan"), a bound on a cold start's reads (007-03, step 6), and
 one theorem that joins them with T3, `bounded_startup`. This subitem was
-first written at 12:43 from the Lean at `8af385a0` (provers "t4" and
+first written at 12:43 from the Lean at `95abdd11` (provers "t4" and
 "t42"). This version adds the rest of the day: the provers "t43" (12:27 to
 13:02), "t44" (13:12 to 14:01) and "t45" (14:01 to 14:13), and the second
 review of the definitions by Codex at 13:12 (`09-t4-in-lean/second-review.md`).
-The Lean of 007 is unchanged on `main` since `b41fad85` (2026-11-13,
+The Lean of 007 is unchanged on `main` since `733cdaea` (2026-11-13,
 14:16) but for a comment. The layout follows 007-08.
 
 
@@ -420,7 +420,7 @@ examples meet `DropStep` with heights at most 2), `BoundColdDropJExample`
    Java's runs the limit never stopped a take (028-12: 18 runs, the whole
    debt at most about half the room at the real record limit), and since
    2026-11-14 `DbBuilder` refuses a startup distance above 10^9 (028-12,
-   option A, `773c53e7`).
+   option A, `49fc3506`).
 
 
 ## 5. What is not covered
@@ -589,17 +589,17 @@ resumes.
 ## 7. Log
 
 2026-11-13. Written for Frans's review, from the Lean on `main` at
-`8af385a0`, 007-01, 007-03 and 007-08. Checked here: `#print axioms` of
+`95abdd11`, 007-01, 007-03 and 007-08. Checked here: `#print axioms` of
 the eleven theorems (`propext`, `Classical.choice`, `Quot.sound`; the
 first two cold-start ones without `Classical.choice`); no `sorry`,
 `admit`, `native_decide` or `axiom` in the new files; the example's run,
 printed record by record; `decide +kernel` (section 4, point 2). Not
-rebuilt: 024-12's board reports 327 jobs for `8af385a0`.
+rebuilt: 024-12's board reports 327 jobs for `95abdd11`.
 
 2026-11-13. Q1 decided: A (Frans, 12:49); the note added to 007-01,
 section 6.
 
-2026-11-14. Brought up to date with the Lean on `main` at `5f413438`
+2026-11-14. Brought up to date with the Lean on `main` at `68887321`
 (Frans, 11:58: "Do as recommended"): the provers t43, t44 and t45, the
 second review, `bounded_startup`, 028-12. Sections 1 to 6 rewritten; Q3
 marked done; Q4 added. Checked here: each theorem of section 3 exists on
@@ -612,6 +612,6 @@ of 17 theorems (`bounded_startup`, `bounded_startup_tree`,
 `coldReads_tree`, `coldReadsJ_lazy`, `coldReadsJ_run_noD`,
 `coldReadsJ_height_noD`, `T3_takeB`, `T3_takeB_count`): `propext`,
 `Classical.choice`, `Quot.sound`. Run with the build of t45's clone at
-`47fbadc0`, whose Bound files equal `main`'s but for a comment in
+`61c356ad`, whose Bound files equal `main`'s but for a comment in
 `BoundColdDropJ.lean`; the main tree's build has no `.olean` for
 `BoundStartupTheorems` (stale), and was not rebuilt.

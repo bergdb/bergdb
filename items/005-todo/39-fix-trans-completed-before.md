@@ -5,7 +5,7 @@ Status: done (2026-10-25). Kind: fix. Created 2026-10-25.
 
 Found on 2026-10-25 by Claude (Opus 5.5, Claude Code), at Frans's request
 ("Investigate RecoverableStream.java:516. The TODO there. Is this a bug?
-Or bad doc or just a bad comment."), with a probe on `425d7a7`, in
+Or bad doc or just a bad comment."), with a probe on `67bcc02`, in
 [39-fix-trans-completed-before/](39-fix-trans-completed-before/). Added
 and fixed at his request ("Yes", to "Should I register this as a 005 Fix
 entry and do it?").

@@ -1,5 +1,5 @@
 Level 2 red list, WP C3 of F1-008-11, 2026-10-15 (docs/level2-alignment.md, section 10).
-bergdb a116ec7, production code unchanged; java/stress/TraceExport.java and conformance.sh
+bergdb fa13482, production code unchanged; java/stress/TraceExport.java and conformance.sh
 from the work tree. Checker: lake exe tracecheck (lean/), target mode (marking in step 3,
 Java's still-dirty test in step 7, the virtual root) unless --model.
 

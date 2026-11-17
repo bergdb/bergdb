@@ -35,7 +35,7 @@ import @P@.test.Set;
  *
  * SS: a port of SS1 to SS4: 100 MB of KVs of 1,000 or 100 bytes, keys "k-N", 100 KVs or
  * one per transaction, into a MemoryStream with the default builder and retainForever(),
- * the default from 2013-07-07 (8cbd702) on; before, the default kept 7 days and ran
+ * the default from 2013-07-07 (5cda184) on; before, the default kept 7 days and ran
  * reclaim, which fails in 2013.1's GetMany; stream length over user bytes after a sync;
  * the geometric mean of the four.
  *

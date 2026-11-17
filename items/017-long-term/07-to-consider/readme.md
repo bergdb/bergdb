@@ -28,7 +28,7 @@ gets: "For another time, we could discuss supporting get operations that
 always copy the byte arrays. That should be doable, right? Some
 getAndCopy() methods or something. Or just some setting possibly. Not
 sure. But this is for another time." It is doable: the copy is one
-`clone()` at the edge of the Pub API, where 015-47's first fix (39cbbec)
+`clone()` at the edge of the Pub API, where 015-47's first fix (660a8ad)
 had it.
 
 The options:

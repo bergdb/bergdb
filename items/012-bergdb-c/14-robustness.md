@@ -85,7 +85,7 @@ cheap enough, or a `cross.sh night` set if Frans wants one in `night.sh`.
 # 6. Progress
 
 **2026-10-29 05:00, a first pass** (Claude, Opus 5.5, a subagent of 012's
-conductor; in a clone of main at 0c910bc; the conductor runs done item 5,
+conductor; in a clone of main at 7fd3704; the conductor runs done item 5,
 the scale set, itself). In order of value: done items 1, 6, 4, then 2 and
 3 as time allows. Hard stop at 06:30.
 
@@ -126,7 +126,7 @@ gcc's batch (6.2), 1,845 random workloads tonight.
 
 Homebrew's gcc 16.2.0 (`/opt/homebrew/bin/gcc-16`), on a copy of `c/`
 (`/Users/f/fl/bench/012/14-out/gcc/c`, so that the clone's build/ stays
-the random runs'), at 0c910bc:
+the random runs'), at 7fd3704:
 
 * **`CC=gcc-16 ./build.sh` fails**, on `-Werror`: gcc warns where clang
   does not. Every module, tool, test and example compiled with build.sh's
@@ -449,7 +449,7 @@ checks, `-budget`, `-mem`), C's release build under `leaks --atExit`
 (`-budget`), and Java's Run; checked: exit 0, C's text is Java's (both
 builds), the stream from reclaim's decided cut and the other files are
 Java's (both builds), 0 leaks, and the directory's size (sampled every 2
-s in the test build's run). C's builds: the clone's at 0c910bc with 6.3's
+s in the test build's run). C's builds: the clone's at 7fd3704 with 6.3's
 fix of bergdb-run (`14-out/cfix/c/build`).
 
 | Seed | Transactions | Shape | C's budget | Stream written | C's directory, most / end | Java's | Time |
@@ -545,7 +545,7 @@ Scripts, all in `c/test/stress/` (and cross.sh's random set):
 # 7. The second pass: the rest (2026-10-29, 07:36 to 12:00)
 
 By a subagent of 012's conductor (Claude, Opus 5.5), in a clone of main
-at 57aaf9f (`/Users/f/fl/bench/012/14b/`), after the conductor's
+at ddda309 (`/Users/f/fl/bench/012/14b/`), after the conductor's
 decisions on 6.9: power loss and allocation failures to be made; the
 eviction lag found and fixed in C; C to name wrapped exceptions as Java
 does; `-Werror` kept for clang, gcc checked by hand; the flipped record
@@ -640,7 +640,7 @@ directory forces).
 (a later page durable before an earlier one, without a force between) and
 a torn write of a file whose name is not yet durable.
 
-**For 012-11's Q1** (C forces the stream for a pending cut, 633ad86,
+**For 012-11's Q1** (C forces the stream for a pending cut, 1c9e888,
 merged into this clone at 09:52): power.sh is the check of that change;
 on the merged tree: the default six workloads give **2,602
 images, POWER OK** (1,304 s; `14-out/power-merged/`), the cuts' own
@@ -824,7 +824,7 @@ fix, `14-out/cross-full.txt`): **CROSS full OK: 446 workloads, 1368 crash
 cuts, 498 corrupt variants, 6 in turns, 1784 budget runs, the planted
 difference found and explained** (C's test build, 2,515 s).
 
-After merging main (633ad86, 012-11's Q1, and two level 1 limits), with
+After merging main (1c9e888, 012-11's Q1, and two level 1 limits), with
 macOS `leaks` replaced by the conductor's stand-in
 (`/Users/f/fl/bench/012/noleaks/`, as `leaks --atExit` hangs on F53 since
 about 08:30): **C BEFORE COMMIT OK (168 s)**: unit 347 and release 346
@@ -851,7 +851,7 @@ Every done item holds:
    decision (2026-10-29: no action now); its fix, F1's with a maximum, is
    prototyped (6.6) for when it is taken, Java first.
 4. **Long runs**: done (6.8); `maxOver` now 0 (7.3). The directory's bound
-   follows 012-11's Q1, made in 633ad86 (the million-transaction run at
+   follows 012-11's Q1, made in 1c9e888 (the million-transaction run at
    most 25.2 MB, Java's 34.2 MB).
 5. **Scale**: 50 MB (the conductor's) and 200 MB (7.6), the same bytes,
    each side starting the other's database.

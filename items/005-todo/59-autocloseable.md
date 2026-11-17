@@ -20,7 +20,7 @@ tests stay as they are.
 The issue
 ---------
 
-Since 005-55 (`cec0032`) an application must call `stop()` or `close()`
+Since 005-55 (`14022ad`) an application must call `stop()` or `close()`
 on each database it starts: nothing else stops it (the notes for the next
 release, [releases/next.md](../../releases/next.md)). Java's usual means
 for such a resource is `java.lang.AutoCloseable`: a `try`-with-resources
@@ -101,7 +101,7 @@ Outcome
 -------
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), as decided; in a clone on
-`7fde735` (005-61), commit `53df466` there (java/ and releases/next.md).
+`cfdda21` (005-61), commit `53df466` there (java/ and releases/next.md).
 
 * `Db implements AutoCloseable`; its `close()` is unchanged.
   `Database extends AutoCloseable` and has a new `void close()`;

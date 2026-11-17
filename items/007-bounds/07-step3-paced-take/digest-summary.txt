@@ -1,4 +1,4 @@
-StreamDigest all: main 2eaaa45 (digest-base.txt) against the patch (digest-patch.txt).
+StreamDigest all: main fc8f7c3 (digest-base.txt) against the patch (digest-patch.txt).
 Lengths of the plain stream; 'modes' says whether plain, reads and restarts give
 the same stream (sha256) within the configuration, for the patch.
 

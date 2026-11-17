@@ -1,5 +1,5 @@
 version: 2026-10-19
-commit: 11ea2f6af543b542e51ec419b1e626989dabdfd3
+commit: 0e7292d763b1ccd9cb5edb94aac215fcec25b090
 classes: efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0
 label: parallel-nocoh
 class: bergdb.dev.props.Props 

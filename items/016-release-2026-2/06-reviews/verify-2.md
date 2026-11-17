@@ -1,15 +1,15 @@
 016-06/verify-2. Verification of R2's and R3's other findings
 =============================================================
 
-Created 2026-11-03 by Frans Lundberg. Base: b9ba427. Started 20:46, ended 20:56 (from date).
+Created 2026-11-03 by Frans Lundberg. Base: b1651a5. Started 20:46, ended 20:56 (from date).
 
-The code is a clone of b9ba427 in `/Users/f/fl/bench/016/verify-2/repo`, built with
+The code is a clone of b1651a5 in `/Users/f/fl/bench/016/verify-2/repo`, built with
 `sh java/build.sh`. Each probe and patch was copied to `/Users/f/fl/bench/016/verify-2/`
 (`R2/`, `r3/`) and run there, one JVM at a time; outputs are in its `out/`. The two R3
 patches (tests only) were applied for their Nano tests and then reverted; every probe's
-output is from a clean build of b9ba427 (the R3 probes were run on both, with the same
+output is from a clean build of b1651a5 (the R3 probes were run on both, with the same
 output). Commands below run from `/Users/f/fl/bench/016/verify-2` with
-`JAR=repo/java/build/bergdb.jar`. "Main" is 4e10aa2, checked by reading the code, not by a
+`JAR=repo/java/build/bergdb.jar`. "Main" is ca02b5e, checked by reading the code, not by a
 run.
 
 
@@ -23,7 +23,7 @@ run.
   437-438 throw. The contract, `AppendOnlyStream.pretruncate` Javadoc, refuses only "a
   position greater than the length of the stream", so a cut at the length is legal. The
   probe uses only `FileStream`'s public constructor, `append`, `pretruncate`, `read` and
-  `close`, as the contract allows. At b9ba427 the check comes before any file is taken off,
+  `close`, as the contract allows. At b1651a5 the check comes before any file is taken off,
   so the stream stays usable (the probe appends and reads after it).
 * Reach. Internal classes only. `bergdb.pub` exposes no stream. `BufferedStream` passes a
   cut at its flushed length straight on (lines 570-577), and `applyPendingCut` passes a
@@ -34,11 +34,11 @@ run.
   381-401, 669), so the stream is longer than the cut; no Pub path was found that cuts at
   exactly the length.
 * Effect class. A legal call fails with an internal error. No data lost or invented at
-  b9ba427, no wrong answer, no hang.
+  b1651a5, no wrong answer, no hang.
 * 2026.1: yes, and worse: its `pretruncate` deletes the selected files, the last one
   included, before the same `newSize` check throws, so there such a cut would remove the
   stream's bytes (not reached through Pub there either).
-* Still on main: yes; `pretruncate` at 4e10aa2 has the same loop and check (lines 442-457).
+* Still on main: yes; `pretruncate` at ca02b5e has the same loop and check (lines 442-457).
 * Commands:
 
   ```sh
@@ -82,7 +82,7 @@ constructor also leaves the directory in `LOCKED_DIRS`, so the next open is refu
 * 2026.1: yes for the handle leak (same catch coverage in its constructor and
   `openForRw()`); no for the stranded lock, as 2026.1 has no `LOCKED_DIRS` (005-63 came
   after).
-* Still on main: yes; at 4e10aa2 the constructor (lines 212-233) still catches only
+* Still on main: yes; at ca02b5e the constructor (lines 212-233) still catches only
   `IOException` and `RuntimeException`, and `openForRw()` (lines 1062-1085) still closes
   only on `IOException`.
 * Commands:
@@ -120,7 +120,7 @@ the next rotation jump to 10 GB.
   an append would fail and fail the stream. No data lost or invented, no wrong answer,
   no hang.
 * 2026.1: yes; the same selection and clamp (its lines 425-445, 650-681).
-* Still on main: yes; the same code at 4e10aa2 (lines 769-790, 995-1022).
+* Still on main: yes; the same code at ca02b5e (lines 769-790, 995-1022).
 * Commands (about 2 s; sparse files, removed by the probe):
 
   ```sh
@@ -166,7 +166,7 @@ A storage thread that an interrupt takes out of its `wait` after `stop()` return
   that a stop promises to write (`stop()` does not write the buffer). No data lost or
   invented, no wrong answer, no hang.
 * 2026.1: yes; its catch returns too when `stop` is set (and throws a `Bug` when not).
-* Still on main: yes; at 4e10aa2 the catch (lines 168-176) still returns.
+* Still on main: yes; at ca02b5e the catch (lines 168-176) still returns.
 * Commands:
 
   ```sh
@@ -215,7 +215,7 @@ until a later append, sync or load meets the failure.
 * 2026.1: yes; its `appendFailed` also calls only `handleStreamException` (its line 1028),
   and its reads check `Db`'s own state.
 * Still on main: yes; `BufferedStream.java`, `StorageManager.java` and `Db.java` are
-  unchanged from b9ba427 to 4e10aa2 (`git diff --stat b9ba427 4e10aa2 -- java/src`).
+  unchanged from b1651a5 to ca02b5e (`git diff --stat b1651a5 ca02b5e -- java/src`).
 * Commands:
 
   ```sh
@@ -255,7 +255,7 @@ interruptible sync, before it starts the deletion's thread.
   wrong answer from reads, no hang.
 * 2026.1: yes; the same order (its lines 273-281) and the same interruptible sync (its
   `Db` lines 1576-1580).
-* Still on main: yes; at 4e10aa2 `deleteIndexInternal` still calls
+* Still on main: yes; at ca02b5e `deleteIndexInternal` still calls
   `sync(SyncLevel.ORDINARY)` (line 318) after `ensureDeletingState` and before it makes and
   starts the thread; `Db.java` is unchanged.
 * Commands:
@@ -304,7 +304,7 @@ with a `DbException`; the index stays creating for the rest of the run.
   index to become active waits until it restarts the database).
 * 2026.1: yes; its retry sleep threw a `RuntimeException` (its `RwTransaction`, lines
   128-130), which the same three catches did not catch either.
-* Still on main: yes; at 4e10aa2 `createInThread` (lines 319-337) has the same three
+* Still on main: yes; at ca02b5e `createInThread` (lines 319-337) has the same three
   catches, `createStep` (lines 462-475) adds only `IndexDeletedException`, and
   `RwTransaction.java` is unchanged.
 * Commands:
@@ -346,7 +346,7 @@ it again, and an interrupted `stop` returns before the thread ends and clears th
   invented, no hang.
 * 2026.1: yes; the same `run` break, `registerAndStart` check and empty catch in `stop`
   (its lines 314-341, 361-363).
-* Still on main: yes; `Jmx.java` is unchanged from b9ba427 to 4e10aa2.
+* Still on main: yes; `Jmx.java` is unchanged from b1651a5 to ca02b5e.
 * Commands:
 
   ```sh
@@ -383,7 +383,7 @@ status object changes its text as the build goes on.
 * Effect class. A wrong answer of a status object (its note), monitoring text only; the
   index and its data are right. No data lost or invented, no hang.
 * 2026.1: yes; the same anonymous status reads the outer counter (its lines 511-532).
-* Still on main: yes; at 4e10aa2 `getJobStatus` (lines 564-586) captures `progress` and a
+* Still on main: yes; at ca02b5e `getJobStatus` (lines 564-586) captures `progress` and a
   new `stopped`, and `note()` still reads `processedEntries` at the call.
 * Commands (the patch adds the test only; built with it applied, as for R3-F6):
 

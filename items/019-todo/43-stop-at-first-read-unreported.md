@@ -21,8 +21,8 @@ oracle (it counts as failed what the database rightly did not see).
 Why: found by agent r30 of 006-13 in the release's rehearsal (018-09):
 the jar's tests on s1 (R5) and `night.sh large` may fail on it tonight.
 The outputs are on s1 in `/opt/bergdb-bench/018/rel/probe/` (`loop.txt`,
-`s-17-6.txt`). Today's changes on the same paths: 019-10 (01b0493),
-019-39 (940e603), 019-41 (8f0d117).
+`s-17-6.txt`). Today's changes on the same paths: 019-10 (de95869),
+019-39 (7063f10), 019-41 (37997ac).
 
 Frans: none. If it is a Core fault, it is fixed (Frans, 2026-11-06, 12:31:
 "If the bug is in Core, register it and fix it to your best ability.");

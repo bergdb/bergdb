@@ -22,7 +22,7 @@ directory D whose stream files (`*.bergdb`) are gone, or whose only stream
 file is empty, creates a new, empty database there, and says nothing. The
 application then runs on an empty database as if it were its own.
 
-How it comes about, read at `df6ad50`:
+How it comes about, read at `9d34ac1`:
 
 * `DatabaseBuilderImp.start()` opens D (`openDirs`, `new FileStream(D)`).
   `FileStream`'s constructor creates D if it is missing (`mkdirs`, with
@@ -286,7 +286,7 @@ section 6). Case 3 is 015-05, for Frans after the release; the empty
 `00000000000000.bergdb` left by a refused start is 015-06, fixed with this
 entry. Before that, at 15:55: the options and the recommendation were
 written. Nothing was decided or made: the coordinator chooses (016-02 records it), then an
-agent makes steps 1 to 6 in its clone. The code was read at `df6ad50`:
+agent makes steps 1 to 6 in its clone. The code was read at `9d34ac1`:
 `Db.handleEmptyStream`, `writeCreatedTxt`, `refuseIncompleteCreation`,
 `DatabaseBuilderImp.start`, `openDirs`, `handleCryptoKeyAndCreatedTxt`,
 `FileStream`'s constructor, `createDirIfNeeded`, `lockDir`,
@@ -305,7 +305,7 @@ Outcome
 -------
 
 2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/015-01/repo` from
-`main` at `d5fc369`: A with A+, as the coordinator decided.
+`main` at `9d0f33c`: A with A+, as the coordinator decided.
 
 * **The order**: a creation through the Pub API (`DbBuilder.createdTxt`)
   is made durable, rule D1, before `created.txt` is written
@@ -332,7 +332,7 @@ Outcome
 * **Tests** (`PubTester`, unit): seven with 015-06's; all fail on the code
   as it was except the crashed creation before its first write (005-33's
   row 0), which keeps today's behaviour.
-* **Gates**: `BEFORE COMMIT OK (94 s)` on `d5fc369`; `LEVEL 1 OK` and
+* **Gates**: `BEFORE COMMIT OK (94 s)` on `9d0f33c`; `LEVEL 1 OK` and
   `LEVEL 2 OK` (quick); `JAVADOC PUB OK`. No stream byte changes.
 * Reviewed by the coordinator: no faults; one doubt noted (the Log).
 
@@ -404,7 +404,7 @@ to 5:
   `PubTester` too, not in `DbTesterStream`, so that the tests of 015-01
   are together.
 * **On the code as it was** (`Db.java`, `DatabaseBuilderImp.java` and
-  `FileStream.java` of `c960c34`, the tests and the new class kept): five
+  `FileStream.java` of `17270d1`, the tests and the new class kept): five
   of the six fail: `testStreamFilesRemoved`, `testOnlyStreamFileEmptied`
   and `testMissingStreamRemedy` ("a new database started in ..."),
   `testNoCreatedTxtWithoutForce` ("no created.txt, expected true"),
@@ -424,9 +424,9 @@ to 5:
   `PubTester` pass.
 * **The gate** again, 16:59 to 17:01: `BEFORE COMMIT OK (98 s)`, 1,108 unit
   tests and 78 f-tests.
-* **On `d5fc369`** (015-07 in `main`, `Db.java` and the node parsers): the
+* **On `9d0f33c`** (015-07 in `main`, `Db.java` and the node parsers): the
   change applies unchanged; gated again there (below).
-* **The gate on `d5fc369`**, 17:05 to 17:07: `BEFORE COMMIT OK (94 s)`,
+* **The gate on `9d0f33c`**, 17:05 to 17:07: `BEFORE COMMIT OK (94 s)`,
   1,115 unit tests and 78 f-tests. `level1.sh quick` and `level2.sh quick`
   run after it.
 * **`level1.sh quick`**, 17:07 to 17:09: `LEVEL 1 OK`; **`level2.sh

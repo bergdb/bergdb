@@ -72,7 +72,7 @@ None; the measurements run on code that passed 012-14.
 
 ## 6.1 Method
 
-Commit: the clone of main `afb47e5` with 012-13 merged (`5338504`), and
+Commit: the clone of main `237d7c1` with 012-13 merged (`5338504`), and
 this task's benchmark files, which change nothing in `src/`. F53: Apple M1
 Pro (8 performance and 2 efficiency cores), 32 GB, macOS 27, on the
 charger. C: Apple clang 21, the release build (`-O2`, asserts on, as

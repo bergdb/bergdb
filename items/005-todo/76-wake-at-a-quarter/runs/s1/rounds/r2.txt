@@ -13,7 +13,7 @@ a-1k-x100-b100 (write, 1 runs)
   a-1k-x100-b100 run 1: WRITE 10000 commits (1000000 puts) in 11.19 s: 894 commits/s, bytes appended per user byte 1.17, append p50 950.3 us p99.9 3915.8 us max 153.09 ms|
 a-1k-x100-b20 (write, 1 runs)
   a-1k-x100-b20 run 1: WRITE 10000 commits (1000000 puts) in 11.56 s: 865 commits/s, bytes appended per user byte 1.17, append p50 978.9 us p99.9 3735.6 us max 358.03 ms|
-Session 3ad171d3-dacb0cb-20261102T120836-b64-r2.suite-g1-2g-r2  (3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 + working-tree diff)
+Session 3ad171d3-dacb0cb-20261102T120836-b64-r2.suite-g1-2g-r2  (afc3d207335cc615fdd6f96a68a43ada2bb8a405 + working-tree diff)
 
 a-1k-b100  [write, 1 runs, workload 2190e15717386bcd]
   metric                                         n           median              min              max      CV

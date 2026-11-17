@@ -1,12 +1,12 @@
 #!/bin/sh
 # minutes: 12
 # bergdb 005-46, W1.4 of 006-09: Props (MEM, CORE, SS) on HEAD's prebuilt jar and on
-# bf19075's (005-50, just before 005-46), in turns, four rounds (ABBA ABBA), as 009-03 ran it
+# c1f1f15's (005-50, just before 005-46), in turns, four rounds (ABBA ABBA), as 009-03 ran it
 # twice: no fewer reads a second. About 6 minutes (40 s a run); stopped at 12. Written
 # 2026-10-27 by Claude (Opus 5.5, Claude Code); README.md beside it.
 # Usage: sh props.sh, from any directory (SMOKE=1: one round, about 80 s, outputs in
 # $B/smoke). Needs prep.sh's clones in B (default /Users/f/fl/bench/006-09/w1), built: JARS
-# names two of them, default "bf19075 head" (the reference first; another pair, such as two
+# names two of them, default "c1f1f15 head" (the reference first; another pair, such as two
 # preserved builds before and after a change, by JARS="old new" with B set).
 # Outputs: night/out/props/props-JAR-ROUND.txt; start and end in night/out/runs.txt.
 # Exit status: 0 if every run printed MEM, CORE and SS, and summary.txt (nightsum.py) has

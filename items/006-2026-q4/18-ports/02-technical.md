@@ -24,7 +24,7 @@ How each fact is known, marked where it matters:
 
 * **[M] measured**: a figure of 012, 015-02 or 022, from their reports,
   logs and Git history.
-* **[R] read**: in BergDB's code or items, `main` at `94a1520` and the
+* **[R] read**: in BergDB's code or items, `main` at `12dd8f7` and the
   tree of 2026-11-09, noon; or in Frans's notes of 2012 to 2016 (F1-007).
 * **[W] web**: a source of section 11, read on 2026-11-09.
 * **[E] estimate**: this study's, with its basis named. Every effort
@@ -291,7 +291,7 @@ in parallel need the caller's lock.
   pure Rust), and Java's concurrency where the language allows it.
 * It reads Java with fresh eyes: 012 found 005-70, a correctness bug, and
   six more findings (012-16, 5); 022's step 2 found 021-11, fixed in
-  `da6c5b0` ("Found by reading in the C port") [M].
+  `36e003f` ("Found by reading in the C port") [M].
 
 ### 3.2. A binding to the C port
 
@@ -576,7 +576,7 @@ target of 006-08 (150 to 200 kB of code, raw flash) is open.
 | 022-02's estimate for 2026.4 (not measured) | 3 to 4.5 h, 1.5 h runs | 650 to 1,100 |
 
 Sources: 012-16, sections 3 and 8.2; 012-18, section 1; 022-01's log and
-the commits `86dade8` (10:21) to `3b0d54b` (11:57) of 2026-11-09
+the commits `d1c5bfe` (10:21) to `3271494` (11:57) of 2026-11-09
 (`git diff --numstat`, paths under `test/` counted as tests); 022-02,
 section 1.
 

@@ -2,7 +2,7 @@
 ============================================
 
 Written 2026-10-19 by Claude (Opus 5.5, Claude Code), at Frans's request
-("Do the 005-10 todo item"). Made on commit `0597329`, the code as
+("Do the 005-10 todo item"). Made on commit `1f4b637`, the code as
 committed; the uncommitted changes of the main tree then were documents
 and items only (005-04).
 
@@ -151,7 +151,7 @@ No entry point reaches them, not even a main method that no script runs.
   which names it, is edited.
 * `java/src/bergdb/core/NextMap.java` (110): position-to-next-position
   mappings that `DbStarter` used in the 2017 source; the 2026 repairs
-  removed that use (`2bd52c0`). Its three unit tests never
+  removed that use (`0eb07c8`). Its three unit tests never
   ran (not in the core pack). `java/stress/restart-experiments.diff`
   names it in context lines; that diff applies to the source it was made
   for, as docs/startup-invariants.md says, and stays.
@@ -522,7 +522,7 @@ Looked at and kept, so that the same ground is not searched again:
 Checks
 ======
 
-On a clone of `0597329` with the patch (`tools/gates.sh`, 2026-10-19,
+On a clone of `1f4b637` with the patch (`tools/gates.sh`, 2026-10-19,
 20:35 to 21:16 on F53, nothing else running; the output is in
 [runs/](runs/)):
 

@@ -2,7 +2,7 @@
 =========================
 
 Created 2026-11-06 by Frans Lundberg. Status: done 2026-11-07: release
-2026.3 made, the tag `release-2026.3` on `929fa33` (section 8).
+2026.3 made, the tag `release-2026.3` on `9a0bf5e` (section 8).
 
 The plan for W5 of 018-01 (section 7): release 2026.3, made as 2026.2 was
 (016-09, by 008-01's steps), with 016-09's scripts adapted to 2026.3. Frans,
@@ -169,7 +169,7 @@ each command in the main tree's shell, after
   README.md's latest release and `BuildInfo` to 2026.4-dev and 264. The
   coordinator writes, in `$S/B` (not in the main tree: the fast-forward
   refuses a file changed in both): docs/log.md's entry (as 2026.2's,
-  eed4ca9), 018's readme log, 018-01's log, and this plan's State. Then
+  c459883), 018's readme log, 018-01's log, and this plan's State. Then
   `COMMIT=1 sh $S/commit-b.sh $S/B A`: the gate, commit B, the fast-forward
   into main, the annotated tag `release-2026.3` on A ("BergDB 2026.3,
   internal release, 2026-11-07"), and its checks. Nothing is pushed:
@@ -221,10 +221,10 @@ The other steps go on up to R8; commit B and the tag wait.
 
 ## 6. The rehearsal (2026-11-06, afternoon)
 
-On a scratch commit: main's `2691750` in a clone
+On a scratch commit: main's `e532aa8` in a clone
 (`$S/rehearsal`, branch `scratch-2026.3`), outputs in `$S/rehearsal-run/`.
 
-On a scratch commit: main's `2691750` in a clone (`$S/rehearsal`, branch
+On a scratch commit: main's `e532aa8` in a clone (`$S/rehearsal`, branch
 `scratch-2026.3`), from 12:22 to 12:54; outputs kept in
 `$S/rehearsal-1225/`. Every step from R2 to R9 ran, with commit A, commit
 B and the tag on the scratch branch only (the tag deleted after). F53 was
@@ -248,7 +248,7 @@ loaded by the day's agents (load average 7 to 20).
   StreamDigest gives its release's digests, 36 of 36, so the workloads are
   2026.2's; and A's digests are 015-87's `digests-new.txt`, 48 of 48, so
   nothing after 015-87 moved the bytes. The same at 12:55 on main's
-  `8996de0` (`rehearse.sh`: `REHEARSAL OK`, 4 configurations, the same).
+  `165bb9e` (`rehearse.sh`: `REHEARSAL OK`, 4 configurations, the same).
 * R4: `tests-f53.sh` (24 minutes under the day's load, 743 and 707 s):
   JDK 27: Unit 1,244, F 87, Night 15, the user's program OK. **JDK 17:
   Unit and F passed, the night tests FAILED**: StorageFaultTester's
@@ -260,7 +260,7 @@ loaded by the day's agents (load average 7 to 20).
   StorageFaultTester's `testSample`, the same finding at STREAM call 1;
   the user's program OK with both. The sample run alone on s1 failed once
   in 19 runs. Both failures are 019-43, registered by the coordinator at
-  12:34 (2914fa3), an agent on it. s1's full chain (with the night
+  12:34 (0038156), an agent on it. s1's full chain (with the night
   tests, about 50 minutes) was not rehearsed: s1 was wanted by other
   agents.
 * R8: `axioms.sh`: `AXIOMS OK: 44 theorems` (7 s). `collect.sh` with a
@@ -303,9 +303,9 @@ Not as main stands at 13:00. In order of risk:
    prose was written at 12:30 from next.md then; fixes landed since (019-32,
    019-39, 019-41, 019-42 and more by 20:15) are in next.md and so in the
    Changes, but the intro and known issues must agree with them. "Ready",
-   4 (the documentation) is agent d30's (8996de0).
+   4 (the documentation) is agent d30's (165bb9e).
 
-"Ready", 3 is met at `8996de0`: every differing configuration is named.
+"Ready", 3 is met at `165bb9e`: every differing configuration is named.
 
 
 ## 8. State
@@ -318,7 +318,7 @@ script is found before the freeze. Left: 019-43 (section 7, point 1); the
 full s1 chain, not rehearsed.
 
 2026-11-07, 07:50: released, at Frans's word (07:43: "Yes, make the
-release."). Commit A is `929fa33` (BuildInfo 2026.3, 2026-11-06, 16:16),
+release."). Commit A is `9a0bf5e` (BuildInfo 2026.3, 2026-11-06, 16:16),
 the first A: no fault of the Core was fixed after it (section 4 not
 needed); main after it had item commits only. On A: `night.sh large`
 NIGHT OK (run 2026-11-06-1616, 313 minutes), jcstress 8 of 8 on F53, the
@@ -326,7 +326,7 @@ jar's tests on F53 and s1 with JDK 27 and 17, StreamDigest (the 4
 configurations with reclaim differ, named by next.md), the Lean axioms
 (44 theorems); no stop of section 5.
 
-* R8, 07:44 (`$S/out/morning-r8.txt`): `collect.sh 929fa33` COLLECT OK,
+* R8, 07:44 (`$S/out/morning-r8.txt`): `collect.sh 9a0bf5e` COLLECT OK,
   `finish.sh` FINISH OK (SHA256SUMS checks), `notes.sh` NOTES NEED EDITS
   (2 markers). `finish.sh` not run again: the baseline did not change
   (SHA256SUMS covers the jar, the zips and baseline.zip, not the notes).
@@ -334,7 +334,7 @@ configurations with reclaim differ, named by next.md), the Lean axioms
   as `$S/out/readme-generated.md`):
   * the Lean paragraph's start (a marker): the model's Lean files are
     2026.2's; only lean/README.md's text was brought up to date, in the
-    documentation's read-through (8996de0);
+    documentation's read-through (165bb9e);
   * the known issues (a marker): a paragraph on 019-35 and 019-36,
     Investigates of performance open at A and closed after it without a
     change of the code, and on 019-45, an open Investigate registered
@@ -344,8 +344,8 @@ configurations with reclaim differ, named by next.md), the Lean axioms
     not as a fault (next.md at A still listed both);
   * the intro: a clause for the faults that the reviews of the fixes and
     the documentation's read-through found (019).
-* R9: `stage-b.sh` STAGE B OK in `$S/B`, a clone of main at `3b3904d`;
+* R9: `stage-b.sh` STAGE B OK in `$S/B`, a clone of main at `e183a86`;
   docs/log.md's entry, 018's and 018-01's logs and this State written
-  there; `COMMIT=1 sh $S/commit-b.sh $S/B 929fa33`: the gate under the
+  there; `COMMIT=1 sh $S/commit-b.sh $S/B 9a0bf5e`: the gate under the
   gate lock, commit B (this commit), main fast-forwarded, the annotated
   tag `release-2026.3` on A. Nothing is pushed: Frans pushes.

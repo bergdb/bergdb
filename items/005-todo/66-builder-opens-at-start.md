@@ -89,7 +89,7 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), as registered; in a clone
-on `87e550e`, the code in commit `83b7ac0` (java/ and
+on `9697502`, the code in commit `7747325` (java/ and
 releases/next.md).
 
 * `DatabaseBuilderImp`: `dir()` records the directory, and `replica()`

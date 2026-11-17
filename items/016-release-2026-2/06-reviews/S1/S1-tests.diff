@@ -32,7 +32,7 @@ index 0000000..ff04ba9
 +import bergdb.pub.RwEnvironment;
 +
 +/**
-+ * Review 016-06/S1: tests that fail on e427a4c.
++ * Review 016-06/S1: tests that fail on 0b739f3.
 + */
 +public class PubTesterS1 {
 +

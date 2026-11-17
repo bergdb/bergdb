@@ -10,7 +10,7 @@ operations on macOS/APFS and a Linux VM. It is conditional on the OS and
 storage stack honoring successful force operations; no physical power-cycle
 or independent hardware certification was performed.
 
-The baseline is this repository's `2e0bfe6`, plus the uncommitted changes
+The baseline is this repository's `bdba113`, plus the uncommitted changes
 listed here. All source inspection and implementation used this repository.
 The original buffer timing, retention policy, format and reclaim parameters
 are preserved. Infinite retention remains the default. Level 4 is not
@@ -148,7 +148,7 @@ and was checked against both real traces and a weakened trace. Negative
 controls accept explicit inconsistent-file/incorrect-state failures; ordinary
 setup I/O exceptions escape the control and fail the test.
 
-Source identity is baseline `2e0bfe636b89a66fa90d043d84e14d3ec9e47f3e` plus
+Source identity is baseline `bdba113885b26eaac76cae37d271d590f3d3ec54` plus
 the delivered working-tree diff. Each source manifest lists 427 Java source,
 dependency, build and stress files. Their SHA-256 values are:
 

@@ -6,7 +6,7 @@ An application written as a new user of 2026.4 would write it (u6, for coord-110
 common brief of 020-24, round 2): only the release jar on the class path, and only what a
 user reads (README.md, `java/src/overview-pub.html`, the Javadoc of `bergdb.pub` and
 `bergdb.pub.util`, `releases/next.md`). The jar was built from a clone of main at
-`cf287ad`. The implementation was read only afterwards, to explain U6-1 and U6-4.
+`f41a4ba`. The implementation was read only afterwards, to explain U6-1 and U6-4.
 
 
 ## 1. The application

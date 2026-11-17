@@ -1,5 +1,5 @@
 version: 2015.1
-commit: f51fc8dc7e23c4eacfc6e916ba2ae2afe303b959
+commit: f023cd77ad5f9bd1b93f42667b652a2408af5657
 classes: 86111ecd38a9562d74710c2014dd22c1feb29c19459d9a748895053cf9c132b4
 props: own
 label: memss

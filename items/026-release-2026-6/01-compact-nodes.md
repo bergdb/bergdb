@@ -6,7 +6,7 @@ is for release 2026.6 (QC1).
 Created 2026-11-11 by Frans Lundberg. Status: open. Postponed
 2026-11-11, 11:50 (Frans: the merges at the delete first, the stored
 form after that); resumed 2026-11-12, 01:34, on record format 7 (main
-`99a13626`). State says where it is.
+`a8c3589a`). State says where it is.
 
 Should an index node be stored more compactly in the stream, and how? A
 study with measurements: the stored form today, byte for byte; where a
@@ -30,7 +30,7 @@ questions as "026-01, QC1" (024-20 before the move).
 
 ## 1. In short
 
-Resumed 2026-11-12, 01:34, on record format 7 (main `99a13626`: merges
+Resumed 2026-11-12, 01:34, on record format 7 (main `a8c3589a`: merges
 at the delete, option 2 at theta 7, CRC32C, the limits); measured 01:36
 to 02:45. Sections 3 to 8; State at the end.
 
@@ -77,10 +77,10 @@ to 02:45. Sections 3 to 8; State at the end.
 ## 2. The stored form today
 
 From 024-02 (sections 8 to 13, the field tables) and the code of `main`
-at `1076235c` (`StoredTrans`, `StoredKeyNode`, `StoredTopNode`,
+at `2105baa7` (`StoredTrans`, `StoredKeyNode`, `StoredTopNode`,
 `StoredValueNode`, `NodeStream`, `KeyNode`); 012-02, sections 5, 6 and
 8, for the writer's rules. Updated 2026-11-12 to record format 7 at
-`99a13626`: 024-25's 12-byte node header with a CRC32C sum (node formats
+`a8c3589a`: 024-25's 12-byte node header with a CRC32C sum (node formats
 3, 3 and 5); the merges (024-21) and option 2 (024-23) change what a run
 writes, not the layout. Integers little-endian; a *pointer* is an
 `i64` stream position, −1 for none (024-02, section 14.1).
@@ -219,7 +219,7 @@ arithmetic: 024-17, section 5.3).
 
 ## 3. Where the bytes go
 
-Measured 2026-11-12, 01:36 to 02:30, on main `99a13626` (record format
+Measured 2026-11-12, 01:36 to 02:30, on main `a8c3589a` (record format
 7). `probe/CN.java`: the Core API, a FileStream, the builder's defaults
 (sd 50 MB, node size 30, retain forever), a test clock of 1 ms a
 transaction, keys `/app/users/k` + 12 digits (24 bytes, 4 segments)
@@ -734,7 +734,7 @@ work.
 * 2026-11-11, 11:51: postponed by Frans (the coordinator, 11:50): runs
   stopped, State written.
 * 2026-11-12, 01:34: resumed by compact2 for coord-1111 on main
-  `99a13626` (record format 7). Clone reset and built; `Scan` and
+  `a8c3589a` (record format 7). Clone reset and built; `Scan` and
   `Codec` changed for the 12-byte node header (checked at 50,000 keys).
 * 2026-11-12, 01:36 to 02:16: the 1M matrix, two scripts, one slot each.
   01:38: a 10M run and a 1M run of the same name shared a directory; the
@@ -751,7 +751,7 @@ work.
   through the current work and move things for 2026.6 to 026. In
   particular this 024-20 should move there."); a stub left at 024-20.
   QC4's separate point, `Reclaim.VALUE_NODE_BYTES`, was already fixed in
-  2026.5 (`df62e8d9`, 024-25).
+  2026.5 (`682a4f53`, 024-25).
 
 
 ## State
@@ -770,7 +770,7 @@ at 01:34. No run is running, no slot held; the test databases removed
   (the 1M rows and sd 5 MB stand in); a feedback run (5.2) for other
   workloads than `over-b100`.
 * **Clone**: `/Users/f/fl/bench/2026-11-11/compact/clone`, branch
-  `024-20-compact` reset to main `99a13626` (nothing committed, no
+  `024-20-compact` reset to main `a8c3589a` (nothing committed, no
   product code), built. Probe classes in
   `/Users/f/fl/bench/2026-11-11/compact/classes` (`javac -d classes -cp
   clone/java/build/bergdb.jar probe/*.java`).

@@ -1,7 +1,7 @@
 # 020-30-01. The reclaim side
 
 By agent r30 of coord-1110, 2026-11-10, phase 1 (a first overview, read-only;
-nothing built or run). Code on `main` (`12fcb7ba`). Places are file:line in
+nothing built or run). Code on `main` (`772c1e5a`). Places are file:line in
 `java/src/bergdb/`.
 
 ## 1. What reclaim does today

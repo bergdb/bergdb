@@ -233,7 +233,7 @@ What, by whom, and how it is checked:
    stay (AGENTS.md).
 6. **The commit**: staged right before it, with the path list of
    `files.txt`; in Frans's name, with no AI attribution; the message
-   names the entry, the decision, the tests and the gates (as `988fe1a`'s
+   names the entry, the decision, the tests and the gates (as `52aeb04`'s
    does). Before it, `main`'s `java/` and `lean/` are checked once more
    against the gated tree (Frans may commit meanwhile).
 7. **The bookkeeping**: the entry's row in 005's or 015's table (the

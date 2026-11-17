@@ -1,6 +1,6 @@
 #!/bin/sh
 # 024-21, section 8: the put path writes main's bytes. PutDigest (puts and overwrites only)
-# and StreamDigest quick, on main's build at 1076235c and on the branch with its record format
+# and StreamDigest quick, on main's build at 2105baa7 and on the branch with its record format
 # set back to 6 (f6wt), one compiled copy of each probe (main's StreamDigest).
 M=/Users/f/fl/bench/2026-11-11/mgj
 R=$M/runs

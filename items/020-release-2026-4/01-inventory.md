@@ -5,7 +5,7 @@ Created 2026-11-06 by Frans Lundberg, from his plan for 2026.4 (020's
 readme): an inventory of the non-Core part, feature by feature, before any
 fix, for his keep, simplify or drop decisions.
 
-**Status: written; nothing decided.** Read at `92844c2`, with one probe in
+**Status: written; nothing decided.** Read at `2b8ef00`, with one probe in
 a clone (section 2). The recommendations are proposals; Frans decides,
 feature by feature.
 
@@ -71,7 +71,7 @@ feature by feature.
   reviews behind them (016-06/S1, S1-F4 and F7; 016-06/S2, all; 016-07's
   R3, F5, F7, F9, F11; 016-06/R8's F6 by its entry); the fixes 019-38,
   015-40, 015-41, S2-F24; 019-39 and 019-40; 005-22, 23 and 26.
-* **A probe**, in the clone `/Users/f/fl/bench/006-13/v1` at `92844c2`:
+* **A probe**, in the clone `/Users/f/fl/bench/006-13/v1` at `2b8ef00`:
   `/Users/f/fl/bench/006-13/v1-probe/V1Probe.java`, five cases, each a
   few seconds (section 12). No performance test.
 * **Sizes** are non-blank lines (comments and Javadoc included), split by
@@ -940,7 +940,7 @@ needs a boundary, and (b) is cheap.
 
 Not registered; for the coordinator to register in 019 if Frans wants
 them. The probe is `/Users/f/fl/bench/006-13/v1-probe/V1Probe.java`, run
-on the clone's jar (`92844c2`), with and without `-ea`.
+on the clone's jar (`2b8ef00`), with and without `-ea`.
 
 * **N1. A build over a null indexed `String` fails the database, at every
   start** (019-10 with S2-F26). Probe `build`: three objects in `/p/`, one
@@ -1160,5 +1160,5 @@ Each against a simple reference in the test, as harness 6.7 (018-04):
 ## 16. Log
 
 2026-11-06. Written by coord-1106's agent v1 (xhigh), read-only at
-`92844c2`, with the probe of section 12 in the clone
+`2b8ef00`, with the probe of section 12 in the clone
 `/Users/f/fl/bench/006-13/v1`. Nothing decided.

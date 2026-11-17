@@ -91,7 +91,7 @@ shapes (section 9).
   `statSpaceSplits`, count rule O's two outcomes. UnlinkFuzz's strict
   check uses the set's m.
 * **main for comparison**: branch `024-14-main-counts` (`44fa9b87`):
-  `main` at `1fe5f180` with the same two split counters and nothing else.
+  `main` at `b21f0b4d` with the same two split counters and nothing else.
 * **A database is rerun with the thresholds of the JVM that starts it**:
   a run must start its database with the set that wrote it. The probe's
   databases never restart; CleanupRule's restarts below use one set a
@@ -627,7 +627,7 @@ other node sizes (QT2) stays open": "1, yes."). QT2 open.
   `024-14-thresholds` (head `bff5e810`) on `92bf4eb5`, 023-08's fault 12
   fix on P5's head `71e386de` (branch `023-v12-fix`); branch
   `024-14-main-counts` (`44fa9b87`, worktree `../main-wt`): `main`
-  (`1fe5f180`) with split counters only. Builds frozen in `thr/b1` and
+  (`b21f0b4d`) with split counters only. Builds frozen in `thr/b1` and
   `thr/bmain`; the probe in `thr/probe/THR.java`.
 * **Done (13:50), and stopped for the stop time**: the build; UnlinkFuzz
   strict for all four sets (36 runs each, 0 failures); CleanupRule with

@@ -56,7 +56,7 @@ Done when
   and the next transaction runs. The limit is a constant the test can lower
   so that it needs no 2 GB of heap.
 * `java/before-commit.sh` prints `BEFORE COMMIT OK`; the streams are
-  unchanged (`StreamDigest` against `3a82968`).
+  unchanged (`StreamDigest` against `bb15ea2`).
 
 
 Outcome

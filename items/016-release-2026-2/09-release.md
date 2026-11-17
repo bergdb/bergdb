@@ -23,7 +23,7 @@ commits, the tag, and starts the night's runs. 016-10 (the numbers) and
 * `BuildInfo` (`java/src/bergdb/core/BuildInfo.java`, lines 19 to 29)
   says `RELEASE` "2026.2-dev", `RELEASE_INT` 262, `BUILD` "2026.2-dev".
   So commit A changes two strings, and `RELEASE_INT` stays 262.
-* 2026.1's commit A (`a42947c`) changed `BuildInfo.java` and two lines of
+* 2026.1's commit A (`8e579c6`) changed `BuildInfo.java` and two lines of
   `docs/levels.md`. Its tag is annotated: "BergDB 2026.1, internal release,
   2026-10-25", by Frans Lundberg.
 * 2026.1's files: `bergdb-2026.1.jar` (3.2 MB), `bergdb-2026.1-src.zip`
@@ -393,7 +393,7 @@ rehearsals follow.
   digests; `JARTESTS=1` also the jar's tests) on main's current HEAD in
   scratch clones, about 6 minutes; run again during the evening, so
   that a commit that breaks a tool is found before the freeze.
-* 17:18: `rehearse.sh` on main's `437cb48`: `REHEARSAL OK` (BUILD A OK,
+* 17:18: `rehearse.sh` on main's `60b7074`: `REHEARSAL OK` (BUILD A OK,
   PREP A OK 5 of 5, DIGESTS OK).
 
 2026-11-03, 17:20, the tools agent stopped (usage). R0 is done; nothing

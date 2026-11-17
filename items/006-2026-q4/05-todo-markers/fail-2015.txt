@@ -1,4 +1,4 @@
-bergdb 006-05, T2: StartupDistanceTester paying till 3.0e6 on d7a46d4 (2015-05-31, F1-007's history),
+bergdb 006-05, T2: StartupDistanceTester paying till 3.0e6 on 2d5c2a3 (2015-05-31, F1-007's history),
 with -ea, JDK 27, 2026-10-25, F53. The last 12 lines of its output.
 
 Exception in thread "main" java.lang.AssertionError: trying to read node at bad spos, 502073, mod8: 1

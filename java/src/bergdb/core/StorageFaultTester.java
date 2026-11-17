@@ -95,7 +95,7 @@ public class StorageFaultTester {
         {"019-09", "close", ".*the storage had failed.*no call reported it.*"},
         {"019-09", "restart", ".*it returned, and no call reported a failure.*"},
         // The close meets the fault, and close() returns normally: the storage thread
-        // discarded its close's failure (bergdb 015-78, with 015-34's fix, 1b66a34).
+        // discarded its close's failure (bergdb 015-78, with 015-34's fix, df3d516).
         {"015-78", "close", ".*the close met the fault.*"},
         // A failed background write, and a call goes on (bergdb 015-35).
         {"015-35", "background", ".*"},

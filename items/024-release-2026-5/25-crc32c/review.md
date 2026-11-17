@@ -2,14 +2,14 @@
 
 Written 2026-11-11, 18:32 to 18:50, by the reviewer "rev25" of coord-1111.
 Reviewed: branch `024-25-crc32c` of `/Users/f/fl/bench/2026-11-11/crc/clone`,
-head `82e274b5`, the diff `08659847..82e274b5`: the change `bb433188`, the
-five test commits `4f123ce3`, `d209147f`, `b04a0ff2`, `86a7e155` and
-`8b90589a`, and the documents in `82e274b5`. While I worked, crc added
-`9747efc1` (level1's SS limits, R4), which I also read.
+head `a9c8d029`, the diff `08659847..a9c8d029`: the change `26c21000`, the
+five test commits `bd3063ac`, `ef7762b4`, `a0ea6312`, `44fe5673` and
+`57246318`, and the documents in `a9c8d029`. While I worked, crc added
+`e3cf5937` (level1's SS limits, R4), which I also read.
 Design read: 024-25 (main tree, 18:31), 024-17 (F6, QL9) and 024-02
 sections 8 to 12 on the branch.
 Probes ran in my own clone `/Users/f/fl/bench/2026-11-11/rev25/clone`, in a
-worktree of `08659847` (`rev25/base`), and in class directories under
+worktree of `0cb7eff7` (`rev25/base`), and in class directories under
 `/Users/f/fl/bench/2026-11-11/rev25/probe/`. crc's clone was not changed. I
 took no slot: each probe was a build, a unit test or a run of a few seconds.
 
@@ -25,13 +25,13 @@ format-6 message. A format-7 database written by `main` before this change
 is refused with a checksum error, and the failed start leaves its file
 unchanged. The five test commits keep their tests' purposes: I removed
 each fix the pinned copies guard, and each test then failed. The finding
-on `testFoundLinkByIdPrevPos` is confirmed. On `08659847` the test passes
+on `testFoundLinkByIdPrevPos` is confirmed. On `0cb7eff7` the test passes
 with its fix removed. On the branch it fails with the fix removed.
 
 **Before it lands:**
 
-* **R4.** level1 failed on `82e274b5` (SS 1.53 > 1.52, SS3 1.69 > 1.66).
-  crc raised the limits in `9747efc1`. level1 must pass on that head, and
+* **R4.** level1 failed on `a9c8d029` (SS 1.53 > 1.52, SS3 1.69 > 1.66).
+  crc raised the limits in `e3cf5937`. level1 must pass on that head, and
   Frans must approve the raised limits with the other changed expectations
   (QC2).
 * **R1.** The new 12-byte lower bound on a node's size is untested. Two
@@ -44,8 +44,8 @@ with its fix removed. On the branch it fails with the fix removed.
 R3, R5 to R9 are notes.
 
 At 18:43, `crc/gates/summary.txt` showed level1 exit 1 (R4), unlinkfuzz
-exit 0, and level2 running, all on `82e274b5`. The verdict assumes that the
-rest of the chain ends OK, and that level1 is rerun on `9747efc1`.
+exit 0, and level2 running, all on `a9c8d029`. The verdict assumes that the
+rest of the chain ends OK, and that level1 is rerun on `e3cf5937`.
 
 
 ## 2. Findings
@@ -98,7 +98,7 @@ old layout (line numbers from the branch's file):
 * :1320 (20) "node byte 9, key node 19 to 23" and :1364 (21.1) "node
   formats 2, 2, 4": not updated.
 * :548 "Format 7 since 024-25" reads as if record format 7 began with
-  024-25. It began with 024-21 (`67925924`). Suggest "The 12-byte header
+  024-25. It began with 024-21 (`d502af3d`). Suggest "The 12-byte header
   since 024-25 (record format 7, ...)".
 * 8.1's table (:425) and 8.2 still say record format 6. That was already
   stale before this branch, and the subitem's log says so. Fix it with the
@@ -111,8 +111,8 @@ G7, as it lists the reserved bytes of before.
 
 ### R3. testFoundLinkByIdPrevPos: the finding confirmed (note)
 
-* On `08659847`, with `NodeCollection.checkLinkById`'s refusal
-  (`4df672f4`) removed, `testFoundLinkByIdPrevPos` **passes**. Its copy
+* On `0cb7eff7`, with `NodeCollection.checkLinkById`'s refusal
+  (`21e8db97`) removed, `testFoundLinkByIdPrevPos` **passes**. Its copy
   is the record whose tpos is 21584 (the test asks for 22448, inside it).
   The first node there is a top node (type 10, offset 32, size 72), so the
   xor at byte 8 hit h. The copy was refused for its size, and the test
@@ -124,19 +124,19 @@ G7, as it lists the reserved bytes of before.
   drift to another refusal unnoticed again. The Javadoc's "the record at
   21584" is right: it is that record's tpos.
 
-### R4. level1 fails on 82e274b5 and is fixed in 9747efc1 (blocks until rerun)
+### R4. level1 fails on a9c8d029 and is fixed in e3cf5937 (blocks until rerun)
 
 * `crc/gates/level1.log`: `LEVEL 1 FAILED: Props SS:1.53 (1.11, 1.21,
   1.69, 2.40), more than 1.52 1.11 1.21 1.66 2.41`. SS does not depend on
-  the machine. My runs of `bergdb.dev.props.SS`: base `08659847` 1.51
+  the machine. My runs of `bergdb.dev.props.SS`: base `0cb7eff7` 1.51
   (1.10, 1.20, 1.64, 2.41), branch 1.53 (1.11, 1.21, 1.69, 2.40). This is
   the expected cost: 4 bytes more in every value node, 8 in every top
   node.
-* `9747efc1` raises `SS_MAX` (`java/stress/level1.sh:139`) to 1.54 1.12
+* `e3cf5937` raises `SS_MAX` (`java/stress/level1.sh:139`) to 1.54 1.12
   1.22 1.70 2.41 and gives the reason in `docs/log.md`, as step 6's rule
   asks. My numbers pass these limits. The commit is right, but:
-  * level1 has to be rerun on `9747efc1`; crc's chain runs on
-    `82e274b5`.
+  * level1 has to be rerun on `e3cf5937`; crc's chain runs on
+    `a9c8d029`.
   * This is a changed expected value. Add it to QC2 for Frans's approval.
   * The comment at `level1.sh:119` to `:121` still says "The SS limits are
     the values of 2026-10-28 after 007-07 ... plus ... 0.01". Add "raised
@@ -160,13 +160,13 @@ G7, as it lists the reserved bytes of before.
 ### R6. A format-7 database from before this change: a checksum error (note; acceptable)
 
 * **Probe** (`rev25/probe`, `Rev25Open`): I made databases with
-  `08659847`'s build (200 puts and a delete, `FileStream`) and with
+  `0cb7eff7`'s build (200 puts and a delete, `FileStream`) and with
   `releases/2026.4/bergdb-2026.4.jar`, then started each with the
   branch's build:
   * 2026.4: `VersioningStreamException: Cannot parse stored transaction of
     format version 6; ... format 6 was written by release 2026.4, which
     opens it ...`. Clear.
-  * `08659847`: `StreamChecksumException: spos: 160, storedSum: 0,
+  * `0cb7eff7`: `StreamChecksumException: spos: 160, storedSum: 0,
     computedSum: 1269713866, nodeType: 10`, the first node of the
     creation record. The record format byte is 7, so the record header
     passes. The node's checksum is checked before its format byte, so the
@@ -174,7 +174,7 @@ G7, as it lists the reserved bytes of before.
   * Both files are byte for byte the same after the refused start (shasum
     before and after). Each old build still opens its own database.
 * **Acceptable:** no release wrote format 7, and `main` wrote it only
-  from 16:53 today (`67925924`). The only risk is a bench or test
+  from 16:53 today (`d502af3d`). The only risk is a bench or test
   database made in that window, whose error looks like damage. QC1's
   recommendation stands. If a clear message is wanted without a format
   number, `bytesToNode` could check the format byte before the checksum
@@ -260,28 +260,28 @@ profile shows it.
     4 bytes a KV (2,000 a transaction at L1 = 500) are far inside 1/8 of
     the record limit.
 * **The test commits:**
-  * `4f123ce3` changes the same fields at their new offsets: the top
+  * `bd3063ac` changes the same fields at their new offsets: the top
     node's h at 16 and its ordinal at 18; a key node's count at 13; a
     value node's value byte at 28 and its size at 24; the hand-made record
     of 120 bytes.
-  * `d209147f` refuses the old format byte.
-  * `8b90589a`: the field range 72 and 48 covers the same fields as 64
+  * `ef7762b4` refuses the old format byte.
+  * `57246318`: the field range 72 and 48 covers the same fields as 64
     and 40 did. The sample's 48 still reaches a top node's root pointer
     (40 to 47).
-  * `86a7e155`: CRC-32C sees every one-byte change, and `NodeChecksum`'s
+  * `44fe5673`: CRC-32C sees every one-byte change, and `NodeChecksum`'s
     `testField` checks this, so an undetected 0xff flip is rightly a
     failure.
-* **The pinned copies of `b04a0ff2`.** I removed the fix each copy
+* **The pinned copies of `a0ea6312`.** I removed the fix each copy
   guards. All five pass on the branch as written.
-  * `testFoundDescentCycle`: with the cycle checks of `4b36218a`
+  * `testFoundDescentCycle`: with the cycle checks of `58eba7cb`
     (`OpData.descentTo`, `GetMany`) off, it fails: "did not end in 60
     s".
-  * `testFound021_11`: with `checkPointeeType` (`da6c5b0c`) off, it
+  * `testFound021_11`: with `checkPointeeType` (`36e003ff`) off, it
     fails: "undetected". In this run and the 019_32 run below,
     `DbStarter:515`'s `validateKeyNode` was off too: one switch turned off
     both.
   * `testFound021_12`: with both calls of `validateKeyNode` for nodes
-    before the section (`83e8e13f`; `DbStarter:515` and
+    before the section (`4ff84fb3`; `DbStarter:515` and
     `NodeCollection:602`) off, it fails: a `Bug` from
     `Dag.appendDeleteKlong`. With only one of the two calls off it still
     passes, because the other call refuses with the same text.
@@ -317,7 +317,7 @@ profile shows it.
 ## 5. Probes
 
 All under `/Users/f/fl/bench/2026-11-11/rev25/`. Each source change of a
-probe was reverted, and `clone` is at `9747efc1` with no local changes.
+probe was reverted, and `clone` is at `e3cf5937` with no local changes.
 
 * `probe/src/bergdb/core/Rev25Open.java`: makes or opens a `FileStream`
   database. Compiled against each of the three builds. Used for R6.
@@ -326,5 +326,5 @@ probe was reverted, and `clone` is at `9747efc1` with no local changes.
   R1, R3 and section 3.
 * `probe/rec/bergdb/core/Rev25Rec.java`: prints a LONG original's record
   and its nodes (offset, size, type). Used for R3 on `base`.
-* `base`: a worktree of `08659847`. Its `build/bergdb.jar` was built with
+* `base`: a worktree of `0cb7eff7`. Its `build/bergdb.jar` was built with
   `checkLinkById`'s refusal off, for R3. Rebuild it before any other use.

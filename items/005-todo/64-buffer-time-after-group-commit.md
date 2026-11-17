@@ -17,7 +17,7 @@ been 20 ms since 005-13 (it was 100 ms). It was chosen for syncs: a sync
 waited for the timer, so its latency was the buffer time plus 20 to 50
 percent.
 
-Since 005-48 (`e611709`) a sync does not wait for the timer: a waiting
+Since 005-48 (`d8ed1aa`) a sync does not wait for the timer: a waiting
 sync has the buffer written at once (`BufferedStream.flushSoon`). The
 timer now only bounds how long bytes nobody syncs on stay in the buffer
 (the constant's comment). So the reason for 20 ms is gone, and the
@@ -88,7 +88,7 @@ Data at risk (question 5)
 -------------------------
 
 Written 2026-10-28 by Claude (Opus 5.5, Claude Code), from the code at
-`bf9fc7f` (`BufferedStream`, `StorageManager`); no runs. It is the most
+`ffb890a` (`BufferedStream`, `StorageManager`); no runs. It is the most
 data, appended but nobody synced, that a power loss (or a crash of the
 process: the buffer is in the heap) can take.
 
@@ -192,7 +192,7 @@ repeat them.
 
 2026-10-28, 10:06, by Claude (Opus 5.5, Claude Code), 006-10's W3.1: the
 scripts for tonight's runs are written and smoke-tested; nothing timed has
-run. Clone `/Users/f/fl/bench/006-10/w3` (from `main` at `bf9fc7f`), where
+run. Clone `/Users/f/fl/bench/006-10/w3` (from `main` at `ffb890a`), where
 these files are committed; the lead copies them into `main`.
 
 * **The build**: `main-bf9fc7f`, `main`'s HEAD of 2026-10-28 (before
@@ -462,7 +462,7 @@ Outcome
 -------
 
 2026-10-29, by Claude (Opus 5.5, Claude Code), 006-10's session, in a
-clone on `main`'s `f648f96`.
+clone on `main`'s `5dda08b`.
 
 * **The default**: `StorageManager.DEFAULT_BUFFER_TIME = 50` (was 20).
   Its comment gives the history (100 until 2026-10-20, 20 until
@@ -486,7 +486,7 @@ clone on `main`'s `f648f96`.
   `DEFAULT_BUFFER_TIME` or a buffer time of 20 ms); most unit and f-tests
   run with `testSetup`'s 10 ms or a buffer time of their own, and all pass
   with the default at 50 ms. No timing check was loosened.
-* **StreamDigest** (P2): `StreamDigest all`, main `f648f96` against the
+* **StreamDigest** (P2): `StreamDigest all`, main `5dda08b` against the
   change, one compiled copy (main's): "DIGESTS IDENTICAL (36 of 36)". As
   StreamDigest's databases use `testSetup` (10 ms), the default does not
   reach them; so also main with `testSetup`'s buffer time set to 50 ms

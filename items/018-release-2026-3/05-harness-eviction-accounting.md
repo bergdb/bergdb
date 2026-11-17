@@ -208,7 +208,7 @@ Three, each registered, fixed and closed the same night, one commit for
 Each was traced to its line with a trace build (the counts of one node
 id, and the changes of its pointers, printed with their stacks). The
 stream's bytes are unchanged by the three: StreamDigest's quick digests of
-the clone with the fixes equal those of the night's base, 45cfb4f ("DIGESTS
+the clone with the fixes equal those of the night's base, 93f83a7 ("DIGESTS
 IDENTICAL (44 of 44; of the identical, the physical cut differs in 0)").
 
 

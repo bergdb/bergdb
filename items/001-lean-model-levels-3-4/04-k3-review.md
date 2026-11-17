@@ -92,8 +92,8 @@ the trace, so C-CUT checks the conclusion instead.
 ===================
 
 The reclaim traces of R2's sets made again with the current Java (`java/`
-as at `5b1abdd`, R8's last change), each checked by the checker at
-`970c996`: C-A (the assumptions, the touch's included, and the diagnostics D
+as at `981470f`, R8's last change), each checked by the checker at
+`32816a8`: C-A (the assumptions, the touch's included, and the diagnostics D
 closed upward, A6, TREE, A-COPY), C-S (every record and D the model's step,
 on the stream cut at the largest cut so far), C-CUT (`CutOK` at every cut,
 the record's first available time, physical cuts at or below the decided
@@ -105,7 +105,7 @@ each cut, lookups at every available time), C-L and C-L4 (first touches).
 | Small (5 configurations, 5 seeds) | 25 | 14,448 | 288 | none |
 | Medium (3 configurations, 2 seeds) | 6 | 22,460 | 175 | none |
 
-The Java tier, the gates, full, on `970c996` (2026-10-17 23:04 to 23:24):
+The Java tier, the gates, full, on `32816a8` (2026-10-17 23:04 to 23:24):
 `LEVEL 1 OK`, `LEVEL 2 OK` (unit tests 918, F tests 37; 60 of 60 small
 traces TRACECHECK OK), `LEVEL 3 OK` (ReclaimStress 200 random configurations,
 RestartInvariance with reclaim, CrashTest with reclaim, ReclaimReaders,

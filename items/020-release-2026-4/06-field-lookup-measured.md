@@ -22,7 +22,7 @@ How each fact is known: **run** with a label means a program's output, in
 `/Users/f/fl/bench/006-15/020-06/out/` (section 16): J, Java, runs 1 to
 3; J2, Java, runs 4 and 5 (sections 9 and 12); C, C, runs 1 to 3; T, the
 bytes each lookup reads, traced; K, the hash collisions. **code** means
-read in the source named (BergDB at `37e8db7`). All times are ns per
+read in the source named (BergDB at `d3577dc`). All times are ns per
 lookup, the median of the runs' medians.
 
 

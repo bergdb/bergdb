@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg. Status: open.
 
 Independent reviews of the fixes that today's bug hunts (020-13 to
 020-22, 021-11) brought to `main`, about 50 commits in `java/src` from
-`a9e5488` to `94a1520`, before the release candidate. Frans, 11:57 (to
+`f8046f3` to `12dd8f7`, before the release candidate. Frans, 11:57 (to
 the coordinator's proposal of a Codex review and two reviewers of its own,
 one for the Pub layer and one for the Core): "Both as recommended."
 
@@ -12,18 +12,18 @@ one for the Pub layer and one for the Core): "Both as recommended."
 ## 1. Codex, round 2
 
 Codex CLI, model GPT-6.1-Sol, effort max, in
-`/Users/f/fl/bench/2026-11-09/clone-codex2` at `94a1520`, 11:58 to
+`/Users/f/fl/bench/2026-11-09/clone-codex2` at `12dd8f7`, 11:58 to
 12:14; the brief in `/Users/f/fl/bench/2026-11-09/codex2/prompt.md`.
 Its report, verbatim:
 
 <!-- CODEX REPORT START -->
-Reviewed `a9e5488..94a1520`. **Two confirmed defects**, both in the strict `Time` parsing fix. Build and targeted unit tests passed. Only `probes/` was added; tracked files are unchanged.
+Reviewed `f8046f3..12dd8f7`. **Two confirmed defects**, both in the strict `Time` parsing fix. Build and targeted unit tests passed. Only `probes/` was added; tracked files are unchanged.
 
 **1. Findings**
 
 **Y1 — medium — Relative time parsing loses clock units and rejects a valid boundary**
 
-Commit: `648527f`. Location: [TimeResolver.java:269](/Users/f/fl/bench/2026-11-09/clone-codex2/java/src/bergdb/pubimp/TimeResolver.java:269), also line 261.
+Commit: `3b3064f`. Location: [TimeResolver.java:269](/Users/f/fl/bench/2026-11-09/clone-codex2/java/src/bergdb/pubimp/TimeResolver.java:269), also line 261.
 
 Minus-time parsing still converts the decimal through `double`, then truncates the product. Even an offset exactly representable in clock units can produce the wrong time. At the range boundary, rounding makes a legal call throw.
 
@@ -48,7 +48,7 @@ throws `BadFormatException: Time out of range (negative: -1)`. Subtracting exact
 
 **Y2 — low — The strict parser rejects a date form its grammar permits**
 
-Commit: `648527f`. Location: [TimeResolver.java:150](/Users/f/fl/bench/2026-11-09/clone-codex2/java/src/bergdb/pubimp/TimeResolver.java:150).
+Commit: `3b3064f`. Location: [TimeResolver.java:150](/Users/f/fl/bench/2026-11-09/clone-codex2/java/src/bergdb/pubimp/TimeResolver.java:150).
 
 The [Time.resolve grammar](/Users/f/fl/bench/2026-11-09/clone-codex2/java/src/bergdb/pub/Time.java:162) permits `year-month` followed by a time. The implementation instead requires a day whenever the string extends beyond `YYYY-MM`.
 
@@ -67,24 +67,24 @@ Each throws `BadFormatException`. This is another remaining mismatch in 020-21�
 
 Within the reviewed cases and stated contracts:
 
-- `4b520f9`: BufferedStream’s close-wait condition prevents the reported lost wake-up.
-- `da6c5b0`: pointee checks cover canonical linking, assertion-time ID checking and writer linking.
-- `1eb6390`: tracking only values whose entries the build writes preserves conflict detection.
-- `bac75ce`: the value-byte limit stops steps without prematurely ending the build.
-- `e2941c2`: the fixed end key works with concurrent appends and writer maintenance.
-- `4e3bae2`: cleanup advances only after successful deletion and checks the prefix before finishing.
-- `c950612`: the first successful raw read fixes the RW snapshot before conversion can throw.
-- `a03111e` / `3f61a74`: directory replacement refusals and preservation of literal-key entries.
-- `987e734` / `42201c2`: initializer errors become conversion failures; VM errors pass through.
-- `ef6a3cf`: inherited-field module access and generic metadata failures.
-- `87a1f83`: malformed entry K bytes receive the required internal-data refusal.
-- `2fcc546`: prefix keys no longer hide definitions or markers during startup.
-- `d2f86f4`: builds skip Core-written keys containing slashes in the filename.
-- `3f102f2`: WBuilder is spent even when execution throws.
-- `656decb`: null retain duration, String index type, negative joins and CryptoKey.NULL handling.
-- `2e4c77d`: Duration refuses NaN.
-- `a3bb07b`: CryptoKey returns independent key-data arrays.
-- `6db1ac3`: unlistable directories report storage I/O errors.
+- `12092e0`: BufferedStream’s close-wait condition prevents the reported lost wake-up.
+- `36e003f`: pointee checks cover canonical linking, assertion-time ID checking and writer linking.
+- `9d5aa1b`: tracking only values whose entries the build writes preserves conflict detection.
+- `7cb285e`: the value-byte limit stops steps without prematurely ending the build.
+- `42195a4`: the fixed end key works with concurrent appends and writer maintenance.
+- `3a13d1b`: cleanup advances only after successful deletion and checks the prefix before finishing.
+- `94d68d3`: the first successful raw read fixes the RW snapshot before conversion can throw.
+- `ae698d6` / `f758df6`: directory replacement refusals and preservation of literal-key entries.
+- `4883b11` / `7357ea0`: initializer errors become conversion failures; VM errors pass through.
+- `88e8a5e`: inherited-field module access and generic metadata failures.
+- `f1101b0`: malformed entry K bytes receive the required internal-data refusal.
+- `3eceeed`: prefix keys no longer hide definitions or markers during startup.
+- `68068cf`: builds skip Core-written keys containing slashes in the filename.
+- `b4ff335`: WBuilder is spent even when execution throws.
+- `285d031`: null retain duration, String index type, negative joins and CryptoKey.NULL handling.
+- `4081966`: Duration refuses NaN.
+- `b5b1a61`: CryptoKey returns independent key-data arrays.
+- `4bba305`: unlistable directories report storage I/O errors.
 - Deleted-build status notes correctly omit the restart promise.
 
 Targeted unit runs all passed. [PointerTypeProbe.java](/Users/f/fl/bench/2026-11-09/clone-codex2/probes/bergdb/core/PointerTypeProbe.java) additionally checked **192** sampled wrong-type pointer cases, with assertions on/off and writes before reads, without an unexpected failure.
@@ -105,7 +105,7 @@ Y1 and Y2 went to the fixer of 020-21 (12:15).
 ## 2. The Pub layer's fixes
 
 Reviewer v1 (coord-1109's agent), clone `/Users/f/fl/bench/2026-11-09/clone-v1`
-at `94a1520`; probes in `/Users/f/fl/bench/2026-11-09/v1/probe/` (`ProbeV1`) and
+at `12dd8f7`; probes in `/Users/f/fl/bench/2026-11-09/v1/probe/` (`ProbeV1`) and
 `/Users/f/fl/bench/2026-11-09/v1/c18copy/`. Nothing critical, high or medium; four
 low findings, all about documents. Its report, as given (12:18):
 
@@ -113,10 +113,10 @@ low findings, all about documents. Its report, as given (12:18):
 
 | ID   | Sev. | Where                                    | Commit    | What                                      |
 |------|------|------------------------------------------|-----------|-------------------------------------------|
-| V1-1 | low  | Time.java:162-163, TimeResolver.java:145 | `648527f` | the ABNF gives "2013-08 14:29"; refused   |
-| V1-2 | low  | Connection.java:261, WBuilder.java:71    | `60f824e` | put/delete/execute: interrupt not listed  |
+| V1-1 | low  | Time.java:162-163, TimeResolver.java:145 | `3b3064f` | the ABNF gives "2013-08 14:29"; refused   |
+| V1-2 | low  | Connection.java:261, WBuilder.java:71    | `0a6fa2e` | put/delete/execute: interrupt not listed  |
 | V1-3 | low  | 020-10, sections 6.1 and 6.2             | (none)    | the spec describes the build before F1-F5 |
-| V1-4 | low  | releases/next.md                         | `c950612` | no line for 020-13's bug 1                |
+| V1-4 | low  | releases/next.md                         | `94d68d3` | no line for 020-13's bug 1                |
 
 * **V1-1** (020-21, 1): today's ABNF in `Time.resolve` gives `absolute = date [(SPACE /
   "T") time-of-day]` with `date = year "-" month ["-" day]`, and the new text says a
@@ -131,7 +131,7 @@ low findings, all about documents. Its report, as given (12:18):
   `Connection.put`, `delete` and `WBuilder.execute` do not list it. Shown by `ProbeV1
   interrupt`. Fix: rw()'s line in all three.
 * **V1-3**: 020-10, sections 6.1 and 6.2, still describe the build and the cleanup
-  before F1, F3, F4 and F5 (`1eb6390`, `bac75ce`, `e2941c2`, `4e3bae2`); F16-3's skip and
+  before F1, F3, F4 and F5 (`9d5aa1b`, `7cb285e`, `42195a4`, `3a13d1b`); F16-3's skip and
   020-16's O16-2 wording also missing there. The Javadoc of `IndexBuilderImp.startBuild`
   and `IndexManager.startCleanup` is right. Cosmetic: IndexBuilderImp.java:327, a Javadoc
   line of 142 characters (F4).
@@ -141,13 +141,13 @@ low findings, all about documents. Its report, as given (12:18):
 
 ### 2.2. Fixes checked and found sound
 
-X1 (`a03111e`) and bug 3 (`3f61a74`); X2 and bug 2 (`987e734`, `42201c2`: the catch
-order, `newInstance` the only call into user code); X3 (`ef6a3cf`); bug 1 (`c950612`);
-020-18's F1 (`1eb6390`), F3 (`bac75ce`), F4 (`e2941c2`), F5 (`4e3bae2`), F2 and 020-19's
-F1 (`2d409c9`, `55da329`); F16-1 to F16-3 (`87a1f83`, `2fcc546`, `d2f86f4`); 020-19's J1
-to J8 (J7 superseded by 020-21's ABNF, J8's gap is V1-2); 020-20's T1 (`6db1ac3`) and N1
-(`a3bb07b`); 020-21's 1 to 4 and Q1 (`648527f`, `3f102f2`, `656decb`, `28a6085`,
-`2e4c77d`); releases/next.md's 14 Pub API entries. Combined runs on main's head, 0
+X1 (`ae698d6`) and bug 3 (`f758df6`); X2 and bug 2 (`4883b11`, `7357ea0`: the catch
+order, `newInstance` the only call into user code); X3 (`88e8a5e`); bug 1 (`94d68d3`);
+020-18's F1 (`9d5aa1b`), F3 (`7cb285e`), F4 (`42195a4`), F5 (`3a13d1b`), F2 and 020-19's
+F1 (`1c1b054`, `103328d`); F16-1 to F16-3 (`f1101b0`, `3eceeed`, `68068cf`); 020-19's J1
+to J8 (J7 superseded by 020-21's ABNF, J8's gap is V1-2); 020-20's T1 (`4bba305`) and N1
+(`b5b1a61`); 020-21's 1 to 4 and Q1 (`3b3064f`, `b4ff335`, `285d031`, `119c706`,
+`4081966`); releases/next.md's 14 Pub API entries. Combined runs on main's head, 0
 findings each: c18's ProbeIndexStress with key-replace writers at
 `/s/r${transactionTime}`, 60 s on a memory database (1.57 M writes, 961 index changes)
 and 60 s on a file database (2 MB cache, reclaim at 2 s); ProbeIndexRestart in crash
@@ -166,14 +166,14 @@ document update.
 ## 3. The Core's fixes
 
 Reviewer v2 (coord-1109's agent), clone `/Users/f/fl/bench/2026-11-09/clone-v2` at
-`94a1520`; probes and a proposed test in `/Users/f/fl/bench/2026-11-09/v2/`. Three
-commits are below the Pub layer: `4b520f9` (020-13, bug 4, `BufferedStream`), `da6c5b0`
-(021-11, `NodeCollection`) and `6db1ac3` (020-20, T1, `FileStream`). All three sound; two
+`12dd8f7`; probes and a proposed test in `/Users/f/fl/bench/2026-11-09/v2/`. Three
+commits are below the Pub layer: `12092e0` (020-13, bug 4, `BufferedStream`), `36e003f`
+(021-11, `NodeCollection`) and `4bba305` (020-20, T1, `FileStream`). All three sound; two
 low findings. Its report, as given (12:20):
 
 ### 3.1. Findings
 
-* **V2-1, low, a test gap in `da6c5b0`.** No gate test pins the check in
+* **V2-1, low, a test gap in `36e003f`.** No gate test pins the check in
   `linkToCanonical` (`NodeCollection.java:782`), which without `-ea` is rule 4's only
   type check. Every test runs with `-ea`, where `checkLinkById` (line 804) refuses the
   same pointer first: with line 782 taken out, `Unit -c 'CorruptStreamTester|NodeCollection'`
@@ -185,7 +185,7 @@ low findings. Its report, as given (12:20):
   passes at HEAD, fails with line 782 out. Lines 710 and 804 are pinned by
   `testResolvePointersChecksTheType` and row 3 of `testFound021_11`.
 * **V2-2, low, an older `BufferedStream` gap, not reachable from `Db`.**
-  `BufferedStream.java:618-650`, not new in `4b520f9`, outside `AppendOnlyStream`'s
+  `BufferedStream.java:618-650`, not new in `12092e0`, outside `AppendOnlyStream`'s
   CONCURRENCY rule 2: an `append()` waiting for buffer room when `close()` begins does not
   check `exception`, `flushAndClose` or `stop` again after the wait, and its write wakes
   the consumer only if it is idle or the buffer crosses a quarter. (a) `close()` may wait a
@@ -193,26 +193,26 @@ low findings. Its report, as given (12:20):
   first, the append returns normally, its bytes never written. Probe
   `/Users/f/fl/bench/2026-11-09/v2/probe/src/bergdb/storage/CloseProbe.java`, mode "free",
   2 minutes: at HEAD 3 closes of 15 s in 3,279 iterations and 269 appends that returned
-  during `close()` with bytes never written; at `4b520f9^` closes of 15 s within 7
+  during `close()` with bytes never written; at `12092e0^` closes of 15 s within 7
   iterations. Users are not affected: `Db.closeStorage` sets STOPPING and takes the write
   lock before `StorageManager.closeAndThrow`, and `StorageManager.append` needs the write
   lock. Hardening: after its room wait, `append` checks `exception` again and throws.
 
 ### 3.2. Fixes checked and found sound
 
-* `4b520f9` (bug 4): the consumer checks `closeWaits()` under the monitor before its timed
+* `12092e0` (bug 4): the consumer checks `closeWaits()` under the monitor before its timed
   wait, and `close()` sets `flushAndClose` and calls `notifyAll()` under the same monitor,
   so the wake cannot be lost; no busy loop; interrupts take the existing paths. Probe mode
   "contract" (as `Db` uses it; random delays, syncs, interrupts), 150 s: 6,787 closes,
   105,315 syncs, 244 MB; no slow close (longest 42 ms against 15 s), no lost or wrong byte.
   The old code: three 15 s closes within 6 iterations.
-* `da6c5b0` (021-11): no false positive (each check tests the same canonical object a
+* `36e003f` (021-11): no false positive (each check tests the same canonical object a
   follow's 019-32 check tests); the rule matches `TopNode`'s layout and
   `pointsToIndexNode`; ids are unique across types; a throw in `resolvePointers` fails the
   database through `fail(t, e)`; no other site links unchecked (the follows,
   `createMemoryPointers`, `updateStreamPointers`, `canonicalNode`,
   `topNodeOfLastTransaction`, eviction, reclaim, the writer's tree operations).
-* `6db1ac3` (T1): an unlistable directory gives an `IOException`, and the constructor
+* `4bba305` (T1): an unlistable directory gives an `IOException`, and the constructor
   releases its lock; other null-returning `listFiles()` calls are in test code only.
 
 ### 3.3. Not done
@@ -224,7 +224,7 @@ What follows: V2-1's test and V2-2's hardening to a fixer (12:21), with `level1.
 ### 3.4. Fixes
 
 Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone-w23` from
-`dcfd175`; probe outputs in `/Users/f/fl/bench/2026-11-09/w23/`.
+`a0ba4b7`; probe outputs in `/Users/f/fl/bench/2026-11-09/w23/`.
 
 * **V2-1**, `1a36a0c`: v2's proposed test as
   `NodeCollection.testLinkToCanonicalChecksTheType`, in the tester's style. With
@@ -242,7 +242,7 @@ Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone
 
   | Code | Iterations | Closes over 3 s | Longest close | Lost during close() |
   |------|------------|-----------------|---------------|---------------------|
-  | before, dcfd175 | 4,292 | 2 | 15,005 ms | 338 |
+  | before, a0ba4b7 | 4,292 | 2 | 15,005 ms | 338 |
   | after, V2-2     | 5,484 | 0 | 30 ms     | 0   |
 
   Lost before close() and wrong bytes: 0 in both runs. After the fix, 1,354 closes wrote
@@ -255,18 +255,18 @@ Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone
   reader's thread (`StorageManager.handleStreamException`). The storage and the database
   have failed by then. So there is no `releases/next.md` line.
 * Gate on the tree of the two commits, under the gate lock: BEFORE COMMIT OK (183 s;
-  unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. On `main` as `780dc63` and `8a3d191`.
+  unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. On `main` as `f744b7d` and `e1f9676`.
 
 
 ## 4. Codex, round 3
 
 Codex CLI, GPT-6.1-Sol, effort max, on the afternoon's fixes
-(`94a1520..a593b17`, 38 commits in `java/src`), in
+(`12dd8f7..7e89eaa`, 38 commits in `java/src`), in
 `/Users/f/fl/bench/2026-11-09/clone-codex3`, 14:10 to 14:28; the brief in
 `/Users/f/fl/bench/2026-11-09/codex3/prompt.md`. Its report, verbatim:
 
 <!-- CODEX REPORT START -->
-Reviewed `94a1520..a593b17`: 38 commits touching `java/src`. **Two confirmed wrong-result cases and one Javadoc mismatch.** The underlying code faults predate this range; the new contracts expose guarantees that the implementation does not meet.
+Reviewed `12dd8f7..7e89eaa`: 38 commits touching `java/src`. **Two confirmed wrong-result cases and one Javadoc mismatch.** The underlying code faults predate this range; the new contracts expose guarantees that the implementation does not meet.
 
 Only `probes/` was added. Production code, existing tests, items, docs and `frans/` are unchanged.
 
@@ -274,7 +274,7 @@ Only `probes/` was added. Production code, existing tests, items, docs and `fran
 
 **Z1 — high — A backward clock can invalidate a time returned by `currentTime()`**
 
-Commit: `5fafc1f`, [Clock.java:30](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:30). Implementation: [DbClock.java:107](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/DbClock.java:107).
+Commit: `09ad69c`, [Clock.java:30](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:30). Implementation: [DbClock.java:107](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/DbClock.java:107).
 
 The new Javadoc explicitly permits the clock to move backward. However, a subsequent `currentTime()` overwrites `lastReadTime` with the lower time. A future transaction can then precede an earlier `currentTime()` result, contradicting [Connection.java:150](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/Connection.java:150). Reads using that returned time can change after later writes.
 
@@ -286,11 +286,11 @@ future transaction time: 1501 (must exceed 2000)
 same lookup time 2000: before -> after
 ```
 
-**Confidence:** confirmed by execution. The implementation fault is older than `5fafc1f`.
+**Confidence:** confirmed by execution. The implementation fault is older than `09ad69c`.
 
 **Z2 — high — A raw-byte index scan returns a format-1 object under a stale query**
 
-Commits: `fd18b6a` / `4f96446`, the guarantee in [Db.java:101](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/Db.java:101); scan path also touched by `dee7c66`. Fault: [UseIndexBuilderImp.java:362](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pubimp/UseIndexBuilderImp.java:362).
+Commits: `ff5fbfa` / `2c00faf`, the guarantee in [Db.java:101](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/Db.java:101); scan path also touched by `ded994b`. Fault: [UseIndexBuilderImp.java:362](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pubimp/UseIndexBuilderImp.java:362).
 
 When `entryLevels()` refuses a format-1 object, the scan substitutes the stale entry’s levels. It assumes conversion will subsequently refuse the object. With `byte[].class`, conversion returns the bytes directly, so a value without the queried field is returned as a match.
 
@@ -313,7 +313,7 @@ same scan as DbObject: ObjectCreationException
 
 **Z3 — low — The new clock documentation overstates startup validation**
 
-Commit: `5fafc1f`, [Clock.java:25](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:25).
+Commit: `09ad69c`, [Clock.java:25](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:25).
 
 The sentence says an out-of-range clock refuses a start. Creation checks it, but reopening an existing database need not call the clock and succeeds.
 
@@ -331,25 +331,25 @@ The sentence should distinguish creation from reopening.
 
 Within the inspected paths and exercised cases:
 
-- `83e8e13`, 021-12: both older-key-node load paths validate before reconstruction uses them; valid histories survive bounded restarts.
-- `f66bf25`, 021-13: `appendedEnd` and the write-lock wait cover records absent or partially appended, followed by the failure/state check.
-- `8a3d191`, V2-2: the post-wait exception check prevents append from continuing after close, stop or flush failure.
-- `780dc63`, V2-1: the added test exercises canonical-link type checking with `check=false`.
-- `04b0178`: GetN/PrefixN respect zero and positive limits; PrefixN owns its prefix copy.
-- `98e39d5`: a scan before the first transaction calls `eod()` once.
-- `75f42c8`: invalid builder cache budgets are refused before assignment.
-- `afc1c1d`, Y1: exact relative-time arithmetic, half-up rounding and the epoch boundary.
-- `644c1b8`, Y2: year-month forms accept a following time through both separators.
-- `6af0f51`: CryptoKey parsing requires exactly three parts and preserves the NULL round trip.
-- `cb126ac`: Time’s null arguments receive the promised `IllegalArgumentException`.
-- `fe6d284`: default cache sizing clamps both bounds without narrowing overflow.
-- `d782915`: transaction info filters keys without an exact Pub-key round trip.
-- `dee7c66`: primary/index scans exclude keys without a Pub key; Z2 is a separate value-validation bypass.
-- `67b9e2b`: stop/close documentation correctly distinguishes an admitted commit from an action still running.
-- `1ea097b` / `95cda1f`: key-replacement timing and lookup-time inclusion match the code.
-- `b38037a`: the documented Stockholm DST examples match resolution.
-- `84848e5` / `381d26a`: conversion truncation, read-modify-write losses, UTF-8 tie ordering and empty prefixes match behavior.
-- `0b71892` / `4f96446`: the checked Core exception, builder and key-space qualifications hold, apart from Z2’s guarantee.
+- `4ff84fb`, 021-12: both older-key-node load paths validate before reconstruction uses them; valid histories survive bounded restarts.
+- `1ad85d3`, 021-13: `appendedEnd` and the write-lock wait cover records absent or partially appended, followed by the failure/state check.
+- `e1f9676`, V2-2: the post-wait exception check prevents append from continuing after close, stop or flush failure.
+- `f744b7d`, V2-1: the added test exercises canonical-link type checking with `check=false`.
+- `3849076`: GetN/PrefixN respect zero and positive limits; PrefixN owns its prefix copy.
+- `61fbcc2`: a scan before the first transaction calls `eod()` once.
+- `984b254`: invalid builder cache budgets are refused before assignment.
+- `34e4668`, Y1: exact relative-time arithmetic, half-up rounding and the epoch boundary.
+- `69c8518`, Y2: year-month forms accept a following time through both separators.
+- `77c1a21`: CryptoKey parsing requires exactly three parts and preserves the NULL round trip.
+- `3b98847`: Time’s null arguments receive the promised `IllegalArgumentException`.
+- `f8719b8`: default cache sizing clamps both bounds without narrowing overflow.
+- `6f9f500`: transaction info filters keys without an exact Pub-key round trip.
+- `ded994b`: primary/index scans exclude keys without a Pub key; Z2 is a separate value-validation bypass.
+- `7decb09`: stop/close documentation correctly distinguishes an admitted commit from an action still running.
+- `35e3640` / `1165b7d`: key-replacement timing and lookup-time inclusion match the code.
+- `cb87966`: the documented Stockholm DST examples match resolution.
+- `56b41a8` / `efe8a7f`: conversion truncation, read-modify-write losses, UTF-8 tie ordering and empty prefixes match behavior.
+- `5c6a716` / `2c00faf`: the checked Core exception, builder and key-space qualifications hold, apart from Z2’s guarantee.
 
 Build and focused Core/Pub unit classes passed. Independent probes passed 489 boundary checks and, in each assertion mode, 15 bounded restarts with 135 historical scans. Reproduce the probes with `sh probes/run.sh` after building.
 
@@ -369,7 +369,7 @@ Z1 to Z3 went to a fixer (14:29).
 ### 4.1. Fixes
 
 Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone-z23` from
-`a593b17`, rebased on `5efe3bd`; gate outputs in `/Users/f/fl/bench/2026-11-09/z23-*.txt`.
+`7e89eaa`, rebased on `c993b96`; gate outputs in `/Users/f/fl/bench/2026-11-09/z23-*.txt`.
 
 * **Z1**, confirmed, `45b633e`. Cause: `DbClock.currentTime()` set `lastReadTime`, the time
   that the next transaction must pass, to the clock's time at each call, also to a lower
@@ -392,14 +392,14 @@ Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone
 * **Z2**, confirmed, `4ab3077`. Cause: when `entryLevels()` refused the value at an entry's
   key, an object of format 1, `UseIndexBuilderImp.Scan.hasNext()` took the entry's levels
   as the value's and left the refusal to the conversion, which a `byte[]` scan does not
-  make. Since 020-08's step 3 (`38afb1a`, 2026-11-09, 00:02) and 020-10's I3 (`8be9a95`),
+  make. Since 020-08's step 3 (`577e867`, 2026-11-09, 00:02) and 020-10's I3 (`f3c7966`),
   never in a release. Fix: such a value has no levels, as `RwEnvironmentImp` gives a
   previous value of format 1 no entries, so its entry is stale and the key left out, for
   every type: 020-22's W6 (a Core put that changes what the index takes is left out; Q3)
   and `UseIndexBuilder`'s Javadoc (a stale entry is skipped). Not `InternalDataException`:
   the entry is well formed and the value is the user's data, and Q4's B1 adds no detection.
   A scan as `DbObject` or `Object` now leaves the key out too, where it threw
-  `ObjectCreationException` naming format 1 (8be9a95's choice under Frans's delegation,
+  `ObjectCreationException` naming format 1 (f3c7966's choice under Frans's delegation,
   22:17); a get and a primary scan still refuse the object. Test, failing before:
   `PubTesterCoreKeys.testCorePutOfAFormat1ObjectAtAnIndexedObjectKey`. `releases/next.md`:
   020-08 step 3's entry corrected (it said that an index scan's `next()` refuses it).
@@ -414,12 +414,12 @@ Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone
   the step then fails the database (015-55's design).
 * Gate on the tree of the three commits, under the gate lock: BEFORE COMMIT OK (200 s; unit
   1,555, f 86, demos); `javadoc-pub.sh`: JAVADOC PUB OK; `level1.sh`: LEVEL 1 OK. On
-  `main` as `6ac9708`, `d794d06` and `142afa2`.
+  `main` as `7ad5019`, `e85e021` and `15bd3ec`.
 
 
 ## 5. The late Core fixes: 021-20, U10-3, U10-5, U10-6
 
-Reviewer v2 (coord-1109's agent, 17:27 to 17:36), on `2557286` to `41e4da5`, clone
+Reviewer v2 (coord-1109's agent, 17:27 to 17:36), on `225d936` to `e5765ab`, clone
 `/Users/f/fl/bench/2026-11-09/clone-v2` (branch `r-u10`), probes in
 `/Users/f/fl/bench/2026-11-09/v2/probe3` to `probe5`. Result: sound, no defect.
 
@@ -473,14 +473,14 @@ switch; the in-JVM key does not apply across processes); the commits' own tests 
 ## 6. Codex, round 4
 
 `codex exec`, the latest Sol model at effort max, workspace-write in
-`/Users/f/fl/bench/2026-11-09/clone-codex4`, on `5d45478..41e4da5` (the late fixes:
+`/Users/f/fl/bench/2026-11-09/clone-codex4`, on `4338cda..e5765ab` (the late fixes:
 021-13, 021-16 to 021-23, 020-24's U10 and U11, 020-27, 020-28, the Android changes),
 17:28 to 17:45. Prompts, logs and the report: `/Users/f/fl/bench/2026-11-09/codex4/`. The
 first run stopped at 17:37 on the provider's content filter while it studied the recursion
 of split propagation in the write path, already open as 021-16's Q1; it was resumed with
 that question left out.
 
-**W1 (high), confirmed by a probe**, `2557286` (021-20), `FileStream.newFile()`: it checks
+**W1 (high), confirmed by a probe**, `225d936` (021-20), `FileStream.newFile()`: it checks
 the directory, then forces and closes the previous file, which can block, before it makes
 the next file by path. A directory replaced during that force (the probe pauses the
 `SWITCH` force through `FileStreamIo`, moves the live directory away and moves a synced,
@@ -489,7 +489,7 @@ database's `sync()` and `close()` return without an error, and the replacement t
 start ("Bad size of file .../00000000000000.bergdb, should have been a multiple of 100000,
 but was 424"). It contradicts `Database`'s Javadoc that the old database writes nothing into
 the replacement directory. Probe: `clone-codex4/probes/DirectorySwitchProbe.java`. To fixer
-d24 (17:40), as 021-24; fixed, on `main` as `c66e824`, and reviewed (section 7).
+d24 (17:40), as 021-24; fixed, on `main` as `41b9b15`, and reviewed (section 7).
 
 **Checked and found sound** (no defect found within the checks described): 021-21 and
 021-22 (the environment's lock, conversions outside it, closing before the commit, guards
@@ -505,9 +505,9 @@ heap limits of several GB; the recursion of split propagation (021-16, Q1).
 ## 7. The review of 021-24
 
 Reviewer v2 (coord-1109's agent, until 18:18), on d24's fix of W1, `4ebd063` in
-`clone-d24`, on `main` as `c66e824`; probes in `/Users/f/fl/bench/2026-11-09/v2/`. Result:
+`clone-d24`, on `main` as `41b9b15`; probes in `/Users/f/fl/bench/2026-11-09/v2/`. Result:
 sound, no defect; two low points of wording, V7-1 and V7-2, done by d24 in `604841a`, on
-`main` as `03ce6ec`.
+`main` as `d00096e`.
 
 * **Checks before each step.** Every step that opens, creates or deletes a file by its path
   is checked right before the call: `openForRw`, `DbFile.delete`, `reopenChannel`, and the
@@ -524,12 +524,12 @@ sound, no defect; two low points of wording, V7-1 and V7-2, done by d24 in `6048
   under `channelLock`, and closed if that check fails.
 * **V7-1 (low, wording): the window that is left**, between the check and the step: the
   comments and `Database.stop()` said "microseconds"; it is usually microseconds, longer if
-  the thread is paused, as by a GC, and no bound. Said so in `604841a` (`03ce6ec`).
+  the thread is paused, as by a GC, and no bound. Said so in `604841a` (`d00096e`).
 * **V7-2 (low, wording): the empty file the window can leave** is refused with an exception
   that depends on what else is in the directory: `BadDirStateException` beside the
   replacement's own stream files; in a directory without others `StreamFormatException` from
   `create()` and `DatabaseMissingException` from `open()` (probe `v2/probe6`). Said so in
-  `604841a` (`03ce6ec`); a clearer refusal is for Frans (020-11, section 11).
+  `604841a` (`d00096e`); a clearer refusal is for Frans (020-11, section 11).
 * **No case found where a legal database fails:** a symlink, a relative path, a case
   variant, a slow disk, a start. `LifeProbe`, "LIFEPROBE OK": 150 starts at once, 20 rounds
   of stop, delete and create, a failed start, 8 threads on one path, a directory deleted
@@ -557,8 +557,8 @@ Javadoc sentence); both high faults older than today's range.
 gated with `level1.sh` (section 4.1).
 
 2026-11-09, 16:20. Frans decided Z2 as recommended: a scan of an index leaves out an
-object of format 1, for every type (section 4.1; on `main` as `d794d06`, with Z1 as
-`6ac9708` and Z3 as `142afa2`).
+object of format 1, for every type (section 4.1; on `main` as `e85e021`, with Z1 as
+`7ad5019` and Z3 as `15bd3ec`).
 
 2026-11-09. Reviewer v2: 021-20, U10-3, U10-5 and U10-6 sound; V5-1 (low), a comment
 at `checkDirectory` (section 5).
@@ -566,7 +566,7 @@ at `checkDirectory` (section 5).
 2026-11-09. Codex, round 4 (17:45): W1 (high, a directory replaced during a file
 switch's force; to 021-24); the rest of the late fixes sound (section 6).
 
-2026-11-09. Reviewer v2: 021-24's fix (`4ebd063`, on `main` as `c66e824`) sound; V7-1
-and V7-2 (low, wording), done by d24 in `604841a` (`03ce6ec` on `main`) (section 7).
+2026-11-09. Reviewer v2: 021-24's fix (`4ebd063`, on `main` as `41b9b15`) sound; V7-1
+and V7-2 (low, wording), done by d24 in `604841a` (`d00096e` on `main`) (section 7).
 Section 7 and the main hashes of sections 3.4 and 4.1 written by coord-1109's final items
 pass.

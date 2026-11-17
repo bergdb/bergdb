@@ -1,5 +1,5 @@
 version: 2013-07-05
-commit: 550ce4eb6c035c18e040fb13fbd4f97fd60c5e30
+commit: d0b3bd12fdff15880fc77b4b655581e8b22c481f
 classes: 44599b5723d1ebe374521c6153a939497d316e1a788ecafe1ef1d4bd3cf1e52a
 props: p16 (bergdb bergdb.core.Keys set sync0 runMethod)
 label: memss

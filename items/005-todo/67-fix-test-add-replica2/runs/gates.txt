@@ -1,4 +1,4 @@
-bergdb 005-67. Gates in the clone on dad6bd2 (the fix on 90153f2), with nice -n 10, F53, 2026-10-28.
+bergdb 005-67. Gates in the clone on 82966f8 (the fix on 90bdddf), with nice -n 10, F53, 2026-10-28.
 The same three passed at 10:49 to 10:53 on 6962a45, the same change without the comment under the
 note of 2015 (BEFORE COMMIT OK (91 s), CORE BUILD OK, LEVEL 2 OK).
 

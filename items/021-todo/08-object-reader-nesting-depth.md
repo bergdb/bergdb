@@ -71,7 +71,7 @@ r07).
   1 MB stack; 1,000 objects with an `Object[]` between each (the
   writer's, 2,000 levels) read on 1 MB and 2 MB. With a 512 KB stack even
   the writer's 1,001 objects overflow, as before.
-* Tests, each failing on `630acb3`'s code: `DbObjectTester`'s
+* Tests, each failing on `dcf2232`'s code: `DbObjectTester`'s
   `testReaderNestingDepth` (arrays and objects at the limits, one more,
   and 100,000 deep, the bytes built by hand) and
   `testBuilderRefusesTooDeep`, and `PubTester.testDeepObjectRefused`

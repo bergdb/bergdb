@@ -1,4 +1,4 @@
-Focused checks on f5a5f66 production code, with review tests added.
+Focused checks on abe7785 production code, with review tests added.
 Each was run as a separate JVM, sequentially, with assertions enabled.
 Command template from repo/java:
 java -ea -cp build/bergdb.jar bergdb.dev.RUNNER -c CLASS -m METHOD

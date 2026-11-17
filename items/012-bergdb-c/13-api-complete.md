@@ -74,11 +74,11 @@ the gate.
 ## 6.1 The log
 
 * **2026-10-29 02:16, start.** In the clone `/Users/f/fl/bench/012/13-api`
-  (of `main` at `ca9e583`), beside 012-12 (the memory budget, in
+  (of `main` at `e068fba`), beside 012-12 (the memory budget, in
   `/Users/f/fl/bench/012/12-memory`), which changes eviction, the
   budget's setter and `bergdb_stats`' resident bytes; this task keeps out
   of those and tests the setter's API only. Java's reference: `main` at
-  `ca9e583` (`java/` unchanged by 012).
+  `e068fba` (`java/` unchanged by 012).
 * **02:20, the missing functions** (`fe430f1`): of `bergdb.h`'s 33
   functions, only `bergdb_debug_print` and `bergdb_debug_check` were
   missing. Both in `api.c` (functions of its own, nothing in `db.c`):

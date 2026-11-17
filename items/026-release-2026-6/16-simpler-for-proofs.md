@@ -27,7 +27,7 @@ the moment of 024-22's MF1 were explained to him: "OK, good; I accept
 the recommendation F1." (section 4.2). The work is 025-03; the rest of
 the recommendation (section 8) is not decided.
 
-Lean and Java names are those of commit `7ced25db`. A cleanup that
+Lean and Java names are those of commit `55b74a08`. A cleanup that
 renames proof routes may land after it. Nothing was built or run for
 this study. "I" in this study is its writer, an agent of coord-1114,
 not Frans. Where a size or an effect is the writer's own estimate, the
@@ -284,7 +284,7 @@ from the argument, which is the least direct part of it.
 ## 4.3 Candidate F2: the model refuses at once
 
 **The change.** `newKey` raises the `bounds:` error when the node is
-made, as it did before MF3's fix (`8e78cf65`). `outside` and `boundsOK`
+made, as it did before MF3's fix (`d39f0e9b`). `outside` and `boundsOK`
 go.
 
 - **Java:** no change. **The stream format:** untouched.
@@ -774,6 +774,6 @@ Noted, not studied:
 # Log
 
 2026-11-14. Written for Frans (12:45, 12:53), from the snapshot at
-`7ced25db`, 024-12 (section 1), 024-22 (sections 2.9, 3.2, 11.1), 007-09,
+`55b74a08`, 024-12 (section 1), 024-22 (sections 2.9, 3.2, 11.1), 007-09,
 006-24, 006-26, 026-12 (SF10), 024-18, 024-21, 024-23, 011-04 and the
 coordinator's notes of the prover night. Nothing built, nothing run.

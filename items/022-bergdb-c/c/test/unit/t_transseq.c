@@ -1,5 +1,5 @@
 /* Unit tests of transseq (bergdb 012-09, part 1): Java's @Nano tests of
- * TransSeq, ported (the paced take since f89846d: testShare,
+ * TransSeq, ported (the paced take since b8ac8a1: testShare,
  * testDeadline, testDeadlineAfterDecrease, testDecrease,
  * testSumsAfterTake; and testTake1, testTake2, testTakeWithBudget,
  * testPosOfTransBefore; the take in integers of bergdb 005-79, release

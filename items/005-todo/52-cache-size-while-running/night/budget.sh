@@ -13,7 +13,7 @@
 # minutes a run (the load 2 to 4); a run that would start with less than 10 minutes left is
 # skipped; a JVM still running at 44 minutes is killed.
 # Written 2026-10-27 by Claude (Opus 5.5, Claude Code).
-# Uses only the jar prebuilt from HEAD a6cd234 and the classes compiled from BudgetBench.java,
+# Uses only the jar prebuilt from HEAD e747323 and the classes compiled from BudgetBench.java,
 # both in /Users/f/fl/bench/006-09/w6/night (no build here).
 # Usage: sh budget.sh, from any directory. SMOKE=1: 200,000 keys, phases of seconds, outputs
 # in night/out/smoke/.

@@ -170,9 +170,9 @@ section 6.7) is followed as it is, and no 012-07 module was changed.
 
 # 7. Progress
 
-**Java's reference:** `main` at `c7ccde8`, `java/` as of `fd8f513`.
+**Java's reference:** `main` at `7d34ae6`, `java/` as of `decc677`.
 **Clone:** `/Users/f/fl/bench/012/08-dag/` (a clone of `bergdb` at
-`c7ccde8`), committed locally; the conductor copies the files in.
+`7d34ae6`), committed locally; the conductor copies the files in.
 
 * 2026-10-28 17:38: started. Read 012-01 (sections 1, 3, 4, 6), this
   plan, 012-07 (section 6), 012-06, 012-05 (section 6, `cross.sh`,

@@ -317,13 +317,13 @@ the model and not seen by the checker.
 
 ### 4.3 What the release changed on the Lean side
 
-* **In `lean/`:** README.md only (commit `aced82e5`, 021-02 and 021-03:
+* **In `lean/`:** README.md only (commit `9413319e`, 021-02 and 021-03:
   its dated log moved to 011-12, tables made lists). No definition, no
   statement, no proof, no checker line. The trace format and
   `TraceExport` are unchanged too.
-* **A2A3Check2** (13 lines, `cb1a7483`): a node made and taken back in a
+* **A2A3Check2** (13 lines, `f4c469d3`): a node made and taken back in a
   transaction counts as not made (Z18; 023-07, D11).
-* **`conformance.sh`** (`13246f53`, Q9 of 023-08): the a6 and e-a6 traces
+* **`conformance.sh`** (`80105ef1`, Q9 of 023-08): the a6 and e-a6 traces
   must show 0 adoptions below the old parent. Until then they had to
   show at least one, to prove that the weaker A6' was needed. Fault 12's
   fix removed the adoption, so A6 itself may now hold (024-01, LM1).
@@ -523,7 +523,7 @@ the aim; Lean adds the cases that tests missed.
 
 ## 8. State
 
-2026-11-11. Written by reading `lean/` and `java/` at `main` (`b3faaffa`;
+2026-11-11. Written by reading `lean/` and `java/` at `main` (`9bda4019`;
 its `java/` and `lean/` are release 2026.4's but for `BuildInfo.java`),
 023-04 to 023-09, 001-07, 011-11, 007 and 024-01 to 024-04. Nothing built
 or run: no `lake`, no level script. Not determined by reading: how often

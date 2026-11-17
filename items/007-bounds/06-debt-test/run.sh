@@ -2,9 +2,9 @@
 # 007-06: one WriteBench run (005-49's, with the section and the debt per record).
 # Usage: run.sh VARIANT NAME [-Dwb.x=y ...]
 # VARIANT is a clone in $W/VARIANT with its jar built and WriteBench compiled into $W/cls-VARIANT:
-# head (today's take, 0f978f8), paced (005-49's paced-take.diff on it), paced2 (a link to paced,
+# head (today's take, e6dbc82), paced (005-49's paced-take.diff on it), paced2 (a link to paced,
 # for the runs with wb.lowerGap), paced3 (paced with deadline-probe.diff) or step3 (007-07's
-# step3.diff on 2eaaa45). Defaults: 10M keys, 1,000 puts a
+# step3.diff on fc8f7c3). Defaults: 10M keys, 1,000 puts a
 # transaction, 30M updates, windows of 1M puts, a ring of 1.3 GB, a 12 GB heap ($HEAP); later
 # -D options win. Output: out/NAME.txt and out/NAME.rec. One JVM at a time, nice 10.
 W=${W:-/Users/f/fl/bench/006-09/w8}

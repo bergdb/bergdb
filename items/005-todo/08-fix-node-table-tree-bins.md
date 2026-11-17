@@ -31,7 +31,7 @@ Measured on the 2026 code, Props's MEM database (a million small KVs):
   and every id in a bin of 8 or more.
 
 The fault came with the split into 256 maps on 2017-07-31 (original commit
-`fa338b0`). With one map (`9d9a038`, `87d5faa`) the bins were ordinary.
+`9f5b89b`). With one map (`e5a21cb`, `5268b64`) the bins were ordinary.
 
 An experiment: [006-02's maphash.patch](../006-2026-q4/02-props-2017-vs-2026/maphash.patch)
 picks the map from the top 8 bits of `id * 0x9E3779B97F4A7C15L` (Fibonacci
@@ -104,8 +104,8 @@ By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-19, at
 Frans's request ("Fix bergdb 005-08"). Two other sessions worked on bergdb
 at the same time (a Props step in `java/stress/level1.sh`, and 005-02), so
 the builds, the gates and the measurements ran in a local clone of
-`8c5a106` with the change. The change was then copied here, the same lines,
-and is left for Frans to commit (he did, in `0597329`).
+`0739170` with the change. The change was then copied here, the same lines,
+and is left for Frans to commit (he did, in `1f4b637`).
 
 The criteria of "Done when", point by point:
 
@@ -124,7 +124,7 @@ The criteria of "Done when", point by point:
 * **The four gates: met.** `LEVEL 1 OK` to `LEVEL 4 OK`, full runs, in the
   clone. A run of the gates on the main tree with 005-02's change too was
   started the same day and not finished; the four gates have passed since
-  on trees with both, in 005-10 and in 005-04's follow-up (`c6ca623`).
+  on trees with both, in 005-10 and in 005-04's follow-up (`3fdf88b`).
 * **`performance.sh`'s quick suite: no alerts**, against the code before the
   fix, in one matched session.
 
@@ -223,7 +223,7 @@ Measurements
 On F53, as in 006-02: JDK 27 with its default flags, one fresh JVM a run,
 started when the CPU was at least 90 percent idle, no `-ea`. Two preserved
 builds of `performance.sh build`: `pre-0508`, the code before the fix
-(`8c5a106`, whose `java/` is 006-02's 2026-10-19 code), and `fix-0508`, with
+(`0739170`, whose `java/` is 006-02's 2026-10-19 code), and `fix-0508`, with
 the fix. Runs alternated (ABBA), medians and ranges:
 
 | Measure | Before | After | Change |

@@ -1,7 +1,7 @@
 # 024-21. Merges at the delete, in Java
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `67925924`, with 024-22. QJ1 accepted by the coordinator
+`main` since `d502af3d`, with 024-22. QJ1 accepted by the coordinator
 under Frans's delegation (024-28, section 8); QJ2 not answered; QJ3
 decided by rule.
 
@@ -27,7 +27,7 @@ MJ1, MJ2, ...; questions QJ1, QJ2, ...
 
 Written 16:03, final; section 10 is the exact state.
 
-* **Built**, branch `024-21-merges`, head **`4105fc1a`**, in
+* **Built**, branch `024-21-merges`, head **`54f0a6f5`**, in
   `/Users/f/fl/bench/2026-11-11/mgj/clone` (nothing landed; the
   coordinator lands it with 024-22 from int's combined head
   `024-13-int-m`, after its gates): P5's merge ported to `main` (`Dag`, +660 lines with BU1's
@@ -39,12 +39,12 @@ Written 16:03, final; section 10 is the exact state.
   `Dag.checkFill`, called after every transaction by UnlinkFuzz,
   `MergeTester` (new) and `DbTesterMerge` (new: restarts, crash cuts,
   readers with eviction); "no merge" a `Bug` (024-22's J1); the TREE
-  line with m, c and h (J2, J9); `main` merged in at `9b40ed83`; the
+  line with m, c and h (J2, J9); `main` merged in at `23c6ac5e`; the
   review's fixes R1 to R6 (7.1); the documents.
 * **Gates**: all six of the brief (before-commit, unlinkfuzz, level1 to
   level4 full, with conformance small, drain, reclaim and evict) passed
-  twice: on `331dd400` with P5's thresholds and on `0281018e` with
-  8/17/17 (LEVEL 4 OK at 15:38). On the head `4105fc1a` (`main` merged,
+  twice: on `30c393df` with P5's thresholds and on `ed9d8163` with
+  8/17/17 (LEVEL 4 OK at 15:38). On the head `54f0a6f5` (`main` merged,
   the review's fixes): BEFORE COMMIT OK at 15:40; level2 to level4 there
   are int's, on the combined head with 024-22. The Lean checker's checks
   pass with merges; 024-22 found the branch equal to its model on 239
@@ -60,11 +60,11 @@ Written 16:03, final; section 10 is the exact state.
 * **Fuzz**: 5,186 rounds (3,750 with P5's set, 1,436 with 8/17/17), 0
   failures, 431,278 merges.
 * **Changed expected values** (each its own commit, for approval; 5.4):
-  DagTester's chains of single children at node size 6 (`28a82eb9`);
-  Reclaim's record limit 100 kB to 200 kB (`99a0c502`); Eviction's dead
-  hand's restarts later (`a9e3b53b`); CorruptStreamTester's pinned
-  copies (`f507148d`, and `906d54d7` for 8/17/17: two of them in
-  another seed); DagTester's BoundCase in key order (`4105fc1a`, R6).
+  DagTester's chains of single children at node size 6 (`8582dbe6`);
+  Reclaim's record limit 100 kB to 200 kB (`b0cb3db2`); Eviction's dead
+  hand's restarts later (`6c334f4e`); CorruptStreamTester's pinned
+  copies (`4ef56d44`, and `5fa27223` for 8/17/17: two of them in
+  another seed); DagTester's BoundCase in key order (`54f0a6f5`, R6).
 * **Findings**: MJ1, thrash at node size 8 (0.75 new nodes an operation
   against 2026.4's 0.375); MJ2, a delete with a key transformation was
   counted as a put in `checkDirtyNodes` (fixed). Questions: section 9.
@@ -78,7 +78,7 @@ rule" of `Dag` (`java/src/bergdb/dag/Dag.java`), read only through
 decision is a change of a few lines and a re-gate.
 
 **The thresholds, decided at 14:34** (Frans; 024-14, QT1): 024-14's set
-m8, 8/17/17 at node size 30, in `7fccc2d7`; until then, as the brief
+m8, 8/17/17 at node size 30, in `55add999`; until then, as the brief
 said "for now", P5's 7/15/15 (m = B / 4, h = c = B / 2). Other node
 sizes as 024-14's build scaled them (QT2 open): 2/4/4 at 8, 3/7/7 at 14
 (P5's values), 16/35/35 at 62; `MergeTester.testThresholds` checks V1's
@@ -230,7 +230,7 @@ with its path's overflows at node size 8.
   without the walk, by the cheap test's rule; but that line tested only
   for a value transformation, so a plain delete through a key
   transformation counted 3 nodes a level, a put's, in 2026.4 too. Now it
-  counts as a delete (`009cb050`).
+  counts as a delete (`ea721a68`).
 
 ### 3.6 Readers and handles
 
@@ -275,27 +275,27 @@ with its path's overflows at node size 8.
 
 ## 4. As built
 
-Commits on `024-21-merges`, from `main`'s `1076235c`:
+Commits on `024-21-merges`, from `main`'s `2105baa7`:
 
 | Commit     | What                                                          |
 |---|---|
-| `3cd9b4c6` | the merges, format 7, the constants, CB2, `checkFill`, tests  |
-| `28a82eb9` | changed test: DagTester's chains at node size 6 (5.4)         |
-| `99a0c502` | changed test: Reclaim's record limit 200 kB (5.4)             |
-| `a9e3b53b` | changed test: Eviction's dead hand, restarts later (5.4)      |
-| `f507148d` | changed test: CorruptStreamTester's moved row (5.4)           |
-| `0385609a` | documents: `docs/levels.md`, `docs/sis-model.md`, `next.md`   |
-| `009cb050` | the cheap test's 20 nodes a level; MJ2                        |
-| `331dd400` | a merge's impossible states a `Bug` (024-22, J1; QJ3)         |
-| `7fccc2d7` | the thresholds 8/17/17 (024-14, QT1; section 2)               |
-| `906d54d7` | changed tests: CorruptStreamTester's rows for 8/17/17 (5.4)   |
-| `0767c3ed` | documents: the thresholds 8/17/17                             |
-| `0281018e` | MergeTester.testRuleOBeforeAMerge (024-22, J4, MF1)           |
-| `b642c39d` | merge of `main` (`9b40ed83`: 024-12's tree model, 024-16)     |
-| `e5f9c769` | the review's R1 (J2, J9: TREE line m, c, h), R2 to R5         |
-| `4105fc1a` | changed test: DagTester's BoundCase in key order (R6; 5.4)    |
+| `be6d7f5a` | the merges, format 7, the constants, CB2, `checkFill`, tests  |
+| `8582dbe6` | changed test: DagTester's chains at node size 6 (5.4)         |
+| `b0cb3db2` | changed test: Reclaim's record limit 200 kB (5.4)             |
+| `6c334f4e` | changed test: Eviction's dead hand, restarts later (5.4)      |
+| `4ef56d44` | changed test: CorruptStreamTester's moved row (5.4)           |
+| `4fc47e1d` | documents: `docs/levels.md`, `docs/sis-model.md`, `next.md`   |
+| `ea721a68` | the cheap test's 20 nodes a level; MJ2                        |
+| `30c393df` | a merge's impossible states a `Bug` (024-22, J1; QJ3)         |
+| `55add999` | the thresholds 8/17/17 (024-14, QT1; section 2)               |
+| `5fa27223` | changed tests: CorruptStreamTester's rows for 8/17/17 (5.4)   |
+| `d6442486` | documents: the thresholds 8/17/17                             |
+| `ed9d8163` | MergeTester.testRuleOBeforeAMerge (024-22, J4, MF1)           |
+| `4c8656d5` | merge of `main` (`23c6ac5e`: 024-12's tree model, 024-16)     |
+| `9cb8fcd6` | the review's R1 (J2, J9: TREE line m, c, h), R2 to R5         |
+| `54f0a6f5` | changed test: DagTester's BoundCase in key order (R6; 5.4)    |
 
-Files (lines added and removed, `git diff --stat 1076235c`): `Dag.java`
+Files (lines added and removed, `git diff --stat 2105baa7`): `Dag.java`
 +640 (the constants 50, the merge 330, BU1's check 110, CB2 30, the
 calls 10), `MergeTester.java` 364 (new), `DbTesterMerge.java` 296
 (new), `StoredTrans.java` +31 (format 7, the message, its test),
@@ -355,7 +355,7 @@ the two `Pack` files, and the four tests of 5.4.
   to 14:07: the same, 1,250 rounds, 0 failures, 106,083 merges. Block 3,
   seeds from 9000, to 14:44: 1,250 rounds, 0 failures, 107,075 merges.
   Blocks 1 to 3 ran P5's thresholds (`b1`); block 4, seeds from 13000,
-  runs the head with 8/17/17 (frozen build `b2` of `0281018e`), seeds
+  runs the head with 8/17/17 (frozen build `b2` of `ed9d8163`), seeds
   from 13000, to 15:22: 1,250 rounds, 0 failures, 106,646 merges. Block
   5, node sizes 30 and 62 only (where 8/17/17 differs from P5's set),
   seeds from 17000, 15:22 to 16:02, stopped at the coordinator's word
@@ -439,7 +439,7 @@ by test:
 
 Each its own commit, for Frans's approval:
 
-* **`28a82eb9`, DagTester**: `testDirtyNodeBoundOfDeletes`'s cases (2)
+* **`8582dbe6`, DagTester**: `testDirtyNodeBoundOfDeletes`'s cases (2)
   and (2b) build a chain of single children that root collapse takes
   in one delete, several levels; with merges no such chain forms at
   node sizes 8 and more (V1), so they run at node size 6, which has no
@@ -447,28 +447,28 @@ Each its own commit, for Frans's approval:
   `testDirtyNodeBoundSumsCollapsesOverTrees` at node size 6 with two
   trees, 16 collapses (was three trees at node size 8, 15): three trees
   split a space root of node size 6.
-* **`99a0c502`, Reclaim.Tester.testLastStepWithinRecordLimit**: the
+* **`b0cb3db2`, Reclaim.Tester.testLastStepWithinRecordLimit**: the
   record limit 200 kB (was 100 kB): the count of 3.5 gives up to 922
   nodes, 179 kB, for its user transactions of 8 puts and 8 deletes at
   node size 8, which 100 kB refused. The index of 6,000 keys at node
   size 8 is over 1,000 nodes, at 192 bytes each over 200 kB, so the
   test still has the last step that did not fit before 024-07.
-* **`a9e3b53b`, Eviction.testDeadHand**: the restarts at overwrite 190,
+* **`6c334f4e`, Eviction.testDeadHand**: the restarts at overwrite 190,
   390, ... (were 120, 270, ...): with merges the first cut came after
   the first restart, which loads only the startup section, so no object
   stored before the cut was resident when the hand ran, and it took
   none (counted: table objects stored before the cut 0 at every
   checkpoint). The test's claims are unchanged.
-* **`f507148d`, CorruptStreamTester.testFound019_32**: its second row
+* **`4ef56d44`, CorruptStreamTester.testFound019_32**: its second row
   (workload take, seed 3552484, a value node's key) found again in the
   stream of format 7: the workload's last record's last value node, at
   27808, offset 596 (was 31880, offset 156; the record is shorter).
-* **`4105fc1a`, DagTester's BoundCase** (the review's R6): a
+* **`54f0a6f5`, DagTester's BoundCase** (the review's R6): a
   transaction's keys in key order, puts and deletes mixed, as Db applies
   them (until then the puts first), so that the tests of
   `dirtyNodeBound` reach a put after a merge into the node that took its
   range; they pass.
-* **`906d54d7`, CorruptStreamTester, for 8/17/17** (h = 17 at the
+* **`5fa27223`, CorruptStreamTester, for 8/17/17** (h = 17 at the
   default node size changes every workload's stream): testFound019_32's
   second row again (27640, offset 708); testFound021_11's three rows in
   LONG's seed 1 (the key node id 4129 in the record at 28856, offset
@@ -490,17 +490,17 @@ Each its own commit, for Frans's approval:
 
 ## 6. For the model (024-22)
 
-The rule as built, in order, at `331dd400` (the code: `Dag.java`, the
+The rule as built, in order, at `30c393df` (the code: `Dag.java`, the
 sections "The upward unlink at a delete", "Format 7's fill rule" and
 "Merges at the delete"). It is 024-22's section 2.4 step for step;
 where they differ, it says so.
 
-**Constants** (`7fccc2d7`; 024-14's m8). At node size 30: h = 17 (rule
+**Constants** (`55add999`; 024-14's m8). At node size 30: h = 17 (rule
 O: a last version of more klongs, counting its time klong, is space
 split), m = 8, c = 17. Another node size B: h = 17 B / 30, m = max(2, 8 B
 / 30) for B >= 8, else 1 (no merges), c = 17 B / 30, by integer
 division (8: 4, 2, 4; 14: 7, 3, 7; 62: 35, 16, 35; below 8 h = B / 2).
-Until `7fccc2d7`: P5's B / 2, max(2, B / 4), B / 2. Java does not carry m and c in a trace:
+Until `55add999`: P5's B / 2, max(2, B / 4), B / 2. Java does not carry m and c in a trace:
 a writer of format 7 always uses these (024-22, 2.5, proposes `TREE m g
 h k mb mm`: my trace branch writes them, section 10).
 
@@ -543,7 +543,7 @@ merge's rule O made, and go on.
   latest of x's compare value cx; ia, the latest of the smallest
   compare value above cx; ib, the latest of the largest below. Neither
   ia nor ib: a `Bug` (a state V1 and V2 exclude; 024-22, MD2 and J1;
-  P5 skipped the merge; `331dd400`). Left = child of ib, read quietly
+  P5 skipped the merge; `30c393df`). Left = child of ib, read quietly
   (`followQuietly`, from the stream if needed, not marked). If ib
   exists and (no ia, or cnt(left) + cnt(x) <= c, each counted up to c +
   1): L = left, R = x. Else L = x, R = the child of ia, read quietly.
@@ -599,7 +599,7 @@ in its own combination of the branches (024-22, J6) and in mine (section
 fuzz reach rule O before a merge).
 
 **Built jar and traces for the model**: the frozen build of
-`f507148d` is `/Users/f/fl/bench/2026-11-11/mgj/b1/` (`bergdb.jar`,
+`4ef56d44` is `/Users/f/fl/bench/2026-11-11/mgj/b1/` (`bergdb.jar`,
 `stress/`, `HEAD.txt`); traces with the tree exporter: section 10.
 
 
@@ -607,28 +607,28 @@ fuzz reach rule O before a merge).
 
 Each in a slot (`mgj/gate.sh`, one run a hold; logs in
 `/Users/f/fl/bench/2026-11-11/mgj/runs/gate-*.txt`). The rows above
-"With 8/17/17" ran P5's thresholds (`331dd400` and before). conformance.sh's
+"With 8/17/17" ran P5's thresholds (`30c393df` and before). conformance.sh's
 drain set runs inside `level2.sh` (10 seeds), reclaim inside `level3.sh`,
 evict inside `level4.sh`.
 
 | Gate                  | Commit     | Result                                             |
 |---|---|---|
-| `before-commit.sh`    | `009cb050` | BEFORE COMMIT OK (86 s): unit 1,660, F 89, demos 14 |
-| `before-commit.sh`    | `331dd400` | BEFORE COMMIT OK (84 s), the head                  |
-| `unlinkfuzz.sh`       | `331dd400` | UNLINKFUZZ OK, 3,226 rounds, 338 s                 |
-| `level1.sh` full      | `331dd400` | LEVEL 1 OK; MEM 130 (at most 131), SS 1.51         |
-| `level2.sh` full      | `331dd400` | LEVEL 2 OK, 13 min (below)                         |
-| `level3.sh` full      | `331dd400` | LEVEL 3 OK, 9 min (below)                          |
-| `level4.sh` full      | `331dd400` | LEVEL 4 OK, 14 min (below); a first run stopped 13:35 |
+| `before-commit.sh`    | `ea721a68` | BEFORE COMMIT OK (86 s): unit 1,660, F 89, demos 14 |
+| `before-commit.sh`    | `30c393df` | BEFORE COMMIT OK (84 s), the head                  |
+| `unlinkfuzz.sh`       | `30c393df` | UNLINKFUZZ OK, 3,226 rounds, 338 s                 |
+| `level1.sh` full      | `30c393df` | LEVEL 1 OK; MEM 130 (at most 131), SS 1.51         |
+| `level2.sh` full      | `30c393df` | LEVEL 2 OK, 13 min (below)                         |
+| `level3.sh` full      | `30c393df` | LEVEL 3 OK, 9 min (below)                          |
+| `level4.sh` full      | `30c393df` | LEVEL 4 OK, 14 min (below); a first run stopped 13:35 |
 | With 8/17/17:         |            |                                                    |
-| `before-commit.sh`    | `0281018e` | BEFORE COMMIT OK (92 s): unit 1,661, F 89, demos 14 |
-| `unlinkfuzz.sh`       | `0281018e` | UNLINKFUZZ OK, 3,226 rounds, 299 s                 |
-| `level1.sh` full      | `0281018e` | LEVEL 1 OK; MEM 130, SS 1.51                       |
-| `level2.sh` full      | `0281018e` | LEVEL 2 OK: conformance small 70, drain 50 traces  |
-| `level3.sh` full      | `0281018e` | LEVEL 3 OK: conformance reclaim 30, C-CUT 0 of 318 |
-| `level4.sh` full      | `0281018e` | LEVEL 4 OK: conformance evict 51, C-P and C-H 0    |
+| `before-commit.sh`    | `ed9d8163` | BEFORE COMMIT OK (92 s): unit 1,661, F 89, demos 14 |
+| `unlinkfuzz.sh`       | `ed9d8163` | UNLINKFUZZ OK, 3,226 rounds, 299 s                 |
+| `level1.sh` full      | `ed9d8163` | LEVEL 1 OK; MEM 130, SS 1.51                       |
+| `level2.sh` full      | `ed9d8163` | LEVEL 2 OK: conformance small 70, drain 50 traces  |
+| `level3.sh` full      | `ed9d8163` | LEVEL 3 OK: conformance reclaim 30, C-CUT 0 of 318 |
+| `level4.sh` full      | `ed9d8163` | LEVEL 4 OK: conformance evict 51, C-P and C-H 0    |
 | After the review:     |            |                                                    |
-| `before-commit.sh`    | `4105fc1a` | BEFORE COMMIT OK (89 s): unit 1,664, F 89, demos 14 |
+| `before-commit.sh`    | `54f0a6f5` | BEFORE COMMIT OK (89 s): unit 1,664, F 89, demos 14 |
 
 * **level2.sh**: conformance small, 70 traces, TRACECHECK OK 70;
   conformance drain, 50 traces, TRACECHECK OK 50 (the Dag's counters
@@ -664,11 +664,11 @@ found in the merge code; restarts (3,004 restarts, node for node), the
 bound (about 128,000 transactions in key order), BU1 and the format's
 refusal probed clean. Done on `024-21-next`, then `024-21-merges`:
 
-* **R1** (blocks): `main` merged (`b642c39d`, `main` at `9b40ed83`, no
+* **R1** (blocks): `main` merged (`4c8656d5`, `main` at `23c6ac5e`, no
   conflict); the TREE line gives m, c and h, `TREE M G H k
   minFill(M) mergeCap(M) splitAbove(M)`, the 8-token form that 024-22's
-  checker reads since its `e7b66354` (J2 and J9); `docs/trace-format.md`
-  says so (`e5f9c769`). The rest of R1 is the landing's: 024-22 with
+  checker reads since its `d150bcf6` (J2 and J9); `docs/trace-format.md`
+  says so (`9cb8fcd6`). The rest of R1 is the landing's: 024-22 with
   it, and the combined head gated by int (level2's `treeconf` at
   8/17/17).
 * **R2**: `docs/levels.md`: a cold start also reads the siblings that the
@@ -679,18 +679,18 @@ refusal probed clean. Done on `024-21-next`, then `024-21-merges`:
 * **R4**: UnlinkFuzz's header gives m = 8 at node size 30.
 * **R5**: Reclaim.Tester's comment cites the review's probe of the old
   touch (it fails at 200 kB), not the wrong arithmetic.
-* **R6**: done (`4105fc1a`, 5.4). **R7** (the dead hand's restarts after
+* **R6**: done (`54f0a6f5`, 5.4). **R7** (the dead hand's restarts after
   the first cut), **R8**, **R9**: notes, not changed.
 
 
 ## 8. Numbers
 
 **All numbers here are with P5's thresholds, 7/15/15** (the branch's
-build `b1` of `f507148d`, before Frans's decision of 14:34 for 8/17/17);
+build `b1` of `4ef56d44`, before Frans's decision of 14:34 for 8/17/17);
 024-14 has the m8 set's ratios (its section 4.2: worst 1.49, k = 2 1.07).
 Counts, no timing. Run 12:58 to 13:02 in one slot (two JVMs, two cores
 each): 024-14's probe `THR` with a line of BU1's check (`Dag.checkFill`
-by reflection), on `b1` and on `main`'s `1076235c` (worktree
+by reflection), on `b1` and on `main`'s `2105baa7` (worktree
 `mgj/mainwt`); scripts and outputs in `21-merges-java/` (`numbers.sh`,
 `summ.py`, `numbers-1m.txt`).
 
@@ -754,7 +754,7 @@ one line, only for this) against `main`'s build:
 * So with format 7 every digest differs from 2026.4's in the format
   byte; with that byte aside, with P5's set, only workloads that delete
   change.
-* **With 8/17/17** (`0281018e`, format byte set back to 6, 14:45):
+* **With 8/17/17** (`ed9d8163`, format byte set back to 6, 14:45):
   PutDigest 15 of 24 identical: node sizes 8 and 14 (their thresholds
   are P5's) and keys put in key order at 30 (and at 62 without
   reclaim); 9 differ, the random fills and overwrites at 30 and 62, as
@@ -801,7 +801,7 @@ With P5's thresholds (`b1`). Run 14:25 to 14:33 in one slot, two JVMs
 * **QJ2. Thrash at node size 8** (MJ1): 0.75 new nodes an operation
   against 2026.4's 0.375 at a boundary. Accept for a test size, or give
   B = 8 its own thresholds later (one constant)?
-* **QJ3. "No merge" is a `Bug` now** (`331dd400`; 024-22, MD2 and J1),
+* **QJ3. "No merge" is a `Bug` now** (`30c393df`; 024-22, MD2 and J1),
   decided by rule (the model and the code the same): P5 skipped the
   merge in states that V1 to V3 exclude and left the node under m; no
   test or fuzz run reached one. Overturn: three lines back to the skip.
@@ -815,27 +815,27 @@ of this item is done; the branch is in int's combined landing head
 (`024-13-int-m`), which int gates and the coordinator lands.
 
 * **Clone** `/Users/f/fl/bench/2026-11-11/mgj/clone`, branch
-  `024-21-merges`, head **`4105fc1a`** (section 4: 14 commits and a
-  merge of `main` at `9b40ed83`; six commits change tests, 5.4). The
+  `024-21-merges`, head **`54f0a6f5`** (section 4: 14 commits and a
+  merge of `main` at `23c6ac5e`; six commits change tests, 5.4). The
   working tree is clean. BEFORE COMMIT OK on it at 15:40 (reported to
   the coordinator). Its `lean/.lake` is a copy from before the merge of
   `main` (024-12 changed `lean/`): run `lake build` before a level
   script in this clone.
-* **Gates**: all six of the brief passed on `331dd400` (P5's set) and on
-  `0281018e` (8/17/17); on `4105fc1a` before-commit. The landing's gates
+* **Gates**: all six of the brief passed on `30c393df` (P5's set) and on
+  `ed9d8163` (8/17/17); on `54f0a6f5` before-commit. The landing's gates
   run on the combined head (`main`, 024-21, 024-22) by int (the
   coordinator, 15:27): before-commit, level1, level2 full with
   `treeconf` at 8/17/17, level3, level4, unlinkfuzz, conformance.
 * **No slot held**, no take waiting, nothing running (fuzz block 5
   stopped at 16:02, its 186 rounds clean, 5.1).
-* **Frozen builds**: `mgj/b1/` (`f507148d`, P5's thresholds), `mgj/b2/`
-  (`0281018e`, 8/17/17).
+* **Frozen builds**: `mgj/b1/` (`4ef56d44`, P5's thresholds), `mgj/b2/`
+  (`ed9d8163`, 8/17/17).
 * **Other worktrees** of the clone (not for landing): `mgj/next` (branch
   `024-21-next`, the same commit as the head), `mgj/mainwt` (`main` at
-  `1076235c`), `mgj/f6wt` (branch `024-21-f6probe`: `0281018e` with the
+  `2105baa7`), `mgj/f6wt` (branch `024-21-f6probe`: `ed9d8163` with the
   format byte set back to 6, for the digests), `mgj/plant` (the planted
-  fault), `mgj/trace` (branch `024-21-merges-trace`: `0281018e` with
-  024-12's `d90586d0`, for the traces in `mgj/traces-m8/`).
+  fault), `mgj/trace` (branch `024-21-merges-trace`: `ed9d8163` with
+  024-12's `46478dd5`, for the traces in `mgj/traces-m8/`).
 * **Not done**: the numbers with 8/17/17 (024-14 has that set's ratios;
   the PutDigest rerun is in 8.2); TU9 (a cold start after deletes) and
   TU10's bytes and scans at 10M; the review's R7 (the dead hand's

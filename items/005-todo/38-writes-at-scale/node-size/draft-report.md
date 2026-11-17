@@ -3,7 +3,7 @@ Node size and BergDB's writes at scale (bergdb 005-38)
 
 2026-10-26, F53. A measurement for item 005-38 ("Investigate writes at
 scale", question 2: the node size). All runs in memory on a scratch clone of
-bergdb `52d1e1f`; nothing in `~/fl/repos/bergdb` was changed. Directory:
+bergdb `716778e`; nothing in `~/fl/repos/bergdb` was changed. Directory:
 `/private/tmp/claude-502/-Users-f-fl-repos-f1/c2c8b076-1761-487e-ac3a-ea475443b664/scratchpad/nodesize/`
 (called `nodesize/` below; the coordinator's tool and outputs are in the
 sibling `wb/`).
@@ -235,7 +235,7 @@ what looks like a corrupt stream.
   windows and D identical (`nodesize/xcheck.sh`).
 * **Database.** In memory: a ring stream that keeps its last 512 MiB (1.3 GB
   for sd 1000 MB), no eviction, retain forever, the test clock (+0.1 ms a
-  transaction), bergdb `52d1e1f` (the scratch clone's `bergdb.jar`).
+  transaction), bergdb `716778e` (the scratch clone's `bergdb.jar`).
 * **Workload.** Load K keys `key24` (`/scale/key/` + 13 digits) in a random
   order, 8-byte values, 1,000 puts a transaction; then U random puts to loaded
   keys, uniform with replacement (`SplittableRandom(2)`), 1,000 a transaction.

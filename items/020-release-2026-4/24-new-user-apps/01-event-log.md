@@ -6,7 +6,7 @@ An application written as a new user of 2026.4 would write it (u1, for coord-110
 the common brief of 020-24): only the release jar on the class path, and only what a user
 reads (README.md, `java/src/overview-pub.html`, the Javadoc of `bergdb.pub` and
 `bergdb.pub.util`, `releases/next.md`). The jar was built from a clone of main at
-`b7aa2a0`. The implementation was read only afterwards, to explain finding U1-1.
+`0a59cf3`. The implementation was read only afterwards, to explain finding U1-1.
 
 
 ## 1. The application
@@ -291,7 +291,7 @@ says the duration is a minimum, so that is correct.
 ## 4. Fixes
 
 By coord-1109's fixer x24, 2026-11-09, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `ec8d16f`, under Frans's rule for
+`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `740ffdf`, under Frans's rule for
 2026.4 (2026-11-09): fix faults against today's specs and Javadoc, make the Javadoc true
 where the code is as designed, no new API and no change of meaning. Each commit below has
 its tests in `PubTesterJavadoc` and a line in `releases/next.md`, Documentation; JAVADOC
@@ -316,7 +316,7 @@ PUB OK. The gate under the lock, on the clone's tip `ed23b80`: BEFORE COMMIT OK 
   until reclaim cuts them, forever by default. The message of
   `LookupTimeNotAvailableException` closes its parenthesis, in `Db.getOne()` and
   `getMany()`: a plain bug, the test failed first. Test `testReclaimCutsLater`.
-* U1-10: 020-25's J5 says it in `Clock.getTime()` (on `main` as `5fafc1f`),
+* U1-10: 020-25's J5 says it in `Clock.getTime()` (on `main` as `09ad69c`),
   not repeated here.
 * Not here: U1-1 and U1-2, bugs for another fixer; U1-5 and U1-8, API, for Frans's list
   (U1-5's reset of the lookup time is now said in `Connection`'s class comment, `8ba4003`).

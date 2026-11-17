@@ -318,7 +318,7 @@ Claude Code), as proposed, with the optional part:
   counter, whose outputs are 1 to 100, each once; an environment used
   after its action, also after an action that threw.
 
-Checks, on a scratch clone of `df08546`. Before the change, a probe of
+Checks, on a scratch clone of `4ddab2a`. Before the change, a probe of
 the old API: the outputs of a run that was run again were cleared, and
 four and eight threads got the values of their own committed runs (100
 and 400 transactions, 106 and 418 runs). With the change: the new tests

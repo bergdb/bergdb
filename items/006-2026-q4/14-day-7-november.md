@@ -60,13 +60,13 @@ session continues with `/coordinator resume` (013-02).
 ## 5. Progress
 
 * 08:19. coord-1107 started; handover from coord-1106 (nothing running,
-  main = origin/main 1ff6be4).
+  main = origin/main 1d936ad).
 * 08:24 to 08:25. VS Code restarted; resumed.
 * 08:34. Agents started: s04 on 021-04's study (xhigh), f13 on 021-01 to
   021-03 (high).
-* 08:57. f13 done, BEFORE COMMIT OK (120 s): 021-01 closed (1132b1d);
-  021-02 closed and 021-03 done but for a night run (aced82e).
-* 08:58. java/night.sh started on aced82e, to close 021-03.
+* 08:57. f13 done, BEFORE COMMIT OK (120 s): 021-01 closed (15c234a);
+  021-02 closed and 021-03 done but for a night run (9413319).
+* 08:58. java/night.sh started on 9413319, to close 021-03.
 * 09:06. s04 done: 021-04's study across languages and formats, six
   options, recommendation (1), refuse everywhere (well-formed UTF-8 for
   every string), for Frans to decide.
@@ -74,8 +74,8 @@ session continues with `/coordinator resume` (013-02).
   Document this, ensure it is clear in the Javadoc API comments." 09:33
   agent u04 (high) makes it, and registers 021-05 (the Core's String puts)
   and 021-06 (the read side).
-* 09:51. java/night.sh on aced82e: NIGHT OK (53 minutes); 021-03 closed
-  (173f1c0).
+* 09:51. java/night.sh on 9413319: NIGHT OK (53 minutes); 021-03 closed
+  (b615907).
 * 09:52. Frans on 020-01, section 14, decision 2: "Shape 1, absolutely.
   Go slow here. I want to work out the details with you. I read
   DbObject.java yesterday. I really like the concept. Read the comments of
@@ -111,10 +111,10 @@ session continues with `/coordinator resume` (013-02).
   questions for Frans, about one day of work in three commits. Its
   finding of reader faults registered as 021-07.
 * 16:33. Agent r07 (high) on 021-07.
-* 16:42. r07 done, BEFORE COMMIT OK (122 s): 021-07 closed (630acb3). Its
+* 16:42. r07 done, BEFORE COMMIT OK (122 s): 021-07 closed (dcf2232). Its
   open point, the reader's unlimited nesting depth, registered as 021-08
   and given to r07.
-* 16:58. r07 done, BEFORE COMMIT OK (120 s): 021-08 closed (a7fe143). Its
+* 16:58. r07 done, BEFORE COMMIT OK (120 s): 021-08 closed (52f8ee5). Its
   open point, S2-F8 (an `Object[]` holding itself fails the database in
   `rw()` at a put), noted with 020-02's question 2.
 * 20:42. Frans: "Read binson.org [...] study the possibility of using
@@ -129,26 +129,26 @@ session continues with `/coordinator resume` (013-02).
 
 Written 2026-11-08, 08:35, at Frans's handover to the next coordinator.
 Everything committed; nothing running; the tree clean at the last commit
-of the day, `aad861e`.
+of the day, `52e72e7`.
 
 Done:
 
-* 021-01 (1132b1d), 021-02 and 021-03 (aced82e, 173f1c0): the Pub API's
+* 021-01 (15c234a), 021-02 and 021-03 (9413319, b615907): the Pub API's
   Javadoc; lean/README.md's log to 011-12; Lean's test programs as a
-  step of night.sh. java/night.sh on aced82e: NIGHT OK (53 minutes).
-* 021-04 and 021-05 (fd94108, c00e621): every string BergDB stores is
+  step of night.sh. java/night.sh on 9413319: NIGHT OK (53 minutes).
+* 021-04 and 021-05 (cd9e2df, b7fc20a): every string BergDB stores is
   well-formed UTF-8, for every language (Frans, 09:33: "option 1,
   absolutely"); objects and the Core's String puts refuse a lone
   surrogate; the rule in bergdb.pub's package doc, "Strings".
-* 021-07 (630acb3) and 021-08 (a7fe143): the object reader refuses bytes
+* 021-07 (dcf2232) and 021-08 (52f8ee5): the object reader refuses bytes
   that are not a well-formed object, and bytes nested deeper than the
   writer writes, with BadFormatException; before, data could fail the
   database in rw().
 * 020-01, section 14, decision 2: shape 1 (Frans, 09:52). The design of
-  objects with Frans in 020-02 (40f7de3 and later); the studies 020-03
-  (null, 29146ec), 020-04 (no stored null, the change plan, 43ee7a9) and
-  020-05 (Binson as DbObject's format, aad861e).
-* 013-02's skill: resume keeps one check-in (56d29ec).
+  objects with Frans in 020-02 (fa2a59a and later); the studies 020-03
+  (null, 780a4ea), 020-04 (no stored null, the change plan, 95f2ce5) and
+  020-05 (Binson as DbObject's format, 52e72e7).
+* 013-02's skill: resume keeps one check-in (6b2bc49).
 
 For Frans to decide:
 

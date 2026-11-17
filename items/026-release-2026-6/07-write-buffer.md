@@ -169,7 +169,7 @@ database. Then a burst of 20,000 transactions of one 1 kB value in one
 database, no sync, and the heap at once and after 2 s with no writes
 (the burst's own data, about 26 MB in the cache, in both).
 
-| Heap                          | before (ee5712c5) | after (c8b81d9e) |
+| Heap                          | before (7685f01e) | after (b8c2bec9) |
 |---|---|---|
 | a small file database         | 11.10 MB          | 0.67 MB          |
 | a small memory database       | 12.07 MB          | 1.65 MB          |
@@ -180,7 +180,7 @@ database, no sync, and the heap at once and after 2 s with no writes
 So the buffer grew to about 10 MB in the burst and shrank back after the
 idle second. Logs: `/Users/f/fl/bench/2026-11-13/wb/heap-base.log`,
 `heap-new.log`. Again with the shrink delay of 2 s (Q3) and the probe's
-wait of 3 s, on the branch after the merge of `ce020e6b`: 0.67 MB and
+wait of 3 s, on the branch after the merge of `ab20469a`: 0.67 MB and
 1.65 MB a database, +36.51 MB after the burst, +26.09 MB 3 s later
 (`heap-new2.log`).
 
@@ -201,7 +201,7 @@ Log: `/Users/f/fl/bench/2026-11-13/wb/many.log`.
 ### 5.3 Write throughput
 
 `performance.sh ab base-ee5712c5 wb-c8b81d9e` (preserved builds of
-`main` at `ee5712c5` and of this change; ABBA; both slots held with
+`main` at `7685f01e` and of this change; ABBA; both slots held with
 take-timing, 08:57 to 09:11; `FORCE=1`: the machine was 75 % idle,
 `mediaanalysisd` at one core and another session's `tracecheck`, so
 the results are not a reference, as in 024-33). The quick suite, and
@@ -248,7 +248,7 @@ moved when it became a transient:
 * **G4 and G5's heap gates** (024-30, 024-32, `count-gates.sh`, a
   night step): the emptied database's heap at most 2 times its
   hello-world twin's. Both held 10 MB of buffer, so the gate compared
-  about 17 MB with 12 MB (G5 on `ee5712c5`: 1.40). Without it, measured
+  about 17 MB with 12 MB (G5 on `7685f01e`: 1.40). Without it, measured
   right after the drive, G5's twin, which writes nothing in its drive,
   held 1.9 MB and the emptied database 17.5 MB with a grown buffer:
   9.3, FAIL. Measured after the shrink (`g4Run` now waits 3 s, 2 s with a delay of 1 s;
@@ -264,7 +264,7 @@ moved when it became a transient:
   **Decided by rule** (a change in this item must not move a gate that
   Frans set; the questions go to him): the gates compare each heap
   plus the 10 MB (`CountGates.BUFFER`), the basis the factor 2 was set
-  on, and print the heaps without it. Result on `c9ce76de`: G4 1.423
+  on, and print the heaps without it. Result on `b4844725`: G4 1.423
   PASS, G5 1.597 PASS, COUNT GATES OK (all four). Question Q4.
 
 
@@ -272,16 +272,16 @@ moved when it became a transient:
 
 | Gate                         | Head       | Result                                  |
 |---|---|---|
-| `before-commit.sh`           | `c8b81d9e` | BEFORE COMMIT OK (67 s)                 |
-| `level1.sh`                  | `c8b81d9e` | FAILED at Props: MEM 138 (section 6)    |
-| `count-gates.sh all`         | `c9ce76de` | COUNT GATES OK (G4 1.423, G5 1.597)     |
-| `before-commit.sh`           | `c9ce76de` | BEFORE COMMIT OK (75 s)                 |
-| `level1.sh`                  | `c9ce76de` | LEVEL 1 OK: MEM 129, SEG 226.5, MEM10M 127.1 |
-| `before-commit.sh`           | `b7f6b1c3` | BEFORE COMMIT OK (65 s), main merged    |
-| `level1.sh`                  | `b7f6b1c3` | LEVEL 1 OK: MEM 129, SEG 226.9, MEM10M 127.0 |
-| `before-commit.sh`           | `c64bb271` | BEFORE COMMIT OK (64 s), 2 s delay      |
-| `level1.sh`                  | `c64bb271` | LEVEL 1 OK: MEM 129, SEG 226.3, MEM10M 127.1 |
-| `count-gates.sh all`         | `c64bb271` | COUNT GATES OK (G4 1.456, G5 1.616)     |
+| `before-commit.sh`           | `b8c2bec9` | BEFORE COMMIT OK (67 s)                 |
+| `level1.sh`                  | `b8c2bec9` | FAILED at Props: MEM 138 (section 6)    |
+| `count-gates.sh all`         | `b4844725` | COUNT GATES OK (G4 1.423, G5 1.597)     |
+| `before-commit.sh`           | `b4844725` | BEFORE COMMIT OK (75 s)                 |
+| `level1.sh`                  | `b4844725` | LEVEL 1 OK: MEM 129, SEG 226.5, MEM10M 127.1 |
+| `before-commit.sh`           | `7a072a63` | BEFORE COMMIT OK (65 s), main merged    |
+| `level1.sh`                  | `7a072a63` | LEVEL 1 OK: MEM 129, SEG 226.9, MEM10M 127.0 |
+| `before-commit.sh`           | `b852ab3d` | BEFORE COMMIT OK (64 s), 2 s delay      |
+| `level1.sh`                  | `b852ab3d` | LEVEL 1 OK: MEM 129, SEG 226.3, MEM10M 127.1 |
+| `count-gates.sh all`         | `b852ab3d` | COUNT GATES OK (G4 1.456, G5 1.616)     |
 
 Logs in `/Users/f/fl/bench/2026-11-13/wb/`: `before-commit.log`,
 `level1.log`, `count-all-final.log`, `before-commit2.log`,
@@ -334,10 +334,10 @@ Recorded from the coordinator's relay, 2026-11-13.
 
 2026-11-13, 10:08. **Done, ready to land.** Clone
 `/Users/f/fl/bench/2026-11-13/wb/clone`, branch `026-07-write-buffer`:
-`c8b81d9e` (the buffer that grows, its tests, the Javadoc), `c9ce76de`
-(MEM and G4, G5's heap measures, section 6), `b7f6b1c3` and `18d3a378`
-(main merged at `20535a1d` and at `ce020e6b`), `c64bb271` (the shrink
-delay 2 s, Q3), and item commits. Gates on `c64bb271` (section 7):
+`b8c2bec9` (the buffer that grows, its tests, the Javadoc), `b4844725`
+(MEM and G4, G5's heap measures, section 6), `7a072a63` and `7c7ee5b1`
+(main merged at `cb9aca71` and at `ab20469a`), `b852ab3d` (the shrink
+delay 2 s, Q3), and item commits. Gates on `b852ab3d` (section 7):
 before-commit, level1 and count-gates OK; the timing comparison
 (section 5.3) was made with the 1 s delay, which does not change a
 flush or a force. Frans answered Q1 to Q4 and kept 10 MB (section 8);

@@ -1,4 +1,4 @@
-bergdb 005-30: level3.sh and level4.sh, full, one after the other, with nice, in a scratch clone of 948ec00 with the fix (2026-10-23, F53).
+bergdb 005-30: level3.sh and level4.sh, full, one after the other, with nice, in a scratch clone of 57b4887 with the fix (2026-10-23, F53).
 
 level3 exit=0 533 s: LEVEL 3 OK
 level4 exit=0 874 s: LEVEL 4 OK

@@ -37,10 +37,10 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 020-24-11's U11-2 and U11-6,
-and taken by its agent t21 (clone `clone-t21`, on main's 9ed1e6c).
+and taken by its agent t21 (clone `clone-t21`, on main's 595418e).
 
 2026-11-09. Done by t21: commit ed157ee in `clone-t21`, after fa019d5
-(021-21), on main's 279dba1, to land.
+(021-21), on main's fdebb8a, to land.
 
 * State of a connection: `getData` (`get()`, `exists()`,
   `transactionInfo()`), `infoKey`, the lookup time and its freeze (set by

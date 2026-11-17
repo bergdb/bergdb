@@ -34,7 +34,7 @@ Widen the ordinal as 002-02 recommends (sections 5 and 6):
    anything, so even the end is clean. (2^48 lasts centuries at the fastest
    rate measured, past the end of the database clock.)
 3. Rebase 002-02's patch (7 files, 55 lines added, 32 removed, written at
-   `059dbf1`) onto today's code, which item 001 changed.
+   `0a732c3`) onto today's code, which item 001 changed.
 4. Check the Lean model and the checker: do they bound the ordinal, or read
    it as 32 bits anywhere? The exporter and `tracecheck` must handle
    ordinals above 2^30.
@@ -74,7 +74,7 @@ Outcome
 
 2026-10-19, by Claude (Opus 5.5, Claude Code), at Frans's request ("Fix
 005-02"), without 005-01. Worked in a scratch copy of the repository at
-`8c5a106`, then applied to the work tree, not committed.
+`0739170`, then applied to the work tree, not committed.
 
 **First step.** 002-02's patch applied to today's code without a conflict,
 only with offsets: item 001 had not changed its lines. What differs from it
@@ -196,7 +196,7 @@ run failed 1 of its 947 unit tests,
 `EvictionReaderTester.testReaderPausedInsideAFollow`: "INV-CAN: the node
 table names a snapshot of node 55735". It is not this change's. Repeated under load (four JVMs
 per build beside four busy loops), the test failed once in 600 runs on
-today's code (`8c5a106`), with the same message, and in none of 600 with the
+today's code (`0739170`), with the same message, and in none of 600 with the
 change. A likely cause, from reading the code, not tested further:
 `Cache3.pointerCreated` checks that the object is canonical outside the
 table's lock and enters it under the lock, and a sweep's release (the flag

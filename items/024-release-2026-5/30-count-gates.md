@@ -1,7 +1,7 @@
 # 024-30. Count gates for aims 2 and 3 at 1M keys
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): G1 to
-G3 on `main` since `bf79df56`, G4 since `b5ace72d`; Q30-1 to Q30-4
+G3 on `main` since `8e163bbc`, G4 since `5c4ef762`; Q30-1 to Q30-4
 decided.
 
 Release 2026.5's aims 2 and 3 (024-04, section 1): operations and
@@ -13,7 +13,7 @@ gates are on counts (bytes, key nodes), not times (024-05, QF6).
 
 By the agent "gates" of coord-1112, from 11:36. Clone
 `/Users/f/fl/bench/2026-11-12/gates/clone`, branch `024-30-count-gates`
-from `main` at `e404dab7`.
+from `main` at `011aa9bf`.
 
 
 ## 1. In short
@@ -157,7 +157,7 @@ peak (kept - H_R) ≤ 6 · L0 (c = 6, 024-05, BD10 and QF1).
 
 ## 4. Calibration on `main`
 
-One run of `count-gates.sh` on the branch (`main`'s code at `e404dab7`
+One run of `count-gates.sh` on the branch (`main`'s code at `011aa9bf`
 with the three new files), 2026-11-12, 11:42 to 11:45, in a slot;
 output in `30-count-gates/calibration-main.txt`.
 
@@ -330,7 +330,7 @@ green for the other gates until ST6's fix is decided.
 
 ## 9. G4 on `main`: the numbers
 
-One run of `count-gates.sh` (all four gates) on `ce1c932c`, 11:57 to
+One run of `count-gates.sh` (all four gates) on `177178ce`, 11:57 to
 12:00, in a slot; output `30-count-gates/gate-ce1c932c.txt`. G1 to G3
 gave the same counts as section 4, to the byte. G4 took 8 s; the four
 gates 136 s.
@@ -370,19 +370,19 @@ gates 136 s.
 ## 10. State
 
 * **G4** (2026-11-12, 11:53 to 12:03): on the branch `024-30-g4` of
-  the same clone, from `main` at `2f5e684c`, head `ce1c932c`, in
+  the same clone, from `main` at `f64b33ca`, head `177178ce`, in
   Frans's name: G4 in `CountGates.java`, `count-gates.sh` (G4, the
-  `--add-opens`), `night.sh`'s header. Gates on `ce1c932c`:
+  `--add-opens`), `night.sh`'s header. Gates on `177178ce`:
   `count-gates.sh` COUNT GATES OK (136 s, in a slot); `before-commit.sh`:
   BEFORE COMMIT OK (66 s, in a slot, 12:00 to 12:01). Not on `main`: the coordinator lands the branch. Open:
   ST6's fix and Q30-3, Q30-4 (section 7).
 * **G1 to G3, done** (2026-11-12, 11:36 to 11:53): `CountGates.java`,
   `count-gates.sh` and the night step, committed on the branch
   `024-30-count-gates` of the clone
-  `/Users/f/fl/bench/2026-11-12/gates/clone`, head `bfba0928` (from
-  `main` at `e404dab7`), in Frans's name. Calibrated on `main` (section
+  `/Users/f/fl/bench/2026-11-12/gates/clone`, head `93da1e8f` (from
+  `main` at `011aa9bf`), in Frans's name. Calibrated on `main` (section
   4, all pass), shown failing on release 2026.4 (section 5, G1 and G2
-  fail). Gates on `bfba0928`: `before-commit.sh` BEFORE COMMIT OK (65 s,
+  fail). Gates on `93da1e8f`: `before-commit.sh` BEFORE COMMIT OK (65 s,
   in a slot); `count-gates.sh` COUNT GATES OK
   (11:49 to 11:52, in a slot; 125 s for the gates, the same counts as
   section 4 to the byte; `30-count-gates/gate-bfba0928.txt`).

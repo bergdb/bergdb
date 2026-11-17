@@ -47,7 +47,7 @@ today (005-11, P10: replicas are not encrypted).
 Outcome
 -------
 
-2026-10-25, by Claude (Opus 5.5, Claude Code), on `da8bbc1`, with 005-42:
+2026-10-25, by Claude (Opus 5.5, Claude Code), on `f641780`, with 005-42:
 
 * `SalsaStream.testLengthCountsAppends`: 150 after appends of 100 and 50
   bytes, and 160 after 10 more through a new `SalsaStream` on the same

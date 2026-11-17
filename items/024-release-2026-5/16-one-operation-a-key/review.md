@@ -2,12 +2,12 @@
 
 An independent review of the branch `024-16-one-operation-a-key`, head
 `d5617d45` (`023bfa22` the change, `d5617d45` the six expected values),
-on `main`'s `68c3917e`, before it lands. By rev16, an agent of coord-1111,
+on `main`'s `16759d36`, before it lands. By rev16, an agent of coord-1111,
 2026-11-11, 11:57 to 12:20. I read the diff first, then the item (024-16).
 
 Where: my clone `/Users/f/fl/bench/2026-11-11/rev16/clone` at `d5617d45`
 (clean, nothing changed), the base as a worktree
-`/Users/f/fl/bench/2026-11-11/rev16/base` at `68c3917e`, the probes in
+`/Users/f/fl/bench/2026-11-11/rev16/base` at `16759d36`, the probes in
 `/Users/f/fl/bench/2026-11-11/rev16/probe/` (`bergdb/core/Probe16.java`:
 p1, p2, p3; `bergdb/pubimp/ProbePub16.java`). Findings are R1 to R4 (this
 branch), B1 (beside it), questions Q1 to Q3.
@@ -125,7 +125,7 @@ again.
      alone. It commits at that time.
 * **The result:** `Kt` holds 7, and the index scan gives "Kt 7" alone.
   **Two entries are stored**, one of them `Kt`'s old `v` = 5, which
-  nothing takes back. It is the same on `68c3917e` and on `d5617d45`.
+  nothing takes back. It is the same on `16759d36` and on `d5617d45`.
 * **Not this branch's fault:** there is no collision inside one
   transaction, so 024-16's rule does not reach it, and the item does not
   claim it. But "no stale entry can be stored" (the new Pub test's

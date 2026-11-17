@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it (u11, for coord-1109, round 4
 of the common brief of 020-24): only `java/build/bergdb-release.jar` on the class path, built
-from a clone of main at `20e8d5a`, and only what a user reads: README.md, the Javadoc of
+from a clone of main at `f2dbcc7`, and only what a user reads: README.md, the Javadoc of
 `bergdb.pub` and `bergdb.pub.util` (from the sources), the package page and releases/next.md.
 The implementation was read only afterwards, to explain U11-1, U11-2, U11-3 and U11-5.
 
@@ -295,7 +295,7 @@ transaction. The most severe first:
 
 ## 5. Fixes
 
-By t21 for coord-1109, 2026-11-09, in `clone-t21` on main's 279dba1, to land: three commits,
+By t21 for coord-1109, 2026-11-09, in `clone-t21` on main's fdebb8a, to land: three commits,
 each with tests in the new `PubTesterThreads` that fail before it. The principle: misuse ends
 in an exception to the caller, never in a wrong value, a lost write or a failed database.
 

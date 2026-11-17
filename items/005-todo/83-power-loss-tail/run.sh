@@ -1,7 +1,7 @@
 #!/bin/sh
 # Reproduce bergdb 005-83's tail experiment against a frozen committed Java tree.
 # Usage: sh run.sh OUTDIR [case-substring]
-# Optional: BASE_REF (default 3ad171d), REQUIRE_RECOVERY=true, FIXTURE_DIR, JAVA, JAVAC.
+# Optional: BASE_REF (default afc3d20), REQUIRE_RECOVERY=true, FIXTURE_DIR, JAVA, JAVAC.
 # No production files are edited. REQUIRE_RECOVERY makes known hole failures exit 1.
 set -eu
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)

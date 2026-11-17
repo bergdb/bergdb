@@ -1,7 +1,7 @@
 R2 attachments
 ==============
 
-Base: b9ba427. Run from `/Users/f/fl/bench/016/R2`.
+Base: b1651a5. Run from `/Users/f/fl/bench/016/R2`.
 
 All programs use one JVM at a time and put temporary data under out/R2.
 The lock probes use a short Python process for native POSIX locks; they
@@ -30,7 +30,7 @@ close/open exclusion and retry after interrupts inside real JDK I/O calls.
 The saved output files contain only the small result summaries.
 
 `R2-regressions.patch` adds five Nano methods to FileStream's embedded
-tests against b9ba427; it makes no production change. In a fresh clone:
+tests against b1651a5; it makes no production change. In a fresh clone:
 
 ```sh
 cd repo

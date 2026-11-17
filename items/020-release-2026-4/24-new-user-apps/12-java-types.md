@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it (u12, for coord-1109, round 4
 of the common brief of 020-24): only the release jar on the class path, built from a clone
-of main at `20e8d5a`, and only what a user reads (README.md, `java/src/overview-pub.html`,
+of main at `f2dbcc7`, and only what a user reads (README.md, `java/src/overview-pub.html`,
 the Javadoc of `bergdb.pub`, `releases/next.md`). The implementation was read only
 afterwards, to explain U12-1 and U12-2.
 
@@ -366,7 +366,7 @@ Ten million ints, 0 to 9,999,999, are 49,934,353 bytes, put in 1.8 s. Objects of
 Made 2026-11-09 for coord-1109, in `clone-o23`, by the rule for 2026.4: a
 plain bug fixed with a failing test first; elsewhere the Javadoc made true
 where the code is as designed; no new API and no change of meaning. The
-entry is 021-23. The two commits, on main at `9ed1e6c`, gated on one tree
+entry is 021-23. The two commits, on main at `595418e`, gated on one tree
 under the gate lock: BEFORE COMMIT OK (149 s, unit 1582, f 86, demos), JAVADOC PUB OK.
 
 * **U12-1** (`71e909b`, 021-23, tests failing first): a put counts the object's

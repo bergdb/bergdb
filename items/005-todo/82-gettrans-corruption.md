@@ -125,7 +125,7 @@ Outcome
 -------
 
 2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-82/repo` from
-`main` at `6f932f0`:
+`main` at `47ba87f`:
 
 * `Db.getTrans` parses the record inside its failure handling (a new
   `Db.parseTrans`): a node's checksum or a malformed record fails the
@@ -171,7 +171,7 @@ not been carried out.
 by Frans's answer to Q1; "Plan for 2026.2" above. Nothing changed yet.
 
 2026-11-03, 15:58 to 16:12, by F1 (016-05), in
-`/Users/f/fl/bench/016/005-82/repo` from `main` at `6f932f0`, steps 1 to 4:
+`/Users/f/fl/bench/016/005-82/repo` from `main` at `47ba87f`, steps 1 to 4:
 
 * **The fix**, `Db.getTrans`: the parse (`ti.getStoredTrans()`) moved into
   the `try` around `ti.next()`, through a new `Db.parseTrans`. Its
@@ -226,7 +226,7 @@ by Frans's answer to Q1; "Plan for 2026.2" above. Nothing changed yet.
   refused with the same cause; nothing is appended; a restart on a copy
   reads both values and both transactions.
 * **Mutations**, `unit.sh -c DbTesterFailure -m testGetTrans`: (1) the fix
-  reverted (`Db.java` of `6f932f0`): the three tests fail, each with "the
+  reverted (`Db.java` of `47ba87f`): the three tests fail, each with "the
   read did not fail the database:" and the `StreamChecksumException`, the
   `StreamFormatException` "Bad node size, 16777256, at offset 32 of
   transaction at 264, size 120." and the `NegativeArraySizeException: -1`

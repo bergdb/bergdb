@@ -48,20 +48,20 @@ Fourteen, a series from the oldest code in Git to the 2026.4 candidate:
 
 | Name       | Commit    | What                                                        | Props |
 |------------|-----------|-------------------------------------------------------------|-------|
-| 2013.1     | `9ffbdf9` | release-2013.1.130606 (KissDB), the first release: 2012's work | p16   |
-| 2013-07-05 | `550ce4e` | the code of CORE's baseline, run on cissi 2013-07-05 10:53  | p16   |
-| 2013.3     | `466a18f` | release-2013.3-3                                            | p16   |
-| 2014.1     | `7e29e8e` | release-2014.1-3, the last release with the node stream     | p16   |
-| 2015.1     | `f51fc8d` | release-2015.1-1, the KV stream (kv2), the first Props      | own   |
-| 2015.4     | `9384bce` | release-2015.4-2, the last public release                   | own   |
-| 2015-12-28 | `bc11dbf` | "Typical output (2015-12-28)" (006-02)                      | own   |
-| 2017-07-29 | `dbf131a` | the last Props run on cissi (006-02)                        | own   |
-| 2017-08-01 | `195cf88` | the 2017 import (006-02)                                    | own   |
-| 2026-10-19 | `11ea2f6` | 006-02's 2026 code                                          | own   |
-| 2026.1     | `a42947c` | the release jar, `releases/2026.1/`                         | own   |
-| 2026.2     | `95bde62` | the release jar                                             | own   |
-| 2026.3     | `929fa33` | the release jar                                             | own   |
-| 2026.4c    | `f3af680` | the 2026.4 candidate: main at 08:22 today, kept all day     | own   |
+| 2013.1     | `3cf8170` | release-2013.1.130606 (KissDB), the first release: 2012's work | p16   |
+| 2013-07-05 | `d0b3bd1` | the code of CORE's baseline, run on cissi 2013-07-05 10:53  | p16   |
+| 2013.3     | `9e7e1e4` | release-2013.3-3                                            | p16   |
+| 2014.1     | `5683149` | release-2014.1-3, the last release with the node stream     | p16   |
+| 2015.1     | `f023cd7` | release-2015.1-1, the KV stream (kv2), the first Props      | own   |
+| 2015.4     | `9d59c7f` | release-2015.4-2, the last public release                   | own   |
+| 2015-12-28 | `358ad6b` | "Typical output (2015-12-28)" (006-02)                      | own   |
+| 2017-07-29 | `b64383a` | the last Props run on cissi (006-02)                        | own   |
+| 2017-08-01 | `0257e0b` | the 2017 import (006-02)                                    | own   |
+| 2026-10-19 | `0e7292d` | 006-02's 2026 code                                          | own   |
+| 2026.1     | `8e579c6` | the release jar, `releases/2026.1/`                         | own   |
+| 2026.2     | `d5b1bda` | the release jar                                             | own   |
+| 2026.3     | `9a0bf5e` | the release jar                                             | own   |
+| 2026.4c    | `90ec60a` | the 2026.4 candidate: main at 08:22 today, kept all day     | own   |
 
 The first eight from F1-007's `bergdb-git.bundle`, the next two from this
 repository, all compiled as 006-02 did (one `javac --release 8` of `git

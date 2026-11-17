@@ -1,6 +1,6 @@
 005-75 validation, 2026-11-02
-Checked base: c229ab2a55a77eda7c2612ac840b85c5deed42bd
-StreamDigest baseline: 7f3dab4a0e48cd9ade955a652450bb630e8714cc
+Checked base: 2a3af23468017ca50510d7061ab41f41f254a139
+StreamDigest baseline: b0b4732a98d93021146ccfdbc53a8c5ff5f4a4c1
 JDK: OpenJDK 27; javac --release 17 (build.sh).
 Builds and runs used isolated snapshots; all tracked java/ files match the checked snapshot.
 

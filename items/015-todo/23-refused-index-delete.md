@@ -23,4 +23,4 @@ Log
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
-2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a deletion is one transaction, refused or done, and the maps change only after its commit (020-10, 3.2 and 6.2); 5b08db5 (020-10, I2 part 1), with harness H3 (57f88ea). The test: IndexJobsHarness.testDeletionRefused (a refusal, an expiry and a RuntimeException at the deletion's transaction: nothing changed, in memory or in the stream; then the deletion works), in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a deletion is one transaction, refused or done, and the maps change only after its commit (020-10, 3.2 and 6.2); 4f8210f (020-10, I2 part 1), with harness H3 (9cbaa50). The test: IndexJobsHarness.testDeletionRefused (a refusal, an expiry and a RuntimeException at the deletion's transaction: nothing changed, in memory or in the stream; then the deletion works), in `before-commit.sh`, passing on `main` at `b768ef0` (020-11). Status: done.

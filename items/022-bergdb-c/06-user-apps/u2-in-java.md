@@ -41,11 +41,11 @@ fixed in C (section 7).
 
 # 1. How Java was run
 
-Java's Core is `main` at `b3a6b05` (2026-11-09, after `a2fa9df`). C's
+Java's Core is `main` at `ef5b52f` (2026-11-09, after `4957737`). C's
 harness compiles it, the Core Layer alone:
 
     git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main
-    JAVA_REF=git:b3a6b05ab9d0b9baabe1b7588694938f8bba1b59 c/test/cross/java-build.sh
+    JAVA_REF=git:ef5b52f31cb2352ede6642d20b401f67e4ef69a9 c/test/cross/java-build.sh
 
 The classes land in `c/build/java/classes`, CLASSES below. OpenJDK
 27.0.1, `-ea`.

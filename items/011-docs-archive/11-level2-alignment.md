@@ -5,10 +5,10 @@
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-15.
 Work packages B1, B2, B3 and later of the plan F1-008-11 (repository f1,
 `b/008-bergdb-lean-model/11-level2-alignment-plan-claude/`). Source commit
-`a116ec7`; line numbers below are at that commit.
+`fa13482`; line numbers below are at that commit.
 
-Status, 2026-10-16: all work packages done; D0 and D1 committed (`01f386a`,
-`d5c56dd`). The outcome is in section 11, the proposal for the gates in
+Status, 2026-10-16: all work packages done; D0 and D1 committed (`52d64a0`,
+`8f37d88`). The outcome is in section 11, the proposal for the gates in
 section 12; next is Frans's checkpoint K4.
 
 The goal of the plan is that the Java code and the Lean model in
@@ -241,7 +241,7 @@ transaction). A1 holds by the type of `Spec.exec`.
 
 ## 6. The register
 
-Verified against the code at `a116ec7` in B1, 2026-10-15. "Java" names
+Verified against the code at `fa13482` in B1, 2026-10-15. "Java" names
 classes and methods in `java/src/bergdb/`, "model" definitions in
 `lean/SIS/`. Status: open (o), resolved in a WP (WP name), closed (c).
 
@@ -264,7 +264,7 @@ classes and methods in `java/src/bergdb/`, "model" definitions in
 | M15 | The first run of a transaction applies key and value transformations and goes through no-op deletes; the rerun replays the stored value nodes. The model has one `exec` for both. | `Db.putKvs`; `DbStarter.rerunTransaction` | `Spec.exec`, `rerun` | Argument (7.6); `RestartInvariance` checks it | B1, c |
 | M16 | Java's times are timestamps; the model's are record indices. | `StoredTrans.tt` | `Time` | α (2.1) | B1, c |
 | M17 | Reclaim's touch marks nodes without adding entries. | `Db.touchRange` | — | Level 3, not this plan | —, out of scope |
-| M18 | **A startup bug.** Startup finds the super root by scanning the startup section for the newest top node. A transaction that changes nothing does not mark the super root, so the startup pos can move past the last version of every top node, and the database cannot start ("Could not find super node in startup section"). Reproduced on `a116ec7` (F1-008-11, `probe/`). With 10's change, deletes of missing keys do the same. | `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`; `TransSeq.take` | `Record.top`, `readAt` | Code: every record names the position of the latest version of the newest written top node, the model's top(i) (section 8) | D0 done (format 5, topPos), c |
+| M18 | **A startup bug.** Startup finds the super root by scanning the startup section for the newest top node. A transaction that changes nothing does not mark the super root, so the startup pos can move past the last version of every top node, and the database cannot start ("Could not find super node in startup section"). Reproduced on `fa13482` (F1-008-11, `probe/`). With 10's change, deletes of missing keys do the same. | `DbStarter.findLatestSuperRoot`, `findSuperNodeAtStartupTime`; `TransSeq.take` | `Record.top`, `readAt` | Code: every record names the position of the latest version of the newest written top node, the model's top(i) (section 8) | D0 done (format 5, topPos), c |
 | M19 | `TransSeq.take` can move the startup pos with transactions that have no got-dirty nodes; the model's policy is clamped only by s(i-1) ≤ s(i) < i, which Java meets. Recorded to make M18's cause explicit; not a mismatch. | `TransSeq.take` | `startupPos` | None | B1, c |
 | M42 | Rule R applies for the whole process: every first touch after startup, also of a pointer to a node written after startup, takes the newest version in the last startup section if it is newer than the version named (item 001, A2). | `NodeCollection.section`, `followStreamPointer` (step 2), `newestInSection` | `follow` (startup only); `ruleRRef` in the physical layer, for the whole process | Model: Rule R in the physical loader | Item 001: L1 (`ruleRRef`), proved with T1-L and T2-L (L3, L4; the writer after a restart reads from the stream of the startup, 13.4); checked: C-L (L5, 13.5), c |
 | M47 | **New (item 001, L3).** The proof of T1-L assumes of every transaction what BergDB's pointers and splits give (`PhysStep`): a node's new live children are pointees of its new entries (a klong stays live until a later klong of its key), and a new live child of a reachable node that the transaction does not create was, just before, a live child of a reachable node that the transaction changes or replaces (a split's new nodes take the children of the node they split; M43). | `KeyNode` (klongs); `Dag.handleFullNode` and the splits | `PhysStep`, `PhysRunOK` (`lean/SIS/Phys.lean`) | An assumption of the physical layer (13.3). Java: `liveNew` by α (2.4: a key node's child for a compare value is that of its last klong, and a delete only removes); `adopt` from TREE and A5 (13.3), both checked on Java (A4: TREE in 68,901 transactions; A5: C-A). Checked by running on the model's examples (`physRunOKB`) | Item 001: L3, argued (13.3); a direct check in the trace checker is open (L5 or E1), o |
@@ -791,7 +791,7 @@ changes of `TX i`.
 
 ### 10.1 The unchanged code, 2026-10-15 (WP C3)
 
-`java/stress/conformance.sh small` and `medium` on `a116ec7` (production code
+`java/stress/conformance.sh small` and `medium` on `fa13482` (production code
 unchanged). The small set is five configurations with ten seeds each: mixed
 transactions with deletes, transactions that change nothing and a restart
 after every transaction; long keys (two segments); 40-key transactions;
@@ -893,7 +893,7 @@ top(i) as a node and a record.
 D1 makes 10's change production code (`Dag.handleFullNode`,
 `timeSplitInPlace`, `spaceSplitInPlace`; `KeyNode.setContentFrom` and its
 class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
-`endOfTrans`). On bergdb `01f386a` plus the work tree:
+`endOfTrans`). On bergdb `52d64a0` plus the work tree:
 
 * **The Java tier** (`java/stress/A2A3Check2`, 10's checker, ported): ten
   configurations, 16,701 transactions, node sizes 8 to 62, 1 to 400 keys per
@@ -906,7 +906,7 @@ class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
   traces (127,707 LIVE lines). The model's own mode (`--model`) shows only
   the root (M11), as expected.
 * **Stream bytes** (`java/stress/DbJunk`, 10's five workloads, before D1 =
-  `01f386a`):
+  `52d64a0`):
 
   | Workload | Stream bytes, before D1 → D1 | Nodes in D not reachable, average |
   |---|---|---|
@@ -919,7 +919,7 @@ class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
 * The gates: `LEVEL 1 OK`, `LEVEL 2 OK`, `LEVEL 3 OK`; 908 unit tests, 37
   f-tests.
 * **Performance** (`SUITE=quick java/stress/performance.sh ab l2a-base
-  current`, twice, 10:22 to 10:52, against `a116ec7`, so D0's topPos is in
+  current`, twice, 10:22 to 10:52, against `fa13482`, so D0's topPos is in
   the comparison too): no alerts either time. The first run had `FORCE=1` at
   89 percent idle (three attempts before were refused at 61 to 83 percent
   idle while the machine was in use), the second started at 95 percent idle.
@@ -936,7 +936,7 @@ class comment; `TopDs.newSuperRoot`; Db's `markAtEndOfOp`, `endOfOp`,
 
 ### 10.5 F1, the conformance campaign, 2026-10-16
 
-The full set of 8.5 on the final code and model: bergdb `d5c56dd` (D0 and
+The full set of 8.5 on the final code and model: bergdb `8f37d88` (D0 and
 D1), the model of E3. Raw summaries, with the time and memory of each run:
 [11-level2-alignment/level2-conformance.txt](11-level2-alignment/level2-conformance.txt).
 
@@ -947,7 +947,7 @@ D1), the model of E3. Raw summaries, with the time and memory of each run:
 | Small, medium and large, Java tier | `A2A3Check2` on 21 configurations, 68,901 transactions: 10's set; node sizes 8 to 62 with 500 to 3,000 keys and 500 to 2,000 transactions; and the sizes of `RestartInvariance`'s configurations in `level2.sh`, up to 12,000 transactions | no A2 (net), A3 or A5 failure; Java's marking equals the model's in every transaction |
 | | `DagFuzz`, 5 configurations, 200 rounds each | 0 failures |
 | Large, restarts | `RestartInvariance` on `level2.sh`'s six configurations, with 10 percent empty transactions and 10 percent deletes of missing keys (new options `empty` and `nodel`) | the same stream bytes, transaction sequence, KVs, node identity and lookups with and without restarts, in every configuration |
-| Transactions that change nothing (M18) | `RestartInvariance` with 30 percent empty transactions and 20 percent deletes of missing keys, a startup distance of 100 bytes, restarts every 1 or 10 transactions; 5 seeds each | on `a116ec7`, before D0: all 10 runs fail ("Could not find super node in startup section"); on `d5c56dd`: all 10 pass |
+| Transactions that change nothing (M18) | `RestartInvariance` with 30 percent empty transactions and 20 percent deletes of missing keys, a startup distance of 100 bytes, restarts every 1 or 10 transactions; 5 seeds each | on `fa13482`, before D0: all 10 runs fail ("Could not find super node in startup section"); on `8f37d88`: all 10 pass |
 | The gates | `level1.sh`, `level2.sh`, `level3.sh` | `LEVEL 1 OK` (908 unit tests; 1.5 minutes), `LEVEL 2 OK` (11 minutes), `LEVEL 3 OK` (5 minutes), on a scratch copy of the final work tree, 11:22 to 11:40 |
 
 Every set includes transactions that change nothing: the small set's
@@ -967,7 +967,7 @@ with four traces at once (section 12;
 ## 11. Outcome (WP F2, 2026-10-16)
 
 The outcome of section 1.2 of the plan F1-008-11, point by point, on bergdb
-`d5c56dd` and the model of E3.
+`8f37d88` and the model of E3.
 
 1. **Correspondence: done.** α is in section 2; the steps of the model's
    algorithm and startup are mapped to Java in sections 3 and 4, the
@@ -1008,7 +1008,7 @@ The outcome of section 1.2 of the plan F1-008-11, point by point, on bergdb
    diagnostics test it on every transaction (no failure).
 6. **No regressions: done.** The gates pass in full on the final code
    (10.5). The quick performance suite against A1's baseline (`l2a-base`,
-   `a116ec7`), after D0 (10.2) and twice after D1 (10.4): no alerts, the
+   `fa13482`), after D0 (10.2) and twice after D1 (10.4): no alerts, the
    medians within noise. Flagged, not an alert: the slowest single commit of
    r-1k-fin (81 to 88 ms in every run after D0 and D1, against 23 to 90 ms in the baseline's runs), with
    an unchanged p99.9. These runs are not reference runs (one had
@@ -1031,7 +1031,7 @@ A step 7 of `level2.sh`, "Conformance with the Lean model", in both modes
 1. `RestartInvariance`, mostly idle: `-Dsd=100 -Dkeys=100 -Devery=1
    -Dlong=1 -Dn=400 -Ddel=1 -Dempty=30 -Dnodel=20`, seeds 1 and 2, checked
    as step 4 checks its runs. About 5 seconds each. It catches M18: on
-   `a116ec7` every seed fails.
+   `fa13482` every seed fails.
 2. `A2A3Check2` on three configurations: `-Dops=4 -Ddel=25 -Dlong=1`;
    `-Dops=40 -Dexact=1 -Dn=50 -Dkeys=1000 -Ddel=25 -Dlong=1`; `-Dmaxnode=62
    -Dkeys=1000 -Dn=2000 -Dops=40 -Ddel=20 -Dseeds=3`. Under 5 seconds in all.
@@ -1373,7 +1373,7 @@ restart. It also writes the cached times of the top nodes' skip slots
   startup pos: C-L fails) and `badskip.trace` (a wrong cached time: C-S
   fails, `skip`).
 
-**Results**, 2026-10-16, bergdb `e24e633` with this WP's changes (the small
+**Results**, 2026-10-16, bergdb `5992cfb` with this WP's changes (the small
 set with a sixth configuration, `hot`: one key at node size 8, the root
 queried at every time):
 

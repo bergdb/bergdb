@@ -1,7 +1,7 @@
 Command (repo/java):
 java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.storage.BufferedStream -m testR5StopWhileConsumerInterruptedClosesStream
 
-At f5a5f66 with only review tests added:
+At abe7785 with only review tests added:
 AssertionError: stop ended the consumer without closing its stream
 FAILURE, total: 2, failed: 1. Time: 0.0 s.
 

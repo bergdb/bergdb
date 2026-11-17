@@ -1,4 +1,4 @@
-From repo/java, against b9ba427 (the clone's changes are tests only):
+From repo/java, against b1651a5 (the clone's changes are tests only):
 javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/PublishedFailedTransactionProbe.java
 java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.PublishedFailedTransactionProbe
 

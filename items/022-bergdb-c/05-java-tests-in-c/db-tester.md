@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg. Status: done.
 
 Worker t12's part of 022-05: every test method of `bergdb.core`'s
 `DbTester`, `DbTesterFailure`, `DbTesterJavadoc`, `DbTesterLongKeys` and
-`DbUtil` at `main`'s `2566df1` (2026-11-09 17:18, the Java that `int.git`'s
+`DbUtil` at `main`'s `e875a34` (2026-11-09 17:18, the Java that `int.git`'s
 `2026.4` pins), classed as the brief says: **P** ported (C's test named,
 or the harness), **W** written now, **N** not for C (the reason), **L**
 left. A test method is what nanotest runs (its `MethodFilter`): a static
@@ -268,7 +268,7 @@ such function to test.
 
 ## 1.6 `DbTesterJavadoc` on `main` after the pin
 
-`de73137` and `a786e75` (020-27, Q2, 17:54): the Core API refuses every
+`a848c62` and `f490cfa` (020-27, Q2, 17:54): the Core API refuses every
 null argument, and every argument out of its range, with
 `IllegalArgumentException`. C's API refuses a NULL and a negative count
 with `BERGDB_ARG` already (`bergdb.h`, section B):

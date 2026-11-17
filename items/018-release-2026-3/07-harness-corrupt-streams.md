@@ -321,7 +321,7 @@ On `main` each of these copies is refused with a `StreamFormatException`.
 ### 5.3. After the decisions of 2026-11-06
 
 019-30, 019-31 and 019-33 counted as known (agent d4 of coord-1106, on
-`main` at 33a8713 with the change):
+`main` at de1b026 with the change):
 
 * `unit.sh -c CorruptStreamTester`: SUCCESS. Seed 1's sample: no
   failure; known 019-30 46 (7 flips, 39 header fields), 019-31 2, 015-73
@@ -335,7 +335,7 @@ On `main` each of these copies is refused with a `StreamFormatException`.
 
 ### 5.4. After 019-32's fix
 
-019-32 fixed (coord-1106's agent f32, on `main` at f0a47f3 with the
+019-32 fixed (coord-1106's agent f32, on `main` at c963aa3 with the
 change), its line out of `SKIP`, which is empty:
 
 * `unit.sh -c CorruptStreamTester` (`testSample` and `testFound019_32`):

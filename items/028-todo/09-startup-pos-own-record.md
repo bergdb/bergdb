@@ -12,7 +12,7 @@ What: the draft of 027-11 found that `checkStartupPos` accepts a
 startupPos equal to the position of its own record, which the take never
 writes (s(i) < i). A damaged last record R(k) with that value gives a
 startup section of R(k) alone, and its gd is never read (027-11, at
-7e190010).
+c82bce56).
 
 Why: a damaged stream should be refused rather than started from a wrong
 section (detecting damage is best effort and storage owns integrity,

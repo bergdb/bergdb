@@ -38,7 +38,7 @@ one of three messages.
 What a crash in the creation leaves
 -----------------------------------
 
-`CreationCrashProbe`, on `e2c0dc0`, Java 27
+`CreationCrashProbe`, on `a10ebf9`, Java 27
 ([runs/](33-crashed-creation/runs/)).
 
 A creation writes 264 bytes to the stream: the first meta block (128
@@ -335,7 +335,7 @@ Outcome
   directories, with and without a key, the same, and the files are as they
   were; streams of zero bytes give a `BadCryptoKey`, with the new message
   without a key. The probe now also starts on the creation with its
-  transaction failed (on `ec44d19`, before the change: "Transaction at
+  transaction failed (on `77d7a11`, before the change: "Transaction at
   start pos 128 is not committed (its last byte is 0).",
   `cuts-ec44d19.txt`), and writes the length in the new message as L.
   `flushes` and `kill` were not run again: they measure the creation,

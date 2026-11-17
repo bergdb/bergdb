@@ -1,7 +1,7 @@
 Command (repo/java):
 java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.storage.StorageManagerTester -m testR5NegativeAppendDoesNotDecreaseLength
 
-At f5a5f66 with only review tests added:
+At abe7785 with only review tests added:
 AssertionError: negative append returned normally; manager length=99, buffer length=100
 FAILURE, total: 2, failed: 1. Time: 0.0 s.
 

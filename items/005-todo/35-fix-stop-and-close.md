@@ -44,7 +44,7 @@ would otherwise lose their last transactions (issue 1).
 The issues
 ----------
 
-The probes are `tools/StopCloseProbe.java`, on `685e895`; a slow stream is
+The probes are `tools/StopCloseProbe.java`, on `b61cf34`; a slow stream is
 an in-memory stream whose appends take 300 ms.
 
 1. **stop() loses the transactions that are still in the write buffer.**

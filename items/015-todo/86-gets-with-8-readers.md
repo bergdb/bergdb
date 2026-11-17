@@ -9,7 +9,7 @@ explained; Option 4 is to consider after release 2026.3 (017-07, section
 they were in 005-65 (Frans's plan, approved 2026-11-05, 07:17); its
 files stay in [005-todo/65-gets-with-8-readers/](../005-todo/65-gets-with-8-readers/).
 Measured (Results, 2026-10-28 night); Frans decided on 2026-10-29
-(Decision and fix): the fix, in `main` since 2026-10-29 (`988fe1a`),
+(Decision and fix): the fix, in `main` since 2026-10-29 (`52aeb04`),
 and the rest of the long gets accepted as a full machine. Rerun with
 the fix in night 1 of release 2026.2 (Results, 2026-11-04 night): the
 loads' entries into `evictorLock` with 8 readers from 81,877 to 484 a
@@ -17,7 +17,7 @@ second, but the gets over 10 ms rose (298 to 492). Left: the
 Recommendation's AB/BA step, about 24 minutes in a quiet block,
 approved by Frans (decided 2026-11-04/05). **Run 2026-11-05, 08:11 to
 08:31 (State): the rise is the fix's.** With 8 threads the fix had more
-gets over 10 ms than `5a6befd` in 4 of 4 rounds, 1,009 against 513 in
+gets over 10 ms than `bb25185` in 4 of 4 rounds, 1,009 against 513 in
 sum (1.97 times), and its longest gets were longer (37 to 71 ms against
 21 to 37 ms), while its readers' waits over 10 ms fell (20 against 90).
 So, as Frans decided, the decision is his: left, the Recommendation's
@@ -35,7 +35,7 @@ Kind: investigate. Created 2026-10-28 as 005-65.
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
 decision 2 of 006-09, section 8): "Register the 8-thread case as a new 005
 entry: ScaleBench C from the OS cache, 665 MB, ZGC, 8 threads, longest
-gets 27 and 36 ms (bf19075: 2.1 ms), 22 and 26 waits of a reader's load
+gets 27 and 36 ms (c1f1f15: 2.1 ms), 22 and 26 waits of a reader's load
 for the eviction thread over 10 ms. Hypothesis to test, not a finding:
 [...]". Item 009 is closed with target 2 met in P4's soak and the pause
 probe, not yet with 8 threads at 665 MB under ZGC: this entry.
@@ -46,12 +46,12 @@ The issue
 
 006-09's quiet block ran 009-03's ScaleBench block from the OS's cache
 (regime C; 10M key24 keys, the default startup distance of 10 MB, 665 MB
-budget, 2,660 MB heap) on F53, HEAD `4f7cd60` against `bf19075` (005-50,
+budget, 2,660 MB heap) on F53, HEAD `f9e295d` against `c1f1f15` (005-50,
 the commit before 005-46), two rounds in turns (005-46,
 `night/scalebench-c.sh`; the numbers below from its `out/summary.txt` and
 `out/scalebench-c/f53-c-10m-b665-zgc-*.txt`). Under ZGC:
 
-| | `bf19075`, rounds 1 and 2 | `4f7cd60`, rounds 1 and 2 |
+| | `c1f1f15`, rounds 1 and 2 | `f9e295d`, rounds 1 and 2 |
 |---|---|---|
 | 8 threads: gets a second | 395,448 and 400,486 | 727,507 and 710,841 |
 | 8 threads: the longest get | 2.8 and 1.4 ms (mean 2.1) | 27.4 and 36.5 ms |
@@ -62,9 +62,9 @@ the commit before 005-46), two rounds in turns (005-46,
 | 4 sampled readers blocked on a file's monitor | 3.7 and 3.5 percent | none |
 
 Under G1 the longest gets are G1's pauses, for both jars. At 665 MB under
-G1 neither jar has a wait over 10 ms; at 133 MB under G1 `4f7cd60` has a
+G1 neither jar has a wait over 10 ms; at 133 MB under G1 `f9e295d` has a
 few (1 and 3 with 4 and 8 threads in round 1, 1 with 8 in round 2),
-`bf19075` none. The collector's pauses under ZGC were far below a
+`c1f1f15` none. The collector's pauses under ZGC were far below a
 millisecond. ScaleBench's get phases write nothing, so no
 commit, force or cut is under a get.
 
@@ -95,8 +95,8 @@ The hypothesis (to test, not a finding)
 
 F53 is an Apple M1 Pro with 8 performance cores and 2 efficiency cores
 (`sysctl hw.perflevel0.physicalcpu`: 8; the JVM sees 10 CPUs). Since
-005-46 (`eaec93e`) the readers no longer block on a file's monitor
-(`bf19075`: 3 to 13 percent of the samples in last night's runs), so 8
+005-46 (`1165c90`) the readers no longer block on a file's monitor
+(`c1f1f15`: 3 to 13 percent of the samples in last night's runs), so 8
 readers keep all 8 performance cores busy, and the eviction thread, ZGC's
 concurrent threads and a reader whose park has ended wait for a core.
 Then the eviction thread falls behind: its batches stretch (11 and 17 ms)
@@ -105,19 +105,19 @@ readers there are cores to spare. Also, the step ran not quiet.
 
 It would be **refuted** if, in a quiet block:
 
-* `bf19075` also has waits over 10 ms or gets over 20 ms with 8 threads;
+* `c1f1f15` also has waits over 10 ms or gets over 20 ms with 8 threads;
 * the waits come at 4 threads, or at 6 threads with the process well
   below 8 cores of CPU;
 * or the eviction thread gets as much CPU with 8 threads as with 4 while
   the batches still stretch (then something holds it other than the
   cores, such as a lock).
 
-It is **supported** if `eaec93e` and `4f7cd60` have the long gets and
+It is **supported** if `1165c90` and `f9e295d` have the long gets and
 waits with 8 threads only, the process then uses about 8 cores or more,
 and the eviction batches' time by the clock is well above the eviction
 thread's CPU time (descheduled within its batches) with 8 threads, not
-with 4. If only `4f7cd60` has them, one of the commits after 005-46 is the
-cause: 005-55 (`cec0032`), 005-57 (`07b6375`) or 005-51 (`c2aab10`, the
+with 4. If only `f9e295d` has them, one of the commits after 005-46 is the
+cause: 005-55 (`14022ad`), 005-57 (`e773562`) or 005-51 (`043a09c`, the
 eviction thread's waits without a timeout).
 
 
@@ -125,7 +125,7 @@ The test
 --------
 
 ScaleBench C as last night, 665 MB, ZGC, at 4, 6 and 8 threads, on
-`bf19075`, `eaec93e` (005-46 alone) and `4f7cd60` (006-09's HEAD) in
+`c1f1f15`, `1165c90` (005-46 alone) and `f9e295d` (006-09's HEAD) in
 turns, two rounds, with 8 sampled readers, in a quiet block on F53. A
 patch to ScaleBench, `ScaleBench-065.diff` on top of 009-03's port, adds
 to each threads phase the CPU time of the thread `bergdb-evictor`, of the
@@ -138,11 +138,11 @@ The step: [65-gets-with-8-readers/night/](../005-todo/65-gets-with-8-readers/nig
 * `prep.sh` makes, before the block, a clone of each of the three
   commits, built, the patched ScaleBench compiled against each jar, and
   004-02's `pidio`, in `/Users/f/fl/bench/006-09/d2-009-builds/` (made
-  2026-10-28, 09:23 to 09:27; jars `af8a63b6` for `bf19075`, `5267f684`
-  for `eaec93e`, `e62f8257` for `4f7cd60`, by the first 8 bytes of their
+  2026-10-28, 09:23 to 09:27; jars `af8a63b6` for `c1f1f15`, `5267f684`
+  for `1165c90`, `e62f8257` for `f9e295d`, by the first 8 bytes of their
   SHA-256).
 * `threads.sh` (`# minutes: 30`, about 17): the 10M load with
-  `4f7cd60`'s jar, then two rounds of each build (ABC CBA), each run the
+  `f9e295d`'s jar, then two rounds of each build (ABC CBA), each run the
   phases warm and threads (4, 6 and 8, 30 s each) and 20 s of 8 sampled
   readers. `sum.py` writes `out/summary.txt`: a row for each run and
   thread count (gets a second, p99.9 and max, the waits over 10 ms and the
@@ -159,7 +159,7 @@ The step: [65-gets-with-8-readers/night/](../005-todo/65-gets-with-8-readers/nig
   the check of the parsed summary failed it, as it should.
 * ScaleBench is in the package `bergdb.core` and names `SyncLevel`
   without an import. The three builds have `bergdb.core.SyncLevel`; since
-  005-56 (`04f1546`) `main` has it in `bergdb.pub.util`, so compiling
+  005-56 (`8752cf0`) `main` has it in `bergdb.pub.util`, so compiling
   ScaleBench against a jar of `main` needs that import added.
 * `ScaleBench-065.diff` and `sum.py`, second version (2026-10-28, for the
   section Reading): for each after-load call, the resident bytes and the
@@ -187,7 +187,7 @@ Reading
 -------
 
 By Claude (Opus 5.5, Claude Code), 2026-10-28, for 006-10's W2.1: the
-code on the path at `4f7cd60` (the same at `bf19075` and `eaec93e` but
+code on the path at `f9e295d` (the same at `c1f1f15` and `1165c90` but
 for 005-51's wait, see the commits below) and last night's outputs
 (005-46's `night/out/scalebench-c/`, the GC logs in
 `/Users/f/fl/bench/006-09/w1/raw/scalebench-c/`). No timed runs. The
@@ -259,7 +259,7 @@ explanation only: a fix is Frans's choice after the runs (2026-10-28).
   over 831 MB (665 + 166). ScaleBench samples them every second: the most
   in each of the four ZGC runs was 665.0 to 665.5 MB (the JSON's
   `maxima`). A batch freed about 0.6 MB (the last batch of each run), and
-  with 8 threads `4f7cd60` ran 5,001 and 4,964 batches in 30 s, about
+  with 8 threads `f9e295d` ran 5,001 and 4,964 batches in 30 s, about
   100 MB a second; to fall 166 MB behind, the thread would have had to
   stop for over a second and a half. Its longest batch was 17 ms. So the
   after-load calls over 10 ms were spent in `Eviction.wake`, at the entry
@@ -267,7 +267,7 @@ explanation only: a fix is Frans's choice after the runs (2026-10-28).
 * **Running readers rarely lost their cores for long.** A thread that runs
   Java or VM code reaches a safepoint well within a millisecond unless it
   is off its core; a thread parked on a monitor, or in the kernel's read,
-  does not hold one up. In `4f7cd60`'s 8-thread phases the GC logs have
+  does not hold one up. In `f9e295d`'s 8-thread phases the GC logs have
   182 and 181 safepoints, a median time to reach of 0.07 ms, and one over
   2 ms: 7.0 ms (ZRelocateStartYoung in round 1, 8 threads running). Had
   readers lost their cores for 10 ms or more often enough to put 26 and 22
@@ -281,10 +281,10 @@ explanation only: a fix is Frans's choice after the runs (2026-10-28).
   waited for a core or lost the monitor again to readers that came first
   (a Java monitor is not fair).
 * **The call's cost grows with the readers, most with 8 under ZGC on
-  `4f7cd60`.** The mean after-load call (the JSON's `afterLoadMs` over
-  `afterLoadCalls`) on `4f7cd60` under ZGC: 17, 41 to 43, 105 to 112 and
-  426 to 493 ns with 1, 2, 4 and 8 threads. With 8 threads: `bf19075` under
-  ZGC 138 to 147 ns; `4f7cd60` under G1 154 to 161 ns, with about as many
+  `f9e295d`.** The mean after-load call (the JSON's `afterLoadMs` over
+  `afterLoadCalls`) on `f9e295d` under ZGC: 17, 41 to 43, 105 to 112 and
+  426 to 493 ns with 1, 2, 4 and 8 threads. With 8 threads: `c1f1f15` under
+  ZGC 138 to 147 ns; `f9e295d` under G1 154 to 161 ns, with about as many
   calls a second (579,000 to 595,000, against 589,000 to 602,000) and no
   call over 10 ms. The resident bytes stay at the budget (a batch frees its
   0.6 MB, and the loads fill it again within milliseconds), so a large
@@ -294,20 +294,20 @@ explanation only: a fix is Frans's choice after the runs (2026-10-28).
   find the bytes over the trigger; but the larger difference is most
   likely what the machine has to spare.
 * **ZGC's workers took cores.** ZGC ran up to 3 concurrent workers ("GC
-  Workers Max: 3 (dynamic)"), about 2 a cycle. With `4f7cd60` and 8 threads
+  Workers Max: 3 (dynamic)"), about 2 a cycle. With `f9e295d` and 8 threads
   its cycles ran back to back (236 and 234 cycles, 35.0 and 34.9 s of
-  cycle time in the 30 s phase); with `bf19075` 83 and 81 cycles, 16.4 and
-  14.9 s. So with `4f7cd60` and 8 threads: 8 readers that do not block,
+  cycle time in the 30 s phase); with `c1f1f15` 83 and 81 cycles, 16.4 and
+  14.9 s. So with `f9e295d` and 8 threads: 8 readers that do not block,
   the eviction thread, about 2 workers (up to 3), the compiler and
   ScaleBench's sampler, on 10 cores (8 performance, 2 efficiency); and
   more from other processes (the 1-minute load average was 2.76 at the
   step's start, with no JVM, gate, Lean build or `night.sh` running). With
   4 threads, about 7 to 8.
-* **The batches stretched with 8 readers on `4f7cd60` only.** The mean
+* **The batches stretched with 8 readers on `f9e295d` only.** The mean
   batch under ZGC: 1.24 to 1.28 ms with 4 threads, 1.81 to 1.88 ms with 8
-  (under G1 0.54 to 0.63 and 1.04 to 1.14 ms); `bf19075` 1.20 and 1.26 to
+  (under G1 0.54 to 0.63 and 1.04 to 1.14 ms); `c1f1f15` 1.20 and 1.26 to
   1.29 ms. The longest batch so far was 2 ms through the 4-thread phase and
-  became 17 and 11 ms in the 8-thread phase; with `bf19075` 2 ms
+  became 17 and 11 ms in the 8-thread phase; with `c1f1f15` 2 ms
   throughout. That is the eviction thread off its core in a batch, as the
   entry's hypothesis says.
 * **Not the collector, not allocation.** No allocation stall in the four
@@ -316,44 +316,44 @@ explanation only: a fix is Frans's choice after the runs (2026-10-28).
   included (the longer ones, up to 13 ms, are the sampled phase's thread
   dumps).
 
-**The commits from `bf19075` to `4f7cd60`.** Seven commits; four change
-`java/src` (`git log bf19075..4f7cd60 -- java/src`). `Eviction`'s load path
+**The commits from `c1f1f15` to `f9e295d`.** Seven commits; four change
+`java/src` (`git log c1f1f15..f9e295d -- java/src`). `Eviction`'s load path
 and batch (`afterLoad`, `wake`, `EvictorRun`'s loop, `sweep`), `Cache3`,
 `Residents` and `bergdb.dag` are the same in all three builds, but for
 005-51's wait.
 
-* `eaec93e`, 005-46: a read takes no lock on its file (`FileStream`'s
+* `1165c90`, 005-46: a read takes no lock on its file (`FileStream`'s
   `DbFile.read`: positional reads on a `FileChannel` of each file's own;
   the list of files a volatile array). It is the only one that changes
   what readers do in this benchmark, and the most likely to matter, by
-  what it lets them do. With 8 threads `4f7cd60` made 1.8 times the gets
-  and the after-load calls of `bf19075` (727,507 against 395,448 gets a
+  what it lets them do. With 8 threads `f9e295d` made 1.8 times the gets
+  and the after-load calls of `c1f1f15` (727,507 against 395,448 gets a
   second; 602,000 against 328,000 calls), so the eviction thread ran 2.3
   times the batches (5,001 against 2,160), the readers entered
   `evictorLock` about twice as often, and ZGC collected without a break.
-  And all 8 readers stayed runnable, where `bf19075`'s queued on the
+  And all 8 readers stayed runnable, where `c1f1f15`'s queued on the
   file's monitor (BLOCKED in 3.5 and 3.7 percent of the samples with 4
   threads; with 8 its gets a second fell below its own with 4). Readers
   still meet on short monitors (the path above); the smoke tests' samples,
   at a 0.5 MB budget and not the night's regime, show readers BLOCKED in
   `Eviction.wake`, on `BufferedStream` and on `NativeThreadSet`.
-* `cec0032`, 005-55: `Db.finalize()` removed; tests close their databases.
+* `14022ad`, 005-55: `Db.finalize()` removed; tests close their databases.
   Nothing on the get path or in eviction at runtime: it cannot explain the
   waits.
-* `07b6375`, 005-57: rule 4 at the start by position, without header reads
+* `e773562`, 005-57: rule 4 at the start by position, without header reads
   (`DbStarter.linkD`, `NodeCollection.linkToCanonical`). It runs before the
   phases, and the readers' path after the start is unchanged. Both jars
   counted the same pinned bytes, 44,704,880 (`Eviction.stats`; the get
   phases write nothing, so that is D as the start left it), so eviction
   worked on the same state. It cannot explain the waits.
-* `c2aab10`, 005-51: the idle eviction thread waits with no timeout
+* `043a09c`, 005-51: the idle eviction thread waits with no timeout
   (`evictorLock.wait()` for `wait(1000)`), and the close ends it
   (`Eviction.endThread`, from `Db.closeStorage`). Under load `notifyAll`
   wakes it either way; no request is lost (`wanted` is set and read under
   the monitor); and loads call `wake` every few microseconds, so the old
   timeout never ran out. It cannot explain the waits.
 
-So `eaec93e` alone should show the case: tonight `eaec93e` like `4f7cd60`,
+So `1165c90` alone should show the case: tonight `1165c90` like `f9e295d`,
 within the noise.
 
 **The hypotheses, and what tonight's runs would show.** The columns named
@@ -363,9 +363,9 @@ are `sum.py`'s; those marked (+) come from the second version of
 * **H1, the entry's: the eviction thread falls behind for want of cores,
   its batches stretch, and the loads that wait for it wait longer than
   2 ms.** Its first half fits last night (batches of 17 and 11 ms with 8
-  threads on `4f7cd60` only); its second half does not, as no load waited
+  threads on `f9e295d` only); its second half does not, as no load waited
   for a batch (above).
-  * Holds as stated if, with 8 threads on `eaec93e` and `4f7cd60` only,
+  * Holds as stated if, with 8 threads on `1165c90` and `f9e295d` only,
     the after-load calls over 10 ms began under pressure ("of them under
     pressure" (+) close to "after-load > 10 ms"), the readers parked
     ("readers parked ms" (+) well above 0; samples TIMED_WAITING in
@@ -382,8 +382,8 @@ are `sum.py`'s; those marked (+) come from the second version of
   * Holds if the long calls began without pressure ("of them under
     pressure" (+) 0), the readers did not park ("readers parked ms" (+)
     near 0), the mean call ("after-load ns a call" (+)) with 8 threads is
-    several times that with 4 on `eaec93e` and `4f7cd60` and less so on
-    `bf19075`, "readers blocked %" (+) rises with the threads, the sampled
+    several times that with 4 on `1165c90` and `f9e295d` and less so on
+    `c1f1f15`, "readers blocked %" (+) rises with the threads, the sampled
     readers show BLOCKED in `Eviction.wake` on `java.lang.Object`, and the
     gets over 10 ms (+) are not many more than the calls over 10 ms (the
     long gets are these calls).
@@ -391,17 +391,17 @@ are `sum.py`'s; those marked (+) come from the second version of
     10 ms far outnumber the calls over 10 ms (ten times or more): then the
     long gets come from something that every part of a get meets (H3 on
     its own), and the calls are only a sample of it.
-* **H3: not enough cores.** With 8 readers on `eaec93e` and `4f7cd60` more
+* **H3: not enough cores.** With 8 readers on `1165c90` and `f9e295d` more
   threads are runnable than there are cores (8 readers, the eviction
   thread, up to 3 of ZGC's workers, the rest), and a thread that loses its
   core, or is woken, waits for a time slice (on macOS about 10 ms for an
   ordinary thread) or more. H1 and H2 need it for anything to last 10 ms.
-  * Holds if, with 8 threads on `eaec93e` and `4f7cd60`, the machine is at
+  * Holds if, with 8 threads on `1165c90` and `f9e295d`, the machine is at
     about 9.5 to 10 of its 10 cores ("machine cores" (+)), the rest of the
     process (ZGC) at 1.5 to 3 cores ("rest"), and the eviction thread's
     share neither running nor waiting ("the rest %" (+)) and "batch wall
     over eviction CPU" are above their values with 4 threads; and if there
-    are idle cores with 4 threads, and with `bf19075` at 8.
+    are idle cores with 4 threads, and with `c1f1f15` at 8.
   * Refuted if the long waits come while the machine has idle cores
     ("machine cores" clearly below 10, such as 9 or less): then the monitor
     alone makes them, a queued reader losing `evictorLock` again and again
@@ -412,14 +412,14 @@ are `sum.py`'s; those marked (+) come from the second version of
   * Refuted if the waits stay with 8 threads while the other processes use
     next to nothing.
 * **H5: a commit after 005-46** (005-55, 005-57, 005-51).
-  * Holds if only `4f7cd60` has the waits.
-  * Refuted if `eaec93e` has them about as often, as this reading expects.
+  * Holds if only `f9e295d` has the waits.
+  * Refuted if `1165c90` has them about as often, as this reading expects.
 
 Which change, if any, follows from the runs: the examples under Done when
 answer H1 (a thread behind for want of cores); H2 points at the entry into
 `evictorLock` on every load over the trigger.
 
-**What threads.sh measures.** As committed in `fab16db`, it cannot tell
+**What threads.sh measures.** As committed in `1cbfaf8`, it cannot tell
 H1 from H2 (whether a long call could park), H3 from the monitor alone (it
 does not see the machine's cores, and of the eviction thread only its
 CPU), or H4, and it does not count long gets. The second version adds
@@ -439,7 +439,7 @@ Results, 2026-10-28 night
 By Claude (Opus 5.5, Claude Code), 2026-10-29, from `threads.sh`'s run in
 006-10's W2: 2026-10-28, 19:34 to 19:50, quiet (load 1.55 at the start,
 AC power, two idle sessions), `threads: OK, 0 problems`. The 10M load with
-`4f7cd60`'s jar, then the builds in turns, ABC CBA. `sum.py`'s summary is
+`f9e295d`'s jar, then the builds in turns, ABC CBA. `sum.py`'s summary is
 kept as
 [night/results-2026-10-28.txt](../005-todo/65-gets-with-8-readers/night/results-2026-10-28.txt);
 the raw outputs stay out of the repository. Each row below is a build's
@@ -452,15 +452,15 @@ park for a batch. The readers parked 0 ms in every phase.
 
 | build | threads | gets a second | longest get ms | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | over the trigger, k a second | readers blocked % |
 |---|---|---|---|---|---|---|---|---|---|
-| `bf19075` | 4 | 595,058 | 2.2 | 0 | 0 | 0 | 78 | 2 | 0.54 |
-| `bf19075` | 6 | 439,162 | 1.5 | 0 | 0 | 0 | 135 | 1 | 15.28 |
-| `bf19075` | 8 | 402,044 | 0.6 | 0 | 0 | 0 | 132 | 1 | 26.55 |
-| `eaec93e` | 4 | 700,173 | 5.9 | 0 | 0 | 0 | 101 | 3 | 0.01 |
-| `eaec93e` | 6 | 746,007 | 10.5 | 2 | 0 | 0 | 167 | 11 | 0.14 |
-| `eaec93e` | 8 | 717,384 | 26.4 | 269 | 57 | 0 | 472 | 78 | 2.34 |
-| `4f7cd60` | 4 | 699,194 | 5.1 | 0 | 0 | 0 | 109 | 3 | 0.01 |
-| `4f7cd60` | 6 | 743,908 | 9.7 | 0 | 0 | 0 | 157 | 8 | 0.11 |
-| `4f7cd60` | 8 | 721,958 | 38.9 | 329 | 67 | 0 | 448 | 78 | 2.38 |
+| `c1f1f15` | 4 | 595,058 | 2.2 | 0 | 0 | 0 | 78 | 2 | 0.54 |
+| `c1f1f15` | 6 | 439,162 | 1.5 | 0 | 0 | 0 | 135 | 1 | 15.28 |
+| `c1f1f15` | 8 | 402,044 | 0.6 | 0 | 0 | 0 | 132 | 1 | 26.55 |
+| `1165c90` | 4 | 700,173 | 5.9 | 0 | 0 | 0 | 101 | 3 | 0.01 |
+| `1165c90` | 6 | 746,007 | 10.5 | 2 | 0 | 0 | 167 | 11 | 0.14 |
+| `1165c90` | 8 | 717,384 | 26.4 | 269 | 57 | 0 | 472 | 78 | 2.34 |
+| `f9e295d` | 4 | 699,194 | 5.1 | 0 | 0 | 0 | 109 | 3 | 0.01 |
+| `f9e295d` | 6 | 743,908 | 9.7 | 0 | 0 | 0 | 157 | 8 | 0.11 |
+| `f9e295d` | 8 | 721,958 | 38.9 | 329 | 67 | 0 | 448 | 78 | 2.38 |
 
 **CPU and cores.** In cores (CPU time over the phase's 30 s). The
 eviction thread's "rest": its share neither running nor waiting for a
@@ -470,20 +470,20 @@ rounds.
 
 | build | threads | readers | rest of the process | eviction thread | eviction running % | batch wall over eviction CPU | eviction thread, the rest % | longest batch ms | machine cores | other processes' cores |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `bf19075` | 4 | 3.99 | 1.19 | 0.124 | 12.4 | 0.98 | -0.1 | 2 | 5.46 | 0.15 |
-| `bf19075` | 6 | 5.28 | 0.83 | 0.100 | 10.1 | 0.99 | -0.1 | 2 | 6.47 | 0.26 |
-| `bf19075` | 8 | 6.24 | 0.70 | 0.092 | 9.2 | 0.99 | -0.1 | 2 | 7.33 | 0.31 |
-| `eaec93e` | 4 | 3.99 | 1.50 | 0.157 | 15.7 | 0.98 | -0.1 | 2 | 5.86 | 0.21 |
-| `eaec93e` | 6 | 5.96 | 1.68 | 0.245 | 24.5 | 1.00 | 0.3 | 16 | 8.07 | 0.19 |
-| `eaec93e` | 8 | 7.41 | 1.68 | 0.313 | 31.3 | 1.02 | 1.1 | 16 | 9.62 | 0.22 |
-| `4f7cd60` | 4 | 3.99 | 1.50 | 0.154 | 15.4 | 0.98 | -0.1 | 4 | 5.86 | 0.20 |
-| `4f7cd60` | 6 | 5.96 | 1.69 | 0.249 | 24.9 | 1.01 | 0.4 | 6 | 8.11 | 0.21 |
-| `4f7cd60` | 8 | 7.39 | 1.66 | 0.316 | 31.6 | 1.02 | 1.1 | 23 | 9.55 | 0.18 |
+| `c1f1f15` | 4 | 3.99 | 1.19 | 0.124 | 12.4 | 0.98 | -0.1 | 2 | 5.46 | 0.15 |
+| `c1f1f15` | 6 | 5.28 | 0.83 | 0.100 | 10.1 | 0.99 | -0.1 | 2 | 6.47 | 0.26 |
+| `c1f1f15` | 8 | 6.24 | 0.70 | 0.092 | 9.2 | 0.99 | -0.1 | 2 | 7.33 | 0.31 |
+| `1165c90` | 4 | 3.99 | 1.50 | 0.157 | 15.7 | 0.98 | -0.1 | 2 | 5.86 | 0.21 |
+| `1165c90` | 6 | 5.96 | 1.68 | 0.245 | 24.5 | 1.00 | 0.3 | 16 | 8.07 | 0.19 |
+| `1165c90` | 8 | 7.41 | 1.68 | 0.313 | 31.3 | 1.02 | 1.1 | 16 | 9.62 | 0.22 |
+| `f9e295d` | 4 | 3.99 | 1.50 | 0.154 | 15.4 | 0.98 | -0.1 | 4 | 5.86 | 0.20 |
+| `f9e295d` | 6 | 5.96 | 1.69 | 0.249 | 24.9 | 1.01 | 0.4 | 6 | 8.11 | 0.21 |
+| `f9e295d` | 8 | 7.39 | 1.66 | 0.316 | 31.6 | 1.02 | 1.1 | 23 | 9.55 | 0.18 |
 
 **Further figures** (from the JSON of each run, and derived):
 
 * With 8 threads a phase made about 590,000 after-load calls a second
-  (17.6 and 17.9 million in 30 s, `eaec93e` and `4f7cd60` round 1). 13
+  (17.6 and 17.9 million in 30 s, `1165c90` and `f9e295d` round 1). 13
   percent of them entered `evictorLock` (2.26 and 2.41 million), against
   0.5 percent with 4 threads and 1.5 to 1.7 percent with 6.
 * With 8 threads the after-load calls took 3.4 percent of the readers'
@@ -492,20 +492,20 @@ rounds.
   their share of the time.
 * A reader's mean block on a monitor (blocked percent times the readers,
   over the blocks a second) was about 120 to 140 microseconds with 8
-  threads on `eaec93e` and `4f7cd60`, about 15 with 6, and about 35 on
-  `bf19075` with 8 (its file's monitor, held across a read).
-* The sampled readers (8, 20 s): on `eaec93e` and `4f7cd60` BLOCKED in
+  threads on `1165c90` and `f9e295d`, about 15 with 6, and about 35 on
+  `c1f1f15` with 8 (its file's monitor, held across a read).
+* The sampled readers (8, 20 s): on `1165c90` and `f9e295d` BLOCKED in
   `Eviction.wake` on `java.lang.Object` in 1.7, 1.3, 0.1 and 1.5 percent
   of the samples, the most frequent BLOCKED place in three of the four
   runs (in the fourth `BufferedStream.read`, 1.1 percent); also BLOCKED
   in `BufferedStream.read`, `Cache3.liveOrNewHandle` and on
-  `NativeThreadSet`, each 0.1 to 1.3 percent. On `bf19075` BLOCKED on
+  `NativeThreadSet`, each 0.1 to 1.3 percent. On `c1f1f15` BLOCKED on
   `FileStream$DbFile` in 18.4 and 18.5 percent.
 
 **The hypotheses, against the predictions written before the run.**
 
 * **The entry's hypothesis: partly supported.** The long gets come with 8
-  threads only, on `eaec93e` and `4f7cd60` only, with the process at about
+  threads only, on `1165c90` and `f9e295d` only, with the process at about
   9.4 cores and the machine at 9.6 of its 10. But the eviction thread did
   not fall behind. Its batches' time by the clock was 1.02 times its CPU
   time, not "well above". It got twice the CPU with 8 threads as with 4
@@ -518,8 +518,8 @@ rounds.
   ScaleBench's get phases have none.
 * **H2, the monitor in `Eviction.wake`: holds, for the long after-load
   calls.** They began without pressure and did not park. The mean call
-  with 8 threads was 4.4 times that with 4 on `eaec93e` and `4f7cd60`
-  (472 against 101 ns, 448 against 109), 1.7 times on `bf19075`. Readers
+  with 8 threads was 4.4 times that with 4 on `1165c90` and `f9e295d`
+  (472 against 101 ns, 448 against 109), 1.7 times on `c1f1f15`. Readers
   blocked rose 0.01, 0.13, 2.3 percent with 4, 6, 8 threads. The samples
   show BLOCKED in `Eviction.wake` on `java.lang.Object`. Its refutation by
   count is not met: the gets over 10 ms are 4.7 and 4.9 times the calls
@@ -529,17 +529,17 @@ rounds.
   and 9.55 cores, the rest of the process at 1.66 to 1.68. The eviction
   thread's rest was 1.1 percent against -0.1 with 4, and its batch ratio
   1.02 against 0.98. There were idle cores with 4 threads (5.9) and with
-  `bf19075` at 8 (7.3), and no long call there. With 6 threads (8.1
+  `c1f1f15` at 8 (7.3), and no long call there. With 6 threads (8.1
   cores) the case is at its edge: no call over 10 ms, 2 gets over 10 ms
   in four phases, the longest 10.5 ms.
 * **H4, the other processes: refuted.** They used 0.17 to 0.24 cores, and
   the waits stayed: 57 and 67 calls over 10 ms in two phases, against
   last night's 48.
-* **H5, a commit after 005-46: refuted.** `eaec93e` had 57 calls and 269
-  gets over 10 ms, `4f7cd60` 67 and 329: within the noise. 005-46 alone
+* **H5, a commit after 005-46: refuted.** `1165c90` had 57 calls and 269
+  gets over 10 ms, `f9e295d` 67 and 329: within the noise. 005-46 alone
   brings the case.
 * **The Reading's other predictions.** As predicted: no load waited for a
-  batch; `eaec93e` like `4f7cd60`; the call's cost growing with the
+  batch; `1165c90` like `f9e295d`; the call's cost growing with the
   readers. Not as predicted: the Reading expected the long gets to be
   mostly these calls (running readers rarely lose their cores). Four of
   five gets over 10 ms had no after-load call over 10 ms.
@@ -549,7 +549,7 @@ rounds.
 1. Since 005-46 the readers do not queue on a file's monitor. With 8
    threads the process runs 7.4 cores of readers, 1.7 of ZGC and the
    compiler and 0.3 of eviction: about 9.4 of F53's 10 cores (8
-   performance, 2 efficiency), the machine 9.6. `bf19075`'s readers spend
+   performance, 2 efficiency), the machine 9.6. `c1f1f15`'s readers spend
    27 percent of their time blocked on the file's monitor, so its process
    leaves cores free.
 2. With no core free, a thread that blocks on a monitor, or is woken,
@@ -613,7 +613,7 @@ Decision and fix, 2026-10-29
 ----------------------------
 
 **Frans's decision** (2026-10-29, 09:49): option A of the
-Recommendation, (a) and then (b). The fix is in `main` (`988fe1a`), by
+Recommendation, (a) and then (b). The fix is in `main` (`52aeb04`), by
 Claude (Opus 5.5, Claude Code), for 006-10. The rest of the long gets is
 accepted as a full machine: with every core busy (8 readers and ZGC's
 workers on F53's 10 cores), a thread that blocks on a monitor or is woken
@@ -698,7 +698,7 @@ the flag where the code always did.
 **An untimed count** ([fix/run.sh](../005-todo/65-gets-with-8-readers/fix/run.sh):
 `EntriesProbe` with the counters of `mkcount.py`; 1M keys of 100 bytes on
 disk, from the OS's cache, a budget of 20 MB, ZGC, 8 reader threads, 10 s
-after 3 s of warming; `main` before the fix (`4a69f53`) and the fix in
+after 3 s of warming; `main` before the fix (`81bfe7e`) and the fix in
 turns, two runs each; F53 busy, load 13 to 16, so the gets a second are
 not a measurement). A second:
 
@@ -712,15 +712,15 @@ not a measurement). A second:
 
 The loads enter the monitor about 1.5 times a series of batches, the
 first loads after the thread has taken a request, as (a) expected ("about
-the batch series' rate"). A first count in the morning, on `633ad86`
+the batch series' rate"). A first count in the morning, on `1c9e888`
 against a first version of the fix, gave 76,800 and 189,566 entries a
 second against 526 and 564. The output:
 [fix/results-2026-10-29.txt](../005-todo/65-gets-with-8-readers/fix/results-2026-10-29.txt).
 
-**Gates**, in the clone on `4a69f53` (`main` with 005-64's buffer time of
+**Gates**, in the clone on `81bfe7e` (`main` with 005-64's buffer time of
 50 ms) with the fix, nice 10, F53 shared with other sessions' work
 ([fix/gates.txt](../005-todo/65-gets-with-8-readers/fix/gates.txt)); in `main` as
-`988fe1a` on `5a6befd`, the same `java/`:
+`52aeb04` on `bb25185`, the same `java/`:
 
 * `before-commit.sh`: "BEFORE COMMIT OK (100 s)", 1,071 unit tests and
   78 f-tests.
@@ -753,7 +753,7 @@ window 2 of night 1 of release 2026.2 (016-02, 016-05 section 6):
 2026-11-04, 02:53 to 03:13, quiet by the conductor's check and by
 `threads.sh`'s (1-minute load 1.54 at 02:54, six minutes after `night.sh`
 ended; AC power; one idle session), exit 0, `threads: OK, 0 problems`.
-The 10M load with `4f7cd60`'s jar, then the builds in turns, ABCD DCBA;
+The 10M load with `f9e295d`'s jar, then the builds in turns, ABCD DCBA;
 the jars of State's step 1; JDK 27 and macOS 27.0.1, as on the first
 night. `sum.py`'s summary is kept as
 [night/results-2026-11-04.txt](../005-todo/65-gets-with-8-readers/night/results-2026-11-04.txt).
@@ -772,45 +772,45 @@ before the call; State).
 
 | Build | Threads | Gets a second | Longest get, ms | Gets > 10 ms | After-load > 10 ms | After-load, ns a call | Into `evictorLock`, a second | Readers blocked, % |
 |---|---|---|---|---|---|---|---|---|
-| `bf19075` | 4 | 608,542 | 19.2 |   4 |  0 |  74 |  2,295 |  0.60 |
-| `bf19075` | 6 | 437,382 | 18.9 |   7 |  0 | 142 |  1,096 | 16.14 |
-| `bf19075` | 8 | 402,390 | 16.5 |  18 |  1 | 141 |    915 | 27.00 |
-| `5a6befd` | 4 | 689,380 | 12.5 |   4 |  0 | 103 |  3,147 |  0.01 |
-| `5a6befd` | 6 | 736,479 |  9.2 |   0 |  0 | 173 |  7,072 |  0.10 |
-| `5a6befd` | 8 | 713,827 | 49.3 | 298 | 49 | 459 | 81,877 |  2.57 |
-| `988fe1a` | 4 | 676,100 | 11.7 |   1 |  0 | 117 |    341 |  0.01 |
-| `988fe1a` | 6 | 746,254 |  9.5 |   0 |  0 | 148 |    445 |  0.03 |
-| `988fe1a` | 8 | 726,532 | 47.8 | 492 | 20 | 194 |    484 |  0.89 |
-| `4f7cd60` | 4 | 677,051 | 10.8 |   3 |  0 | 109 |  3,032 |  0.01 |
-| `4f7cd60` | 6 | 745,716 | 13.8 |   7 |  0 | 160 |  7,407 |  0.11 |
-| `4f7cd60` | 8 | 725,154 | 30.5 | 268 | 51 | 443 | 70,300 |  2.31 |
+| `c1f1f15` | 4 | 608,542 | 19.2 |   4 |  0 |  74 |  2,295 |  0.60 |
+| `c1f1f15` | 6 | 437,382 | 18.9 |   7 |  0 | 142 |  1,096 | 16.14 |
+| `c1f1f15` | 8 | 402,390 | 16.5 |  18 |  1 | 141 |    915 | 27.00 |
+| `bb25185` | 4 | 689,380 | 12.5 |   4 |  0 | 103 |  3,147 |  0.01 |
+| `bb25185` | 6 | 736,479 |  9.2 |   0 |  0 | 173 |  7,072 |  0.10 |
+| `bb25185` | 8 | 713,827 | 49.3 | 298 | 49 | 459 | 81,877 |  2.57 |
+| `52aeb04` | 4 | 676,100 | 11.7 |   1 |  0 | 117 |    341 |  0.01 |
+| `52aeb04` | 6 | 746,254 |  9.5 |   0 |  0 | 148 |    445 |  0.03 |
+| `52aeb04` | 8 | 726,532 | 47.8 | 492 | 20 | 194 |    484 |  0.89 |
+| `f9e295d` | 4 | 677,051 | 10.8 |   3 |  0 | 109 |  3,032 |  0.01 |
+| `f9e295d` | 6 | 745,716 | 13.8 |   7 |  0 | 160 |  7,407 |  0.11 |
+| `f9e295d` | 8 | 725,154 | 30.5 | 268 | 51 | 443 | 70,300 |  2.31 |
 
 **Further figures, with 8 threads** (from the summary, the runs' JSON and
 the GC logs):
 
 * No reader parked in any phase, and none of the after-load calls over
   10 ms began under pressure, as on 2026-10-28.
-* The gets over 10 ms run by run: the fix 238 and 254; `5a6befd` 164 and
-  134; `4f7cd60` 144 and 124. On 2026-10-28 `eaec93e` and `4f7cd60` had
+* The gets over 10 ms run by run: the fix 238 and 254; `bb25185` 164 and
+  134; `f9e295d` 144 and 124. On 2026-10-28 `1165c90` and `f9e295d` had
   122 to 175 a run. In gets: 11.3 in a million with the fix, 7.0 on
-  `5a6befd`, 6.2 on `4f7cd60`. The longest gets: 47.8 and 24.4 ms with the
-  fix, 31.8 and 49.3 on `5a6befd`, 30.5 and 21.0 on `4f7cd60`.
+  `bb25185`, 6.2 on `f9e295d`. The longest gets: 47.8 and 24.4 ms with the
+  fix, 31.8 and 49.3 on `bb25185`, 30.5 and 21.0 on `f9e295d`.
 * p99.9 of the gets: 69.6 and 68.1 microseconds with the fix, 74.8 and
-  120.3 on `5a6befd`, 72.2 and 70.7 on `4f7cd60`. Gets a second: the fix
-  1.8 percent above `5a6befd`, 0.2 above `4f7cd60`, within the noise.
-* The machine: 9.64 of its 10 cores with the fix, 9.75 on `5a6befd`, 9.54
-  on `4f7cd60`, 7.86 on `bf19075`.
-* The eviction thread: 0.354 cores with the fix, 0.301 on `5a6befd`, 0.315
-  on `4f7cd60`; about 5,400 batches a phase with the fix against 5,100;
+  120.3 on `bb25185`, 72.2 and 70.7 on `f9e295d`. Gets a second: the fix
+  1.8 percent above `bb25185`, 0.2 above `f9e295d`, within the noise.
+* The machine: 9.64 of its 10 cores with the fix, 9.75 on `bb25185`, 9.54
+  on `f9e295d`, 7.86 on `c1f1f15`.
+* The eviction thread: 0.354 cores with the fix, 0.301 on `bb25185`, 0.315
+  on `f9e295d`; about 5,400 batches a phase with the fix against 5,100;
   the batches' time by the clock 1.03 times its CPU time (1.06 and 1.02),
   so on its core. The longest batch so far: 14 and 39 ms with the fix, 7
-  and 13 on `5a6befd`, 18 and 10 on `4f7cd60`.
+  and 13 on `bb25185`, 18 and 10 on `f9e295d`.
 * The sampled readers (8, 20 s): BLOCKED in `Eviction.wake` on
-  `java.lang.Object` in 1.3 and 0.6 percent of the samples on `5a6befd`,
-  0.7 and 0.4 on `4f7cd60`, in none with the fix; with the fix BLOCKED
+  `java.lang.Object` in 1.3 and 0.6 percent of the samples on `bb25185`,
+  0.7 and 0.4 on `f9e295d`, in none with the fix; with the fix BLOCKED
   most in `BufferedStream.read` (1.1 and 0.3 percent).
 * The safepoints of the 8-thread phases (GC logs): with the fix 0 of 350
-  took over 2 ms to reach, `5a6befd` 2 of 337 (3.4 and 2.0 ms), `4f7cd60`
+  took over 2 ms to reach, `bb25185` 2 of 337 (3.4 and 2.0 ms), `f9e295d`
   2 of 358 (2.1 and 2.4 ms). As on 2026-10-28 (Reading), running readers
   rarely lost their cores for long, so the long gets most likely fall
   where a safepoint does not wait for a reader: in the kernel's read, or
@@ -818,34 +818,34 @@ the GC logs):
 
 **The night's floor.** This night was noisier than 2026-10-28 for every
 build: gets of 6.1 to 19.2 ms with 4 threads (the first night at most
-5.9), and on `bf19075` with 8 threads 18 gets over 10 ms, a longest of
+5.9), and on `c1f1f15` with 8 threads 18 gets over 10 ms, a longest of
 16.5 ms and one after-load call of 10.2 ms (the first night none, 0.6 ms
 and none). The other processes used 0.13 to 0.72 cores in the phases, but
-1.35 to 1.39 in `bf19075`'s second run, the last (03:11 to 03:13). What
+1.35 to 1.39 in `c1f1f15`'s second run, the last (03:11 to 03:13). What
 made the floor is not known. The builds ran in turns, so the comparison
 between them stands; this night's counts and the first night's are not
 comparable one to one.
 
 **Against the expectation** (State, step 3), with 8 threads, the fix
-against `5a6befd`:
+against `bb25185`:
 
 * The entries into `evictorLock` from about 78,000 a second to a few
-  hundred: **met**. 81,877 to 484 a second (`4f7cd60`: 70,300): 5 in
+  hundred: **met**. 81,877 to 484 a second (`f9e295d`: 70,300): 5 in
   1,000 of the calls over the trigger (97,540 a second with the fix), and
   fewer than 1 in 1,000 of all after-load calls (about 600,000 a
   second).
 * The after-load call near its cost with 4 threads: **met, in the main**.
   459 to 194 ns, against 117 with 4 threads: 1.7 times the 4-thread cost,
-  where it was 4.5 times (`bf19075`: 1.9).
+  where it was 4.5 times (`c1f1f15`: 1.9).
 * The after-load calls over 10 ms near 0: **not met**. 49 to 20 (8 and
   12), down three fifths. With the fix fewer than 1 in 1,000 calls
   enters the monitor; the numbers do not tell whether the 20 are among
   those or readers that lost their core within the call (the call is
   timed whole).
 * The gets over 10 ms down by about a fifth, not to 0: **refuted**. Up
-  from 298 to 492, and 268 on `4f7cd60`. Each of the fix's two runs is
+  from 298 to 492, and 268 on `f9e295d`. Each of the fix's two runs is
   above each of the eight runs with 8 threads of the builds with 005-46
-  and without the fix (`eaec93e`, `5a6befd`, `4f7cd60`), on both nights.
+  and without the fix (`1165c90`, `bb25185`, `f9e295d`), on both nights.
   The longest get did not change.
 
 **What is shown, and what is not.**
@@ -877,7 +877,7 @@ goes against State's step 3). Keep the fix: it removes BergDB's own share,
 the hot monitor, as designed; the only cost seen is the rise of the gets
 over 10 ms, not yet known to be its. Before the close, one more step in a
 quiet block: `threads.sh` with
-`BUILDS="5a6befd 988fe1a" ROUNDS=4` and State's `B` (the two builds in
+`BUILDS="bb25185 52aeb04" ROUNDS=4` and State's `B` (the two builds in
 turns AB BA AB BA, about 20 minutes, the database loaded by the fix's jar;
 no new build), to tell whether the rise of the gets over 10 ms is the
 fix's. If it is not: the entry closes, the rest of the long gets accepted
@@ -905,8 +905,8 @@ repository), `results.txt`, `block.log`, `out/summary.txt` (the digest),
 and per step `out/STEP/` (`runs.txt`, the runs' text and JSON, the GC
 logs, `summary.txt`, `gc.txt`, for step 3 `parts.txt`). ScaleBench C as
 in the AB/BA step (State): 10M key24 keys, 665 MB budget, ZGC, 2,660 MB
-heap; the builds of `/Users/f/fl/bench/006-10/e65-builds`, A `5a6befd`
-(`main` before the fix, jar `79925f95`) and B `988fe1a` (the fix, jar
+heap; the builds of `/Users/f/fl/bench/006-10/e65-builds`, A `bb25185`
+(`main` before the fix, jar `79925f95`) and B `52aeb04` (the fix, jar
 `2b5202f0`); four rounds in turns, AB BA AB BA; each run 30 s of 7
 threads, then 30 s of 8 threads, then 20 s of 8 sampled readers, so each
 step has its own 8-thread control in the same JVMs. One 10M load for all
@@ -964,18 +964,18 @@ most of the four; machine cores the mean of the phases.
 
 | Step    | Build     | Threads | Gets a second | Gets > 10 ms | Per round       | Longest, ms | After-load > 10 ms | Machine cores |
 |---|---|---|---|---|---|---|---|---|
-| `t7`    | `5a6befd` | 7 | 725,011 |    36 | 20 3 3 10       |  24.0 |   6 | 9.00 |
-| `t7`    | `988fe1a` | 7 | 732,643 |    32 | 6 6 16 4        |  33.2 |   0 | 9.10 |
-| `t7`    | `5a6befd` | 8 | 706,957 |   560 | 139 134 124 163 |  52.5 | 107 | 9.56 |
-| `t7`    | `988fe1a` | 8 | 710,889 |   968 | 239 252 246 231 |  48.8 |  22 | 9.64 |
-| `cgc1`  | `5a6befd` | 7 | 742,355 |    93 | 35 0 42 16      | 219.1 |   2 | 8.79 |
-| `cgc1`  | `988fe1a` | 7 | 751,203 |   184 | 37 70 35 42     | 246.1 |   0 | 8.75 |
-| `cgc1`  | `5a6befd` | 8 | 699,004 |    22 | 6 2 12 2        |  16.9 |   3 | 9.70 |
-| `cgc1`  | `988fe1a` | 8 | 716,414 |    85 | 19 43 17 6      | 111.6 |   4 | 9.70 |
-| `parts` | `5a6befd` | 7 | 703,578 |    37 | 9 6 11 11       |  30.8 |   5 | 8.97 |
-| `parts` | `988fe1a` | 7 | 707,185 |    38 | 4 6 16 12       |  26.3 |   2 | 9.02 |
-| `parts` | `5a6befd` | 8 | 687,716 |   640 | 157 151 153 179 |  34.4 |  99 | 9.56 |
-| `parts` | `988fe1a` | 8 | 696,008 | 1,021 | 256 264 217 284 |  89.1 |  22 | 9.60 |
+| `t7`    | `bb25185` | 7 | 725,011 |    36 | 20 3 3 10       |  24.0 |   6 | 9.00 |
+| `t7`    | `52aeb04` | 7 | 732,643 |    32 | 6 6 16 4        |  33.2 |   0 | 9.10 |
+| `t7`    | `bb25185` | 8 | 706,957 |   560 | 139 134 124 163 |  52.5 | 107 | 9.56 |
+| `t7`    | `52aeb04` | 8 | 710,889 |   968 | 239 252 246 231 |  48.8 |  22 | 9.64 |
+| `cgc1`  | `bb25185` | 7 | 742,355 |    93 | 35 0 42 16      | 219.1 |   2 | 8.79 |
+| `cgc1`  | `52aeb04` | 7 | 751,203 |   184 | 37 70 35 42     | 246.1 |   0 | 8.75 |
+| `cgc1`  | `bb25185` | 8 | 699,004 |    22 | 6 2 12 2        |  16.9 |   3 | 9.70 |
+| `cgc1`  | `52aeb04` | 8 | 716,414 |    85 | 19 43 17 6      | 111.6 |   4 | 9.70 |
+| `parts` | `bb25185` | 7 | 703,578 |    37 | 9 6 11 11       |  30.8 |   5 | 8.97 |
+| `parts` | `52aeb04` | 7 | 707,185 |    38 | 4 6 16 12       |  26.3 |   2 | 9.02 |
+| `parts` | `bb25185` | 8 | 687,716 |   640 | 157 151 153 179 |  34.4 |  99 | 9.56 |
+| `parts` | `52aeb04` | 8 | 696,008 | 1,021 | 256 264 217 284 |  89.1 |  22 | 9.60 |
 
 **(1) 7 threads (`t7`).** With 7 readers the gets over 10 ms fall from 560
 to 36 (A) and from 968 to 32 (B): 0.41 and 0.36 in a million gets, against
@@ -1022,10 +1022,10 @@ the histogram's 640 and 1,021), sums of the four runs:
 
 | Build     | Threads | Recorded | Read | After-load | Blocked | Off core | Other | Their ms | Off core ms | Read ms | Blocked ms |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `5a6befd` | 7 |    37 |  12 |   5 |   2 |  16 | 2 |    513 |    511 |   183 |    67 |
-| `988fe1a` | 7 |    38 |  19 |   2 |   4 |  13 | 0 |    512 |    510 |   246 |    89 |
-| `5a6befd` | 8 |   643 | 267 | 100 |  61 | 215 | 0 |  7,893 |  7,869 | 3,321 | 2,192 |
-| `988fe1a` | 8 | 1,026 | 499 |  22 | 110 | 393 | 2 | 12,980 | 12,949 | 6,187 | 2,236 |
+| `bb25185` | 7 |    37 |  12 |   5 |   2 |  16 | 2 |    513 |    511 |   183 |    67 |
+| `52aeb04` | 7 |    38 |  19 |   2 |   4 |  13 | 0 |    512 |    510 |   246 |    89 |
+| `bb25185` | 8 |   643 | 267 | 100 |  61 | 215 | 0 |  7,893 |  7,869 | 3,321 | 2,192 |
+| `52aeb04` | 8 | 1,026 | 499 |  22 | 110 | 393 | 2 | 12,980 | 12,949 | 6,187 | 2,236 |
 
 "Other": shared batch (A 2 with 7 threads, B 2 with 8); no get was in the
 classes safepoint, on core or mixed (safepoints overlapping the long gets:
@@ -1101,8 +1101,8 @@ Frans's to decide (Done when).
   as many gets over 10 ms as before the fix (about 11 to 12 in a million),
   longest gets of 30 to 89 ms; with 7 readers rare gets of up to 33 ms;
   and the open split of off core (runnable or waiting in the kernel).
-* **Option 2: revert the fix (`988fe1a`).** What changes: `Eviction.wake`,
-  `afterLoad` and `EvictorRun` back to `5a6befd`'s, every load over the
+* **Option 2: revert the fix (`52aeb04`).** What changes: `Eviction.wake`,
+  `afterLoad` and `EvictorRun` back to `bb25185`'s, every load over the
   trigger into `evictorLock` again; the commit's other two changes should
   stay (`sweep`'s trigger computed under its monitor, against the
   `setBudget` race, and an interrupt with a request pending not ending the
@@ -1152,7 +1152,7 @@ Outcome
 -------
 
 **Frans's decision, 2026-11-06, 11:09 to 11:11: Option 1**, keep the fix
-(`988fe1a`) and close this entry as explained. The long gets with 8
+(`52aeb04`) and close this entry as explained. The long gets with 8
 readers on F53 are readers off their cores on a full machine: 8 readers
 and ZGC's workers on F53's 8 performance and 2 efficiency cores, so the
 operating system's scheduling, outside the ~20 ms target for BergDB's own
@@ -1215,9 +1215,9 @@ Left, for the next quiet block (about 24 minutes: the 10M load with the
 fix's jar, then 8 runs, AB BA AB BA, within `threads.sh`'s 30):
 
     cd /Users/f/fl/repos/bergdb/items/005-todo/65-gets-with-8-readers/night
-    B=/Users/f/fl/bench/006-10/e65-builds BUILDS="5a6befd 988fe1a" ROUNDS=4 sh threads.sh
+    B=/Users/f/fl/bench/006-10/e65-builds BUILDS="bb25185 52aeb04" ROUNDS=4 sh threads.sh
 
-* `B` checked 2026-11-05: the clones `5a6befd` and `988fe1a` at their
+* `B` checked 2026-11-05: the clones `bb25185` and `52aeb04` at their
   commits, clean, their jars those of step 1 (`79925f95` and `2b5202f0`),
   `sb/classes-5a6befd` and `sb/classes-988fe1a` in place. No `prep.sh`.
 * Before the run, set `$B/raw/threads` aside: it holds the GC logs of
@@ -1229,7 +1229,7 @@ fix's jar, then 8 runs, AB BA AB BA, within `threads.sh`'s 30):
   (after 005-47's runs); its time limit (07:55) is to be changed for
   another block.
 * How to read it, written before any run: the rise is the fix's if, with
-  8 threads, the fix has more gets over 10 ms than `5a6befd` in at least
+  8 threads, the fix has more gets over 10 ms than `bb25185` in at least
   3 of the 4 rounds and at least 1.3 times as many in sum (2026-11-04:
   492 against 298, 1.65 times); otherwise it is not shown to be the fix's,
   and the entry closes as Frans decided. If it is the fix's: the
@@ -1248,8 +1248,8 @@ outputs in `/Users/f/fl/bench/005-65-abba-2026-11-05/` (`out/summary.txt`,
 `out/runs.txt`, `gc-logs/`); the 2026-11-04 GC logs put back in
 `$B/raw/threads`.
 
-With 8 threads, per round (A is `5a6befd`, `main` before the fix; B is
-`988fe1a`, the fix):
+With 8 threads, per round (A is `bb25185`, `main` before the fix; B is
+`52aeb04`, the fix):
 
 | Round | Gets > 10 ms, A | Gets > 10 ms, B | Longest get ms, A | Longest get ms, B | Waits > 10 ms, A | Waits > 10 ms, B |
 |---|---:|---:|---:|---:|---:|---:|
@@ -1291,8 +1291,8 @@ done; `B` still holds the four builds and `sb/`.
 As written on 2026-10-29: open until the thread sweep reruns with the fix
 in a quiet block on F53, as on 2026-10-28
 ([night/](../005-todo/65-gets-with-8-readers/night/)), with four builds in turns:
-`bf19075` and `4f7cd60` (the first night's reference and HEAD), `5a6befd`
-(`main` before the fix) and `988fe1a` (the fix). Made for it on
+`c1f1f15` and `f9e295d` (the first night's reference and HEAD), `bb25185`
+(`main` before the fix) and `52aeb04` (the fix). Made for it on
 2026-10-29: the third version of `ScaleBench-065.diff` counts the
 after-load calls that enter `evictorLock` (an estimate: with the fix, the
 calls that found `wanted` clear just before the call), `sum.py` prints
@@ -1301,20 +1301,20 @@ ScaleBench with `bergdb.pub.util.SyncLevel` for a jar of `main` (005-56).
 
 1. Before the block, not quiet (under a minute, then about 2 minutes),
    from the repository's `items/005-todo/65-gets-with-8-readers/night/`:
-   `B=/Users/f/fl/bench/006-10/e65-builds BUILDS="bf19075 5a6befd 988fe1a 4f7cd60" sh prep.sh`,
+   `B=/Users/f/fl/bench/006-10/e65-builds BUILDS="c1f1f15 bb25185 52aeb04 f9e295d" sh prep.sh`,
    then the same `B` and `BUILDS` with `SMOKE=1 sh threads.sh`, which must
    print `threads (SMOKE): OK`. Done 2026-10-29, 10:44 to 10:47, with
    these four builds (jars `308e7d01`, `79925f95`, `2b5202f0` and
    `517165ee`, by the first 8 bytes of their SHA-256): `threads (SMOKE):
    OK, 0 problems`, 24 of 24 rows; in its small runs (20,000 keys, a
-   0.5 MB budget) `5a6befd` entered `evictorLock` 351,000 to 382,000 times
+   0.5 MB budget) `bb25185` entered `evictorLock` 351,000 to 382,000 times
    a second, the fix 1,000 to 3,000. So `B` is ready, and step 2 can run
    as it is; step 1 again only if `B` is lost.
 2. In the block, the same `B` and `BUILDS` with `sh threads.sh`: about 21
-   minutes (the 10M load with `4f7cd60`'s jar, as on 2026-10-28, then 8
+   minutes (the 10M load with `f9e295d`'s jar, as on 2026-10-28, then 8
    runs, ABCD DCBA), within its `# minutes: 30`. The summary in
    `night/out/summary.txt`; the raw outputs stay out of the repository.
-3. Expected, by (a): with 8 threads, the fix against `5a6befd`, the
+3. Expected, by (a): with 8 threads, the fix against `bb25185`, the
    entries into `evictorLock` from about 78,000 a second to a few hundred,
    the after-load call near its cost with 4 threads, the after-load calls
    over 10 ms near 0, and the gets over 10 ms down by about a fifth, not
@@ -1372,10 +1372,10 @@ with a clean tree and its jar, the jars those of State's step 1 (the first
 
 | Build     | What                                       | Jar SHA-256 |
 |---|---|---|
-| `bf19075` | 005-50, the first night's reference        | `308e7d01`  |
-| `5a6befd` | `main` before the fix (012-16's commit)    | `79925f95`  |
-| `988fe1a` | the fix                                    | `2b5202f0`  |
-| `4f7cd60` | 006-09's HEAD, the first night's; the load | `517165ee`  |
+| `c1f1f15` | 005-50, the first night's reference        | `308e7d01`  |
+| `bb25185` | `main` before the fix (012-16's commit)    | `79925f95`  |
+| `52aeb04` | the fix                                    | `2b5202f0`  |
+| `f9e295d` | 006-09's HEAD, the first night's; the load | `517165ee`  |
 
 And `sb/`: `src` (ScaleBench with `ScaleBench-065.diff`), `classes-` of
 each build, `pidio`; `smoke/`, the smoke of 2026-10-29 (24 of 24 rows).
@@ -1414,7 +1414,7 @@ The steps, by agent F2 (016-05), first in its row:
      gets over 10 ms, the after-load calls over 10 ms, the entries into
      `evictorLock` a second, the readers blocked.
    * The explanation, against State's step 3 (expected by (a)): with 8
-     threads, the fix against `5a6befd`, the entries into `evictorLock`
+     threads, the fix against `bb25185`, the entries into `evictorLock`
      from about 78,000 a second to a few hundred, the after-load call near
      its 4-thread cost, the after-load calls over 10 ms near 0, the gets
      over 10 ms down by about a fifth, not to 0. Confirmed or refuted, by

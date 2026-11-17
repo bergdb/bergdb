@@ -1,10 +1,10 @@
-== f7974d3, -Dslack=1000
+== 6890ce3, -Dslack=1000
 valueLimit 87500; /b's node 86500 bytes; /a's ten nodes 40360
 FAULT at put 399: The transaction at time 215500000 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
   cause: bergdb.pub.util.DbException: The transaction is too large: its values and keys take 90596 bytes in the stream, more than 87500.
   iterations completed: 2
 AFTER RESTART (retain forever), put 0 fails again: bergdb.pub.util.DbException: The transaction is too large: its values and keys take 90596 bytes in the stream, more than 87500.
-== f7974d3, -Dslack=10000
+== 6890ce3, -Dslack=10000
 valueLimit 87500; /b's node 77500 bytes; /a's ten nodes 40360
 no failure; iterations 12, first available pos 2531640
 == release-2026.1, -Dslack=1000

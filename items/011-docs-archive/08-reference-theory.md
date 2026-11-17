@@ -14,7 +14,7 @@ proposed here is in effect the slot's position, which an unswizzle keeps
 
 Status: theory investigation and proposed direction. This is not an accepted
 replacement algorithm, a Java implementation, or a proof that Level 4 works.
-Source inspected: BergDB `2e0bfe6`, initially with a clean worktree. The
+Source inspected: BergDB `bdba113`, initially with a clean worktree. The
 Level 3 validation work can continue independently. No production Java,
 existing SIS proof, storage format or retention policy was changed here.
 

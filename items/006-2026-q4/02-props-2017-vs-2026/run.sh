@@ -16,10 +16,10 @@
 #
 # The versions (NAME: where, commit, directory of the Java project):
 #
-#   2015-12-28  F1-007's bergdb-git.bundle  bc11dbf  bergdb/   Props run on cissi that day
-#   2017-07-29  F1-007's bergdb-git.bundle  dbf131a  bergdb/   Props run on cissi that day
-#   2017-08-01  this repository             195cf88  java/     the 2017 import (= 49aa48d)
-#   2026-10-19  this repository             11ea2f6  java/     the 2026 code (HEAD)
+#   2015-12-28  F1-007's bergdb-git.bundle  358ad6b  bergdb/   Props run on cissi that day
+#   2017-07-29  F1-007's bergdb-git.bundle  b64383a  bergdb/   Props run on cissi that day
+#   2017-08-01  this repository             0257e0b  java/     the 2017 import (= 50786b2)
+#   2026-10-19  this repository             0e7292d  java/     the 2026 code (HEAD)
 #   orig-HASH   F1-007's bergdb-git.bundle  HASH     bergdb/   any original commit
 #   repo-HASH   this repository             HASH     java/     any commit here
 #
@@ -52,13 +52,13 @@ die() { echo "run.sh: $*" >&2; exit 1; }
 # version NAME: sets SRC (a Git repository), COMMIT and PREFIX.
 version() {
     case "$1" in
-        2015-12-28) SRC=$OUT/orig-git; COMMIT=bc11dbf; PREFIX=bergdb;;
-        2017-07-29) SRC=$OUT/orig-git; COMMIT=dbf131a; PREFIX=bergdb;;
-        2017-08-01) SRC=$REPO; COMMIT=195cf88; PREFIX=java;;
-        2026-10-19) SRC=$REPO; COMMIT=11ea2f6; PREFIX=java;;
+        2015-12-28) SRC=$OUT/orig-git; COMMIT=358ad6b; PREFIX=bergdb;;
+        2017-07-29) SRC=$OUT/orig-git; COMMIT=b64383a; PREFIX=bergdb;;
+        2017-08-01) SRC=$REPO; COMMIT=0257e0b; PREFIX=java;;
+        2026-10-19) SRC=$REPO; COMMIT=0e7292d; PREFIX=java;;
         orig-*) SRC=$OUT/orig-git; COMMIT=${1#orig-}; PREFIX=bergdb;;
         repo-*) SRC=$REPO; COMMIT=${1#repo-}; PREFIX=java;;
-        2026-10-19-maphash) SRC=$REPO; COMMIT=11ea2f6; PREFIX=java;;   # run.sh maphash
+        2026-10-19-maphash) SRC=$REPO; COMMIT=0e7292d; PREFIX=java;;   # run.sh maphash
         *) die "unknown version: $1 (one of: $VERSIONS)";;
     esac
 }

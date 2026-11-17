@@ -2,7 +2,7 @@
 ========================================
 
 Status: done (2026-11-05): the cap of the retry sleep at 640 ms for
-release 2026.3 landed in 8b97f24; the rest of the retries is in 017-06.
+release 2026.3 landed in 610caab; the rest of the retries is in 017-06.
 Kind: investigate. Created 2026-10-30 as 005-81; split on
 2026-11-04 (overload, backpressure and admission control to 017-06);
 moved here from 005-81 on 2026-11-05; decided by Frans on 2026-11-05,
@@ -98,7 +98,7 @@ reviewed again. By Claude (Opus 5.5, Claude Code).
 baselines, timed on s1."). Built the harness (`RetryBench.java`, from
 006-11's), the probe patch (`make-probe.py`), the runner and the
 summarizer in [81-overload-and-retries/](../005-todo/81-overload-and-retries/);
-built stock and probe jars on s1 from `git archive` of `0c6c4be`; ran 24
+built stock and probe jars on s1 from `git archive` of `8defe65`; ran 24
 hot-key and disjoint-key runs, 6 one-worker references and 12
 history-exhaustion runs on s1 (2 vCPUs), then 16 runs with file storage
 and durable commits, with a reopen check, and 12 with a probe of the lock
@@ -117,7 +117,7 @@ under overload. This entry now holds only the cap; status in progress.
 006-12's W3, the retry variants on s1 tonight, dropped. By Claude (Opus
 5.5, Claude Code).
 
-2026-11-05. Done: the cap landed in 8b97f24, by session bergdb-e8's agent:
+2026-11-05. Done: the cap landed in 610caab, by session bergdb-e8's agent:
 `RwTransaction.nextSleep` sleeps 10, 20, 40, 80, 160, 320 and 640 ms, then
 640 ms after every further refusal; the Nano test
 `RwTransaction.testSleepsBetweenReruns`; the Javadoc of

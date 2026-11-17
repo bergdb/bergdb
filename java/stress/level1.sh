@@ -120,7 +120,7 @@ echo "6. Props"
 # the machine. MEM's limit is the value of 2026-10-29 (after the handles work,
 # bergdb item 009, and 007-07) on JDK 27 with its default compact object
 # headers, plus one step for MEM's noise (129 to 130 since 009). The SS limits
-# are the values of 2026-10-28 after 007-07 (f89846d; bergdb 007-07, section
+# are the values of 2026-10-28 after 007-07 (b8ac8a1; bergdb 007-07, section
 # 12.3), raised on 2026-11-11 for bergdb 024-25's 12-byte node header (SS 1.53,
 # SS3 1.69; docs/log.md), plus the same one step for SS on other machines
 # (0.01). When a change improves MEM or SS, lower the limit; a change that

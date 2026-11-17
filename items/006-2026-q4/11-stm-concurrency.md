@@ -5,7 +5,7 @@ The source investigation and 276 benchmark runs across 92 configurations are com
 The results and keep/remove recommendation are in section 10.
 The follow-up review of the single-writer critical section is in section 9.
 
-Snapshot: `4685ab1d3611b9b3d8a20907c29253051be53fc6`.
+Snapshot: `377ff7af628f1fc214fc5945f9eda9179161868f`.
 Scope: inspect the implementation and evidence, measure source size, build
 and verify benchmark controls, run the comparisons, and recommend whether to
 keep STM. Production Java, Lean and the stream format were not changed.

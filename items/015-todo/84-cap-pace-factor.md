@@ -3,7 +3,7 @@
 
 Made in 024-31 (2026-11-12).
 
-Status: done (2026-11-12): made in 024-31, on `main` since `c1137b69`;
+Status: done (2026-11-12): made in 024-31, on `main` since `69b91fd7`;
 closed 2026-11-13. Kind: investigate. Created 2026-10-29 as 005-77; moved here
 on 2026-11-05 at Frans's decision (decided 2026-11-04/05), untouched: what
 follows is 005-77's as it was when it moved.
@@ -200,6 +200,6 @@ Log
 ---
 
 2026-11-13. Closed after release 2026.5 (coord-1113): the cap made in
-024-31 (Frans, 2026-11-12, 13:09; `c1137b69`), in 2026.5. Not taken by
+024-31 (Frans, 2026-11-12, 13:09; `69b91fd7`), in 2026.5. Not taken by
 024-31 (its State): the commit times, the quick suite's tail, DlProbe,
 and the 50M run.

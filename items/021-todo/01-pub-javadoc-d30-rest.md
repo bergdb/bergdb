@@ -6,7 +6,7 @@ Created 2026-11-07 by Frans Lundberg.
 
 What: three places where the user Javadoc of the Pub API (`bergdb.pub`,
 `bergdb.pub.util`) does not say what the code does, or says how it was
-before. Checked on `main` at b59e918 (2026.4-dev); all three are open.
+before. Checked on `main` at 8682edd (2026.4-dev); all three are open.
 
 1. `bergdb.pub.DataFormatException` belongs to the object code and user
    indexes (thrown by `DbValue`, `DbObject`, `RwEnvironmentImp.indexEntries`
@@ -39,7 +39,7 @@ before. Checked on `main` at b59e918 (2026.4-dev); all three are open.
    string (and, for the three-argument `resolve`, a null zone).
 
 Why: from agent d30's read-through of the documentation for release
-2026.3 (006-13's progress, 12:44; 8996de0), not fixed before the release:
+2026.3 (006-13's progress, 12:44; 165bb9e), not fixed before the release:
 006-13, section 5, "For Frans to decide (in the morning)", point 1.
 Recommended there: after the release.
 

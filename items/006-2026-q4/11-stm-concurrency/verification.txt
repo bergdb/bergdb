@@ -1,5 +1,5 @@
 006-11 targeted checks, 2026-10-30
-commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+commit 377ff7af628f1fc214fc5945f9eda9179161868f
 isolated committed-source build /private/tmp/bergdb-006-11-l0o7e8ma
 Built build/bergdb.jar
 Built stress tests in build/stress/

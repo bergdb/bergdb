@@ -1,5 +1,5 @@
 2026-10-27 04:00:26 waiting for a quiet F53; load { 1.76 1.69 1.74 }
-2026-10-27 04:05:27 quiet; load { 2.11 1.92 1.83 }; bergdb.jar from 851acdf
+2026-10-27 04:05:27 quiet; load { 2.11 1.92 1.83 }; bergdb.jar from 2966bca
 2026-10-27 04:50:38 s1 started
 2026-10-27 04:50:38 f53-10m-sd50 make
 2026-10-27 04:52:04 f53-10m-sd50:  make done: stream 5288 MB; lag at the end 107 MB (2.15 sd), largest 116 MB (2.33 sd); 109 transactions in the section; D 176592 nodes, 59 MB

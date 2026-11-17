@@ -1,7 +1,7 @@
 # 024-24. The limits, implemented
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `7c255127`, the night's fix since `1f01c5f6`. Q2 accepted
+`main` since `87afef86`, the night's fix since `9dd763df`. Q2 accepted
 by the coordinator under Frans's delegation (024-28, section 8); Q1 not
 answered.
 
@@ -21,7 +21,7 @@ of 1,000).
 
 ## 1. The Lean model
 
-Commit `705a3e1c`, `lean/SIS/Tree/Bound.lean`:
+Commit `1d600ea1`, `lean/SIS/Tree/Bound.lean`:
 
 * **`Limits`** gains a third field, `maxTxSegs`, the segments of all
   keys of a transaction (from L3: k bytes of keys in n keys are at most
@@ -59,7 +59,7 @@ theorems: none.
 
 ## 2. The Java checks
 
-Commit `abc74631` (with `IndexReference`'s constant):
+Commit `aaa0e881` (with `IndexReference`'s constant):
 
 * **Constants** in `Db`: `MAX_OPERATIONS` 500 (L1), `MAX_KEY_BYTES` 111
   (L2), `MAX_TRANS_KEY_BYTES` 57,344 (L3), `MAX_VALUE_BYTES` 8,388,608
@@ -77,7 +77,7 @@ Commit `abc74631` (with `IndexReference`'s constant):
 * **BergDB's own keys**: `Trans.Builder.putLongKey()` and
   `deleteLongKey()`, internal, take a key over L2 only under "/#" (01
   25), do not check a value's length, and mark the KV (`Kv.longKey`)
-  (since the review's R1 and R2, section 7; `abc74631` checked L4 in
+  (since the review's R1 and R2, section 7; `aaa0e881` checked L4 in
   `putLongKey` and took any long key). Used by the Pub layer's commit (`createTrans`: its
   `kvOps`, where a build step's entries are, and `indexOps`), by
   `IndexManager` (definitions, markers, the cleanup's deletes: an index
@@ -128,32 +128,32 @@ changed expected values; the claims of each test are kept unless said):
 
 | Commit     | What                                                                 |
 |------------|----------------------------------------------------------------------|
-| `f751e0ce` | CapacityTester.testWarmupDoesNotWait: 500 puts (were 1,000)          |
-| `3d8651b5` | KeyFactory.crazyKey: keys of 20 to 111 bytes (4 crazy-key tests)     |
-| `6da0660b` | DbTesterDelete: 500 a transaction; a 108-char key (was 303)          |
-| `084934f7` | DbTesterGetMany.testEndKeyPassesNoDeletedLongKeys: batches of 500    |
-| `853f6e59` | DbTesterJavadoc.testKeysAndValues: a key of 111 (was 3,000), 112 out |
-| `d1c136eb` | DbTesterLongKeys rewritten at L2 and L3, every node size             |
-| `15e0e00a` | Eviction.testHistoricalParentsAndLongKeys: keys of 111 (were 302)    |
-| `099682fb` | LimitsTester: keys to 111 and 112 refused; L1 at 500 and 501         |
-| `c780164e` | DataObjectsTester.testPutTooLarge: a put refused at 8 MiB            |
-| `ebfbd1fa` | IndexDefinitionTester: L6 = 111 (was 4,096)                          |
-| `e4e191a9` | IndexReference.testFunctionSizeLimit: 111; tooLong()                 |
-| `bace1945` | IndexHarness: long strings near 111; a refused put checked           |
-| `6a633700` | FormatFuzzer: levels near 111; an L6 refusal expected                |
-| `8c23537b` | PubTesterIndexJobs.testLargeValueNoEntry: the put refused (QL4)      |
-| `3602ff04` | PubTesterIndex: three tests in two w() each                          |
-| `db9ae6ee` | PubTesterLongKeys rewritten at L2 (111 bytes, 34 deep, å)            |
-| `c8a91823` | PubTesterPrimary.testListingBeforeDeletedKeys: w() of 500            |
-| `19a0c4a2` | PubTesterThreads: w() of 500; 20 rounds of 500                       |
-| `a51babe6` | DbTester.testTooManyDirtyNodes (f): every 20th key, 500              |
-| `cdb1b40e` | DbTesterStream.testLargeTransaction (f): 8 MiB (was 20 MB)           |
-| `08b3ef62` | Crazy (f): 8 MiB value, a key of 111 (were 20 MB, 10,000)            |
-| `db4b22bf` | BigDb, BigDbWithDeletes (f, perf): values at most 8 MiB              |
-| `c454bf96` | Get, PerfGetMany (perf): batches of 500 (were 10,000)                |
-| `f4e88077` | PayDemo (before-commit), PayTest (night): 500 a w() (were 1,000)     |
-| `7fb4bd56` | LargerThanMemory (level 4), ObjectBench, PauseProbe: 500             |
-| `957ea02d` | Perf.java, Soak: longlen 111 (was 120); performance.suite's note     |
+| `39ed1c74` | CapacityTester.testWarmupDoesNotWait: 500 puts (were 1,000)          |
+| `b7283071` | KeyFactory.crazyKey: keys of 20 to 111 bytes (4 crazy-key tests)     |
+| `ced8c219` | DbTesterDelete: 500 a transaction; a 108-char key (was 303)          |
+| `179412ef` | DbTesterGetMany.testEndKeyPassesNoDeletedLongKeys: batches of 500    |
+| `3c9f7f8c` | DbTesterJavadoc.testKeysAndValues: a key of 111 (was 3,000), 112 out |
+| `c303944c` | DbTesterLongKeys rewritten at L2 and L3, every node size             |
+| `18b7abe5` | Eviction.testHistoricalParentsAndLongKeys: keys of 111 (were 302)    |
+| `5182cc8f` | LimitsTester: keys to 111 and 112 refused; L1 at 500 and 501         |
+| `6f1c5a9b` | DataObjectsTester.testPutTooLarge: a put refused at 8 MiB            |
+| `68098d6c` | IndexDefinitionTester: L6 = 111 (was 4,096)                          |
+| `c676b56b` | IndexReference.testFunctionSizeLimit: 111; tooLong()                 |
+| `71b40e6b` | IndexHarness: long strings near 111; a refused put checked           |
+| `b6b8e563` | FormatFuzzer: levels near 111; an L6 refusal expected                |
+| `325d9590` | PubTesterIndexJobs.testLargeValueNoEntry: the put refused (QL4)      |
+| `454b46ca` | PubTesterIndex: three tests in two w() each                          |
+| `5f9a5c89` | PubTesterLongKeys rewritten at L2 (111 bytes, 34 deep, å)            |
+| `1b900ca2` | PubTesterPrimary.testListingBeforeDeletedKeys: w() of 500            |
+| `1d89f1c5` | PubTesterThreads: w() of 500; 20 rounds of 500                       |
+| `beeee6fe` | DbTester.testTooManyDirtyNodes (f): every 20th key, 500              |
+| `f60b7f37` | DbTesterStream.testLargeTransaction (f): 8 MiB (was 20 MB)           |
+| `f95acb7b` | Crazy (f): 8 MiB value, a key of 111 (were 20 MB, 10,000)            |
+| `71c63ff2` | BigDb, BigDbWithDeletes (f, perf): values at most 8 MiB              |
+| `e13a9c0b` | Get, PerfGetMany (perf): batches of 500 (were 10,000)                |
+| `efb6ac08` | PayDemo (before-commit), PayTest (night): 500 a w() (were 1,000)     |
+| `250d0f4b` | LargerThanMemory (level 4), ObjectBench, PauseProbe: 500             |
+| `2c660d16` | Perf.java, Soak: longlen 111 (was 120); performance.suite's note     |
 
 * **Results that stop being comparable**: `performance.sh`'s long-key
   results (read-100, read-1k, read-10k, read-quick, read-s; gets, scans,
@@ -161,7 +161,7 @@ changed expected values; the claims of each test are kept unless said):
   16 segments a key, not 18. And where the batch size shows (bytes a
   put, time a commit) in PayDemo, PayTest, LargerThanMemory and the perf
   group.
-* **New tests** (`5b8d2e94`): `DbTesterLimits`, for each limit the value
+* **New tests** (`4fbb965e`): `DbTesterLimits`, for each limit the value
   at it taken and one step over refused, nothing written, the database
   going on (L1 500/501; L2 at every call, two-byte letters, and by a key
   transformation; L3 57,344/57,345 through `putLongKey`; L4 8 MiB and a
@@ -175,7 +175,7 @@ changed expected values; the claims of each test are kept unless said):
 
 ## 4. Documents
 
-`98454653`: `docs/levels.md` section 3 (the limits, where each is
+`4a9ebcb2`: `docs/levels.md` section 3 (the limits, where each is
 checked, the bound with q and what is proved), `releases/next.md`
 (a section "Limits", with the users' wording and the tools whose
 results stop being comparable).
@@ -215,7 +215,7 @@ results stop being comparable).
 The review (`24-limits-implemented/review.md`, 19:04): land with fixes.
 Fixed as new commits on the branch, 19:05 to 19:09:
 
-* **R1** (`a26d1ec1`): `putLongKey` checks a value for null only, as its
+* **R1** (`a0851275`): `putLongKey` checks a value for null only, as its
   Javadoc says (it checked L4, and reclaim's copy of a value over L4,
   put through the public `Trans.kvs`, failed the database: the review's
   probe). `Db.checkLimits` now checks each KV of a user transaction,
@@ -223,12 +223,12 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   BergDB's own from the internal calls, refused with `DbException`.
   Test: `DbTesterLimits.testEachKvChecked` (the probe, then 20,000 puts
   with reclaim running).
-* **R2** (`a26d1ec1`): `putLongKey`/`deleteLongKey` take a key over L2
+* **R2** (`a0851275`): `putLongKey`/`deleteLongKey` take a key over L2
   only under BergDB's prefix "/#" (the bytes 01 25), at the call
   (`IllegalArgumentException`) and in `checkLimits`; so a Core user
   cannot put a long key through them. Every key BergDB puts over L2 is
   under "/#i/". Test: the same.
-* **R3** (`2c71524c`): Db's Javadoc and `docs/levels.md` no
+* **R3** (`e3e56207`): Db's Javadoc and `docs/levels.md` no
   longer say that a transaction within the limits never meets 005-31:
   `Db.checkDirtyNodes` counts a KV with a key transformation as
   (20 or 3) x height x segments + 3 from the stream's length, and one
@@ -237,13 +237,13 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   review's probe). **QL5's step to a `Bug` for 005-31 needs a count of
   transformed KVs within the model's bound first** (to be added to
   024-17's QL5; this item writes only its own file).
-* **R4, R5** (`2c71524c`): `WBuilder.put`, `Connection.put` and
+* **R4, R5** (`e3e56207`): `WBuilder.put`, `Connection.put` and
   `delete`, `RwEnvironment.put` and `delete` name L2 and L4;
   `WBuilder.execute`, `Connection.put` and `rw` name L6's
   `IllegalArgumentException`; `IndexBuilder`'s rule says 111 bytes and
   the refused put; the pub package's "Limits" and `releases/next.md`:
   L3 counts all the keys of a transaction.
-* **R7** (`e9201cae`): `DbTesterLongKeys.testOwnLongKeysSmallStack`
+* **R7** (`c31d7996`): `DbTesterLongKeys.testOwnLongKeysSmallStack`
   reaches 021-16's depth again: BergDB's own keys of 10,000 and 57,344
   bytes (8,193 segments) put and started again in a thread with a stack
   of 256 kB, the record limit at 30 MB so that `execute()`'s cheap count
@@ -252,7 +252,7 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   that fit. Not reached any more: a user key past 111 bytes, and the
   Pub API's deep keys (20,000 directories); the Dag below the checks
   keeps 400 kB (`DagTester.testLongKeyWalks`).
-* **R12** (`26e19264`): `DbTesterDelete.testDeleteEveryKey` also at 500
+* **R12** (`d0b52eaa`): `DbTesterDelete.testDeleteEveryKey` also at 500
   keys, deleted in one transaction.
 * **Notes, not changed:** R6 (no limit on the indexes of a directory:
   with k >= 250 on update, every object put there is refused by L1, and
@@ -269,8 +269,8 @@ Fixed as new commits on the branch, 19:05 to 19:09:
   record's size is made first; a stub stream of about 2^31 bytes would).
 
 
-**024-25 merged** (19:23, `ef0d406b`, main `79f35aa3`, CRC32C): no
-conflict. Its review's R5 (rev25), fixed in `829d6135`: a top node is
+**024-25 merged** (19:23, `c87aa6f9`, main `3dd38b23`, CRC32C): no
+conflict. Its review's R5 (rev25), fixed in `b0d41461`: a top node is
 now 48 + 16 h bytes, h at most 48 (`TopNode.MAX_HEIGHT`), so
 `Db.checkDirtyNodes`' `topBytes` and the Lean `ReleaseFits` count
 2 x (48 + 16 x 48 + 16) bytes, exactly (were 2 x (40 + 16 x 64 + 16),
@@ -281,16 +281,16 @@ unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
 
 ## 8. Gates
 
-* **On `98454653`** (before the review): Lean (lake build, no sorry or
+* **On `4a9ebcb2`** (before the review): Lean (lake build, no sorry or
   axiom, test-traces) OK; treetest's default set OK (17:52 to 18:50, 57
   minutes on one core: the slot held past the 40 minutes of the day's
   rule); before-commit OK (111 s); level1 OK (194 s); unlinkfuzz OK
   (3,226 rounds, 330 s); level2 stopped at 19:09 for the fixes. Logs in
   `lim3/logs-98454653/`.
-* **On `26e19264`** (rev24's fixes): Lean OK, before-commit OK (102 s),
+* **On `d0b52eaa`** (rev24's fixes): Lean OK, before-commit OK (102 s),
   level1 OK (184 s), unlinkfuzz OK (330 s); level2 from 19:20 (logs in
   `lim3/logs-26e19264/`). Then main (024-25) merged.
-* **On `829d6135`** (main `79f35aa3` merged, rev25's R5), the final
+* **On `b0d41461`** (main `3dd38b23` merged, rev25's R5), the final
   head, by `lim3/gates-merged.sh`, one slot at a time, 19:33 to 20:18,
   all rc = 0 (logs in `lim3/logs/`, summary `lim3/gates.out`):
 
@@ -306,7 +306,7 @@ unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
 | conformance medium, reclaim, evict              | OK, 141 s, 150 s, 63 s    |
 | level4 full                                     | LEVEL 4 OK, 500 s         |
 
-  treetest's default set (TREETEST OK) ran on `98454653`; the Lean
+  treetest's default set (TREETEST OK) ran on `4a9ebcb2`; the Lean
   model's change after it is `ReleaseFits`' top node bytes only (and
   the merge brought no Lean change but 024-25's), checked by `lake
   build`'s `decide`.
@@ -316,8 +316,8 @@ unchanged (32 + 16 x size). `ReleaseFits`' doc now says that it makes
 
 By l6fix, a subagent of the day's coordinator, 22:11 to 23:08.
 
-**The failure.** The night run on main `f5ac2600` (this item landed as
-`7c255127`) failed twice with the same assertion of `IndexHarness`
+**The failure.** The night run on main `8664db0e` (this item landed as
+`87afef86`) failed twice with the same assertion of `IndexHarness`
 ("refused for L6 by NAME, but no write's levels are too long"): the
 night test `IndexHarness.testSeedsLong`, seed 20768001, step 296 (index
 `i0`, the put of `/h/a/kå`), and `harness-soak`'s job 6 h2, `-Devict=every
@@ -415,15 +415,15 @@ group (0.6 s). The kept database was gone with the night's clone, so
 whether that put had an entry is not known; with (b) it does not
 matter.
 
-**Branch.** `024-24-l6fix` from main `bf68084b`, in
+**Branch.** `024-24-l6fix` from main `0f4d1c47`, in
 `/Users/f/fl/bench/2026-11-11/l6fix/clone`, three commits, Java only:
-`222b25a4` (L6, `IndexDefinition.java`, `IndexDefinitionTester.java`),
-`28738173` (a, `FormatFuzzer.java`), `18d76c37` (b,
+`904392f6` (L6, `IndexDefinition.java`, `IndexDefinitionTester.java`),
+`0b32a9f2` (a, `FormatFuzzer.java`), `c760655c` (b,
 `KillRestartHarness.java`, `Pack.java`).
 
-**Gates.** On `222b25a4`: before-commit OK (88 s), the night tests of
+**Gates.** On `904392f6`: before-commit OK (88 s), the night tests of
 `IndexHarness` OK (158 s, today's seeds, 20768001 among them). On
-`18d76c37`, the head, one slot at a time, 22:30 to 23:07, all rc = 0
+`c760655c`, the head, one slot at a time, 22:30 to 23:07, all rc = 0
 (`l6fix/gates.sh`, summary `l6fix/gates.out`, logs in `l6fix/logs/`):
 
 | Gate                                              | Result, time                  |
@@ -443,18 +443,18 @@ matter.
 
 2026-11-11, 20:19.
 
-* **Ready to land.** Branch `024-24-limits`, head **`829d6135`**, in
-  `/Users/f/fl/bench/2026-11-11/lim3/clone` (main `79f35aa3` merged at
-  `ef0d406b`; main had no code commit after it at 20:18). Every gate of
+* **Ready to land.** Branch `024-24-limits`, head **`b0d41461`**, in
+  `/Users/f/fl/bench/2026-11-11/lim3/clone` (main `3dd38b23` merged at
+  `c87aa6f9`; main had no code commit after it at 20:18). Every gate of
   section 8 passed on it.
 * **Done.** Sections 1 to 8.
 * **Open for Frans.** Q1 and Q2 (section 6); QL5's precondition for
   024-17 (section 7, R3); the notes R6, R8 to R11 (section 7).
 * **To continue** (if main moves before landing): merge main, rerun
   before-commit, level1, level2 (`lim3/gate.sh`).
-* **Landed** as `7c255127`. **The night's fixes** (section 9), 23:08:
-  branch `024-24-l6fix`, head **`18d76c37`** (three commits on main
-  `bf68084b`; main had no commit after it at 23:07), in
+* **Landed** as `87afef86`. **The night's fixes** (section 9), 23:08:
+  branch `024-24-l6fix`, head **`c760655c`** (three commits on main
+  `0f4d1c47`; main had no commit after it at 23:07), in
   `/Users/f/fl/bench/2026-11-11/l6fix/clone`; every gate of section 9
   passed on it. Ready to land.
 

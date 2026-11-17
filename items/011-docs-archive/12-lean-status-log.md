@@ -65,7 +65,7 @@ model's own `init` and `step`, with no checker-local definitions, and checks
 R1 to R4 (C-A).
 
 2026-10-16. The conformance campaign (WP F1 of F1-008-11): on bergdb
-`d5c56dd`, the checker found every transaction of 59 traces of Java runs (50
+`8f37d88`, the checker found every transaction of 59 traces of Java runs (50
 small, 9 medium) a step of the model in the target mode, with no change to
 the model (011-11, 10.5).
 
@@ -638,7 +638,7 @@ by the number of entries only. On the evict set (3 seeds) every object's
 history is compared.
 
 2026-10-27. Rule 4 by position (bergdb 005-58), Java's since bergdb 005-57
-(`07b6375`). Changes to the trusted part: new definitions in SIS/Handle.lean,
+(`e773562`). Changes to the trusted part: new definitions in SIS/Handle.lean,
 `inPosToId` (Java's `posToId` as a test), `HMem.byPos`, `HMem.linkDPos`,
 `handleStartupPos` and `runHandlesPos`; new statements in
 SIS/HandleTheorems.lean, `Rule4_positions`, `Rule4Pos_handles` and

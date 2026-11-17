@@ -7,7 +7,7 @@ step 3's): several RENAMES tables, read in order, a name renamed twice mapped to
 table, dups: a removed copy to the theorem kept with the same statement).
 
 Usage: python3 names.py REPO PRUNE_REPORT SUPERSEDED [RENAMES...] > names.md
-  REPO          a checkout of the repo whose items/ give the citations (the base, eb1a04a0 or
+  REPO          a checkout of the repo whose items/ give the citations (the base, b8517e8a or
                 later: the provers' clone before its own item edits is fine)
   PRUNE_REPORT  prune.py's report as applied (DEAD lines)
   SUPERSEDED    superseded.txt (old successor | old - reason)

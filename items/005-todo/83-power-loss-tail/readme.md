@@ -23,9 +23,9 @@ that acknowledged bytes were lost.
 1. Source and method
 --------------------
 
-The full run uses Java at `3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7`,
+The full run uses Java at `afc3d207335cc615fdd6f96a68a43ada2bb8a405`,
 including 005-74, 005-75 and 005-73, compiled with `--release 17` and run
-on F53 with OpenJDK 27, `-ea -Xmx256m`. The earlier `0e61856` run gives
+on F53 with OpenJDK 27, `-ea -Xmx256m`. The earlier `2306213` run gives
 the same structured outcomes, recovered times, write counts and error
 states. A `git archive` build excludes concurrent worktree edits.
 
@@ -189,7 +189,7 @@ From the repository root, with a new output path:
 
     sh items/005-todo/83-power-loss-tail/run.sh /private/tmp/bergdb-83-run
 
-The default source is `3ad171d`; `BASE_REF=0e61856` selects the initial
+The default source is `afc3d20`; `BASE_REF=2306213` selects the initial
 baseline. Ordinary mode exits 0 when the experiment and its controls
 complete, while reporting recovery failures. To require a hole case to
 recover, this currently exits **1** (verified):

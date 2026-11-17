@@ -3,7 +3,7 @@
 The tools of 025-02 (section 4), written by its planning agent on 2026-11-14 and run by the
 provers from /Users/f/fl/bench/2026-11-14/cleanup/tools/, copied here by step 5 (close) as
 they ran. Their headers name that directory; run them with the paths changed. The base of
-the cleanup is `eb1a04a0`.
+the cleanup is `b8517e8a`.
 
 - **names.md**: the name map, old name to new name for every declaration of lean/SIS/Tree
   that an item cites and that the cleanup renamed or removed (025-02, section 10).

@@ -56,7 +56,7 @@ Written 09:40 (2026-11-12), as the study's recommendation. Implemented
 
 ## 2. What refuses today
 
-Read 09:35 to 09:38 on main `c6c3bcf2`.
+Read 09:35 to 09:38 on main `78a24cd5`.
 
 | Limit | Refused by | When | Exception |
 |---|---|---|---|
@@ -365,7 +365,7 @@ QK3 are his.
 ## 9. The implementation
 
 2026-11-13, 09:12 to 09:27, by "keys" of coord-1113, in a clone of main
-`ea6d1d41`, branch `026-02-limits`. Section 7's plan without A2: no
+`da0596a8`, branch `026-02-limits`. Section 7's plan without A2: no
 `IndexKeys.levelBytes`, no `levelBytes` test.
 
 ### 9.1 What was made
@@ -427,11 +427,11 @@ QK3 are his.
   for a bad form.
 * **D3. The constants come through pubimp; pub does not depend on
   core.** First built with `Limits.X = Db.X` and core added to pub's
-  package.html list, which `deps.py` checks (`0c516160`). Frans,
+  package.html list, which `deps.py` checks (`a06e0de6`). Frans,
   2026-11-13, on that: "Tell me why it is needed and how it was avoided
   before", and at 09:32 "Yes" to option 1, to avoid the new package
   dependency through pubimp (through the coordinator, coord-1113). So
-  since `67132219`: `PubKeys.MAX_OPERATIONS` and the four other limits
+  since `aecd641f`: `PubKeys.MAX_OPERATIONS` and the four other limits
   are `Db`'s, `PubKeys.MAX_LEVEL_BYTES` is `IndexKeys.MAX_LEVEL_BYTES`
   (the index code's L6, package-private), all compile-time constants, and
   `Limits.X = PubKeys.X`; pub's package.html is as before, as pub
@@ -480,7 +480,7 @@ In `PubTesterLongKeys` (no new tester to list), unit group:
 
 ### 9.4 Gates
 
-On the code's commit `0c516160`, one slot each (heavy2), one after the
+On the code's commit `a06e0de6`, one slot each (heavy2), one after the
 other:
 
 * **`java/before-commit.sh`**: BEFORE COMMIT OK (66 s), 09:21 to 09:22:
@@ -492,8 +492,8 @@ other:
 * **`java/javadoc-pub.sh`**: JAVADOC PUB OK (doclint on the new class
   and links).
 
-Again on `67132219` (D3 revised, after the coordinator's merge of main,
-`cbafdd49`), one slot (heavy), 09:34 to 09:35:
+Again on `aecd641f` (D3 revised, after the coordinator's merge of main,
+`aa76d437`), one slot (heavy), 09:34 to 09:35:
 `java/before-commit.sh` BEFORE COMMIT OK (63 s; deps.py: 9 packages as
 their package.html allows) and `java/javadoc-pub.sh` JAVADOC PUB OK.
 Log: `/Users/f/fl/bench/2026-11-13/keys/gates2.txt`. Level 1 was not run
@@ -517,9 +517,9 @@ put's path has the same calls (section 7, step 7).
 2026-11-13, 09:36, by "keys" of coord-1113.
 
 * **Ready to land.** Branch `026-02-limits` in
-  `/Users/f/fl/bench/2026-11-13/keys/clone`: the code `0c516160`, the
-  items `9d3c6fe3`, the coordinator's merge of main `cbafdd49`, D3
-  revised `67132219` (gated, section 9.4), then one commit of items only
+  `/Users/f/fl/bench/2026-11-13/keys/clone`: the code `a06e0de6`, the
+  items `f701338e`, the coordinator's merge of main `aa76d437`, D3
+  revised `aecd641f` (gated, section 9.4), then one commit of items only
   (this file). The commits are in Frans's name; the coordinator lands
   them.
 * **Done:** sections 9.1 to 9.4, as decided in section 8; Q9-1 and D3

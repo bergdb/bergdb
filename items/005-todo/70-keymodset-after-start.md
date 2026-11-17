@@ -143,7 +143,7 @@ in [validation.txt](70-keymodset-after-start/validation.txt).
 RW lifecycle and Lean
 ---------------------
 
-2026-10-30, after the fix (`7d967d7`), Frans clarified the intended
+2026-10-30, after the fix (`24a031a`), Frans clarified the intended
 contract: "The reads of an RW transactions must have been done for the
 currently running database." Normally they should be within about one
 second of the current time. This is guidance for short transactions, not

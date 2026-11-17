@@ -9,7 +9,7 @@
  * Usage: get_many_prefix    (prints the pairs; exit status 0)
  *
  * Java's output for the same calls (012-03's probe, on Java's main at
- * 0b6d08e, through Db, GetMany.Prefix, PrefixN and a StopCondition of its
+ * d025d95, through Db, GetMany.Prefix, PrefixN and a StopCondition of its
  * own), which this program must print, byte for byte, once it links
  * (012-13):
  *

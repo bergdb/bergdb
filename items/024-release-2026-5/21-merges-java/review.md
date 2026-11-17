@@ -2,7 +2,7 @@
 
 Written 2026-11-11, 14:57 to 15:27, by the reviewer "rev21" of coord-1111.
 Reviewed: branch `024-21-merges` of `/Users/f/fl/bench/2026-11-11/mgj/clone`,
-commits `3cd9b4c6` to `0281018e` on `main`'s `1076235c` (17 files, +1,638/-100).
+commits `be6d7f5a` to `ed9d8163` on `main`'s `2105baa7` (17 files, +1,638/-100).
 Design read: 024-11 (MG, sections 1, 5, 7; BU1; CB2), 024-14 (8/17/17), 024-21
 (the item), 024-22 (sections 2, 3.2, 5, 7), 024-04, 024-16.
 Probes in my own clone `/Users/f/fl/bench/2026-11-11/rev21/clone` (its probe
@@ -18,7 +18,7 @@ with 024-11 section 5 and with 024-22's model as described there, and my
 probes found nothing (section 3).
 
 **One finding blocks the landing as the branch stands (R1):** `main` has had
-024-12's tree model and level 2's `treeconf` step since `b84cf761`. That
+024-12's tree model and level 2's `treeconf` step since `ab1b9e42`. That
 model has no merges and h = B / 2, and `TraceExport`'s TREE line on `main`
 gives no thresholds. Landed alone, the branch fails `main`'s `level2.sh`. It
 lands together with 024-22, with the TREE line that carries m, c and h, and
@@ -27,7 +27,7 @@ should go in with the landing. R3 to R9 are notes.
 
 The verdict assumes that mgj's 8/17/17 gates (chainD) end OK and that 024-22
 finds Java equal to the model at 8/17/17. At 15:25, before-commit,
-unlinkfuzz, level1, level2 and level3 had passed on `0281018e`, level4 was
+unlinkfuzz, level1, level2 and level3 had passed on `ed9d8163`, level4 was
 running, and mgl's `treeconf` at 8/17/17 was not done.
 
 
@@ -39,7 +39,7 @@ running, and mgl's `treeconf` at 8/17/17 was not done.
   `treeconf.sh` step, 024-12), and `java/stress/TraceExport.java` line 1611
   (`TREE maxNode G H k`, five tokens). `main` has no
   `lean/SIS/Tree/MergeProps.lean`, so 024-22 has not landed.
-* **The failure:** suppose `0281018e` is merged into `main` without 024-22's
+* **The failure:** suppose `ed9d8163` is merged into `main` without 024-22's
   Lean model, or without J2 and J9's TREE line `TREE M G H k minFill(M)
   mergeCap(M) splitAbove(M)`. Then `treecheck` replays Java's trace with
   2026.4's delete and h = B / 2. C-T1 differs at the first merge (drain and
@@ -102,7 +102,7 @@ running, and mgl's `treeconf` at 8/17/17 was not done.
 ### R4. UnlinkFuzz's header gives P5's m (note)
 
 `java/stress/UnlinkFuzz.java` line 25 says "2 at node size 8, 3 at 14, 7 at
-30". Since `7fccc2d7` the value at 30 is 8. Change it, or name
+30". Since `55add999` the value at 30 is 8. Change it, or name
 `Dag.minFill` without values.
 
 ### R5. Reclaim.Tester's 200 kB: purpose kept; the comment's arithmetic off (note)
@@ -252,7 +252,7 @@ running, and mgl's `treeconf` at 8/17/17 was not done.
 
 ## 4. Not checked
 
-* The 8/17/17 gates on `0281018e` (level4 running at 15:25), and 024-22's
+* The 8/17/17 gates on `ed9d8163` (level4 running at 15:25), and 024-22's
   comparison at 8/17/17.
 * Anything on the combined head after a merge of `main` (R1).
 * The Lean side: 024-22's statements and proofs, and `treecheck`'s reading
@@ -272,5 +272,5 @@ Done at 15:27. The probes' sources are in
 `RevRestartProbe`, `RevCheapProbe`, `RevCstProbe`). The probe branches
 `probe-oldtouch` and `probe-deadhand` are in
 `/Users/f/fl/bench/2026-11-11/rev21/clone`, which is detached at
-`0281018e`. Nothing in mgj's clone or in the main tree was changed but this
+`ed9d8163`. Nothing in mgj's clone or in the main tree was changed but this
 file.

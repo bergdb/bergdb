@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it (u9, for coord-1109, round 3
 of the common brief of 020-24): only the release jar on the class path, built from a clone
-of main at `5d45478`, and only what a user reads: README.md, `releases/next.md`,
+of main at `4338cda`, and only what a user reads: README.md, `releases/next.md`,
 `java/src/overview-pub.html`, and the Javadoc of the Core's `Db` and of the types of its
 signatures (`DbBuilder`, `Trans`, `Trans.Builder`, `GetData`, `GetMany` and its stop
 conditions, `Kvt`, `Kv`, `Keys`, `StoredTrans`, `StoredValueNode`, `StartInfo`, `Clock`,
@@ -142,7 +142,7 @@ followed by 1,500 transactions started again; after one more transaction that re
 them, the start overflowed. A start on a thread with a stack of 256 MB opens the database,
 and every value is right. Nothing in `Db`'s or `Trans.Builder`'s Javadoc limits a key's
 length. Item 021-16 has this, fixed in `clone-k16` (4f4db2f, 1e01f45), not on main at
-`5d45478`.
+`4338cda`.
 
 ```java
 // Probe2 DIR 100000, shortened
@@ -392,7 +392,7 @@ and tell it from a real I/O error. A `DbStoppingException` in its place would be
 ## 4. Fixes
 
 By coord-1109's fixer x27, 2026-11-09, 16:00 to 16:35, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-x27` from main at `62345d3`, after 020-27's check of the
+`/Users/f/fl/bench/2026-11-09/clone-x27` from main at `5cb2807`, after 020-27's check of the
 Core API's Javadoc (which this builds on). The rule of 2026.4: the Javadoc made true, no new
 API, no change of behaviour. U9-1 and U9-3 are fixed in the code by another agent (c18b);
 U9-2 by 021-16. Each documented promise below has a test, new in `DbTesterJavadoc` and
@@ -458,7 +458,7 @@ passing on the code as it was, or an existing one.
   tested (`DbTesterFailure.testReadDuringStop`); whether such a read should throw
   `DbStoppingException` is U3-6 on Frans's list.
 
-Commits in the clone, on `62345d3`: `aa553a7` (U9-4 to U9-10, U9-12 and U9-14, with the
+Commits in the clone, on `5cb2807`: `aa553a7` (U9-4 to U9-10, U9-12 and U9-14, with the
 five tests and the entry in `releases/next.md`, Documentation) and `0ac5851` (U9-13). Gate on
 the tip's tree, under the gate lock: BEFORE COMMIT OK (242 s; unit 1582, f 86, DEMOS OK),
 16:27; JAVADOC PUB OK. Output in `/Users/f/fl/bench/2026-11-09/x27-gate1.txt`. Not pushed;

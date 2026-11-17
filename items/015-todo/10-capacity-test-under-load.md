@@ -9,15 +9,15 @@ For release 2026.2: the test is in `bergdb.dev.Unit`, which W6 runs on
 the release's jar on s1 (016-09, R5).
 
 What: in two of three full runs of `bergdb.dev.Unit` on s1 (Linux, 2
-cores) on the jar of `f2cb23b` with BuildInfo set to 2026.2, with JDK 27
+cores) on the jar of `bfc2a9d` with BuildInfo set to 2026.2, with JDK 27
 and 17, on 2026-11-03 at 16:29 and 16:30, the test failed: "at most 924984
 bytes, budget 231246 of 924984" (nothing was evicted after the budget was
 lowered); then `NanotestForBergDB.databasesStopped` failed, as the failed
 assert leaves its database running. A third run passed; the class alone
 passed 3 of 3; on F53 it passes. s1 was not idle then: 016-08's runs were
-on it. Between `323a54a`, whose jar passed on s1, and `f2cb23b` in `java/`:
-`dde82e8` (005-79 A, the integer watermark), `b281d39` (005-69) and
-`522b645` (005-80, Eviction's test hook).
+on it. Between `c8e2f1e`, whose jar passed on s1, and `bfc2a9d` in `java/`:
+`bb7b6fa` (005-79 A, the integer watermark), `52ea92c` (005-69) and
+`f8e7dc7` (005-80, Eviction's test hook).
 
 Questions: does the test depend on timing (the eviction thread's wake on
 a loaded machine), or did one of the three commits change it?
@@ -32,7 +32,7 @@ is.
 eviction thread's stop rule (product code), not of the test; the fix, two
 unit tests (both fail on `main`'s code), the mutations and
 `before-commit.sh` done in `/Users/f/fl/bench/016/015-10b/repo` (`main`
-at `b9ba427`, rebased on `c657764`); handed off for review in
+at `b1651a5`, rebased on `66a80f3`); handed off for review in
 `/Users/f/fl/bench/016/015-10/handoff/`. Open: the review (016-05,
 section 5); `level4.sh`, if the coordinator wants it for a change to
 Level 4's mechanism (not run here).
@@ -43,7 +43,7 @@ The cause
 
 `Eviction.EvictorRun` ran batches while the resident bytes were over the
 trigger, and stopped after the first batch that freed nothing (`if (freed
-== 0) break;`, since `66c8f3a`, 009 step 3d, 2026-10-25; not one of the
+== 0) break;`, since `15125d8`, 009 step 3d, 2026-10-25; not one of the
 three commits of the question, and not in 2026.1, which had no handles).
 That rule meant "every object in use, or pinned", but a batch is bounded
 three ways (009-02, section 4.7; `Eviction.BATCH`): its handles (4,096,
@@ -128,7 +128,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 16:43. The first step: six full runs of `bergdb.dev.Unit` on
-s1, the base's jar (`6f932f0`) and main's (`3e32f02`) in turns, the first
+s1, the base's jar (`47ba87f`) and main's (`5672e5a`) in turns, the first
 two rounds beside the night tests (load about 3): all SUCCESS, the test
 passed each time. Unit took 29 to 90 s with the base's jar and 42 to 57 s
 with main's, so the doubled time follows the load, not the commits. Not
@@ -138,7 +138,7 @@ thread on a loaded 2-core machine. Next: read the test's wait against
 fixed sleep.
 
 2026-11-03, 17:17 to 17:27, by F1 (016-05), in
-`/Users/f/fl/bench/016/015-10/repo` (a clone of `main` at `a46a597`, no
+`/Users/f/fl/bench/016/015-10/repo` (a clone of `main` at `8b80cc3`, no
 change made), the test read against the eviction thread:
 
 * **The wait is a bounded poll already**: each sample, `bytes(db)`, calls
@@ -174,7 +174,7 @@ change made), the test read against the eviction thread:
 Result of the runs on `main`'s jar (17:30:03 to 17:30:24, load about 29 to 33 on F53's 10 cores): 20 passed, 0 failed of 20: not reproduced on F53; the cause in the Log stays the likely one, from the code, and a hook test would be needed to show it.
 
 2026-11-03, 19:34 to 20:00, by agent F1-b (016-05), in
-`/Users/f/fl/bench/016/015-10b/repo` (a clone of `main` at `b9ba427`,
+`/Users/f/fl/bench/016/015-10b/repo` (a clone of `main` at `b1651a5`,
 this entry copied from `/Users/f/fl/bench/016/015-10/repo`):
 
 * **The analysis checked against `main`'s code**: `EvictorRun.run`,
@@ -225,7 +225,7 @@ this entry copied from `/Users/f/fl/bench/016/015-10/repo`):
   the thread.
 * **The gate**: `java/before-commit.sh`, 19:48:04 to 19:49:49: `BEFORE
   COMMIT OK (105 s)`, 1,125 unit tests, 78 f-tests. Then the clone
-  rebased on `main` at `c657764` (`java/` had changed in
+  rebased on `main` at `66a80f3` (`java/` had changed in
   `FileStreamPowerLossTester.java` and `Reclaim.java`, 015-16 and 015-09),
   and again, 19:53:34 to 19:55:21: `BEFORE COMMIT OK (107 s)`, 1,125 unit
   tests, 78 f-tests. Not run: `level4.sh` (no Lean step changes: the stop

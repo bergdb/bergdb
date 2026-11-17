@@ -95,7 +95,7 @@ Results
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), 006-09, W2. The report is
 [49-smooth-index-writes/report.md](49-smooth-index-writes/report.md). The recommended take is
-[paced-take.diff](49-smooth-index-writes/paced-take.diff), against `78a8d38`
+[paced-take.diff](49-smooth-index-writes/paced-take.diff), against `94f21dd`
 (`java/before-commit.sh` OK; level2.sh's RestartInvariance cases identical). It was measured
 with [summary.py](49-smooth-index-writes/summary.py) and the tools beside it, and every run's
 line is in [results.txt](49-smooth-index-writes/results.txt). Nothing in `java/` of the main

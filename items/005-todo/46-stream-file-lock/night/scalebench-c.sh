@@ -1,7 +1,7 @@
 #!/bin/sh
 # minutes: 65
 # bergdb 005-46, W1.4 of 006-09: 009-03's ScaleBench block from the OS's cache (C), HEAD's
-# prebuilt jar against bf19075's (005-50, just before 005-46), in turns: no fewer reads a
+# prebuilt jar against c1f1f15's (005-50, just before 005-46), in turns: no fewer reads a
 # second. As 009-03's f53-009.sh: 10M key24 keys, the default startup distance (10 MB, as
 # 004-02 and 009-03), the phases warm, uniform, hot and threads (1, 2, 4, 8); C at 665 MB with
 # G1 and with ZGC, and at 133 MB with G1; 004-02's sb.sh runs each JVM, ScaleBench with
@@ -26,7 +26,7 @@ else
     EXTRA=
 fi
 SBSH=$B/head/items/004-indirect-swizzling/02-scale-tests/sb.sh
-for j in head bf19075; do
+for j in head c1f1f15; do
     need "$B/$j/java/build/bergdb.jar"
     need "$B/sb/classes-$j/bergdb/core/ScaleBench.class"
 done
@@ -39,7 +39,7 @@ PIDIO=$B/sb/pidio
 watch "sb.out=$OUT/"
 log "start$MODE: $KN key24 keys, C at 665 MB (G1, ZGC) and 133 MB (G1), 2 rounds in turns; deadline in $MINUTES min"
 jarinfo head
-jarinfo bf19075
+jarinfo c1f1f15
 quiet
 bad=0
 rm -rf "$DATA"
@@ -55,7 +55,7 @@ fi
 mv "$OUT/$name.gc.log" "$RAW/" 2>/dev/null
 r=1
 while [ $bad -lt 13 ] && [ $r -le 2 ]; do
-    if [ $r = 1 ]; then order="bf19075 head"; else order="head bf19075"; fi
+    if [ $r = 1 ]; then order="c1f1f15 head"; else order="head c1f1f15"; fi
     for cfg in b665-g1 b665-zgc b133-g1; do
         case $cfg in
             b665-g1) gc=-XX:+UseG1GC; heap=2660m; budget=665000000 ;;
@@ -85,6 +85,6 @@ done
 rm -rf "$DATA"
 if [ $bad = 0 ]; then st="needs a look"; else st=FAILED; fi
 python3 "$NIGHT/nightsum.py" "$OUTROOT" > "$OUTROOT/summary.txt" 2>&1
-sum=$(grep -E '^(## |HEAD against)' "$OUTROOT/summary.txt" | sed 's/^## //; s/HEAD against bf19075, gets a second: /HEAD: /' | tr '\n' ' ' | cut -c1-400)
-finish "$st" "ScaleBench C at $KN keys, HEAD against bf19075 in turns, $bad of 13 runs failed or skipped. $sum"
+sum=$(grep -E '^(## |HEAD against)' "$OUTROOT/summary.txt" | sed 's/^## //; s/HEAD against c1f1f15, gets a second: /HEAD: /' | tr '\n' ' ' | cut -c1-400)
+finish "$st" "ScaleBench C at $KN keys, HEAD against c1f1f15 in turns, $bad of 13 runs failed or skipped. $sum"
 [ $bad = 0 ]

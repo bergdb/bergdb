@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg. Status: done.
 
 Worker t16's part of 022-05: every test method of the classes in
 `java/src/bergdb/stream/` and `java/src/bergdb/storage/` at `main`'s
-`2566df1` (2026-11-09 17:18), classed as the brief says: **P** ported (C's
+`e875a34` (2026-11-09 17:18), classed as the brief says: **P** ported (C's
 test named, or the harness), **W** written now, **N** not for C (the
 reason), **L** left. A test method is what nanotest runs: a static method
 with `@Nano` (`@Nano("f")` and `@Nano("night")` too); these classes have

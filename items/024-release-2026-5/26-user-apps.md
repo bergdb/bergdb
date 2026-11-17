@@ -1,7 +1,7 @@
 # 024-26. User apps against 2026.5's new algorithms
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-12): no bug;
-U26-1 to U26-5 and U26-8 made in 024-27 (`a7dfb6f7`).
+U26-1 to U26-5 and U26-8 made in 024-27 (`6ebd8bb1`).
 
 A round of "AI as the user" testing (006-20) against the algorithms that
 `main` changed on 2026-11-11 for release 2026.5: merges of underfull key
@@ -22,7 +22,7 @@ Written 00:30 (2026-11-12); section 5 has the exact state.
 
 * **Seven applications**, about 2,800 lines of Java, in
   `/Users/f/fl/bench/2026-11-11/apps/` (a copy in this item's directory,
-  `26-user-apps/`), on the release jar of `main` at `bf68084b`.
+  `26-user-apps/`), on the release jar of `main` at `0f4d1c47`.
 * **What they ran** (section 3), from 20:24 to 00:39: about 1.2
   million Core transactions of churn and reclaim (DeleteHeavy about 26,000
   transactions and 7 million operations, Churn about 870,000, Readers 1.2
@@ -291,7 +291,7 @@ Written 00:30 (2026-11-12).
   changed; no branch, no commit.
 * **Ended** at 00:39 with the last Kill run (section 3); no slot held.
 * **Where**: `/Users/f/fl/bench/2026-11-11/apps/`: the clone of `main` at
-  `bf68084b` in `clone/`, the release jar copied to `bergdb-release.jar`,
+  `0f4d1c47` in `clone/`, the release jar copied to `bergdb-release.jar`,
   2026.4's jar to `bergdb-2026.4.jar` (app 7), the sources, `run.sh` and
   the logs in `results/`. The sources are also in this item's
   `26-user-apps/`; to run them there, copy the two jars beside `run.sh`.

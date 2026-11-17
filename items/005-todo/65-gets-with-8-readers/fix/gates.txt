@@ -1,5 +1,5 @@
-Gates of 005-65's fix, 2026-10-29, F53, nice 10, in the clone on 4a69f53 (main with 005-64's buffer time) with the fix
-(b91682c; in main as 988fe1a on 5a6befd, the same java/), other sessions' work on the machine (load 7 to 18).
+Gates of 005-65's fix, 2026-10-29, F53, nice 10, in the clone on 81bfe7e (main with 005-64's buffer time) with the fix
+(b91682c; in main as 52aeb04 on bb25185, the same java/), other sessions' work on the machine (load 7 to 18).
 
 java/before-commit.sh, 10:24 to 10:26:
 Deps: 9 packages, all as package.html allows
@@ -46,7 +46,7 @@ java/stress/core-build.sh unit f, 10:43 to 10:44:
    f: SUCCESS, 56 successful tests in 35.1 s.
 CORE BUILD OK
 
-StreamDigest all, main's class (4a69f53) against main's jar and the fix's (b91682c):
+StreamDigest all, main's class (81bfe7e) against main's jar and the fix's (b91682c):
 default: DIGESTS IDENTICAL (36 of 36)   (digest-base.txt, digest-fix.txt)
 -Devictbudget=20000 (every database with the capacity controller at a 20 kB budget):
   the fix's against the default ones: DIGESTS IDENTICAL (36 of 36)

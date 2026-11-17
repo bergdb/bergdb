@@ -1,4 +1,4 @@
-Base: b9ba427; only five added Nano methods differ in FileStream.java.
+Base: b1651a5; only five added Nano methods differ in FileStream.java.
 Production source before the test section: identical to BASE.
 Original embedded tests after test0: identical to BASE.
 Regression patch matches the clone diff and passes reverse application check.

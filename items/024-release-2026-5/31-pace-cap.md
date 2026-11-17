@@ -1,7 +1,7 @@
 # 024-31. Cap the take's pace after a decrease of the startup distance
 
 Created 2026-11-12 by an agent ("pace") of the day's coordinator
-(coord-1112). Status: done (2026-11-12): on `main` since `c1137b69`
+(coord-1112). Status: done (2026-11-12): on `main` since `69b91fd7`
 (Frans, 13:09: section 10 approved). Not done: the 50M run of section 9.
 
 Frans, 2026-11-12, 11:38, on OP4 of 024-05 and QF8 (the take's bursts):
@@ -113,7 +113,7 @@ itself is unchanged. `lake build` passes with the new numbers of section 7.
 
 007-07's decrease harness (WriteBench of 007-06 and 007-07, from
 `/Users/f/fl/bench/006-09/d2-007-07-runs/w8`), byte counts only (one
-slot each, nice 10), on main `f166f5e5` ("main"), on the brief's rule
+slot each, nice 10), on main `b21d460e` ("main"), on the brief's rule
 min(S, c sd) with c = 2 and 4 (branch `024-31-v1`, "min"), and on the
 branch's rule ("span", c = 2). Two changes to the harness for today's
 main: transactions of 500 puts (Db's limit L1 since 024-17), where 007-07
@@ -233,7 +233,7 @@ Frans to confirm, section 10).
 
 ## 7. Expected values that changed
 
-Commit B on the branch (`4b7c638e`), apart from the code, for Frans's
+Commit B on the branch (`09ec584a`), apart from the code, for Frans's
 approval:
 
 * `TakeCheck.EXPECTED` (java/stress/TakeCheck.java) and `javaTakes`
@@ -255,7 +255,7 @@ other test are unchanged.
 
 ## 8. Gates (step 6)
 
-On `4b7c638e` (commit B), 2026-11-12, 12:41 to 13:05, each in one slot
+On `09ec584a` (commit B), 2026-11-12, 12:41 to 13:05, each in one slot
 (`/Users/f/fl/bench/2026-11-12/pace/gates/`):
 
 | gate                                        | result                         |
@@ -269,7 +269,7 @@ On `4b7c638e` (commit B), 2026-11-12, 12:41 to 13:05, each in one slot
 level2 is the level of the startup section's mechanism, the take
 (docs/levels.md, section 5); its step 7 builds the Lean model (`lake
 build`, the `#guard`s of section 7) and compares Java's take with it.
-StreamDigest ran main's jar (`f166f5e5`) and the branch's with the
+StreamDigest ran main's jar (`b21d460e`) and the branch's with the
 branch's compiled StreamDigest (unchanged): no digest changed, as no
 configuration lowers the setting. On the brief's rule (`024-31-v1`) the
 same gates failed: 3 unit tests and 32 of 48 digests (section 5).
@@ -301,11 +301,11 @@ prints catchup.py's and ratchet.py's lines.
 2026-11-12, 13:08.
 
 * **Ready to land.** Clone `/Users/f/fl/bench/2026-11-12/pace/clone`,
-  branch `024-31-pace-cap` from main `f166f5e5`, head **`4b7c638e`**:
-  commit A `a9270c09` (the span rule, tests, Lean, levels.md), commit B
-  `4b7c638e` (the expected values of section 7, for Frans's approval).
+  branch `024-31-pace-cap` from main `b21d460e`, head **`09ec584a`**:
+  commit A `5306db6e` (the span rule, tests, Lean, levels.md), commit B
+  `09ec584a` (the expected values of section 7, for Frans's approval).
   Every gate of section 8 passed on it. Main has moved since (to
-  `3b14e052`, 024-30's CountGates and items; no file of this branch),
+  `9d148333`, 024-30's CountGates and items; no file of this branch),
   so the coordinator merges on its gates.
 * **Not to land.** Branch `024-31-v1` (`c7c7b5af`), the brief's rule
   min(S, c sd), kept for section 5's comparison.

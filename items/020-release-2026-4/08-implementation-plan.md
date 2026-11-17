@@ -17,9 +17,9 @@ the spec is 020-07, whose rules (R1 to R15) and condition codes (section
 5.1b) and 020-09's rules are in sections 3, 4.9 and 4.10 and steps 7 and
 8, brought in on 2026-11-08 (section 12).
 
-Code read at `ea5654a` (`java/` unchanged since `a7fe143`); line numbers
+Code read at `21936d3` (`java/` unchanged since `52f8ee5`); line numbers
 are that commit's, in `java/src/bergdb/pubimp/` unless named. Steps 7 and
-8 were read at `b9d87e7`, whose `java/` differs only by step 1 and
+8 were read at `31b5523`, whose `java/` differs only by step 1 and
 `PayDemo`.
 
 
@@ -581,7 +581,7 @@ object and make no index).
 
 ### 6.1. Existing tests
 
-Counted at `ea5654a` for step 2; "changes" means its asserts, its calls or
+Counted at `21936d3` for step 2; "changes" means its asserts, its calls or
 its bytes change, the test staying.
 
 `DbObjectTester`, 80 `@Nano` methods:
@@ -646,7 +646,7 @@ In all: **52 test methods and helpers** change or go in step 2 (32 of
 `PubPromiseTester`, 1 in `PubTesterIndex`, 1 in `DbObject`), and 1 in
 step 6. 020-04 counted about 23 for version 1.
 
-**Step 7, the removals**, counted at `b9d87e7`:
+**Step 7, the removals**, counted at `31b5523`:
 
 * `PubTester`, 19: the 13 that call `put(Object)` take `put(key,
   object)` (`minimalCodeToStoreObject`, `testSync1` to `testSync6`,
@@ -660,7 +660,7 @@ step 6. 020-04 counted about 23 for version 1.
   Item(...))` takes a key.
 * `PubUtil`'s 9 tests go with it.
 
-**Step 8, the binding**, counted at `b9d87e7`:
+**Step 8, the binding**, counted at `31b5523`:
 
 * The test classes become Data Objects, public static with public fields
   and a public no-argument constructor, their tests' code unchanged: 51
@@ -681,7 +681,7 @@ step 6. 020-04 counted about 23 for version 1.
   `PubTester.testKeyField0Private` becomes a refusal (its class's fields
   are private); and step 2's T4 expects the clamp.
 
-**`createFast()`, for 020-10's step I2**, counted at `b9d87e7`: 36 calls
+**`createFast()`, for 020-10's step I2**, counted at `31b5523`: 36 calls
 in 35 methods of 5 testers, `PubTesterIndex` 21, `PubTesterIndexJobs` 5
 tests and its helpers `createIfFree` and `deleteAndReplace`,
 `PubTesterNestedFields` 4, `PubTester` 2, `PubTesterComposite` 1. In the
@@ -906,7 +906,7 @@ commit; P7 (a failed database stops) is kept: no reader path throws an
 
 ### 8.1. Step 1, done (2026-11-08)
 
-Made in a clone at `ade9be7`, tests first (each failed on a stub of the
+Made in a clone at `e3bca23`, tests first (each failed on a stub of the
 API before the code); not committed (the coordinator commits):
 
 * `java/src/bergdb/pubimp/ObjectFormat.java`, new, 831 lines: section
@@ -957,7 +957,7 @@ T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
 
 ### 8.2. Step 2, done (2026-11-08)
 
-Made in the clone `clone-objects` on `8876480`, tests first (each new test
+Made in the clone `clone-objects` on `fc1178e`, tests first (each new test
 failed on the code before); committed by the objects' agent of the night
 (006-15, section 3b):
 
@@ -1173,7 +1173,7 @@ Decided in the step, under Frans's delegation (22:17):
   stream's tail; the message says to make the database again.
 * A stored value above `ObjectFormat.MAX_ARRAY` (2^31 − 9 bytes), within
   R15 but more than a Java array may hold, is refused too.
-* Changed 2026-11-09, after the review of `e92a95a` (decided under
+* Changed 2026-11-09, after the review of `02995d9` (decided under
   Frans's delegation): a previous value of format 1 has no index entries,
   as no index of 2026.4 indexed one, so a put over it and a delete of it
   work in an indexed directory, and a user can clean up after a build
@@ -1210,12 +1210,12 @@ quiet, written as 020-12 (at the end of this section).
   candidate's beside format 1's and their ratio, into
   `java/build/objectbench/RUN/summary.txt`; a run with a load average
   above 1.5 is marked "NOT QUIET".
-* The reference, format 1: `ae68938` (7aca256's parent, 020-10's P1, the
+* The reference, format 1: `238b249` (0a6d8f4's parent, 020-10's P1, the
   last code before step 2 but for I0, H2's first part, 021-06 and 021-09),
   made outside the repository in `/Users/f/fl/bench/006-15/format1-build/`
   (its `COMMIT.txt` names it):
 
-      mkdir -p DIR && git archive ae68938 java | tar -x -C DIR && sh DIR/java/build.sh
+      mkdir -p DIR && git archive 238b249 java | tar -x -C DIR && sh DIR/java/build.sh
 
 **The quiet run**, in the morning on F53, quiet (nothing else running;
 other sessions' QUIET-BLOCK markers and `ps` checked first; `JAVA_HOME`
@@ -1242,7 +1242,7 @@ as `byte[]` (1.46 in the full run, 1.01 in the quick one), M8's one-put
 `w()` at an object key, the cost of I1 (1.20 and 1.09), and M1's `Blob`
 (1.35 in the quick run, 0.45 in the full one).
 
-**Done**, quiet, at `7231771` (020-12): ObjectBench against `ae68938`, 5
+**Done**, quiet, at `5d32e77` (020-12): ObjectBench against `238b249`, 5
 JVMs a build, 03:43 to 03:51; `performance.sh ab` with the quick suite
 against release 2026.3's preserved build (the coordinator's choice of
 reference, in place of `pre-f2`), 03:52 to 04:05: NO ALERTS. The
@@ -1258,7 +1258,7 @@ data (a probe, 04:19 to 04:23), so the JVM's state where ObjectBench runs
 it, not the get's code, and not a fault. Section 7's questions: no
 unchecked lookups and no view without a copy (M2: 52 ns of a `Payment`'s
 844 ns get), the writer's way 1 stays (M1). `objectbench.sh` no longer
-runs the reference since B3 (`48378fe`), which made ObjectBench import
+runs the reference since B3 (`fcc151b`), which made ObjectBench import
 `bergdb.pub.DbObject`: the quiet run compiled a copy for format 1's jar;
 the script should compile it for each build (020-12, section 2).
 
@@ -1434,10 +1434,10 @@ machine and may come after step 6.
 
 2026-11-08. Written for coord-1108 at Frans's request (17:12), after his
 decisions of 15:51 to 17:09 (020-02, section 4), with 020-07; read-only
-at `ea5654a`. No code changed. Waits for Frans's "ok-and-implement" and
+at `21936d3`. No code changed. Waits for Frans's "ok-and-implement" and
 the answers of section 2.
 
-2026-11-08. Step 1 done in a clone at `ade9be7` (section 8.1):
+2026-11-08. Step 1 done in a clone at `e3bca23` (section 8.1):
 `ObjectFormat`, `ObjectFormatTester` (T1, H0a, H0b, a night test), the
 vectors moved into `java/`; BEFORE COMMIT OK (119 s). Two differences
 from 020-07 noted, the spec followed.
@@ -1448,12 +1448,12 @@ decided under his delegation of 22:17 (section 2), and fitted to 020-10's
 steps, by coord-1108's agent: two new steps, 7 (the removals) and 8 (the
 binding, 020-09); step 5 dropped; the order 1, 2, 7, 8, 3, 4, 6;
 `createFast()` left to 020-10's step I2; sections 1 to 6, 8, 9 and 11;
-the tests of steps 7 and 8 counted at `b9d87e7`; about 7 days in all.
+the tests of steps 7 and 8 counted at `31b5523`; about 7 days in all.
 Step 1's record (section 8.1) unchanged. No code changed.
 
 2026-11-09. Step 4 prepared in night 006-15 by the coordinator's agent C
 (section 8.6): `java/stress/ObjectBench.java` and `objectbench.sh`, the
-format-1 reference built from `ae68938` outside the repository, two runs
+format-1 reference built from `238b249` outside the repository, two runs
 that are not quiet; the quiet run's command for the morning; no code
 under test changed; BEFORE COMMIT OK.
 

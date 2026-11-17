@@ -1,7 +1,7 @@
 Command (repo/java):
 java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.core.DbTesterStream -m testR5FirstCloseFailureIsReported
 
-At f5a5f66 with only the attached test added:
+At abe7785 with only the attached test added:
 AssertionError: close() returned successfully after its storage close failed; underlying closes=2
 FAILURE, total: 2, failed: 1. Time: 0.0 s.
 

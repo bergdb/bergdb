@@ -25,7 +25,7 @@ could be unwritten)."
 The node checksum's cost, measured 2026-11-13 (releases/2026.5's notes,
 Baseline): Fletcher-16 took about 5.6 ms a MB, CRC32C about 0.12 ms a MB
 (024-25). Between the commits just before and after that change
-(5ae33359, 79f35aa3; `performance.sh`'s `w-uni-1k-inf`, values of 1 kB,
+(e9b9b4cd, 3dd38b23; `performance.sh`'s `w-uni-1k-inf`, values of 1 kB,
 one run each, F53 not quiet), commits a second went from 93,892 to
 236,737 (+152 %) and a restart from 0.705 to 0.463 s (-34 %), with the
 same durability. So in 2026.4 the checksum, which the design does not

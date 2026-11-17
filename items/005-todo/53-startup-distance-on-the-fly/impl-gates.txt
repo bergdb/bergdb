@@ -1,4 +1,4 @@
-Gates of 005-53 and 005-52 (one change), 2026-10-28, F53, nice 10, on the clone of 8b37ad1 with the change (another session's WriteBench and Lean builds on the machine).
+Gates of 005-53 and 005-52 (one change), 2026-10-28, F53, nice 10, on the clone of 077afea with the change (another session's WriteBench and Lean builds on the machine).
 
 java/before-commit.sh:
 Deps: 9 packages, all as package.html allows
@@ -32,6 +32,6 @@ SUCCESS, 1069 successful tests in 9.4 s.
    conformance: traces: 14, TRACECHECK OK: 14
 LEVEL 2 OK
 
-StreamDigest all, main's class (8b37ad1) against main's jar and the change's:
+StreamDigest all, main's class (077afea) against main's jar and the change's:
 DIGESTS IDENTICAL (36 of 36)
 Against 007-07's digest-patch.txt: DIGESTS IDENTICAL (36 of 36)

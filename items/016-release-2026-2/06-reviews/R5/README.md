@@ -1,7 +1,7 @@
 R5 review attachments
 =====================
 
-Base: f5a5f66. The five patches add regression tests only; R5-F5 also
+Base: abe7785. The five patches add regression tests only; R5-F5 also
 registers its new tester in storage/Pack. No production fix is included.
 Each patch applies to BASE. Applied together, they reproduce the six
 changed Java files in the review clone exactly (checked with git apply).

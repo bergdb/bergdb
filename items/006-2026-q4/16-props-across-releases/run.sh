@@ -17,20 +17,20 @@
 #
 # Versions (NAME: kind, commit, Props):
 #
-#   2013.1      orig  9ffbdf9  release-2013.1.130606, KissDB, the first release (p16)
-#   2013-07-05  orig  550ce4e  the code of CORE's baseline, cissi 2013-07-05 (p16)
-#   2013.3      orig  466a18f  release-2013.3-3 (p16)
-#   2014.1      orig  7e29e8e  release-2014.1-3, the last node stream (p16)
-#   2015.1      orig  f51fc8d  release-2015.1-1, the KV stream (kv2), the first Props
-#   2015.4      orig  9384bce  release-2015.4-2, the last public release
-#   2015-12-28  orig  bc11dbf  "Typical output (2015-12-28)" (006-02)
-#   2017-07-29  orig  dbf131a  the last Props run on cissi (006-02)
-#   2017-08-01  repo  195cf88  the 2017 import (006-02)
-#   2026-10-19  repo  11ea2f6  006-02's 2026 code
-#   2026.1      jar   a42947c  releases/2026.1/bergdb-2026.1.jar, as released
-#   2026.2      jar   95bde62  releases/2026.2/bergdb-2026.2.jar
-#   2026.3      jar   929fa33  releases/2026.3/bergdb-2026.3.jar
-#   2026.4c     cand  f3af680  the 2026.4 candidate: main at the start of 006-16, built
+#   2013.1      orig  3cf8170  release-2013.1.130606, KissDB, the first release (p16)
+#   2013-07-05  orig  d0b3bd1  the code of CORE's baseline, cissi 2013-07-05 (p16)
+#   2013.3      orig  9e7e1e4  release-2013.3-3 (p16)
+#   2014.1      orig  5683149  release-2014.1-3, the last node stream (p16)
+#   2015.1      orig  f023cd7  release-2015.1-1, the KV stream (kv2), the first Props
+#   2015.4      orig  9d59c7f  release-2015.4-2, the last public release
+#   2015-12-28  orig  358ad6b  "Typical output (2015-12-28)" (006-02)
+#   2017-07-29  orig  b64383a  the last Props run on cissi (006-02)
+#   2017-08-01  repo  0257e0b  the 2017 import (006-02)
+#   2026-10-19  repo  0e7292d  006-02's 2026 code
+#   2026.1      jar   8e579c6  releases/2026.1/bergdb-2026.1.jar, as released
+#   2026.2      jar   d5b1bda  releases/2026.2/bergdb-2026.2.jar
+#   2026.3      jar   9a0bf5e  releases/2026.3/bergdb-2026.3.jar
+#   2026.4c     cand  90ec60a  the 2026.4 candidate: main at the start of 006-16, built
 #                              by its own java/build.sh (build/bergdb.jar)
 #
 # orig: F1-007's bergdb-git.bundle (cloned into $W/orig-git); repo: this repository.
@@ -68,24 +68,24 @@ die() { echo "run.sh: $*" >&2; exit 1; }
 version() {
     P16=
     case "$1" in
-        2013.1)     KIND=orig; COMMIT=9ffbdf9; PREFIX=KissDB
+        2013.1)     KIND=orig; COMMIT=3cf8170; PREFIX=KissDB
                     P16="kissdb kissdb.core.Keys set sync0 runMethod";;
-        2013-07-05) KIND=orig; COMMIT=550ce4e; PREFIX=bergdb
+        2013-07-05) KIND=orig; COMMIT=d0b3bd1; PREFIX=bergdb
                     P16="bergdb bergdb.core.Keys set sync0 runMethod";;
-        2013.3)     KIND=orig; COMMIT=466a18f; PREFIX=bergdb
+        2013.3)     KIND=orig; COMMIT=9e7e1e4; PREFIX=bergdb
                     P16="bergdb bergdb.dag.Keys put sync0 runMethod";;
-        2014.1)     KIND=orig; COMMIT=7e29e8e; PREFIX=bergdb
+        2014.1)     KIND=orig; COMMIT=5683149; PREFIX=bergdb
                     P16="bergdb bergdb.dag.Keys put syncL runOneMethod";;
-        2015.1)     KIND=orig; COMMIT=f51fc8d; PREFIX=bergdb;;
-        2015.4)     KIND=orig; COMMIT=9384bce; PREFIX=bergdb;;
-        2015-12-28) KIND=orig; COMMIT=bc11dbf; PREFIX=bergdb;;
-        2017-07-29) KIND=orig; COMMIT=dbf131a; PREFIX=bergdb;;
-        2017-08-01) KIND=repo; COMMIT=195cf88; PREFIX=java;;
-        2026-10-19) KIND=repo; COMMIT=11ea2f6; PREFIX=java;;
-        2026.1)     KIND=jar; COMMIT=a42947c; PREFIX=releases/2026.1/bergdb-2026.1.jar;;
-        2026.2)     KIND=jar; COMMIT=95bde62; PREFIX=releases/2026.2/bergdb-2026.2.jar;;
-        2026.3)     KIND=jar; COMMIT=929fa33; PREFIX=releases/2026.3/bergdb-2026.3.jar;;
-        2026.4c)    KIND=cand; COMMIT=f3af680; PREFIX=java;;
+        2015.1)     KIND=orig; COMMIT=f023cd7; PREFIX=bergdb;;
+        2015.4)     KIND=orig; COMMIT=9d59c7f; PREFIX=bergdb;;
+        2015-12-28) KIND=orig; COMMIT=358ad6b; PREFIX=bergdb;;
+        2017-07-29) KIND=orig; COMMIT=b64383a; PREFIX=bergdb;;
+        2017-08-01) KIND=repo; COMMIT=0257e0b; PREFIX=java;;
+        2026-10-19) KIND=repo; COMMIT=0e7292d; PREFIX=java;;
+        2026.1)     KIND=jar; COMMIT=8e579c6; PREFIX=releases/2026.1/bergdb-2026.1.jar;;
+        2026.2)     KIND=jar; COMMIT=d5b1bda; PREFIX=releases/2026.2/bergdb-2026.2.jar;;
+        2026.3)     KIND=jar; COMMIT=9a0bf5e; PREFIX=releases/2026.3/bergdb-2026.3.jar;;
+        2026.4c)    KIND=cand; COMMIT=90ec60a; PREFIX=java;;
         *) die "unknown version: $1 (one of: $VERSIONS)";;
     esac
 }

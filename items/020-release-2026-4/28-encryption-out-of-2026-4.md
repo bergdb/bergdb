@@ -16,9 +16,9 @@ to a 017 item." The coordinator (coord-1109, 16:09): take encryption out of
 2026.4's public API, keep the code internal and tested, open a 017 item
 for "encryption done right". Frans, 16:12: "Do it! Follow your plan
 above." Done by rx for coord-1109 in the clone
-`/Users/f/fl/bench/2026-11-09/clone-rx`, from main at `9ed1e6c` with e07's
+`/Users/f/fl/bench/2026-11-09/clone-rx`, from main at `595418e` with e07's
 three commits (U7-5, U7-2, the Javadoc) picked on it, then rebased on main
-at `104d676`, where they are `ebf705c`, `1011a94` and `8742547` (batch 28;
+at `ecfacc8`, where they are `241827c`, `869d2e3` and `9ebffa5` (batch 28;
 the same tree).
 
 
@@ -92,14 +92,14 @@ the same tree).
   `MakeOld.java` and `OpenNew.java` in the session's scratchpad (not
   kept).
 * Under the gate lock, on the tree of the 020-28 and 017-10 commits on main
-  at `104d676`: BEFORE COMMIT OK (149 s, unit 1584, f 86, demos); JAVADOC
+  at `ecfacc8`: BEFORE COMMIT OK (149 s, unit 1584, f 86, demos); JAVADOC
   PUB OK; `java/stress/level1.sh`: LEVEL 1 OK (2 min 22 s).
 
 
 ## 4. State
 
 Done in `/Users/f/fl/bench/2026-11-09/clone-rx`, branch `main`: two
-commits on main at `104d676`, "020-28: ..." (the code, the docs, the
+commits on main at `ecfacc8`, "020-28: ..." (the code, the docs, the
 release notes, this item) and "017-10: ..." (the new topic, 017's index,
 and the line in 020-24-07's section 4), for the coordinator to land.
 Open until they are on main. Not changed: 020-11 (known issues) and 020's
@@ -111,4 +111,4 @@ readme, which may name the removal.
 2026-11-09. Created for coord-1109 at Frans's decision (16:12); the
 removal in clone-rx, gated; 017-10 written.
 
-2026-11-09. Done: on main, in release candidate 03ce6ec; encryption done right is 017-10 (coord-1109).
+2026-11-09. Done: on main, in release candidate d00096e; encryption done right is 017-10 (coord-1109).

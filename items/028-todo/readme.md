@@ -141,7 +141,7 @@ by coord-1115.
 2026-11-16. 028-07 done: starts no longer hold the lock of `DatabaseImp`'s
 class, by an agent of coord-1116.
 
-2026-11-16. 028-07 done (c925c11e). 028-16 registered from it, by
+2026-11-16. 028-07 done (6695d48c). 028-16 registered from it, by
 coord-1116.
 
 2026-11-16. 028-14 done: a skip pointer to its own top node looped a

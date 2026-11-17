@@ -1,7 +1,7 @@
 005-49 report: smooth index writes
 ==================================
 
-2026-10-27, by Claude (Opus 5.5, Claude Code), for Frans Lundberg (006-09, W2). On F53, JDK 27, all in memory. Only byte counts were measured, no time. Today's take is `565499f`. The recommended take is [paced-take.diff](paced-take.diff): made on `a6cd234`, it applies to `78a8d38`.
+2026-10-27, by Claude (Opus 5.5, Claude Code), for Frans Lundberg (006-09, W2). On F53, JDK 27, all in memory. Only byte counts were measured, no time. Today's take is `74bc2dc`. The recommended take is [paced-take.diff](paced-take.diff): made on `e747323`, it applies to `94f21dd`.
 
 The answer. Today's take writes the index in bursts. At 200 and 1000 MB, 85 and 95 percent of the index bytes come from records with more than 4 times the mean index bytes; the largest records are 2.5 to 11.6 MB, and most records write no index node. 007-03's deadline alone makes it worse: at 50 MB it writes records of up to 110 MB.
 

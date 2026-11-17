@@ -188,19 +188,19 @@ Per run:
 
 == sweep ==
 
-65a0bb1: 1 runs, 14:20 to 14:20; idle at the start 94.1 to 94.1%; 39 to 39 s a run; flags: (none)
-9d9a038: 1 runs, 14:21 to 14:21; idle at the start 93.9 to 93.9%; 39 to 39 s a run; flags: (none)
-7327c9c: 1 runs, 14:22 to 14:22; idle at the start 93.5 to 93.5%; 39 to 39 s a run; flags: (none)
-290e766: 1 runs, 14:22 to 14:22; idle at the start 93.7 to 93.7%; 40 to 40 s a run; flags: (none)
-931f160: 1 runs, 14:23 to 14:23; idle at the start 91.6 to 91.6%; 39 to 39 s a run; flags: (none)
-603736c: 1 runs, 14:24 to 14:24; idle at the start 92.9 to 92.9%; 39 to 39 s a run; flags: (none)
-87d5faa: 1 runs, 14:24 to 14:24; idle at the start 94.5 to 94.5%; 39 to 39 s a run; flags: (none)
-fa338b0: 1 runs, 14:25 to 14:25; idle at the start 91.6 to 91.6%; 41 to 41 s a run; flags: (none)
-de3ca5a: 1 runs, 14:26 to 14:26; idle at the start 93.6 to 93.6%; 41 to 41 s a run; flags: (none)
+7a1c65e: 1 runs, 14:20 to 14:20; idle at the start 94.1 to 94.1%; 39 to 39 s a run; flags: (none)
+e5a21cb: 1 runs, 14:21 to 14:21; idle at the start 93.9 to 93.9%; 39 to 39 s a run; flags: (none)
+e8cb6e1: 1 runs, 14:22 to 14:22; idle at the start 93.5 to 93.5%; 39 to 39 s a run; flags: (none)
+2b00ae3: 1 runs, 14:22 to 14:22; idle at the start 93.7 to 93.7%; 40 to 40 s a run; flags: (none)
+d8cd765: 1 runs, 14:23 to 14:23; idle at the start 91.6 to 91.6%; 39 to 39 s a run; flags: (none)
+3a89728: 1 runs, 14:24 to 14:24; idle at the start 92.9 to 92.9%; 39 to 39 s a run; flags: (none)
+5268b64: 1 runs, 14:24 to 14:24; idle at the start 94.5 to 94.5%; 39 to 39 s a run; flags: (none)
+9f5b89b: 1 runs, 14:25 to 14:25; idle at the start 91.6 to 91.6%; 41 to 41 s a run; flags: (none)
+075eb5b: 1 runs, 14:26 to 14:26; idle at the start 93.6 to 93.6%; 41 to 41 s a run; flags: (none)
 6758194: 1 runs, 14:27 to 14:27; idle at the start 93.5 to 93.5%; 41 to 41 s a run; flags: (none)
-6dec318: 1 runs, 14:27 to 14:27; idle at the start 94.9 to 94.9%; 41 to 41 s a run; flags: (none)
+58ab1d0: 1 runs, 14:27 to 14:27; idle at the start 94.9 to 94.9%; 41 to 41 s a run; flags: (none)
 
-| Measure | 65a0bb1 | 9d9a038 | 7327c9c | 290e766 | 931f160 | 603736c | 87d5faa | fa338b0 | de3ca5a | 6758194 | 6dec318 |
+| Measure | 7a1c65e | e5a21cb | e8cb6e1 | 2b00ae3 | d8cd765 | 3a89728 | 5268b64 | 9f5b89b | 075eb5b | 6758194 | 58ab1d0 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | MEM | 158 | 211 | 211 | 220 | 219 | 219 | 237 | 271 | 271 | 271 | 270 |
 | CORE | 0.28 | 0.30 | 0.30 | 0.31 | 0.31 | 0.30 | 0.32 | 0.32 | 0.32 | 0.32 | 0.32 |
@@ -309,31 +309,31 @@ Per run:
 | 2017-08-01 | histo | 20 MB | 1 | 271.8 bytes per KV |
 | 2026-10-19 | histo | 50 MB | 1 | 227.4 bytes per KV |
 | 2026-10-19-maphash | histo | 50 MB | 1 | 191.3 bytes per KV |
-| 9d9a038 | histo | 20 MB | 1 | 207.4 bytes per KV |
-| 87d5faa | histo | 20 MB | 1 | 233.7 bytes per KV |
-| fa338b0 | histo | 20 MB | 1 | 271.5 bytes per KV |
-| e07c4ba | histo | 20 MB | 1 | 158.3 bytes per KV |
-| 3c99e78 | histo | 20 MB | 1 | 165.8 bytes per KV |
-| 290e766 | histo | 20 MB | 1 | 215.0 bytes per KV |
-| 2bd52c0 | histo | 50 MB | 1 | 272.7 bytes per KV |
-| 506510d | histo | 50 MB | 1 | 273.0 bytes per KV |
-| 01f386a | histo | 50 MB | 1 | 273.3 bytes per KV |
-| d5c56dd | histo | 50 MB | 1 | 227.2 bytes per KV |
-| 280525a | histo | 50 MB | 1 | 227.4 bytes per KV |
-| a66e4d9 | histo | 50 MB | 1 | 227.7 bytes per KV |
-| ad1789d | histo | 50 MB | 1 | 227.8 bytes per KV |
-| 8ea39cb | histo | 50 MB | 1 | 227.5 bytes per KV |
-| ab8dc7a | histo | 50 MB | 1 | 227.4 bytes per KV |
-| dcf6a4d | histo | 50 MB | 1 | 227.0 bytes per KV |
-| d540066 | histo | 50 MB | 1 | 227.9 bytes per KV |
-| b8bb541 | histo | 50 MB | 1 | 227.1 bytes per KV |
-| 059dbf1 | histo | 50 MB | 1 | 227.2 bytes per KV |
-| 5b1abdd | histo | 50 MB | 1 | 227.5 bytes per KV |
-| c3590ce | histo | 50 MB | 1 | 227.3 bytes per KV |
-| 3e16a4b | histo | 50 MB | 1 | 227.2 bytes per KV |
-| 1bb7494 | histo | 50 MB | 1 | 227.6 bytes per KV |
-| 7fcfa9b | histo | 50 MB | 1 | 227.2 bytes per KV |
-| ed60789 | histo | 50 MB | 1 | 227.6 bytes per KV |
+| e5a21cb | histo | 20 MB | 1 | 207.4 bytes per KV |
+| 5268b64 | histo | 20 MB | 1 | 233.7 bytes per KV |
+| 9f5b89b | histo | 20 MB | 1 | 271.5 bytes per KV |
+| d3650e1 | histo | 20 MB | 1 | 158.3 bytes per KV |
+| 8a2ea34 | histo | 20 MB | 1 | 165.8 bytes per KV |
+| 2b00ae3 | histo | 20 MB | 1 | 215.0 bytes per KV |
+| 0eb07c8 | histo | 50 MB | 1 | 272.7 bytes per KV |
+| 2709e27 | histo | 50 MB | 1 | 273.0 bytes per KV |
+| 52d64a0 | histo | 50 MB | 1 | 273.3 bytes per KV |
+| 8f37d88 | histo | 50 MB | 1 | 227.2 bytes per KV |
+| 7f8f2e1 | histo | 50 MB | 1 | 227.4 bytes per KV |
+| 0cbb4b3 | histo | 50 MB | 1 | 227.7 bytes per KV |
+| fa6059b | histo | 50 MB | 1 | 227.8 bytes per KV |
+| 3b65759 | histo | 50 MB | 1 | 227.5 bytes per KV |
+| dcca282 | histo | 50 MB | 1 | 227.4 bytes per KV |
+| 7eb7dc7 | histo | 50 MB | 1 | 227.0 bytes per KV |
+| 81aee78 | histo | 50 MB | 1 | 227.9 bytes per KV |
+| 5b06b09 | histo | 50 MB | 1 | 227.1 bytes per KV |
+| 0a732c3 | histo | 50 MB | 1 | 227.2 bytes per KV |
+| 981470f | histo | 50 MB | 1 | 227.5 bytes per KV |
+| d1cd139 | histo | 50 MB | 1 | 227.3 bytes per KV |
+| e265f5b | histo | 50 MB | 1 | 227.2 bytes per KV |
+| 9110407 | histo | 50 MB | 1 | 227.6 bytes per KV |
+| 9aa0384 | histo | 50 MB | 1 | 227.2 bytes per KV |
+| 313345c | histo | 50 MB | 1 | 227.6 bytes per KV |
 | 2017-08-01 | mem | 20 MB | 2 | 270.5 (270-271) |
 | 2017-08-01 | mem | 50 MB | 2 | 271.5 (271-272) |
 | 2026-10-19 | mem | 20 MB | 2 | 226 (226-226) |

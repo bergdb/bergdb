@@ -32,7 +32,7 @@ All of it is on the branch `030-04-spike`; nothing is on `main`.
   medium set (6,760 transactions, 362,026 operations). I stopped the
   medium run there: `treeconf.sh`'s old checker needs long for the
   traces of node size 62.
-- **The gate of section 7.6 passes:** `lean/contract/gate.sh 66db6126`
+- **The gate of section 7.6 passes:** `lean/contract/gate.sh 21690937`
   prints GATE OK.
 - **Lines, hours, share.** 4,890 lines of Lean: 867 to read and trust,
   3,434 of proof, 486 of the checker, the rest the example and the
@@ -177,11 +177,11 @@ frame, and Java's GET and SCAN lines against the readers.
 2026-11-17, 12:56. GATED, by 030-04, section 7.6.
 
 - Branch `030-04-spike` in the clone
-  `/Users/f/fl/bench/2026-11-17/spike/clone`, from `main` 66db6126.
+  `/Users/f/fl/bench/2026-11-17/spike/clone`, from `main` 21690937.
 - To build: `cd lean/contract`, `lake exe cache get`, `lake build`. To
   check the traces: `java/build.sh`; `cd lean && lake build treecheck`;
   `java/stress/treeconf.sh small` and `drain`; `lean/contract/check.sh`.
-  The gate: `lean/contract/gate.sh 66db6126`.
+  The gate: `lean/contract/gate.sh 21690937`.
 - Nothing is open in the spike. What comes after it is section 7.
 
 

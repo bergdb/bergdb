@@ -6,7 +6,7 @@ Updated 2026-10-28 with Frans: option B worked out as a lock file,
 `bergdb.lock`.
 
 Found on 2026-10-27 by Claude (Opus 5.5, Claude Code) in 006-09, when
-`level2.sh`'s step 6 (`BryanRepro`) failed on `main` from `eaec93e`
+`level2.sh`'s step 6 (`BryanRepro`) failed on `main` from `1165c90`
 (005-46) on; registered by the session for Frans to decide. The cause, the
 evidence and the test's fix are in
 [006-09's note](../006-2026-q4/09-unattended-27-28-october/bryanrepro.md).
@@ -46,7 +46,7 @@ of them again at start (`Reclaim.initFromDb`), and its first delete failed,
 as the old thread had deleted that file; the next read then failed the
 database (010-P7). No data was at risk: every deleted file lay below the
 cut, which is durable before any cut (`cutIfDurable`). The test now ends
-each cycle with `close()`, which waits (`b0661ba`).
+each cycle with `close()`, which waits (`f74fece`).
 
 The same holds before 005-46 for what `stop()` still writes: a second
 database that opens the directory before the first has written its buffer
@@ -133,7 +133,7 @@ directory fails at once, with a clear message, before it reads anything.
 10. **For `BryanRepro`'s case.** A start right after `stop()` fails at
     once with the message of 6, instead of failing the database later at
     a delete or a read. To start again, a program waits for `close()`, as
-    the test does since `b0661ba`. A start that waits for the lock could
+    the test does since `f74fece`. A start that waits for the lock could
     come later, if a program needs it.
 
 Several instances on one directory (one writer, read-only readers) are not
@@ -193,8 +193,8 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), as decided; in a clone on
-`fadefe3` with the main tree's uncommitted edits of this entry and of
-`FileStream`'s class Javadoc, the code in commit `322c5d1` (java/ and
+`215fcc5` with the main tree's uncommitted edits of this entry and of
+`FileStream`'s class Javadoc, the code in commit `173544a` (java/ and
 releases/next.md).
 
 * **The lock.** `FileStream`'s constructor calls `lockDir()` after
@@ -263,7 +263,7 @@ releases/next.md).
   `stop()`, with the close held on a force, is refused with the cause
   `DirectoryInUseException`, and starts after `close()`.
 * **Tests that restarted right after `stop()`** on the same directory now
-  call `close()`, as `BryanRepro` has since `b0661ba`:
+  call `close()`, as `BryanRepro` has since `f74fece`:
   `FileStreamPowerLossTester.verify` and `ReclaimReaderTester` (both
   refused in the f-tests), `RestartStress` (level 2; with `-Dfile` it
   always stops before a restart), `ReclaimReaders` (level 3, `-Ddisk`),

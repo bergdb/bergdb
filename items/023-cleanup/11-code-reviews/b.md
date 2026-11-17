@@ -1,7 +1,7 @@
 # 023-11 Review B of 023-core
 
-2026-11-10, 18:04 to 18:32. The branch `023-core` at `13246f53` against `main` at
-`59f0cafd`, `git diff main...023-core`, read against 023-08 (sections 5 and 7), 023-09,
+2026-11-10, 18:04 to 18:32. The branch `023-core` at `80105ef1` against `main` at
+`6d5373d6`, `git diff main...023-core`, read against 023-08 (sections 5 and 7), 023-09,
 023-07 (section 5) and the take-back check (023-08, checks/take-back.md). Clone
 `/Users/f/fl/bench/2026-11-10/rev09/b/clone`. The code was read in full; one probe and one
 test run were made (sections 2 and 3). Nothing in the clone is committed; its jar was last

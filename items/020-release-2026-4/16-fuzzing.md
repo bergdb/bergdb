@@ -249,7 +249,7 @@ seed 7101 (30 runs), and on seed 7102 (1,000 runs) one finding, not of
 020-16's code: `IndexJobsHarness 7229 1 500` reports a status ("INTERRUPT
 at BUILD_STEP 2, 500 objects, no racing writes, deleted during the build:
 build 1 ended FAILED ... the index was deleted, not [ACTIVE]"), the same
-at `a9e5488` and at `main`'s `2c248ff`. Not looked into: for the hunts of
+at `f8046f3` and at `main`'s `0d17109`. Not looked into: for the hunts of
 the harnesses and the jobs (020-17, 020-18), or whoever reads this first.
 
 
@@ -263,7 +263,7 @@ the harnesses and the jobs (020-17, 020-18), or whoever reads this first.
 | N16-1 | none     | F2's full check misses an end above the last end      | none        |
 
 **F16-1** (low): `IndexKeys.parseEntry`
-(`java/src/bergdb/pubimp/IndexKeys.java`, line 614 at `a9e5488`) checked
+(`java/src/bergdb/pubimp/IndexKeys.java`, line 614 at `f8046f3`) checked
 that K starts with 0x2f and has no byte below 2, not that it is an ikey's
 bkey. An entry key whose K has the byte 0x31 ('/' + 2, which no bkey has)
 or bytes that, each less 2, are not well-formed UTF-8, written through
@@ -281,7 +281,7 @@ for K could say "the bkey of an ikey's file part"; not edited here.
 
 **F16-2** (low: only a write through the Core or a fault makes it, but
 its effect is silent): `IndexManager.scan`
-(`java/src/bergdb/pubimp/IndexManager.java`, line 539 at `a9e5488`),
+(`java/src/bergdb/pubimp/IndexManager.java`, line 539 at `f8046f3`),
 which a start uses to read `/#i/dii/`, `/#i/didef/` and `/#i/didel/`,
 and a cleanup to read a deleted generation's entries, starts at its
 prefix, inclusive, and stops at the first key for which `Keys.isPrefix`
@@ -307,7 +307,7 @@ Core's `GetMany.Prefix` and `PrefixN` have no user.
 
 **F16-3** (low: only a write through the Core makes it): a build
 (`IndexBuilderImp`'s step, `java/src/bergdb/pubimp/IndexBuilderImp.java`,
-line 470 at `a9e5488`) read every key under its directory's file prefix
+line 470 at `f8046f3`) read every key under its directory's file prefix
 (`idir` and `-`) that has an ikey, also one whose name holds a '/', such
 as `/dp/-a/b`, which is no key of the directory and which `usePrimary`
 skips (021-06's rule). For `/dp/-a/b` holding an object of the index's
@@ -359,7 +359,7 @@ Done: the fuzzer's six areas, run on F53 and s1 (section 5); three
 faults found, each fixed in the clone with a test that failed before,
 one commit each, BEFORE COMMIT OK under the gate lock; the fuzzer
 committed with `java/stress/fuzz.sh` and a unit test per area (about 2
-s). The clone's branch `main`, six commits on `a9e5488`:
+s). The clone's branch `main`, six commits on `f8046f3`:
 
 | Commit  | What                                                     |
 |---------|----------------------------------------------------------|
@@ -370,11 +370,11 @@ s). The clone's branch `main`, six commits on `a9e5488`:
 | dfb7df4 | F16-3, a build skips a key whose name holds a '/'        |
 | b1a659f | area starts: a build over keys that are no key of it     |
 
-They apply to `main` at `2c248ff` without a conflict, and that tree
+They apply to `main` at `0d17109` without a conflict, and that tree
 passes the gate (BEFORE COMMIT OK, unit 1,483, f 86, demos). To take
 them: `git -C /Users/f/fl/repos/bergdb fetch
 /Users/f/fl/bench/2026-11-09/clone-f16 main:f16`, then cherry-pick
-`a9e5488..f16`.
+`f8046f3..f16`.
 
 Left, for whoever takes the commits: the night.sh line for the fuzzer
 (proposed: `sh java/stress/fuzz.sh 12`, twelve minutes, two turns of
@@ -393,7 +393,7 @@ FILE 1`, then `xcheck.py` and `XF2` as in section 2.1.
 ## Log
 
 2026-11-09, 09:24. Started, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-f16` at `a9e5488`.
+`/Users/f/fl/bench/2026-11-09/clone-f16` at `f8046f3`.
 
 2026-11-09, 09:51. Areas objects, keys and data written and run on F53;
 F16-1 found by area keys; the corpus of seed 2 (132,525 inputs) checked
@@ -420,7 +420,7 @@ clean); campaign 3 started on s1 with all three fixes (`fuzz.sh 140
 2026-11-09, 10:43. Area starts' build over keys that are no key of the
 directory committed (`b1a659f`); the corpus of seed 5 (164,929 inputs)
 checked by `check.py` (0 disagreements) and F2 (N16-1 only). The six
-commits apply to `main` at `2c248ff` without a conflict, and that tree
+commits apply to `main` at `0d17109` without a conflict, and that tree
 passes the gate (10:54).
 
 2026-11-09, 11:04. The last campaign on F53 before 13:00, as the

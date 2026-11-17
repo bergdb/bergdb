@@ -86,7 +86,7 @@ the line says otherwise:
   show payments with secondary indexes. 2012-10-16 (`2012-log.txt`):
   virtual keys, "wonder if it is novel?" (section 3.3).
 * **6 June 2013**, the 2013 to 2017 Git bundle (`bergdb-git.bundle`),
-  commit `f3d750e`, "RELEASE 2013.1.130606! Demo code and
+  commit `0a7fd60`, "RELEASE 2013.1.130606! Demo code and
   get-started.html": `KissDB/src/kissdb/pub/doc-files/get-started.html`,
   section "An RW transaction", and `KissDB/src/kissdb/demo/GetStarted4.java`.
   Two accounts of 100; the action reads both, throws if the first has less
@@ -96,10 +96,10 @@ the line says otherwise:
   page says of a write transaction of two objects that it is "comparable
   to the highest SQL isolation level: serializable" and that a user will
   "never ever have to deal with phantom reads". The test
-  `KissDB/src/kissdb/test/Concurrency.java` (first commit `76c4792`, the
+  `KissDB/src/kissdb/test/Concurrency.java` (first commit `1f4d0b6`, the
   same day) runs concurrent payments and a payment counter.
-* **2013-09 and 2013-10**: `bergdb.test.manual.PaySweden` (`47a5c5f`) and
-  "PayDemo works, 1M accounts" (`fa2c69d`, 2013-10-16).
+* **2013-09 and 2013-10**: `bergdb.test.manual.PaySweden` (`8d65863`) and
+  "PayDemo works, 1M accounts" (`616282d`, 2013-10-16).
 * **Today**, in this repository: `Action`, `RwEnvironment`,
   `Connection.rw`, `RwTransaction`, `RwEnvironmentImp` (`java/src/bergdb/pub`
   and `pubimp`), and `Db.stmCheckConflicts`, `KeyModSet` in the Core. The

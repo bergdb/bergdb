@@ -1,4 +1,4 @@
-bergdb 005-27: FileBoundaryProbe (tools/), without the fix (f206e58's bergdb.jar) and
+bergdb 005-27: FileBoundaryProbe (tools/), without the fix (faa4269's bergdb.jar) and
 with it (2026-10-23, F53, on the internal SSD).
 
 == without the fix

@@ -1,7 +1,7 @@
 # 024-09. The tie repaired: A1 to A4 of the model gap
 
 Created 2026-11-11. Status: done (2026-11-11): on `main` since
-`379d8acf` (024-13), the follow-up since `e7488080`.
+`773c2105` (024-13), the follow-up since `01b14c68`.
 
 The first step towards aim 4 of release 2026.5 (024-04: "the model
 matches"): the four weak points that 024-06, section 4.4, found in the
@@ -19,7 +19,7 @@ step's touch since the iteration began. Checked directly on 90 traces:
 183,375 of 183,375 nodes that are not new are in a step's touch (4.6).
 The argument is by reading, not a proof.
 
-**On `main` since 10:08 (024-07 landed, `a780b957`) the touch of a key
+**On `main` since 10:08 (024-07 landed, `36924319`) the touch of a key
 range is gone**, and with it step 3: T-COVER and T-LATEST (024-07,
 section 4) take its place, with no key range in them. Section 4.8 reads
 their two premises against the delete path: nothing found against them.
@@ -162,7 +162,7 @@ Outputs: `/Users/f/fl/bench/2026-11-11/tie/a1/` (`p5-*.txt`,
 
 024-06 says (sections 1 and 3.3) that P5's branch passed level1 to
 level4 in full with fault 12 in its head. It did, with its own scripts.
-`main`'s scripts fail it: since 023-09 (`13246f53`) `conformance.sh`
+`main`'s scripts fail it: since 023-09 (`80105ef1`) `conformance.sh`
 fails an a6 trace that shows an adoption below the old parent, and P5's
 head shows one (the second klong of fault 12's source). P5's
 `conformance.sh` asked for the opposite, at least one adoption. So the
@@ -173,21 +173,21 @@ by the fault. The new checks fail it by the fault.
 
 | Gate, on the branch                 | Result                         |
 |---|---|
-| `before-commit.sh` (`494c1007`)     | BEFORE COMMIT OK (268 s)       |
-| `level2.sh` full (`a48534fe`)       | LEVEL 2 OK (685 s)             |
-| `level2.sh quick` (`494c1007`)      | LEVEL 2 OK (128 s)             |
+| `before-commit.sh` (`ce1043cf`)     | BEFORE COMMIT OK (268 s)       |
+| `level2.sh` full (`472d7716`)       | LEVEL 2 OK (685 s)             |
+| `level2.sh quick` (`ce1043cf`)      | LEVEL 2 OK (128 s)             |
 | `conformance.sh reclaim`, 30 traces | CONFORMANCE OK; C-CUT 0 of 321 |
 | `conformance.sh evict`, 51 traces   | CONFORMANCE OK                 |
 | `unlinkfuzz.sh`, by itself          | UNLINKFUZZ OK (294 s)          |
 
 Step 7 of `level2.sh` full took 33 s before and 125 s after: 11 s for
 the seven A2A3Check2 configurations, 81 s for `drain` with 10 seeds.
-`494c1007` differs from `a48534fe` in a message and two comments.
+`ce1043cf` differs from `472d7716` in a message and two comments.
 
-After A4 and the merge of `main` (the head `e6b6bda6`), each in its own
+After A4 and the merge of `main` (the head `43cebf22`), each in its own
 hold of the lock:
 
-| Gate, on `e6b6bda6`                 | Result                                |
+| Gate, on `43cebf22`                 | Result                                |
 |---|---|
 | `lake build`                        | completed successfully (151 jobs)     |
 | `sorry`, `axiom`, `native_decide`   | 0 by grep; `#print axioms` standard   |
@@ -471,7 +471,7 @@ step's TOUCH line.
 
 ### 4.8 Against `main` after 024-07: the touch on a step's own paths
 
-`main` at `a780b957` has no `Db.touchRange`: a step makes dirty the
+`main` at `36924319` has no `Db.touchRange`: a step makes dirty the
 index nodes on the paths of its own puts. 024-07, section 4, replaces
 step 3 by two theorems of the model, T-COVER and T-LATEST, with two
 premises that are Java's: REWRITES (every data node reachable at the
@@ -633,24 +633,24 @@ call blocked its caller until the helper ended.
   section 4.8 for `main`'s new touch), A4 (the check of A6; the take in
   integers with its gate). Everything is committed, `main` is merged in,
   the gates passed on the head.
-* **The head to merge:** `e6b6bda6`, branch `024-09-tie`, clone
-  `/Users/f/fl/bench/2026-11-11/tie/clone`. It is `main`'s `68c3917e`
-  (with the day's first integration, `a780b957`) merged into the branch
-  without a conflict (`51279a1c`), and one docs commit after it. The
+* **The head to merge:** `43cebf22`, branch `024-09-tie`, clone
+  `/Users/f/fl/bench/2026-11-11/tie/clone`. It is `main`'s `16759d36`
+  (with the day's first integration, `36924319`) merged into the branch
+  without a conflict (`b205dc5e`), and one docs commit after it. The
   branch's own commits:
-  - `71f613f6` A2, lean only; `569eda64` A2, docs/levels.md only;
-  - `a48534fe` A1, harness and scripts; `494c1007` A1, messages and
+  - `9284b3d6` A2, lean only; `66b98455` A2, docs/levels.md only;
+  - `472d7716` A1, harness and scripts; `ce1043cf` A1, messages and
     comments;
-  - `71765f92` A4, lean only: the take in integers, with the `#guard`s
+  - `27bad788` A4, lean only: the take in integers, with the `#guard`s
     that replace the double rule's (the one commit that changes expected
     values, in Lean; section 5.2);
-  - `9e89be57` A4, `java/stress/TakeCheck.java` and three lines of
+  - `b2b459d3` A4, `java/stress/TakeCheck.java` and three lines of
     `level2.sh`;
-  - `e6b6bda6` A4, docs/levels.md only (the take in integers).
+  - `43cebf22` A4, docs/levels.md only (the take in integers).
   None changes `java/src`. No expected value of a Java test changed.
-* **Gates on `e6b6bda6`** (section 2.5): `lake build` OK, no `sorry`, no
+* **Gates on `43cebf22`** (section 2.5): `lake build` OK, no `sorry`, no
   `axiom`; BEFORE COMMIT OK; LEVEL 2 OK (full). Before the merge, on
-  `a48534fe`: `conformance.sh reclaim` and `evict` as whole sets, and
+  `472d7716`: `conformance.sh reclaim` and `evict` as whole sets, and
   `unlinkfuzz.sh` by itself.
 * **Not done, for a later agent:**
   - `conformance.sh reclaim` and `evict` as whole sets, `level3.sh`,
@@ -700,7 +700,7 @@ call blocked its caller until the helper ended.
 2026-11-11, 15:00 to 15:37 and the gates after. Written by the agent "fu"
 for the coordinator (coord-1111). Frans answered section 7's questions 1
 and 2 with yes; this is that work, on `main` after 024-12's tree model
-(`b84cf761`).
+(`ab1b9e42`).
 
 **In short.** The 15 trusted statements that assumed `PhysRunOK` assume
 `LiveAppend` in its place, and the three that do not assume `EvictRunOK`
@@ -712,24 +712,24 @@ added, and two new definitions of 5 lines of code (section 9.2).
 ### 9.1 The commits
 
 Branch `024-09-followup` in `/Users/f/fl/bench/2026-11-11/fu/clone`, from
-`main`'s `b84cf761`, four commits in Frans's name:
+`main`'s `ab1b9e42`, four commits in Frans's name:
 
-* `970751cb`: comments only. The Lean comments that named `Db.touchRange`
+* `74edb208`: comments only. The Lean comments that named `Db.touchRange`
   as Java's touch (`Changes.touch` in Basic.lean, `touchOf` in
   Algorithm.lean, `StepOK`'s touch rules in Assumptions.lean, `pathOf` in
   Phys.lean) name `Db.touchPaths`, the paths of the step's own puts since
   024-07. The two that say "until 024-07 ... `Db.touchRange`"
   (ReclaimTheorems.lean, Tree/Read.lean) are history and stay. And
   `java/stress/unlinkfuzz.sh` gets mode 755.
-* `7896813b`: Q1, `PhysRunOK` out of the trusted statements (9.2); the
+* `d1ebe55f`: Q1, `PhysRunOK` out of the trusted statements (9.2); the
   proofs, `Check/Live.lean`, `lean/README.md`, docs/sis-model.md, section
   15.2.
-* `a3763196`: TP15 of the tree model (024-12, section 6) is `LiveAppend`
+* `886b7a4b`: TP15 of the tree model (024-12, section 6) is `LiveAppend`
   of `treeSpec` (`LiveAppendTree`, was `PhysRunOKTree`), proved
   (`liveAppendTree`, Check/TreeLive.lean, from `blive_append`), as 024-12's
   plan asks once `LiveAppend` takes `PhysRunOK`'s place. Its own commit, so
   that it can be left out.
-* `751bb653`: Q2, the gates require A6 (9.4), and docs/levels.md, section
+* `74cb07b5`: Q2, the gates require A6 (9.4), and docs/levels.md, section
   5, says so in two lines.
 
 ### 9.2 The trusted diff (Q1)
@@ -780,7 +780,7 @@ SIS/Phys.lean, new (LiveAppend moved here from SIS/Proof/PhysAssumptions.lean, u
 +def TreeRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
 +  ∀ j < ts.length, treeAt sp (run sp al (ts.take (j + 1))).P (j + 1)
 
-SIS/Tree/Props.lean, TP15 (commit a3763196)
+SIS/Tree/Props.lean, TP15 (commit 886b7a4b)
 -def PhysRunOKTree (p : Params) : Prop :=
 -  ∀ (al : Algo BVal Tx) ts, Within p ts → PhysRunOK (treeSpec p) al ts
 +def LiveAppendTree (p : Params) : Prop := LiveAppend (treeSpec p)
@@ -789,7 +789,7 @@ SIS/Tree/Props.lean, TP15 (commit a3763196)
 `PhysStep` and `PhysRunOK` stay in SIS/Phys.lean, assumed by no trusted
 statement now; the proofs use them, and its comment says so. The size of
 the change in the trusted files, comments included: `git diff --stat` 74
-lines added, 36 removed, in 8 files (the four of `970751cb` among them).
+lines added, 36 removed, in 8 files (the four of `74edb208` among them).
 
 ### 9.3 Why each change keeps the meaning
 
@@ -853,7 +853,7 @@ lines added, 36 removed, in 8 files (the four of `970751cb` among them).
 
 ### 9.5 Gates and results
 
-On the branch's head `751bb653`, each run in its own hold of a slot, from
+On the branch's head `74cb07b5`, each run in its own hold of a slot, from
 15:34 to 15:58:
 
 | Gate                                       | Result                                      |
@@ -878,9 +878,9 @@ On the branch's head `751bb653`, each run in its own hold of a slot, from
   `test-traces/adopt.trace` ("1 of 3 transactions") fails the
   conformance rule, and A2A3Check2's output on P5's head (section 2.3;
   `tie/a1/tune/a2a3-p5-10.txt`, "4 (transactions 4)") fails `level2.sh`'s.
-* The Lean gates ran on the tree of `751bb653` before the four commits
+* The Lean gates ran on the tree of `74cb07b5` before the four commits
   were made from it; the intermediate commits were not built alone.
-  `7896813b` without `a3763196` builds by reading (TP15 still names
+  `d1ebe55f` without `886b7a4b` builds by reading (TP15 still names
   `PhysRunOK`, which stays).
 * Outputs: `/Users/f/fl/bench/2026-11-11/fu/gates/` (`chain-1.txt`,
   `lean-gates-1.txt`, and one file a run); the scripts' own in the clone's
@@ -905,9 +905,9 @@ On the branch's head `751bb653`, each run in its own hold of a slot, from
 
 * **Done:** Q1, Q2, the comments that named `Db.touchRange`, the mode of
   `unlinkfuzz.sh`, and TP15: four commits on `024-09-followup`, head
-  `751bb653`, clone `/Users/f/fl/bench/2026-11-11/fu/clone`. Every gate of
+  `74cb07b5`, clone `/Users/f/fl/bench/2026-11-11/fu/clone`. Every gate of
   9.5 passed on that head. Not on `main`: the coordinator lands it (a
-  fast-forward of `main`'s `b84cf761`, or a merge if `main` moved; the
+  fast-forward of `main`'s `ab1b9e42`, or a merge if `main` moved; the
   files it touches are listed in 9.1).
 * **Not done:** 9.6 (`conformance.sh large`, `level3.sh`, `level4.sh`,
   `night.sh`).

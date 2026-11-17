@@ -1489,7 +1489,7 @@ public class CorruptStreamTester {
 
     /**
      * A top node's skip pointer 0 (its bytes 48 to 55) xor 256, its checksum made right:
-     * testFull's copy of 2026-11-15 (its seed 20772, the night run of main 584c73af; bergdb
+     * testFull's copy of 2026-11-15 (its seed 20772, the night run of main af943131; bergdb
      * 028-14), the top node at offset 96 of the record at 43440, xor 1 at its byte 49. The
      * pointer then named the top node itself, and a get at a time before the node's looped
      * in TopDs.findSuperRootAtTime() without end: testFull's copy did not end in 60 s. Now

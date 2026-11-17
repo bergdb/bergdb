@@ -297,7 +297,7 @@ With `-Dbergdb.contract.skip=none` nothing is skipped.
 
 ## 5. The evidence
 
-On the code of 4f0c1f0 (`main`) with the harness, from `java/`, every
+On the code of 9f5d153 (`main`) with the harness, from `java/`, every
 known fault named, nothing skipped:
 
 ```sh

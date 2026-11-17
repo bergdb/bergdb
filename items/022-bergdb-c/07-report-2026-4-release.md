@@ -5,8 +5,8 @@ and compared; two parts of the full set and 022's long runs not run: the
 State section at the end).
 
 The update of the C clone (`c/`) from the release candidate of 2026.4
-(`main` at `03ce6ec`, record format 5; 022-04) to release 2026.4 as
-released (the tag `release-2026.4`, `bb8da6dc`, 2026-11-10, record format
+(`main` at `d00096e`, record format 5; 022-04) to release 2026.4 as
+released (the tag `release-2026.4`, `76f66f89`, 2026-11-10, record format
 6): what changed in C, what shows that C matches the release's Java, the
 faults found in C and in Java, C's departures, what is left. 024-01 calls
 it CC1. It is 022-02's step T, the diff from the candidate to the tag,
@@ -54,7 +54,7 @@ the agent `cc` of coord-1111, 2026-11-11, in a clone of its own, with
 
 ## 2.1 In Java, between the candidate and the release
 
-`git diff 03ce6ec release-2026.4 --stat -- java/src`: 29 files, 3,013
+`git diff d00096e release-2026.4 --stat -- java/src`: 29 files, 3,013
 lines added and 47 deleted, in 24 commits, every one read. In the Core's
 product classes:
 
@@ -78,7 +78,7 @@ Reclaim's product code did not change (023-08, section 5, point 2: P8 is
 out); `Reclaim.java`'s 85 new lines are two liveness tests. Nothing for C
 in: `BuildInfo` (C has no counterpart), the Pub layer's four files, the
 comments and test names of 023-11's B3 and B4, and the two test-only
-commits of the release night (`d99ff27c`, `72c8e0ec`: Java's storage
+commits of the release night (`85bed824`, `6e9671d4`: Java's storage
 thread).
 
 
@@ -145,11 +145,11 @@ detached worktree at the commit's tree, under the day's heavy-run lock:
 
 | Commit     | What                               | Time  | Gate                         |
 |---|---|---|---|
-| `99421669` | the port, the tests, the documents | 08:33 | `C BEFORE COMMIT OK (297 s)` |
-| `c37349f9` | the head: two commits of tests on  | 11:30 | `C BEFORE COMMIT OK (302 s)` |
+| `ed02ab6d` | the port, the tests, the documents | 08:33 | `C BEFORE COMMIT OK (297 s)` |
+| `fb2a6d86` | the head: two commits of tests on  | 11:30 | `C BEFORE COMMIT OK (302 s)` |
 
-The second gate covers `3aba1859` (the scale workload of deletes; the
-harness only) and `c37349f9` (the empty key's stream and its test): 550
+The second gate covers `ad2a3023` (the scale workload of deletes; the
+harness only) and `fb2a6d86` (the empty key's stream and its test): 550
 unit tests, the other counts as the first's. The first gate's steps:
 `build` 39 s; `rules` (45 modules, floating point only in the
 11 allowed places); `unit` 549 tests, 11,203,001 checks; `unit-release`
@@ -199,7 +199,7 @@ pattern on each shape at node size 8 and startup distance 100, without
 reclaim; the same 45 with a retain duration of 1 s; 20 with transactions
 of up to 1,000 operations on 3,000 keys.
 
-Its run, on the gate's build of `99421669` (08:33 to 08:43, 584 s):
+Its run, on the gate's build of `ed02ab6d` (08:33 to 08:43, 584 s):
 `CROSS deletes OK`, **0 differences** in 190 workloads (265,289
 transactions, 953,129 deletes, 463 restarts; 94 workloads with reclaim;
 node size 8 in 123, 14 in 26, 30 in 27, 62 in 14), 116 crash cuts (each
@@ -238,7 +238,7 @@ release build against Java. Neither run measured time.
 
 **022's full set, its first part** (`cross.sh random` on
 `work/full/a.specs`, 11:30 to 11:48, 1,079 s, on the build of
-`c37349f9`): StreamDigest's twelve configurations at full size in their
+`fb2a6d86`): StreamDigest's twelve configurations at full size in their
 four modes and CoreSame's two workloads: `CROSS random OK`, **0
 differences** in 50 workloads, 99 crash cuts and 100 budget runs (budgets
 of 1 and 64,000 bytes). These workloads delete little: 14,003 climbs, no
@@ -257,7 +257,7 @@ differences (08:25, 88 s).
 ## 3.3 Corrupt streams
 
 * **The corrupt-stream set** (`corruptset.sh`; C's dumper with `-check`),
-  the whole set, seed 1, on the gate's build of `99421669`, under the
+  the whole set, seed 1, on the gate's build of `ed02ab6d`, under the
   lock (08:43 to 08:45, 122 s): `CORRUPTSET OK`, 6,217 damaged copies of
   the release's own streams, the same status, text and message in Java
   and C in each: 2,569 refused by both with the same exception and
@@ -520,7 +520,7 @@ settings' refusal text, the unforced tail, a count of 0 is no count), and
 
 # 7. Size and time
 
-**Size**: `git diff --numstat 1826cb37 c37349f9 -- items/022-bergdb-c/c`:
+**Size**: `git diff --numstat 1d5b18fa fb2a6d86 -- items/022-bergdb-c/c`:
 43 files, 5,304 lines added and 466 deleted, comments and blank lines
 included:
 
@@ -551,9 +551,9 @@ Java's own change was about 1,250 lines of product code (023-09, section
 | 07:53 to 08:06 | no builds (another agent's timing run): DEAD, `sorted.txt`, the documents |
 | 08:08          | everything built: 548 unit tests pass                         |
 | 08:13          | the negative controls; DROP's test written for the one that passed |
-| 08:22          | the first commit, `99421669`                                  |
+| 08:22          | the first commit, `ed02ab6d`                                  |
 | 08:28 to 08:46 | the first hold of the lock: the gate, `deletes`, the corrupt sets |
-| 08:39          | the empty key's stream and test, `c37349f9`                   |
+| 08:39          | the empty key's stream and test, `fb2a6d86`                   |
 | 08:47 to 11:25 | waiting: other agents' holds, then the integration's gates first |
 | 11:25 to 11:52 | the gate on the head, the full set's first part, the scale deletes |
 
@@ -569,7 +569,7 @@ and `step5.sh` (2026.3's, which Frans decided not to run, 022's log,
 2026-11-10); there is no `step6-2026-4.sh`. After this update:
 
 * **`runs-2026-4.sh`** pins `REV=8772b934`, C at the candidate with
-  `JAVA_REF=git:03ce6ec` in `int.git`'s branch `2026.4`. Its runs would
+  `JAVA_REF=git:d00096e` in `int.git`'s branch `2026.4`. Its runs would
   test the candidate, which is not the release: record format 5, and none
   of 023's delete path. It needs: this port's commits in `int.git` (the
   coordinator's landing; or `R` a clone of the repository that has them),
@@ -612,13 +612,13 @@ the coordinator, 09:33).
 coordinator's word of 08:50.
 
 **Done, gated and committed** on the clone's branch, three commits on
-`main`'s `1826cb37`, only `items/022-bergdb-c/c/` changed:
+`main`'s `1d5b18fa`, only `items/022-bergdb-c/c/` changed:
 
-* `99421669`: the port (section 2: all thirteen IDs), Java's tests of the
+* `ed02ab6d`: the port (section 2: all thirteen IDs), Java's tests of the
   release in C (section 3.5), `cross.sh deletes`, `c/readme.md`,
   `bergdb.h`. Gate: `C BEFORE COMMIT OK (297 s)`, 08:33.
-* `3aba1859`: `cross.sh scale SCALEDEL=1` (the harness only).
-* `c37349f9`, the head: the empty key's stream from Java and its C test.
+* `ad2a3023`: `cross.sh scale SCALEDEL=1` (the harness only).
+* `fb2a6d86`, the head: the empty key's stream from Java and its C test.
   Gate on the head: `C BEFORE COMMIT OK (302 s)`, 11:30.
 
 **Compared with release 2026.4's Java, 0 differences in each:** the quick
@@ -636,7 +636,7 @@ bytes (section 6).
 
 **Not run, for a later quiet slot** (each one run in one slot, not
 timing, in `/Users/f/fl/bench/2026-11-11/cc/gate/items/022-bergdb-c/c`,
-the tree of `c37349f9`, whose `build/` is there from the gate of 11:30;
+the tree of `fb2a6d86`, whose `build/` is there from the gate of 11:30;
 else `./build.sh` and `sh test/cross/java-build.sh` first; about 25
 minutes each for b and c, about 6 for scale):
 
@@ -654,7 +654,7 @@ landed tree.
 **For the coordinator:**
 
 * To land: the three commits of `022-07-c-2026-4` in the clone,
-  `1826cb37..c37349f9`; 022's readme needs its line for 022-07, and
+  `1d5b18fa..fb2a6d86`; 022's readme needs its line for 022-07, and
   022-04 and 022-02 can say that step T is this subitem.
 * Java's three notes: section 5 (inputs, expected, got).
 * A fault of mine: between 07:21 and 07:29 I ran C builds, C's unit tests
@@ -670,8 +670,8 @@ landed tree.
   (1.3 GB); it can be deleted once read.
 
 **Where things are:** clone `/Users/f/fl/bench/2026-11-11/cc/clone`,
-branch `022-07-c-2026-4`, head `c37349f9`; the gate's worktree
-`/Users/f/fl/bench/2026-11-11/cc/gate` (detached at `c37349f9`, with its
+branch `022-07-c-2026-4`, head `fb2a6d86`; the gate's worktree
+`/Users/f/fl/bench/2026-11-11/cc/gate` (detached at `fb2a6d86`, with its
 `build/`); logs, the runs' scripts (`run1.sh`, `run2b.sh`, `run3.sh`),
 the negative controls (`neg/`) and the scratch Java of section 5
 (`jk4/`) in `/Users/f/fl/bench/2026-11-11/cc/work/`. No slot is held and

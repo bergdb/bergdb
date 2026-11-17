@@ -536,7 +536,7 @@ larger one that touches the same code.
 
 ## 8. State
 
-2026-11-11, by an agent of coord-1111; read only at `main` `b3faaffa`.
+2026-11-11, by an agent of coord-1111; read only at `main` `9bda4019`.
 
 * **Done.** Sections 1 to 7, each figure checked at its source: 024-01,
   024-03 with its outputs, 024-04, 023-02, 023-03, 023-07 (3.2, 7),

@@ -7,8 +7,8 @@
 #
 # Usage: java/stress/objectbench.sh REF [quick|full] [RUNS]
 #   REF   the reference's java/ directory, built (REF/build/bergdb.jar): a preserved
-#         format-1 build, such as the parent of 7aca256, made outside the repository:
-#           mkdir -p DIR && git archive ae68938 java | tar -x -C DIR && sh DIR/java/build.sh
+#         format-1 build, such as the parent of 0a6d8f4, made outside the repository:
+#           mkdir -p DIR && git archive 238b249 java | tar -x -C DIR && sh DIR/java/build.sh
 #   quick small sizes, about 10 s a JVM (the default); full: 1,000,000 objects, about 45 s
 #         a JVM on F53.
 #   RUNS  JVMs for each build: 1 by default with quick, 5 with full (about 8 minutes).
@@ -16,7 +16,7 @@
 # Builds this tree first (build.sh, which compiles ObjectBench against it, for the
 # candidate); then compiles ObjectBench again against REF's jar, for the reference, into
 # build/objectbench/RUN/ref-classes/: the same source, but for the package of DbObject,
-# bergdb.pubimp in a jar from before 020-10's B3 (48378fe), which moved it to bergdb.pub
+# bergdb.pubimp in a jar from before 020-10's B3 (fcc151b), which moved it to bergdb.pub
 # (bergdb 020-12, section 2). Both JVMs get the same flags (JVMFLAGS, by default
 # -Xms8g -Xmx8g). Output in build/objectbench/RUN/: each JVM's output, summary.txt. The
 # load averages at the start and the end go into the summary: a run on a machine that is

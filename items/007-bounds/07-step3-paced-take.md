@@ -10,7 +10,7 @@ done. Frans decided on 2026-10-28 to apply the patch and to add D4:B as
 patch as it was written for his review on 2026-10-27.
 
 The patch: [07-step3-paced-take/step3.diff](07-step3-paced-take/step3.diff),
-`git diff` against main's `2eaaa45`; it applies cleanly there. The same
+`git diff` against main's `fc8f7c3`; it applies cleanly there. The same
 change is one local commit, `2506e1c`, in the clone
 `/Users/f/fl/bench/006-09/w10/repo/`, not pushed.
 
@@ -134,11 +134,11 @@ In the clone, with `nice`:
   "stream identical, all checks OK" in all 8, inv-default-100MB with
   them; CrashTest "0 failures" in all 5. Step 6, BryanRepro, failed: "LEVEL
   2 FAILED: BryanRepro", in cycle 37 of 40, a cut's "Cound not delete file
-  .../00000000000020.bergdb". **It fails on main too, since `eaec93e`
+  .../00000000000020.bergdb". **It fails on main too, since `1165c90`
   (005-46, "no read waits for the stream's writer"):** in cycle 39 at
-  `2eaaa45`, `a175840`, `e611709` and `eaec93e`, the same error; at
-  `bf19075`, its parent, "Done: 40 cycles, 0 failures" twice, and twice
-  with this patch's take applied to `bf19075` (TransSeq, Db, DbStarter).
+  `fc8f7c3`, `4085e2e`, `d8ed1aa` and `1165c90`, the same error; at
+  `c1f1f15`, its parent, "Done: 40 cycles, 0 failures" twice, and twice
+  with this patch's take applied to `c1f1f15` (TransSeq, Db, DbStarter).
   Step 7 on its own, as level2.sh full runs it
   ([level2-step7.sh](07-step3-paced-take/level2-step7.sh)): A2A3Check2 OK
   on its three configurations, "lake build: Build completed successfully
@@ -159,7 +159,7 @@ In the clone, with `nice`:
 
 ## 5. StreamDigest
 
-`StreamDigest all`, main's `2eaaa45` against the patch, one compiled copy
+`StreamDigest all`, main's `fc8f7c3` against the patch, one compiled copy
 of the class (main's) against both jars
 ([digest-summary.txt](07-step3-paced-take/digest-summary.txt), with the
 outputs): **all 36 streams change, as expected**, and within each of the 12
@@ -338,15 +338,15 @@ section 8, decision 1):
 > a model change for step 4, not now.
 
 Done by Claude (Opus 5.5, Claude Code) in the scratch clone
-`/Users/f/fl/bench/006-09/d2-007-07`: the code in `f89846d`, on main's
-`cefb473` (first made as `3612965` on `067d00b`, and gated on both), and
+`/Users/f/fl/bench/006-09/d2-007-07`: the code in `b8ac8a1`, on main's
+`fb67f96` (first made as `3612965` on `a5ad51c`, and gated on both), and
 this text and the docs in the commit after it.
 
 ### 10.1 What went in
 
 * `step3.diff` as sections 1 to 3 describe it. It applied cleanly to
-  `067d00b` (005-63's lock and 005-56's import line in `Db.java` are
-  elsewhere), and the commit rebased onto `cefb473` without conflicts.
+  `a5ad51c` (005-63's lock and 005-56's import line in `Db.java` are
+  elsewhere), and the commit rebased onto `fb67f96` without conflicts.
 * D4:B, in `TransSeq.take`. The deadline's distance is the larger of d_h =
   2 × sd and the span of the section's transactions, from the tpos of the
   oldest to that of the newest, as the last record left them
@@ -446,20 +446,20 @@ restart after every one of the 1,500 commits after a decrease from 8 MB to
 ### 10.3 The gates and StreamDigest
 
 In the clone, one after another with `nice`: on `3612965` (base
-`067d00b`) from 09:45 to 10:20, and again after the rebase on `f89846d`
-(base `cefb473`) from 11:12 to 11:47, with the same results. The
+`a5ad51c`) from 09:45 to 10:20, and again after the rebase on `b8ac8a1`
+(base `fb67f96`) from 11:12 to 11:47, with the same results. The
 lines of the second:
 
 * `java/before-commit.sh`: "Deps: 9 packages, all as package.html
   allows", "Unit: SUCCESS, 1064 successful tests in 9.9 s.", "F: SUCCESS,
   75 successful tests in 92.2 s.", "BEFORE COMMIT OK (97 s)" (on
-  `067d00b`: 1062 and 75 tests, 91 s).
+  `a5ad51c`: 1062 and 75 tests, 91 s).
 * `java/stress/level2.sh`, full, 13 minutes: "SUCCESS, 1064 successful
   tests"; RestartStress "0 failures" in all 13 runs, default-disk with
   them ("Done: 2 rounds, 0 failures, 607 s."); RestartInvariance "stream
   identical, all checks OK" in all 8, inv-default-100MB with them;
   CrashTest "0 failures" in all 5; BryanRepro "Done: 40 cycles, 0
-  failures" (step 6 passes since `b0661ba`); A2A3Check2 OK on its three
+  failures" (step 6 passes since `f74fece`); A2A3Check2 OK on its three
   configurations; "conformance: traces: 70, TRACECHECK OK: 70"; "LEVEL 2
   OK".
 * `java/stress/level3.sh`, full, 7 minutes: unit and f-tests; ReclaimStress
@@ -478,16 +478,16 @@ lines of the second:
   "LEVEL 4 OK".
 
 StreamDigest all, main's compiled class against the jars, as in section
-5, on `067d00b` and again on `cefb473` after the rebase:
+5, on `a5ad51c` and again on `fb67f96` after the rebase:
 
 * Main against the patched build: "DIGESTS DIFFER (36 of 36)", as
   expected, with the lengths of section 5's table. Main's digests are
-  still those of `2eaaa45` (digest-base.txt), on both bases: the changes
+  still those of `fc8f7c3` (digest-base.txt), on both bases: the changes
   since, among them 005-63's lock file, 005-56's move of `SyncLevel` and
   005-66's builder, change no stream.
 * The patched build twice: "DIGESTS IDENTICAL (36 of 36)", on each base;
   and the two bases' patched builds give the same digests.
-* The patch alone (step3.diff on `067d00b`) against the patched build:
+* The patch alone (step3.diff on `a5ad51c`) against the patched build:
   "DIGESTS IDENTICAL (36 of 36)", and both are digest-patch.txt. No
   configuration of StreamDigest lowers the startup distance, so D4:B
   changes none of their streams, as 10.1 says.
@@ -600,12 +600,12 @@ it), 010-01 (P4, P5) and releases/next.md.
 
 007-06's "Left" (50M keys, a longer delete run), run on main's code in
 006-10 by Claude (Opus 5.5, Claude Code): the set of 10.4 again, with 50M
-keys instead of 10M. The build was main's `b362a8b`, whose `java/` has
-`f89846d`'s take (step 3 and D4:B). Main moved during the runs. Its
-`fd8f513` (005-53) changed `setStartupDistance` for the value in force
+keys instead of 10M. The build was main's `3ea507e`, whose `java/` has
+`b8ac8a1`'s take (step 3 and D4:B). Main moved during the runs. Its
+`decc677` (005-53) changed `setStartupDistance` for the value in force
 and for a refused transaction, not for a decrease. A smoke run (200k keys,
-20 to 2 MB) gave the same records, byte for byte, on `b362a8b`, on main's
-`0b6d08e` and on 10.4's d4b build.
+20 to 2 MB) gave the same records, byte for byte, on `3ea507e`, on main's
+`d025d95` and on 10.4's d4b build.
 
 On F53, `nice -n 19`, one JVM of 22 GB at a time, from 12:36 to 15:55,
 byte counts only. Nothing was skipped. The settings are 005-38's for 50M
@@ -897,7 +897,7 @@ plus the one noise step:
     SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
 
 (SS1 unchanged), change step 6's comment to say that the SS limits are
-the values of 2026-10-28 (`f89846d`, 007-07), and add to docs/log.md, as
+the values of 2026-10-28 (`b8ac8a1`, 007-07), and add to docs/log.md, as
 the rule asks, something like:
 
 > 2026-10-29. level1.sh's SS limits raised to 1.52 1.11 1.21 1.66 2.41
@@ -936,7 +936,7 @@ figures, not the verdict. Of section 8 there remain the Lean comments
 
 In [07-step3-paced-take/](07-step3-paced-take/):
 
-* `step3.diff`: the patch, `git diff 2eaaa45` of the clone's commit.
+* `step3.diff`: the patch, `git diff fc8f7c3` of the clone's commit.
 * `ShareProbe.java`, `TakeProbe.java`, `DecreaseProbe.java`,
   `MixedProbe.java`: the probes behind sections 2, 3 and 7, in package
   `bergdb.core`; compile against a build's bergdb.jar and put the classes

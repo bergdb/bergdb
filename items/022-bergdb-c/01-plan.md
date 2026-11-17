@@ -16,9 +16,9 @@ its first form at 10:18; the session `022-bergdb-c` owns it and runs it.
 
 # 1. The start
 
-`c/` is a copy of `items/012-bergdb-c/c/` at `be51a78`, 012's last commit
+`c/` is a copy of `items/012-bergdb-c/c/` at `e1ee402`, 012's last commit
 to `c/`: the port of release 2026.2 (bergdb 015-02), taken with
-`git archive be51a78 items/012-bergdb-c/c`, so without 012's `build/`.
+`git archive e1ee402 items/012-bergdb-c/c`, so without 012's `build/`.
 The 202 files are equal to 012's. 012 stays as it is, the port of 2026.2.
 Paths inside `c/` are relative and the depth is the same, so the copy
 builds and tests where it is; step 0 checks that.
@@ -80,7 +80,7 @@ Each step's content is 012-18's, section 5.1, and the parts of its section
 * **Step 5** needs about 2 hours of a quiet F53 (012-18, section 5.1);
   coord-1109 gives the time.
 * **Step 6** writes `c/readme.md`'s "Which Java" (2026.3, and this item's
-  start at `be51a78`) and the report of the port, a subitem.
+  start at `e1ee402`) and the report of the port, a subitem.
 
 
 # 4. Then 2026.4
@@ -145,7 +145,7 @@ messages, C gives Java's, byte for byte, as 2026.3 has them.
 # Log
 
 2026-11-09. Created by the session `022-bergdb-c` from coord-1109's plan
-of 10:18. `c/` copied from 012 at `be51a78`.
+of 10:18. `c/` copied from 012 at `e1ee402`.
 
 2026-11-09, step 0 (worker s0). The copy builds and passes its gate where
 it is, against 2026.2 (`JAVA_REF=2026.2`): `C BEFORE COMMIT OK (225 s)`,
@@ -490,7 +490,7 @@ vectors) and `t_knode.c`'s `knode_validate_time_text`. Before them, the
 first full run found 139 differences of messages (129 of these two texts,
 10 of the I/O texts) and 22 of 014-01's case, which the script now
 counts, and no difference of status or text. The
-negative control, C at `86dade8` (the port of 2026.2) on the quick set:
+negative control, C at `d1c5bfe` (the port of 2026.2) on the quick set:
 `CORRUPTSET CONTROL CAUGHT`, 52 of 57 copies differ, in every base of
 the cases and of the found copies (13 aborts, `AssertionError`s and
 `IllegalArgumentException`s where Java refuses with
@@ -506,9 +506,9 @@ corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
 `corruptset` 57 copies, 2 s; `allocfail` 628 runs. No difference remains.
 
 2026-11-09, step 6 (worker s7). The documents. `c/readme.md`: "Which
-Java" says 2026.3 (`release-2026.3`, `929fa33`, 2026-11-06), that
+Java" says 2026.3 (`release-2026.3`, `9a0bf5e`, 2026-11-06), that
 `java-build.sh` compiles its source zip by default, that this copy began
-at 012's `be51a78` (the port of 2026.2) and that C is kept at one release
+at 012's `e1ee402` (the port of 2026.2) and that C is kept at one release
 at a time, 2026.4 next (022-02); section 1 the gate's time, about 4 to 8
 minutes under load; section 9, point 11, C's forces (at a sync and a
 close, at an open for writing, at a file switch, before a cut's deletes)
@@ -524,8 +524,8 @@ warmup reads with the get's policy (012-18, section 3.3); in a copy of
 `c/` whose warmup keeps every node it reads (Java's `CACHE_ALL` before
 019-22) it fails: one resident pointer to a value over 1 MiB after the
 transaction that replaces the value, the resident bytes over 1,200 KiB,
-still after an eviction. 022's readme: 022-02's candidate is `94a1520`,
-not `770d88b` (022-02, section 2.1); 022-03 added. The gate against
+still after an eviction. 022's readme: 022-02's candidate is `12dd8f7`,
+not `43f71af` (022-02, section 2.1); 022-03 added. The gate against
 2026.3, on `3e3b704`: `C BEFORE COMMIT OK (450 s)`, F53 under a load of
 about 11 to 18; `unit` 383 tests; `cross quick` 0 differences (23
 workloads, 69 crash cuts, 85 corrupt variants, 2 in turns, 46 budget

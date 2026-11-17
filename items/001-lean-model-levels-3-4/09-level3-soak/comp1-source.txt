@@ -1,5 +1,5 @@
 name comp1
-commit 065c21f2a583bdcb70143af9e73006501cc25000
+commit 55241f9786fa31ffdf46d53921916ad8b687c6dd
 changed files (java/src, java/src-dev, java/stress):
   ?? java/stress/Soak.java
   ?? java/stress/soak.sh

@@ -122,10 +122,10 @@ Frans to decide.
 CacheEntry gone: MEM 174 bytes per KV, 2026.1 191), 1c (reads without the
 `readSync` monitor; `level4.sh quick` OK), 1d (seams). The branch
 `009-handles` made from `main` after 1d, in the worktree `../bergdb-009`,
-and pushed. Step 3a on the branch (`4e66a59`): handles, with the followers
+and pushed. Step 3a on the branch (`628dc39`): handles, with the followers
 still under the pointer locks and the controller still walking;
 `level4.sh quick` OK, C-P 0 of 2643. Phase 2's model (2a to 2c, and 2d
-started) on `main` (`74af34c`). The model's runs found two things 02 did not
+started) on `main` (`72e7d9d`). The model's runs found two things 02 did not
 say (Handle.lean's header, choices 1 and 7): a pointer resolved again from a
 dead handle must keep the position the node was last written at, and the
 slow path must compare with it. Java does both pointer-locally: the slow path
@@ -137,7 +137,7 @@ asked for an explicit vpos case where Java compares references (open point
 3; `Spos.newer`). Step 1a's timing runs (2026.1 and `main`, G1 and ZGC) wait
 for a quiet machine.
 
-2026-10-25, 21:20 to 21:50. Step 3c on the branch (`19a8c58`): the
+2026-10-25, 21:20 to 21:50. Step 3c on the branch (`21a210e`): the
 lock-free fast path; the pointer locks off every follower; the release
 store of a pointer's change, paired with the acquire read of a pointer to
 a value. jcstress tests of the barriers (`java/stress/jcstress/`, a tool,
@@ -151,7 +151,7 @@ eviction thread, batches took up to 100 ms, and the resident bytes went
 above the budget. Step 3d's changes come from these runs and its tests.
 
 2026-10-25, 21:50 to 22:40. Step 3d on the branch, in two commits. The
-first (`7831909`): the audit's handle checks, EvictionReaderTester's
+first (`de99c4f`): the audit's handle checks, EvictionReaderTester's
 f-tests with 8 readers and under the capacity controller, two more
 ReclaimReaders runs in `level4.sh`, and the pointer locks removed. The new
 tests found two faults of steps 3a to 3c, both fixed: an eviction read a
@@ -161,7 +161,7 @@ a pointer, or its write-back lower a reference, so that a later follow
 read an older version (stale reads, 2 runs of 9). And s1's runs found two
 more: the eviction thread kept the writer out of the write lock, and the
 values that reads load into pinned leaves stayed. `level4.sh` in full OK
-(C-P 0 of 7917). The second (`66c8f3a`): batches bounded to 2 ms, the
+(C-P 0 of 7917). The second (`15125d8`): batches bounded to 2 ms, the
 trigger from the pinned bytes the hand counts, and loads that wait up to
 2 ms when eviction falls behind; s1's probe at 20 MB under G1: 645,083
 commits a minute (3c: 2,583; 2026.1: 221,900), 41 MB resident at the end
@@ -186,7 +186,7 @@ were 119 s and most of the rest reading back what they evicted (25.9 GB
 from the device, the branch 4.6 GB). On s1 the longest waits left are the
 device's and a reader's wait for the writer's `fsync` (FileStream, for the
 stream layer: registered as 005-46; the load's finding is in 005-38). Not yet run: P4's soak and ScaleBench under Shenandoah, on
-F53 from 05:00. `main` merged into the branch (`a73cd66`) for phase 6's
+F53 from 05:00. `main` merged into the branch (`15d52d8`) for phase 6's
 gates; `night.sh` runs on it.
 
 2026-10-26, 00:01. Step 2d done, by a Claude subagent working for this
@@ -200,7 +200,7 @@ position travels in the pointer: only an eviction sets it, and the slow path
 raises the reference and writes it back). Checked in this session: the
 handle modules rebuilt from scratch with no warnings and no `sorry`, and
 `#print axioms tc_handles` gives only Lean's standard axioms. On `main` as
-`38586b3`. G2b's condition for the merge (phase 2's model and the
+`d9a74a3`. G2b's condition for the merge (phase 2's model and the
 serialization invariant) is met. Phase 4a (T2-C, T-READ and T-PIN over
 handles) started in the same way. The model's follow is one atomic step, so
 the interleavings of Java's slow path are argued in 02, section 9 (the
@@ -218,7 +218,7 @@ HandleHistTrans, HandleReadT, HandleRestart, HandlePin, about 1,980 lines),
 mirroring E4 to E6. Checked here: the whole Lean project rebuilt from
 nothing (161 jobs, no warnings, no `sorry`), and `#print axioms` for the
 five handle theorems and the four of the design before them gives only
-Lean's standard axioms. On `main` as `059d741`. Left of phase 4: 4c, the
+Lean's standard axioms. On `main` as `00a75e4`. Left of phase 4: 4c, the
 checker's C-P over the handle state (TraceExport's export of it, and the
 model's handle invariants checked on Java's states), and then the removal
 of the Phys and Evict files that only the design before handles uses, for
@@ -240,7 +240,7 @@ waited from 07:22 for a quiet machine (mediaanalysisd kept the load above
 budget: gets on one thread 3 to 9 percent fewer (long keys 9, one
 unconfirmed alert), from 4 threads 19 percent more; the run with eviction
 off was skipped (the machine not quiet after the soak). The final branch
-`a04a418` passed `night.sh` (NIGHT OK).
+`f4e93d8` passed `night.sh` (NIGHT OK).
 
 2026-10-26, 08:45. 009-04 written, at Frans's request ("Document the 'two
 degenerated collections' in 009-04."): the second of the two was upgraded to
@@ -248,7 +248,7 @@ a full collection, which left 3.8 GB of an old generation of 8 GB, so the
 heap was full of garbage the collector had not reclaimed, not of live data.
 
 2026-10-26, 08:49. Phase 6: Frans merged the branch into `main` ("Ok, we are
-ready to merge."; `git merge --no-ff 009-handles`, `178a0d4`), after reading
+ready to merge."; `git merge --no-ff 009-handles`, `98981f8`), after reading
 009-04. Then, by Claude: docs/levels.md's Level 4 for handles, README.md's
 Level 4 row, docs/log.md, and item 004 done. Left of 009: step 4c (the trace
 checker over the handle state) and the removal of the Lean files that only
@@ -351,7 +351,7 @@ decision 2 of section 8: "accept s1's get of 2,760 ms as not BergDB's
 005-46 (005-46, "Confirmed in the quiet block"): in P4's soak under ZGC
 the longest commit took 5.1 ms and the longest read 3.6 ms, and the cuts
 were no longer the slowest; ScaleBench from the OS's cache and Props made
-no fewer reads a second than `bf19075` (7 to 81 percent more gets a
+no fewer reads a second than `c1f1f15` (7 to 81 percent more gets a
 second; CORE 0.232 and 0.233); `performance.sh ab` against 2026.1, no
 alerts. So target 2 is met in P4's soak and the pause probe, not yet with
 8 threads at 665 MB under ZGC, where gets took 27 and 36 ms with readers'

@@ -1,4 +1,4 @@
-# 11:22:34 n=1000000 main 68c3917e, counts
+# 11:22:34 n=1000000 main 16759d36, counts
 # loaded 1000000 keys in 1.8 s, stream 62493016 bytes, sd 50000000
 op     mode b       txs   ops      ns/op   B/op    maxms   p50ms  maxrecB     dirtyMax  bound     heapB      dirty/op
 put    rand 1       20000 20000    4001    164     0.45    0.00   30544       7         6         0          0.139

@@ -1,4 +1,4 @@
-Building current-4b459df4-c94f6f51 from 4b459df4d76cc6e7bb6aa6695c67f9b79bd7558b (dirty: true) in /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/b2/java/build/perf/builds/current-4b459df4-c94f6f51
+Building current-4b459df4-c94f6f51 from 856b12ab225a6848fb9cd5affd6e8a18b24f83ed (dirty: true) in /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/b2/java/build/perf/builds/current-4b459df4-c94f6f51
 Built /private/tmp/claude-502/-Users-f-fl-repos-f1/ba361f20-ac77-4e36-ac93-b7c9a80ed863/scratchpad/b2/java/build/perf/builds/current-4b459df4-c94f6f51
        6 scenarios from default-check.suite
 CPU idle before the runs: 85.97%
@@ -28,7 +28,7 @@ a-1k-x100-def (write, 3 runs)
   a-1k-x100-def run 1: WRITE 10000 commits (1000000 puts) in 8.91 s: 1123 commits/s, bytes appended per user byte 1.17, append p50 847.9 us p99.9 1056.8 us max 1.20 ms|
   a-1k-x100-def run 2: WRITE 10000 commits (1000000 puts) in 8.92 s: 1121 commits/s, bytes appended per user byte 1.17, append p50 847.9 us p99.9 1036.3 us max 1.22 ms|
   a-1k-x100-def run 3: WRITE 10000 commits (1000000 puts) in 8.91 s: 1122 commits/s, bytes appended per user byte 1.17, append p50 847.9 us p99.9 1044.5 us max 33.56 ms|
-Session default-check.suite-g1-8g-default20  (4b459df4d76cc6e7bb6aa6695c67f9b79bd7558b + working-tree diff)
+Session default-check.suite-g1-8g-default20  (856b12ab225a6848fb9cd5affd6e8a18b24f83ed + working-tree diff)
 
 a-100-def  [write, 3 runs, workload cc5ac7264803c0b1]
   metric                                         n           median              min              max      CV

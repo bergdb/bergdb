@@ -11,8 +11,8 @@ sets; 14.6); its review by a second agent (14.3, step 5) was made on
 is forever, 8.13; a leaf's key klong never names a delete node, 6.3.1)
 and 5 omissions, all fixed in this document; C1 to C4 hold. Approved
 with 012-01 by Frans's go (012-01, 9.1).
-**Reference:** Java's `main` at `404d2ee` (`java/` last changed at
-`fd8f513`). Everything below describes the Java code of that commit, and
+**Reference:** Java's `main` at `aa0f532` (`java/` last changed at
+`decc677`). Everything below describes the Java code of that commit, and
 a line quoted is quoted from it.
 Phase A (012-01, section 8). Effort: max. After: nothing.
 
@@ -67,14 +67,14 @@ needs it, so a record format is checked on the records that the start
 reads (section 4.3) and on those read later.
 
 One field has no version of its own: the maximum node size at meta bytes
-44–45, added on 2026-10-27 (005-50, `bf19075`) in bytes that were reserved,
+44–45, added on 2026-10-27 (005-50, `c1f1f15`) in bytes that were reserved,
 so the meta version stayed 154 (`MetaBlock.CURRENT_VERSION`'s comment).
 A start refuses a stream whose last valid meta block has 0 there, as every
 block written before 005-50 has (`Db.refuseOtherNodeSize`,
 `VersioningStreamException`). So Java at the reference starts only
 databases created since 2026-10-27.
 
-The paced take (`f89846d`, 2026-10-28, 007-07) changed what Java writes
+The paced take (`b8ac8a1`, 2026-10-28, 007-07) changed what Java writes
 (every record's choice of index nodes, section 8.7) and no version: a
 stream written before it reads as any other, and records written after
 it follow the new take.
@@ -1138,7 +1138,7 @@ value nodes' stored offsets (record bytes, 6.4) and the positions.
    (`2 * META_BLOCK_DISTANCE`) to 1,000,000,000.
 2. Under the write lock, the database's state is checked as a
    transaction's is (005-53: a refused call changes nothing). If `n` is the
-   setting in force, nothing is written (005-53, `fd8f513`).
+   setting in force, nothing is written (005-53, `decc677`).
 3. The setting and the in-memory meta block's startup distance are set to
    `n`, and the transaction `put("/#i/-dummy", 200,000 zero bytes)`
    (`DbConstants.DUMMY_KEY`, two segments, section 7) is executed as a user
@@ -1454,7 +1454,7 @@ positions, settings, and state that a start rebuilds from the stream. The
 database id is random by default, a setting that can be fixed. Java's own
 checks agree: `EvictionInvariance` (every eviction schedule, with
 restarts and reclaim) and `StreamDigest`'s three modes gave identical
-streams at `404d2ee`, and two JVM runs of `MakeStreams` give the same
+streams at `aa0f532`, and two JVM runs of `MakeStreams` give the same
 bytes in all its directories (14.6). Four class-(c) findings concern
 restarts and the files (10.3).
 
@@ -1893,7 +1893,7 @@ workload in two JVMs give the same scan (P2, as a check of the audit).
 
 * 2026-10-28 13:47: started by a subagent of 012's conductor, in the
   scratch clone `/Users/f/fl/bench/012/02-stream-format/` (a clone of
-  `bergdb` at `404d2ee`). Reference recorded at the top. Next: step 2,
+  `bergdb` at `aa0f532`). Reference recorded at the top. Next: step 2,
   `StreamScan`.
 * 13:55: step 2 done. `c/test/cross/java/StreamScan.java` (text format
   "streamscan 1", in its header) and `MakeStreams.java` (test streams:
@@ -2019,7 +2019,7 @@ workload in two JVMs give the same scan (P2, as a check of the audit).
   come) and the report to the conductor. Done-when item 5 stays open
   for 012-05's sets.
 * 15:54: resumed at the conductor's message. `main` merged into the
-  clone (`2f3514f`: 012-04 and 012-05; `java/` unchanged since `fd8f513`;
+  clone (`2f3514f`: 012-04 and 012-05; `java/` unchanged since `decc677`;
   StreamScan and MakeStreams in `main` are those of `ff1627f`, unchanged
   since; the clone's untracked `java-build.sh` moved to
   `/Users/f/fl/bench/012/02-out/java-build.sh.clone-untracked`, `main`'s,
@@ -2062,8 +2062,8 @@ Step 5 of the plan (14.3): an independent review of this document
 against the Java code, field by field, at max effort. By Claude (Opus 5.5,
 Claude Code), the reviewing agent, a subagent of 012's conductor, which
 did not write the document. Started 2026-10-28 16:22, in the scratch clone
-`/Users/f/fl/bench/012/02-review/` at `1955718` (`java/` as at `fd8f513`,
-so as at the document's reference, `404d2ee`). Probes of the review are in
+`/Users/f/fl/bench/012/02-review/` at `7164df9` (`java/` as at `decc677`,
+so as at the document's reference, `aa0f532`). Probes of the review are in
 `/Users/f/fl/bench/012/02-review-out/` (outside the repository).
 
 ## 15.1 What was checked, and how

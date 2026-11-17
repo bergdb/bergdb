@@ -1,7 +1,7 @@
 #!/bin/sh
 # Bergdb 005-40: what a start does with a stream it cannot read: one of another format,
 # or one opened with a wrong crypto key. Compiles the probes against java/build/bergdb.jar
-# of this tree (build it first with java/build.sh) and against the 2017 code (195cf88,
+# of this tree (build it first with java/build.sh) and against the 2017 code (0257e0b,
 # built here once, as 006-02 builds it), then runs a case.
 #
 #   run.sh format    FormatProbe: today's code on streams whose version bytes are changed
@@ -28,7 +28,7 @@ build() {
     if [ ! -f $OLD/classes/bergdb/pub/Factory.class ]; then
         rm -rf $OLD
         mkdir -p $OLD/src $OLD/classes
-        git archive 195cf88 java | tar -x -C $OLD/src
+        git archive 0257e0b java | tar -x -C $OLD/src
         j=$OLD/src/java
         javac --release 8 -encoding UTF-8 -nowarn -Xlint:-options -d $OLD/classes \
             -cp $j/in/icu-for-bergdb.jar \
@@ -63,7 +63,7 @@ cross() {
     rm -rf $T
     mkdir -p $T
     echo "Today's code: $(git log -1 --format='%h %s' | cut -c1-60)"
-    echo "The 2017 code: 195cf88 (the 2017 import)"
+    echo "The 2017 code: 0257e0b (the 2017 import)"
     echo
     echo "X0. 2017 creates, 2017 starts:"
     old create $T/x0 20

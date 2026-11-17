@@ -54,8 +54,8 @@ r-1k-fin (restart, 3 runs, alternating)
   r-1k-fin run 3: STARTUP 0.702 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11952923 gets in 6.05 s: 49556 commits/s, 1974454 gets/s; commit p99 94.2 us, get p99 2.9 us|W
  [C]
   r-1k-fin run 3: STARTUP 0.713 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 13458151 gets in 5.67 s: 52944 commits/s, 2375114 gets/s; commit p99 89.1 us, get p99 1.5 us|W
-COMPARE reference a42947c5-20261026T061948-quick-g1-8g-ref [a42947c58ee0c984375095cf99bc207d9980c214, build 2026.1, jar 1c913899]
-        candidate a04a4189-20261026T061948-quick-g1-8g-cand [a04a4189be13b319f9528290899310c1ca671642, build current-a04a4189-1a923133, jar 0c32f51a]
+COMPARE reference a42947c5-20261026T061948-quick-g1-8g-ref [8e579c66769bca5d756da183a66eb0b580085e5c, build 2026.1, jar 1c913899]
+        candidate a04a4189-20261026T061948-quick-g1-8g-cand [f4e93d84b1f3ff2b6bb4bae8103bfb8c358b37d6, build current-a04a4189-1a923133, jar 0c32f51a]
 thresholds: /Users/f/fl/repos/bergdb-009/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
 
 SCENARIO r-1k-fin [restart] reference 3 runs, candidate a04a4189-20261026T061948-quick-g1-8g-cand 3 runs

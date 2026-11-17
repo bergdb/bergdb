@@ -1,7 +1,7 @@
 005-78, the design: the retain duration in the stream
 =======================================================
 
-For Frans to choose. Written 2026-11-05 from `main` at `0c6c4be` (after
+For Frans to choose. Written 2026-11-05 from `main` at `8defe65` (after
 release 2026.2), with the probe of the entry's U2 (`RetainProbe.java`, beside
 this file; its output `probe.txt`). The entry is 005-78; its "Plan for
 2026.2" asked for this file (section 4 there). Nothing in `java/` is changed.
@@ -202,7 +202,7 @@ filter) reaches `/#i/` keys and rewrites a live value stored before
 `pCut`; P3 found the probe's KVs after 21 to 26 cuts and after a restart
 on the cut stream. C: the table is stored again at each cut.
 
-**A copy of the stream.** Replication is removed (005-11, `16fb228`); a
+**A copy of the stream.** Replication is removed (005-11, `bd77904`); a
 byte copy of the stream (a file copy, `MemoryStream.copy`) carries the
 value in all three forms, and a database started on it uses it.
 
@@ -271,7 +271,7 @@ every `TX` alike.
 
 ## 4.1 The probe
 
-`RetainProbe.java`, run on the clone of `0c6c4be` (`/Users/f/fl/bench/016/005-78`),
+`RetainProbe.java`, run on the clone of `8defe65` (`/Users/f/fl/bench/016/005-78`),
 StreamDigest's four `l3-*` workloads, retain duration 1 s, `CoreTestClock`;
 the full output is `probe.txt`. Modes: `plain` (set at the start),
 `restarts-each` (set after each start, StreamDigest's restarts),
@@ -347,7 +347,7 @@ the full output is `probe.txt`. Modes: `plain` (set at the start),
   distances (500 and 1,000 bytes) make the take put earlier commits' index
   nodes in it (they would go in the next commit otherwise).
 
-## 4.2 The study: questions 1 to 10, from `0c6c4be`
+## 4.2 The study: questions 1 to 10, from `8defe65`
 
 1. **The form.** `MetaBlock`: offset 40 the startup distance (4 bytes), 44
    the node size (2), 46 to 126 reserved (81, zero). Its comment on
@@ -371,7 +371,7 @@ the full output is `probe.txt`. Modes: `plain` (set at the start),
    `reclaim.setRetainDuration(b.retainDurationInTimeUnits)` at every start.
    The precedent: `DatabaseBuilder.startupDistanceInMb`'s Javadoc,
    "Existing databases keep the startup distance stored in their stream".
-3. **Old databases.** Since 005-50 (`bf19075`) a start refuses a stream
+3. **Old databases.** Since 005-50 (`c1f1f15`) a start refuses a stream
    without the node size, so 2026.1's databases are refused; 2026.2's
    (`release-2026.2`, 2026-11-04) open, and have no retain duration in any
    form. The rule for a stream without a value is F4; 2026.2's notes list
@@ -397,7 +397,7 @@ the full output is `probe.txt`. Modes: `plain` (set at the start),
    P3 (section 4.1).
 7. **The restart test.** Section 5; the probe's `restarts-50` and
    `after-call` are its two halves and fail today.
-8. **Replicas.** Replication is removed (005-11, `16fb228`). A byte copy
+8. **Replicas.** Replication is removed (005-11, `bd77904`). A byte copy
    carries the value in each form; nothing else to check.
 9. **The other settings.** The internal fraction:
    `Db.setReclaimInternalFraction` (0.001 to 0.90, converted to units of
@@ -436,7 +436,7 @@ in force from `handleStartParams`; a KV (B) or a table field (C) from
     by `setRetainDuration` after commit 100 (builder default), a restart
     right after the call and every 50 commits after, without setting it
     again; the stream from the decided cut equals the run without
-    restarts. It fails on `0c6c4be` (the probe's `after-call`) and passes
+    restarts. It fails on `8defe65` (the probe's `after-call`) and passes
     after;
   * a refused call (a stopped database) changes nothing;
   * a call with the value in force writes nothing (the length unchanged);
@@ -453,7 +453,7 @@ in force from `handleStartParams`; a KV (B) or a table field (C) from
   /** The retain duration set once is kept over restarts (bergdb 005-78). */
   @Nano private static void retainDurationKeptOverRestarts() {
       String plain = run(false), restarts = run(true);
-      Assert.assertEquals(plain, restarts);   // fails on 0c6c4be
+      Assert.assertEquals(plain, restarts);   // fails on 8defe65
   }
 
   /** The digest from the decided cut; restarts: after the call, then every 50. */

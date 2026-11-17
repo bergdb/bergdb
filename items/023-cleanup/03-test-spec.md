@@ -545,7 +545,7 @@ Checks 023-02, R22 and R23.
 The prototype, `java/stress/CleanupRule.java` (T1 with T2's shapes and
 T3's R forever, and T4; 700 lines), on branch `023-03-tests` of the clone
 `/Users/f/fl/bench/2026-11-10/t23/clone` at `251c4b65` (on `main`'s
-`668d64bd`; a copy, with the runs' output, in `03-test-spec/`). Run on
+`86c45146`; a copy, with the runs' output, in `03-test-spec/`). Run on
 F53 on 2026-11-10, beside other work; only counts are cited. Every check
 of T6 passed in every run: no wrong answer, the history within R kept.
 

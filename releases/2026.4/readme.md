@@ -73,7 +73,7 @@ Files
 Identity
 --------
 
-* Tag `release-2026.4`, commit `bb8da6dc21e8c1dee2776ba9c756bd89132d494f` (2026-11-10).
+* Tag `release-2026.4`, commit `76f66f89255ee17b39a73feecaf0c579e221a4a3` (2026-11-10).
 * `BuildInfo`: release 2026.4, release int 264, build 2026.4.261110.2240;
   `java -cp bergdb-2026.4.jar bergdb.core.BuildInfo` prints them.
 * Built by `java/build.sh` (`javac --release 17`) with
@@ -1121,7 +1121,7 @@ entry's ID; the entries are in [items/020-release-2026-4/](../../items/020-relea
   (Brent's), and a read that comes back to a node it passed fails with a
   `StreamFormatException`, the database failed as for other damage. Valid
   streams are read as before; the stream's bytes are unchanged. In 2026.1 to
-  2026.3; `main` before 023 (`329d78f3`) hangs on the same copy.
+  2026.3; `main` before 023 (`3cfee1e7`) hangs on the same copy.
 * **A damaged `prevPos` that breaks rule 4 by position is refused at the
   start, also with `-ea`** (found by CorruptStreamTester, seeds 20769 and
   20770 of 2026-11-10). With assertions on, the start's check of rule 4
@@ -1629,7 +1629,7 @@ is on a branch, not in the release.
 
 **The C clone**: item 012's stays the port of release 2026.2. Item 022's
 (`items/022-bergdb-c/c/`) is ported to 2026.3 and to 2026.4's candidate of
-9 November (`03ce6ec`), which wrote format 5: it does not have 023's
+9 November (`d00096e`), which wrote format 5: it does not have 023's
 deletes, and 2026.4 refuses its databases. It follows 2026.4 after the
 release (022, log of 2026-11-10).
 
@@ -1638,10 +1638,10 @@ Verification
 ------------
 
 Commit A made again (as 018-09, section 4, allows): the night of the first
-release commit, `72c8e0ec`, found that a damaged stream could make a read
+release commit, `6e9671d4`, found that a damaged stream could make a read
 loop for ever (`CorruptStreamTester.testFull`, the day's seed 20767; the
 night tests failed on F53 and on s1 with JDK 27 and 17). The release
-commit, `bb8da6dc`, adds to it the fixes `4b36218a` and `4df672f4`
+commit, `76f66f89`, adds to it the fixes `58eba7cb` and `21e8db97`
 (Changes, Core API: a damaged stream that made a read loop for ever is
 refused, and a damaged `prevPos` that breaks rule 4 by position), next.md
 and a new build in BuildInfo. The large conformance set, jcstress and the
@@ -1650,7 +1650,7 @@ the release commit itself.
 
 On the release commit, in clean clones (`baseline.zip`, `gates/`):
 
-`java/night.sh` on `bb8da6dc`, 2026-11-11 03:01 to 2026-11-11 04:41
+`java/night.sh` on `76f66f89`, 2026-11-11 03:01 to 2026-11-11 04:41
 (`NIGHT OK`, 100 minutes, JDK 27.0.1.0.3). The release commit passed
 `before-commit.sh` before the night, in a clean clone
 (`BEFORE COMMIT OK (263 s)`).
@@ -1670,7 +1670,7 @@ On the release commit, in clean clones (`baseline.zip`, `gates/`):
 | `stress/kill-restart.sh` | KILL RESTART OK: 1000 kills and 45 exits | 1423 s |
 | `conformance.sh medium`  | CONFORMANCE OK                           | 140 s |
 
-`java/night.sh large` ran on the first release commit, `72c8e0ec`, from
+`java/night.sh large` ran on the first release commit, `6e9671d4`, from
 2026-11-10 20:37 (369 minutes): `conformance.sh large`, the large
 conformance set with the Lean model, CONFORMANCE OK (16112 s), and every
 step ok but the night tests (`gates/large/`). Its night tests failed in
@@ -1689,7 +1689,7 @@ A' the night tests pass, above.
 * jcstress (harness 6.6, 018-08, section 4): the 8 tests of
   `java/stress/jcstress/` in jcstress's default mode on F53 with JDK 27,
   every one OK (`f53/jcstress.txt`), on the first release commit,
-  `72c8e0ec`.
+  `6e9671d4`.
 
 * The tests again, with `-ea`, on F53, in `night.sh` with JDK 27: 1,645
   unit tests and 89 f-tests (`before-commit.sh`) and 26 night tests, all
@@ -1734,7 +1734,7 @@ A' the night tests pass, above.
   to 2026-11-11 04:30 on A': 34,650 seeds in 8 configurations, 0 failures,
   0 timeouts (`s1/fuzz/`); seeds from 2,000,001; by configuration: a 2,000,
   b 6,700, c 2,000, d 6,700, e 1,950, f 6,700, g 1,950, h 6,650; 2026-11-10
-  21:59 to 2026-11-10 22:57 on the first A, `72c8e0ec` (ended early for the
+  21:59 to 2026-11-10 22:57 on the first A, `6e9671d4` (ended early for the
   remake): 5,950 seeds in 8 configurations, 0 failures, 0 timeouts
   (`s1/fuzz-a/`); seeds from 1,000,001; by configuration: a 350, b 1,150, c
   350, d 1,150, e 350, f 1,150, g 350, h 1,100.

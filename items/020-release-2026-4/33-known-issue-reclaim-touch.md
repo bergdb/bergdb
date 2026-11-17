@@ -34,7 +34,7 @@ Two faults follow (024-07, section 3):
   grow without end. Nothing throws. Read from the code and reproduced
   with the limit lowered; not run at 104M keys.
 
-Fixed on `main` in `a780b957` (024-07, option A; 024-13's integration): a
+Fixed on `main` in `36924319` (024-07, option A; 024-13's integration): a
 step makes dirty only the index nodes on the paths of its own puts; at
 10M keys 5 to 15 nodes and a largest record of 29 kB. For release 2026.5.
 

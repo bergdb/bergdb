@@ -1,6 +1,6 @@
 bergdb 005-27: CrashTest (java/stress/CrashTest.java with the change) on the seeds of
 level2.sh's full run that have a transaction ending at a meta block's position,
-without the fix (f206e58's bergdb.jar) and with it (2026-10-23, F53).
+without the fix (faa4269's bergdb.jar) and with it (2026-10-23, F53).
 
 == without the fix
 -- CrashTest 5 1

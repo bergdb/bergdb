@@ -5,7 +5,7 @@ Created 2026-11-09 by Frans Lundberg.
 An application written as a new user of release 2026.4 would write it
 (020-24's brief): the release jar alone on the class path, and only what a
 user reads (README.md, the Pub API's Javadoc in `java/src/bergdb/pub`,
-`overview-pub.html`, `releases/next.md`). The jar was built from `b7aa2a0`.
+`overview-pub.html`, `releases/next.md`). The jar was built from `0a59cf3`.
 The implementation and the items were read only afterwards, to explain a
 surprise (020-09 for I-1).
 
@@ -235,7 +235,7 @@ every entry of the level, which is what a user would expect.
 ## 4. Fixes
 
 By coord-1109's fixer x24, 2026-11-09, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `ec8d16f`, under Frans's rule for
+`/Users/f/fl/bench/2026-11-09/clone-x24` rebased on `main` at `740ffdf`, under Frans's rule for
 2026.4 (2026-11-09): fix faults against today's specs and Javadoc, make the Javadoc true
 where the code is as designed, no new API and no change of meaning. Each commit below has
 its tests in `PubTesterJavadoc` and a line in `releases/next.md`, Documentation; JAVADOC

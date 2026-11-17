@@ -34,10 +34,10 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from the finding of the C port, and
-taken by its agent p14 (clone `clone-p14`, on main's 3beeb7e).
+taken by its agent p14 (clone `clone-p14`, on main's ea1fa31).
 
 2026-11-09. Done by p14: commit 2998875 in `clone-p14`, on main's
-3beeb7e, to land. Severity: low; the database's outcome was right, its
+ea1fa31, to land. Severity: low; the database's outcome was right, its
 cause not.
 
 * Confirmed, by direct calls (probe `OverflowProbe`, below): of reads

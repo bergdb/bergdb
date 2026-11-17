@@ -1,4 +1,4 @@
-Compiled and run against the supplied f5a5f66 jar, 2026-11-04.
+Compiled and run against the supplied abe7785 jar, 2026-11-04.
 From /Users/f/fl/bench/016/R4:
   javac -cp repo/java/build/bergdb.jar -d out/R4/classes out/R4/R4StartupLargeValues.java
   java -ea -cp out/R4/classes:repo/java/build/bergdb.jar bergdb.core.R4StartupLargeValues

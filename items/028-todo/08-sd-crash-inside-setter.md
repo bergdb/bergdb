@@ -12,7 +12,7 @@ What: the draft of 027-11 (Startup) found that a crash inside the record
 that `Db.setStartupDistance` writes, after the meta block written within
 that record, makes recovery abort the record, while the start then takes
 the new startup distance from that meta block (027-11, sections 1.2 and
-1.4, at 7e190010).
+1.4, at c82bce56).
 
 Why: if so, an aborted transaction has a lasting effect: the setting is in
 force although the transaction that set it never committed. That may be

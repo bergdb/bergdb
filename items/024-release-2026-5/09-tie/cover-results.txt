@@ -1,4 +1,4 @@
-# bergdb 024-09, A3: cover.py on the reclaim set of conformance.sh (30 traces, 5 seeds; branch 024-09-tie, a48534fe), 2026-11-11
+# bergdb 024-09, A3: cover.py on the reclaim set of conformance.sh (30 traces, 5 seeds; branch 024-09-tie, 472d7716), 2026-11-11
 traces 30: iterations with a cut 321, steps 583; index nodes reachable at f: made before the first step 13791, of them in a step's touch 13791, not 0 (with an entry in the iteration 0); made in the iteration 4353
 r-small: traces 5: iterations with a cut 26, steps 40; index nodes reachable at f: made before the first step 512, of them in a step's touch 512, not 0 (with an entry in the iteration 0); made in the iteration 234
    Dag counters: unlinked 0, taken back 0, collapses 0, empty keys pointed to the next child 0

@@ -21,7 +21,7 @@ State
 
 2026-11-04, 07:52: the fix, its two tests, two mutations and
 `before-commit.sh` done in the clone `/Users/f/fl/bench/016/015-56/repo`
-(`main` at `f5a5f66`); handed off for review in
+(`main` at `abe7785`); handed off for review in
 `/Users/f/fl/bench/016/015-56/handoff/`. Open: the review (016-05,
 section 5), the combined gate, the commit in `main`.
 
@@ -90,7 +90,7 @@ Log
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-04, 07:41 to 07:52, by an agent of 016-05, in
-`/Users/f/fl/bench/016/015-56/repo` (a clone of `main` at `f5a5f66`):
+`/Users/f/fl/bench/016/015-56/repo` (a clone of `main` at `abe7785`):
 
 * **Read**: R8-F10 (016-06, R8), 005-66, 005-63's Javadoc in
   `DatabaseBuilder` (`dir()`, `start()`) and `Database.stop()`,

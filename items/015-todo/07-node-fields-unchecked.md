@@ -1,7 +1,7 @@
 015-07. Fix: a node's inner fields are not checked, and a read that meets one does not fail the database
 ========================================================================================================
 
-Status: done (2026-11-03, 12610c7). Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done (2026-11-03, de4b0b2). Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 For release 2026.2 (016-01, section 6, the rule for findings: verified,
 no format or API change).
@@ -33,9 +33,9 @@ First step: 005-82's probe as tests in `DbTesterFailure`.
 Found 2026-11-03 by the work on 005-82 (016-05).
 
 **State** (2026-11-03, 16:50, F1): the change, its tests and the gate are
-done in `/Users/f/fl/bench/016/015-07/repo` (base `3e32f02`, in
-`/Users/f/fl/bench/016/015-07/BASE`; made on `c70a87d`, then moved onto
-`f2cb23b` and `3e32f02` as `main` took 005-69, 005-79, 005-80 and 005-82,
+done in `/Users/f/fl/bench/016/015-07/repo` (base `5672e5a`, in
+`/Users/f/fl/bench/016/015-07/BASE`; made on `2ff0fdc`, then moved onto
+`bfc2a9d` and `5672e5a` as `main` took 005-69, 005-79, 005-80 and 005-82,
 with 005-82's tests adapted, see the Log); handed off for the review
 (`/Users/f/fl/bench/016/015-07/handoff/`). Next: the review's findings,
 answered in the Log, then the final hand-off with Outcome and Status. To
@@ -106,11 +106,11 @@ Log
 * **With 005-82's patch**: the two patches apply together (`git apply`
   of 005-82's hand-off, then this change, on a clone of `main`); their
   hunks in `DbTesterFailure` are apart, and this change adds no import.
-* **The gate**: `java/before-commit.sh` on `f2cb23b`, 16:24 to 16:26:
+* **The gate**: `java/before-commit.sh` on `bfc2a9d`, 16:24 to 16:26:
   `BEFORE COMMIT OK (107 s)`, 1,104 unit tests and 78 f-tests. Then `main`
-  took 005-82 (`3e32f02`); the change applies on it unchanged, and is
+  took 005-82 (`5672e5a`); the change applies on it unchanged, and is
   gated again there (below). No level script (none was asked; F53 busy).
-* **On `3e32f02`** (005-82 in `main`): the gate failed, 16:27 to 16:29,
+* **On `5672e5a`** (005-82 in `main`): the gate failed, 16:27 to 16:29,
   on one test, 005-82's `DbTesterFailure.testGetTransUncheckedParseError`
   ("the cause's cause: null"): its value size of -1 is now refused by the
   parser (`StreamFormatException`, "Bad value size"), so no
@@ -132,7 +132,7 @@ Log
     wrap catching only `IllegalStateException`: the test fails, the
     `IllegalArgumentException` escaping;
   * 005-82's entry (closed) is not changed; its Log names the old test.
-* **The gate on `3e32f02`**, with the adapted tests: `java/before-commit.sh`,
+* **The gate on `5672e5a`**, with the adapted tests: `java/before-commit.sh`,
   16:47 to 16:49: `BEFORE COMMIT OK (102 s)`, 1,108 unit tests and 78
   f-tests.
 

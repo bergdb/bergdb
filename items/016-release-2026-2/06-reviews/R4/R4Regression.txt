@@ -1,4 +1,4 @@
-Against f5a5f66 plus R4Regression.diff, built with sh build.sh; 2026-11-04.
+Against abe7785 plus R4Regression.diff, built with sh build.sh; 2026-11-04.
 From /Users/f/fl/bench/016/R4/repo/java, one command/JVM at a time:
   java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.core.R4EvictionTester -m METHOD
 

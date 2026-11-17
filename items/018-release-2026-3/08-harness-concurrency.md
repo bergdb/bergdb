@@ -5,9 +5,9 @@ Created 2026-11-06 by Frans Lundberg, as harness 6.6 of 018-01 (W2), in
 the day 006-13 (Frans, 2026-11-06, 11:46, on harness 6.6's scope: "As you
 recommend.": Option 1).
 
-**Status: the eight jcstress tests rerun on `main` (`e446bb2`) on s1 in
+**Status: the eight jcstress tests rerun on `main` (`4e741b4`) on s1 in
 default mode: each `[OK]`, no FORBIDDEN outcome in 0.46 to 6.9 billion
-samples a test (section 3). On F53, on release 2026.3's commit A (929fa33), in the night of
+samples a test (section 3). On F53, on release 2026.3's commit A (9a0bf5e), in the night of
 2026-11-06 to 07: 8 of 8 OK (006-13, Outcome). Done; 018 closed
 2026-11-07.** No test
 added: review R7 of 006-13 (2026-11-06, the night's concurrency fixes
@@ -44,14 +44,14 @@ which these tests do not build.
 
 When they last ran:
 
-* The five of 009 in default mode on 2026-11-03: on F53 on `6f932f0` and
-  on s1 on `3e32f02` (016-08, F1 and L3), after the eviction thread's new
-  wake (`988fe1a`, 005-65), no forbidden outcome.
+* The five of 009 in default mode on 2026-11-03: on F53 on `47ba87f` and
+  on s1 on `5672e5a` (016-08, F1 and L3), after the eviction thread's new
+  wake (`52aeb04`, 005-65), no forbidden outcome.
 * `GrowthPublication`, `SwizzleOrder` and `TopSwizzleOrder` only in quick
   mode on F53 (2026-11-03, 015-14's Log); 016-08's F6 and L5, which were
   to run them in default mode, did not run. So today's s1 run is their
   first in default mode.
-* Since then: 015-14's acquires on the fast path (`4e10aa2`, the same
+* Since then: 015-14's acquires on the fast path (`ca02b5e`, the same
   evening), `BufferedStream`'s changes (015-83, 019-02, 015-80,
   019-10) and the night's concurrency fixes that R7 reads.
 
@@ -64,7 +64,7 @@ tests against the jar, runs jcstress with `-m default`, and prints each
 test's outcomes summed over its configurations. Not in `build.sh`, nor in
 `before-commit.sh` or `night.sh`: a tool, run by hand.
 
-The tests compiled against `main`'s jar (`e446bb2`) unchanged; no test
+The tests compiled against `main`'s jar (`4e741b4`) unchanged; no test
 code changed.
 
 
@@ -72,7 +72,7 @@ code changed.
 
 2026-11-06, 11:50:28 to 12:16:16 (26 minutes), s1 (x86, 2 CPUs, idle
 before the run, no other JVM), JDK 27, jcstress 0.16, `run.sh` in default
-mode on the jar of `e446bb2` (its SHA-1 checked on s1): exit 0, 272 runs
+mode on the jar of `4e741b4` (its SHA-1 checked on s1): exit 0, 272 runs
 of the tests' configurations, "Failed tests: No matches", "Error tests: No
 matches". Output, with the JDK's warnings on JNA's native access left out:
 [s1-default.txt](08-harness-concurrency/s1-default.txt).
@@ -130,7 +130,7 @@ Expected length: 5 to 10 minutes, and a minute for the clone and the
 build (the five tests of 009 took 3.5 minutes on F53 on 2026-11-03,
 016-08's F1, and 16 minutes on s1, where the eight took 26). Smoke test,
 2026-11-06, 12:17: `SMOKE=1` (sanity mode, `PlainPublication` only, 2
-CPUs) on `f0a47f3`, "JCSTRESS F53 OK: 1 tests [OK]", under a minute.
+CPUs) on `c963aa3`, "JCSTRESS F53 OK: 1 tests [OK]", under a minute.
 
 Check: every test `[OK]`; `PlainPublication`'s outcome "0" above zero (the
 race seen, so the harness can see one on F53). A FORBIDDEN outcome is a
@@ -141,7 +141,7 @@ here.
 ## 5. Log
 
 2026-11-06. Created. The eight tests compiled against `main`'s jar
-(`e446bb2`) unchanged; run on s1 in default mode (section 3); the F53 run
+(`4e741b4`) unchanged; run on s1 in default mode (section 3); the F53 run
 prepared for the night's chain (section 4). Each `[OK]` on s1, no
 FORBIDDEN outcome. No test added: review R7 of 006-13 flags no shared
 field that needs one. Run by Claude (Opus 5.5, Claude Code), agent j66 of

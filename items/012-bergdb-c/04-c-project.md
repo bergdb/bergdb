@@ -101,10 +101,10 @@ refused, keys of 6, 7, 8, 13 and 14 bytes, bytes 0, 1, 0x7f, 0x80 and
 
 # 6. Progress
 
-* **Java reference**: `main` at 404d2ee (`java/` last changed at
-  fd8f513).
+* **Java reference**: `main` at aa0f532 (`java/` last changed at
+  decc677).
 * **Clone**: `/Users/f/fl/bench/012/04-c-project/` (a git clone of
-  bergdb at 404d2ee); the conductor copies the files in.
+  bergdb at aa0f532); the conductor copies the files in.
 * 13:47: started.
 * 13:56: **stopped at a safe point** at the conductor's request (Frans
   raised 012's effort to xhigh); a new agent continues from this clone.

@@ -77,7 +77,7 @@ First step
 ----------
 
 Reread 003-01 against today's `Db.executeInner` (item 001 changed it a lot
-after 003-01 was written at `059dbf1`) and update its section 3 and 5 where
+after 003-01 was written at `0a732c3`) and update its section 3 and 5 where
 the code moved.
 
 
@@ -101,7 +101,7 @@ go point, and nothing changes before it; after it, a `Throwable` means that
 the storage, the JVM or memory failed, or a bug, and the database fails. No
 rollback.
 
-**The first step.** 003-01 reread against `Db.executeInner` at `cbeb9bd`;
+**The first step.** 003-01 reread against `Db.executeInner` at `691794d`;
 its sections 3 to 5 have notes of the day. The causes were all still there.
 Since 003-01, 005-02, 005-17, 005-18 and 005-21 had moved every check that
 depends on input before the first change, and the Pub API runs the

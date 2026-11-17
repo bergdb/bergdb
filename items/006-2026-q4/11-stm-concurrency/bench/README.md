@@ -4,7 +4,7 @@ This experiment measures the benefit of concurrent public `Connection.rw`
 actions against serialization of each whole action. The report is 006-11,
 section 10. The production tree is unchanged; experimental source variants
 are built in temporary directories from commit
-`4685ab1d3611b9b3d8a20907c29253051be53fc6`.
+`377ff7af628f1fc214fc5945f9eda9179161868f`.
 
 Completed: **276 measured runs**, all with verified counter totals
 and stored computation results. See [results/summary.md](results/summary.md),
@@ -118,7 +118,7 @@ From the BergDB root, choose new output directories:
 ```sh
 python3 -B items/006-2026-q4/11-stm-concurrency/bench/build.py \
   --out /private/tmp/bergdb-stm-builds \
-  --commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+  --commit 377ff7af628f1fc214fc5945f9eda9179161868f
 python3 -B items/006-2026-q4/11-stm-concurrency/bench/run.py \
   --builds /private/tmp/bergdb-stm-builds/builds.json \
   --plan items/006-2026-q4/11-stm-concurrency/bench/main-plan.json \

@@ -51,7 +51,7 @@ Frans, 09:10: "Defaults are good. Work unattended, good luck!"
   provers' common brief: `/Users/f/fl/bench/2026-11-15/day/common.md`.
 * Provers gate each step with
   `/Users/f/fl/bench/2026-11-15/day/gate-1115.sh` (base: `main`
-  9e408f06; the trusted closure and the two top theorems' statements
+  9dc5ba78; the trusted closure and the two top theorems' statements
   unchanged) and report GATED; the coordinator lands with 025-02's
   `land.sh`. Provers do not edit a gate.
 * STOP for all provers: `/Users/f/fl/bench/2026-11-15/day/STOP`, set by
@@ -60,7 +60,7 @@ Frans, 09:10: "Defaults are good. Work unattended, good luck!"
 
 ## 3. The work
 
-* **W1, tops** (decision 3): land d6cedb46 after a gate whose base is
+* **W1, tops** (decision 3): land 29632e54 after a gate whose base is
   `main`'s `joint6` (Frans's (a)). The gate's base, the agent's
   `guard-main.txt`, is checked against a fresh guard run on `main`.
 * **W2, prover delj** (decision 2): DelInvJ at afterDelete's calls
@@ -102,31 +102,31 @@ provers' branches and reports are in
 ## 7. Progress
 
 * 08:54 coord-1115 started; 08:55 coord-1114's handover, its last hunk
-  committed (7b02b6e1).
+  committed (8bf67da8).
 * 08:57 Frans approved tops' gate change (a). 09:01 the agent's base
   equals a fresh guard run on `main` (10,832 lines); gate-tops PASS:
   the trusted closure differs from the cleanup's base by exactly
   `NoOutside`, the 41 definitions of `hchk5` and `StateOK` leaving; the
   two top theorems' statements equal `main`'s `joint6` and
   `noOutside'`; 24 theorems on the standard axioms; 41 traces.
-* 09:03 tops LANDED 9e408f06, pushed: `invGetScanOK_merges` (hp, hth,
+* 09:03 tops LANDED 9dc5ba78, pushed: `invGetScanOK_merges` (hp, hth,
   hchk5, htb, d4, l4, hU, hMSF, hCoF) and
   `invGetScanOK_merges_noOutside` (hp, hth, hchk, d4, l4, hU, hHL,
   hMSF, hCoF, hCoU); 361 lines of variants removed.
 * 09:04 W2: prover delj started (Opus xhigh, stop 15:00).
 * 09:19 W3 done: 025-04's plan (coord-1114's agent), route (b): the
   split from a state with the chain's bitmap set, no statement change;
-  5 steps, 700 to 1,200 lines; committed 6ca79849. coord-1114 closed
+  5 steps, 700 to 1,200 lines; committed 37aa2d82. coord-1114 closed
   09:20.
 * 09:22 W4: prover hu started (Opus xhigh, stop 16:00), 025-04's
   steps 1 to 5.
-* 09:50 delj LANDED 62e55741 (gate-1 PASS): root collapse's
+* 09:50 delj LANDED 442a9557 (gate-1 PASS): root collapse's
   `checkRoot` proved (`opDelChk5OKR_of_chk6`, from `hMSF`'s MergeStepOK
   and `hCoF`); `invGetScanOK_merges_chk6` (hp, hth, hchk6, htb, d4, l4,
   hU, hMSF, hCoF), where `hchk6` is `hchk5` without `checkRoot`, with
   DelInvJ and the books at afterDelete's calls stated as a check. Left
   in `hchk6`: carrying DelInvJ, and the merge's `checkFree`.
-* 09:56 hu LANDED 3f696db6 (53a7f745 merged with 62e55741; the merged
+* 09:56 hu LANDED 425b5027 (3b61cfc9 merged with 442a9557; the merged
   tree's gate PASS): 025-04's steps 1 to 5, `hU` out of the joint route.
   `invGetScanOK_merges_noU` has the premises hp, hth, hchk5, htb, d4,
   l4, hMSF, hCoF; checked beyond the gate: audited, on the standard
@@ -134,17 +134,17 @@ provers' branches and reports are in
   `invGetScanOK_merges`'s without exactly the `hU` premise. The old top
   theorem is now a corollary of it. hu goes on with step 6 (the
   NoOutside route).
-* 09:59 hu LANDED 5bb18a72 (gate PASS on main's tree): step 6,
+* 09:59 hu LANDED d8fd54ab (gate PASS on main's tree): step 6,
   `invGetScanOK_merges_noOutside_noU` (hp, hth, hchk, d4, l4, hHL,
   hMSF, hCoF, hCoU), audited as above, its statement
   `invGetScanOK_merges_noOutside`'s without exactly `hU`; still vacuous
   there through `hHL` and `hCoU`. 025-04 done: about 2,300 lines, of
   which about 1,100 are now unused (for a close step). hu goes on with
   `d4`, then `l4`.
-* 10:04 delj LANDED e1e9b836: `invGetScanOK_merges_chk6` now on the
+* 10:04 delj LANDED 42ebc9cb: `invGetScanOK_merges_chk6` now on the
   route without `hU`: hp, hth, hchk6, htb, d4, l4, hMSF, hCoF. With it
   audited, the closure grows only by `hchk6`'s 31 new definitions.
-* 10:11 delj LANDED ada8757c: DelHoleJ (DelInvJ and the books) carried
+* 10:11 delj LANDED 90acb7d3: DelHoleJ (DelInvJ and the books) carried
   to the leaf's call of afterDelete; `invGetScanOK_merges_chk7` replaces
   `_chk6` (hp, hth, hchk7, htb, d4, l4, hMSF, hCoF; against
   `invGetScanOK_merges_noU` only `hchk5` became `hchk7`). Next for delj:
@@ -153,27 +153,27 @@ provers' branches and reports are in
 * 10:04 hu on `d4`: 2,000 to 3,000 lines, more than today; it gates a
   dead-bound framework for every writer function but the merge, then
   the merge, and writes the plan for the rest; `l4` a plan only.
-* 10:20 delj LANDED fbce47ac: DelInvJ carried to both of afterDelete's
+* 10:20 delj LANDED 3189efbe: DelInvJ carried to both of afterDelete's
   calls (DelHoleClimb.lean); `invGetScanOK_merges_chk8` replaces `_chk7`;
   `hchk8` has one check left, the merge's `checkFree`. W2's first task
   (DelInvJ) done.
-* 10:57 hu LANDED 3008ae57: `d4`'s pieces, additions only: the dead
+* 10:57 hu LANDED b4a1e89d: `d4`'s pieces, additions only: the dead
   bound (every node the writer reads at most theta dead klongs, well
   formed) kept by every write of the delete but the merge itself
   (DeadLocal.lean, DeadSplit.lean, DeadDelete.lean). Left for `d4`: the
   merge, the merges' loop, the case lemmas; the plan for the rest and
   for `l4` in 024-12, section 1. DeadSplit.lean takes about 7 minutes to
   elaborate (for a close step).
-* 11:11 delj LANDED 079c89e5: the merge's `checkFree` proved at every
+* 11:11 delj LANDED 1fdb6127: the merge's `checkFree` proved at every
   merge of the merges' loop from a call of afterDelete
   (DelMergeUp.lean); `hchk` GONE. `invGetScanOK_merges_free`: hp, hth,
   htb, d4, l4, hMSF, hCoF; its statement is `invGetScanOK_merges_noU`'s
   without exactly `hchk5`; audited, on the standard axioms, the closure
   unchanged with it. delj goes on with `hMSF` and `hCoF`.
-* 11:13 delj LANDED c2bfeded (as 99e90e96): `ht_merge_of_J`, the
+* 11:13 delj LANDED 4b03fcf6 (as 5e5aa6fa): `ht_merge_of_J`, the
   heights' walk through every merge of the merges' loop with no holder
   premise; additions, toward `hMSF` and `hCoF`.
-* 11:17 hu LANDED e097d266 (as d4cc7ca8): `d4` GONE.
+* 11:17 hu LANDED 6a4afcc9 (as 4fdd9099): `d4` GONE.
   `invGetScanOK_merges_free_noD4`: hp, hth, htb, l4, hMSF, hCoF; its
   statement is `invGetScanOK_merges_free`'s without exactly `d4`;
   audited, on the standard axioms, the closure unchanged with it. By a
@@ -181,15 +181,15 @@ provers' branches and reports are in
   the merge (from DelInvF's ranges) and the merges' loop, by copies of
   the route lemmas; `d4` as stated (for RunOK runs) is not proved, as
   its proof needs the induction's facts. hu goes on with `l4`.
-* 11:17 hu ended (landed 584c73af: `l4`'s State note in 024-12,
+* 11:17 hu ended (landed af943131: `l4`'s State note in 024-12,
   section 1). `l4` not started: it builds the joint induction, so its
   proof gets none of the induction's facts; a near-copy of
   `jointHtJ_reachedJ` first (about 300 lines), a non-local invariant;
   3,000 lines or more by copies, much less by option (b), a statement
   change for Frans (024-12, section 1). No prover in its place: with
   four points left to 91 %, delj goes on alone.
-* 11:17 W5: `night.sh` started on `main` 584c73af.
-* 11:20 to 11:37 delj LANDED 2c4009a9, 4108d6b6, bc2cdd65, 1364f7e3:
+* 11:17 W5: `night.sh` started on `main` af943131.
+* 11:20 to 11:37 delj LANDED b4115f95, 7c28e601, ff771213, ad568556:
   run checks of `hMSF`'s and `hCoF`'s true forms (139 of 3,032 merges
   made the tree deeper, so "a merge keeps the depth" is false; no
   operation of 17,390 made it deeper twice; the heights stayed within
@@ -200,15 +200,15 @@ provers' branches and reports are in
   (024-12, section 1).
 * 11:37 delj stopped early for the usage; resumed at 11:39 on the same
   task until the STOP file (91 %).
-* 11:45 delj ended (its plan note landed, 5522c8df): the bound across a
+* 11:45 delj ended (its plan note landed, 5d635f46): the bound across a
   delete's steps has no local invariant (a root a step adds may be split
   by a later step of the same delete), and carrying the heights to the
   calls that use MergeStepOK is a restructure of the reading (about 100
   lemmas in 42 files, or a checked copy); it recommended a planning
   agent, as for `hU`.
-* 11:48 025-05 created (2ce7428a): the plan for `htb`, `hMSF` and
+* 11:48 025-05 created (68e9addd): the plan for `htb`, `hMSF` and
   `hCoF`; planning agent hplan started (Opus xhigh, stop 14:00).
-* 12:39 025-05 ready (815d9e2c): route P, a fuel above every node id.
+* 12:39 025-05 ready (96ac19ab): route P, a fuel above every node id.
   Every writer state with PutInv fits its next id, so at a fuel above
   both p.fuel and the next id the reading is always right, and the
   loops keep it with no fit premise: `hMSF` and `hCoF` leave by a
@@ -217,7 +217,7 @@ provers' branches and reports are in
   5,000 lines). Run checks: 4,573 take-backs, 0 failures.
 * 12:43 prover fit started (Opus xhigh): 025-05's part 1.
 * 13:02 to 13:37 fit LANDED 025-05's part 1, steps 1 to 6 (89273873,
-  edb53562, 7afd3be7, b799d6f8, d21270d2, 86464c1c): `hMSF` and `hCoF`
+  0846a5e8, 85d38375, c4cf497c, 8f58da68, 78545945): `hMSF` and `hCoF`
   GONE. `invGetScanOK_merges_noFit` (DeadTop.lean): hp, hth, htb, l4;
   its statement is `invGetScanOK_merges_free_noD4`'s without exactly
   `hMSF` and `hCoF`; audited, on the standard axioms, the closure
@@ -226,14 +226,14 @@ provers' branches and reports are in
   family a form over an invariant, the old ones their instances; about
   2,750 lines added and 630 removed in 22 files.
 * 13:40 prover htb started (Opus xhigh): 025-05's part 2, `htb` out.
-  13:59 LANDED 15b94486 (the joint induction without `htb`, reduced to
-  stratum families); 14:12 LANDED 83ccec1d (one family; 4 of its 7
+  13:59 LANDED 358fadc6 (the joint induction without `htb`, reduced to
+  stratum families); 14:12 LANDED e834fda7 (one family; 4 of its 7
   cases proved). Top theorem unchanged.
-* 14:04 W5: `night.sh` on 584c73af FAILED one step, the night tests:
+* 14:04 W5: `night.sh` on af943131 FAILED one step, the night tests:
   CorruptStreamTester found a damaged node (its checksum made right)
   whose start or reads did not end in 60 s; it repeats alone. The other
   15 steps OK. Registered as 028-14 (Investigate); news.md entry.
-* 14:28 to 14:38 htb LANDED fa767afb, 5ab4313c, 17498510: 025-05's
+* 14:28 to 14:38 htb LANDED 8c07356c, 50e82214, 17498510: 025-05's
   step 7 done (the joint induction with no `htb`, no fit and no
   heights' bound; `hchk` with no `htb`), and step 9's reduction:
   `invGetScanOK_merges_tbL` (hp, hth, l4, htbL), where `htbL`
@@ -241,7 +241,7 @@ provers' branches and reports are in
   the induction's runs whose start has the first stratum's facts;
   `invGetScanOK_merges_noFit` its corollary. Left: step 8, `htbL` from
   the take-back sites.
-* 14:40 htb ended (its notes landed, 4fb21f03): step 8 needs a frame
+* 14:40 htb ended (its notes landed, 4e571378): step 8 needs a frame
   argument over a delete's segment roots, too large for the usage left.
   No new prover: the week at 90 %, under a point to the 91 % stop.
 
@@ -266,15 +266,15 @@ theorem's statement the old one's without exactly the premises removed
 
 | Premise | Gone by | Prover | Landed |
 |---|---|---|---|
-| `hU` | the split from a state with the bitmap set (025-04) | hu | 3f696db6 |
-| `hchk` | DelInvJ carried to afterDelete's calls | delj | 079c89e5 |
-| `d4` | the dead bound carried write by write | hu | d4cc7ca8 |
-| `hMSF`, `hCoF` | route P, a fuel above every node id (025-05) | fit | 86464c1c |
+| `hU` | the split from a state with the bitmap set (025-04) | hu | 425b5027 |
+| `hchk` | DelInvJ carried to afterDelete's calls | delj | 1fdb6127 |
+| `d4` | the dead bound carried write by write | hu | 4fdd9099 |
+| `hMSF`, `hCoF` | route P, a fuel above every node id (025-05) | fit | 78545945 |
 | `htb` to `htbL` | the joint induction with no `htb` (025-05, step 7) | htb | 17498510 |
 
 All by consumer changes and additions: no existing statement changed
 (tops at 09:03, Frans's (a), renamed the top theorems). `hU` also left
-the NoOutside route (5bb18a72); that route still holds vacuously
+the NoOutside route (d8fd54ab); that route still holds vacuously
 through `hHL` and `hCoU`. lean/ grew from 222,700 to 236,184 lines.
 Plans: 025-04 (done), 025-05 (part 1 done, part 2 at step 8).
 
@@ -284,7 +284,7 @@ over a delete's segment roots (025-05, section 8). The superseded
 corollaries (`invGetScanOK_merges_noU`, `_free`, `_free_noD4`,
 `_noFit`, ...) and about 1,100 unused lines stay for a close step.
 
-**night.sh** on 584c73af: 15 of 16 steps OK; the night tests failed
+**night.sh** on af943131: 15 of 16 steps OK; the night tests failed
 on a damaged node whose start or reads did not end (028-14).
 
 **Usage.** The week from 82 % (08:54) to 90 % (14:40); five provers

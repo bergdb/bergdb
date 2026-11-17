@@ -1,7 +1,7 @@
 005-49: summary.py's line for each WriteBench run (see summary.py for the columns).
 10M keys and 30M updates unless named; 50M = 50M keys, 20M updates; -u90 = runs of up to
 90M updates, counted over their first 68M (WB_PUTS). The section columns are in units of the
-sd given above each block. head = today's take (565499f); deadline = 007-03's step 3 alone;
+sd given above each block. head = today's take (74bc2dc); deadline = 007-03's step 3 alone;
 paced = the first paced take (half-fit rounding, carry, floor sd/2); pexp-t125 = it with a
 target of 1.25 sd; pdue-f2 = the due pace; rec-tT = the recommended take (paced-take.diff)
 with the share's sd times T (rec-t10 is the diff as it is). Runs of 2026-10-27, on F53.

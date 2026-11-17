@@ -73,7 +73,7 @@ IDs for the living documents too, such as `sis-model.md`, is for later.
 Checks
 ------
 
-* Commit 1 of 2, `3b60dde`: 38 renames, nothing else, so that each file's
+* Commit 1 of 2, `e6f2394`: 38 renames, nothing else, so that each file's
   history follows it (`git log --follow`).
 * Commit 2 of 2: no change that is whitespace only (`git diff --stat` and
   `git diff --ignore-space-at-eol --stat` agree).

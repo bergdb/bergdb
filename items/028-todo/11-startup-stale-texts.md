@@ -5,7 +5,7 @@ Status: done. Kind: Fix. Frans: P5 only.
 Created 2026-11-13 by Frans Lundberg.
 
 What: five texts that the review of 027-11 (Startup) found to disagree
-with the code at 7e190010; the code is right in each (027-11, section 9,
+with the code at c82bce56; the code is right in each (027-11, section 9,
 "Found while writing"):
 
 * 027-03, lines 415, 1116 and 1234: the creation as 264 bytes; it is 272

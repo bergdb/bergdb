@@ -488,7 +488,7 @@ at 15 November's speed.
   It builds, refuses `sorry`, `admit`, axioms of ours, `native_decide`,
   `implemented_by` and `extern`, and checks that the trusted closure and
   the statements of `invGetScanOK_merges` and
-  `invGetScanOK_merges_noOutside` equal the base's (`main` 96918d92).
+  `invGetScanOK_merges_noOutside` equal the base's (`main` 9789291c).
   New top theorems are not on its audit list: the prover checks them
   beyond it (`#print axioms`, the statement against the one it
   replaces), as on 15 November. On GATE PASS: "GATED l4 <commit>

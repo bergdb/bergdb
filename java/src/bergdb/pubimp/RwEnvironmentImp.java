@@ -283,7 +283,7 @@ class RwEnvironmentImp implements RwEnvironment {
                         + "section 3).");
             }
             // Into an array of its size: getBytes() may need more than Java's largest
-            // array on the way (the review of e92a95a).
+            // array on the way (the review of 02995d9).
             return StringUtil.toBytes(s, (int) size);
         }
         return StringUtil.toBytes(s);
@@ -504,7 +504,7 @@ class RwEnvironmentImp implements RwEnvironment {
             // The previous value, read at R, to delete its entries. One of format 1 has none:
             // no index of 2026.4 indexed one (a build fails over it, a byte[] put of it is
             // refused), so a put over it and a delete of it work (2026-11-09, the review of
-            // e92a95a: they were refused, so such a key stayed while the index existed).
+            // 02995d9: they were refused, so such a key stayed while the index existed).
             // A put whose key is replaced ("${transactionTime}" in its name: put() refuses
             // it in the directory) lands at a key whose name holds its commit's time, after R,
             // which no key replace wrote before: it has no previous value. The key as written

@@ -61,7 +61,7 @@ the plan assumes G1 and must bound its full collections some other way.
 
 ## 2. The runs
 
-F53 only (MacBookPro18,3, OpenJDK 27 from Homebrew). bergdb `7d14f65` built in a scratch
+F53 only (MacBookPro18,3, OpenJDK 27 from Homebrew). bergdb `4fdec5b` built in a scratch
 clone, `bergdb.jar` SHA-256 `e6d52dc6ac78aafb7fb150d65c49c360cab35e183766f4a6b0597171af4281db`.
 Each configuration runs with G1 and with ZGC, back to back, with 004-02's flags otherwise
 (`-Xms` equal to `-Xmx`, `AlwaysPreTouch` for ScaleBench, `gc*` and `safepoint` logged).

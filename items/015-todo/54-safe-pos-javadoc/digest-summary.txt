@@ -1,4 +1,4 @@
-StreamDigest: main 7413ceb (digests-base.txt, quick: all but l2-default-100MB) against
+StreamDigest: main 8e2b7cf (digests-base.txt, quick: all but l2-default-100MB) against
 015-54's fix (digests-new.txt, all; l2-default-100MB run on its own and merged),
 2026-11-05, one compiled copy of StreamDigest (the base's) on both jars. 'digest'
 compares the decided fields (length, firstAvailablePos, firstAvailableTime, sha256;

@@ -5,7 +5,7 @@ in its section 2.2, a shadowed klong that names a node taken back, and the quest
 X5 (c) between reviews B and C. Everything is in `/Users/f/fl/bench/2026-11-10/v12/`: the
 clone `clone/`, the worktrees `wt-p5` (023-p5-merge, 71e386de), `wt-p4r` (branch
 023-v12-p4r: 023-p4-empty-key, 0e66d1c9, with P5's `retarget` ported, not committed),
-`wt-main` (main, 0a0f0016) and `wt-fix` (branch 023-v12-fix, 92bf4eb5). Probes are in
+`wt-main` (main, 75cfc0f1) and `wt-fix` (branch 023-v12-fix, 92bf4eb5). Probes are in
 `probe/`, outputs in `runs/`.
 
 ## 1. Summary
@@ -39,7 +39,7 @@ clone `clone/`, the worktrees `wt-p5` (023-p5-merge, 71e386de), `wt-p4r` (branch
 
 | Build   | Code                                                         | Take-back |
 |---|---|---|
-| wt-main | main, 0a0f0016                                               | none      |
+| wt-main | main, 75cfc0f1                                               | none      |
 | wt-p4r  | 023-p4-empty-key + `retarget` (17 lines, from 4c6bea65)      | yes       |
 | wt-p5   | 023-p5-merge, 71e386de, unchanged                            | yes       |
 | wt-fix  | 023-p5-merge + the fix (section 5) + UnlinkFuzz's options    | yes       |

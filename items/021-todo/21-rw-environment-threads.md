@@ -36,10 +36,10 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 020-24-11's U11-1 and U11-3,
-and taken by its agent t21 (clone `clone-t21`, on main's 9ed1e6c).
+and taken by its agent t21 (clone `clone-t21`, on main's 595418e).
 
 2026-11-09. Done by t21: commit fa019d5 in `clone-t21`, on main's
-279dba1, to land (with ed157ee of 021-22 and 5fca061 of 020-24 after it).
+fdebb8a, to land (with ed157ee of 021-22 and 5fca061 of 020-24 after it).
 
 * Why. `RwEnvironmentImp` kept its reads' `GetData` (the Core's
   per-operation scratch, for one thread), its read set (`MyLongSet`), its
@@ -98,7 +98,7 @@ and taken by its agent t21 (clone `clone-t21`, on main's 9ed1e6c).
   index. On 2026.3's jar `ParallelEnv` failed the database in round 0.
 * Cost, one thread (`/Users/f/fl/bench/2026-11-09/t21-perf/`,
   `GuardCost.java` run by `AB.java`, which alternates the jars of main's
-  9ed1e6c and of the fix in one JVM, 8 times 3 rounds; F53 under load
+  595418e and of the fix in one JVM, 8 times 3 rounds; F53 under load
   20 to 28): an `rw()` of one get and one put 3,370 ns before and 3,480
   after (medians of 16), minima 2,968 and 2,889: no difference beyond
   the noise.

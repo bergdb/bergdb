@@ -10,7 +10,7 @@ outside the repository, in the run's directory. Times from `date`.
 
 ## F53
 
-* **F1, jcstress, default mode, `6f932f0`** (16:02 to 16:05, 3.5
+* **F1, jcstress, default mode, `47ba87f`** (16:02 to 16:05, 3.5
   minutes). `sh stress/jcstress/run.sh /Users/f/fl/bench/016/jcstress-lib
   default` in `/Users/f/fl/bench/016/h4-jcs/repo/java`, JDK 27. All five
   `[OK]`; "Failed tests: No matches", "Error tests: No matches". No
@@ -19,30 +19,30 @@ outside the repository, in the run's directory. Times from `date`.
   and `ValuePublication` (1,100,976,774). The control `PlainPublication`
   saw its race 124,076 times in 3,604,308,614 samples, so the harness can
   see one on F53.
-* **F2, JDK 17, `323a54a`** (16:05 to 16:09). In
+* **F2, JDK 17, `c8e2f1e`** (16:05 to 16:09). In
   `/Users/f/fl/bench/016/h4-jdk17/repo/java`, with `JAVA_HOME` and the
   PATH at `/opt/homebrew/opt/openjdk@17` (java and javac 17.0.21.0.3):
   `before-commit.sh`: "Unit: SUCCESS, 1093 successful tests in 9.8 s",
   "F: SUCCESS, 78 successful tests in 71.0 s", `BEFORE COMMIT OK (76 s)`;
   `night.sh tests`: "SUCCESS, 8 successful tests in 143.1 s".
-* **F3, the stress programs with fresh seeds, `323a54a`, JDK 27** (16:10
+* **F3, the stress programs with fresh seeds, `c8e2f1e`, JDK 27** (16:10
   to 18:11, 5 lanes, base seed 110310000, beside the other agents' work;
   `/Users/f/fl/bench/016/h4-stress/f3/summary.txt`): 3,407 runs, two
   failed. `crash` 940, `restartdisk` 805, `restart` 466, `evinv` 465,
   `dagfuzz` 329 (300 seeds each), `readers` 329, `powerloss` 32, `ltm`
   20, `reclaim` 20, `interrupt` 1 (a 600 s run): all `ok` but two:
   * `interrupt seed=111110000`, FAILED after 485 s: a get's "File closed"
-    reported by close(); 015-17, fixed in `6105d21`;
+    reported by close(); 015-17, fixed in `bce685c`;
   * `powerloss seed=111010062`, FAILED after 1 s, "cannot delete test
     file": 015-16, the tester's `stop()` before it removes the directory.
 
 
 ## s1
 
-* **L1, JDK 27, `6f932f0`**: `before-commit.sh`: `BEFORE COMMIT OK (121
+* **L1, JDK 27, `47ba87f`**: `before-commit.sh`: `BEFORE COMMIT OK (121
   s)` (15:59 to 16:01). The first run of the unit tests and the f-tests on
   Linux on record.
-* **L2, JDK 17, `6f932f0`**: `before-commit.sh`: `BEFORE COMMIT OK (147
+* **L2, JDK 17, `47ba87f`**: `before-commit.sh`: `BEFORE COMMIT OK (147
   s)` (16:08 to 16:11).
 * **`level1.sh` on s1: does not fit the machine.** It failed twice
   (16:06, and 16:20 with its RestartStress JVMs one after another, in s1's
@@ -59,15 +59,15 @@ outside the repository, in the run's directory. Times from `date`.
   16:31 with `/tmp` bound to a directory on the disk in a private mount
   namespace (`unshare -m`, the run's processes only;
   `/opt/bergdb-bench/016/h4/run-night-ns.sh`).
-* **The night tests on s1, with `/tmp` on the disk, `6f932f0`**: JDK 27
+* **The night tests on s1, with `/tmp` on the disk, `47ba87f`**: JDK 27
   "SUCCESS, 8 successful tests in 183.4 s" (16:31 to 16:34); JDK 17
   "SUCCESS, 8 successful tests in 190.8 s" (16:34 to 16:38). The first
   night tests on Linux on record.
 * **015-10's check**, full `bergdb.dev.Unit` on s1, JDK 27, the base's jar
-  (`6f932f0`) and main's (`3e32f02`) in turns, three rounds, the first two
+  (`47ba87f`) and main's (`5672e5a`) in turns, three rounds, the first two
   beside the night tests: six of six SUCCESS (1,093 and 1,101 tests);
   `CapacityTester.testBudgetLoweredAndRaisedUnderReads` passed each time.
-* **L3, jcstress, default mode, `3e32f02`, JDK 27** (16:44 to 17:00, with
+* **L3, jcstress, default mode, `5672e5a`, JDK 27** (16:44 to 17:00, with
   `/tmp` on the disk): the five tests `[OK]`; "Failed tests: No matches",
   "Error tests: No matches". L4, the stress programs on disk, runs until
   23:30.

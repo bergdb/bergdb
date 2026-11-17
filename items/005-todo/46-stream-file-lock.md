@@ -126,7 +126,7 @@ is made by a committing thread. Four waits:
 What the probes found
 ---------------------
 
-On `167597a`, today's `java/`, on F53 (M1 Pro, APFS, JDK 27), 2026-10-27,
+On `9032948`, today's `java/`, on F53 (M1 Pro, APFS, JDK 27), 2026-10-27,
 while another session ran a correctness gate: the probes in
 [46-stream-file-lock/](46-stream-file-lock/), run by
 [run.sh](46-stream-file-lock/run.sh), their output in
@@ -666,11 +666,11 @@ Measured after the change
 
 2026-10-27, 11:50 to 12:10, by Claude (Opus 5.5, Claude Code), at Frans's
 word ("Go!"), split with the session of 006-09 (it has W1.3 and W1.4).
-The jar of `cec0032` (005-46 and 005-55) against that of `bf19075`, the
+The jar of `14022ad` (005-46 and 005-55) against that of `c1f1f15`, the
 last before 005-46. Outputs in
 [46-stream-file-lock/after/](46-stream-file-lock/after/).
 
-**F53, this entry's probes** (`run.sh` on `cec0032`;
+**F53, this entry's probes** (`run.sh` on `14022ad`;
 [after/f53/](46-stream-file-lock/after/f53/)). F53 was busy with other
 sessions' builds and tests: a load average of 3 to 11 while they ran
 (`load.txt`). The verdicts hold by a wide margin; the maxima of 10 to 30 ms
@@ -696,7 +696,7 @@ phase, 439 to 639 ms, each at a force's end, and each with a wait for room
 of 430 to 623 ms); that is the disk's limit, which the report now shows
 (decision 5).
 
-`InterruptProbe` and `InterruptCutProbe` on `cec0032`: every row of the
+`InterruptProbe` and `InterruptCutProbe` on `14022ad`: every row of the
 table in "Interrupts" now does what it proposes. Every call by an
 interrupted thread returned and kept the flag; `sync()` threw as before,
 and kept the flag; the first `close()` waited until the storage was
@@ -712,7 +712,7 @@ an uncaught `DbStoppingException`, printed on the standard error. Not
 job runs. A note for whoever takes up replication (005-11).
 
 **s1, the pause probe** (009-03's `run-pp2.sh` as `run-pp46.sh`; the jar
-of `bf19075` and then `cec0032`, G1 and ZGC, budgets of 20 and 100 MB;
+of `c1f1f15` and then `14022ad`, G1 and ZGC, budgets of 20 and 100 MB;
 1M keys, two readers, 60 s a phase; [after/s1/](46-stream-file-lock/after/s1/)).
 The probe prints the disk's waits after each phase (change 7); the GC
 logs, which stayed on s1 (`/opt/bergdb-bench/005-46/out/`), give the
@@ -829,7 +829,7 @@ pause probe on s1 needs the reports.
 Later, 2026-10-27, 19:10: `level2.sh`'s step 6 (`BryanRepro`) failed on
 `main` from this entry's commit on, as the test started a database on the
 directory right after `stop()`, while the old one's cut thread still
-deleted files; no data at risk. Fixed in the test (`close()`, `b0661ba`);
+deleted files; no data at risk. Fixed in the test (`close()`, `f74fece`);
 the API question is 005-63. Found by 006-09 (its note `bryanrepro.md`).
 
 
@@ -837,7 +837,7 @@ Confirmed in the quiet block, 2026-10-27 to 28
 ----------------------------------------------
 
 By Claude (Opus 5.5, Claude Code), 006-09's quiet block on F53, run by its
-conductor on HEAD `4f7cd60` against `bf19075`; the scripts and summaries
+conductor on HEAD `f9e295d` against `c1f1f15`; the scripts and summaries
 in [46-stream-file-lock/night/](46-stream-file-lock/night/) (`out/summary.txt`).
 Nothing in it shows a read or a commit waiting for the stream's writer, so
 005-46 stays done.
@@ -852,14 +852,14 @@ Nothing in it shows a read or a commit waiting for the stream's writer, so
 * ScaleBench from the OS's cache, in turns: HEAD reads 17 to 43 percent
   more gets a second with 1 to 8 threads at 133 MB under G1, and 7 to 81
   percent more at 665 MB under G1 and ZGC; readers blocked on a file's
-  monitor 3.4 to 13.3 percent of samples with `bf19075`, none with HEAD.
+  monitor 3.4 to 13.3 percent of samples with `c1f1f15`, none with HEAD.
   But with 8 threads at 665 MB under ZGC, HEAD's longest gets were 27 and
-  36 ms (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for
+  36 ms (`c1f1f15`: 2.1 ms), with 22 and 26 waits of a reader's load for
   the eviction thread over 10 ms: no wait for the writer, but a question
   for 009's target 2 (009's log, 2026-10-28). (The step started after 30
   minutes without a quiet machine, `NOT QUIET`.)
 * Props in turns (23:34 to 23:39, quiet): MEM 130.0 and SS 1.5 for both;
-  CORE 0.23, 0.23, 0.23 and 0.24 for `bf19075`, 0.24, 0.23, 0.22 and 0.24
+  CORE 0.23, 0.23, 0.23 and 0.24 for `c1f1f15`, 0.24, 0.23, 0.22 and 0.24
   for HEAD (lower is faster; means 0.233 and 0.232): no fewer reads a
   second. The step exited 1 because its parser missed the CORE line,
   which follows a row of progress dots; read again from its files on

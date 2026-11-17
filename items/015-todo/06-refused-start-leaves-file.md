@@ -54,7 +54,7 @@ Log
   crypto key of an unknown algorithm ("other"), on an empty directory and
   on a missing one; `start()` throws the `IllegalStateException`; the
   empty directory stays empty and the missing one is not created. On the
-  code as it was (`DatabaseBuilderImp.java` of `c960c34`) it fails: "the
+  code as it was (`DatabaseBuilderImp.java` of `17270d1`) it fails: "the
   empty directory: 00000000000000.bergdb:0 bergdb.lock:225 , expected 0,
   got 2". So the finding is verified: the open (`openDirs()`, `new
   FileStream(D)`) creates the directory, `bergdb.lock` and the empty first

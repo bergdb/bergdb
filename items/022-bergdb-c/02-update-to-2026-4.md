@@ -49,8 +49,8 @@ not landed.
   019-46's writer line (no change in C), 020-22's rules for keys in
   `bergdb.h`. Not for C: 019-46's race, `BufferedStream`'s close, the key
   printers, and the Pub layer's changes.
-* **The candidate read**: `main` at `94a1520` (2026-11-09, 11:57:26),
-  with 021-11 as `da6c5b0`. 20 commits since 2026.3 touch the Core
+* **The candidate read**: `main` at `12dd8f7` (2026-11-09, 11:57:26),
+  with 021-11 as `36e003f`. 20 commits since 2026.3 touch the Core
   layer's packages, 14 of them the five Core packages, where 1,083 lines
   were added: about 600 tests and documents, 240 comments and Javadoc,
   210 code, of which about 80 lines have a C counterpart.
@@ -73,11 +73,11 @@ not landed.
 
 ## 2.1 The candidate and the size
 
-The candidate is `main` at `94a1520f21ac81fb7620b1aefba11e41b38a1b18`
+The candidate is `main` at `12dd8f755f5d4e4c02922882a4bdcff6d4f47262`
 (2026-11-09 11:57:26), fetched read-only into this study's clone as
-`refs/remotes/repo/main`. Earlier fetches gave `10a2c79` (11:43) and
-`770d88b` (11:47), whose Core layer is this one without 021-11
-(`da6c5b0`, 11:57). No commit is named the release candidate yet: the
+`refs/remotes/repo/main`. Earlier fetches gave `dfb0c50` (11:43) and
+`43f71af` (11:47), whose Core layer is this one without 021-11
+(`36e003f`, 11:57). No commit is named the release candidate yet: the
 candidate comes after the day's bug hunts, its checks run tonight, and the
 tag comes at Frans's word (006-17, sections 2 and 3).
 
@@ -89,7 +89,7 @@ ends), and `java/stress/StreamDigest.java`; and
 `StreamDigest.java`, `CoreDemo.java`, `deps.py` and `nanotest` are
 unchanged.
 
-| Part (`git diff --numstat release-2026.3 94a1520`) | Files | Added | Deleted |
+| Part (`git diff --numstat release-2026.3 12dd8f7`) | Files | Added | Deleted |
 |---|---|---|---|
 | `java/`                                               | 175 | 40,488 | 10,255 |
 | the Core layer's seven packages                       | 25  | 1,211  | 108    |
@@ -110,37 +110,37 @@ the three checks of 021-11 in `NodeCollection`, and `FileStream.listFiles`
 
 ## 2.2 The commits
 
-Every commit from `release-2026.3` to `94a1520` that touches the Core
+Every commit from `release-2026.3` to `12dd8f7` that touches the Core
 layer, oldest first:
 
 | Commit | Date | Entry | What | Class |
 |---|---|---|---|---|
-| `0bf0dfd` | 11-07 | -      | `BuildInfo` says 2026.4-dev                          | none         |
-| `1132b1d` | 11-07 | 021-01 | Javadoc of `pub.util`'s exceptions and `SyncLevel`   | Pub, Javadoc |
-| `c00e621` | 11-07 | 021-05 | a String key or value with a lone surrogate refused  | API          |
-| `d65f5b5` | 11-08 | 021-06 | a bkey that is not well-formed UTF-8 has no ikey     | API          |
-| `39fb346` | 11-09 | 021-06 | `KeyNode`'s printer shows a key without an ikey      | messages     |
-| `68830b8` | 11-09 | 019-46 | a reader's drop no longer evicts the writer's object | threads      |
-| `5b08db5` | 11-09 | 020-10 | `Job`, `JobStatus` of the user indexes (`pub.util`)  | Pub API      |
-| `c126d7d` | 11-09 | 019-47 | the start admits the large values of every key node  | algorithm    |
-| `e92a95a` | 11-09 | 020-08 | `StringUtil.utf8Size`, for the Pub's String values   | Pub          |
-| `25978bc` | 11-09 | 019-46 | the writer installs every index node it reaches      | threads      |
-| `c9e6975` | 11-09 | 020-08 | `StringUtil.toBytes(String, int)`, for the Pub       | Pub          |
-| `dee3e48` | 11-09 | 019-46 | the writer's assert before step 6; a test hook       | threads      |
-| `626a6bc` | 11-09 | -      | `key-encoding.md`: the Core's own internal keys      | documents    |
-| `4dc245a` | 11-09 | 020-10 | `IndexBuildException`; `Job.join()` throws it        | Pub API      |
-| `6db1ac3` | 11-09 | 020-20 | T1: an unlistable directory, an `IOException`        | API, storage |
-| `55da329` | 11-09 | 020-19 | F1: `JobStatus`'s Javadoc                            | Pub, Javadoc |
-| `b41e116` | 11-09 | 020-19 | J4: `DbException`'s Javadoc                          | Pub, Javadoc |
-| `4b520f9` | 11-09 | 020-13 | bug 4: `BufferedStream.close()` waited for its timer | threads      |
-| `656decb` | 11-09 | 020-21 | `Job.join(millis)` refuses a negative time           | Pub API      |
-| `da6c5b0` | 11-09 | 021-11 | a pointer linked by node id: its node's type checked | refusals     |
+| `22cbcc9` | 11-07 | -      | `BuildInfo` says 2026.4-dev                          | none         |
+| `15c234a` | 11-07 | 021-01 | Javadoc of `pub.util`'s exceptions and `SyncLevel`   | Pub, Javadoc |
+| `b7fc20a` | 11-07 | 021-05 | a String key or value with a lone surrogate refused  | API          |
+| `a1b505c` | 11-08 | 021-06 | a bkey that is not well-formed UTF-8 has no ikey     | API          |
+| `fecfb10` | 11-09 | 021-06 | `KeyNode`'s printer shows a key without an ikey      | messages     |
+| `9ac976d` | 11-09 | 019-46 | a reader's drop no longer evicts the writer's object | threads      |
+| `4f8210f` | 11-09 | 020-10 | `Job`, `JobStatus` of the user indexes (`pub.util`)  | Pub API      |
+| `db496dc` | 11-09 | 019-47 | the start admits the large values of every key node  | algorithm    |
+| `02995d9` | 11-09 | 020-08 | `StringUtil.utf8Size`, for the Pub's String values   | Pub          |
+| `a182faa` | 11-09 | 019-46 | the writer installs every index node it reaches      | threads      |
+| `4ff57b6` | 11-09 | 020-08 | `StringUtil.toBytes(String, int)`, for the Pub       | Pub          |
+| `4eaa97a` | 11-09 | 019-46 | the writer's assert before step 6; a test hook       | threads      |
+| `b4dea15` | 11-09 | -      | `key-encoding.md`: the Core's own internal keys      | documents    |
+| `412c739` | 11-09 | 020-10 | `IndexBuildException`; `Job.join()` throws it        | Pub API      |
+| `4bba305` | 11-09 | 020-20 | T1: an unlistable directory, an `IOException`        | API, storage |
+| `103328d` | 11-09 | 020-19 | F1: `JobStatus`'s Javadoc                            | Pub, Javadoc |
+| `50bf8ff` | 11-09 | 020-19 | J4: `DbException`'s Javadoc                          | Pub, Javadoc |
+| `12092e0` | 11-09 | 020-13 | bug 4: `BufferedStream.close()` waited for its timer | threads      |
+| `285d031` | 11-09 | 020-21 | `Job.join(millis)` refuses a negative time           | Pub API      |
+| `36e003f` | 11-09 | 021-11 | a pointer linked by node id: its node's type checked | refusals     |
 
 The entries: 021-01, 021-04 to 021-06 and 021-11 in `items/021-todo/`,
 019-46 and 019-47 in `items/019-todo/`, the rest in
-`items/020-release-2026-4/`. `da6c5b0` is `1035b64` of its clone
+`items/020-release-2026-4/`. `36e003f` is `1035b64` of its clone
 (`/Users/f/fl/bench/2026-11-09/clone-p11`, 11:52, "BEFORE COMMIT OK;
-level1.sh OK"), brought to `main` at 11:57 with its entry (`94a1520`).
+level1.sh OK"), brought to `main` at 11:57 with its entry (`12dd8f7`).
 
 
 ## 2.3 Bytes on disk
@@ -160,7 +160,7 @@ which C's cross harness exports and compares (012-18, section 4).
 
 ## 2.4 Algorithms
 
-* **019-47, the start's admission** (`c126d7d`). A start reruns every
+* **019-47, the start's admission** (`db496dc`). A start reruns every
   transaction of its startup section but the first, whose values
   `DbStarter.createMemoryPointers` links into the section's node versions.
   015-68's admission at the end of the start (`Eviction.recordWritten`
@@ -171,8 +171,8 @@ which C's cross harness exports and compares (012-18, section 4).
   nodes as the written nodes, `eviction.recordWritten(this,
   cache.nodes().iterator())`: each of their pointers to a value over 1 MiB
   in the stream becomes a stream pointer. Memory only.
-* **019-46, a reader's drop and the writer's load** (`68830b8`, `25978bc`,
-  `dee3e48`). A reader whose cache policy keeps no index node
+* **019-46, a reader's drop and the writer's load** (`9ac976d`, `a182faa`,
+  `4eaa97a`). A reader whose cache policy keeps no index node
   (`Dag.CACHE_NOTHING`) removed its empty handle (`Cache3.dropIfEmpty`,
   without the write lock) while the writer could load the node into that
   handle and make it canonical; the drop then evicted the writer's object
@@ -183,7 +183,7 @@ which C's cross harness exports and compares (012-18, section 4).
   changes nothing for BergDB's writer, whose policy caches every index
   node; an assert before step 6 says that the writer's handle holds an
   object. Threads only.
-* **021-11, the links by node id** (`da6c5b0`). 019-32's check that a
+* **021-11, the links by node id** (`36e003f`). 019-32's check that a
   pointer names a
   node of the type it expects (`NodeCollection.checkPointeeType`) was made
   where a pointer is followed, not where the Core gives a pointer the
@@ -202,20 +202,20 @@ which C's cross harness exports and compares (012-18, section 4).
   `CorruptStreamTester.testFound021_11` with a new configuration `LONG`
   (keys of three segments, so that key nodes point to key nodes, which the
   tester's keys of one segment never made).
-* **020-13, bug 4** (`4b520f9`): `BufferedStream`'s consumer thread no
+* **020-13, bug 4** (`12092e0`): `BufferedStream`'s consumer thread no
   longer waits for its timer while a close waits for buffered bytes.
   Threads only.
 
 
 ## 2.5 The API
 
-* **021-05** (`c00e621`): `Keys.toBytes(String)`, and so every Core call
+* **021-05** (`b7fc20a`): `Keys.toBytes(String)`, and so every Core call
   that takes a String key, and `Trans.Builder.put(String, String)` throw
   `IllegalArgumentException` for a lone surrogate, which the encoder wrote
   as '?'. The rule (021-04, Frans's option 1): every string BergDB stores
   is well-formed UTF-8, in every language; "in C and Go bytes that are not
   well-formed UTF-8" are the counterpart of a lone surrogate.
-* **021-06** (`d65f5b5`, `39fb346`): `Keys.bkey2ikey` and
+* **021-06** (`a1b505c`, `fecfb10`): `Keys.bkey2ikey` and
   `Keys.toString(long[])` throw `IllegalArgumentException` for a bkey
   without an ikey: one with the byte 0 or 0x31 ('/' + 2, which no ikey
   gives, '/' being 1), or whose bytes, each 1 as '/' and every other less
@@ -224,7 +224,7 @@ which C's cross harness exports and compares (012-18, section 4).
   never give one ikey, and the ikey's bkey is the bkey. The Core API still
   takes any bkey. The debug printers (`Klong.getKeyString`,
   `KeyNode.getKeyString`) show bytes with `Keys.toDisplayString`.
-* **020-20, T1** (`6db1ac3`): `new FileStream(dir)` of a directory that
+* **020-20, T1** (`4bba305`): `new FileStream(dir)` of a directory that
   cannot be listed throws an `IOException` ("Cannot list the directory
   DIR: an I/O error, or no permission to read it.") and releases the lock,
   where it threw a `NullPointerException`; `FileStream.hasStreamBytes`
@@ -239,7 +239,7 @@ which C's cross harness exports and compares (012-18, section 4).
 
 `core/doc-files/key-encoding.md`: the bkey to ikey rule (021-05, 021-06)
 and the Core's own internal keys, Reclaim's `/#i/dreclaim/` and
-`/#i/-dummy` (`626a6bc`). Javadoc in `Handle` (DEAD, 019-46), `Db`'s start
+`/#i/-dummy` (`b4dea15`). Javadoc in `Handle` (DEAD, 019-46), `Db`'s start
 and `Eviction.recordWritten` (019-47), `pub.util`. `BuildInfo`.
 
 
@@ -344,7 +344,7 @@ of 1 to 3 (the vectors' new kinds show 1 and 2); the corrupt set shows 4.
    second large value or not, no large resident pointer after the start and
    after the reads, by `t_evict.c`'s `large_resident`, 430, which
    `evict_start_admits_large_values`, 459, uses for 015-68).
-4. **021-11, the links by node id** (`da6c5b0`). C links as
+4. **021-11, the links by node id** (`36e003f`). C links as
    2026.3's Java does: `nc_resolve_pointers`' pinned rule (`ncoll.c` 513)
    and `nc_link_to_canonical` (`ncoll.c` 555 to 603, the link at 599) take
    the handle without `nc_check_pointee_type` (`ncoll.c` 134, 022-01's
@@ -354,7 +354,7 @@ of 1 to 3 (the vectors' new kinds show 1 and 2); the corrupt set shows 4.
    `ClassCastException` with the JVM's text, 022-01's step 2), and
    `t_ncoll.c` 607 to 636 (`ncoll_link_to_canonical_another_type`)
    records that the link is made, as Java's was. The port: the check at
-   the three places, before the link, as `da6c5b0` puts it; the test
+   the three places, before the link, as `36e003f` puts it; the test
    inverted to expect the refusal; `testResolvePointersChecksTheType`
    ported to `t_ncoll.c`; and the corrupt set's bases `found-021_11`
    (`CorruptStreamTester.write(LONG, 1)` and the three rows of
@@ -404,7 +404,7 @@ of 1 to 3 (the vectors' new kinds show 1 and 2); the corrupt set shows 4.
 
 ## 3.3 Not for C
 
-* **019-46** (`68830b8`, `25978bc`, `dee3e48`): a race between a reader's
+* **019-46** (`9ac976d`, `a182faa`, `4eaa97a`): a race between a reader's
   drop, without the write lock, and the writer's load. C has one caller
   and no thread (`c/readme.md`, section 8), and no op that keeps nothing
   (3.2), so `nt_drop_if_empty` (`ntable.c` 172) runs only after a reader
@@ -412,7 +412,7 @@ of 1 to 3 (the vectors' new kinds show 1 and 2); the corrupt set shows 4.
   kill.
 * **020-13, bug 4**: `BufferedStream`'s thread; C writes its buffer in the
   calls (`c/readme.md`, section 9, point 1).
-* **The printers** (`39fb346`, `Klong.getKeyString`): C ports no printer
+* **The printers** (`fecfb10`, `Klong.getKeyString`): C ports no printer
   of nodes, and its texts of the start's refusals print no node.
 * **`Trans.Builder.put(String, String)`** (021-05): C has no String put;
   its counterpart is 3.1, point 2.
@@ -486,17 +486,17 @@ out (as 022-01's steps did), and by the new vector kinds.
 **Stable**, on `main` with their tests and in `releases/next.md`, and
 reviewed but for 021-11:
 
-* 021-05 (`c00e621`) and 021-06 (`d65f5b5`, `39fb346`): Frans's rule
+* 021-05 (`b7fc20a`) and 021-06 (`a1b505c`, `fecfb10`): Frans's rule
   (021-04, 2026-11-07, 09:33: "Yes, option 1, absolutely.") and 021-06's
   answers under his delegation; 020-11, section 5: fixed.
-* 019-47 (`c126d7d`): the night's independent review ("both fixes
+* 019-47 (`db496dc`): the night's independent review ("both fixes
   correct", 020-11, section 6), the Codex review (020-14: "no defect found
   in these fixes"), `level4.sh` OK.
-* 021-11 (`da6c5b0`), on `main` since 11:57: its gate and `level1.sh`;
+* 021-11 (`36e003f`), on `main` since 11:57: its gate and `level1.sh`;
   no independent review recorded yet. Should a review change it before the
   tag, the change reaches C as 4.2's diff.
-* 019-46 (`68830b8`, `25978bc`, `dee3e48`), 020-20's T1 (`6db1ac3`),
-  020-13's bug 4 (`4b520f9`), `626a6bc`.
+* 019-46 (`9ac976d`, `a182faa`, `4eaa97a`), 020-20's T1 (`4bba305`),
+  020-13's bug 4 (`12092e0`), `b4dea15`.
 * The format: unchanged (2.3). And no Core API change comes from 020-22:
   Frans chose A2, "Core is root, with a detection floor" (11:13), not A3,
   a guarded Core, which would have widened the Core's API and made C
@@ -616,7 +616,7 @@ tag.
   not yet ported). **Default (a).** **Taken: (a)**, the default, on a
   branch of its own: the landings went to `int.git`'s new branch
   `2026.4`, not to `022`, which stays the port of 2026.3 (at `342dcb2`,
-  `main`'s `b49606b`; 022-01's long runs tonight) and was merged into
+  `main`'s `142dabc`; 022-01's long runs tonight) and was merged into
   `2026.4` for the 2026.3 port's corrupt set (`0110bc7`) and step 6
   (`007285a`). The gate on `2026.4` is against the pin from step 0 on. No
   tag of the 2026.3 state was made; `c/readme.md`'s "Which Java" names its
@@ -737,8 +737,8 @@ steps, in one go.
 # Log
 
 2026-11-09. Written by worker s6 of the session `022-bergdb-c`, at
-Frans's request of 11:45, from `main` at `94a1520` (fetched read-only into
-a clone of `int.git`'s `022`; first read at `770d88b`, then 021-11 landed),
+Frans's request of 11:45, from `main` at `12dd8f7` (fetched read-only into
+a clone of `int.git`'s `022`; first read at `43f71af`, then 021-11 landed),
 `int.git`'s `022` at `714d52b` (the 2026.3 port's step 4a landed while
 this was written), and step 4's corrupt set in its clone `s4b` as it
 stood at about 12:00; nothing built or run. The study and a line
@@ -747,7 +747,7 @@ in 022's readme; no other file changed.
 2026-11-09, step 3 (worker t3). Section 3.1, point 3, and D4's T1 (3.2);
 the stream's bytes do not change. (a) 019-47: the open's admission passes
 the resident key nodes as the written nodes, as `Db.startInner`'s
-`eviction.recordWritten(this, cache.nodes().iterator())` since `c126d7d`.
+`eviction.recordWritten(this, cache.nodes().iterator())` since `db496dc`.
 `db_open` calls the new `ev_record_written_start` (`evict.c`), which
 drains the admission list as before (015-68: the rerun's large values)
 and then puts the key node of each live handle of the node table
@@ -770,7 +770,7 @@ after the reads, the resident bytes over 1,200 KiB. Without extra the
 section begins with the creation and the start reruns "a", so the list
 has it (015-68's case), and the test passes either way, in Java too: a
 probe on the candidate's Java gives the sections that C's start gives
-(startPos 0 and 264, two transactions each), and with `c126d7d`'s line
+(startPos 0 and 264, two transactions each), and with `db496dc`'s line
 reverted 1 large resident pointer with extra, 0 without, as C. (b) T1
 (020-20): `plat_list_dir` refuses a directory that cannot be listed with
 Java's `IOException` text, "Cannot list the directory DIR: an I/O error,
@@ -793,7 +793,7 @@ difference remains; neither change shows in the cross runs, as section
 
 2026-11-09, step 2 (worker t2). Section 3.1, point 4, and D4's 019-46
 writer line (3.2), in `ncoll.c`; the stream's bytes do not change. (a)
-021-11, as `da6c5b0`: `nc_check_pointee_type` (019-32's check, Java's
+021-11, as `36e003f`: `nc_check_pointee_type` (019-32's check, Java's
 `StreamFormatException` and text, "Pointer I of node N names a node of
 type T at P, not E.") where a pointer gets a handle by node id, before the
 link: `nc_resolve_pointers`' pinned rule (the writer's; the error fails
@@ -832,7 +832,7 @@ to the newest top node; the corrupt set's `LONG` copies have that case.
 step 0 (the candidate, `CorruptSet.java`'s `Config` call) and step 4b's
 merge are not on `2026.4` yet; made and checked in a scratch tree, `022`
 at `3e3b704` with this step and the candidate's Java (`JAVA_REF=DIR`, the
-`git archive` of `94a1520`): `CorruptSet.java`'s `found021_11`, the three
+`git archive` of `12dd8f7`): `CorruptSet.java`'s `found021_11`, the three
 rows on `LONG`'s original of seed 1, base `found-long-1`, in `quick` too;
 and `corruptset.sh` runs C's `bergdb-dump` with `-check`, the counterpart
 of Java's `Dump` under `-ea`. `quick`: 60 copies, `CORRUPTSET OK`, the
@@ -853,7 +853,7 @@ quick set's corrupt variants are bit flips), as section 4.1 expects.
 
 2026-11-09, step 0 (worker t0), on `int.git`'s branch `2026.4` (D2
 (a): `022` stays the 2026.3 port until it closes). The candidate pinned
-(section 2.1): `main` at `94a1520f21ac81fb7620b1aefba11e41b38a1b18`
+(section 2.1): `main` at `12dd8f755f5d4e4c02922882a4bdcff6d4f47262`
 (11:57:26). `test/cross/java-build.sh` takes `JAVA_REF=git:HASH`: the
 commit's `java/src`, `java/stress` and `java/deps.py` by `git archive`
 from the clone's Git, not from its working tree, extracted once into
@@ -970,7 +970,7 @@ fails 3 unit tests (`keys_refused`, `keys_lone_surrogate`,
 `keys_bkey_ikey_round_trip`, `vectors_keys`) and 2; `strutil` without the
 surrogates' limit (ED's second byte up to BF) 5 and 2.
 
-The gate against the candidate (`git:94a1520`, step 0's default), on
+The gate against the candidate (`git:12dd8f7`, step 0's default), on
 `2026.4` at `fd7f9e0` (steps 0, 2 and 3 landed): `C BEFORE COMMIT OK (531
 s)`, F53 under a load of about 19 to 31; `unit` 392 tests (391 in the
 release build); `func` 28; `cross quick` 0 differences (23 workloads, 69
@@ -990,7 +990,7 @@ Java's `Dump` runs under `-ea`: without it the third copy, the pointer
 set to an older top node version, differs (Java refuses at the start, C
 starts and a read fails), as step 2's paragraph records from its scratch
 tree. `c/readme.md`, section 10, and `before-commit.sh`'s header say so.
-The gate against the candidate (`git:94a1520`), on step 1's landing
+The gate against the candidate (`git:12dd8f7`), on step 1's landing
 (`b23d24e`): `C BEFORE COMMIT OK (468 s)`, F53 under a load of about 20
 to 26; `unit` 392 tests (391 in the release build); `cross quick` 0
 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
@@ -1056,7 +1056,7 @@ Java's images (`JAVAIMG=1`, seeds 17, 19 and 23): `POWER OK`, 147 images
 new file's OPEN; one difference from Java left), section 10's `power.sh`,
 and section 11 without the departure (its points 4 and 5 now 3 and 4).
 
-The gate against the candidate (`git:94a1520`), on `2026.4` at `0e4e27f`
+The gate against the candidate (`git:12dd8f7`), on `2026.4` at `0e4e27f`
 (022 merged): `C BEFORE COMMIT OK (376 s)`, F53 under a load of about 15
 to 27; `unit` 394 tests (393 in the release build); `func` 28; `cross
 quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2
@@ -1122,7 +1122,7 @@ copy is refused by both with `StreamIoException`, C's text now
 `FileStream`'s, "Cannot read at spos 143928, below the first position,
 200000.".
 
-The gate against the candidate (`JAVA_REF=git:94a1520`), on D7's
+The gate against the candidate (`JAVA_REF=git:12dd8f7`), on D7's
 landing (`82ff694`), with the 2026.3 port's step 6 merged: `C BEFORE
 COMMIT OK (420 s)`, F53 under a load of about 11 to 22; `unit` 395 tests
 (394 in the release build), `func` 28; `cross quick` 0 differences (23
@@ -1133,12 +1133,12 @@ runs; `examples` OK. The same on the landings that came meanwhile (step
 remains.
 
 2026-11-09, the re-pin (worker t6). The candidate pinned again, `main`
-at `82edabf4ec2f4df51c411ae5a37e6d345017d7f2` (13:04, `int.git`'s
+at `38a9492b11a1b6fe29b30596ca66a469abbfd611` (13:04, `int.git`'s
 `repo-main`): `java-build.sh`'s default. The Core layer's commits since
-`94a1520`: `fd18b6a` (020-22, `Db`'s Javadoc), `c2bb988` (021-11:
+`12dd8f7`: `ff5fbfa` (020-22, `Db`'s Javadoc), `b8503a3` (021-11:
 harness 6.1's full set runs `LONG` too; the sample's configurations, and
-so the corrupt set's copies, unchanged), `83e8e13` (021-12), `780dc63`
-(020-23 V2-1, a test), `8a3d191` (020-23 V2-2, `BufferedStream.append`'s
+so the corrupt set's copies, unchanged), `4ff84fb` (021-12), `f744b7d`
+(020-23 V2-1, a test), `e1f9676` (020-23 V2-2, `BufferedStream.append`'s
 check after its wait for room: no counterpart, as C has no buffer thread
 and one caller, so no append waits while a close begins). Java's vectors
 written again from it: all thirteen files equal. The negative control, C
@@ -1149,7 +1149,7 @@ quick` 0 differences, `writecheck` 0, `corruptset` 57 copies,
 copies, step 0's counts); `corrupt.sh` `CORRUPT OK` (144 variants, 83
 refused by both, 39 started, 22 with a later read failing): no
 difference, as harness 6.1's sample never met 021-12 (its full set on
-`LONG` did). (a) 021-12, as `83e8e13`: `nc_validate_key_node`
+`LONG` did). (a) 021-12, as `4ff84fb`: `nc_validate_key_node`
 (`ncoll.c`, `DbStarter.validateKeyNode`): `kn_validate_stream_node` and,
 for a version from before the startup section, no time after the startup
 time, with Java's `StreamFormatException` and text ("Key node N at P,
@@ -1197,7 +1197,7 @@ did not write in its keys; a scan of an index returns only matching
 values; Java's rule to write while no `Database` runs, which C's lock
 gives).
 
-The gate against the new pin (`git:82edabf`), on `2026.4` at `9b5c244`
+The gate against the new pin (`git:38a9492`), on `2026.4` at `9b5c244`
 (D7 and D6 landed): `C BEFORE COMMIT OK (331 s)`, F53 under a load of
 about 28 to 48; `unit` 397 tests (396 in the release build); `func` 28;
 `cross quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt
@@ -1250,7 +1250,7 @@ started anew each run; each outcome is compared as it comes, and no
 class is counted by variant.
 
 The runs, F53 under a load of about 25 to 31, `nice -n 10`, against the
-pin (`git:82edabf`) on `e4be144` with this change: the four bases
+pin (`git:38a9492`) on `e4be144` with this change: the four bases
 `CORRUPT OK`, 144 variants (84 refused by both, 38 started, 22 with a
 read failing later; 106 messages compared: 40 refused starts, 44
 refused directories, 22 failed reads; 0 differ; 110 s); `HEADERS=2` on
@@ -1264,7 +1264,7 @@ validation's among them (`DbStarter`'s "startup error, node ... not
 found", checksums, "Bad lastByte"), which Java's 021-15 changes and
 worker t8 ports. `c/readme.md`, section 10's `corrupt.sh`.
 
-The gate against the pin (`git:82edabf`) on `e4be144` with this change:
+The gate against the pin (`git:38a9492`) on `e4be144` with this change:
 `C BEFORE COMMIT OK (455 s)`, F53 under a load of about 25; `unit` 398
 tests (397 in the release build); `func` 28; `cross quick` 0
 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
@@ -1272,11 +1272,11 @@ turns, 46 budget runs); `writecheck` 0; `corruptset` 63 copies;
 `allocfail` 628 runs; `examples` OK. No difference remains.
 
 2026-11-09, 021-15 and 021-14 (worker t8). The candidate pinned again,
-`main` at `772e09b53e59aa7b6b0189d9b5e3d544b7a20bc8` (14:40), the head
-when both of Java's commits had landed: `9bb6c0f` (021-15) and `9bf82c1`
+`main` at `629e1c6d79d937b487b7a955143dda145c4b380a` (14:40), the head
+when both of Java's commits had landed: `6b58e8c` (021-15) and `78c6718`
 (021-14); `java-build.sh`'s default and `c/readme.md`'s "Which Java".
 Java's vectors written again from it: all thirteen files equal. The
-stream's bytes do not change. (a) 021-15, as `9bb6c0f`: the texts of a
+stream's bytes do not change. (a) 021-15, as `6b58e8c`: the texts of a
 start's refusals and of the key nodes' checks name a node as Java's new
 `Node.name` does, by its kind, id and position, "key node 22807 at
 36536" (`node_kind`, `node.h`), where Java's printed `KeyNode.toString`,
@@ -1303,7 +1303,7 @@ every key node before their checks, in Java's order
 `corruptset.sh`'s known class `node_text` is gone with its notes (the
 script's header, `knode.h`, `c/readme.md`, section 10): these texts are
 compared as any other. Section 11 had no departure for them. (c) 021-14,
-as `9bf82c1`: C refused a read near `Long.MAX_VALUE` already (D6's
+as `78c6718`: C refused a read near `Long.MAX_VALUE` already (D6's
 `stream_as_storage`; the memory stream's check without the sum; a
 directory's read past its last file). The storage's check is now
 Java's, `pos > length - n`, and a read of 0 bytes returns after it: the
@@ -1354,7 +1354,7 @@ fill to a stream of 2,146,064,565 bytes: C started it, Java's dumper
 (`-Xmx2g`) threw `OutOfMemoryError` reading that record at the start; a
 limit of the harness's heap, not of either Core.
 
-The gate against the new pin (`git:772e09b`), on `2026.4` at `3aa9671`
+The gate against the new pin (`git:629e1c6`), on `2026.4` at `3aa9671`
 (corrupt.sh's messages landed) with this entry: `C BEFORE COMMIT OK (285
 s)`, F53 under a load of about 21 to 23; `unit` 404 tests (403 in the
 release build); `func` 28; `cross quick` 0 differences (23 workloads, 69
@@ -1362,23 +1362,23 @@ crash cuts, 85 corrupt variants, 2 in turns, 46 budget runs);
 `writecheck` 0; `corruptset` 63 copies, `found-long-3971358`'s three
 compared as any other; `allocfail` 628 runs; `examples` OK. No
 difference remains. The pin also brings the Core's other changes since
-`82edabf`, which no harness run here showed and which this entry does
+`38a9492`, which no harness run here showed and which this entry does
 not port or check in C:
-020-27's C1 (`GetMany.GetN` and `PrefixN` of a count of 0, `04b0178`),
-C2 (`eod()` also before the first transaction, `98e39d5`) and C3
-(`DbBuilder.cacheSizeIndicator()` below 1 refused, `75f42c8`); 021-13
-(`Db.getTrans` waits for the writer, `f66bf25`; C has no writer
+020-27's C1 (`GetMany.GetN` and `PrefixN` of a count of 0, `3849076`),
+C2 (`eod()` also before the first transaction, `61fbcc2`) and C3
+(`DbBuilder.cacheSizeIndicator()` below 1 refused, `984b254`); 021-13
+(`Db.getTrans` waits for the writer, `1ad85d3`; C has no writer
 thread); 020-24's U1-12 (`LookupTimeNotAvailableException`'s text,
-`c6be92b`; C has no such text). After the pin, `main` took 020-23's Z1
-(`6ac9708`, `DbClock.currentTime()` with a clock that goes back).
+`5df48be`; C has no such text). After the pin, `main` took 020-23's Z1
+(`7ad5019`, `DbClock.currentTime()` with a clock that goes back).
 
-2026-11-09, `main` at 32f3832 (worker t9). The candidate pinned again,
-`main` at `32f383282d57ebfa18ccedeea9b0891dd70c4dc1` (15:22), the head
+2026-11-09, `main` at 345fdba (worker t9). The candidate pinned again,
+`main` at `345fdba81a7bcd3075c660a91906068b57eb01b5` (15:22), the head
 when the pin was moved: `java-build.sh`'s default and `c/readme.md`'s
 "Which Java". Java's vectors written again from it: all thirteen files
 equal. The stream's bytes do not change. Every Core commit that C had
 not checked, in the last pin and after it, with C's outcome. (a)
-020-27's C1 (`04b0178`): `getmany.c`'s `get_n_handle` and
+020-27's C1 (`3849076`): `getmany.c`'s `get_n_handle` and
 `prefix_n_handle` stop at their count, none for 0 (`GM_STOP`), where
 `GetN(0)` gave every pair. `bergdb_range.max_count` 0 stays the field's
 "no count", as before, so the API's reads do not change (`bergdb.h`: a
@@ -1386,23 +1386,23 @@ read of no pair needs no call). `PrefixN`'s copy of its prefix:
 `gm_prefix_n` keeps the caller's array during the read, as `gm_endpoint`
 does, and `bergdb_get_many` makes the segments at the call. Test
 `t_getmany.c`'s `gm_at_most_n` (`DbTesterJavadoc.testGetManyAtMostN`: 0,
-1, 3, 5 and 7 of 5 keys, and `GetOne`). (b) C2 (`98e39d5`):
+1, 3, 5 and 7 of 5 keys, and `GetOne`). (b) C2 (`61fbcc2`):
 `dag_get_many` calls `eod` for a lookup time with no state, before the
 first transaction, as `Dag.getMany` now does; `bergdb_many.eod` is true
 there. Tests `gm_eod_once_at_the_end` (`testEodOnceAtTheEnd`) and
 `f_api.c`'s `api_create_and_read`, a read at 999 before the creation at
-1000. (c) C3 (`75f42c8`): `db_open` refuses a cache size indicator below
+1000. (c) C3 (`984b254`): `db_open` refuses a cache size indicator below
 1 with `DbBuilder.cacheSizeIndicator`'s `IllegalArgumentException`, "Bad
 cacheSizeIndicator: N.", where C gave `Cache3`'s `AssertionError`
 (`BERGDB_ARG` both). Test `f_settings.c`'s `settings_open_checks`
 (`testBuilderCacheSizeIndicatorBelowOneRefused`: 0, -1 and `INT64_MIN`
 refused with the texts, 1 taken and the database working). (d) 021-13
-(`f66bf25`): nothing for C. Java's writer thread sets a record's
+(`1ad85d3`): nothing for C. Java's writer thread sets a record's
 positions before it appends the record, and a reader's `getTrans` could
 meet it in part; C appends a record whole within `bergdb_execute`,
 before any other call, and `bergdb_get_trans` from a callback is
 `BERGDB_STATE` (one caller, no thread: `c/readme.md`, section 8). (e)
-020-24's U1-12 (`c6be92b`): C's text of a lookup time before the first
+020-24's U1-12 (`5df48be`): C's text of a lookup time before the first
 available one was its own since 2026.2's port, "Cannot lookup at time T,
 the first time available for lookup is F.", without Java's times in UTC;
 now Java's, with its parenthesis closed, "Cannot lookup at time T (UTC):
@@ -1415,18 +1415,18 @@ three times and twenty edges, with the strings Java's `DbUtil` gave for
 them, from `Long.MIN_VALUE` to `Long.MAX_VALUE`) and `t_reclaim.c`'s
 check of both texts behind a cut (10 checks in 2 tests failing with the
 old text). No harness compares the text (the dumps print "unavailable").
-(f) 020-23's Z1 (`6ac9708`): `dbclock_current_time` takes the clock's
+(f) 020-23's Z1 (`7ad5019`): `dbclock_current_time` takes the clock's
 time at most as `DBCLOCK_LAST_USER_TIME` and never below the last time
 it gave. Tests `t_clock.c`'s `clock_dbclock_clock_goes_back`
 (`testClockGoesBack`) and `clock_dbclock_current_time_leaves_the_margin`
 (`testCurrentTimeLeavesTheMargin`), and `f_settings.c`'s
 `settings_current_time_with_a_clock_that_goes_back`
 (`PubTesterJavadocRest.testCurrentTimeWithAClockThatGoesBack` through
-the API). Z3 (`142afa2`, Javadoc): `bergdb.h`, section F, says that only
+the API). Z3 (`15bd3ec`, Javadoc): `bergdb.h`, section F, says that only
 an open that creates a database reads the clock; `f_settings.c`'s
 `settings_open_with_the_clock_out_of_range`
 (`testStartWithTheClockOutOfRange`) passes before too, as Java's. (g)
-021-16 (`01d5352`): nothing to change. Java's walks of a long key's
+021-16 (`e5b552c`): nothing to change. Java's walks of a long key's
 levels were recursions; C's have none: the start's check walks the node
 table, `dag_dirty_node_bound` keeps its work in an array,
 `bergdb_debug_check` has a stack of its own, and the reads are loops;
@@ -1434,7 +1434,7 @@ table, `dag_dirty_node_bound` keeps its work in an array,
 `f_api.c`'s `api_long_keys` (`DbTesterLongKeys`' two tests through the
 API, under the sanitizers: a key of 200,000 bytes, a restart, reads,
 both scans, the check and a longer put; a key of 1,000,000 bytes after
-one of 100,000) passes before and after. Its Q2 (`520963d`): the rerun's
+one of 100,000) passes before and after. Its Q2 (`0dc79be`): the rerun's
 `node_created` (`starter.c`) scanned the record for each node it made,
 as `StoredTrans.findNode` did; now `sr_find_node` (`starter.h`), a scan
 up to 64 nodes, above it a map (`lmap`) from id to the first node, made
@@ -1442,12 +1442,12 @@ at the first call of a record's rerun. Test `t_sdb.c`'s `sdb_find_node`
 (`StoredTrans.testFindNode`: 200,000 lookups among 100,001 nodes under 2
 s, the first of two, none, another record, 2, 64 and 65 nodes alike),
 failing with a scan only (23.6 s in the release build). (h) The rest:
-020-27's Javadoc of the Core API (`0b71892`, `08a6f00`): `bergdb.h` says
-each already; K1 and K2 (`4f96446`): `bergdb.h`'s "Keys and the layers
+020-27's Javadoc of the Core API (`5c6a716`, `50e3c5b`): `bergdb.h` says
+each already; K1 and K2 (`2c00faf`): `bergdb.h`'s "Keys and the layers
 above" takes their words (K3's sentence is C's own: the lock); 020-25's
-J4 to J7 (`5fafc1f`, `e3c4a36`, `5f04330`), 020-23's Z2 (`d794d06`),
-021-17 (`89a7e56`, a comment in `Reclaim.java`) and 020-24's U6
-(`7de6d57`): the Pub layer's, nothing for C. Each test above fails
+J4 to J7 (`09ad69c`, `801f602`, `fb6f33a`), 020-23's Z2 (`e85e021`),
+021-17 (`7eb2852`, a comment in `Reclaim.java`) and 020-24's U6
+(`2ab9b7d`): the Pub layer's, nothing for C. Each test above fails
 before its fix but where said (shown on a copy of `c/` with the old
 `getmany.c`, `db.c` and `clock.c`, and with the scan only). (i)
 `corrupt.sh`: Java's dumper runs with `-Xmx4g`. `last-longer`'s random
@@ -1460,7 +1460,7 @@ reproduced on base 503 with that size), where C started it. With
 one of 2^31 - 9 bytes; both dumps equal C's. The script's header says
 so.
 
-The gate against the new pin (`git:32f3832`), on `2026.4` at `38e8b4e`
+The gate against the new pin (`git:345fdba`), on `2026.4` at `38e8b4e`
 with this entry: `C BEFORE COMMIT OK (310 s)`, F53 under a load of about
 15; `unit` 410 tests (409 in the release build); `func` 31; `cross
 quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
@@ -1472,7 +1472,7 @@ read failing alike, 22 of 014-01's case. `corrupt.sh`, `nice -n 10`:
 `CORRUPT OK`, 144 variants, 105 messages compared, 0 differ (85 s;
 `last-longer` refused on 503 and 504, its sizes negative this run,
 started on 501 and 502). No difference remains. After the pin, `main`
-took `cf67d0c` (021-17's R17-1) and `bd92096` (its item), the Pub
+took `0d85f28` (021-17's R17-1) and `dc3ca71` (its item), the Pub
 layer's alone, which the harness does not compile (15:27 to 15:31).
 
 2026-11-09, step 5 (worker t10). The documents, written before the
@@ -1480,11 +1480,11 @@ release candidate, so that at about 20:00 only its hash and its last
 changes remain. `c/readme.md`: "Which Java" says that C is a port of
 release 2026.4 and that until the tag it follows the release candidate,
 pinned as `java-build.sh`'s default `JAVA_REF=git:HASH`; the pin is one
-indented line of that paragraph, today `main` at `32f3832` (15:22), and
+indented line of that paragraph, today `main` at `345fdba` (15:22), and
 its hash is in no other place of the file, so that the session's re-pin
 to the candidate changes that one line (and `java-build.sh`'s default);
 once tagged, `JAVA_REF=2026.4` and the release's source zip; the 2026.3
-port's state, `c/` at `main`'s `b49606b` (`int.git`'s `022` at
+port's state, `c/` at `main`'s `142dabc` (`int.git`'s `022` at
 `342dcb2`); the interim sentence "On the way to 2026.4" gone. The vectors
 paragraph: the pin's thirteen files, the new kinds `utf8` (`strutil.txt`)
 and `bkey2ikey` (`keys.txt`). Section 1: the gate about 5 to 9 minutes
@@ -1505,21 +1505,21 @@ open points for Frans. Section 7 here: D1 to D7 as taken. 022's readme:
 `readme.md` changed, so the gate was not run (022-01, section 5); the
 gate of the pin of 15:22, on `ddd75cc`, stands.
 
-2026-11-09, 021-18, `main` at 2566df1 (worker t11). The candidate pinned
-again, `main` at `2566df17ba2c99717bb8bf9a0688351203825aff` (17:18), the
-head when the pin was moved, the first `main` with 021-18 (`a009b6a`,
-`1ccc242` before its rebase) and 021-19 (`779a123`, `f134914`):
+2026-11-09, 021-18, `main` at e875a34 (worker t11). The candidate pinned
+again, `main` at `e875a34496aa50a2b1f2193c1fe3bddfdb6fc6a9` (17:18), the
+head when the pin was moved, the first `main` with 021-18 (`dff9a6a`,
+`1ccc242` before its rebase) and 021-19 (`977b599`, `f134914`):
 `java-build.sh`'s default and `c/readme.md`'s "Which Java". C had to
 follow 021-18 in the same landing: with C's fix, `cross.sh quick`
 against the pin of 15:22 gave 4 differences, `coresame-n1500`'s and
 `coresame-plain-n1500`'s dumps, each by both dumpers, at `range
 at=latest start=/k/1 incl=1 fwd=1 stop=prefix10` (Java 0 pairs, C 10:
 the dumper's prefix of half a sampled key, `/k/1`, is itself a key), and
-against Java with 021-18 (a tree of `main` at `e65678a` with `1ccc242`
+against Java with 021-18 (a tree of `main` at `e3a4734` with `1ccc242`
 and `f134914` applied) 0 differences. Java's vectors written again from
 the new pin: all thirteen files equal. The stream's bytes do not change.
-Every Core commit since `32f3832`, eleven, with C's outcome. (a) 021-18
-(`a009b6a`): `GetMany.Prefix` and `PrefixN` add the prefix's own key,
+Every Core commit since `345fdba`, eleven, with C's outcome. (a) 021-18
+(`dff9a6a`): `GetMany.Prefix` and `PrefixN` add the prefix's own key,
 where they stopped at it (`Keys.isPrefix` is a strict prefix), so that a
 read from the prefix, inclusive, gave no pair when the prefix was a key,
 and a backward one left it out. `getmany.c`'s `has_prefix` (Java's
@@ -1540,7 +1540,7 @@ a segment of 7 bytes and the empty key, twelve prefixes, `Prefix`,
 `bergdb_range`'s prefix and `max_count`), and `mdb_model`, whose
 prefixes are now also a key's own (the start's) and whose model takes
 the prefix's own key; each failing before the fix (90 checks, 45 and
-1,449). (b) 021-19 (`779a123`): Javadoc of `Kvt.time`, `GetData.kvTime`
+1,449). (b) 021-19 (`977b599`): Javadoc of `Kvt.time`, `GetData.kvTime`
 and `tpos`, the time of a key node entry, not of the write: `bergdb.h`'s
 `bergdb_one.time` and `tpos`, `bergdb_kvt.time` and `bergdb_many.kvts`
 take its words; `tpos`'s follow back at the step's time less one "while
@@ -1549,18 +1549,18 @@ that time can be read". Test `f_api.c`'s
 (`DbTesterJavadoc.testKvTimeIsTheEntrysTime`: 27 keys of one byte, then
 a 28th, all 28 read the second's time, 27 not their write's; the write's
 time by `bergdb_get_trans`), passing before, as Java's. (c) 020-24's
-U8-11 (`3959f9c`): `FileStream` refuses a path that exists and is not a
+U8-11 (`7e790c2`): `FileStream` refuses a path that exists and is not a
 directory before the lock, IOException "Directory P could not be opened:
 it exists and is not a directory."; `plat_mkdirs` gives that text, where
 C's own was "Not a directory: P". Test `t_append.c`'s
 `append_dir_mkdirs`, its text and the file unchanged, failing before.
-(d) U8-9 (`9d62587`): `DbFile.append`'s text of a file that someone else
+(d) U8-9 (`8ba0692`): `DbFile.append`'s text of a file that someone else
 changed, "File F is not of expected length (N), but M bytes. Was it
 modified by someone else?" (it had "(N),but" and "Was is"); C gives
 Java's text, naming the file, where C's own named the directory. Test
 `append_dir_refusals`, its whole text, failing before. Its other parts,
 Javadoc and `pub.util`'s `Job`: nothing for C. (e) 020-24's U9
-(`2c7d531`): the Core API's Javadoc as an embedded key-value store, no
+(`2b1300a`): the Core API's Javadoc as an embedded key-value store, no
 change of behaviour. `bergdb.h` takes U9-4 (section E: every key that
 starts with 01 25 is BergDB's in every database, and the library writes
 some itself; a range returns them, the counters count them, a stop
@@ -1582,7 +1582,7 @@ virtual write hash: C's API has no `addReadHash` or
 `addVirtualWriteHash`); `testGetManyDefaultsAndOneCall` has no
 counterpart (`bergdb_range_init`'s defaults are checked by
 `f_settings.c`; a read context serves one call at a time). (f) 020-28
-(`b78865d`): the encryption out of 2026.4's API, and `Db.startInner`'s
+(`50caeb0`): the encryption out of 2026.4's API, and `Db.startInner`'s
 refusal of bad magic bytes a `StreamFormatException` with the
 `BadMagicBytes` as its cause, where it was the Pub API's `BadCryptoKey`,
 with a new text: "Invalid magic bytes in stream: the stream is not a
@@ -1600,14 +1600,14 @@ each failing before (3, 3 and 1 checks). The rest of 020-28
 (`DbBuilder.createdTxt`, `SalsaStream`'s key line, the Pub API's refusal
 of a database that an earlier release encrypted): nothing for C, which
 has no encryption and writes no `created.txt`. (g) Nothing for C:
-006-18-03 (`07df96d`: `BufferedStream`'s wait statistics without
+006-18-03 (`aef43ff`: `BufferedStream`'s wait statistics without
 `java.lang.management`; C has no write buffer thread and no such
-statistics), 020-24's U9-13 (`279dba1`: test methods made
-package-private, Javadoc escapes), U7-2 (`1011a94`: `SalsaStream`'s
-appends) and U7-7 (`8742547`: `BadCryptoKey`'s text with a crypto key; C
-has no encryption), U4 (`e91238f`, `pub.util`'s `JobStatus` Javadoc).
+statistics), 020-24's U9-13 (`fdebb8a`: test methods made
+package-private, Javadoc escapes), U7-2 (`869d2e3`: `SalsaStream`'s
+appends) and U7-7 (`9ebffa5`: `BadCryptoKey`'s text with a crypto key; C
+has no encryption), U4 (`e0ca4c2`, `pub.util`'s `JobStatus` Javadoc).
 
-The gate against the new pin (`git:2566df1`), on `2026.4` at `391c3cf`
+The gate against the new pin (`git:e875a34`), on `2026.4` at `391c3cf`
 with this entry: `C BEFORE COMMIT OK (276 s)`, F53 under a load of about
 19; `unit` 411 tests (410 in the release build); `func` 37; `cross
 quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
@@ -1700,16 +1700,16 @@ returns normally since 019-09; `bergdb.h`'s "Java's close() does not
 report it" was older than 005-73 and 019-09 (`readme.md`, section 11,
 point 5). Proposed to Frans, not made: a read-only open, a buffer size
 setting, a close with an error text (fixes.md, section 1.3). The gate
-against `git:2566df1`, on the tree of this entry rebased on `448ca60`:
+against `git:e875a34`, on the tree of this entry rebased on `448ca60`:
 `C BEFORE COMMIT OK (459 s)`, `unit` 521 tests, `func` 46, `cross quick`
 OK (23 workloads, 69 crash cuts, 85 corrupt variants), `writecheck` 0
 errors, `corruptset` 63 copies, `allocfail` 628 runs, `examples` OK. No
 difference remains.
 
 2026-11-09, the candidate, part 1 (worker t17). The Core commits on
-`main` after the pin (`2566df1`) at 17:40, five, each with C's outcome;
-the pin stays at `2566df1` until the candidate, as no harness compares
-what they change. (a) 021-20 (`2557286`, 020-24-10's U10-1): Java's
+`main` after the pin (`e875a34`) at 17:40, five, each with C's outcome;
+the pin stays at `e875a34` until the candidate, as no harness compares
+what they change. (a) 021-20 (`225d936`, 020-24-10's U10-1): Java's
 `FileStream.checkDirectory()`, before each new file, each delete of a
 cut and each reopen of a file after an interrupt, fails the stream if
 the directory at its path is no longer the one that it locked, by its
@@ -1749,11 +1749,11 @@ file .../00000000000000.bergdb, should have been a multiple of 100000,
 but was 520."; then `testNewDatabaseWhereAStoppedOneWasDeleted`'s case,
 closed, deleted and created again, which passes before too: C has no
 `stop()`, and its close returns after its last write). (b) U10-3
-(`2e9ea7d`): nothing for C. Java's `BufferedStream` kept its ring buffer
+(`d10bcce`): nothing for C. Java's `BufferedStream` kept its ring buffer
 of 10 MB in a closed `Database` that the application still referenced;
 C's write buffer is freed by `bergdb_close` with the handle
 (`stream_close`), and no closed handle is left (012-13, Q2). (c) U10-5
-(`5ca4249`): Java's `createDirIfNeeded` threw "Directory P could not be
+(`49c2db9`): Java's `createDirIfNeeded` threw "Directory P could not be
 created." when `mkdirs()` returned false because another thread had
 just made the directory; now only if it is then not a directory, and
 the lock refuses the others. C's `plat_mkdirs` took `EEXIST` at each
@@ -1773,18 +1773,18 @@ or refused with `BERGDB_IN_USE`, at least one taken a round; 17 to 22 of
 `EEXIST` passed it too, three runs of ten rounds (also with eleven
 missing levels and a spinning wait): on F53 under a load of about 37 the
 processes did not meet between a stat and a `mkdir`, so the test guards
-the rule and does not show the race. (d) U10-6 (`10335ee`): nothing for
+the rule and does not show the race. (d) U10-6 (`41eb7cf`): nothing for
 C. Java's `sync()` after `close()` threw, though the close had made
 every transaction durable; `bergdb_close` writes and forces everything
 before it returns, and frees the handle, so no `bergdb_sync` follows it
 (`bergdb.h`: after the close, db is not valid). (e) 020-24's U10-2,
-U10-4, U10-7 and U10-9 (`41e4da5`): the Pub API's Javadoc, nothing for
+U10-4, U10-7 and U10-9 (`e5765ab`): the Pub API's Javadoc, nothing for
 C. 020-27's Q2 was not on `main` yet.
 
 2026-11-09, the candidate, part 2 (worker t17). The Core commits that
-reached `main` after part 1, up to `b3a6b05` (18:03), each with C's
-outcome; the pin stays at `2566df1`. (a) 020-27's Q2, the null arguments
-(`de73137`): Java's Core API refuses every null argument with
+reached `main` after part 1, up to `ef5b52f` (18:03), each with C's
+outcome; the pin stays at `e875a34`. (a) 020-27's Q2, the null arguments
+(`a848c62`): Java's Core API refuses every null argument with
 IllegalArgumentException "PARAM == null not allowed", before anything
 else (`Db.start`, `getOne`'s key and `GetData`, `getMany`'s `GetMany`
 and its stop condition, `execute`, `printDag`; `DbBuilder`'s setters;
@@ -1805,7 +1805,7 @@ their clock (the system's) and directory (memory), the range's start key
 (`DontStop`); C has no `DbBuilder` setters, `addReadHashes` or
 `createdTxt`. The texts are C's own, as before (Java's name the
 parameter, C's API names its own: no harness compares them). (b) Its
-range checks (`a786e75`): a key of no segments (Java's `long[0]`) in
+range checks (`f490cfa`): a key of no segments (Java's `long[0]`) in
 `Trans.Builder` and `getOne`, and `getMany`'s start key of none: C's API
 takes bytes, and a bkey of any length, the empty one too, has a segment
 at least, so nothing for C; a `GetMany` used again with a non-empty
@@ -1827,13 +1827,13 @@ C's API has: 24 calls, each `BERGDB_ARG` with "IllegalArgumentException:
 " where there is a database; nothing written, nothing added to the
 transaction, the database going on; the stop function's bad answer had
 no test), passing before, as C's checks were there. (c) 020-27's Q1
-(`2c615a9`): the Core API named in `Db`'s class Javadoc, Javadoc only;
+(`c4ce24a`): the Core API named in `Db`'s class Javadoc, Javadoc only;
 nothing for C, whose API is `bergdb.h` (its first paragraph: the
 counterpart of `Db`'s public methods, as 012-03 maps them; "Keys and the
-layers above" has 020-27's K1 and K2). (d) 006-18-03 (`2dad395`): the
+layers above" has 020-27's K1 and K2). (d) 006-18-03 (`58f2092`): the
 unit tests on Android (`bergdb.nanotest.Platform`, `DbTesterFailure`'s
 and `Eviction`'s and `StreamContractTester`'s tests): Java's tests only,
-nothing for C; 021-14's `OneFileStream` (`a2fa9df`, a stream for tests),
+nothing for C; 021-14's `OneFileStream` (`4957737`, a stream for tests),
 which C does not have: nothing for C. (e) A fault of C's, found by part
 1's test of the cut and by 022-05 (`d694a0d`) at once: a failed
 stream's sync and close (`stream_finish`) gave `ERR_OK` when its buffer
@@ -1848,9 +1848,9 @@ cut one of a replaced directory. 022-05 landed the same fix first
 cut in a replaced directory, failing before (on a copy with the old
 `stream_flush`).
 
-2026-11-09, the candidate, part 3 (worker t17). 021-24 (`c66e824d`,
+2026-11-09, the candidate, part 3 (worker t17). 021-24 (`41b9b155`,
 18:08, a review of 021-20, W1, high), on `main` after part 2's look;
-the pin stays at `2566df1`. Java's `newFile()` checked the directory
+the pin stays at `e875a34`. Java's `newFile()` checked the directory
 before its force of the last file (SWITCH, with per-append forcing off),
 which can take seconds, so a directory replaced during that force got
 the new file, and the stream went on; a cut's delete checked before the
@@ -1888,9 +1888,9 @@ the replacement fails with Java's text, the replacement's file of that
 name deleted; before, the cut returned `ERR_OK`).
 
 2026-11-09, the candidate, part 4 (worker t17). 021-26 and 021-27, at
-the session's word (18:40): `main`'s `8d405c9` and `d0a59aa` (18:31),
+the session's word (18:40): `main`'s `007140d` and `f1a5456` (18:31),
 taken from coord-1109's clone `clone-h31` (`e7a3b02`, `57cb00a`)
-before they reached `main`; the pin stays at `2566df1`. (a) 021-26: `DbClock.currentTime()` took the clock's
+before they reached `main`; the pin stays at `e875a34`. (a) 021-26: `DbClock.currentTime()` took the clock's
 time at most as `LAST_USER_TIME` (020-23's Z1) and kept it as the time
 that the next transaction must pass, so one call while the clock was
 out of range, or in the 1024 units kept for reclaim, gave
@@ -1926,14 +1926,14 @@ transaction"). Test `f_api.c`'s `api_get_trans_inside_a_record`
 before, as Java's.
 
 2026-11-09, the candidate (worker t17). The release candidate pinned:
-`main` at `03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616` (18:42), named by
+`main` at `d00096e4d4a423dd36622617d32d0dc5ee00bf6a` (18:42), named by
 coord-1109 at 18:58 (also `int.git`'s branch `candidate-2026.4`):
 `java-build.sh`'s default and `c/readme.md`'s "Which Java", which now
 calls it the candidate. Java's vectors written again from it: all
 thirteen files equal. The stream's bytes do not change. Every Core
-commit from `2566df1` to it, nineteen, was read; parts 1 to 4 above
+commit from `e875a34` to it, nineteen, was read; parts 1 to 4 above
 took those up to 021-27, and this landing the rest. (a) 021-25, fix (c)
-(`e3b9787`): `KeyAccessPath.clear()` nulls only the entries that `add()`
+(`e8cbf9d`): `KeyAccessPath.clear()` nulls only the entries that `add()`
 set since the last `clear()`, below a high-water mark, not the whole
 array, whose length is that of the longest path ever followed (a
 reclaim step's touch records every key node it follows, and every later
@@ -1949,18 +1949,18 @@ Java array is, so that no entry above the mark holds a pointer (before,
 also after `pd_clear_fast` and later shorter adds, and after
 enlargements to 25, 40 and 64 entries; and C's own check that an entry
 above the mark is not touched, which fails with the old loop). (b)
-021-24's wording (`03ce6ec`): the window between the check and the step
+021-24's wording (`d00096e`): the window between the check and the step
 is usually microseconds, not a bound, and the empty file it can leave is
 refused with an exception that depends on what else is in the
 directory: `check_directory`'s comment and `bergdb.h`, section G. (c)
-Nothing for C: 020-24-15's U15-11 (`6cdd63f`, FileStream's three tests
-made package-private) and U15's Javadoc (`ebfd835`, `DbException`'s
+Nothing for C: 020-24-15's U15-11 (`301c4f4`, FileStream's three tests
+made package-private) and U15's Javadoc (`1025955`, `DbException`'s
 words on `InternalDataException`, which `bergdb.h`, section E, says
-already), 006-18-03's `testOneFileStream` on Android again (`0cbe0a1`).
+already), 006-18-03's `testOneFileStream` on Android again (`933ee8c`).
 Java's build at the candidate has 193 source files (the pin's 192 and
 `nanotest.Platform`); the harness's Java compiles against it unchanged.
 
-The gate against the candidate (`git:03ce6ec`), on `2026.4` at
+The gate against the candidate (`git:d00096e`), on `2026.4` at
 `e17528d` with parts 1 to 4 and this: `C BEFORE COMMIT OK (326 s)`, F53
 under a load of about 6; `unit` 529 tests (528 in the release build);
 `func` 51; `cross quick` 0 differences (23 workloads, 69 crash cuts, 85

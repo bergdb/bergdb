@@ -81,7 +81,7 @@ Files
 Identity
 --------
 
-* Tag `release-2026.5`, commit `bf9ab5afa6b32948563b8229f1db38ae4c8a690b` (2026-11-12).
+* Tag `release-2026.5`, commit `3611130c5bc98d862655695bd116e7fe2a214574` (2026-11-12).
 * `BuildInfo`: release 2026.5, release int 265, build 2026.5.261112.1505;
   `java -cp bergdb-2026.5.jar bergdb.core.BuildInfo` prints them.
 * Built by `java/build.sh` (`javac --release 17`) with
@@ -261,7 +261,7 @@ and [items/021-todo/](../../items/021-todo/readme.md).
   mode (48 of 48; the digests before and after in 024-25, section 7).
 
 * **A reclaim step makes dirty only the index nodes on the paths of its
-  own puts** (bergdb 024-07, option A; on `main` in `a780b957`). The last
+  own puts** (bergdb 024-07, option A; on `main` in `36924319`). The last
   step of each reclaim iteration made dirty every index node after its
   scan's last key (`Db.touchRange`, a key range with no end): with keys in
   time order (a queue, a log) the whole index, pinned in memory and then
@@ -323,7 +323,7 @@ and [items/021-todo/](../../items/021-todo/readme.md).
   exist). Theta, the dead klongs a key node may hold, is at least 2:
   2 at node size 8 (was 1; 024-19, Q4).
 * **A start checks a time klong's unused bits** (bergdb 024-25, section
-  12; `0420c72e`). A key node whose time klong has any of bits 56 to 61
+  12; `90184540`). A key node whose time klong has any of bits 56 to 61
   set is refused at the start with a `StreamFormatException` ("Bad time
   klong") in place of an `AssertionError` with `-ea` (and a start that
   went on without it). No writer sets those bits, so every database that
@@ -520,7 +520,7 @@ Verification
 
 On the release commit, in clean clones (`baseline.zip`, `gates/`):
 
-`java/night.sh large` on `bf9ab5af`, 2026-11-12 15:20 to 2026-11-12 22:20
+`java/night.sh large` on `3611130c`, 2026-11-12 15:20 to 2026-11-12 22:20
 (`NIGHT OK`, 420 minutes, JDK 27.0.1.0.3). The release commit passed
 `before-commit.sh` before the night, in a clean clone
 (`BEFORE COMMIT OK (63 s)`).
@@ -690,7 +690,7 @@ The main reason for the faster writes and restarts is the node checksum:
 CRC32C in place of Fletcher-16 (024-25). Fletcher-16 took about 5.6 ms a
 MB, CRC32C about 0.12 ms a MB, and every node written, or read at a
 start, is checksummed. Checked on 2026-11-13 with the commits just before
-and after that change (5ae33359 and 79f35aa3; `w-uni-1k-inf`, one run
+and after that change (e9b9b4cd and 3dd38b23; `w-uni-1k-inf`, one run
 each, F53 not quiet): 93,892 against 236,737 commits a second (+152%),
 and a restart of 0.705 against 0.463 s (-34%); so the whole gain over
 2026.4 comes with that one commit. The durability is the same as in
@@ -886,13 +886,13 @@ is recorded here. No fault yet.
 **Changes since the release:**
 
 * 2026-11-13: 021-27, named as open at the release commit in Known
-  issues and limits, was closed on 2026-11-12: fixed by `3ffe0b51` and
-  `4dadb80c` (`Db.getTrans` at a position inside a record, Core API),
+  issues and limits, was closed on 2026-11-12: fixed by `9dd125f3` and
+  `ba7583b9` (`Db.getTrans` at a position inside a record, Core API),
   both before the release commit and in 2026.5; 021's table still listed
   it as open there.
 * 2026-11-13: the Lean proof of the user indexes' model (020-29), "on a
   branch, not in the release" (The Lean model and the C clone), is on
-  `main` since `b0cd3ac4` (Frans, 08:04: "Merge it."): `lake build` 291
+  `main` since `868f353f` (Frans, 08:04: "Merge it."): `lake build` 291
   jobs, its 15 theorems on the standard axioms. It is not in the release
   commit or the source zip. The jar, the zips and `SHA256SUMS` did not
   change.

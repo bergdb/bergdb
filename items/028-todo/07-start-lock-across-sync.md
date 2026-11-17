@@ -29,7 +29,7 @@ Findings
   index manager's start.
 * **Why.** No reason is written anywhere. The method is
   `public static synchronized` in the 2017 source imported on 2026-10-14
-  (`195cf883`), with no comment; no other code takes the lock (no
+  (`0257e0ba`), with no comment; no other code takes the lock (no
   `synchronized (DatabaseImp.class)`, no other static synchronized method
   in the class). It reads as a defensive lock of 2017, not a design rule.
 * **What it could have guarded**, each checked:
@@ -71,7 +71,7 @@ Findings
 What was done
 -------------
 
-Commit `e6962589` (2026-11-16):
+Commit `72e8de5d` (2026-11-16):
 
 * `DatabaseImp.createAndStart()` is `static`, not `static synchronized`;
   its comment says why the lock is not needed.

@@ -1,5 +1,5 @@
 {
-  "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+  "commit": "377ff7af628f1fc214fc5945f9eda9179161868f",
   "production_java_clean": true,
   "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
   "variants": {

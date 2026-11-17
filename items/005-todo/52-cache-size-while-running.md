@@ -7,7 +7,7 @@ was done with 005-53 on 2026-10-28 (Outcome). The night run of 2026-11-04
 found the first large transaction after a decrease waiting about as long
 as the convergence, through its warmup's loads (Results, 2026-11-04
 night). Frans decided option B on 2026-11-04 (Decision, 2026-11-04): the
-warmup does not wait for eviction; done in `0c6c4be` (Option B, done). The
+warmup does not wait for eviction; done in `8defe65` (Option B, done). The
 six runs again, on s1 as F53 was not quiet (Results, 2026-11-04 evening):
 no wait from the lowering on is longer than with a fixed budget; the four
 LONGER verdicts all come before the lowering, the collector's and the
@@ -97,7 +97,7 @@ yet: [night/budget.sh](52-cache-size-while-running/night/budget.sh) is a
 step for tonight's conductor (`# minutes: 45`, about 15 to 25 used; it
 kills its JVM at 44), with `budget.sh.READY` written after a smoke test
 (`SMOKE=1`, 40 s, all three runs `BUDGETBENCH OK`). It builds nothing: it
-uses a jar built from HEAD `a6cd234` and the class compiled from
+uses a jar built from HEAD `e747323` and the class compiled from
 [night/BudgetBench.java](52-cache-size-while-running/night/BudgetBench.java),
 both in `/Users/f/fl/bench/006-09/w6/night`.
 
@@ -155,7 +155,7 @@ S to M: the method is small; question 2 decides the rest. After or with
 The first step, measured
 ------------------------
 
-2026-10-28, 01:20 to 01:33, in 006-09's quiet block on F53 (jar `a6cd234`,
+2026-10-28, 01:20 to 01:33, in 006-09's quiet block on F53 (jar `e747323`,
 10M keys; [52-cache-size-while-running/night/out/](52-cache-size-while-running/night/out/)),
 by Claude (Opus 5.5, Claude Code). The budget lowered in the middle of the
 run by `setBudget`, from 664 MB resident:
@@ -177,7 +177,7 @@ Questions 1 and 3, the Pub API: options A to C
 ----------------------------------------------
 
 By Claude (Opus 5.5, Claude Code), 2026-10-28 (006-10, W4.2), a reading of
-`main` at `b1111f4`, together with 005-53's options, as both are a setting
+`main` at `f34f31f`, together with 005-53's options, as both are a setting
 changed while the database runs. The evidence is in 005-53's
 [report.md](53-startup-distance-on-the-fly/report.md), sections 1, 2.2 and
 4.
@@ -327,8 +327,8 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), for 006-10, in a clone on
-`8b37ad1`, together with [005-53](53-startup-distance-on-the-fly.md); the
-code is one commit, `fd8f513`. Gates, StreamDigest and their files: in
+`077afea`, together with [005-53](53-startup-distance-on-the-fly.md); the
+code is one commit, `decc677`. Gates, StreamDigest and their files: in
 005-53's Outcome.
 
 * The API, in `pub/Database`: `void setCacheSizeInMb(int)` and
@@ -383,7 +383,7 @@ code is one commit, `fd8f513`. Gates, StreamDigest and their files: in
 * StreamDigest identical (005-53's Outcome): no configuration calls the
   setter, and the cache size changes no byte (EvictionInvariance in
   `level4.sh`).
-* Fixed in `988fe1a` (005-65's commit, 2026-10-29): `Eviction.sweep`
+* Fixed in `52aeb04` (005-65's commit, 2026-10-29): `Eviction.sweep`
   computes the trigger under the monitor that `setBudget` holds. Before, a
   batch that ended while `setBudget` lowered the budget could put back the
   old budget's trigger, and the decrease then waited until the resident
@@ -407,7 +407,7 @@ ZGC), not this comparison. The steps:
    `Db.setCacheSizeIndicator` with the lower budget (or
    `Database.setCacheSizeInMb`, if the probe moves to the Pub API).
    Without them the probe runs as now, so that its earlier tables stay
-   comparable. The setter exists only since `fd8f513`; the probe reaches
+   comparable. The setter exists only since `decc677`; the probe reaches
    it by reflection, as it does `CacheStats`, so that one compiled copy
    still runs on 2026.1's jar.
 2. The runs, in a quiet block on F53 (s1 too if it is quiet), on one jar
@@ -456,7 +456,7 @@ The steps, by agent F2 (016-05), after 005-65's step 1, in
    * With `lower`, in each phase: at its start the probe sets the budget
      back to `budget`; `lowerAt` seconds in, the writer's loop, between two
      commits, sets it to `lower`. Both by reflection, `Db`'s
-     `setCacheSizeIndicator(long)` (since `fd8f513`), found once at the
+     `setCacheSizeIndicator(long)` (since `decc677`), found once at the
      start; a jar without it fails the probe at once with a clear message,
      and only when `lower` is set.
    * At the lowering, a sampler thread reads the resident bytes every
@@ -560,8 +560,8 @@ running first in the block. Stop for Frans: only if a wait is longer
 (step 10).
 
 **State** (2026-11-03, 16:52, F1): steps 1 to 8 done. The probe is in
-`main` (`87d1e2c`); `$R` = `/Users/f/fl/bench/016/005-52/run/` holds
-`bergdb.jar`, `stress/` and `jar.txt` from `c960c34`; the smoke printed
+`main` (`4d74c19`); `$R` = `/Users/f/fl/bench/016/005-52/run/` holds
+`bergdb.jar`, `stress/` and `jar.txt` from `17270d1`; the smoke printed
 `lowered (SMOKE): OK`, and `night/lowered.sh.READY` is written (16:51).
 Next: step 9, the conductor's step `52-lowered` in window 2 (after
 `65-rerun`; its `steps.txt` line in 016-05, section 6), then step 10 in
@@ -583,7 +583,7 @@ From [night/lowered.sh](52-cache-size-while-running/night/lowered.sh), the
 conductor's step `52-lowered` in window 2 of night 1 of release 2026.2
 (016-02, 016-05 section 6): 2026-11-04, 03:43 to 03:56, exit 0, `lowered:
 OK, 0 problems`; six runs `PAUSE PROBE OK`, two lowerings in each (b),
-12 of 12 rows. The jar of `c960c34` (SHA-256 `665ef9ce`), JDK 27.
+12 of 12 rows. The jar of `17270d1` (SHA-256 `665ef9ce`), JDK 27.
 
 **Not quiet.** After 005-65's step the conductor waited 30 minutes for a
 quiet machine and then started the step anyway ("NOT QUIET after 1800s"
@@ -745,7 +745,7 @@ Option B, done
 --------------
 
 2026-11-04, by Claude (Opus 5.5, Claude Code), in a clone of `main`; the code
-is one commit, `0c6c4be` (on `13e9db7`).
+is one commit, `8defe65` (on `2dae7e5`).
 
 * **The mechanism.** `Eviction.afterLoad(Db, boolean paced)`: a load that
   finds the resident bytes over the trigger wakes the eviction thread, as
@@ -827,12 +827,12 @@ runs below time it. Mutations, in a copy: every load paced (B undone): "the
 warmup's loads that waited, expected 0, got 1281" (2.7 s, a wait of 2 ms
 for each); no load paced: "the reader's loads that waited: 0".
 
-**The gates**, on the tree committed: `java/` and `lean/` of `188facf` (005-47)
-with the change, the same as at `13e9db7`, the commit's parent, which
+**The gates**, on the tree committed: `java/` and `lean/` of `9b67a82` (005-47)
+with the change, the same as at `2dae7e5`, the commit's parent, which
 changed only documents.
 
 * `java/before-commit.sh`, 2026-11-04, 19:11 to 19:13: `BEFORE COMMIT OK
-  (104 s)`, 1,134 unit tests and 81 f-tests. Before, on `16fb228`: 1,128
+  (104 s)`, 1,134 unit tests and 81 f-tests. Before, on `bd77904`: 1,128
   and 79, also OK.
 * `java/stress/level4.sh`, full, 19:13 to 19:27: `LEVEL 4 OK`.
   EvictionInvariance 9 of 9; RestartInvariance, CrashTest and ReclaimStress
@@ -840,7 +840,7 @@ changed only documents.
   the conformance with the Lean model with eviction (45 traces `TRACECHECK
   OK`; C-P and C-H, 0 of 10,344 transactions fail); LargerThanMemory (50 MB
   resident at a budget of 50 MB).
-* Also, `java/night.sh` on `0c6c4be`, 2026-11-05 at 02:10: `NIGHT OK (39
+* Also, `java/night.sh` on `8defe65`, 2026-11-05 at 02:10: `NIGHT OK (39
   minutes)`: before-commit, the core build, Levels 1 to 4, the night tests
   and the medium conformance, each ok (`java/build/night/2026-11-05-0210/`,
   `report.txt`).
@@ -850,7 +850,7 @@ Results, 2026-11-04 evening
 ---------------------------
 
 The six runs again, by Claude (Opus 5.5, Claude Code), on the jar of
-`0c6c4be` (SHA-256 `7b80b9f9`), JDK 27, by the step's script with its runs
+`8defe65` (SHA-256 `7b80b9f9`), JDK 27, by the step's script with its runs
 as they were (2 GB heap, 1M keys of 100 bytes, 4 readers, 60 s a phase; (a)
 a fixed budget of 100 MB; (b) 400 MB, lowered to 100 MB 10 s into each
 phase; ZGC a1, b, a2, then G1 a1, b, a2).
@@ -860,7 +860,7 @@ phase; ZGC a1, b, a2, then G1 a1, b, a2).
 stress run, and gave up ("NOT QUIET after 2700 s"). The load stayed at
 about 3.2, most of it macOS's `mediaanalysisd` at about 80 percent of a
 CPU; no gate ran. s1 was quiet (load 0.12, no JVM; 005-47's measurement
-there had ended, `2753f80`), so all six ran there, 20:14 to 20:27: `lowered:
+there had ended, `ec58389`), so all six ran there, 20:14 to 20:27: `lowered:
 OK, 0 problems`, six runs `PAUSE PROBE OK`, two lowerings in each (b), 12 of
 12 rows; nothing but the probe's JVM used over 20 percent of a CPU meanwhile
 (sampled every 30 s). s1 has two virtual CPUs (x86) and 3.8 GB: the 4
@@ -968,8 +968,8 @@ themselves (1,042 ms in zgc-a2); three are the collector's (G1's
 evacuation failures and Full GC, ZGC's stalls), one (27.6 ms) the
 machine's. So the point is met, and the entry is done.
 
-For release 2026.2 (016-05): the point is met on `main` by B, `0c6c4be`.
-The release's commit, `eed4ca9`, came before B, so 2026.2 keeps the wait of
+For release 2026.2 (016-05): the point is met on `main` by B, `8defe65`.
+The release's commit, `c459883`, came before B, so 2026.2 keeps the wait of
 Results, 2026-11-04 night: a large transaction right after a decrease may
 wait about as long as the convergence.
 
@@ -1024,15 +1024,15 @@ to F1), in `/Users/f/fl/bench/016/005-52/repo`, steps 1 and 2:
 5): no findings. Without `lower` no reflection and no new call; the
 budget is reset each phase; the sampler ends on `stop` or when it reaches
 the lower budget; a failure of the sampler fails the phase. Committed as
-`87d1e2c`.
+`4d74c19`.
 
 2026-11-03, 16:49 to 16:52, by F1, steps 7 and 8:
 
 * **The prep** (step 7), by `/Users/f/fl/bench/016/005-52/prep.sh` (a
   fresh clone of `main`, as the work clone keeps its entry edits): `main`
-  at `c960c34` (the probe's commit `87d1e2c` and one of documents), `sh
+  at `17270d1` (the probe's commit `4d74c19` and one of documents), `sh
   java/build.sh`; `bergdb.jar` and `stress/` copied to `$R`; `$R/jar.txt`:
-  `c960c34218409ff943e92be097f15aa08abfde8a` and the jar's SHA-256
+  `17270d1ca38e184947a332ab61f4bb097c66963d` and the jar's SHA-256
   `665ef9ceeeb826caef74c486970e2437953bfadd7cb5904c0f25dd623eba7ed6`.
 * **READY** (step 8): `SMOKE=1 sh night/lowered.sh`, from the main tree's
   path, 16:50:41 to 16:51:30 (F53 loaded, about 50): six runs OK, 2
@@ -1055,7 +1055,7 @@ recommended. The raw outputs stay in `/Users/f/fl/bench/016/005-52/run/out/`;
 the markers removed.
 
 2026-11-04 and 05. Option B, decided by Frans at 18:51, done by Claude
-(Opus 5.5, Claude Code) in `0c6c4be`: a transaction's warmup no longer
+(Opus 5.5, Claude Code) in `8defe65`: a transaction's warmup no longer
 waits for eviction; `CapacityTester.testWarmupDoesNotWait`;
 `before-commit.sh` and `level4.sh` OK, and `night.sh` OK on it (2026-11-05,
 02:10). The six runs again, 2026-11-04, 20:14 to 20:27, on s1 (F53 not

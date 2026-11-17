@@ -1988,11 +1988,11 @@ public final class Eviction {
     /**
      * setBudget as a batch ends (bergdb 005-80): a batch computes the trigger from the
      * watermarks it reads, and a setBudget that lowers the budget before the batch writes the
-     * trigger must not have its own trigger put back by the batch's. Since 988fe1a (005-65)
+     * trigger must not have its own trigger put back by the batch's. Since 52aeb04 (005-65)
      * the batch computes and writes the trigger under the monitor that setBudget holds, so
      * setBudget waits for it and writes its trigger last. The hook testBeforeTrigger stops
      * the batch between the computation and the write, and a thread calls setBudget there;
-     * the batch goes on when that thread waits for the monitor. Before 988fe1a the line was
+     * the batch goes on when that thread waits for the monitor. Before 52aeb04 the line was
      * outside the monitor: setBudget ended within the hook, and the batch then wrote the old
      * budget's trigger, B0 instead of B0 / 4.
      */

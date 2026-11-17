@@ -1,5 +1,5 @@
-005-64's gates and StreamDigest, 2026-10-29, on main f648f96 with the default buffer time 50 ms (nice -n 10, F53, not quiet: other sessions busy).
-digest-base.txt: main f648f96; digest-cur.txt: the change; digest-probe50.txt: main with DbBuilder.testSetup's buffer time 10 -> 50 ms (StreamDigest's databases use testSetup, so the default does not reach them; this run checks that the buffer time leaves the bytes unchanged).
+005-64's gates and StreamDigest, 2026-10-29, on main 5dda08b with the default buffer time 50 ms (nice -n 10, F53, not quiet: other sessions busy).
+digest-base.txt: main 5dda08b; digest-cur.txt: the change; digest-probe50.txt: main with DbBuilder.testSetup's buffer time 10 -> 50 ms (StreamDigest's databases use testSetup, so the default does not reach them; this run checks that the buffer time leaves the bytes unchanged).
 compare base cur: DIGESTS IDENTICAL (36 of 36)
 compare base probe50: DIGESTS IDENTICAL (36 of 36)
 

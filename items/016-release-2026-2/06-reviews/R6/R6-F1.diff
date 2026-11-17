@@ -8,7 +8,7 @@ index 94347b6..4e57412 100644
  
 +    /**
 +     * R6-F1 (bergdb 016-06/R6): a record whose size field is enlarged to cover the next
-+     * record must be refused at a start. On f5a5f66 the start succeeds and the next
++     * record must be refused at a start. On abe7785 the start succeeds and the next
 +     * record's transaction, /b, is gone.
 +     */
 +    @Nano

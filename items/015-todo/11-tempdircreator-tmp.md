@@ -41,7 +41,7 @@ as `BryanIssueNight`'s, off s1's 1.9 GB tmpfs.
 
 2026-11-05, 21:35. The "Done when"'s second half met, at Frans's decision
 of 21:25 (review R3 of night 006-12, C1, had found it missing): the night
-tests (`night.sh tests`) on s1 at 45cfb4f, each test JVM with
+tests (`night.sh tests`) on s1 at 93f83a7, each test JVM with
 `-Djava.io.tmpdir` on s1's disk (`/opt/bergdb-bench/015-11/tmpdisk`) and no
 bind mount of `/tmp`: JDK 27 "SUCCESS, 9 successful tests in 195.5 s",
 JDK 17 "SUCCESS, 9 successful tests in 202.7 s". The temporary directory

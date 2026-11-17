@@ -22,4 +22,4 @@ Log
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
-2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a job's status is a snapshot, all its values taken at the call (020-10, 3.2); 5b08db5 (020-10, I2 part 1). The test: PubTesterIndexJobs.testStatusIsSnapshot, in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a job's status is a snapshot, all its values taken at the call (020-10, 3.2); 4f8210f (020-10, I2 part 1). The test: PubTesterIndexJobs.testStatusIsSnapshot, in `before-commit.sh`, passing on `main` at `b768ef0` (020-11). Status: done.

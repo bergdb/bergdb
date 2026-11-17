@@ -1,7 +1,7 @@
 # 024-11. Underfill: a design study of the fix
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11), the
-design study: the merges made in 024-21 and 024-22 (`67925924`); QU1 to
+design study: the merges made in 024-21 and 024-22 (`d502af3d`); QU1 to
 QU8 not marked answered here (QU4 by 024-14's QT1, QU6 by 024-22's QM1).
 
 A design study, no Java or Lean code: how release 2026.5 removes

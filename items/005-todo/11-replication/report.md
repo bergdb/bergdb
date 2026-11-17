@@ -3,7 +3,7 @@
 
 Written 2026-10-22 by Claude (Opus 5.5, Claude Code), at Frans's request
 ("Do 005-11. Replication: study it, for Frans to decide."). Made on commit
-`cbeb9bd`, the code as committed; nothing in `java/` or `lean/` was
+`691794d`, the code as committed; nothing in `java/` or `lean/` was
 changed. The options and the proposal are in
 [../11-replication.md](../11-replication.md); this file is the study
 behind them: what the code does, what the tests cover, what the probes
@@ -162,7 +162,7 @@ The Pub API's details
 What is 2017 code
 -----------------
 
-By `git blame` on `cbeb9bd`: 1,214 of StorageManager's 1,243 lines are
+By `git blame` on `691794d`: 1,214 of StorageManager's 1,243 lines are
 from the 2017 import. The 2026 lines: the durable length for reclaim
 (`getDurableLength`), a read below the first position that does not fail
 the storage (W1), a fix of `handleStreamException` (it looped forever when
@@ -177,7 +177,7 @@ of 005-14) apply to replicas as to the main.
 What the tests cover
 ====================
 
-15 tests use replicas, all unit tests, 2017 code; they pass on `cbeb9bd`
+15 tests use replicas, all unit tests, 2017 code; they pass on `691794d`
 ([runs/existing-tests.txt](runs/existing-tests.txt), with
 `StorageManagerTester`'s three other tests):
 
@@ -673,11 +673,11 @@ Now entries of their own (2026-10-23): 005-27, 005-28 and 005-29.
   fixed with it.
 
 
-Again on 78cc5f3, after 005-01
+Again on 63fa5de, after 005-01
 ==============================
 
 2026-10-23. 005-01 made a transaction that throws after its go point fail
-the database. All probes but P8 ran again on `78cc5f3`, with the same
+the database. All probes but P8 ran again on `63fa5de`, with the same
 tools ([runs/78cc5f3/](runs/78cc5f3/)); the 15 existing tests pass.
 
 * P1, P4, P5, P7, P10, P11: the same. P9: the same (the stack's line
@@ -692,7 +692,7 @@ tools ([runs/78cc5f3/](runs/78cc5f3/)); the 15 existing tests pass.
   cut, so it now fails the database: that transaction has committed, and
   every later transaction and read is refused with a `DbFailedException`
   until a restart, after which the database is right. In P6 with reclaim,
-  5,812 of the 6,000 transactions threw (on `cbeb9bd`, 2,810 of the 5,818
+  5,812 of the 6,000 transactions threw (on `691794d`, 2,810 of the 5,818
   after the failure), `removeReplica` threw as before, and the database
   stayed failed until the restart. In P3's fourth case, a writer at full
   speed with cuts during the copy, the database failed during the copy, and
@@ -709,8 +709,8 @@ Files
   against `java/build/bergdb.jar` and runs one;
   [tools/all.sh](tools/all.sh) runs all but P8, and
   [tools/p2-all.sh](tools/p2-all.sh) P2's six runs.
-* [runs/](runs/): the outputs, on `cbeb9bd`, and
+* [runs/](runs/): the outputs, on `691794d`, and
   [runs/existing-tests.txt](runs/existing-tests.txt), the run of the 15
   existing tests (with `StorageManagerTester`'s three others);
-  [runs/78cc5f3/](runs/78cc5f3/), the same again on `78cc5f3` (all but
+  [runs/78cc5f3/](runs/78cc5f3/), the same again on `63fa5de` (all but
   P8).

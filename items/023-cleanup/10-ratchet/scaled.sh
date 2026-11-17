@@ -1,7 +1,7 @@
 #!/bin/sh
 # The scaled ratchet runs of 023-10 (2026-11-10), one at a time: CleanupRatchet (probe/,
 # compiled apart into classes-main and classes-core) on the builds in wt-main (main,
-# dcfe3b4f) and wt-core (023-core, 2c67f887). Outputs in runs/scaled/.
+# 51987a7b) and wt-core (023-core, 2c67f887). Outputs in runs/scaled/.
 R=/Users/f/fl/bench/2026-11-10/ratchet
 OUT=$R/runs/scaled
 one() {   # name build args...

@@ -1,4 +1,4 @@
-005-79, step 4, by hand: java/doubles.py of Part B (the clone) on the base's java/src (6d81050),
+005-79, step 4, by hand: java/doubles.py of Part B (the clone) on the base's java/src (f7d1d52),
 2026-11-03. It refuses exactly the four decisions (Eviction.LOW; Reclaim's spacing and fraction;
 TransSeq's share and dither) and the three sizes (StoredTrans, KeyAccessPath).
 

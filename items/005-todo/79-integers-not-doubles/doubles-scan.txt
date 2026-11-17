@@ -1,6 +1,6 @@
 005-79: doubles and floats in the production code of the Core Layer's packages
 (java/deps.py --layer core: common, core, dag, nanotest, pub.util, storage, stream),
-at 6d81050 (java/ as at df6ad50), 2026-11-03. Test code left out by deps.py's direct
+at f7d1d52 (java/ as at 9d34ac1), 2026-11-03. Test code left out by deps.py's direct
 markers only (Tester files, Pack, nested Tester classes, @Nano, static void test...),
 not by its helper rule, which counts TransSeq.take and dither as test code. Matched:
 double, float, Double, Float, decimal literals with a point or a d/f suffix, hex floats.

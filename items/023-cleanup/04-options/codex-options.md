@@ -1,7 +1,7 @@
 # 023 Codex options. The main alternatives
 
 2026-11-10. Phase 1. Input: 023-01 and 023-02 at 93f0fe94.
-The baseline is 0b93d273. The stopped prototype is on
+The baseline is 2f018b9e. The stopped prototype is on
 020-30-codex-proto, 680764e2. This study changes no code.
 
 ## 1. Recommendation

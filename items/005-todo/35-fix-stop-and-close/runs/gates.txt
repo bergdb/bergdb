@@ -1,4 +1,4 @@
-gates on 8ca0305 005-32 done: a start that throws closes its storage before the exception leaves, and stops the database; the Pub API closes on a failed start too; BufferedStream.close() returns after a failed flush, and an Error in a flush fails the stream, 14 changed files, Sat Oct 24 18:19:42 CEST 2026
+gates on 5119606 005-32 done: a start that throws closes its storage before the exception leaves, and stops the database; the Pub API closes on a failed start too; BufferedStream.close() returns after a failed flush, and an Error in a flush fails the stream, 14 changed files, Sat Oct 24 18:19:42 CEST 2026
 == java/before-commit.sh: exit 0, 134 s, 18:22:16
 Unit: SUCCESS, 1007 successful tests in 9.3 s.
 F:    SUCCESS, 66 successful tests in 130.0 s.

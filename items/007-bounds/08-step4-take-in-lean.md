@@ -4,7 +4,7 @@
 Created 2026-10-28 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, as
 006-10's W4.1, at his go (006-10, question 3, 09:36: "yes, as recommended:
 W4.1 at max effort once 007-07 is in `main`"). Status: done. 007-03's step
-4: `TransSeq.take` as step 3 and D4:B left it (007-07, `f89846d`) is a
+4: `TransSeq.take` as step 3 and D4:B left it (007-07, `b8ac8a1`) is a
 startup pos policy of the Lean model, and T3 is proved for runs with it.
 
 The answer. With a constant setting sd of the startup distance, the startup
@@ -249,7 +249,7 @@ runs them:
   up (007-07, 2.4).
 * **Against `TransSeq.take` on generated cases.**
   [08-step4-take-in-lean/TakeCheck.java](08-step4-take-in-lean/TakeCheck.java)
-  runs `TransSeq.take` of `f89846d` (its source compiled against the main
+  runs `TransSeq.take` of `b8ac8a1` (its source compiled against the main
   tree's jar of 2026-10-27, which predates it) on 300 cases that SplitMix64
   makes from the case number: 1 to 4 records up to the startup pos, a
   `TransSeq` of 0 to 12 transactions with 0 to 29 got-dirty nodes, own bytes
@@ -386,13 +386,13 @@ Review, 2026-10-28
 ------------------
 
 2026-10-28, 13:05, by Claude (Opus 5.5, Claude Code): an independent
-review at max effort of `db1eca8`, `a0e47c3`, `63471fc`, `8e71ffb` and
-`8b6669f`, from the Lean and the Java, not from the account above. In my
-clone `/Users/f/fl/bench/006-10/rev8/` at `8b6669f`; my checks are in its
+review at max effort of `4f759c7`, `8557b24`, `c765128`, `506a60f` and
+`e4c2b9f`, from the Lean and the Java, not from the account above. In my
+clone `/Users/f/fl/bench/006-10/rev8/` at `e4c2b9f`; my checks are in its
 `review/` folder (not committed; run from lean/ with `lake env lean
 ../review/<file>`).
 
-**1. Faithfulness.** `takePolicy` is `TransSeq.take` of `f89846d`
+**1. Faithfulness.** `takePolicy` is `TransSeq.take` of `b8ac8a1`
 (unchanged since) as `Db.store` calls it, but for the record limit and the
 meta blocks. The loop's list, T(s+1), ..., T(i-1), is the `TransSeq`:
 `store` adds every transaction after its take, and `DbStarter` adds
@@ -409,7 +409,7 @@ are false in both. TakeCheck runs the real `TransSeq.take` (I built it
 from the clone's sources, JDK 27): its 300 results are `javaTakes`, and
 `TakeCheck bits` prints the `#guard`s' bits. Two limits of these checks:
 the share's bits come from a copy of the expression in TakeCheck, not from
-TransSeq (`a0e47c3`'s message says both come from TransSeq itself); and
+TransSeq (`8557b24`'s message says both come from TransSeq itself); and
 neither the three share checks nor the 300 cases tell Java's order of the
 share's operations from two other orders, or the deadline's `≤` from `<`
 (review/Variants.lean: 0 of 300 cases differ, where a dither of 0.5

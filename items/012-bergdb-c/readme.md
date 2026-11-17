@@ -35,7 +35,7 @@ the tests, notes, progress), in the order of 012-01, section 8:
   written down, field by field, with Java's scanner and the determinism
   audit; the file becomes the format document.
 * [03-c-api.md](03-c-api.md). 012-03, the C API: `bergdb.h` from `Db`'s
-  public methods (45 since `fd8f513`).
+  public methods (45 since `decc677`).
 * [04-c-project.md](04-c-project.md). 012-04, the C project: layout,
   build, test framework, gate, Java's semantics in C, the first modules.
 * [05-cross-harness.md](05-cross-harness.md). 012-05, the cross harness:
@@ -105,7 +105,7 @@ the top of 012-01.
 
 2026-10-28, 12:42. Asked whether the plan is ready for long unattended
 work, Claude brought it up to date with the morning's Java: the paced take
-in `main` (`f89846d`, 007-07), which changed every stream and decides with
+in `main` (`b8ac8a1`, 007-07), which changed every stream and decides with
 doubles; 005-52's new methods of `Db`. And added to 012-01, section 9: the
 unattended machinery of 013-02 (state file, check-ins, watchdog, the same
 permission mode as the coordinator), pacing by the usage windows, a rule
@@ -114,8 +114,8 @@ coordinator owns the commits.
 
 2026-10-28, 13:34. The review of the plans before the conductor starts
 (Frans, 13:05: wait for the Java changes that affect the stream, review,
-then the conductor), against `main` at `f589ba3`. Brought in line with
-005-53 and 005-52 (`fd8f513`): `setStartupDistance` writes nothing for the
+then the conductor), against `main` at `e5dd2fd`. Brought in line with
+005-53 and 005-52 (`decc677`): `setStartupDistance` writes nothing for the
 value in force, and `Db` has 45 public methods, with a setter and a getter
 of the cache size (012-01, 012-03, 012-05, 012-09, 012-12, 012-13). Also:
 the take in 012-02's outline, the skip below the cut in 012-11 (005-62),
@@ -127,7 +127,7 @@ The conductor waits for `/Users/f/fl/bench/012/review-done`.
 2026-10-28, 13:43. The implementation started. Frans gave the go by
 starting the conductor (the session f1-0f) with the prompt at the top of
 012-01, which approves the task plans 012-02 to 012-16. The Java reference
-of the first tasks: `main` at `404d2ee` (`java/` as of `fd8f513`). The
+of the first tasks: `main` at `aa0f532` (`java/` as of `decc677`). The
 conductor's state is in `/Users/f/fl/bench/012/state.md`, with check-ins
 every 20 minutes from 06:17 to 21:47 and the watchdog until 07:00 on
 2026-10-29. The usage level was tight (the week 25 points ahead of its
@@ -137,7 +137,7 @@ time), so at most two subagents at a time, at high effort (012-01, 9.2):
 012-03. Tonight 006-10's quiet block holds: nothing CPU-heavy of 012 after
 21:45, the conductor idle from 22:30 to 06:15.
 
-2026-10-28, 14:18. 012-04 done (`40aa5b8`): the C project in `c/`, its
+2026-10-28, 14:18. 012-04 done (`59c8156`): the C project in `c/`, its
 build, the C gate (`C BEFORE COMMIT OK` in 3 s), the rules of Java's
 semantics in C, and the first modules (bytes, Fletcher-16, klongs, keys,
 positions, the allocator) with 81 unit tests, Java's own tests of those
@@ -353,7 +353,7 @@ pending); 012-13's Q2 no action (the handle ends at the close, as
 implemented); D6b changed: "Do not move the format document", so 012-02
 stays in the item and `docs/` gets nothing; 012-14's flipped time no
 action now. "Continue with 012 until it is finished. Run agents with Opus
-5.5 High to preserve usage." (Recorded first, at 68b55e6, against the
+5.5 High to preserve usage." (Recorded first, at 40946c4, against the
 wrong list; corrected here.)
 
 2026-10-29, 09:50. 012-11's Q1, option B, as Frans decided: C forces the
@@ -414,9 +414,9 @@ BEFORE COMMIT OK with macOS's `leaks`. Gains of `-flto` (1M and 10M keys,
 in turns): writes 1.24 to 1.38, reads 1.08 to 1.23, under a 16 MB budget
 1.23 to 1.24; the library 20 percent larger, `core_demo` 5 percent.
 
-2026-10-29, 15:33. 012-17 merged into `main` (`ae4aaf9`), its gate there
+2026-10-29, 15:33. 012-17 merged into `main` (`165efea`), its gate there
 `C BEFORE COMMIT OK (180 s)` with macOS's own `leaks`; 012's status done
-again. The gate with the real `leaks` on `44332aa` (14:01 to 14:04, Frans
+again. The gate with the real `leaks` on `0935005` (14:01 to 14:04, Frans
 had enabled developer mode): `C BEFORE COMMIT OK (172 s)`, 0 leaks in
 unit-release and func-release. 012-16 restructured at Frans's request:
 the report is the whole file, sections 1 to 8 (section 0 and the plan's

@@ -82,7 +82,7 @@ index 496d3f7..071300f 100644
  history is compared.
  
 +2026-10-27. Rule 4 by position (bergdb 005-58), Java's since bergdb 005-57
-+(`07b6375`). Changes to the trusted part: new definitions in SIS/Handle.lean,
++(`e773562`). Changes to the trusted part: new definitions in SIS/Handle.lean,
 +`inPosToId` (Java's `posToId` as a test), `HMem.byPos`, `HMem.linkDPos`,
 +`handleStartupPos` and `runHandlesPos`; new statements in
 +SIS/HandleTheorems.lean, `Rule4_positions`, `Rule4Pos_handles` and

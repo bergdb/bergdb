@@ -136,7 +136,7 @@ public class StringUtil {
     /**
      * The UTF-8 of 's', a string with no lone surrogate, encoded into an array of exactly
      * 'size' bytes, its utf8Size(): no larger buffer on the way, as String.getBytes() may
-     * allocate (2026-11-09, bergdb 020-08, section 3; the review of e92a95a: 2 bytes a char for
+     * allocate (2026-11-09, bergdb 020-08, section 3; the review of 02995d9: 2 bytes a char for
      * a Latin-1 String with a char above U+007F in JDK 27, 3 in JDK 17, so a String whose
      * UTF-8 fits a Java array could throw OutOfMemoryError). For a String of a size that may
      * pass that: getBytes() is faster.
@@ -218,7 +218,7 @@ public class StringUtil {
 
     /**
      * toBytes(s, size): the UTF-8 of well-formed strings, as getBytes() makes it; a size that
-     * is not the string's is refused (bergdb 020-08, section 3; the review of e92a95a).
+     * is not the string's is refused (bergdb 020-08, section 3; the review of 02995d9).
      */
     @Nano
     public static void testToBytesOfAKnownSize() throws UnsupportedEncodingException {

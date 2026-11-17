@@ -110,7 +110,7 @@ The conductor split 012-11 in two, so that reclaim runs beside 012-10
 (startup, another agent, in `/Users/f/fl/bench/012/10-startup/`):
 
 * **Part 1** (this agent, in `/Users/f/fl/bench/012/11-reclaim/`, a clone
-  of `main` at `17c0ea3`): reclaim in a running C database, without
+  of `main` at `dd4de7f`): reclaim in a running C database, without
   restarts. Done items 1 (iterations and steps, the touch, the step
   reserve), 2 (the table and the current row's key, written as Java writes
   them; reading them back at a start is part 2), 3 (safe positions, the cut
@@ -242,7 +242,7 @@ conductor merges the two.
   compared: 0 differences. The gate on the final part 1 code (`0f27af9`):
   `C BEFORE COMMIT OK (93 s)`, 315 unit tests, 5 functional tests, the
   quick set with 5 reclaim workloads run by C. **Part 1 done.**
-* 23:33: the conductor: 012-10 is in `main` (`e1507b9`); pull it, keep
+* 23:33: the conductor: 012-10 is in `main` (`3d9dcca`); pull it, keep
   both sides (012-10's for the start), gate, and **go on into 012-11
   proper** (the change of scope): the table restored at a start, cut
   databases opened by the other side, reclaim with restarts and in turns.
@@ -357,7 +357,7 @@ Java's. Part 1 does A, which is Java's rule read literally.
 
 ## 6.5 For the conductor: the merge with 012-10
 
-**Done** in this clone at 23:33 (`1e593f6`, `main` at `e1507b9` pulled
+**Done** in this clone at 23:33 (`1e593f6`, `main` at `3d9dcca` pulled
 on the conductor's word), as below; then 012-11 proper made `c_runs` take
 every workload and `sdb` read the table (6.7). Kept for the record. 012-10's
 clone (read at 23:05, `acfd03a`) and this one changed the same files in
@@ -580,7 +580,7 @@ in `c/readme.md`, section 9, point 9.
 
 Frans decided Q1 (6.4) on 2026-10-29 ("Do as recommended"): **option B**.
 Done by a subagent of 012's conductor in `/Users/f/fl/bench/012/16f/` (a
-clone of `main` at `57aaf9f`).
+clone of `main` at `ddda309`).
 
 Progress:
 

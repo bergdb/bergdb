@@ -24,7 +24,7 @@ Log
 ===
 
 2026-10-17. Created the item. Claude wrote 003-01. Item 001 had already
-registered the defect as M49 (commit `530028d`), with "before J3".
+registered the defect as M49 (commit `1286297`), with "before J3".
 
 2026-10-22. Done: fixed in bergdb 005-01
 ([../005-todo/01-fix-m49-exception-safety.md](../005-todo/01-fix-m49-exception-safety.md)),

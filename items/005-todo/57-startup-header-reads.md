@@ -140,22 +140,22 @@ counters and properties:
   read), `testLinkToCanonicalByPosition` (a loaded object's position, a
   vpos), `testLinkToCanonicalTopNode` (the header read) and
   `testLinkToCanonicalCheck` (the check finds a missed link).
-* Gates, with the check at every startup: on `bf19075` with the change,
-  before-commit OK and level2.sh (full) OK; on `cec0032` (005-46 and 005-55
+* Gates, with the check at every startup: on `c1f1f15` with the change,
+  before-commit OK and level2.sh (full) OK; on `14022ad` (005-46 and 005-55
   in) with the change, the tree it was committed on, before-commit OK,
   level2.sh quick OK and level4.sh quick OK.
-* Found on the way: level4.sh quick on `bf19075` with the change failed
+* Found on the way: level4.sh quick on `c1f1f15` with the change failed
   once, in ReclaimReaders with 8 readers (seed 302): "get(/k/8, ...):
   model was not published through ...". The test says so when a reader
   still waits for its model while the session ends (`stopReaders`); likely
   a race of the test, reclaim's internal transaction moving the lookup time
   after the writer's last publication (`lastCompleted`). It did not come
   again in 9 runs with the change and 6 without it, and level4.sh quick
-  passed on `cec0032`. Not registered.
+  passed on `14022ad`. Not registered.
 
 The startup times are the report's (part 1 in sections 6 and 7): the
 prototype's rule 4 is the code's, but for the counters. Since 005-50
-(`bf19075`) a head build refuses 007-05's databases, so measuring the code
+(`c1f1f15`) a head build refuses 007-05's databases, so measuring the code
 itself means making them again. On a cold cache part 1 moves the writer's
 header reads into the time after the start, as the report says (3.1, 7);
 part 2 is the way to remove them, if Frans wants it later.

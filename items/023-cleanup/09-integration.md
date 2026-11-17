@@ -5,7 +5,7 @@ Created 2026-11-10 by Frans Lundberg. Status: open.
 The core of 023-08, section 5, with Frans's answers of its section 7, put
 together on one branch from the prototypes: no new design. Clone
 `/Users/f/fl/bench/2026-11-10/int/clone`, branch `023-core` from `main` at
-`22b6ce4c`, head `b7874541` (section 8). Runs and their outputs:
+`40d06eff`, head `f2be6a5b` (section 8). Runs and their outputs:
 `/Users/f/fl/bench/2026-11-10/int/runs/`. Gate worktree (detached):
 `/Users/f/fl/bench/2026-11-10/int/gate`.
 
@@ -19,10 +19,10 @@ together on one branch from the prototypes: no new design. Clone
   17:48; section 7), and last Q9's change of `conformance.sh` (Frans
   accepted Q9 at 17:49).
 * No textual conflict. `main` has no Java change since the prototypes'
-  base `99089978`; P5's, P6's and fault 12's parts were taken by hand.
+  base `1901394c`; P5's, P6's and fault 12's parts were taken by hand.
 * Reclaim is `main`'s. No P8, no merges, no `mergeBound`, no replaced
   queue, no switch.
-* Gates: before-commit OK at `70b4f788` (K8) and at `9d843d82` (the Java
+* Gates: before-commit OK at `8bc7f2a2` (K8) and at `699d2429` (the Java
   head); level1 OK; UnlinkFuzz in the new modes, 0 failures in 20,000
   seeds; T1 at 100,000 passes every row bounded; T3 reach 1 for every shape; T1
   at 1M with a drive of 12,000 fails C9 by 6 (127 objects against 121),
@@ -36,45 +36,45 @@ together on one branch from the prototypes: no new design. Clone
 
 ## 2. The commits
 
-In order, on `main` at `22b6ce4c`:
+In order, on `main` at `40d06eff`:
 
-1. `cb1a7483` K1 to K3: P4's head `0e66d1c9` in `java/src` and the stress
+1. `f4c469d3` K1 to K3: P4's head `0e66d1c9` in `java/src` and the stress
    tools (UP, LE-b, RC, the take-back of a split's node,
    `Cache3.dropNode`, `keyNodeTakenBack`, A2A3Check2's count of
    taken-back nodes, UnlinkFuzz). Comments that named P1's relabelling
    now name LE-b. Not taken: CleanupRule (a prototype; see section 6),
    P4's change of `StoredTrans` (moved to K8).
-2. `b811ceec` The take-back retargets every klong of tt in the parent
+2. `947e866f` The take-back retargets every klong of tt in the parent
    that names the node, deleted ones too (P5's `retarget`, 17 lines of
    `4c6bea65`; 023-07, section 5.14, fault 6).
-3. `49eff207` Fault 12's fix in `Dag.spaceSplitInPlace` (the code of
+3. `b879affc` Fault 12's fix in `Dag.spaceSplitInPlace` (the code of
    `92bf4eb5`), UnlinkFuzz's pointer check (P5) and its modes
    `order=shuffle` and `dup=P` (`92bf4eb5`), without P5's merge counts
    and strict mode; two unit tests of the fault.
-4. `bbb04933` X5 (c): the leaf branch kept; its inner branch a `Bug`
+4. `04f0fd97` X5 (c): the leaf branch kept; its inner branch a `Bug`
    thrown before the climb changes anything. Tests of X5 (c) at the leaf
    and of deletes of every key.
-5. `2f2d1b6f` K4: `dirtyNodeBound` by node of the paths, two klongs a
+5. `5fffe9bf` K4: `dirtyNodeBound` by node of the paths, two klongs a
    node, no off-path count, no `mergeBound`, one node for an emptied
    space root; and new, the klongs of chained root collapses (reviews B
    and C, 2.5). A test against counted nodes at node sizes 8, 14, 30.
-6. `d823fccd` K7, SE: 021-28's `2bfeb3e3`, `240f2b3e` and `eebeb39d`,
+6. `4f1e598b` K7, SE: 021-28's `2bfeb3e3`, `240f2b3e` and `eebeb39d`,
    squashed.
-7. `82a12c6a` Expected values of two SE tests (section 4).
-8. `d93c7076` K6, the dead hand, on by default (P6's `83e1cb86` and its
+7. `a34f89a9` Expected values of two SE tests (section 4).
+8. `9e93a7ba` K6, the dead hand, on by default (P6's `83e1cb86` and its
    tests `411ae3d1`), without the switch, the timing counters and the
    CPU probe; the 2 ms bound of 023-07, section 5.6. `noEvict()`'s
    Javadoc (Z15).
-9. `70b4f788` K8: `RECORD_FORMAT` 6; the refusal names release 2026.3.
-10. `f69de8e7` Q4: the key transformations first, then a stable sort of
+9. `8bc7f2a2` K8: `RECORD_FORMAT` 6; the refusal names release 2026.3.
+10. `ed07d17e` Q4: the key transformations first, then a stable sort of
     the KVs by key, then the puts. A test that two transactions with the
     same operations in other orders write the same stream.
-11. `9d843d82` Reclaim liveness: two unit tests on `main`'s reclaim.
-12. `96a18987` One operation a key: of the KVs that key transformations
+11. `699d2429` Reclaim liveness: two unit tests on `main`'s reclaim.
+12. `0b1d59f4` One operation a key: of the KVs that key transformations
     make one key, `Db.putKvs` keeps one by the builder's rule (section 7).
-13. `96d22be5` X5 (c) unreachable: a `Bug` at any level; the Dag tests
+13. `abe27089` X5 (c) unreachable: a `Bug` at any level; the Dag tests
     give one operation a key (section 7).
-14. `13246f53` Q9 (Frans, 17:49): `conformance.sh` requires no adoption
+14. `80105ef1` Q9 (Frans, 17:49): `conformance.sh` requires no adoption
     below the old parent in the a6 traces. The same change as `2c67f887`,
     the head before section 7's change (kept as the branch
     `023-core-before-collapse` in the clone), with a new message.
@@ -100,14 +100,14 @@ Frans's name, with no other attribution.
   test probes from `v12/probe`.
 * **X5 (c)**: the inner branch is a `Bug`, not a Java `assert`, as the
   climb's other impossible states are, so that it holds without -ea.
-  Since `96d22be5` the leaf branch is a `Bug` too (section 7).
+  Since `abe27089` the leaf branch is a `Bug` too (section 7).
 * **K4, chained collapses** (reviews B and C, 2.5): each level that
   `replaceRoot` collapses adds a klong to the segment leaf L above the
   tree, and unlinks a root that existed before the transaction, one level
   lower each time; so over a transaction L gets at most one klong for
   each inner node of that tree on the paths. The count adds that to L
   once (`Walked.collapses`).
-* **SE** (`eebeb39d`, base `c5b1ef5c`): applied without a conflict.
+* **SE** (`eebeb39d`, base `5f176575`): applied without a conflict.
 * **P6** (`83e1cb86`, `411ae3d1`): applied without a conflict on P4's
   base; then the switch `-Dbergdb.p6.dead`, the counters of the steps'
   time and their test-side reads removed; the time bound
@@ -125,8 +125,8 @@ Frans's name, with no other attribution.
 
 | Test                                          | Old        | New       | Commit     |
 |---|---|---|---|
-| DbTesterGetMany.testEndKeyPassesNoDeletedKeys | > 200      | <= 20     | `82a12c6a` |
-| DbTesterGetMany.testEndKeyPassesNoDeletedLongKeys | > 2,000 | <= 30    | `82a12c6a` |
+| DbTesterGetMany.testEndKeyPassesNoDeletedKeys | > 200      | <= 20     | `a34f89a9` |
+| DbTesterGetMany.testEndKeyPassesNoDeletedLongKeys | > 2,000 | <= 30    | `a34f89a9` |
 
 * Both are the control scans of SE's tests, ended by the stop condition
   alone: 398 and 2,160 key nodes on 021-28's branch, 11 and 11 now. With
@@ -138,11 +138,11 @@ Frans's name, with no other attribution.
 Changed with their mechanism, not as expected values:
 
 * `StoredTrans.testRefusesNewerFormat` takes `RECORD_FORMAT + 1`, not 6,
-  as the newer format (K8, `70b4f788`): 6 is the format now.
+  as the newer format (K8, `8bc7f2a2`): 6 is the format now.
   `testRefusesOldFormat` refuses 5 too, and checks that the message
   names release 2026.3.
 * A2A3Check2 counts a node made and taken back in a transaction as not
-  made (Z18; P4's change, `cb1a7483`).
+  made (Z18; P4's change, `f4c469d3`).
 
 Not changed, though named by the prototypes: `testFound019_32` (P5's
 merges moved its row; no merges here), `testOwnThreadsAreDaemons` (only
@@ -153,28 +153,28 @@ P6's queue needed it), `testUserTransactionLeavesTimesForReclaim` (P8's).
 
 | Gate                                  | Where             | Result                         |
 |---|---|---|
-| before-commit.sh                      | `70b4f788`        | BEFORE COMMIT OK (264 s)       |
-| before-commit.sh                      | `9d843d82`        | BEFORE COMMIT OK (254 s)       |
-| level1.sh (full)                      | `9d843d82`        | LEVEL 1 OK (157 s)             |
-| StreamDigest quick, four modes        | `9d843d82`        | the modes give the same stream |
-| UnlinkFuzz long, shuffle, dup 10      | `2f2d1b6f`, 10 min | 6,000 seeds, 0 failures       |
-| UnlinkFuzz long, sorted, dup 10       | `2f2d1b6f`, 10 min | 5,950 seeds, 0 failures       |
-| UnlinkFuzz random, shuffle, dup 20    | `2f2d1b6f`, 10 min | 500 seeds, 0 failures         |
-| UnlinkFuzz long, shuffle, dup 10, B 4 | `9d843d82`, 5 min | 2,350 seeds, 0 failures        |
-| the same, B 14 and B 30               | `9d843d82`, 5 min | 2,850 seeds each, 0 failures   |
-| T1, N = 100,000, 8 rows (judge.py)    | `9d843d82`        | bounded: all pass              |
-| T3, R forever, 6 shapes               | `9d843d82`        | reach 1 for every shape        |
-| T1, N = 1M, drive 12,000              | `9d843d82`        | bounded: C9 (127 against 121)  |
-| T1, N = 1,000, 8 rows and long 1k, 10k | `9d843d82`       | bounded: 7 of 10 pass          |
-| A2A3Check2, 8 configurations          | `9d843d82`        | all rules hold                 |
-| The check's probes (section 5.2)      | `9d843d82`        | 0 failures                     |
+| before-commit.sh                      | `8bc7f2a2`        | BEFORE COMMIT OK (264 s)       |
+| before-commit.sh                      | `699d2429`        | BEFORE COMMIT OK (254 s)       |
+| level1.sh (full)                      | `699d2429`        | LEVEL 1 OK (157 s)             |
+| StreamDigest quick, four modes        | `699d2429`        | the modes give the same stream |
+| UnlinkFuzz long, shuffle, dup 10      | `5fffe9bf`, 10 min | 6,000 seeds, 0 failures       |
+| UnlinkFuzz long, sorted, dup 10       | `5fffe9bf`, 10 min | 5,950 seeds, 0 failures       |
+| UnlinkFuzz random, shuffle, dup 20    | `5fffe9bf`, 10 min | 500 seeds, 0 failures         |
+| UnlinkFuzz long, shuffle, dup 10, B 4 | `699d2429`, 5 min | 2,350 seeds, 0 failures        |
+| the same, B 14 and B 30               | `699d2429`, 5 min | 2,850 seeds each, 0 failures   |
+| T1, N = 100,000, 8 rows (judge.py)    | `699d2429`        | bounded: all pass              |
+| T3, R forever, 6 shapes               | `699d2429`        | reach 1 for every shape        |
+| T1, N = 1M, drive 12,000              | `699d2429`        | bounded: C9 (127 against 121)  |
+| T1, N = 1,000, 8 rows and long 1k, 10k | `699d2429`       | bounded: 7 of 10 pass          |
+| A2A3Check2, 8 configurations          | `699d2429`        | all rules hold                 |
+| The check's probes (section 5.2)      | `699d2429`        | 0 failures                     |
 
 level1: unit 1,641 tests; DagFuzz at 8, 14, 30, 62; DeleteRepro;
 RestartStress, every configuration; RestartInvariance: the stream
 identical; Props MEM 129 (at most 131), SS 1.51 (at most 1.52; `main`
 gives 1.51 too).
 
-UnlinkFuzz runs in the Dag alone; the Dag's code at `2f2d1b6f` is the
+UnlinkFuzz runs in the Dag alone; the Dag's code at `5fffe9bf` is the
 head's but for SE's six lines in `Dag.getMany`, which its scans without
 an end key do not use. Each "long" run: `shape=long ops=40 n=30`.
 
@@ -215,7 +215,7 @@ three as on P4).
 * DbShadowProbe30, `-Dsd=10 -ea`, 4,377 cases: bad 0.
 * DbShadowProbe, `-Dsd=10 -ea`, 200 iterations: bad 0.
 * X5cProbe: bad 0; X5 (c) at the leaf taken 2,187 times. Since
-  `96a18987` this probe no longer applies: its deletes of keys that its
+  `0b1d59f4` this probe no longer applies: its deletes of keys that its
   transformed puts give are dropped by the builder's rule.
 * DbReplay of UnlinkFuzz seed 33 (sorted), with and without -ea: OK, 15
   transactions, restart OK.
@@ -314,7 +314,7 @@ throw." His decision: silently, with the builder's existing rule
   count every KV: an over-count.
 * A transaction without a key transformation is not sorted and has one
   KV a key already (build), so nothing changes for it: T1, T3,
-  StreamDigest and the other runs on `9d843d82` hold for it.
+  StreamDigest and the other runs on `699d2429` hold for it.
 
 ### 7.2 X5 (c) and the tests
 
@@ -347,39 +347,39 @@ throw." His decision: silently, with the builder's existing rule
 
 | Gate                                     | Where      | Result                         |
 |---|---|---|
-| before-commit.sh                         | `96d22be5` | BEFORE COMMIT OK (283 s)       |
-| level1.sh (full)                         | `96d22be5` | LEVEL 1 OK (168 s), MEM 130    |
-| UnlinkFuzz long, shuffle, dup 10, 5 min  | `13246f53` | 2,650 seeds, 0 failures        |
-| UnlinkFuzz long, sorted, dup 10, 5 min   | `13246f53` | 2,650 seeds, 0 failures        |
-| UnlinkFuzz long, shuffle, dup 10, B 14   | `13246f53` | 2,650 seeds, 0 failures        |
-| UnlinkFuzz random, shuffle, dup 20       | `13246f53` | 250 seeds, 0 failures          |
-| DbShadowProbe30, `-Dsd=10 -ea`           | `13246f53` | bad 0 of 4,377                 |
-| DbShadowProbe, `-Dsd=10` and default     | `13246f53` | bad 0 of 200 each              |
-| DbReplay seed 33, -ea and without        | `13246f53` | OK, restart OK                 |
-| ShadowProbe modes 1 and 2 (Dag)          | `13246f53` | 0 found in 3,000 each          |
-| A2A3Check2, 8 configurations             | `13246f53` | all rules hold                 |
-| StreamDigest quick, four modes           | `13246f53` | the modes give the same stream |
+| before-commit.sh                         | `abe27089` | BEFORE COMMIT OK (283 s)       |
+| level1.sh (full)                         | `abe27089` | LEVEL 1 OK (168 s), MEM 130    |
+| UnlinkFuzz long, shuffle, dup 10, 5 min  | `80105ef1` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz long, sorted, dup 10, 5 min   | `80105ef1` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz long, shuffle, dup 10, B 14   | `80105ef1` | 2,650 seeds, 0 failures        |
+| UnlinkFuzz random, shuffle, dup 20       | `80105ef1` | 250 seeds, 0 failures          |
+| DbShadowProbe30, `-Dsd=10 -ea`           | `80105ef1` | bad 0 of 4,377                 |
+| DbShadowProbe, `-Dsd=10` and default     | `80105ef1` | bad 0 of 200 each              |
+| DbReplay seed 33, -ea and without        | `80105ef1` | OK, restart OK                 |
+| ShadowProbe modes 1 and 2 (Dag)          | `80105ef1` | 0 found in 3,000 each          |
+| A2A3Check2, 8 configurations             | `80105ef1` | all rules hold                 |
+| StreamDigest quick, four modes           | `80105ef1` | the modes give the same stream |
 
-The Java of `13246f53` is that of `96d22be5`. No Bug was thrown in any
+The Java of `80105ef1` is that of `abe27089`. No Bug was thrown in any
 run. level1: unit 1,641; DagFuzz, DeleteRepro, RestartStress OK;
 RestartInvariance: the stream identical; MEM 130 (at most 131; 129 on
-`9d843d82`, the step of noise that the limit allows), SS 1.51.
+`699d2429`, the step of noise that the limit allows), SS 1.51.
 
 
 ## 8. The fixes of the code reviews (023-11)
 
-Two independent reviews of `13246f53`, 023-11's a.md (A) and b.md (B).
-Six commits on top of `13246f53`; each the smallest change that fixes its
+Two independent reviews of `80105ef1`, 023-11's a.md (A) and b.md (B).
+Six commits on top of `80105ef1`; each the smallest change that fixes its
 point, none over 40 lines of production code.
 
 | Finding | Commit     | Test                                                     |
 |---|---|---|
-| A F1    | `a7ea3a7b` | DbTesterDelete.testReusedTransKeepsItsKvs                |
-| A F2    | `f04dcd7e` | Eviction.testDeadHandBoundsItsWork (f)                   |
-| A S1, B5 | `54b292bb` | the existing tests; UnlinkFuzz                          |
-| B B1    | `f513df36` | DagTester.testDirtyNodeBoundSumsCollapsesOverTrees       |
-| B B2    | `65ef031f` | none (an over-count)                                     |
-| B B3, B4 | `b7874541` | comments and one name                                   |
+| A F1    | `11ba2a8f` | DbTesterDelete.testReusedTransKeepsItsKvs                |
+| A F2    | `68714892` | Eviction.testDeadHandBoundsItsWork (f)                   |
+| A S1, B5 | `e3b23c07` | the existing tests; UnlinkFuzz                          |
+| B B1    | `bd5fd203` | DagTester.testDirtyNodeBoundSumsCollapsesOverTrees       |
+| B B2    | `154ad247` | none (an over-count)                                     |
+| B B3, B4 | `f2be6a5b` | comments and one name                                   |
 
 * **A F1, a fault.** `Db.sortByKey` replaced a reused `Trans`'s `kvs` and
   write hashes with the sorted, compacted arrays, so a KV dropped in one
@@ -388,7 +388,7 @@ point, none over 40 lines of production code.
   the put loop; the `Trans` stays as given. The test runs one `Trans`
   twice, with a collision in the first run and with the slots turned
   round by the sort, then checks each key after the second run and a
-  restart. It fails on `13246f53` ("/later/a" held b's value).
+  restart. It fails on `80105ef1` ("/later/a" held b's value).
 * **A F2, a risk.** A step of the dead hand counted only handles, and
   unswizzled every value of every kept node of a part of up to 4,096
   handles. Now it takes parts of 8 handles (`DEAD_PART`), and the handles,
@@ -432,14 +432,14 @@ point, none over 40 lines of production code.
 
 | Gate                                     | Where      | Result                         |
 |---|---|---|
-| before-commit.sh                         | `b7874541` | BEFORE COMMIT OK (273 s)       |
-| level1.sh (full)                         | `b7874541` | LEVEL 1 OK (151 s), MEM 129    |
-| UnlinkFuzz, 4 configurations, 5 min each | `b7874541` | 8,800 seeds, 0 failures        |
-| DbShadowProbe30, `-Dsd=10 -ea`           | `b7874541` | bad 0 of 4,377                 |
-| DbShadowProbe, `-Dsd=10` and default     | `b7874541` | bad 0 of 200 each              |
-| DbReplay seed 33, -ea and without        | `b7874541` | OK, restart OK                 |
-| ShadowProbe modes 1 and 2 (Dag)          | `b7874541` | 0 found in 3,000 each          |
-| A2A3Check2, 8 configurations             | `b7874541` | all rules hold                 |
+| before-commit.sh                         | `f2be6a5b` | BEFORE COMMIT OK (273 s)       |
+| level1.sh (full)                         | `f2be6a5b` | LEVEL 1 OK (151 s), MEM 129    |
+| UnlinkFuzz, 4 configurations, 5 min each | `f2be6a5b` | 8,800 seeds, 0 failures        |
+| DbShadowProbe30, `-Dsd=10 -ea`           | `f2be6a5b` | bad 0 of 4,377                 |
+| DbShadowProbe, `-Dsd=10` and default     | `f2be6a5b` | bad 0 of 200 each              |
+| DbReplay seed 33, -ea and without        | `f2be6a5b` | OK, restart OK                 |
+| ShadowProbe modes 1 and 2 (Dag)          | `f2be6a5b` | 0 found in 3,000 each          |
+| A2A3Check2, 8 configurations             | `f2be6a5b` | all rules hold                 |
 
 UnlinkFuzz: long, shuffle, dup 10; long, sorted, dup 10; random,
 shuffle, dup 20; long, shuffle, dup 10 at node size 14 (2,850, 2,800, 250

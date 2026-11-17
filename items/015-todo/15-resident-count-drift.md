@@ -31,7 +31,7 @@ State
 -----
 
 2026-11-03, 17:23: the fix, two unit tests, the mutations and the gate
-done in the clone (rebased on `a46a597`); handed off for review
+done in the clone (rebased on `8b80cc3`); handed off for review
 (`/Users/f/fl/bench/016/015-15/handoff/`). Open: the review.
 
 The fix and why
@@ -75,7 +75,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 17:01 to 17:23, by agent K (016-05), in
-`/Users/f/fl/bench/016/015-15/repo` from `main` at `d5fc369`:
+`/Users/f/fl/bench/016/015-15/repo` from `main` at `9d0f33c`:
 
 * **The probe on the base** (R1/ValueOutProbe, compiled against the
   base's jar): `ValueOutProbe 100000 400` printed, after the batch, `[leaf
@@ -130,7 +130,7 @@ Log
   8 runs of 8 took both leaves' values, as 8 of 8 on the base.
 * **The gate**: `java/before-commit.sh`, 17:15 to 17:16: `BEFORE COMMIT OK
   (107 s)`, 1,110 unit tests and 78 f-tests. Then the clone rebased on
-  `main` at `a46a597` (015-12's and 005-79's changes) and gated again,
+  `main` at `8b80cc3` (015-12's and 005-79's changes) and gated again,
   17:19 to 17:22: `BEFORE COMMIT OK (175 s)`, 1,114 unit tests and 78
   f-tests, `doubles.py` clean.
 

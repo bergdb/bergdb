@@ -3,7 +3,7 @@
 
 Status: done 2026-11-06, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
-After release 2026.2. 005-79 (`f04cefe`) removed `Eviction.LOW` and
+After release 2026.2. 005-79 (`6bc348d`) removed `Eviction.LOW` and
 `TransSeq.dither`. Some tools in items, outside `java/` and so outside
 `before-commit.sh`, still use them and no longer compile against `main`:
 
@@ -139,8 +139,8 @@ Against each, `lowWatermark` gives 0.75 times the budget (750,000,000 for
 `--release 17` against any of the three (`Thread.threadId()`, Java 19; and
 `KeyNode.setPointerAccessData`, gone with 009): as before, it is used only
 with that diff (005-65's `prep.sh`, `prep-tools.sh`). 005-65's `prep.sh`
-applies the same diffs; its default builds (`bf19075`, `eaec93e`,
-`4f7cd60`) are before 005-79, 005-52 and 019-04, as 2026.1 is, and were not
+applies the same diffs; its default builds (`c1f1f15`, `1165c90`,
+`f9e295d`) are before 005-79, 005-52 and 019-04, as 2026.1 is, and were not
 compiled again.
 
 The Done when holds: each tool compiles against `main`, and `ScaleBench`

@@ -45,7 +45,7 @@ from coord-1112's handover (006-23, section 6, point 3).
 
 2026-11-13. Done by coord-1113's agent "limits": commit "021-28" in
 `/Users/f/fl/bench/2026-11-13/limits/clone`, branch `021-28-time-limits`,
-on main's 6239e245, to land. Tests only; no product code changed
+on main's fa074ae6, to land. Tests only; no product code changed
 (`bergdb.common.EventToWaitFor` is used by tests only).
 
 * The first step. `Eviction.testInterruptedWhileAWriterWaits` alone, in a
@@ -69,7 +69,7 @@ on main's 6239e245, to land. Tests only; no product code changed
   condition that ends at once when the condition holds now waits up to
   30 s (021-29's joins wait 60 s); a bound on a time that only a fault
   makes long is set under the time the fault would take, with room for
-  load. Lines and limits of 6239e245, old -> new:
+  load. Lines and limits of fa074ae6, old -> new:
   - `core/Eviction.java`: 1842 (testEvictionThreadIdleUntilClose) 2 s ->
     30 s; `settled(e, db, 2000)` at 1940, 2074, 2080, 2192, 2224, 2659,
     2691, 2699 (testNoLostRequestF's bursts, testInterruptWithRequestPending,
@@ -195,7 +195,7 @@ State
 -----
 
 Done: commit "021-28" on branch `021-28-time-limits` in
-`/Users/f/fl/bench/2026-11-13/limits/clone` (main 6239e245 below it),
+`/Users/f/fl/bench/2026-11-13/limits/clone` (main fa074ae6 below it),
 with this entry and its row in the readme; to land by the coordinator.
 Nothing open.
 

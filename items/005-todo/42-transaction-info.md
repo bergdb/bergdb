@@ -124,7 +124,7 @@ Outcome
 -------
 
 2026-10-25, by Claude (Opus 5.5, Claude Code), A1 and B2 as proposed, on
-`da8bbc1`:
+`f641780`:
 
 * `ConnectionImp.transactionInfo()` leaves out the KVs under the internal
   prefix, `DbConstants.INTERNAL_PREFIX_SKEY`, so every `key()` of
@@ -157,9 +157,9 @@ The probe
 
 In [42-transaction-info/](42-transaction-info/): `TransactionInfoProbe.java`,
 parts A and B, through the Pub API; `probe.sh JAR WORK_DIR` compiles it
-against a build and runs it; `probe-output.txt`, its output on `98ac9eb`
+against a build and runs it; `probe-output.txt`, its output on `52d7e36`
 with 005-40 and 005-43, uncommitted at the time; `probe-after.txt`, on
-`da8bbc1` with the change.
+`f641780` with the change.
 
 2026-11-05 (015-19): `TransactionInfoProbe.java` is kept for the code of its time, not
 changed: it calls `DatabaseBuilder.retainDuration` (removed by 015-87; now

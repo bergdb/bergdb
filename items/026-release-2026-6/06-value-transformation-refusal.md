@@ -215,7 +215,7 @@ assertion's `Error`, which still fails the database. Its own commit
 
 ## 4. The code
 
-Branch `026-06-value-transformation` from main `ee5712c5`, in
+Branch `026-06-value-transformation` from main `7685f01e`, in
 `/Users/f/fl/bench/2026-11-13/vt/clone`, three commits on Java:
 
 | Commit     | What                                                           |
@@ -412,14 +412,14 @@ after the go point.
 ## 11. State
 
 2026-11-13, 08:47. **Landed** on main by coord-1113: the five commits
-put on main `614f8600` (main had moved only in items), the Java identical
+put on main `0a496d47` (main had moved only in items), the Java identical
 to the gated `322cafed`; pushed. 010-04's R5 case line says done.
 
 
 2026-11-13, 08:43.
 
 * **Ready to land.** Branch `026-06-value-transformation` in
-  `/Users/f/fl/bench/2026-11-13/vt/clone`, from main `ee5712c5`: code
+  `/Users/f/fl/bench/2026-11-13/vt/clone`, from main `7685f01e`: code
   head `322cafed` (gated, section 8), then one commit of items and
   `releases/next.md` only. The coordinator lands it (`--no-ff` or a
   fast-forward; the commits are in Frans's name).

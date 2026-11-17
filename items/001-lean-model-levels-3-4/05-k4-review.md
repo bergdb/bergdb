@@ -115,7 +115,7 @@ first run; J7's `Eviction.drop`).
 4. The changes
 ==============
 
-From R9's commit (`4151a80`) to J10's (`70c1801`), one commit per WP (J2
+From R9's commit (`e8591e5`) to J10's (`2f0d4a0`), one commit per WP (J2
 and J3 in one):
 
 * `java/src/`: 2,957 lines added and 19 removed in 17 files, about 1,750 of

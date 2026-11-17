@@ -10,8 +10,8 @@ concurrent writers and readers, a restart and crashes, and checks every result a
 in-memory graph. The question: what does the index API make easy or hard for a graph?
 
 The class path was only the frozen release candidate's
-`night/candidate/bergdb-release.jar` (`03ce6ec`). The documentation was read in a clone of
-the candidate's repository at `03ce6ec`: README.md, `java/src/overview-pub.html`, the
+`night/candidate/bergdb-release.jar` (`d00096e`). The documentation was read in a clone of
+the candidate's repository at `d00096e`: README.md, `java/src/overview-pub.html`, the
 Javadoc comments of `bergdb.pub` and `bergdb.pub.util`, and releases/next.md. No
 implementation code was read. Nothing in BergDB was changed.
 

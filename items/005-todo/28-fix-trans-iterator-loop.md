@@ -22,7 +22,7 @@ uses a core at 100 percent and never returns, with the write lock held.
 `Db.getTrans` uses the same iterator.
 
 In P9 ([11-replication/runs/p9-diverge.txt](11-replication/runs/p9-diverge.txt),
-the first case; the same on `78cc5f3`), a start with a main and a replica
+the first case; the same on `63fa5de`), a start with a main and a replica
 of two histories copied the replica's last transaction onto the main, after
 the main's zero-filled one; that transaction named the zero-filled one as
 its startup position. The database hung at startup, and so did every later
@@ -113,7 +113,7 @@ Tests, in `NodeStreamTester`, each run in a thread with a time limit of
   of its first transaction, in its middle and before its last byte.
   Startup throws and names position 128.
 
-P9 (005-11's probe `diverge`, unchanged, on `f206e58` with the fix): the
+P9 (005-11's probe `diverge`, unchanged, on `faa4269` with the fix): the
 first case's start with the main and the replica fails at once with that
 exception, at 7273376, the transaction that the main's recovery
 zero-filled; the second and third cases are as before

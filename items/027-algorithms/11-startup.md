@@ -4,7 +4,7 @@ Created 2026-11-13 by Frans Lundberg. Status: reviewed (2026-11-13), for
 Frans to read.
 
 Part 7 of 027 (027-04, section 2.3; Levels 1 and 2): from the stream to a
-running database. The rule as `main` has it at 7e190010 (2026-11-13),
+running database. The rule as `main` has it at c82bce56 (2026-11-13),
 read from the code. It replaces 027-01's `sis-model.md`, section 6.2, and
 `levels.md`, section 4 and the startup points of section 5. The bytes are
 027-03's (sections 6, 7, 8 and 14); T1 to T4, the take, D, Rule A and the
@@ -53,7 +53,7 @@ refusal has written nothing:
    node size, the builder's id or a random one, the time) and the
    primordial record, a super root and an empty key node: 272 bytes
    (`Db.CREATION_LENGTH`, asserted at the creation; 264 until 024-25,
-   bb433188). With `created.txt` (the Pub
+   26c21000). With `created.txt` (the Pub
    API) the creation is synced first (015-01).
 2. **An incomplete creation** is refused (`DatabaseNotCreatedException`,
    005-33): a stream not cut and not longer than the creation, whose
@@ -331,7 +331,7 @@ T3 and T4 are part 6's; what they give a start:
   both rules 4). After a run, `coldReads_run` and, with TREE,
   `coldReads_tree` (H + 1 for each node T(j) makes, gives an entry,
   touches or makes unreachable; H the root's level) add |D|. **Without
-  |D|** (f8bcc4df): with BergDB's test, TREE and `LiveAppend`, every node
+  |D|** (aec08247): with BergDB's test, TREE and `LiveAppend`, every node
   of gd(j) has a canonical object when the rerun of T(j) reaches it:
   proved (`coldReads_run_noD`, `coldReads_tree_noD`), so 007-03's
   "without T4" holds for the model. **Without the unreachable nodes**:
@@ -507,7 +507,7 @@ and P5 bounds it.
 and refusals); 005-49 (own bytes); 005-50 (node size); 005-57 (rule 4 by
 position; cold 46 s); 005-58, 005-62 (its theorems); 005-75 (the
 validation); 007-01, 007-03 (step 6), 007-05 (warm and cold), 007-08
-(`T3_take`), 007 at f8bcc4df (`coldReads_*_noD`, `DropStep`); 011-03
+(`T3_take`), 007 at aec08247 (`coldReads_*_noD`, `DropStep`); 011-03
 (G3); 011-11 (8.3, M18); 014-01 (section 7); 015-01; 015-68, 019-47;
 015-73, 015-75; 019-21; 019-32, 021-11; 019-34; 019-45 (the heap);
 020-24-13 (U13-7); 020-28; 021-12; 024-05 (BD6); 024-21, 024-25 (format
@@ -521,15 +521,15 @@ Log
 recommended").
 
 2026-11-13. The draft, by an agent of coord-1113, from the code at
-03282d8c, the Lean files and the items of section 10 (027-04, section
+5dc6cd29, the Lean files and the items of section 10 (027-04, section
 5.2). For a second agent's review against the code.
 
-2026-11-13. Reviewed against the code at 7e190010 and the Lean files by
+2026-11-13. Reviewed against the code at c82bce56 and the Lean files by
 a second agent of coord-1113 (027-04, section 5.2): 1.2 (B's time), 1.4
 (the walk's header checks; the first record committed; the key node's
 pointer check), 1.5 (R(s)'s delete nodes; every key node read
 validated), 1.8 (the SFEs of the `-ea` check), 1.9 and section 4 (the
-search for s, the record over B) fixed; f8bcc4df's `coldReads_run_noD`,
+search for s, the record over B) fixed; aec08247's `coldReads_run_noD`,
 `coldReads_tree_noD`, `removedAt_bound` and `coldReads_tree_drop` added
 (sections 4 and 5): no |D| term, the draft's Q6. By Frans's rule of
 13:01 ("The document should document how the algorithms work today"),
@@ -539,7 +539,7 @@ code (1.2, 1.4, 1.11, section 2), Q4, Q5 and Q9 open claims of section
 9, with Q10. Comment 2 corrected, comment 10 added. T1 to T4 cut to what
 a start uses (part 6 owns them).
 
-2026-11-13. The comments, items 1 to 9, fixed in Java (7a37a682); item 10
+2026-11-13. The comments, items 1 to 9, fixed in Java (58dfbfb2); item 10
 is 028-11.
 
 2026-11-13. 028-08 to 028-11 by an agent of coord-1113: 1.4 says what

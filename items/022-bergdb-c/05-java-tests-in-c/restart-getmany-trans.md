@@ -5,7 +5,7 @@ Created 2026-11-09 by Frans Lundberg (worker t13 of the session
 C; the session writes its index.
 
 Java's test classes of this part, as `bergdb.core` has them on `main` at
-`2566df1` (2026-11-09 17:18): DbTesterRestart, DbTesterGetMany,
+`e875a34` (2026-11-09 17:18): DbTesterRestart, DbTesterGetMany,
 DbTesterStream, StoredTrans, TransSeq, KeyModSet, Trans, TransNodes,
 StoredTopNode, StoredValueNode, StoredKeyNode, NodeChecksum, DatabaseId,
 DbStarter, DbClock, SystemClock, RerunException. Each test method is

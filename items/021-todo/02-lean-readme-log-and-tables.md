@@ -4,7 +4,7 @@
 Status: done. Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
-What: `lean/README.md` (1,275 lines on `main` at b59e918) breaks three of
+What: `lean/README.md` (1,275 lines on `main` at 8682edd) breaks three of
 AGENTS.md's rules, and `docs/sis-model.md` shares the third:
 
 1. Its section Status (line 519 to the end, about 750 lines) is a dated
@@ -20,12 +20,12 @@ AGENTS.md's rules, and `docs/sis-model.md` shares the third:
    Written by Claude for Frans Lundberg."
 
 Why: from agent d30's read-through of the documentation for release
-2026.3 (006-13's progress, 12:44; 8996de0), not fixed before the release:
+2026.3 (006-13's progress, 12:44; 165bb9e), not fixed before the release:
 006-13, section 5, "For Frans to decide (in the morning)", point 1.
 Recommended there: after the release, and the "Written by Claude" lines
 as 006-12's point 10, option (b), was done (Frans, 2026-11-06, 11:35:
 the lines moved from the headers of 018-02, 018-04 and 018-07 to each
-item's Log; 006-13, W1, point 10; b5329c1).
+item's Log; 006-13, W1, point 10; 4b9f720).
 
 Frans, 2026-11-07, 08:00: "For a., do as recommended."
 

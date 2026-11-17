@@ -23,7 +23,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-13. Closed (coord-1113): `night.sh large` ran in release 2026.5's
-night on commit A `bf9ab5af`, NIGHT OK with conformance-large ok (024-38;
+night on commit A `3611130c`, NIGHT OK with conformance-large ok (024-38;
 releases/2026.5/readme.md), as in the release nights of 2026.3 (018-09)
 and 2026.4 (020-31). Not run on 2026.2's own commit; each release's night
 runs it since (024-01, TT5).

@@ -1,9 +1,9 @@
 # 020-32. CorruptStreamTester's hang in the release night of 2026.4
 
 Created 2026-11-10 by Frans Lundberg. Status: done 2026-11-11: two fixes in release 2026.4
-(4b36218a, 4df672f4, through A' bb8da6dc; 020-31); a third weakness for 2026.5 (024).
+(58eba7cb, 21e8db97, through A' 76f66f89; 020-31); a third weakness for 2026.5 (024).
 
-Frans Lundberg, 2026-11-10. The failure: `night.sh large` on commit A = 72c8e0ec,
+Frans Lundberg, 2026-11-10. The failure: `night.sh large` on commit A = 6e9671d4,
 CorruptStreamTester.testFull, "long, seed 3971389, node, xor 128 at its byte 8, checksum
 right, of the node at offset 32 (size 160, type 20) of the record at 19632: the start or
 the reads did not end in 60 s".
@@ -39,7 +39,7 @@ the reads did not end in 60 s".
 
 # 3. Not new with 023
 
-- On `main` before 023 (329d78f3, the merge 0c300bb0's first parent), the same
+- On `main` before 023 (3cfee1e7, the merge fe82b47a's first parent), the same
   seed gives the same original: 26480 bytes, 51 records, the same records and
   nodes at the same positions. The same copy hangs there too, at the same place
   (Dag.getEqNodeInSegment, from Dag.getOne).
@@ -106,7 +106,7 @@ the reads did not end in 60 s".
   checked with a limit of 60 s; it must be "read failed". Then scans at each
   transaction's time until one fails the database (the scan at time 130 does), and
   a get after it must throw IllegalDbStateException.
-- The commit: 4b36218a on the branch fix-cst of cst/clone (on A).
+- The commit: 58eba7cb on the branch fix-cst of cst/clone (on A).
 
 # 7. A second old fault, found by more seeds
 
@@ -122,7 +122,7 @@ the reads did not end in 60 s".
   version of 5667 before the startup section. With the prevPos changed, 13880 is not
   in posToId, so rule 4 by position finds no canonical object; by node id (a read
   of the header) it finds 5667's.
-- Not new with 023: main 329d78f3 gives the same original and the same
+- Not new with 023: main 3cfee1e7 gives the same original and the same
   AssertionError on that copy.
 - Without -ea the copy starts and holds all: the follow applies Rule R by the
   header's node id.
@@ -140,26 +140,26 @@ the reads did not end in 60 s".
   on it.
 - A fault of the Core that left a link out of posToId on a valid stream would now be
   a refusal of a valid stream at the start. The tests would still see it.
-- The commit: 4df672f4 on fix-cst, after 4b36218a.
+- The commit: 21e8db97 on fix-cst, after 58eba7cb.
 
 # 8. Runs
 
 - The failing case alone (the probe): on A, it does not end (two runs, stopped
   after 20 s and 15 s, and one run with a counter, 3 million steps on node 4431);
-  on main 329d78f3, the same (stopped after 20 s); with the fix, "read failed
+  on main 3cfee1e7, the same (stopped after 20 s); with the fix, "read failed
   (DbFailedException)" at once.
 - A scan of the same copy with the fix: DbFailedException with the cause
   "A scan came back to key node 4431, which it passed: the pointers make a cycle."
-- java/before-commit.sh on 4b36218a: BEFORE COMMIT OK (261 s; unit 1644 tests,
+- java/before-commit.sh on 58eba7cb: BEFORE COMMIT OK (261 s; unit 1644 tests,
   F 89, demos 14 runs).
-- The full set (`CorruptStreamTester SEED full 4`) on 4b36218a: seeds 20766,
+- The full set (`CorruptStreamTester SEED full 4`) on 58eba7cb: seeds 20766,
   20767, 20768 and 20771, 0 failures each (20767: 462578 copies, 107 s); seeds 20769
   and 20770, 32 failures each, all of section 7.
-- testFull through the Night runner (bergdb.dev.Night, -m testFull) on 4b36218a:
+- testFull through the Night runner (bergdb.dev.Night, -m testFull) on 58eba7cb:
   SUCCESS, with NanotestForBergDB.databasesStopped (109 s).
-- java/before-commit.sh on 4df672f4, a clean tree: BEFORE COMMIT OK (262 s; unit
+- java/before-commit.sh on 21e8db97, a clean tree: BEFORE COMMIT OK (262 s; unit
   1645 tests, F 89, demos 14 runs).
-- The full set on 4df672f4, one seed after the other (logs in cst/runs3/):
+- The full set on 21e8db97, one seed after the other (logs in cst/runs3/):
 
 | Seed  | Copies | Time  | Failures |
 |-------|--------|-------|----------|
@@ -182,7 +182,7 @@ the reads did not end in 60 s".
   lastTime: 72057594037928376, time=490", at KeyNode.addKlong, in the start's rerun.
 - Byte 39 is the top byte of the node's first klong, a time klong: its time becomes
   about 2^56. The rerun's put at time 490 then meets the assert that times increase.
-- Not new with 023 and not from the fixes: main 329d78f3 gives the same original and
+- Not new with 023 and not from the fixes: main 3cfee1e7 gives the same original and
   the same AssertionError on this copy.
 - What the flip does: a time klong holds its type in bits 62 and 63 and its time in
   bits 0 to 55 (Klong.MAX_TIME = 0x00ffffffffffffff); bits 56 to 61 are unused. The
@@ -195,7 +195,7 @@ the reads did not end in 60 s".
   the harness's rules.
 - Without -ea (a user): the start goes on, and the copy holds all: the last state,
   the counter at each transaction's time, and every key at four earlier times are
-  the original's (the probe, on 4df672f4). Right answers; no refusal and no later
+  the original's (the probe, on 21e8db97). Right answers; no refusal and no later
   failure seen.
 - Proposed fix (2026.5): StoredKeyNode.parse refuses a time klong whose bits 56 to 61
   are not zero (a time klong must have `(klong & ~Klong.MAX_TIME) == 0`), with a
@@ -204,9 +204,9 @@ the reads did not end in 60 s".
 
 # 10. Files
 
-- cst/clone, branch fix-cst: 4b36218a (the cycle check) and 4df672f4 (checkLinkById).
-- cst/wt-main: a worktree of 329d78f3, built, for the comparisons.
+- cst/clone, branch fix-cst: 58eba7cb (the cycle check) and 21e8db97 (checkLinkById).
+- cst/wt-main: a worktree of 3cfee1e7, built, for the comparisons.
 - cst/probe: the probes (CstProbe runs one node copy with a time limit and prints the
   threads; CstScanProbe scans and gets the cycle copy; CstRefusal prints a start's
   refusal) and their logs.
-- cst/runs3: before-commit and the ten full runs on 4df672f4.
+- cst/runs3: before-commit and the ten full runs on 21e8db97.

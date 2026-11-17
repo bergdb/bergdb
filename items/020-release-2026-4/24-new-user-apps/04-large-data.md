@@ -6,7 +6,7 @@ An application written as a new user of release 2026.4 would write it
 (020-24's brief, round 2): the release jar alone on the class path, and
 only what a user reads (README.md, the Pub API's Javadoc in
 `java/src/bergdb/pub`, `overview-pub.html`, `releases/next.md`). The jar
-was built from `cf287ad`. The implementation and docs/levels.md were read
+was built from `f41a4ba`. The implementation and docs/levels.md were read
 only afterwards, to explain a surprise (U4-1 to U4-3).
 
 
@@ -297,11 +297,11 @@ bytes and two indexes, and the figure in the Javadoc with its conditions
 
 Made 2026-11-09 for coord-1109, in `clone-x25`, by the rule for 2026.4: the
 Javadoc made true and complete where the code is as designed; no new API and
-no change of meaning. One commit, `e91238f`, after those of 020-24-05
-(`b81232f`, `084069b`; its section 4); the three gated on one tree under the
+no change of meaning. One commit, `e0ca4c2`, after those of 020-24-05
+(`5ad3c92`, `eb4feb5`; its section 4); the three gated on one tree under the
 gate lock: BEFORE COMMIT OK (145 s, unit 1577, f 86), JAVADOC PUB OK.
 
-* **U4-1** (`e91238f`): `DatabaseBuilder.cacheSizeInMb()` says that a budget below
+* **U4-1** (`e0ca4c2`): `DatabaseBuilder.cacheSizeInMb()` says that a budget below
   what the database must keep (the nodes changed since its startup position,
   about 2 to 3 times the startup distance of heap) slows it down by design:
   each commit ends with a batch of eviction, and a reader's load waits for
@@ -310,7 +310,7 @@ gate lock: BEFORE COMMIT OK (145 s, unit 1577, f 86), JAVADOC PUB OK.
   `Database.setCacheSizeInMb()` points there. The design questions of 2.1
   (raise a budget below the pinned bytes; the readers' gap as a fraction of
   the pinned bytes) are for Frans.
-* **U4-2** (`e91238f`): `startupDistanceInMb()` says that the startup distance, not
+* **U4-2** (`e0ca4c2`): `startupDistanceInMb()` says that the startup distance, not
   the budget, sets the heap, and that a start needs about twice the startup
   distance more (019-45), with this app's figures: at 50, 110 to 160 MB after
   a start, refused in 256 MB, ran in 384 MB; at 5, 21 to 42 MB, ran in 96 MB.
@@ -318,17 +318,17 @@ gate lock: BEFORE COMMIT OK (145 s, unit 1577, f 86), JAVADOC PUB OK.
   stream bytes, 2 to 2.5 times that in the heap) and docs/levels.md, section
   7 (up to 2.9 times in stream bytes at 50 MB; a start's peak 3.3 to 4.9
   times the startup distance).
-* **U4-3** (`e91238f`): `IndexBuilder.start()` says that a build is paced (steps of
+* **U4-3** (`e0ca4c2`): `IndexBuilder.start()` says that a build is paced (steps of
   at most 25 values or about 1 MB, a pause of half each step's time, at most
   a second; 020-10, section 6.1) and its loads paced as other reads;
   `JobStatus.count()` is its progress without a total.
 * **U4-4**: new API (a resume point for an index scan's pages), for Frans's
   list; not done.
-* **U4-5** (`e91238f`): `UsePrimaryBuilder` and `UseIndexBuilder` say that an
+* **U4-5** (`e0ca4c2`): `UsePrimaryBuilder` and `UseIndexBuilder` say that an
   iterator holds nothing to release, and may be dropped. Test
   `testDroppedIteratorsHoldNothing`: reclaim cuts past the lookup time of
   400 iterators read in part.
-* **U4-6** (`e91238f`): the Javadoc's 0.6 and 1.4 s were measured on 2026-10-13,
+* **U4-6** (`e0ca4c2`): the Javadoc's 0.6 and 1.4 s were measured on 2026-10-13,
   before eviction, with 100,000 and 1 million keys, single puts, the stream
   in the OS's cache (011-04); it now says so, with 006-19's 3 to 5 s at 10 to
   50 million keys. Not changed from this app's loaded runs. To measure, in a

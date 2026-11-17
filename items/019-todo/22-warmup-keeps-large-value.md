@@ -45,4 +45,4 @@ fixed there.
   after it, none, and the old value reads back.
 * P1 to P12 (010-01): no setting, thread or API. Which values a read keeps
   in memory does not change the records: StreamDigest's digests (quick)
-  are those of the night's base, 45cfb4f (018-05, section 5).
+  are those of the night's base, 93f83a7 (018-05, section 5).

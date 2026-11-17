@@ -28,7 +28,7 @@ read like get()". The method's comment in `ConnectionImp` says that it
 throws for a key "not of a valid format", which the code does not do.
 
 Why: found 2026-11-05 by the agent that wrote 015-62's Javadoc of
-`exists()` (commit a46d2b2). A fault of the Pub API, in release 2026.3's
+`exists()` (commit 835db1a). A fault of the Pub API, in release 2026.3's
 goal (018-01, D4). No test or code in `java/` calls `exists()` with a
 malformed key.
 

@@ -7,7 +7,7 @@ the theory were developed. They are history.
 the reviewed status as of 2026-11-12. References to the former `docs/level2-design.md` and
 `docs/level2-review.md` are historical: both were consolidated into
 `levels.md` on 13 October. Commit ids in this log and in the other documents
-(`49aa48d`, `be61ed6`, `ebe5f77`, ...) name commits in Frans's earlier
+(`50786b2`, `be61ed6`, `ebe5f77`, ...) name commits in Frans's earlier
 repositories, not in this one.
 
 2026-10-12. Studied the theory documents. Wrote `docs/problem.md` (the
@@ -407,7 +407,7 @@ node, and startup starts there; the record format byte is 5 (it was 2; the
 constant `CURRENT_FORMAT_VERSION = 4` was never the stored byte), and older
 streams are refused. Tests: `DbTesterRestart.testRestartAfterTransactionsThatChangeNothing`,
 `StoredTrans` tests for topPos and the old format. The three level checks
-pass. Performance, quick suite against `a116ec7`: no alerts, throughput
+pass. Performance, quick suite against `fa13482`: no alerts, throughput
 unchanged within noise, the stream 0.7 percent larger (8 bytes per record).
 In Lean: marking the access path in step 3 (`Algo.mark`), A5 as an
 assumption, T13 (marking is exact), and BergDB's still-dirty test
@@ -449,14 +449,14 @@ pass; 1.4 to 13.7 percent fewer stream bytes in five workloads.
 
 2026-10-16. Level 2 alignment finished (F1-008-11, WPs D2, F1 and F2;
 `docs/level2-alignment.md`, 10.5, 11 and 12). D2 had nothing left to change.
-F1, the conformance campaign on `d5c56dd`: the trace checker on 50 small
+F1, the conformance campaign on `8f37d88`: the trace checker on 50 small
 and 9 medium traces, every transaction a step of the model, every restart
 invisible (`CONFORMANCE OK`); the Java tier (`A2A3Check2`) on 68,901
 transactions up to the gate's sizes, no failure, Java's marking the model's;
 the gates in full. Raw summaries: `docs/evidence/level2-conformance.txt`.
 `RestartInvariance` has two new options, `empty` and `nodel`, for
 transactions that change nothing (off by default; the gate's runs are
-unchanged): mostly idle runs fail on `a116ec7` (M18) and pass now.
+unchanged): mostly idle runs fail on `fa13482` (M18) and pass now.
 `conformance.sh` records the time and memory of each run and gives its
 verdict only for the sets it ran. F2: the outcome of the plan's 1.2 point by
 point (all six met; T15 not proven, as the proofs did not need it), the
@@ -734,7 +734,7 @@ K5, with T-SCHEME checked, not proved (R6).
 2026-10-19. `level1.sh` step 6, Props (bergdb item 006-02): MEM, heap bytes
 per KV, and SS, stream bytes per user byte, are checked against limits (MEM
 at most 228, SS at most 1.51 (1.11, 1.20, 1.63, 2.38): the values of
-`11ea2f6` on JDK 27 plus one step); CORE is printed, not checked, in the full
+`0e7292d` on JDK 27 plus one step); CORE is printed, not checked, in the full
 run only. A change that improves MEM or SS lowers the limit; one that needs a
 higher limit needs a reason here. Full run 2 min 43 s, quick 75 s, both
 `LEVEL 1 OK`, on a scratch copy of `java/`.
@@ -785,8 +785,8 @@ checker's C-A checks them (`EvictRunOK`, R(0) included), with A6' (the new
 below the old parent; a new test trace, `adopt2.trace`, has one from outside
 the old parent's subtree, which fails A6'. conformance.sh's small and evict
 sets have a configuration with A6's kind, `a6` and `e-a6`; a trace of them
-without it fails. The four gates pass, full, on `0597329` with the change
-and on `c6ca623`, where Frans committed it with 005-10's removal.
+without it fails. The four gates pass, full, on `1f4b637` with the change
+and on `3fdf88b`, where Frans committed it with 005-10's removal.
 
 2026-10-20. Bergdb 005-10, the end: the Pub API's
 `Database.getFirstAvailableLookupTime` returned the current time, not the
@@ -815,7 +815,7 @@ The Java of BergDB is unchanged. `level3.sh quick` and `level4.sh` run the
 f-tests of their classes. New `java/before-commit.sh`: the unit and f-tests
 in parallel, about 2 minutes, now the only requirement before a commit; the
 level scripts are deeper checks. The four level scripts pass, full, with the
-change on `39ab4a8`; `before-commit.sh` on `9d909cc`.
+change on `2fe87ef`; `before-commit.sh` on `ba10cb6`.
 
 2026-10-20. Bergdb 006-03: the night run. `java/night.sh` runs, on a clone
 of HEAD, `before-commit.sh`, the four level scripts (full), the night tests
@@ -1170,14 +1170,14 @@ without the changes; `before-commit.sh` passes.
 
 2026-10-25. Release 2026.1, internal, by Claude (Opus 5.5, Claude Code) at
 Frans's request, as planned in item 008: the tag `release-2026.1` on
-`a42947c`, where `BuildInfo` says 2026.1 (it said 2017.1). The night run
+`8e579c6`, where `BuildInfo` says 2026.1 (it said 2017.1). The night run
 passed on it, and the tests again on the jar itself. `releases/2026.1/`
 holds the jar, the source, the release notes with the baseline before
 handles (Props: MEM 191, CORE 0.29, SS 1.50; the quick suite; ScaleBench at
 10M keys on F53 with G1 and ZGC, and on s1 from the disk), and the outputs
 of the runs. After the tag, `BuildInfo` says 2026.2-dev.
 
-2026-10-26. Handles (bergdb item 009), merged into `main` (`178a0d4`), by Claude
+2026-10-26. Handles (bergdb item 009), merged into `main` (`98981f8`), by Claude
 (Opus 5.5, Claude Code) in Frans's unattended run ("I want you to work on the
 009 implementation until completion."). A memory pointer of a key node or a
 top node holds its pointee's handle, the handle the node's one object;
@@ -1316,7 +1316,7 @@ only use `posToId`, so those branches are covered by the theorem but not
 exercised in the model; the check under assertions in `linkToCanonical`
 compares the two rules on Java's own states (005-58, Outcome). `lake
 build` clean (163 jobs), `test-traces/run.sh` OK, axioms standard
-(`7c1ce2f`).
+(`4e63e3d`).
 
 2026-10-27. 005-48, group commit, in the code, by Claude (Opus 5.5, Claude
 Code), as Frans decided (006-09, W5, reviewed at max effort): a sync that
@@ -1350,13 +1350,13 @@ Two tests each in `DbTester` and `PubTester`; a line in `releases/next.md`;
 `before-commit.sh` passes.
 
 2026-10-27. level2.sh's step 6, `BryanRepro`, failed on `main` from
-`eaec93e` (005-46) on, found and fixed by Claude (Opus 5.5, Claude Code) in
+`1165c90` (005-46) on, found and fixed by Claude (Opus 5.5, Claude Code) in
 006-09: each cycle ended with `stop()` and the next started a database on
 the same directory at once, while the old one's `FileStream-cut` thread
 still deleted the files of a cut; the new database took them as its own,
 cut them again at start, and failed when a delete found the file gone. No
 data at risk (all below the durable cut). The test now ends each cycle
-with `close()` (`b0661ba`); `level2.sh` full passes. The API question is
+with `close()` (`f74fece`); `level2.sh` full passes. The API question is
 005-63.
 
 2026-10-27. 005-62, by Claude (Opus 5.5, Claude Code, at max effort), at
@@ -1365,8 +1365,8 @@ handles' runs, `T9_handles` (a read through the handles from the first
 available time on gives the same on a safely cut stream, and gives P) and
 `T12_handles` (the run that restarts from safe cut streams appends the
 records of the run without restarts, with its D and lookups), in the new
-trusted file `SIS/HandleReclaimTheorems.lean`, proved (`bba91dd` to
-`a506b34`); T12's proofs are 3,364 lines, against 8,100 over Evict.lean.
+trusted file `SIS/HandleReclaimTheorems.lean`, proved (`e2213c2` to
+`99ef913`); T12's proofs are 3,364 lines, against 8,100 over Evict.lean.
 Reviewed independently: the statements are the old ones with the handle
 model in place of Evict.lean's, hypothesis for hypothesis. `lake build`
 clean (173 jobs), trace tests OK, axioms standard. The design before
@@ -1392,7 +1392,7 @@ six tests and stress programs that restarted right after `stop()` now call
 `level2.sh` and `level4.sh quick` pass.
 
 2026-10-28. 005-48 closed by Frans, with the buffer time kept at 20 ms:
-group commit is in `main` since 2026-10-27 (`e611709`). Now that a sync
+group commit is in `main` since 2026-10-27 (`d8ed1aa`). Now that a sync
 no longer waits for the timer, whether 50 or 100 ms is better is a new
 entry, 005-64 (fewer forces and wake-ups for writers that do not sync,
 against more unsynced data lost on a power loss).
@@ -1516,7 +1516,7 @@ a boundary). No change to `java/`.
 (from 1.51 1.11 1.20 1.63 2.38), as Frans decided on 29 October (option A
 of bergdb 007-07, section 12.3), by Claude (Opus 5.5, Claude Code), for
 006-10. The reason, as step 6's rule asks: after 007-07's paced take
-(`f89846d`) SS went from 1.50 to 1.51, SS2 from 1.19 to 1.20, SS3 from 1.62
+(`b8ac8a1`) SS went from 1.50 to 1.51, SS2 from 1.19 to 1.20, SS3 from 1.62
 to 1.65 and SS4 from 2.37 to 2.40, SS1 unchanged, so SS3 and SS4 failed
 their limits. The startup distance setting is now the startup section's
 target (005-49): the paced take holds the section at about the setting,
@@ -1532,7 +1532,7 @@ as Frans decided on 29 October, by Claude (Opus 5.5, Claude Code), for
 006-10, as step 6's rule asks when a change improves MEM. The limit was
 still that of 2026-10-19 (MEM 226 to 227); 005-08's fix gave 191 (2026.1),
 and the handles work (bergdb item 009: 174 after its phase 1 on 25 October,
-then handles, `178a0d4`, 26 October) 129 to 130. MEM has been 129 to 130
+then handles, `98981f8`, 26 October) 129 to 130. MEM has been 129 to 130
 since: level1 in the nights of 27 and 28 October 129, 130 and 129, 007-07's
 Props in turns 130 before it and 129 after (four rounds each, its section
 12.2), and level1 129 today. The limit is 130, the highest, plus one step
@@ -1585,7 +1585,7 @@ of the long gets comes with every core busy, and Frans accepted it as a
 full machine; the thread sweep reruns with the fix in a quiet block
 (005-65's State). In the clone: BEFORE COMMIT OK (100 s), LEVEL 4
 OK (full), LEVEL 2 OK (quick), CORE BUILD OK (unit f); StreamDigest
-against main identical (36 of 36). The fix is `988fe1a`.
+against main identical (36 of 36). The fix is `52aeb04`.
 
 2026-10-29. BergDB's Core in C (item 012, done): a clone of the Core
 Layer that writes Java's stream byte for byte, Levels 0 to 4, with an API
@@ -1701,7 +1701,7 @@ extension's log). The session process lived and the network was up, so the
 watchdog (013-02) did not count it as a pause and wrote news.md only at its
 end, 07:05. Lost: the 00:45 to 02:50 release steps, the Codex reviews after
 23:06 and the morning summary. What ran without the session: night.sh at
-02:10 (NIGHT OK on `3386ade`, all the night's fixes in) and the conductor's
+02:10 (NIGHT OK on `c846c0c`, all the night's fixes in) and the conductor's
 quiet block. The cause is not proven: a plan change, or a second Claude Code
 process on the same login (usage.sh's headless `claude -p /usage`, last at
 22:14) that renewed the token first. Frans logged in again at 07:24. To do
@@ -1712,8 +1712,8 @@ setup-token`, to be tested); the scripted release steps in the conductor,
 not in the session.
 
 2026-11-04. Release 2026.2, internal, as planned in item 016: the tag
-`release-2026.2` on `95bde62`, where `BuildInfo` says 2026.2. The night run
-passed on its code (NIGHT OK, 38 minutes, on `3386ade`, which differs from
+`release-2026.2` on `d5b1bda`, where `BuildInfo` says 2026.2. The night run
+passed on its code (NIGHT OK, 38 minutes, on `c846c0c`, which differs from
 it in 015-56's fix and `BuildInfo`), and the tests again on the jar itself,
 on F53 and s1, with JDK 27 and 17. `releases/2026.2/` holds the jar, the
 source, the Pub API's Javadoc, the release notes and the outputs of the
@@ -1739,7 +1739,7 @@ plan when the machine has room for it, Frans by hand otherwise;
 skill say so.
 
 2026-11-07. Release 2026.3, internal, as planned in item 018: the tag
-`release-2026.3` on `929fa33`, where `BuildInfo` says 2026.3, made at
+`release-2026.3` on `9a0bf5e`, where `BuildInfo` says 2026.3, made at
 Frans's word (07:43: "Yes, make the release."). `night.sh large` passed on
 it (NIGHT OK, 313 minutes, with the large conformance set), and jcstress's
 eight tests, the Lean axioms, and the tests again on the jar itself, on F53
@@ -1755,11 +1755,11 @@ known faults. Databases of 2026.2 open in 2026.3; the Pub API changed
 stream). After the tag, `BuildInfo` says 2026.4-dev.
 
 2026-11-11. Release 2026.4, internal, as planned in item 020: the tag
-`release-2026.4` on `bb8da6d`, where `BuildInfo` says 2026.4, made after its
+`release-2026.4` on `76f66f8`, where `BuildInfo` says 2026.4, made after its
 night of 10 to 11 November, at Frans's word (2026-11-10, 19:33: "If the
 night is clean, merge into main, push, and make the commit."). The release
 commit was made again that night: `night.sh large` on the first one,
-`72c8e0e`, passed its large conformance set in 369 minutes, but its night
+`6e9671d`, passed its large conformance set in 369 minutes, but its night
 tests found that a damaged stream could make a read loop for ever; the
 commit made again adds the fix, a cycle check in every descent, and a
 refusal of a damaged prevPos. On it `night.sh` passed (NIGHT OK, 100
@@ -1779,14 +1779,14 @@ tag, `BuildInfo` says 2026.5-dev.
 checksum, Frans's decision QL9 of 024-17). The reason, as step 6's rule
 asks: the node header grows from 8 to 12 bytes for the 32-bit checksum, so
 every value or delete node is 4 bytes longer and every top node 8 (key
-nodes keep their size). On `main` at `08659847` SS is 1.51 (1.10, 1.20,
+nodes keep their size). On `main` at `0cb7eff7` SS is 1.51 (1.10, 1.20,
 1.64, 2.41); with the change 1.53 (1.11, 1.21, 1.69, 2.40): SS3, 10,000
 transactions of 100 KVs of 100 bytes, gains 4 bytes a KV of 100, so 0.04
 to 0.05 more stream bytes a user byte; SS4 is 0.01 lower (not looked
 into). The limits keep one step of 0.01 above the new values.
 
 2026-11-13. Release 2026.5, internal, as planned in item 024 (024-38):
-commit A, `bf9ab5a`, where `BuildInfo` says 2026.5, tested in its night of
+commit A, `3611130`, where `BuildInfo` says 2026.5, tested in its night of
 12 to 13 November: `night.sh large` (NIGHT OK, 420 minutes, with its large
 conformance set and the count gates G1 to G5), a performance comparison with
 release 2026.4, jcstress, StreamDigest and the Lean axioms, Android,

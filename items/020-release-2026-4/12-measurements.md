@@ -2,9 +2,9 @@
 
 Created 2026-11-09 by Frans Lundberg. Status: done. The measurements of
 020-08, section 7, made on a quiet machine in the morning of night 006-15:
-format 2 of stored objects and the rest of 2026.4's Pub layer at `7231771`
-against format 1 at `ae68938` (ObjectBench, M1 to M8), and the Core at
-`7231771` against release 2026.3 (`performance.sh`'s quick suite); what
+format 2 of stored objects and the rest of 2026.4's Pub layer at `5d32e77`
+against format 1 at `238b249` (ObjectBench, M1 to M8), and the Core at
+`5d32e77` against release 2026.3 (`performance.sh`'s quick suite); what
 the numbers mean, the three figures that the night's runs left open, and
 the two that are worse.
 
@@ -19,7 +19,7 @@ the two that are worse.
   1,000,000 `Payment`s 0.46: 226,000 objects a second against 105,000
   (M6).
 * **The Core did not move.** `performance.sh ab`, quick suite, release
-  2026.3 against `7231771`: NO ALERTS; every throughput within 5 %, the
+  2026.3 against `5d32e77`: NO ALERTS; every throughput within 5 %, the
   three restarts' startup 2.3 to 4.5 % slower (17 to 28 ms, section 4).
 * **Two figures are worse by more than 10 %** (section 5):
   * M4, a get as `byte[]`: 624 ns against 464, **1.34**, but not the
@@ -40,12 +40,12 @@ the two that are worse.
 * **Machine**: F53, Apple M1 Pro, 10 cores, 32 GB, macOS 27.0.1. **JVM**:
   OpenJDK 27 (Homebrew), G1, `-Xms8g -Xmx8g`.
 * **Builds**:
-  * format 1: `ae68938` (020-10's P1, the last code before 020-08's step
+  * format 1: `238b249` (020-10's P1, the last code before 020-08's step
     2), built outside the repository in
     `/Users/f/fl/bench/006-15/format1-build/` (020-08, section 8.6);
-  * 2026.4: `7231771`, `main` final for the night, the preserved build
+  * 2026.4: `5d32e77`, `main` final for the night, the preserved build
     `cand-7231771` (`performance.sh build`, jar `6a634771`);
-  * release 2026.3: the tag `release-2026.3`, `929fa33`, the preserved
+  * release 2026.3: the tag `release-2026.3`, `9a0bf5e`, the preserved
     build `rel-2026.3` (`performance.sh build` in a clone at the tag,
     `/Users/f/fl/bench/006-15/rel-2026.3/`, jar `cafb5559`).
 * **Quiet**: before each run, four checks 15 s apart: the 1-minute load
@@ -59,18 +59,18 @@ the two that are worse.
   minimum and maximum; 03:43 to 03:51.
 * **`performance.sh ab`** with `SUITE=quick` (`performance-quick.suite`:
   `read-1k`, `w-uni-1k-inf`, `w-uni-1k-fin`, `r-1k-fin`), 3 runs a
-  scenario and build alternating, the harness compiled from `7231771`
+  scenario and build alternating, the harness compiled from `5d32e77`
   against each jar; 03:52 to 04:05. Its reference is release 2026.3, as
   the coordinator asked, not section 7's `pre-f2`: it spans everything
   since the release, the night's Core fixes included.
 * **A fault of the tool**: `java/stress/objectbench.sh` compiles
   ObjectBench once, with `build.sh` against this tree, and runs that class
-  on both jars; since B3 (`48378fe`) it imports `bergdb.pub.DbObject`,
+  on both jars; since B3 (`fcc151b`) it imports `bergdb.pub.DbObject`,
   which format 1's jar does not have (`bergdb.pubimp.DbObject`), so the
   script no longer runs the reference. The quiet run compiled the same
   source twice, the reference's copy with `import
   bergdb.pubimp.DbObject;` (the only difference), each against its jar,
-  and ran them as the script does. Fixed after this step in 621ee0e:
+  and ran them as the script does. Fixed after this step in 00a8277:
   the script compiles ObjectBench for each build.
 * **A probe of M4** (section 5), after the two runs: `ProbeM4`, a get as
   `byte[]` alone; 6 JVMs a build in ABBA order; 04:19 to 04:23.
@@ -83,7 +83,7 @@ the two that are worse.
 ## 3. ObjectBench
 
 M1, the writer, and M2, the read of bytes, in ns an object; M7, the
-object's bytes. f1 is format 1 (`ae68938`), f2 format 2 (`7231771`).
+object's bytes. f1 is format 1 (`238b249`), f2 format 2 (`5d32e77`).
 
 | Sample      | M1 f1    | M1 f2    | Ratio | M2 f1   | M2 f2   | Ratio | M7 f1   | M7 f2   |
 |-------------|----------|----------|-------|---------|---------|-------|---------|---------|
@@ -131,7 +131,7 @@ with `.txt`, one put and 100 puts a `w()`:
 
 ## 4. The Core: `performance.sh ab`, quick suite
 
-Release 2026.3 (`929fa33`) against `7231771`, medians of 3 runs (the CV
+Release 2026.3 (`9a0bf5e`) against `5d32e77`, medians of 3 runs (the CV
 of each under 3 % but for the maximum below):
 
 | Scenario       | Metric                     | 2026.3    | 7231771   | Change |
@@ -159,14 +159,14 @@ nothing to report.
   slowest append is one of its young collections' pauses, the one that
   fell inside a timed append (`write.gc.log`; 2026.3: 51.2 and 33.5 ms
   against pauses of 51.1 and 33.2 ms, and 0.09 ms in the run where none
-  fell inside one; `7231771`: 167.3, 55.2 and 152.8 ms against 167.1,
+  fell inside one; `5d32e77`: 167.3, 55.2 and 152.8 ms against 167.1,
   55.1 and 152.7 ms). Both builds make the same three collections a run,
   of the same pauses (29 to 33, 51 to 57 and 153 to 175 ms); which one
   an append meets is chance. The append's p50 (7.6 µs) and p99.9 (27.0 to
   27.5 µs) are the same in both.
 * **The restarts' startup**, 17 to 28 ms slower in all three (CV 0.1 to
   1.1 %), under the suite's 5 % and far from a fault; a likely cause, not
-  measured: 019-47's fix (`c126d7d`), which makes the start's admission
+  measured: 019-47's fix (`db496dc`), which makes the start's admission
   pass over every resident key node's pointers.
 
 
@@ -249,6 +249,6 @@ open. The quiet run:
 ## 7. Log
 
 2026-11-09. Measured and written in night 006-15 by the coordinator's
-agent C, at the coordinator's request, in a clone at `7231771`: the
+agent C, at the coordinator's request, in a clone at `5d32e77`: the
 quiet runs 03:43 to 04:05 and the probe of M4 04:19 to 04:23; 020-08's
 step 4 done, and 020-08 done. Nothing in `java/` changed.

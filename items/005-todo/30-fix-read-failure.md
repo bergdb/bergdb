@@ -293,22 +293,22 @@ order of the state's change under `readSync` (a race) has no test.
 
 **Evidence.**
 
-* StreamDigest `all` against the build before the change, on `ad09b2e`:
-  `DIGESTS IDENTICAL (36 of 36)`, as on `948ec00` and `f6bc3ce` before
+* StreamDigest `all` against the build before the change, on `c931cff`:
+  `DIGESTS IDENTICAL (36 of 36)`, as on `57b4887` and `1a329d1` before
   ([digest-compare.txt](30-fix-read-failure/digest-compare.txt)). No record
   changes.
 * `before-commit.sh`: BEFORE COMMIT OK (987 unit tests, 63 f-tests) on
-  `948ec00` with the fix, and BEFORE COMMIT OK (990 unit tests, 63
-  f-tests) on `ad09b2e` with it, the commit it is on.
+  `57b4887` with the fix, and BEFORE COMMIT OK (990 unit tests, 63
+  f-tests) on `c931cff` with it, the commit it is on.
 * `level3.sh` and `level4.sh`, full, one after the other, with `nice`, on
-  `948ec00` with the fix ([gates.txt](30-fix-read-failure/gates.txt)):
+  `57b4887` with the fix ([gates.txt](30-fix-read-failure/gates.txt)):
   `LEVEL 3 OK` (533 s; 25 of 25 traces with cuts `TRACECHECK OK`,
   `POWERLOSS OK`) and `LEVEL 4 OK` (874 s; 33 of 33 traces, C-P on 7,917
   transactions). In their `ReclaimReaders` steps, 6 and 442 reads that a
   cut overtook expired (with forced eviction schedules in `level4.sh`, many
   more loads come from the stream), and none failed the database: 0
   failures, the writer went on.
-* Props in ABBA order, four runs each, on `ad09b2e` without and with the
+* Props in ABBA order, four runs each, on `c931cff` without and with the
   fix, in a quiet window ([props-ab.txt](30-fix-read-failure/props-ab.txt)):
   CORE 0.28 to 0.29 for both, `get` 0.24 to 0.26 and `get4t` 0.32 to 0.33
   without, 0.24 to 0.26 and 0.32 with it; MEM 191 to 192 and SS 1.50 for

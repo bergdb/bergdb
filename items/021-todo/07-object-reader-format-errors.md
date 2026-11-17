@@ -8,7 +8,7 @@ What: `DbObject`'s reader, given bytes that are not a well-formed object,
 throws other exceptions than `BadFormatException`, and in one case an
 `AssertionError` that fails the database inside `rw()` (019-10). Found by
 agent p04 of coord-1107 while reading the code for 020-04 (020-04,
-section 10), at `7edcbe2`:
+section 10), at `b4cf896`:
 
 1. A nested object of size −1, which `DbObject.parse` reads as Java's
    null (lines 739 to 741): no writer writes it; reading it gives an
@@ -91,7 +91,7 @@ update that reads the previous value does (`RwEnvironmentImp.indexEntries`).
   `IndexOutOfBoundsException`, which the `DbObject` constructor now turns
   into `BadFormatException` around each field's parse; a negative field
   position is refused with the others.
-* Tests, each failing on `43ee7a9`'s code: `DbObjectTester`'s
+* Tests, each failing on `95f2ce5`'s code: `DbObjectTester`'s
   `testReaderNestedObjectSizeMinusOne`, `testReaderBadLengths`,
   `testReaderBadTypeByte`, `testReaderNullMarkAfterAnElement`,
   `testReaderCutBytes` (every proper prefix of an object with each type)
@@ -109,7 +109,7 @@ did the `DbField` constructor's and `DbField.parse`'s lines, `addString`'s
 refusal (in the Builder, not through `DbString`), `DbObject.parse`'s −1,
 and `DbArray`'s `Z` after an element and its failed `o` element; step A
 still refuses `Z` as the first byte, −1 for strings and byte arrays, and
-a field count of −1. 020-04's line numbers are `7edcbe2`'s.
+a field count of −1. 020-04's line numbers are `b4cf896`'s.
 
 Left open: the reader has no depth limit. An object nested deeper than
 the writer's `MAX_DEPTH` (1000, 005-23), from another writer, recurses

@@ -1,6 +1,6 @@
 {
-  "main_source_commit": "3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7",
-  "initial_source_commit": "0e61856",
+  "main_source_commit": "afc3d207335cc615fdd6f96a68a43ada2bb8a405",
+  "initial_source_commit": "2306213",
   "full_run_directory": "/private/tmp/bergdb-005-83.dmAq1k/final-current",
   "regression_run_directory": "/private/tmp/bergdb-005-83.dmAq1k/regression-current",
   "full_run_exit": 0,

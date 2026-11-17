@@ -1,4 +1,4 @@
-bergdb 005-42: probe.sh on da8bbc1 with the change (A1 and B2), uncommitted at the time (2026-10-25, F53).
+bergdb 005-42: probe.sh on f641780 with the change (A1 and B2), uncommitted at the time (2026-10-25, F53).
 
 A: a put of /e/x, in a directory with an index; a get of /e/x
   kvs(): 1

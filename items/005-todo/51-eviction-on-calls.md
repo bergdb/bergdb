@@ -95,7 +95,7 @@ Outcome
 -------
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), at Frans's request ("yes,
-put it in java and commit."; 006-09, W4), in a clone on `07b6375`.
+put it in java and commit."; 006-09, W4), in a clone on `e773562`.
 
 * Question 1: a wait with no timeout. `Eviction.EvictorRun` waits for the
   next request with `evictorLock.wait()`. The database's close wakes it:
@@ -142,8 +142,8 @@ put it in java and commit."; 006-09, W4), in a clone on `07b6375`.
   | process | wakeups/s | CPU ms/s | energy, uW | the eviction thread, idle | its CPU in 60 s |
   |---|---|---|---|---|---|
   | the JVM alone | 26.1, 26.2 | 0.54, 0.66 | 469, 473 | none | none |
-  | the code before 005-51 (`565499f`) | 26.2, 26.9 | 0.56, 0.73 | 502, 512 | `TIMED_WAITING` | 1.25, 1.63 ms |
-  | with 005-51 (`c2aab10`) | 23.7, 24.2 | 0.62, 0.60 | 459, 437 | `WAITING` | 0 |
+  | the code before 005-51 (`74bc2dc`) | 26.2, 26.9 | 0.56, 0.73 | 502, 512 | `TIMED_WAITING` | 1.25, 1.63 ms |
+  | with 005-51 (`043a09c`) | 23.7, 24.2 | 0.62, 0.60 | 459, 437 | `WAITING` | 0 |
 
   Before, the eviction thread used about 1.4 ms of CPU a minute, its 60
   wake-ups; after, none. The process counts differ by less than their
@@ -151,4 +151,4 @@ put it in java and commit."; 006-09, W4), in a clone on `07b6375`.
   them the JVM's own.
 * `before-commit.sh` prints `BEFORE COMMIT OK` (1,044 unit tests, 73
   f-tests, 128 s), and `level4.sh` in full passes (`LEVEL 4 OK`, 16
-  minutes), on `07b6375` with the change.
+  minutes), on `e773562` with the change.

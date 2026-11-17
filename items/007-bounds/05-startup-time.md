@@ -23,7 +23,7 @@ The tool
 --------
 
 [05-startup-time/StartupBench.java](05-startup-time/StartupBench.java), in
-package `bergdb.core`, against bergdb.jar as it is (`851acdf`, built in a
+package `bergdb.core`, against bergdb.jar as it is (`2966bca`, built in a
 scratch clone). Mode `make` builds a database on disk (FileStream): key24
 keys in random order, 1,000 puts a transaction, then random updates, as
 005-38's WriteBench; it reports the startup lag after every update, and D
@@ -74,7 +74,7 @@ for s1 are made on s1, as F53's upload to it is under 2 MB/s.
 At the end: s1's outputs fetched (until 09:30 at most), everything copied to
 [05-startup-time/out/](05-startup-time/out/), `out/summary.txt` written, and
 an entry in news.md (OK or FAILED). It runs in `/Users/f/fl/bench/007-05`
-(the compiled tool, a clone at `851acdf` with its jar, `data/`, `out/`), as
+(the compiled tool, a clone at `2966bca` with its jar, `data/`, `out/`), as
 a process detached from any session; the 10M databases stay in `data/`
 there for step 6, and the 50M ones are deleted.
 

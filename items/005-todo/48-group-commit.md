@@ -118,7 +118,7 @@ Prototype
 then the ReclaimReaders failure, the gates, the digests and s1's runs from 14:40. Frans
 decided at 12:03 that the change is committed tonight if it passes the gates, keeps the
 stream's bytes and measures well. It is one local commit, java/ only, `200aaab` on
-`e718347` in the clone `/Users/f/fl/bench/006-09/gc48`, in `main` as `e611709`
+`a43058f` in the clone `/Users/f/fl/bench/006-09/gc48`, in `main` as `d8ed1aa`
 (the same diff).
 
 * **The change** (010-P3: work in response to a call; no thread, timer or setting).
@@ -172,7 +172,7 @@ stream's bytes and measures well. It is one local commit, java/ only, `200aaab` 
   never a lookup time beyond the last publication. A first count, with an atomic increment
   between `session()` and `stopReaders`, saw none in 67,700 sessions: the window is that
   narrow. The same failure came without group commit in 005-57 (level4.sh quick, 8
-  readers, seed 302, on `bf19075`). The fix, in the same commit: `awaitModel` reads
+  readers, seed 302, on `c1f1f15`). The fix, in the same commit: `awaitModel` reads
   `lastCompleted` again after it has seen `stopReaders` (or a failure) and fails only if T
   is still not published, so it still finds a lookup time beyond the last publication.
   With it, 101 runs of step 5's JVMs (1,212 seeds) at level3's load, 0 failures.
@@ -225,7 +225,7 @@ Outcome
 2026-10-28, closed by Frans: "Close, keep 20 ms as recommended. Commit.
 And also: create a new 005 item to investigate 20 ms vs 50 ms, vs 100 ms."
 
-* Group commit is in `main` since 2026-10-27 (`e611709`): a sync that
+* Group commit is in `main` since 2026-10-27 (`d8ed1aa`): a sync that
   waits has the buffer written at once (`BufferedStream.flushSoon`), and
   the force paces the groups. On s1 one thread's durable commits went from
   38 to 213 a second (the sync's median from 24.8 to 3.8 ms), 64 threads'
@@ -244,4 +244,4 @@ And also: create a new 005 item to investigate 20 ms vs 50 ms, vs 100 ms."
 * Files kept in [48-group-commit/](48-group-commit/): the scripts of the
   runs (`night/`), the two tables, the tools (`tools/`) and the
   ReclaimReaders experiment; the test runs' raw outputs and the prototype's
-  diff (the same as `e611709`) were removed on 2026-10-28.
+  diff (the same as `d8ed1aa`) were removed on 2026-10-28.

@@ -12,7 +12,7 @@ deleted like any other, with no relabel at the delete; a relabel comes back
 at a later split of such a child (section 1.3).
 
 Branch `023-p2-relax` in `/Users/f/fl/bench/2026-11-10/p2/clone`, on main
-`99089978` and 023-03's test prototype (`251c4b65`, cherry-picked). Code
+`1901394c` and 023-03's test prototype (`251c4b65`, cherry-picked). Code
 places are on the branch.
 
 
@@ -271,8 +271,8 @@ Notes:
 
 Counts from CleanupRule, R = 1 s, startup distance 100 kB, node size 30,
 no eviction unless named. Main's numbers are 023-03's (section 8) or, where
-marked, from runs of main's jar (`668d64bd`, the same Java code as
-`99089978`) beside P2's on the same day.
+marked, from runs of main's jar (`86c45146`, the same Java code as
+`1901394c`) beside P2's on the same day.
 
 ### 4.1 T1, "after", against the twin
 
@@ -524,7 +524,7 @@ Limits, not fixed:
 
 2026-11-10 12:40, the prototype's work done for today. Clone
 `/Users/f/fl/bench/2026-11-10/p2/clone`, branch `023-p2-relax`, head
-`13091f30`: on `2ae7fdd0` (main `99089978` and 023-03's test prototype),
+`13091f30`: on `2ae7fdd0` (main `1901394c` and 023-03's test prototype),
 P2 in `27be3696` and `a0af194d`, and P2Fuzz (a stress file only) in
 `13091f30`. At `a0af194d`: before-commit.sh OK, level1.sh, level2.sh,
 level3.sh and level4.sh full OK (logs in the clone's `java/build/level*/`).

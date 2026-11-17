@@ -280,11 +280,11 @@ are locators within that item, not new document IDs.
 * **H5.** F1-007, `bergdb/doc/2012/2012-stream-manager.txt`, “General”
   (buffering/failure/durability bullets) and “Durability control”.
 * **H6.** F1-007, `bergdb-git.bundle`, commit
-  `76c479253013bc5e04857b544b39354f2468aa54` (2013-06-06):
+  `1f4d0b6e21a94077964e72a0f264f193ae0a55e0` (2013-06-06):
   `KissDB/src/kissdb/stream/AppendOnlyStream.java`, class/append Javadoc;
   `KissDB/src/kissdb/storage/RecoverableStream.java`, recovery, Iterator
   and the three named tests. Compared with original 2017 commit
-  `49aa48d066ceb0cd39f3760d94af092ac7265395` in the same bundle.
+  `50786b2350c01df00452011f851d2e97b49f4aab` in the same bundle.
 * **H7.** F1-007, `bergdb/doc/2013/2013-04-notes.txt`, “Stream encryption
   and integrity check”; `bergdb/log.md`, 130508, 150725 and 150726;
   H6's 2017 `bergdb/src/bergdb/core/doc-files/stream-format.txt`,

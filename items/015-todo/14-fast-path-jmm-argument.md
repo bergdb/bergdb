@@ -31,8 +31,8 @@ State
 2026-11-03, 20:34: the investigation, the fix (T6a, option A, for every
 read of the Log's list that rested on the dependency or on a 64-bit JVM),
 the tests and the gate done in the clone
-(`/Users/f/fl/bench/016/015-14/repo`, from `main` at `b9ba427`, rebased
-on `b6515aa`); reviewed (016-05, H5: no fault; three doubts and five
+(`/Users/f/fl/bench/016/015-14/repo`, from `main` at `b1651a5`, rebased
+on `2d7daae`); reviewed (016-05, H5: no fault; three doubts and five
 nits, answered in the Log, the nits on the text fixed); handed off again
 (`/Users/f/fl/bench/016/015-14/handoff/`).
 
@@ -58,9 +58,9 @@ If it is not done by the freeze, this entry stays an open Fix and the
 notes say so in their known issues.
 
 2026-11-03, 19:34 to 20:10, by an agent of the coordinator (016-05), in
-`/Users/f/fl/bench/016/015-14/repo` from `main` at `b9ba427`:
+`/Users/f/fl/bench/016/015-14/repo` from `main` at `b1651a5`:
 
-* **R1-F3's interleaving, checked against the code at `b9ba427`.** It
+* **R1-F3's interleaving, checked against the code at `b1651a5`.** It
   holds as R1 wrote it. The fast path (`NodeCollection.followPointer`)
   read pointer i of a key node plainly for a handle (`getPointee`), then
   its reference plainly (`getPointerPos`), then `h.obj` (volatile). The
@@ -82,7 +82,7 @@ notes say so in their known issues.
   56 in 82 million).
 * **Every plain read of a shared field on the read path** (a get: the
   top node search, `findRoot`, the key node searches, the fast path; the
-  slow path where it reads without a lock), at `b9ba427`, and what its
+  slow path where it reads without a lock), at `b1651a5`, and what its
   safety rested on: (D) the address dependency, (L) a 64-bit JVM, where a
   plain long does not tear (17.7 allows it), (E) a happens-before edge,
   (H) a race whose every value is harmless.
@@ -182,7 +182,7 @@ notes say so in their known issues.
   to 10): new `SwizzleOrder` (R1-F3's steps 4 and 5 on a key node: a
   raise, an install, a swizzle, against a fast-path read) and
   `TopSwizzleOrder` (the same on a top node's root pointer). The mutation,
-  the base's jar (`b9ba427`, built in
+  the base's jar (`b1651a5`, built in
   `/Users/f/fl/bench/016/015-14/mutbase`): both `[FAILED]`, the forbidden
   "1, 2" (the new handle with the reference before the raise) 21 times in
   86 million and 56 in 82 million; "1, 0", R1-F3's wrong answer, 0 (the
@@ -201,14 +201,14 @@ notes say so in their known issues.
   unchanged. run.sh's header names the new tests.
 * **The gate**: `java/before-commit.sh`, 20:02 to 20:04: `BEFORE COMMIT OK
   (106 s)`, 1,125 unit tests and 78 f-tests. Then the clone rebased on
-  `main` at `24bdae5` (015-09, 015-16, 015-10: other files) and gated
+  `main` at `f219dc7` (015-09, 015-16, 015-10: other files) and gated
   again, 20:06 to 20:07: `BEFORE COMMIT OK (105 s)`, 1,127 unit tests and
   78 f-tests.
 
 
 2026-11-03, 20:27 to 20:34, the review's findings (016-05, H5, 20:09 to
 20:30: no fault; `/Users/f/fl/bench/016/015-14/handoff/review-findings.md`)
-and the answers, in the clone rebased on `main` at `b6515aa`:
+and the answers, in the clone rebased on `main` at `2d7daae`:
 
 1. Doubt, the tests: "1, 2" is harmless, "1, 0" was not seen on the base;
    the tests show the order the fix adds. Agreed: 009-02, 3.4, point 10,
@@ -253,7 +253,7 @@ After the release: the cost
 A 015 note, for after 2026.2 (to become an entry of its own if the
 coordinator registers one): measure what 015-14's acquires cost, with
 `java/stress/performance.sh` on a quiet F53 (AArch64, where they are
-load-acquires), against the code before (`b9ba427`), in turns: the
+load-acquires), against the code before (`b1651a5`), in turns: the
 in-cache and the out-of-cache gets, and a put-heavy suite (the volatile
 array fields: a few more `ldar` in the writer's own reads). On s1 (x86)
 a short check only: no new instructions are expected there. If the

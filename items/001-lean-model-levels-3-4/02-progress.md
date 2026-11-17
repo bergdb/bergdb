@@ -280,7 +280,7 @@ Log
 
 ### 2026-10-16 14:05 to 14:48. The plan
 
-Agent: Claude, Opus 5.5, Claude Code. bergdb at `fb52a14`, uncommitted:
+Agent: Claude, Opus 5.5, Claude Code. bergdb at `f050833`, uncommitted:
 `items/001-lean-model-levels-3-4/readme.md` (the morning's decisions) and
 `01-plan.md` (the overview), both from earlier today.
 
@@ -302,7 +302,7 @@ nothing in bergdb's `java/`, `lean/` or `docs/` changed.
 Found while planning, for the WPs that follow:
 
 * The TopNode ordinal defect of F1-008-13 (section 5.1) is still in the code
-  (`StoredTopNode.toLongs`, line 176 at `fb52a14`): WP A3, register M30.
+  (`StoredTopNode.toLongs`, line 176 at `f050833`): WP A3, register M30.
 * Option K, the plan's leading candidate for Level 4's reference rule (plan,
   8.5), has a gap after restarts that today's node table hides: a node of D
   can hold a stream slot to a node of D that is written before it (M44). The
@@ -317,12 +317,12 @@ Open, next: G0, with Q2 in particular; then A1.
 
 ### 2026-10-16 15:23 to 16:04. WP A1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `50a2a7b`
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `dee7ad6`
 (Frans's commit of the plan), clean work tree at the start.
 
 Did:
 
-1. HEAD `50a2a7b`; `git status --short` empty.
+1. HEAD `dee7ad6`; `git status --short` empty.
 2. `java/stress/StreamDigest.java` (plan, 8.9): the workloads of
    `RestartInvariance`'s configurations in `level2.sh` step 4 (seven
    configurations, eight runs with the two idle seeds, the 100 MB one
@@ -338,10 +338,10 @@ Did:
    physical cut differs once (l3-node14: front at 0 without restarts, at
    1,000,000 with them, since a restart syncs and the cut waits for
    durability; M35), so the mode comparison uses `sha256`.
-3. `java/stress/performance.sh build l34-base`, 15:56: from `50a2a7b`,
+3. `java/stress/performance.sh build l34-base`, 15:56: from `dee7ad6`,
    dirty (StreamDigest.java untracked; `java/stress/A2A3Check2.java` already
-   changed by A4, test code only; `java/src` is that of `50a2a7b`, unchanged
-   since `d5c56dd`). Jar SHA-256 `45037cbae774cb33...`. Digests of every
+   changed by A4, test code only; `java/src` is that of `dee7ad6`, unchanged
+   since `8f37d88`). Jar SHA-256 `45037cbae774cb33...`. Digests of every
    configuration with it, in `java/build/perf/builds/l34-base/digests-a1.txt`
    (36 lines). The plain mode, stream length and the first 16 hex digits of
    `sha256`: l2-sd100 5,131,920 `fbaa851612f5bd8e`; l2-sd1000-node8
@@ -375,7 +375,7 @@ Did:
    TESTS OK`.
 6. What P1 and P2 must still do (level3-plan.md, tasks 2 and 3;
    level3-performance.md). **P1**: all of task 3. The tracked quick reference
-   (`quick-2026-10-14-pre-task1`, `506510d9`) predates task 1 and the Level 2
+   (`quick-2026-10-14-pre-task1`, `2709e277`) predates task 1 and the Level 2
    alignment (D0's 8 bytes per record, D1's in-place splits). So:
    `java/stress/performance.sh quick` on A1's code on a quiet machine (90
    percent idle, never `FORCE`), promote as `quick-2026-10-16-post-task1`,
@@ -407,7 +407,7 @@ the diagnostics in a scratch copy of `lean/`, and in `A2A3Check2`).
 
 ### 2026-10-16 15:57 to 16:33. WP A3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`,
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5e3ebaa`,
 uncommitted: A2's documents and A4's `java/stress/A2A3Check2.java` (named in
 the A1 entry), and this WP's files.
 
@@ -448,7 +448,7 @@ Files changed: `java/src/bergdb/core/StoredTopNode.java`, `DbStarter.java`,
 `DbTesterRestart.java`, `java/src/bergdb/dag/TopNode.java`; `docs/levels.md`
 (the bug, a new section), `docs/log.md`.
 
-Checks, on the work tree (`75d3c2d` plus the files above, A2's documents and
+Checks, on the work tree (`5e3ebaa` plus the files above, A2's documents and
 A4's `A2A3Check2.java`), 16:08 to 16:32: `LEVEL 1 OK` (89 s; 911 unit tests),
 `LEVEL 2 OK` (988 s; 911 unit tests; step 7: a2a3-1 to 3 OK, conformance
 small 50 of 50 `TRACECHECK OK`), `LEVEL 3 OK` (317 s; 911 unit tests, 37
@@ -464,8 +464,8 @@ Open, next: commit A3, then A2 (M30 closed there).
 
 ### 2026-10-16 15:31 to 16:34. WP A2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`, then
-`280525a` (A3); uncommitted: A4's `java/stress/A2A3Check2.java`, and this
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5e3ebaa`, then
+`7f8f2e1` (A3); uncommitted: A4's `java/stress/A2A3Check2.java`, and this
 WP's files.
 
 Did:
@@ -488,7 +488,7 @@ Did:
    and how they change today; the node table; the pins; Rule R for the whole
    process, `idByPos`, access data, the writer's warm-up reads); the
    register, M20 to M31, M39, M40, M43 to M46, each with file, method and
-   line at `75d3c2d`. Sections for A4 (probes), E1 (the design) and E7.
+   line at `5e3ebaa`. Sections for A4 (probes), E1 (the design) and E7.
 3. `docs/level3-alignment.md` (new): scope; α for reclaim (records, T(i)
    of a step and a table store, touch(i), fa(i), cuts decided and made, the
    iteration's positions and times); the register, M17, M32 to M38, M41.
@@ -514,13 +514,13 @@ Findings, beyond the plan's register:
   (matters for M21, M27). `TransNodes.clean` clears the dirty flags of the
   record being written before it is appended (for eviction's eligibility).
   M22's runtime cut-back is not reachable today, with the reason and lines.
-* M30 is closed by A3 (`280525a`).
+* M30 is closed by A3 (`7f8f2e1`).
 
 Files changed: `docs/level4-alignment.md`, `docs/level3-alignment.md` (new);
 `docs/levels.md`, `docs/level2-alignment.md`; this file.
 
 Checks: the documents' links resolve (checked with the script of the plan's
-session); statements about code cite file, method and line at `75d3c2d`.
+session); statements about code cite file, method and line at `5e3ebaa`.
 
 Register: M17, M20 to M44 checked and in the new documents (M30 closed); new
 M45, M46.
@@ -531,8 +531,8 @@ on the fast checker of C2).
 
 ### 2026-10-16 15:48 to 16:46. WP A4, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d` to
-`f6cf45c` (A1 to A2); uncommitted: this WP's files.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5e3ebaa` to
+`2280b23` (A1 to A2); uncommitted: this WP's files.
 
 Did:
 
@@ -548,7 +548,7 @@ Did:
    and TREE, prints them on a new summary line (the gate's grep patterns are
    unchanged), and with `-DdebugA6=1` prints each A6 failure.
 3. Runs. The Lean tier on the small set (A1's traces, 50) and the medium set
-   (F1-008-11's 9 traces on `d5c56dd`; production code and exporter
+   (F1-008-11's 9 traces on `8f37d88`; production code and exporter
    unchanged since): A6 0, TREE 0, in 3,700 and 3,360 transactions. The
    medium set ran with C2's fast checker, which computes the model's
    definitions (proven); the slow and the fast checker gave identical outputs
@@ -590,7 +590,7 @@ scratch copy) and C2 (in progress: `markOf`, `writeAll`, `reachList` and
 
 ### 2026-10-16 16:10 to 16:30. WP C1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `75d3c2d`; no
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5e3ebaa`; no
 repository change (the profiler is in scratch).
 
 Did: a scratch copy of `TraceCheck.lean`'s loop (`Profile.lean`, not for
@@ -632,7 +632,7 @@ Open, next: C2.
 
 ### 2026-10-16 16:08 to 16:55. WP P1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `eecb513`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `c69fb05`;
 uncommitted: this WP's files.
 
 Did:
@@ -668,7 +668,7 @@ Open, next: J1 needs P1 (done) and P2 (the soak, not started).
 
 ### 2026-10-16 16:30 to 17:04. WP C2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d8abf0a`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3300602`;
 uncommitted: this WP's files.
 
 Did (developed in a scratch copy of `lean/`, then copied in):
@@ -733,7 +733,7 @@ L2 (proved in scratch) and L1.
 
 ### 2026-10-16 16:15 to 17:20. WP L2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `411b3c4`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ec29d70`;
 uncommitted: C3's `java/stress/conformance.sh` (running), and this WP's
 files. Developed in a scratch copy of `lean/`.
 
@@ -787,7 +787,7 @@ definitions build and the examples' checks pass), C3 (running).
 
 ### 2026-10-16 17:04 to 17:25. WP L1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `130f380`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `dde8f56`;
 uncommitted: C3's `java/stress/conformance.sh` (running), and this WP's
 files. Developed in a scratch copy of `lean/`.
 
@@ -856,8 +856,8 @@ logical model that E3 can reuse.
 
 ### 2026-10-16 16:55 to 18:32. WP C3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `411b3c4` to
-`3782bc8` (C2, L2 and L1 committed meanwhile; the checker is C2's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ec29d70` to
+`3fe8069` (C2, L2 and L1 committed meanwhile; the checker is C2's
 throughout); uncommitted: `java/stress/conformance.sh`, this WP's docs.
 
 Did:
@@ -905,8 +905,8 @@ Open, next: L3 (in progress since 17:35, in a scratch copy of `lean/`).
 
 ### 2026-10-16 17:35 to 20:24. WP L3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3782bc8` to
-`e03c2d1` (C3 committed meanwhile); uncommitted: this WP's files only.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3fe8069` to
+`ac1e4d4` (C3 committed meanwhile); uncommitted: this WP's files only.
 Developed in a scratch copy of `lean/`; brought into bergdb when every proof
 was done there.
 
@@ -1014,7 +1014,7 @@ current state for P.
 
 ### 2026-10-16 20:27 to 21:17. WP L4, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0f7db33` (L3);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `1f64ed4` (L3);
 uncommitted: this WP's files only. Developed in the scratch copy of `lean/`
 that L3 used; brought into bergdb when every proof was done there.
 
@@ -1099,7 +1099,7 @@ layout check, see the adoptions above).
 
 ### 2026-10-16 21:17 to 22:08. WP L5, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e24e633` (L4);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5992cfb` (L4);
 uncommitted: this WP's files only.
 
 Did:
@@ -1135,7 +1135,7 @@ Did:
    proved" updated); `lean/README.md` (the checker, stage 1 done, "Not
    done").
 
-Results (bergdb `e24e633` with these changes; `docs/level2-alignment.md`,
+Results (bergdb `5992cfb` with these changes; `docs/level2-alignment.md`,
 13.5): small set, 60 traces, `CONFORMANCE OK`, C-L 0 of 252,539 FIRST lines
 fail, C-V 1,870,868 LIVE lines with no difference, 19 s; medium set, 9
 traces, `CONFORMANCE OK`, C-L 0 of 43,873, 45 s; the large set's `l-hot`
@@ -1180,7 +1180,7 @@ time box.
 
 ### 2026-10-16 22:10. WP P2, in progress (written before the pilot)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `a66e4d9` (L5);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0cbb4b3` (L5);
 uncommitted: `java/stress/Soak.java` and `java/stress/soak.sh` (new).
 
 Did so far:
@@ -1233,14 +1233,14 @@ no gates, performance runs or Lean builds while it runs.
 
 ### 2026-10-16 22:44 to 22:59. WP R1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `a66e4d9`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0cbb4b3`;
 uncommitted: P2's `java/stress/Soak.java` and `soak.sh` (in progress, not
 part of this WP) and this WP's files. Written while P2's pilot ran (document
 work only, plan 2.7).
 
 Did: `docs/level3-alignment.md`, sections 2 to 5, from `Reclaim.java`,
 `Db.java`, `DbStarter.java`, `NodeCollection.java`, `FileStream.java` and
-`BufferedStream.java` at `a66e4d9`, levels.md ("Level 3: reclaim"), the
+`BufferedStream.java` at `0cbb4b3`, levels.md ("Level 3: reclaim"), the
 plan's 8.1 and 8.7, F1-008-07 (sections 5 to 8) and Codex's review of 09
 (findings 2, 5, 6):
 
@@ -1253,9 +1253,9 @@ plan's 8.1 and 8.7, F1-008-07 (sections 5 to 8) and Codex's review of 09
    fa(i) as a function of the records (it never decreases and stays before
    the startup pos); a cut decided at R(d) at c = the record at the row's
    pCut, f = tEnd, made later, at or below c; what R2's trace needs (2.7).
-2. The register, checked again at `a66e4d9` (line numbers updated:
+2. The register, checked again at `0cbb4b3` (line numbers updated:
    `resolvePointers` 317, `canonicalNode` 455, `topNodeOfLastTransaction`
-   293; `Reclaim.java` and `Db.java` are unchanged since `75d3c2d`).
+   293; `Reclaim.java` and `Db.java` are unchanged since `5e3ebaa`).
 3. The arguments (section 4): M32 (Java's startup uses f only after the
    reconstruction, and reads nothing before c if the cut is safe; the rest
    is T8, R4) and M38 (the conflict check runs before any change, so a
@@ -1274,7 +1274,7 @@ plan's 8.1 and 8.7, F1-008-07 (sections 5 to 8) and Codex's review of 09
 Files changed: `docs/level3-alignment.md`; this file.
 
 Checks: the links of `level3-alignment.md` resolve; every statement about
-code names the file, the method and the line at `a66e4d9`; the test names
+code names the file, the method and the line at `0cbb4b3`; the test names
 cited exist (`Reclaim.Tester`'s `testIterationRewritesAllOldValues`,
 `testDeletedKeysAfterCut`, `testCutKeepsMetaBlockTransaction`,
 `testLookupsFromFirstAvailableTime`; `ReclaimRetentionTester`). Time: about
@@ -1291,7 +1291,7 @@ Open, next: P2 continues (the pilot runs). R2 can start after R1 and C2
 
 ### 2026-10-16 23:13. WP P2, in progress: the pilot's result, the main run (written before it)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `309243b` (R1);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `8955e8a` (R1);
 uncommitted: `java/stress/Soak.java`, `java/stress/soak.sh`.
 
 The pilot (`java/build/soak/pilot2/`, 22:43 to 23:11; one million keys,
@@ -1337,7 +1337,7 @@ performance runs or Lean builds; document work (E1).
 
 ### 2026-10-16 23:14 to 23:25. WP E1, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `309243b`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `8955e8a`;
 uncommitted: P2's `java/stress/Soak.java` and `soak.sh` (in progress) and
 this WP's files. Written while P2's main soak runs (document work only, plan
 2.7); its inputs were read from 22:59 on, during the pilot. Stage 2's time
@@ -1349,7 +1349,7 @@ and `lean/References/SISCase.lean`, F1-008-07 (sections 3, 4, 8), F1-008-08
 (sections 2, 9, 10), Codex's review of 09 (findings 2, 4, 7), A4's probes
 and L1's `Phys.lean`; Java's `TopDs.newSuperRoot`, `KeyNode`'s copies,
 `DbStarter.createMemoryPointers` and `NodeCollection.resolvePointers` at
-`a66e4d9`:
+`0cbb4b3`:
 
 1. The physical layer, part 2 (5.2): the pinned set (D's canonical objects
    and the root's object); eligibility; unswizzle (the slot names the
@@ -1392,7 +1392,7 @@ and L1's `Phys.lean`; Java's `TopDs.newSuperRoot`, `KeyNode`'s copies,
 Files changed: `docs/level4-alignment.md`; this file.
 
 Checks: the links of `level4-alignment.md` resolve; statements about code
-name file, method and line at `a66e4d9`. No model or code changed (E1 is a
+name file, method and line at `0cbb4b3`. No model or code changed (E1 is a
 design WP; E2 implements it).
 
 Register: M43 resolved for the model (A6' and TREE as assumptions); M20,
@@ -1411,7 +1411,7 @@ report skeleton).
 
 ### 2026-10-17 01:31. WP P2, in progress: the main run's result, the companion (written before it)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `55241f9` (E1);
 uncommitted: P2's `java/stress/Soak.java` and `soak.sh`, `docs/level3-soak.md`
 (draft), this file.
 
@@ -1439,7 +1439,7 @@ scratch at `nice -n 19`.
 
 ### 2026-10-16 21:17 to 2026-10-17 02:02. WP P2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `55241f9` (E1);
 uncommitted before this WP's commit: its files, below.
 
 Did: the soak of level3-plan task 2 (the entries at 22:10, 23:13 and 01:31
@@ -1507,8 +1507,8 @@ see the next entries), then E3.
 
 ### 2026-10-16 23:25 to 2026-10-17 02:23. WP E2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1)
-at the start and `e5b643b` (P2) at the end; uncommitted before this WP's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `55241f9` (E1)
+at the start and `6201b50` (P2) at the end; uncommitted before this WP's
 commit: its files, below. The model was written and run in a scratch copy of
 `lean/`, at the lowest priority during P2's measured hours (single files and
 the random tests, no full builds; the 01:31 entry); its full checks ran after
@@ -1560,7 +1560,7 @@ Files changed: `lean/SIS/Evict.lean`, `lean/SIS/EvictExample.lean` (new);
 `lean/PhysTest.lean`, `lean/SIS.lean`, `lean/README.md`;
 `docs/level4-alignment.md` (5.9, 5.10, M43); this file.
 
-Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `e5b643b` with
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `6201b50` with
 this WP's five files), 02:04 to 02:20: `lake build` exit 0, no warnings;
 `lake exe sistest 20 40`: all checks pass; `lake exe phystest 20 40` (with
 the eviction part): all checks pass; `#print axioms` of the theorem list:
@@ -1589,8 +1589,8 @@ the startup from R(0) gives it, then E3's checks and commit.
 
 ### 2026-10-16 23:48 to 2026-10-17 02:57. WP E3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `065c21f` (E1)
-at the start and `ca2616c` (E2) at the end; uncommitted before this WP's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `55241f9` (E1)
+at the start and `640c846` (E2) at the end; uncommitted before this WP's
 commit: its files, below. The proofs were written in the scratch copy of
 E2's model, at the lowest priority during P2's measured hours, and checked
 in full on a clean copy after E2's commit.
@@ -1637,7 +1637,7 @@ Files changed: `lean/SIS/PhysTheorems.lean`; `lean/SIS/Proof/EvictLogic.lean`,
 `EvictInit.lean` (new); `lean/README.md`; `docs/level4-alignment.md`; this
 file.
 
-Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `ca2616c` with this
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `640c846` with this
 WP's 16 files), 02:34 to 02:49: `lake build` exit 0, no warnings (and each
 of E2's and E3's 17 files elaborated alone, 02:37: no message); `lake exe
 sistest 20 40`: all checks pass (02:41); `lake exe phystest 20 40`: all
@@ -1679,7 +1679,7 @@ transactions each, with restarts) found it true after every operation.
 
 ### 2026-10-17 02:43 to 03:36. WP E4, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `afaa74a` (E3);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `25ade9d` (E3);
 uncommitted before this WP's commit: its files, below. The design and the
 probe ran while E3's checks did (02:43 to 02:57).
 
@@ -1714,7 +1714,7 @@ Files changed: `lean/SIS/PhysTheorems.lean`; `lean/SIS/Proof/EvictHist.lean`,
 `EvictHistTrans.lean`, `EvictReadT.lean` (new); `lean/README.md`;
 `docs/level4-alignment.md`; this file.
 
-Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `afaa74a` with this
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `25ade9d` with this
 WP's 5 files), 03:18 to 03:33: `lake build` exit 0, no warnings (and each
 new file elaborated alone, 03:19: no message); `lake exe sistest 20 40`: all
 checks pass (03:25); `lake exe phystest 20 40`: all checks pass (03:33);
@@ -1735,7 +1735,7 @@ restarts.
 
 ### 2026-10-17 03:27 to 03:59. A-COPY checked on Java (an addition after E3)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ddebd06` (E4);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `095ae73` (E4);
 uncommitted before this commit: its files, below. Not a WP of the plan: E3
 needed a new assumption, A-COPY (the E2 entry), and stop rule 4 asks whether
 Java meets it; A4 settled the same question for TREE and A6', so this does
@@ -1770,7 +1770,7 @@ Files changed: `java/stress/A2A3Check2.java`; `lean/Check/Steps.lean`,
 
 Checks: `java/build.sh` passes (03:33); the tool ran on the 21
 configurations, small to large (java/stress only, so no gate is required).
-Lean, on a clean copy (bergdb's `lean/` at `ddebd06` with this commit's
+Lean, on a clean copy (bergdb's `lean/` at `095ae73` with this commit's
 five files), 03:42 to 03:58: `lake build` exit 0, no warnings (the two
 changed files elaborated alone: no message); `lake exe sistest 20 40` and
 `lake exe phystest 20 40`: all checks pass; `#print axioms` of the theorem
@@ -1789,7 +1789,7 @@ Open, next: E5.
 
 ### 2026-10-17 03:44 to 05:09. WP E5, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `73320ec`
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `099fc57`
 (A-COPY on Java); uncommitted before this WP's commit: its files, below. The
 design and the first probe ran while the A-COPY checks did (03:44 to 03:59).
 
@@ -1862,7 +1862,7 @@ Files changed: `lean/SIS/Evict.lean` (trusted: rule 4),
 `EvictRestart.lean` (new); `lean/README.md`; `docs/level4-alignment.md`;
 this file.
 
-Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `73320ec` with this
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `099fc57` with this
 WP's 5 files), 04:50 to 05:06: `lake build` exit 0, no warnings (the two new
 files elaborated alone too, in scratch: no message); `lake exe sistest 20
 40`: all checks pass (04:57); `lake exe phystest 20 40`: all checks pass
@@ -1889,7 +1889,7 @@ runs (current state).
 
 ### 2026-10-17 04:52 to 05:30. WP E6, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e2e5bd5` (E5);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `fe99e16` (E5);
 uncommitted before this WP's commit: its files, below. The design, the probe
 and most of the proofs ran in a scratch copy while E5's checks did (04:52 to
 05:06).
@@ -1944,7 +1944,7 @@ Files changed: `lean/SIS/PhysTheorems.lean` (trusted: one statement);
 `lean/SIS/Proof/EvictKeys.lean`, `EvictPin.lean` (new); `lean/README.md`;
 `docs/level4-alignment.md`; this file.
 
-Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `e2e5bd5` with this
+Checks (plan, 2.2), on a clean copy (bergdb's `lean/` at `fe99e16` with this
 WP's 3 files), 05:11 to 05:28: `lake build` exit 0, no warnings (the two new
 files elaborated alone too, in scratch: no message); `lake exe sistest 20
 40`: all checks pass (05:19); `lake exe phystest 20 40`: all checks pass
@@ -1967,7 +1967,7 @@ Open, next: E7.
 
 ### 2026-10-17 05:12 to 05:31. WP E7, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `03f4eab` (E6);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `7d28376` (E6);
 uncommitted before this WP's commit: its files, below. Drafted while E6's
 checks ran (05:12 to 05:28).
 
@@ -1981,7 +1981,7 @@ Did:
    for byte against `l34-base`; six for eviction (J1 to J7: the registry and
    the pins, unswizzle, release, the copies of slots (no change, a check),
    readers, accounting). What Java keeps, and what is not settled here.
-   Lines at `e2e5bd5`. Also the status line and a pointer in 5.7.
+   Lines at `fe99e16`. Also the status line and a pointer in 5.7.
 2. The K1 review guide, 001-03,
    [03-k1-review.md](03-k1-review.md) (new), linked from the item's readme:
    what to decide (Option K under TREE, A6' and A-COPY instead of A6; the
@@ -1996,7 +1996,7 @@ Files changed: `docs/level4-alignment.md`;
 `items/001-lean-model-levels-3-4/readme.md`; this file.
 
 Checks (plan, 2.2, documents): the links resolve (a script, scratch); the
-statements about code cite file, method and line at `e2e5bd5`. No code
+statements about code cite file, method and line at `fe99e16`. No code
 changed.
 
 Register: none changed; section 6 lists every Level 4 row with its WP.
@@ -2018,7 +2018,7 @@ runs (current state).
 
 ### 2026-10-17 05:31 to 06:05. WP R2, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9eb146c` (E7);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d0808d6` (E7);
 uncommitted before this WP's commit: its files, below. K1 waits for Frans;
 R2 does not depend on it.
 
@@ -2094,7 +2094,7 @@ R3 to R8 wait for K1.
 
 ### 2026-10-17 06:05 to 06:35. WP P3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ad1789d` (R2);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `fa6059b` (R2);
 uncommitted before this WP's commit: its files, below.
 
 Did:
@@ -2153,7 +2153,7 @@ stages 0 and 1). The rest waits for Frans's K1 (current state).
 
 ### 2026-10-17 07:18 to 07:21. A-COPY on the large set: no failure
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `904e146`. The
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `c43d3a1`. The
 result that the A-COPY entry (2026-10-17 03:27) left open: the Lean tier on
 C3's large set (12 traces in `java/build/traces/large`), with the checker of
 that entry's commit, in the background from 03:41 to 07:17 at low priority.
@@ -2179,7 +2179,7 @@ Open, next: K1 (current state).
 
 ### 2026-10-17 07:57 to 10:00. WP R3, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9670c42` (K1
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9f27d8c` (K1
 passed); uncommitted before this WP's commit: its files, below. Worked in a
 scratch copy of `lean/` and copied the result back.
 
@@ -2287,7 +2287,7 @@ R2's reclaim traces; the red list), then R4 (T8, T9), R5 (T12, with
 
 ### 2026-10-17 10:00 to 12:53. WP R7, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `20e0aa2` (R3);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `c6e0a06` (R3);
 uncommitted before this WP's commit: its files, below. Worked in a scratch
 copy of `lean/` and copied the result back.
 
@@ -2334,7 +2334,7 @@ Did:
    one of the 34 nodes of the small set, and for the 17 nodes of the 12
    medium transactions that the checker lists: reachable before the step,
    not after it, not touched. Java's `endOfTrans` keeps every mark of a
-   touch transaction (d5c56dd, "reclaim's touch transactions keep every
+   touch transaction (8f37d88, "reclaim's touch transactions keep every
    mark"); the model keeps the touch's marks only. Register M17; the red
    list's one row, for R8: a Java change (in a touch transaction, `endOfTrans`
    takes the replaced nodes that the puts marked out of D, and keeps those the
@@ -2376,7 +2376,7 @@ Open, next: R4 (T8, T9; with R7's `CutOK`; T12's runs with restarts need
 
 ### 2026-10-17 10:40 to 12:55. WP R4: T8 done; T9 stopped (stop rule 4)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `26933a6` (R7);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `639f1c4` (R7);
 uncommitted before this WP's commit: its files, below. Worked in a scratch
 copy of `lean/` (R7's, plus this WP), alongside R7's long runs, and copied
 the result back.
@@ -2483,7 +2483,7 @@ list).
 
 ### 2026-10-17 12:20 to 12:56. WP R8, change 6: M17 (the red list), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `2e00653` (R4);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `fbaa937` (R4);
 uncommitted before this change's commit: its files, below. R8 goes on with
 E7's changes 1 to 5, one at a time (plan, R8); this one first, since it is
 the red list's only row and needs no performance run.
@@ -2495,7 +2495,7 @@ Did:
    transaction; the nodes that the touch marked (the first ones of
    `gotDirtyNodes`, counted after `touchRange`'s `endOfOp(true)`, the new
    field `touchMarks`) stay, also when the puts replace them. Before, a touch
-   transaction kept every mark (d5c56dd). The model's step 3 has it so:
+   transaction kept every mark (8f37d88). The model's step 3 has it so:
    `touchOf` keeps the touched nodes, `markOf` does not mark replaced ones
    (T13'). The comment above the marking code says so.
 2. Test `DbTester.testTouchTransactionReplacedNodes` (new): 30 keys at node
@@ -2546,7 +2546,7 @@ performance comparison on a quiet machine for 1, 3 and 4.
 
 ### 2026-10-17 12:56 to 13:27. WP R8, change 2: no cut back at runtime (M22), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d6fade1`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3d24640`;
 uncommitted before this change's commit: its files, below.
 
 Did:
@@ -2594,7 +2594,7 @@ other pointee from its slot).
 
 ### 2026-10-17 13:27 to 13:57. WP R8, change 1: the writer's references (M20, M21, M26, M44), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `dcf6a4d` (change
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `7eb7dc7` (change
 2); uncommitted before this change's commit: its files, below.
 
 Did:
@@ -2661,7 +2661,7 @@ and 4; the performance comparison for 1, 3 and 4 on a quiet machine.
 
 ### 2026-10-17 13:57 to 14:24. WP R8, change 3: the Level 4 loader (M27), and C-L4, done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d540066` (change
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `81aee78` (change
 1); uncommitted before this change's commit: its files, below, and the
 record of Frans's decision on M48, option (a), that another session (f1-9c)
 wrote at 14:07 on his instruction (`docs/level3-alignment.md`, 2.9, M48 and
@@ -2744,7 +2744,7 @@ performance comparison for 1, 3 and 4 on a quiet machine.
 
 ### 2026-10-17 14:24 to 14:49. WP R8, change 5: reclaim's maintenance reads (M28), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `b8bb541` (change
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5b06b09` (change
 3); uncommitted before this change's commit: its files, below, and session
 f1-9c's new item `items/002-top-node-ordinal-bound/` with its line in
 `items/readme.md`, left for Frans.
@@ -2817,7 +2817,7 @@ performance comparison for 1, 3 and 4 on a quiet machine.
 
 ### 2026-10-17 14:30 to 15:03. WP R6, part 1: `CutOK`'s part 2 over `ReadsPhys` (M48, option (a))
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `059dbf1` (R8's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0a732c3` (R8's
 change 5); uncommitted before this commit: its files, below; R8's change 4 in
 `java/` (its gates running; its own commit follows); session f1-9c's
 `items/002-top-node-ordinal-bound/` and its line in `items/readme.md`, left
@@ -2888,7 +2888,7 @@ Open, next: R8's change 4 (gates running), its commit; then R6's proof
 
 ### 2026-10-17 14:50 to 15:22. WP R8, change 4: slots and the access clock (M23, M24), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `39e095f` (R6,
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `44f8e5b` (R6,
 part 1); uncommitted before this change's commit: its files, below, and
 session f1-9c's `items/002-top-node-ordinal-bound/` with its line in
 `items/readme.md`, left for Frans.
@@ -2961,7 +2961,7 @@ for Frans.
 
 ### 2026-10-17 15:25 to 16:19. WP R6, part 1b: T-SCHEME by running; `ReadsPhys`'s exception for put-back versions
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `5b1abdd` (R8's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `981470f` (R8's
 change 4); uncommitted before this commit: its files, below, and session
 f1-9c's `items/002-top-node-ordinal-bound/` with its line in
 `items/readme.md`, left for Frans. Probes in a scratch copy of `lean/`, not
@@ -3058,7 +3058,7 @@ running (above); then T9 and R5.
 
 ### 2026-10-17 16:27 to 17:49. WP R5, the logical half: T12 (`T12_restartCut`), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `08f800e`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e209118`;
 uncommitted before this commit: its files, below, and session f1-9c's
 `items/002-top-node-ordinal-bound/` with its line in `items/readme.md`, left
 for Frans. Proofs written in a scratch copy of `lean/` and copied back.
@@ -3118,8 +3118,8 @@ proof of T-SCHEME, then T9, then R5's second half.
 
 ### 2026-10-17 17:50 to 19:12. WP R4's remainder: T9 (`T9_readCut`), done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `a3b4421`, then
-at Frans's `144de97` (items 002 and 003, 19:04); uncommitted before this
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ac95f6e`, then
+at Frans's `b4f7f3e` (items 002 and 003, 19:04); uncommitted before this
 commit: its files, below, and, not of this plan, the change to
 `items/readme.md` (the index lines of items 002 and 003), left for Frans.
 Proofs written in a scratch copy of `lean/` and copied back.
@@ -3200,8 +3200,8 @@ cut); R9, K3. R8's performance comparison now that the machine is quiet.
 
 ### 2026-10-17 19:13 to 19:47. WP R8, the performance comparison of changes 1, 3 and 4: no regression; R8 done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `94a00c1`, then
-`5c53a58` (session f1-51: the items index); `java/` as at `5b1abdd` (R8's
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `f72e366`, then
+`81e9c5b` (session f1-51: the items index); `java/` as at `981470f` (R8's
 change 4), unchanged since. Uncommitted before this commit: Frans's
 decisions of 19:34, recorded in this file by session f1-51 ("Frans's go and
 decisions"), with the two lines of "Current state" that they change; they
@@ -3214,8 +3214,8 @@ Did:
    extension used a core for half a minute); not forced (plan, 2.4). Session
    f1-51 was told and ran nothing heavy. 19:12: 94.7 percent idle.
 2. `SUITE=quick java/stress/performance.sh ab l34-base
-   current-94a00c14-f422a792` (the snapshot of `94a00c1`, whose `java/` is
-   `5b1abdd`'s), twice, each matched (ABBA): 19:12 to 19:27 and 19:27 to
+   current-94a00c14-f422a792` (the snapshot of `f72e366`, whose `java/` is
+   `981470f`'s), twice, each matched (ABBA): 19:12 to 19:27 and 19:27 to
    19:41.
    * First run: two alerts, unconfirmed, warm single-thread gets
      (`read-1k`): `get_latest` -5.8 percent and `get_historical` -6.4
@@ -3255,8 +3255,8 @@ Open, next: R5's half with eviction (T12 for `runEvictCut`).
 
 ### 2026-10-17 19:44 to 22:56. WP R5, the half with eviction: T12 with eviction (`T12_evictCut`), done; R5 done
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `38958f1`, then
-`bf84a1d` (Frans's decisions of 19:46 to 19:59, recorded at 20:01);
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `2ee365b`, then
+`31d713f` (Frans's decisions of 19:46 to 19:59, recorded at 20:01);
 uncommitted before this commit: none. Proofs written in a scratch copy of
 `lean/` and copied back.
 
@@ -3335,19 +3335,19 @@ then R9 and K3.
 
 ### 2026-10-17 23:00. WP R9, in progress: the Lean tier's runs (written before them)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `970c996` (R5).
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `32816a8` (R5).
 R9's machine work does not depend on R6's proof, so it runs now, beside R6:
 the reclaim traces of R2's small and medium sets made again with the current
-Java (`java/` as at `5b1abdd`, R8's last change; the medium set's traces were
+Java (`java/` as at `981470f`, R8's last change; the medium set's traces were
 R2's, from before R8), then the checker (`lean/`'s `tracecheck` at
-`970c996`, copied) on every trace, 4 small traces at once, then the 6 medium
+`32816a8`, copied) on every trace, 4 small traces at once, then the 6 medium
 ones at once. The medium set's two largest traces took about 6.5 hours each
 in R4. Script, log and outputs in the session's scratch directory
 (`r9/leantier.sh`, not edited while running). Expected done about 06:00.
 
 ### 2026-10-17 22:58 to 2026-10-18 00:02. WP R6, part 2: T-SCHEME checked, not proved (the plan's fallback); R6 partial
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d7e953a`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `161fa26`;
 uncommitted before this commit: K3's conformance step in
 `java/stress/level3.sh` and `conformance.sh`, being tested, which K3 commits
 (its entry). Lean work in a scratch copy of `lean/`, copied in.
@@ -3402,7 +3402,7 @@ Open, next: R9's medium set (running), then R9's documents and K3; then J1.
 
 ### 2026-10-18 00:35. WPs J1 to J3, in progress in scratch trees, beside R9's runs (written before long jobs)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `23858eb`. While
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `fe94d1a`. While
 R9's medium set runs (expected done about 05:30), stage 4's first WPs are
 prepared in scratch copies of `java/` (and `lean/`) in the session's scratch
 directory; nothing of them is in bergdb yet, and none is committed before
@@ -3442,22 +3442,22 @@ redone on it (from 04:00). R9's medium set: two traces still in the checker.
 
 ### 2026-10-17 22:58 to 2026-10-18 05:31. WP R9, done; K3 passed (by the agent, on Frans's go of 19:59)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `23858eb`;
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `fe94d1a`;
 uncommitted before this commit: K3's conformance step (`java/stress/level3.sh`,
 `conformance.sh`), and this file's in-progress entry of 00:35 (above).
 
 Did:
 
 1. The Lean tier of Level 3 conformance on the current Java (`java/` as at
-   `5b1abdd`, R8's last change; the medium set's earlier traces were from
+   `981470f`, R8's last change; the medium set's earlier traces were from
    before R8): the reclaim traces of R2's small and medium sets made again
    (`reclaimtraces.sh`, 22:59 to 23:01), then the checker (`lean/`'s
-   `tracecheck` at `970c996`, copied) on every trace. Small set (5
+   `tracecheck` at `32816a8`, copied) on every trace. Small set (5
    configurations, 5 seeds): 25 of 25 TRACECHECK OK (23:00 to 23:03; 14,448
    transactions, 288 cuts, C-CUT no failure). Medium set (3 configurations, 2
    seeds): 6 of 6 TRACECHECK OK (23:02 to 05:30; 22,460 transactions, 175
    cuts, C-CUT no failure).
-2. The Java tier: the gates, full, on `970c996` (23:04 to 23:24): `LEVEL 1
+2. The Java tier: the gates, full, on `32816a8` (23:04 to 23:24): `LEVEL 1
    OK` (108 s), `LEVEL 2 OK` (731 s; unit tests 918, F tests 37, A2A3Check2,
    60 of 60 small traces TRACECHECK OK), `LEVEL 3 OK` (359 s: ReclaimStress
    200 random configurations, RestartInvariance with reclaim, CrashTest with
@@ -3492,8 +3492,8 @@ Open, next: stage 4, J1 (prepared beside R9's runs; its commit follows).
 
 ### 2026-10-17 23:27 to 2026-10-18 05:31. WP J1, done: the registry, the pins, the accounting and the audit
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `4151a80`. Work in
-a scratch copy of `java/` (from `5b1abdd`'s `java/src/`, R8's last change),
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e8591e5`. Work in
+a scratch copy of `java/` (from `981470f`'s `java/src/`, R8's last change),
 beside R9's runs, tested there and copied in; nothing of it was committed
 before R9 and K3.
 
@@ -3559,7 +3559,7 @@ Time: J1 is M (2 to 8 hours): about an hour and a half of work (23:27 to
 
 ### 2026-10-18 00:02 to 05:32. WPs J2 and J3, done: eviction of values and of index nodes
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `c3590ce`. Work in
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `d1cd139`. Work in
 scratch copies of `java/` on top of J1, tested there and copied in; J2 and J3
 in one tree and one commit, since J3 generalizes J2's code (the schedule
 `values` keeps J2's eviction as a test option).
@@ -3631,7 +3631,7 @@ to 01:55 with the campaign, and the documents).
 
 ### 2026-10-18 00:38 to 05:33. WP J4, done: conformance with eviction
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `3e16a4b`. Work in
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e265f5b`. Work in
 scratch copies of `java/` and `lean/`, tested there and copied in.
 
 Did (`docs/level4-alignment.md`, 7.3):
@@ -3678,7 +3678,7 @@ Time: J4 is M: about an hour (00:38 to 01:18, and the documents).
 
 ### 2026-10-18 00:50 to 05:33. WP J5, done: readers under eviction
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `b37cf66`. Work in
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `b22b164`. Work in
 a scratch copy, tested there and copied in.
 
 Did (`docs/level4-alignment.md`, 7.4; M24, M39; Q8):
@@ -3718,7 +3718,7 @@ Time: J5 is M: about 40 minutes of work (00:50 to 01:02, and the runs).
 
 ### 2026-10-18 01:06 to 05:33. WP J6, done: reclaim under eviction
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `1bb7494`.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9110407`.
 
 Did (`docs/level4-alignment.md`, 7.5; M28):
 
@@ -3755,7 +3755,7 @@ Time: J6 is M: about 20 minutes of work (01:06 to 01:15, and the runs).
 
 ### 2026-10-18 01:15 to 05:34. WP J7, done: the capacity controller; eviction on by default
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `7fcfa9b`.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `9aa0384`.
 
 Did (`docs/level4-alignment.md`, 7.6; M40, M45; Q9, Q10):
 
@@ -3831,7 +3831,7 @@ fix 03:40 to 04:00, and the runs).
 
 ### 2026-10-18 01:52 to 05:34. WP J8, done: larger than memory
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ed60789`.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `313345c`.
 
 Did: `java/stress/LargerThanMemory.java` (on disk, a capped JVM, the
 controller's budget much smaller than the data and the index; load, uniform
@@ -3877,7 +3877,7 @@ comparison).
 
 ### 2026-10-18 02:15 to 05:34. WP J9, done: `level4.sh`
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `403edbf`.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `e1b8920`.
 
 Did: `java/stress/level4.sh`, built like the other gates: the unit tests
 (quick: the eviction tests); EvictionInvariance with the five schedules on
@@ -3912,7 +3912,7 @@ mode at 04:35), and 30 minutes of machine time.
 
 ### 2026-10-18 05:40. WP J10, in progress: the performance comparison (written before the runs)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `6f6a7b9` (J1 to
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `0039297` (J1 to
 J9 committed). Uncommitted: `java/stress/performance.sh` gets `JFLAGS`, extra
 JVM flags for every run (recorded with the others), for the eviction budget
 (`-Devictbudget=N`; Perf's databases are built with `noEvict()`). On a quiet
@@ -3925,7 +3925,7 @@ minutes.
 
 ### 2026-10-18 05:40 to 06:56. WP J10, done: the performance comparison
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `4a2fc72` (J1 to
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `52da9e6` (J1 to
 J9, and this WP's in-progress entry).
 
 Did:
@@ -3965,7 +3965,7 @@ machine time), and the report.
 
 ### 2026-10-18 06:58. Checkpoint K4 passed (by the agent, on Frans's go of 2026-10-17 19:59)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `70c1801`.
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `2f0d4a0`.
 
 Did: K4 with the plan's recommended options, recorded under "Frans's go and
 decisions": eviction on by default (since J7) and `level4.sh` a required
@@ -3983,7 +3983,7 @@ F3.
 
 ### 2026-10-18 07:02. WP P4, in progress: the soak with eviction (written before the run)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `95e38e8` (K4).
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `27bc724` (K4).
 Uncommitted, committed with P4's report once F1's gates have run on them:
 `java/stress/soak.sh` gets `JFLAGS` (extra JVM flags, recorded in
 `source.txt`; Soak's database is built with `noEvict()`), and `Soak.java`
@@ -3998,7 +3998,7 @@ meanwhile (plan, 2.7).
 
 ### 2026-10-18 07:02 to 10:06. WP P4, done: the soak with eviction
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `ab60d35` (this
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `85445db` (this
 WP's in-progress entry).
 
 Did:
@@ -4044,7 +4044,7 @@ hours of machine time.
 
 ### 2026-10-18 10:07. WP F1, in progress: the conformance campaign (written during its long checks)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `899c547` (P4),
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `6319677` (P4),
 uncommitted: F2's documents (above). The campaign (scratch `f1-campaign.sh`,
 not edited while running) runs on two scratch copies of the final work tree
 (java/ and lean/, the tree P4 committed): the trace sets and the Java tiers
@@ -4061,12 +4061,12 @@ about 4.5 hours each) and the medium reclaim set's checks (about 6.5 hours).
 
 ### 2026-10-18 09:26 to 16:50. WP F1, done: the conformance campaign, all levels
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `cfa50e5`,
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `651ed45`,
 uncommitted: F2's documents (above).
 
 Did: the campaign of the plan's F1 on the final code and model (scratch
 `f1-campaign.sh`, not edited while running; two scratch copies of the work
-tree, java/ and lean/ as committed in P4's `899c547`, one for the trace sets
+tree, java/ and lean/ as committed in P4's `6319677`, one for the trace sets
 and the Java tiers, one for the gates), 09:26 to 15:56. Evidence:
 [docs/evidence/level34-conformance.txt](07-level3-alignment/level34-conformance.txt).
 
@@ -4104,7 +4104,7 @@ Open, next: F2's outcome sections, then F3 and K5.
 
 ### 2026-10-18 10:30 to 16:52. WP F2, done: the documents
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `96b3728` (F1).
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `af8e9c6` (F1).
 
 Did (written while F1 ran; the outcome after it):
 
@@ -4135,7 +4135,7 @@ Open, next: F3, the final report, and K5.
 
 ### 2026-10-18 16:53. WP F3, done: the final report; K5's outcome accepted (by the agent)
 
-Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `070ae23` (F2).
+Agent: Claude, Opus 5.5, Max effort, Claude Code. bergdb at `48fd848` (F2).
 Not this plan's, left alone: `items/readme.md` and
 `items/004-indirect-swizzling/` (another session, 2026-10-18).
 
@@ -4160,11 +4160,11 @@ Open, next: Frans's K5 decisions.
 
 ### 2026-10-19 10:26. K5 passed: the item closed
 
-Agent: Claude, Opus 5.5, Claude Code. bergdb at `fb8250a`.
+Agent: Claude, Opus 5.5, Claude Code. bergdb at `68bcb44`.
 
 Frans read the final report (06), accepted the outcome and closed the
 item, R6 as it is. Before closing, checked: `java/` and `lean/` are the
-same as the tree F1's campaign ran on (`899c547`; since then only
+same as the tree F1's campaign ran on (`6319677`; since then only
 `lean/README.md` and documents changed), where all four gates printed
 `LEVEL n OK` and every trace set passed. Known issues left, outside this
 item by Frans's decisions: M49 (item 003, a transaction that throws inside

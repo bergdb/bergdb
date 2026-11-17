@@ -154,7 +154,7 @@ Its parts:
 
 The skip list is empty since 2026-11-06. It held 015-80 (one writer at a
 time: in most runs the workload's `getFirstPos()` met the storage
-thread's append, OVERLAP) until its fix (33a81b9, `BufferedStream`'s
+thread's append, OVERLAP) until its fix (e41df14, `BufferedStream`'s
 `ioLock`), and 019-10, which the harness found (section 5), until its
 fix. `StrictStream` tolerates every kind, so that a run goes on past a
 breach, and the harness reports each breach after the run.
@@ -203,68 +203,68 @@ on the code before and after each fix: in two more clones
 and its parent, with the harness copied in. Each point: the IO layer at
 every N, the STREAM layer at every 13th N (`sweep.sh`, `chain.sh` in
 `/Users/f/fl/bench/006-12/h62-out/`, which keeps the outputs). The commits
-form one line on `main`, from 49a814e (before 015-66's fix, the first of
-the class) to 7295fc5 (019-09).
+form one line on `main`, from e08b1c2 (before 015-66's fix, the first of
+the class) to a543e23 (019-09).
 
 A finding's signature: the check, the layer and fault, and the call. Each
 row's signatures are found at the fix's parent and at every earlier
 point, and at no later one.
 
-* **015-53**, fixed by fddaf1f (parent 2266d84). "restart", STREAM
+* **015-53**, fixed by 0f02bd1 (parent 433dad6). "restart", STREAM
   STOP at a READ or GET_FIRST_POS of the workload's thread: "transaction
   N was refused (it threw), and is there".
-* **015-35**, fixed by dc46c1e (parent e24276a). "background", IO and
+* **015-35**, fixed by 7bf7074 (parent d973ac7). "background", IO and
   STREAM IO_EXCEPTION, UNCHECKED, ERROR at a write or an APPEND of the
   storage thread, without eviction: "get N returned after the storage
   had failed".
-* **015-78**, fixed by 1b66a34 (parent dc46c1e). "close", IO UNCHECKED
+* **015-78**, fixed by df3d516 (parent 7bf7074). "close", IO UNCHECKED
   and ERROR at the force of the close: "the close met the fault, and
   close() returned normally".
-* **015-32**, fixed by 37ce61f (parent 1b66a34). "lock", IO ERROR in the
+* **015-32**, fixed by 85d8fa4 (parent df3d516). "lock", IO ERROR in the
   FileStream's open (the open, its force, the directory's force,
   openRead): "a new FileStream on the directory threw
   DirectoryInUseException".
-* **019-09**, fixed by 7295fc5 (parent 949c3b2). "close" and "restart",
+* **019-09**, fixed by a543e23 (parent 2eb574a). "close" and "restart",
   IO IO_EXCEPTION, UNCHECKED, ERROR at the last flush's write, before the
   close: "the storage had failed, no call reported it, and close()
   returned normally", and "transaction 39 is lost; it returned, and no
   call reported a failure".
 
-On 7295fc5 and on `main` (4d7a1bb) nothing but 015-80's OVERLAP.
+On a543e23 and on `main` (63f0ad6) nothing but 015-80's OVERLAP.
 
 Notes:
 
-* 015-78's row: 1b66a34 fixed 015-78 and 015-34 together, the storage
+* 015-78's row: df3d516 fixed 015-78 and 015-34 together, the storage
   thread's close of the stream. Before it, the storage thread discarded
   its close's failure: an IOException there (015-78), and an unchecked
   exception or Error too, which the harness finds at the force of the
   close. `FAULTS` names all three 015-78.
 * 015-81 (an unchecked close error ends the storage thread before it
   publishes a failed append, so a waiting `sync()` waits for ever): its
-  fix, in dc46c1e with 015-35's, removes no signature of its own. Its
+  fix, in 7bf7074 with 015-35's, removes no signature of its own. Its
   case needs a `sync()` that waits in another thread during the close;
-  the workload has one thread. On 49a814e the storage thread's uncaught
+  the workload has one thread. On e08b1c2 the storage thread's uncaught
   exception is printed (its name in the output) at the close's force,
   which the "close" check finds as 015-78's.
-* 7a80d0d (the review's corrections of 015-35 and 015-81) changes no
+* 41e906e (the review's corrections of 015-35 and 015-81) changes no
   signature.
-* 49a814e → 2266d84 drops two STREAM ERROR signatures ("background" and
-  "close" at an APPEND); between them are 578c263 (015-66) and the fixes
+* e08b1c2 → 433dad6 drops two STREAM ERROR signatures ("background" and
+  "close" at an APPEND); between them are 55d29a9 (015-66) and the fixes
   of other classes. At every 13th N, one run each, they may be sampling;
   not counted for 015-66, which section 6 explains.
 
 The unit sample (`testSample`) alone, at the same points (SAMPLE):
 
 ```text
-49a814e: 015-32 015-35 015-53 015-78 019-09  SAMPLE FAILED
-2266d84: 015-32 015-35 015-53 015-78 019-09  SAMPLE FAILED
-fddaf1f: 015-32 015-35        015-78 019-09  SAMPLE FAILED   (015-53 fixed)
-e24276a: 015-32 015-35        015-78 019-09  SAMPLE FAILED
-dc46c1e: 015-32               015-78 019-09  SAMPLE FAILED   (015-35 fixed)
-1b66a34: 015-32                      019-09  SAMPLE FAILED   (015-78 fixed)
-37ce61f:                             019-09  SAMPLE FAILED   (015-32 fixed)
-949c3b2:                             019-09  SAMPLE FAILED
-7295fc5:                                     SAMPLE PASSED   (019-09 fixed)
+e08b1c2: 015-32 015-35 015-53 015-78 019-09  SAMPLE FAILED
+433dad6: 015-32 015-35 015-53 015-78 019-09  SAMPLE FAILED
+0f02bd1: 015-32 015-35        015-78 019-09  SAMPLE FAILED   (015-53 fixed)
+d973ac7: 015-32 015-35        015-78 019-09  SAMPLE FAILED
+7bf7074: 015-32               015-78 019-09  SAMPLE FAILED   (015-35 fixed)
+df3d516: 015-32                      019-09  SAMPLE FAILED   (015-78 fixed)
+85d8fa4:                             019-09  SAMPLE FAILED   (015-32 fixed)
+2eb574a:                             019-09  SAMPLE FAILED
+a543e23:                                     SAMPLE PASSED   (019-09 fixed)
 ```
 
 So `before-commit.sh` alone would have failed on each of the five until
@@ -273,7 +273,7 @@ its fix, each failure named by its entry.
 
 ## 5. What it found on main
 
-On `main` (4d7a1bb), besides 015-80's OVERLAP, one new fault: **019-10**,
+On `main` (63f0ad6), besides 015-80's OVERLAP, one new fault: **019-10**,
 found by the check "met" (a call that threw the fault, or an exception
 caused by it, must leave the database failed: the next transaction or
 read throws `DbFailedException`). An unchecked exception or an `Error`
@@ -349,7 +349,7 @@ only. BEFORE COMMIT OK.
 2026-11-06. The night test of the STREAM layer runs every 5th call from
 an offset of the day: 152 s, not 806 s with every call. BEFORE COMMIT OK.
 
-2026-11-06, 03:20. 015-80 fixed on `main` (33a81b9): out of `SKIP` and
+2026-11-06, 03:20. 015-80 fixed on `main` (e41df14): out of `SKIP` and
 `TIMING`, its `FAULTS` line kept to name a regression; the skip list is
 now empty. On it, through gate.sh: `testSample` passes (5.5 s), the night
 tests pass (1,187 IO runs, 3,508 STREAM runs, 166 s), no OVERLAP. With

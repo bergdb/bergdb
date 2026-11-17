@@ -1,4 +1,4 @@
-== f7974d3
+== 6890ce3
 FAULT: The transaction at time 2 failed after it began (the cause); nothing is undone. The database takes no more transactions or reads and must be restarted: the restart rebuilds it from the stream.
   cause: bergdb.pub.util.DbException: The record of the transaction would take 120112 bytes, more than the limit, 100000 (bergdb 005-17).
 next put: DbFailedException

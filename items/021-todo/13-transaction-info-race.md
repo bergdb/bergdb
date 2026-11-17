@@ -39,10 +39,10 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 020-24-01's U1-1 and U1-2, and
-taken by its agent f13 (clone `clone-f13`, on main's 82edabf).
+taken by its agent f13 (clone `clone-f13`, on main's 38a9492).
 
 2026-11-09. Done by f13: commit f98ac76 in `clone-f13`, on main's
-82edabf, to land.
+38a9492, to land.
 
 * The interleaving. The writer, under `writeLock`, puts the values in
   memory with a vpos (`putKvs`), makes the transaction's time a lookup

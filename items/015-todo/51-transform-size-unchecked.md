@@ -63,6 +63,6 @@ of a refusal to the to-consider list of the long-term item." Option (a): a value
 transformation's result above `StoredTrans.valueLimit()` is the caller's fault, as an
 exception from the transformation is; one whose record does not fit fails the
 database (P7), and the transaction is not in the stream. Decided; nothing in `java/`
-changed after 8427ff0. Out of 018-01's list of the Core's faults (section 3.1);
+changed after b185a73. Out of 018-01's list of the Core's faults (section 3.1);
 harness 6.4 counts such a result as the caller's fault (018-01, section 6.4). A
 refusal is 017-07, section 3, to consider.

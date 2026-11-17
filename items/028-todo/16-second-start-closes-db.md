@@ -28,7 +28,7 @@ Findings
 --------
 
 * The fault was as described: `DatabaseImp.createAndStart(Db)`
-  (`java/src/bergdb/pubimp/DatabaseImp.java`, line 119 of 8ae38f65, in
+  (`java/src/bergdb/pubimp/DatabaseImp.java`, line 119 of 5c6fd33b, in
   its catch) called `db.close()` for any exception, also for the
   `IllegalDbStateException` of a second call's refused `db.start()`. A new
   test shows both forms: a second call after the first returned stopped the

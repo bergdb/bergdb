@@ -14,7 +14,7 @@ not permitted")`; the storage thread ends with it. The close's failure is
 kept (`closeFailure`) before that.
 
 Why: found by agent i10 of 006-13 while it implemented 019-10's error
-model; older than that change (also on 33a8713, before it). Shown by
+model; older than that change (also on de1b026, before it). Shown by
 harness 6.2 (018-03), IO layer, `IO_EXCEPTION` at call 79. Since 019-10's
 change the storage thread's top catch fails the database with what
 escapes, so an unexpected exception there is not harmless noise.

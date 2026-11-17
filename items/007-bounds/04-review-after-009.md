@@ -4,7 +4,7 @@
 Created 2026-10-26 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, at
 his request: "Go through bergdb item 007-bounds and check how this is still
 relevant or not after the 009 work and other recent work. Update the plan if
-needed. Don't start any implementation." On bergdb `a515af3`, with 005-38's
+needed. Don't start any implementation." On bergdb `d9d350d`, with 005-38's
 report and 005-49, not yet committed then. Nothing was implemented. The
 plan, [007-03](03-plan.md), is updated from this review.
 

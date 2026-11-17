@@ -100,7 +100,7 @@ goes by.
 
 The machine: MacBookPro18,3, Apple M1 Pro, 10 cores, 32 GB, macOS 27.0.1,
 APFS on the internal SSD, on AC power; OpenJDK 27 (Homebrew build 27). Source:
-bergdb `309243b` (production code as at `a66e4d9`), with `Soak.java` and
+bergdb `8955e8a` (production code as at `0cbb4b3`), with `Soak.java` and
 `soak.sh` uncommitted; jar SHA-256 `939d3f755a9c916e...` for the main run.
 
 
@@ -297,7 +297,7 @@ latest gets a second, against 1.1 s for the same check at the end, warm.
 `soak.sh comp1` (01:31:15 to 01:54:37; `HEAP=4g`, 20,000 keys and 200 long
 keys, 400 hot keys, retention 60 s, 100 transactions a second, warm-up at
 least 60 s, 1,200 steady seconds, three restarts, at least ten cuts, 11
-check times; bergdb `065c21f`, the same jar as the main run): `SOAK OK`.
+check times; bergdb `55241f9`, the same jar as the main run): `SOAK OK`.
 
 | | |
 |---|---|

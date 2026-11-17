@@ -7,7 +7,7 @@ After release 2026.2 (known issues of it); every one is in 2026.1 too.
 
 What: review S2 (items/016-release-2026-2/06-reviews/S2.md) read the
 promises of the indexes and of the objects (016-06, sections 3.10 and
-3.11) against their code, at `fa08db4`, and found 27 faults, each with a
+3.11) against their code, at `4d56c2d`, and found 27 faults, each with a
 probe (06-reviews/S2/), five also with a test that fails
 (S2-tests.diff). They include wrong answers in normal use (scans with
 `inclusive(false)`, `prefix()`, later composite levels, an index given a
@@ -113,13 +113,13 @@ open for the other faults, which are outside 2026.3's goal.
 
 2026-11-09. Done in night 006-15 by release 2026.4's objects (020-08) and
 indexes (020-10): each of the 27 faults is fixed, gone with the code, or
-not a fault, each with its test on `main` at `fd6dd09`; the list, with
+not a fault, each with its test on `main` at `b768ef0`; the list, with
 the commits and tests, is 020-11, sections 2 and 3:
 
 * Fixed: S2-F2, F3 (015-46), F4, F6, F7, F8, F9, and F11 to F27 (F24 on
   2026-11-05, above): 24 faults. F7, F9, F18 and F19 by a refusal at the
   put (020-09's Data Object classes), F8 by the refusal of a cycle.
-* Gone: S2-F1 and F10 (ICU removed, 41ea870).
+* Gone: S2-F1 and F10 (ICU removed, 6cbc619).
 * Not a fault: S2-F5, a double of 2^63 read into a long as its maximum,
   now the rule of a get (020-09, section 5.4, decided under Frans's
   delegation).

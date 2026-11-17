@@ -2,7 +2,7 @@
 =====================================================
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), for Frans Lundberg. The code
-read at `167597a`. The prototypes are in scratch clones and their diffs here;
+read at `9032948`. The prototypes are in scratch clones and their diffs here;
 java/ was not changed for the report. Measured on F53 (warm OS cache) and s1
 (cold), with 007-05's two databases of 10M keys.
 
@@ -85,7 +85,7 @@ pointer holds a position (`NodeCollection.idOf`; `idByPos` remembers the last
 ## 1.2 The reconciliation of 2016 and 2017, and Rule R
 
 Frans's startup.md, edit of 2016-04-16: "Pointer reconciliation is
-required." The 2017 code (the baseline, `195cf88`) has it as step 2: a
+required." The 2017 code (the baseline, `0257e0b`) has it as step 2: a
 `NextMap` from each `prevPos` in the section to the version after it, and
 `updateStreamPointers` moves every pointer of the section's newest versions
 to the end of that chain. No reads. 011-03, the 2026 analysis of the 2017
@@ -312,7 +312,7 @@ pointee was evicted during the startup.
 
 # 4. The prototypes
 
-Both on `167597a`, in scratch clones:
+Both on `9032948`, in scratch clones:
 
 * **Part 1**, rule 4 by position: [prototype.diff](prototype.diff).
   `DbStarter.linkD` builds `byPos`, the live handle of each canonical object
@@ -399,7 +399,7 @@ make closes without writing D):
   rerun, D 387,117 nodes.
 
 The versions: release 2026.1 (`releases/2026.1/bergdb-2026.1.jar`, before
-handles), the current code (`167597a`), part 1, and parts 1 and 2. Warm: F53,
+handles), the current code (`9032948`), part 1, and parts 1 and 2. Warm: F53,
 the OS cache warm (a start first), JDK 27, ZGC, a 16 GB heap, a cache budget
 of 4 GB, three starts of each version in turn, the median. Cold: s1, the OS
 cache dropped before each start, a 2.5 GB heap, a budget of 600 MB, two
@@ -557,7 +557,7 @@ argument a theorem.
    `NodeCollection`.
 6. Gates: before-commit, level2.sh, level4.sh (full), StreamDigest as
    2026.1's (no record changes), and this item's two scenarios again. Since
-   005-50 (`bf19075`, the node size in the meta block), a head build refuses
+   005-50 (`c1f1f15`, the node size in the meta block), a head build refuses
    the databases made before it, so the scenarios' databases are made again
    first (StartupBench's make, 007-05; release 2026.1 starts the new ones).
 

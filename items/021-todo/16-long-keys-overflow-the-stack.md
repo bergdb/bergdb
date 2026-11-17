@@ -37,10 +37,10 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 020-24-05's U5-1 and U5-2, and
-taken by its agent k16 (clone `clone-k16`, on main's a593b17).
+taken by its agent k16 (clone `clone-k16`, on main's 7e89eaa).
 
 2026-11-09. k16: fixed, commits 4f4db2f (the recursions) and 1e01f45
-(Q2) in `clone-k16`, on main's a593b17, to land.
+(Q2) in `clone-k16`, on main's 7e89eaa, to land.
 
 * Cause. A key is a tree of key nodes with a level per segment of 7 bytes
   (`Keys.toSegments`, `Klong.MAX_SIZE`), so a key of N bytes has about

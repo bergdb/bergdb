@@ -45,7 +45,7 @@ Done when:
    blocks written where a record reaches them and their fields as Java
    sets them.
 5. **`DbClock`**: transaction times, lookup times.
-6. **`setStartupDistance`**, as since 005-53 (`fd8f513`): the state
+6. **`setStartupDistance`**, as since 005-53 (`decc677`): the state
    checked first, the clamp, nothing written for the value in force, else
    the dummy transaction, and the setting and the meta block's value put
    back if the dummy is refused or fails.
@@ -110,7 +110,7 @@ tests of `TransSeq` and `StoredTrans` ported where they apply.
   which nodes enter `TransNodes`, the order of the got-dirty list, when an
   id is given, how vpos advance. When a byte differs, find the Java line
   that decides it before changing C.
-* The take is 005-49's paced take since `f89846d` (007-07, 2026-10-28):
+* The take is 005-49's paced take since `b8ac8a1` (007-07, 2026-10-28):
   a record's share of D in proportion to its own bytes, whole
   transactions with a hashed dither, and the deadline at the span of the
   section's transactions (`TransSeq.take`, `span`, `dither`; `TransInfo`'s
@@ -128,7 +128,7 @@ tests of `TransSeq` and `StoredTrans` ported where they apply.
 that need neither 012-07's index nodes nor 012-08's Dag start early:
 
 * **Part 1** (a subagent, in the scratch clone
-  `/Users/f/fl/bench/012/09-write-path/`, from `718e4d6`; started 17:14):
+  `/Users/f/fl/bench/012/09-write-path/`, from `dd5c10f`; started 17:14):
   1. the clocks: `DbClock` (transaction times, `currentTime`, lookup
      times, the range check of 005-18), the system clock as
      `SystemClock`'s code is (005-69), the test clock (`CoreTestClock`);
@@ -241,7 +241,7 @@ that need neither 012-07's index nodes nor 012-08's Dag start early:
   Java's texts as vectors: `Vectors.java` writes `strmap.txt` (8 maps:
   reclaim's rows, 40 keys, 12 keys of one bucket, keys beyond ASCII,
   parsed texts), all equal; the other six vector files unchanged when
-  written again (Java at `fd8f513`). Without `treeifyBin`'s resize the
+  written again (Java at `decc677`). Without `treeifyBin`'s resize the
   vector test fails.
 * 17:52: `bergdb-takecheck` counts why each transaction was taken: on the
   full set 232,365 because they fit in the share, 42,794 by the dither,
@@ -322,7 +322,7 @@ that need neither 012-07's index nodes nor 012-08's Dag start early:
   differs; with another offset the check refuses a right record and
   passes a wrong one. Probe (outside the repository,
   `/private/tmp/claude-502/-Users-f-fl-repos-f1/84ff067e-dce6-4c28-a354-b5d6389d3c5b/scratchpad/offsetprobe/src/OffsetProbe.java`,
-  on `build/java/classes` at `fd8f513`'s `java/`): a record of 24 bytes
+  on `build/java/classes` at `decc677`'s `java/`): a record of 24 bytes
   at offset 8, "refused: Bad transactionSize in byte buffer, was 0,
   expected 24"; one whose own size field says 99 with 24 at the
   buffer's start, "appended". For the conductor to register in 005 (a
@@ -501,9 +501,9 @@ Taken in this task, as the plan left them to it (012-07's design and
 
 ## 6.7 Part 2, 012-09 proper: progress
 
-**Java's reference:** `main` at `b16e14e`, `java/` as of `fd8f513`.
+**Java's reference:** `main` at `8a7ceb9`, `java/` as of `decc677`.
 **Clone:** `/Users/f/fl/bench/012/09-proper/`, a clone of `bergdb` at
-`b16e14e` with 012-08's work merged (`b7ca7ef`, from 012-08's pause commit
+`8a7ceb9` with 012-08's work merged (`b7ca7ef`, from 012-08's pause commit
 `417102c`); committed locally, the conductor copies the files in.
 
 * 20:55: started; read 012-01 (sections 1, 3, 4, 6), this plan with part

@@ -43,7 +43,7 @@ public final class DbString extends DbValue {
         // section 3): a char takes at most 3 bytes in UTF-8, and the encoding of a String of
         // more than about 2^31 bytes threw OutOfMemoryError. Then made into an array of its
         // size, as getBytes() may need more than Java's largest array on the way (the review
-        // of e92a95a).
+        // of 02995d9).
         this.value = value;
         if (5L + 3L * value.length() > ObjectFormat.MAX_VALUE) {
             long size = StringUtil.utf8Size(value);

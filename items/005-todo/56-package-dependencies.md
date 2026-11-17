@@ -31,7 +31,7 @@ older texts say what was intended, in the f1 repository's F1-007:
   `src-dev` uses any package; `stream`, `dag` and `pub.util` use nothing
   more.
 
-A first look, 2026-10-26, at `cc8effb`: the import lines and `jdeps
+A first look, 2026-10-26, at `4e0a849`: the import lines and `jdeps
 -verbose:package` on the compiled classes give the same graph for
 `java/src`. Four of its nine packages use packages that their
 `package.html` does not list:
@@ -46,7 +46,7 @@ A first look, 2026-10-26, at `cc8effb`: the import lines and `jdeps
 Beyond 010-01's five: `pub` also uses `pubimp`, `common` and `nanotest`,
 and `pubimp` uses `pub.util`. The other five packages agree with their
 lists: `nanotest`, `common`, `pub.util`, `storage`, and `core` since
-`cc8effb` added `dag` to its list. `pubimpicu` (`src-icu`) has no list;
+`4e0a849` added `dag` to its list. `pubimpicu` (`src-icu`) has no list;
 nothing names it but by reflection, as its `package.html` asks.
 
 By the 2015 rule, which lets every package use `nanotest` and `common`,
@@ -129,7 +129,7 @@ else (`Eviction.values`, beside `Map.values`) counts as production, and so
 does a helper in a production file that only another file's tests call.
 Exit status 1 when a use is not in the list.
 
-On HEAD `a6cd234`, `java/src`: the same 7 uses not in a list as 006-08
+On HEAD `e747323`, `java/src`: the same 7 uses not in a list as 006-08
 found, all in `pub` and `pubimp`; 6 are production code.
 
 | Package | Uses, not in its list | Code | Where | Which looks wrong |
@@ -236,7 +236,7 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), as decided; in a clone on
-`3950a96`.
+`1ad7cdc`.
 
 * **The lists, in one form.** Every `package.html` in `java/src` says
   `Depends on: a, b, c.`, the packages in alphabetical order, or `Depends
@@ -332,7 +332,7 @@ Follow-ups, 2026-10-28
 Frans, 2026-10-28, on the five points left over above: "as proposed", and
 "Do not add core-build.sh to before-commit.sh. Ensure it runs nightly.
 From night.sh somehow." Done by Claude (Opus 5.5, Claude Code), in a clone
-on `b5e6d79`:
+on `a45467c`:
 
 1. `src-dev`, `src-icu` and `stress` are not checked by `deps.py`: no
    action; it scans `java/src`, as before.

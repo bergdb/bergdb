@@ -1,4 +1,4 @@
-Building current-a04a4189-1a923133 from a04a4189be13b319f9528290899310c1ca671642 (dirty: false) in /Users/f/fl/repos/bergdb-009/java/build/perf/builds/current-a04a4189-1a923133
+Building current-a04a4189-1a923133 from f4e93d84b1f3ff2b6bb4bae8103bfb8c358b37d6 (dirty: false) in /Users/f/fl/repos/bergdb-009/java/build/perf/builds/current-a04a4189-1a923133
 Built /Users/f/fl/repos/bergdb-009/java/build/perf/builds/current-a04a4189-1a923133
        4 scenarios from performance-quick.suite
 CPU idle before the runs: 78.4%

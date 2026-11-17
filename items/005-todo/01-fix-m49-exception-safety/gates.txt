@@ -1,4 +1,4 @@
-bergdb 005-01: the four gates, full, one after the other, in a scratch clone of cbeb9bd with the fix (2026-10-22, F53).
+bergdb 005-01: the four gates, full, one after the other, in a scratch clone of 691794d with the fix (2026-10-22, F53).
 
 level1 exit=0 130 s: LEVEL 1 OK
 level2 exit=0 731 s: LEVEL 2 OK

@@ -6,7 +6,7 @@ An application written as a new user of release 2026.4 would write it
 (020-24's brief, round 5): the release jar alone on the class path, and
 only what a user reads (README.md, the Pub API's Javadoc in
 `java/src/bergdb/pub`, `overview-pub.html`, `releases/next.md`). The jar
-was built from `b0eba12`. Nothing in BergDB was changed.
+was built from `5c296c5`. Nothing in BergDB was changed.
 
 
 ## 1. The application
@@ -289,7 +289,7 @@ of stream in 41 files and 3.4 s, against 105.3 MB in 50 files and 7.2 s
 ## 5. Fixes
 
 By fixer x28 for coord-1109, 2026-11-09, in `/Users/f/fl/bench/2026-11-09/clone-x28`, branch
-`x28-rebased` (worktree `clone-x28-rb`), on main at `b3a6b05`, all in `2508989`. These are
+`x28-rebased` (worktree `clone-x28-rb`), on main at `ef5b52f`, all in `445b54c`. These are
 Javadoc changes only, with no change of behaviour, and an entry in next.md's Documentation.
 
 * U13-1: `Connection`'s "Keys" now says that a key is stored as a path of key nodes, a level

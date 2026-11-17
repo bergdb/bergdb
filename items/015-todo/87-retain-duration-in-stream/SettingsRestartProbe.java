@@ -7,7 +7,7 @@ import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 /**
  * bergdb 015-87: DbTesterRestart.testReclaimSettingsKeptOverRestarts, run against any jar, to
- * show that it fails before the change (6d829b5) and passes after. With "getters" it checks
+ * show that it fails before the change (0fec98f) and passes after. With "getters" it checks
  * the values after each restart, as the test does; without, it compares only the streams.
  * Output: probe-output.txt. From java/ of a clone, J the jar to test:
  *

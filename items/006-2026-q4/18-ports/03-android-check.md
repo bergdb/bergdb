@@ -37,13 +37,13 @@ This is the first of 006-18's first steps (section 6, step 1):
 **The commits.** For 2026.4, by Frans's word at 16:03 ("Is this an easy
 fix we can get into 2026.4, let's fix it."), they are on the branch
 `006-18-03-android` of the clone `/Users/f/fl/bench/2026-11-09/android/bergdb`,
-on `main` at `9ed1e6c`. Neither fix changes the JVM's behaviour (section
+on `main` at `595418e`. Neither fix changes the JVM's behaviour (section
 5). On the tree of the three: BEFORE COMMIT OK (145 s), and LEVEL 1 OK,
 both under the lock.
 
 * `53f4f5c`, fix 1: `BufferedStream`'s wait statistics without
   `java.lang.management`; +42, -2 lines. It was first `14e4b8e` on
-  `aa55efc`.
+  `564ef4f`.
 * `a25a7e8`, fix 2: `DataObjects`' V5 and V6 without modules; +36, -4
   lines. It was first `99a3c83`.
 * `3926a12`: `releases/next.md`, a Platforms section with G88 as a known
@@ -74,17 +74,17 @@ a different String (section 4.2).
 (2017-07-29). `Util.runsAndroid()` and its guards in tests are from then.
 Each of today's blockers came in the last two weeks:
 
-* `VarHandle`, from 009 (`4e66a59`, 2026-10-25);
-* `java.lang.management` in the write path, from 005-46 (`eaec93e`,
+* `VarHandle`, from 009 (`628dc39`, 2026-10-25);
+* `java.lang.management` in the write path, from 005-46 (`1165c90`,
   2026-10-27);
 * `DataObjects`' `ClassValue`, modules and platform loader, from 020-08
-  (`ca67411`, 2026-11-08).
+  (`2ca4610`, 2026-11-08).
 
 
 ## 2. The static check
 
 The checks ran on the release jar (`build/bergdb-release.jar`) of a clone
-at `main` (`aa55efc`). The jar has 976 classes, `src`'s tests among them.
+at `main` (`564ef4f`). The jar has 976 classes, `src`'s tests among them.
 
 **jdeps** (`jdeps -summary`) names three modules: `java.base`,
 `java.management` and `jdk.management`. Of the last two:
@@ -308,10 +308,10 @@ the missing methods into a refusal.
 ## 5. The fixes
 
 Both were made on the branch `006-18-03-android` of
-`/Users/f/fl/bench/2026-11-09/android/bergdb`, on `aa55efc`. Each was
+`/Users/f/fl/bench/2026-11-09/android/bergdb`, on `564ef4f`. Each was
 gated with `lockf /Users/f/fl/bench/006-15/gate.lock sh
 java/before-commit.sh`. Since 16:25 they are `53f4f5c` and `a25a7e8` on
-`9ed1e6c`, with `3926a12` for the notes (section 9).
+`595418e`, with `3926a12` for the notes (section 9).
 
 ### 5.1 Fix 1: the uptime of the wait statistics, `53f4f5c`
 
@@ -512,24 +512,24 @@ needed, and `~/.android` with them.
 ## 9. Log
 
 * 2026-11-09, 12:44 to 13:37: sections 1 to 8. The fixes were on the
-  branch as `14e4b8e` and `99a3c83`, based on `aa55efc`.
+  branch as `14e4b8e` and `99a3c83`, based on `564ef4f`.
 * 2026-11-09, 16:03, Frans: "Is this an easy fix we can get into 2026.4,
   let's fix it."
-* 2026-11-09, 16:25: the two fixes were rebased onto `main` at `9ed1e6c`.
+* 2026-11-09, 16:25: the two fixes were rebased onto `main` at `595418e`.
   The rebase had no conflict: neither file had changed in a way that
   touched them. A third commit adds a Platforms section to
   `releases/next.md`, with G88 as a known difference, and a line in
   README.md, Build and test. `docs/levels.md` lists no platforms. The
   commits on the branch `006-18-03-android` of the clone are `53f4f5c`
-  (fix 1), `a25a7e8` (fix 2) and `3926a12` (the notes); on `main`, `07df96d`,
-  `0cb5a82` and `435dde7`. On their tree:
+  (fix 1), `a25a7e8` (fix 2) and `3926a12` (the notes); on `main`, `aef43ff`,
+  `9c96452` and `7278354`. On their tree:
   BEFORE COMMIT OK (145 s), and LEVEL 1 OK under the lock.
 * 2026-11-09, 16:25 to 16:53, the final tree on the API 34 emulator
   (`runs-device-final-34.txt`, `runs-unit-final-34.txt`,
   `runs-kill-final-34.txt`):
   * The 14 demo runs passed, and so did ReleaseDemo, with d8 and with R8.
   * `Unit`: 17 of 1,581 failed. These are the 15 of section 4.2 and two
-    tests newer than `aa55efc`:
+    tests newer than `564ef4f`:
     * `DbTesterFailure.testGetTransOfARecordBeingAppended`, which calls
       `ManagementFactory` itself.
     * `StreamContractTester.testOneFileStream`, through 021-14's read past
@@ -547,10 +547,10 @@ needed, and `~/.android` with them.
   * The emulator was shut down at 16:53.
 * 2026-11-09, 16:58, Frans: "I think it makes sense to run an Android
   test before a release. At least on the unit tests." Two more commits on
-  the branch, on `main` at `e65678a`, which the first three were rebased
+  the branch, on `main` at `e3a4734`, which the first three were rebased
   onto without conflict: `c5835a2`, `787cbf1`, `cfc2a29`, then `61e63cc`
   (the tests) and `a3c56cf` (`android.sh`); on `main`, the first three are
-  `07df96d`, `0cb5a82` and `435dde7`, the last two `2dad395` and `7406674`.
+  `aef43ff`, `9c96452` and `7278354`, the last two `58f2092` and `c2c2d83`.
   BEFORE COMMIT OK (230 s) on the five.
   * **Platform-neutral tests.** The new `bergdb.nanotest.Platform` has
     `android()`, `skipOnAndroid(reason)` and `waitsFor(thread, state,
@@ -577,5 +577,5 @@ needed, and `~/.android` with them.
     JVM runs the same 1,589 tests, none skipped.
 * 2026-11-09, 18:03: the skip of `StreamContractTester.testOneFileStream`
   is gone. `OneFileStream` now checks a read's end before its seek
-  (021-14, `a2fa9df`). On the emulator: "ANDROID OK (1613 tests, 4
+  (021-14, `4957737`). On the emulator: "ANDROID OK (1613 tests, 4
   skipped) in 209 s; 10 demo runs".

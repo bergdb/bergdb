@@ -1,7 +1,7 @@
 # 026-05. Each reclaim step scans at its own time
 
 Created 2026-11-13 by Frans Lundberg. Status: done; on main since
-2026-11-13 (`fe5000ec`); Q1 to Q4 yes (Frans, 09:41). Follow-up: G4's
+2026-11-13 (`6816d1ff`); Q1 to Q4 yes (Frans, 09:41). Follow-up: G4's
 lag as a gate (Q4).
 
 For release 2026.6: P8 of 023-05 ("each reclaim step scans at its own
@@ -217,14 +217,14 @@ changed.
 
 ## 5. Gates
 
-On d9822ebe (the change, before main moved) and on 57cbb21e, the
-branch merged with `main` 20535a1d (026-06 landed at 08:47; the
+On 245c953e (the change, before main moved) and on e3f1811b, the
+branch merged with `main` cb9aca71 (026-06 landed at 08:47; the
 coordinator's message): the gated tree is the one that lands. Logs in
 /Users/f/fl/bench/2026-11-13/p8/runs/ (`before-commit.txt`,
-`level1.txt`, `level3.txt`, `level4.txt` for d9822ebe; `final-*.txt` and
-`final.log` for 57cbb21e).
+`level1.txt`, `level3.txt`, `level4.txt` for 245c953e; `final-*.txt` and
+`final.log` for e3f1811b).
 
-| Gate | d9822ebe | 57cbb21e |
+| Gate | 245c953e | e3f1811b |
 |---|---|---|
 | `before-commit.sh` | OK (68 s; unit 1,704, f 89, demos 14) | OK (71 s) |
 | `level3.sh`, full  | OK (8 min 15 s)                        | OK (7 min 23 s) |
@@ -232,7 +232,7 @@ coordinator's message): the gated tree is the one that lands. Logs in
 | `level4.sh quick`  | OK (conformance evict 18 of 18)        | OK (18 of 18) |
 | `count-gates.sh`   | -                                      | COUNT GATES OK (137 s) |
 
-`before-commit.sh` again on d2ff5fb8 (`main` 4f191556 merged; its Java
+`before-commit.sh` again on 3779b937 (`main` 356e238e merged; its Java
 changes are two comments): BEFORE COMMIT OK (62 s; unit 1,708, f 89,
 demos 14), runs/final2-before-commit.txt.
 
@@ -243,10 +243,10 @@ demos 14), runs/final2-before-commit.txt.
   check after a cut), PowerLossTest, InterruptStress OK; the conformance
   with reclaim: 35 of 35 traces TRACECHECK OK, C-CUT 0 of 794 cuts
   failing.
-* **level4 quick** (d9822ebe): the conformance with eviction, 18 of 18
+* **level4 quick** (245c953e): the conformance with eviction, 18 of 18
   traces, C-P and C-H 0 of 4,886 transactions failing; LargerThanMemory
   OK.
-* **count-gates** (57cbb21e), against `main`'s counts (026-07's run at
+* **count-gates** (e3f1811b), against `main`'s counts (026-07's run at
   08:31, whose change is the write buffer; its G4 kept is 026-04's on
   `main`, 2,618,568): G1's largest record 112,048 bytes (108,912); G3
   4.401 (4.410); G4 kept 0.959 of the twin's (1.072), resident objects
@@ -255,7 +255,7 @@ demos 14), runs/final2-before-commit.txt.
 * **level2** not run: its conformance has no reclaim (no `retain`), so
   reclaim's traces do not enter it.
 * **026-05's own traces** (`runs/traces.sh`, as P8's `p8traces.sh`; the
-  build of d9822ebe copied to p8/after/), each checked by the Lean
+  build of 245c953e copied to p8/after/), each checked by the Lean
   checker (C-A with TouchOK, C-S, C-CUT; C-P and C-H for run E), three
   seeds each: heavy deletes (`del=60`, 800 transactions, 200 keys), bulk
   puts in key order (`bulk=20`), long keys (`long=1`), run E with random
@@ -270,7 +270,7 @@ demos 14), runs/final2-before-commit.txt.
 026-04's workload (d) (024-30's G4: n keys put in key order, 100 a
 transaction, all deleted in key order, 100 a transaction, then a drive of
 40 R; R = 1,000 transactions; as 026-04, section 4.1): FracRuns with `g4its=1`, on the
-branch `026-05-lag` (57cbb21e with 026-04-lag's three commits
+branch `026-05-lag` (e3f1811b with 026-04-lag's three commits
 cherry-picked, 412b97fc, 28df3457, 33e9ea54; not to land) in the worktree
 /Users/f/fl/bench/2026-11-13/p8/lag; one slot, 09:18 to 09:25. Outputs:
 p8/runs/d1m.txt, d4m.txt, d10m.txt (`runs/lag.sh`, `runs/lag-an.py`,
@@ -336,7 +336,7 @@ p8/runs/d1m.txt, d4m.txt, d10m.txt (`runs/lag.sh`, `runs/lag-an.py`,
 Each is decided here by the recommendation, so that the work goes on;
 Frans may overturn it.
 
-* **Q1. The pending cut (2.5)**, its own commit (94421dd0): a durable
+* **Q1. The pending cut (2.5)**, its own commit (4b4999aa): a durable
   pending cut is made before a newer decision replaces it. Recommended:
   yes (check V8's Q2, 023-08); it keeps `testPretruncate` as it is,
   where V8 changed the test.
@@ -362,7 +362,7 @@ a mass delete, Q4 G4's lag a gate at 2 R once this is on main.
 ## 9. State
 
 2026-11-13, 09:54. **Landed** by coord-1113: merged with main
-(`fe5000ec`, main's 026-02 and the prover's run 4 in it) and gated again
+(`6816d1ff`, main's 026-02 and the prover's run 4 in it) and gated again
 on that tree: before-commit, level1, level3 OK
 (/Users/f/fl/bench/2026-11-13/p8/land-*.txt); main fast-forwarded to it,
 pushed. Next: G4's lag as a gate (Q4), and 026-09 on top of this.
@@ -370,13 +370,13 @@ pushed. Next: G4's lag as a gate (Q4), and 026-09 on top of this.
 
 2026-11-13, 09:40. Done; ready to land. Clone
 /Users/f/fl/bench/2026-11-13/p8/clone, branch `026-05-step-time`:
-94421dd0 (2.5, the pending cut), d9822ebe (2.1 to 2.4, the tests, the
-row's text in 024-02, now 027-03), 73cad7c7 (this item), 57cbb21e
-(merge of `main` 20535a1d), 6bbe9594 (this item's results), d2ff5fb8
-(merge of `main` 4f191556: 024-02 moved to 027-03, so the row's text
+4b4999aa (2.5, the pending cut), 245c953e (2.1 to 2.4, the tests, the
+row's text in 024-02, now 027-03), 7198aa2b (this item), e3f1811b
+(merge of `main` cb9aca71), 3ccddac9 (this item's results), 3779b937
+(merge of `main` 356e238e: 024-02 moved to 027-03, so the row's text
 went with it; `main`'s Java changes there are two comments), then this
-State. Every gate of section 5 OK on 57cbb21e; before-commit again on
-d2ff5fb8 (section 5). The lag of section 6 measured: 1,265 to 1,286 at
+State. Every gate of section 5 OK on e3f1811b; before-commit again on
+3779b937 (section 5). The lag of section 6 measured: 1,265 to 1,286 at
 every n and f. No expected value of an existing test changed. The lag
 branch `026-05-lag` (worktree /Users/f/fl/bench/2026-11-13/p8/lag) is
 not to land. Open: Frans's Q1 to Q4 (section 8), each decided here by

@@ -17,7 +17,7 @@ model list (codex-cli 0.167.0) is `gpt-6.1-sol`.
 ## 1. How it runs
 
 * Clone: `/Users/f/fl/bench/2026-11-09/clone-codex`, `main` at
-  `a9e5488`, made for the review alone.
+  `f8046f3`, made for the review alone.
 * Command, from coord-1109 (directory `/Users/f/fl/bench/2026-11-09/codex`,
   the brief of section 2 in `prompt.md`):
 
@@ -76,9 +76,9 @@ release is `git diff release-2026.3..HEAD -- java/src`):
    UsePrimaryBuilder, Database, Kv) and pub/util: does the code do what
    the Javadoc promises?
 5. Two fixes in the Core (the layer below, a key-value store of byte
-   arrays): commits 68830b8, 25978bc and dee3e48 (a stale-pointer race in
+   arrays): commits 9ac976d, a182faa and 4eaa97a (a stale-pointer race in
    java/src/bergdb/core/Cache3.java, NodeCollection.java and
-   java/src/bergdb/dag/Handle.java), and c126d7d (a start that kept a
+   java/src/bergdb/dag/Handle.java), and db496dc (a start that kept a
    large value in memory: core/Db.java, core/Eviction.java). Are the
    fixes correct and complete?
 
@@ -135,7 +135,7 @@ in `/Users/f/fl/bench/2026-11-09/clone-codex/probes/`, run with
 `sh probes/run.sh` after `java/build.sh`):
 
 <!-- CODEX REPORT START -->
-Reviewed `release-2026.3..a9e5488`. **Three confirmed findings.** Only `probes/` was added; production code and existing tests are unchanged.
+Reviewed `release-2026.3..f8046f3`. **Three confirmed findings.** Only `probes/` was added; production code and existing tests are unchanged.
 
 After `java/build.sh`, reproduce all three with `sh probes/run.sh`.
 
@@ -218,12 +218,12 @@ I reached all five requested areas, but did not exhaustively audit every other `
 ### Fixes
 
 By x14, coord-1109's fixer (2026-11-09, 09:31 to 10:04), in the clone
-`/Users/f/fl/bench/2026-11-09/clone-x14` from `a9e5488`. Each finding:
+`/Users/f/fl/bench/2026-11-09/clone-x14` from `f8046f3`. Each finding:
 Codex's probe run again on the clone's build, a failing test, the cause
 and its siblings, a minimal fix, the gate (BEFORE COMMIT OK under the
 shared gate lock), one commit.
 
-* **X1, confirmed, high. Commit `a03111e`.**
+* **X1, confirmed, high. Commit `ae698d6`.**
   * Cause: `RwEnvironmentImp.indexEntries` reads the directory's index set
     (and adds its hash to the read set) and the previous value for the
     key as written; the Core replaces `${transactionTime}` at the commit
@@ -261,7 +261,7 @@ shared gate lock), one commit.
   * Tests: `PubTesterIndexJobs.testKeyReplaceInDirectoryRefused` and
     `testKeyReplaceInNameKeepsTheKeyAsWritten`, each with a restart;
     both failed before.
-* **X2, confirmed, high. Commit `987e734`.**
+* **X2, confirmed, high. Commit `4883b11`.**
   * Cause: Java wraps only an `Exception` of a static initializer in an
     `ExceptionInInitializerError` (JLS 12.4.2); an `Error` such as an
     `AssertionError` passes as it is. `DataObjects.make()` caught
@@ -281,7 +281,7 @@ shared gate lock), one commit.
   * Test: `DataObjectsTester.testInitializerError` (at the top and
     through a field; a get, a get in `rw()`, `toJavaObject`, three times
     each; the database goes on); failed before.
-* **X3, confirmed, medium. Commit `ef6a3cf`.**
+* **X3, confirmed, medium. Commit `88e8a5e`.**
   * Cause: V6 checked only C's package; `Field.get` and `Field.set`
     check the class that declares the field.
   * Fix: V6 for each class that declares a stored field, in the check, so
@@ -305,7 +305,7 @@ shared gate lock), one commit.
 ## 4. State
 
 X1 to X3 are fixed in the clone, each gated and committed alone:
-`d75d67c`, `481e1a5` and `b9a2910` on `a9e5488`, for coord-1109 to bring
+`d75d67c`, `481e1a5` and `b9a2910` on `f8046f3`, for coord-1109 to bring
 into `main`. For Frans: X1's choice, (a) or (b) (section 3, Fixes).
 
 

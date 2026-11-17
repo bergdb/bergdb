@@ -54,8 +54,8 @@ r-1k-fin (restart, 3 runs, alternating)
   r-1k-fin run 3: STARTUP 0.727 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 11761001 gets in 6.66 s: 45058 commits/s, 1766406 gets/s; commit p99 107.0 us, get p99 3.2 us|
  [C]
   r-1k-fin run 3: STARTUP 0.737 s: 32540 transactions rerun, read from 1864.6 MB, stream 1914.6 MB|MIXED 300000 commits and 10952913 gets in 6.27 s: 47861 commits/s, 1747376 gets/s; commit p99 98.3 us, get p99 2.5 us|W
-COMPARE reference 8c5a1062-20261019T173922-quick-g1-8g-ref [8c5a106215a79482dcea5ddb72fee722b3c49c31, build pre-0508, jar cd807f0d]
-        candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand [8c5a106215a79482dcea5ddb72fee722b3c49c31+diff 385d37e2, build fix-0508, jar 040083f7]
+COMPARE reference 8c5a1062-20261019T173922-quick-g1-8g-ref [0739170f01b01884e0ba5553bd7bc6b625f21b0f, build pre-0508, jar cd807f0d]
+        candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand [0739170f01b01884e0ba5553bd7bc6b625f21b0f+diff 385d37e2, build fix-0508, jar 040083f7]
 thresholds: /private/tmp/claude-502/-Users-f-fl-repos-f1/48066d7d-8887-4e89-8a9b-807abd793e57/scratchpad/bergdb/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
 
 SCENARIO r-1k-fin [restart] reference 3 runs, candidate 8c5a1062-d385d37-20261019T173922-quick-g1-8g-cand 3 runs

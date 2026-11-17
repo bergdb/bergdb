@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 This is an application written the way a new user of 2026.4 would write it (u16, for
 coord-1109, round 6 of 020-24's common brief). The class path held only the frozen release
-candidate, `night/candidate/bergdb-release.jar` (03ce6ec). The only documents read were the
+candidate, `night/candidate/bergdb-release.jar` (d00096e). The only documents read were the
 ones a user reads, from a clone of the candidate's repository: README.md,
 `java/src/overview-pub.html`, the Javadoc of `bergdb.pub` and `bergdb.pub.util`, and
 `releases/next.md`. The implementation was read only afterwards, to explain U16-1, U16-2 and

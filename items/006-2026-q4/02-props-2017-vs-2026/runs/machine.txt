@@ -18,7 +18,7 @@ default flags:
   bool UseG1GC                                  = true                                      {product} {ergonomic}
   bool UseParallelGC                            = false                                     {product} {default}
 builds:
-  2015-12-28: bc11dbfe737a103eebc3beed0ebfde498e4ec610, classes add6f9189a19a81caf80c921ce562bc8fbb6a6976cbebebc82b268327f450e99
-  2017-07-29: dbf131ae0b2dab1e615068035b5270c73aaed343, classes 454338f3da461af8334d2ff2c4f05516d325f1860e6c52ec5b86c83764523d6d
-  2017-08-01: 195cf8839ca6febb148eb2770109a99e0758a3db, classes 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
-  2026-10-19: 11ea2f6af543b542e51ec419b1e626989dabdfd3, classes efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0
+  2015-12-28: 358ad6b47307622a1dcffcad2e816cb1c130dc06, classes add6f9189a19a81caf80c921ce562bc8fbb6a6976cbebebc82b268327f450e99
+  2017-07-29: b64383aed147ace8e4a6c9f9c059bea689841ef6, classes 454338f3da461af8334d2ff2c4f05516d325f1860e6c52ec5b86c83764523d6d
+  2017-08-01: 0257e0ba41bf7474f587266e9785aae7cd00dcf6, classes 911ab737362dd5671490fd7d390bcecd66a5e4842dd0042cae407f006aece0ad
+  2026-10-19: 0e7292d763b1ccd9cb5edb94aac215fcec25b090, classes efcd23e96e3e9625d71c996190451c912bda5c97d3f2e54a26bc9bbb1ec03af0

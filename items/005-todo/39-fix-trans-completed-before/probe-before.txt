@@ -1,4 +1,4 @@
-bergdb 005-39: probe.sh on 425d7a7, before the fix (2026-10-25, F53).
+bergdb 005-39: probe.sh on 67bcc02, before the fix (2026-10-25, F53).
 
 A: 1300 transactions, stream length 1300896
   spos 100: got 128, the last completed before spos -1, completed between them 0

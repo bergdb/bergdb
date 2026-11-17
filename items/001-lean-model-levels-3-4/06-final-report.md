@@ -85,18 +85,18 @@ What changed
 
 **Java** (bergdb `java/src/`; one commit per WP):
 
-* A3 (`280525a`): top node ordinals of 32,768 and more were written wrong
+* A3 (`7f8f2e1`): top node ordinals of 32,768 and more were written wrong
   (an `int` shifted before widening); fixed, with two parser checks and
   tests (M30).
 * R8's six changes, each with the byte comparison against the Level 3
-  baseline (`l34-base`): change 6 (`ab8dc7a`, M17: a reclaim step's marks
+  baseline (`l34-base`): change 6 (`dcca282`, M17: a reclaim step's marks
   of replaced nodes leave D, so a step's D is the model's); change 2
-  (`dcf6a4d`, M22: no cut back at runtime); change 1 (`d540066`, M20, M21,
+  (`7eb7dc7`, M22: no cut back at runtime); change 1 (`81aee78`, M20, M21,
   M26, M44: the writer's references from the pinned set and the slots, and
-  the startup's links by node id); change 3 (`b8bb541`, M27: the Level 4
-  loader); change 5 (`059dbf1`, M28: reclaim's maintenance reads); change 4
-  (`5b1abdd`, M23, M24: a slot read once, the access clock).
-* Level 4, J1 to J10 (`c3590ce` to `70c1801`): `Residents` (the resident
+  the startup's links by node id); change 3 (`5b06b09`, M27: the Level 4
+  loader); change 5 (`0a732c3`, M28: reclaim's maintenance reads); change 4
+  (`981470f`, M23, M24: a slot read once, the access clock).
+* Level 4, J1 to J10 (`d1cd139` to `2f0d4a0`): `Residents` (the resident
   objects and their bytes; the pins), `Audit` (test-only: INV-CAN, the pins,
   INV-SLOT), `Eviction` (unswizzle, release, the forced schedules for tests,
   the capacity controller), the readers' protocol (Q8) and the writer's

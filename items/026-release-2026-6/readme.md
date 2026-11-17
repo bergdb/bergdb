@@ -128,7 +128,7 @@ Files
   options and a recommendation; done 2026-11-13 as decided (Frans,
   09:11, QK1 to QK4): `bergdb.pub.Limits`, the limits as constants,
   `keyBytes` and `checkKey`, no `levelBytes`; on main since 2026-11-13
-  (59c6e4b6).
+  (6e27cf17).
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
@@ -150,11 +150,11 @@ Files
   at the start, doubled when an append does not fit, up to 10 MB, back
   after 2 idle seconds; a small file database holds 0.67 MB of heap, not
   11.1 MB (024-05, ST8; 024-01, PA7). On main since 2026-11-13
-  (bfb6d018); the probes in 07-write-buffer/.
+  (ad5b0861); the probes in 07-write-buffer/.
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
   the other sizes for tests only (Frans, 2026-11-13, 09:21): the four
   `DbBuilder.maxNodeSize` setters package-private, `TestNodeSize` for
-  the tests outside `bergdb.core`; on main since 2026-11-13 (000fca5b).
+  the tests outside `bergdb.core`; on main since 2026-11-13 (04ee9336).
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38):
   `GetMany.valuesBefore`; the steps' loads 44 to 60 % fewer, the steps
@@ -164,11 +164,11 @@ Files
   after back to empty (found by 026-07): a decided cut forgets the node
   ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
   `long[]`), and G4 and G5 gate the plain heaps. On main since
-  2026-11-13 (e4ac051f); the probes in 10-node-id-cache-after-empty/.
+  2026-11-13 (557b2255); the probes in 10-node-id-cache-after-empty/.
 * 11-lag-gate.md. 026-11, G4's back-to-empty lag a gate of
   `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
   1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on main
-  since 2026-11-13 (343fff05).
+  since 2026-11-13 (00eca320).
 * 12-stable-format-plan.md. 026-12, the stable stream format: a draft
   plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
   Q1 to Q23 and section 21, 026-01's QC2 to QC5, 024-22's QM1, 024-01's

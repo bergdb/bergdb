@@ -4,7 +4,7 @@
 Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-15 by Frans Lundberg.
 
-What: `java/night.sh` on `main` 584c73af (2026-11-15, 11:17 to 14:04)
+What: `java/night.sh` on `main` af943131 (2026-11-15, 11:17 to 14:04)
 failed one step, the night tests: `CorruptStreamTester.testFull` (harness
 6.1 of 2026.3, 018-01) found one damaged copy whose start or reads did not
 end within 60 s:
@@ -44,7 +44,7 @@ Result
 Found: a read, not the start, did not end. The start of the damaged copy
 succeeded; a get at a time before the damaged top node's looped in the
 walk of `TopDs.findSuperRootAtTime` (`java/src/bergdb/dag/TopDs.java`,
-the `while (true)` loop, lines 173 to 180 at 13beb100), which follows the
+the `while (true)` loop, lines 173 to 180 at 603c3feb), which follows the
 top nodes' skip pointers. A thread dump of the hung check (a probe that
 made the copy and dumped the stack after 20 s) showed the get in that
 loop, at `TopDs.java:179`, the follow of a skip pointer.
@@ -81,7 +81,7 @@ failed (DbFailedException)").
 
 Gates: `java/before-commit.sh`: BEFORE COMMIT OK (107 s);
 `java/stress/level2.sh quick`: LEVEL 2 OK (the change does not touch
-the start; run for its gets). Code commit: 95ba757b.
+the start; run for its gets). Code commit: 16a38b86.
 
 
 Log

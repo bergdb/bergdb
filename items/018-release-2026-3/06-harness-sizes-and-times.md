@@ -180,9 +180,9 @@ Empty: no fault that the harness finds is open.
 
 ## 5. The evidence
 
-The known faults were fixed on 2026-11-05: 015-50 in bb3be64, 015-55 in
-f679430, 015-76 in f5e73ea (the Javadoc only). On this branch, built on
-`main` (8e2453e) with the harness, each fix's main hunk was reverted alone,
+The known faults were fixed on 2026-11-05: 015-50 in efa5a69, 015-55 in
+ff1752b, 015-76 in 9ba19b4 (the Javadoc only). On this branch, built on
+`main` (0bd5d0d) with the harness, each fix's main hunk was reverted alone,
 in classes compiled before the jar on the class path, and
 `LimitsTester 1 500 40` run (seeds 1 to 40, 500 steps each):
 

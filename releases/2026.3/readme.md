@@ -54,7 +54,7 @@ Files
 Identity
 --------
 
-* Tag `release-2026.3`, commit `929fa33e6b0888ca8c016a0faa0412998e299df1` (2026-11-06).
+* Tag `release-2026.3`, commit `9a0bf5ed9e7a552f844a21119333a5b03671ebc6` (2026-11-06).
 * `BuildInfo`: release 2026.3, release int 263, build 2026.3.261106.1614;
   `java -cp bergdb-2026.3.jar bergdb.core.BuildInfo` prints them.
 * Built by `java/build.sh` (`javac --release 17`) with OpenJDK 27 (Homebrew, build 27) on F53,
@@ -760,7 +760,7 @@ Verification
 
 On the release commit, in clean clones (`baseline.zip`, `gates/`):
 
-`java/night.sh large` on `929fa33`, 2026-11-06 16:16 to 2026-11-06 21:29
+`java/night.sh large` on `9a0bf5e`, 2026-11-06 16:16 to 2026-11-06 21:29
 (`NIGHT OK`, 313 minutes, JDK 27). The release commit passed
 `before-commit.sh` itself before its commit (`BEFORE COMMIT OK (119 s)`).
 

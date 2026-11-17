@@ -1,4 +1,4 @@
-bergdb 005-67. The test before the fix (fccafd3), no instrumentation; F53, 2026-10-28 10:20 to 10:34,
+bergdb 005-67. The test before the fix (31cd639), no instrumentation; F53, 2026-10-28 10:20 to 10:34,
 with a load of about 3 to 12 from other sessions. JDK 27.
 
 1. probe/Loop67.java, 8 JVMs at a time (each started with & from zsh, so at nice 15), 5,000 runs each:

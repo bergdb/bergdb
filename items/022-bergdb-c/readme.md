@@ -13,7 +13,7 @@ and start fresh. Call it nnn-bergdb-c. I will decide later how long to
 update it in that item, at least 2026.3 and 2026.4, maybe longer."
 
 The code is in `c/` ([c/readme.md](c/readme.md)), copied from
-`items/012-bergdb-c/c/` at `be51a78`, 012's last commit to it (the port
+`items/012-bergdb-c/c/` at `e1ee402`, 012's last commit to it (the port
 of release 2026.2); 022-01, section 1.
 
 
@@ -24,7 +24,7 @@ Files
   the steps, the clones, the gate and how the work lands.
 * [02-update-to-2026-4.md](02-update-to-2026-4.md), 022-02: the study of
   the port from 2026.3 to 2026.4, from the candidate (`main` at
-  `94a1520`, with 021-11; its section 2.1): what changed in Java's Core,
+  `12dd8f7`, with 021-11; its section 2.1): what changed in Java's Core,
   what C needs, how C is tested before the tag, what may still move, the
   steps, decisions D1 to D7; its log records the port, step by step, and
   the re-pins.
@@ -38,7 +38,7 @@ Files
   Java, the departures, the size and the time; the candidate and the long
   runs to be added.
 * [05-java-tests-in-c.md](05-java-tests-in-c.md), 022-05: Java's Core
-  tests (891 methods at `main` `2566df1`) read against C's, the valuable
+  tests (891 methods at `main` `e875a34`) read against C's, the valuable
   ones written in C and run, two faults of C found and fixed; the parts in
   [05-java-tests-in-c/](05-java-tests-in-c/).
 * [06-user-apps/](06-user-apps/), 022-06: three black-box users of the C
@@ -58,7 +58,7 @@ Log
 
 2026-11-09. Created the item, by coord-1109.
 
-2026-11-09. `c/` copied from 012 at `be51a78`; 022-01, the plan, from
+2026-11-09. `c/` copied from 012 at `e1ee402`; 022-01, the plan, from
 coord-1109's of 10:18. By the session `022-bergdb-c`.
 
 2026-11-09. 022-02's step 5: `c/readme.md`'s "Which Java" for 2026.4
@@ -71,7 +71,7 @@ allowed no Claude use after 22:00). The port to 2026.3 (022-01) is coded,
 gated and documented (022-03); its long runs are tonight's step
 `/Users/f/fl/bench/022/night/step5.sh` in coord-1109's night plan (on
 int.git `ecc5319`, the final 2026.3 code). The port to 2026.4 (022-02) is
-at the release candidate, Java's `main` `03ce6ec5` (022-04, sections 1 to
+at the release candidate, Java's `main` `d00096e4` (022-04, sections 1 to
 8); its long runs are `/Users/f/fl/bench/022/night/runs-2026-4.sh` (on
 int.git `8772b934`), the night plan's last step, run only if time is left.
 Also today: 022-05 (Java's Core tests in C) and 022-06 (three black-box
@@ -85,7 +85,7 @@ For the morning of 10 November:
    line). A failed part: its log, a fix in a clone, the gate.
 2. Read `/Users/f/fl/bench/022/out/night4/run.log` if it ran: fill 022-04,
    section 9; if not, plan the runs for the next quiet block.
-3. At Frans's tag of 2026.4: the diff from `03ce6ec5` to `release-2026.4`
+3. At Frans's tag of 2026.4: the diff from `d00096e4` to `release-2026.4`
    in the Core layer, `JAVA_REF=2026.4` with the release's source zip, and
    D5 (a short confirming run if only `BuildInfo` changed).
 4. Frans's open points, with the defaults that went ahead: D7 (C forces a
@@ -124,10 +124,10 @@ READY markers of both steps are removed, so that no quiet block runs them
 before the release.
 
 For the new session, after the release: point 3 of the 19:30 entry (the
-diff from `03ce6ec5` to `release-2026.4`, now with the bug's fix; read its
+diff from `d00096e4` to `release-2026.4`, now with the bug's fix; read its
 item first), point 4 as it stands, then the long runs: `runs-2026-4.sh`
 with `REV` set to the landed tree (it pins int.git `8772b934`, and that
-tree's `JAVA_REF` is `git:03ce6ec5`), in a quiet block the day's
+tree's `JAVA_REF` is `git:d00096e4`), in a quiet block the day's
 coordinator gives. Proposed to Frans on 10 November and not yet answered:
 leave out `step5.sh` (2026.3) and close 022-01 on the 2026.4 runs. The
 workers' brief (`/Users/f/fl/bench/022/briefs/tests.md`) now says how to

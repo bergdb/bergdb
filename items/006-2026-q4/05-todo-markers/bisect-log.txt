@@ -1,21 +1,21 @@
 bergdb 006-05, T2: git bisect log, with bisect-step.sh, in a clone of F1-007's bergdb-git.bundle
 (2026-10-25, F53, JDK 27). The terms: broken (the test fails with 3.0e6), fixed (it passes).
 
-# fixed: [49aa48d066ceb0cd39f3760d94af092ac7265395] refactoring of PointerFollower, instance exists in OpData
-# broken: [d7a46d474109a85e335f7f70845a646846824fa6] Status: U0 F0 CORE:0.76.
-git bisect start '49aa48d' 'd7a46d4' '--term-old=broken' '--term-new=fixed'
-# fixed: [7ced95e9dc5c8b1ab8b640a97a1f51825c7de302] Cache: some work, good state u0f0mem289core0.82.
-git bisect fixed 7ced95e9dc5c8b1ab8b640a97a1f51825c7de302
-# fixed: [9384bce22ac8cb5dee8f3e9428d8665d35f2b93c] Fix for dotnet (IKVM unit test failed while working with other JVMs).
-git bisect fixed 9384bce22ac8cb5dee8f3e9428d8665d35f2b93c
-# fixed: [55b259d680f609e6ed495269970a2a4f5fc36e0b] Test for DbHelper.handleStillDirtyNodes() added.
-git bisect fixed 55b259d680f609e6ed495269970a2a4f5fc36e0b
-# fixed: [7c458d1de0d3e2f812f6d59b9cc440726c980199] ZERO BUGS :-) u0f0n0 (zero unit/f/night tests fail). unit:0/766, f:0/24, night: 0/2.
-git bisect fixed 7c458d1de0d3e2f812f6d59b9cc440726c980199
-# broken: [33e5f0243a265bf62ccd657242ea6ee8b4dc5420] New approach for readding index nodes that are still dirty. Db.handleStillDirtyNodes(). Test status: u0f5,issue150420 works.
-git bisect broken 33e5f0243a265bf62ccd657242ea6ee8b4dc5420
-# broken: [a8fcf486b88270816b41d5565d90aa6ef9bd816e] Minor.
-git bisect broken a8fcf486b88270816b41d5565d90aa6ef9bd816e
-# broken: [f5c3686f27301ffdbcbca15c9b81768f81ad40cb] Merge branch 'july' into main
-git bisect broken f5c3686f27301ffdbcbca15c9b81768f81ad40cb
-# first fixed commit: [7c458d1de0d3e2f812f6d59b9cc440726c980199] ZERO BUGS :-) u0f0n0 (zero unit/f/night tests fail). unit:0/766, f:0/24, night: 0/2.
+# fixed: [50786b2350c01df00452011f851d2e97b49f4aab] refactoring of PointerFollower, instance exists in OpData
+# broken: [2d5c2a35524b2bdac142617b9dfb110b43ad0536] Status: U0 F0 CORE:0.76.
+git bisect start '50786b2' '2d5c2a3' '--term-old=broken' '--term-new=fixed'
+# fixed: [c25e9f40dc64cc9370fd68fb1c28a824767dbd37] Cache: some work, good state u0f0mem289core0.82.
+git bisect fixed c25e9f40dc64cc9370fd68fb1c28a824767dbd37
+# fixed: [9d59c7f7401f5a555c2ea9b93340fb3bc2757b71] Fix for dotnet (IKVM unit test failed while working with other JVMs).
+git bisect fixed 9d59c7f7401f5a555c2ea9b93340fb3bc2757b71
+# fixed: [9ada014c105d64bf0929e7d4aea7c58d214336e9] Test for DbHelper.handleStillDirtyNodes() added.
+git bisect fixed 9ada014c105d64bf0929e7d4aea7c58d214336e9
+# fixed: [c08e4cea4cb66030dc09082a9d313954a5b9952e] ZERO BUGS :-) u0f0n0 (zero unit/f/night tests fail). unit:0/766, f:0/24, night: 0/2.
+git bisect fixed c08e4cea4cb66030dc09082a9d313954a5b9952e
+# broken: [e61b261e196f8ded76ce7bd5c1025d15262bc6f7] New approach for readding index nodes that are still dirty. Db.handleStillDirtyNodes(). Test status: u0f5,issue150420 works.
+git bisect broken e61b261e196f8ded76ce7bd5c1025d15262bc6f7
+# broken: [b3e93c9edd246df2f5ec501c00640c79d5b53960] Minor.
+git bisect broken b3e93c9edd246df2f5ec501c00640c79d5b53960
+# broken: [05cf3e85cbe57fda7a4562ea47f5ce23b0d824a6] Merge branch 'july' into main
+git bisect broken 05cf3e85cbe57fda7a4562ea47f5ce23b0d824a6
+# first fixed commit: [c08e4cea4cb66030dc09082a9d313954a5b9952e] ZERO BUGS :-) u0f0n0 (zero unit/f/night tests fail). unit:0/766, f:0/24, night: 0/2.

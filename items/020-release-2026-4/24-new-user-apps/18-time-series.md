@@ -12,8 +12,8 @@ live data? Does such a time series meet the new known issue of releases/next.md,
 stops cutting a log keyed by time" (021-25), and does the note let a user recognise it?
 
 The class path held only the frozen release candidate's `night/candidate/bergdb-release.jar`
-(`03ce6ec`, buildinfo `2026.4-dev`, release int 264). The documentation was read in a clone
-of the candidate's repository at `03ce6ec`: README.md, `java/src/overview-pub.html`, the
+(`d00096e`, buildinfo `2026.4-dev`, release int 264). The documentation was read in a clone
+of the candidate's repository at `d00096e`: README.md, `java/src/overview-pub.html`, the
 Javadoc comments of `bergdb.pub` and `bergdb.pub.util`, and releases/next.md. Item 021-25
 was read only after the observations of U18-1 were made, and no implementation code was
 read. Stack frames were sampled once, to tell where a run spent its time. Nothing in

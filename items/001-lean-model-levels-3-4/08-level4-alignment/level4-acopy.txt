@@ -1,5 +1,5 @@
 A-COPY on Java's two tiers (bergdb item 001, after WP E3), 2026-10-17.
-bergdb at ddebd06 (E4), with java/stress/A2A3Check2.java and lean/Check/Steps.lean's copyFailures of this commit.
+bergdb at 095ae73 (E4), with java/stress/A2A3Check2.java and lean/Check/Steps.lean's copyFailures of this commit.
 
 == Java tier: java/stress/A2A3Check2 on the 21 configurations of docs/level2-alignment.md, 10.5, 03:33 to 03:36
    (one line per configuration: its summary line, transactions, new pointers, of them to a pointee

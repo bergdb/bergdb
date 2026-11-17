@@ -1,5 +1,5 @@
 #!/bin/sh
-# 007-07 (D4:B): 007-06's step-2 runs on the patched build (step3.diff and D4:B on 067d00b,
+# 007-07 (D4:B): 007-06's step-2 runs on the patched build (step3.diff and D4:B on a5ad51c,
 # variant d4b): queue 5's steady runs (updates, single puts, deletes), then the one-call
 # decreases at queue 4's points (the worst point after 10M updates, from pick.py on this
 # build's steady run, and at 20M), which with D4:B in the code are 007-06's "pace".

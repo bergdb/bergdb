@@ -5,8 +5,8 @@ Created 2026-11-13 by Frans Lundberg. Status: read by Frans (2026-11-13,
 section 5.1, step 3, and the template for the other parts.
 
 Part 9 of 027 (027-04, section 2.3; Level 3): how the front of the stream
-is cut. The rule as `main` has it at 5be794b8 (2026-11-13; `java/` and
-`lean/` as at 0870e7ea), read from the code. It replaces 027-01's
+is cut. The rule as `main` has it at 03f38f24 (2026-11-13; `java/` and
+`lean/` as at 1a53e45c), read from the code. It replaces 027-01's
 `levels.md`, section 6, and `sis-model.md`, section 15.3, both stale
 since 026-05 (there a step scans at tStart and reads each KV again). The
 bytes are 027-03's; the take, D, Rule A and the startup pos are part 6's
@@ -475,10 +475,10 @@ Log
 recommended").
 
 2026-11-13. The draft, the pilot part (Frans, 11:34, "Yes" to the
-reclaim pilot), from the code at 0870e7ea, the Lean files and the items
+reclaim pilot), from the code at 1a53e45c, the Lean files and the items
 of section 10. By an agent of coord-1113.
 
-2026-11-13. Reviewed against the code at 5be794b8 and the Lean files by
+2026-11-13. Reviewed against the code at 03f38f24 and the Lean files by
 a second agent of coord-1113 (027-04, section 5.2): 1.4 (the step's
 accounting made exact; its commit argued, untested), 1.8, 1.10 (M4),
 sections 3, 4, 7 and 9 fixed; 1.6 matches the code. The note for the

@@ -37,7 +37,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 20:03 to 20:09, in `/Users/f/fl/bench/016/015-20/repo` (from
-`main` at `c657764`, after 015-20's and 015-22's commits): the fix.
+`main` at `66a80f3`, after 015-20's and 015-22's commits): the fix.
 
 * **The cause** (as R3-F1 and verify-1 say): `deleteIndexInternal`
   started a new deletion job on every call, also for an index that was

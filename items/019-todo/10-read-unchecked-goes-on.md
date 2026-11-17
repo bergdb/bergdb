@@ -24,7 +24,7 @@ bug of the stream, `StrictStream`'s kind UNCHECKED), and an `Error` (an
 stream's state is unknown. Nothing was found wrong in the data after
 such a run (the harness's restart check passed), but the database ran on
 past a failure it had met. Found by harness 6.2 (018-03), check "met":
-on `main` (4d7a1bb), STREAM UNCHECKED and ERROR at a READ of the
+on `main` (63f0ad6), STREAM UNCHECKED and ERROR at a READ of the
 workload's thread, 43 of 1,548 runs (every 13th N), new and reopened, for
 example:
 
@@ -125,8 +125,8 @@ we can really ensure the database as a whole is still in a good state
 after an OOM in a get, we should allow the database to go on. At least if
 this does not become too complex to implement and understand. KISS is an
 important principle. Important that the database user understands the
-error model. That is part of the interface." Read on main at 1cce631 (its
-Java as at 8df56fc), and one probe in a scratch clone; nothing else
+error model. That is part of the interface." Read on main at ed6bbf9 (its
+Java as at 4296f21), and one probe in a scratch clone; nothing else
 changed.
 
 In short: for an `OutOfMemoryError`, Frans's case, it can be ensured, with
@@ -232,10 +232,10 @@ before the go point (`Db.java:2066`) is outside the `try`: an `Error` in
 what it sets, the next begin sets again, as after a `RerunException`),
 `stmCheckConflicts` or the clock leaves `execute` as it is, the
 transaction is not run, and the database goes on. The write lock is a
-monitor, which the JVM releases. Since b45b2fa, one exception: an `Error`
+monitor, which the JVM releases. Since 4c017a3, one exception: an `Error`
 of the stream's read, in the warm-up or `dirtyNodeBound`, fails the
 database, wrapped. After the go point, `fail()` (`Db.java:2151`) fails
-the database and throws an `Error` as it is, but, since b45b2fa, not one
+the database and throws an `Error` as it is, but, since 4c017a3, not one
 of the stream's read, which it gets wrapped (R5's F1).
 
 **What else an `Error` of a read can leave.**
@@ -496,7 +496,7 @@ checksums as a best effort (Frans, 10:42).
   the cache's state after an `Error`, probe tests, the LOADING spin after a
   `StackOverflowError`.
 
-**Tests**, each failing on 33a8713 with only the test files changed, and
+**Tests**, each failing on de1b026 with only the test files changed, and
 passing after:
 
 * `DbTesterFailure.testUncheckedReadFailsTheDatabase`: an unchecked
@@ -523,7 +523,7 @@ conversion of a value to the application's object, `transactionInfo()`'s
 list) do not fail the database on an `Error`; the application ends its
 process anyway. The storage thread and the cut's thread allocate one
 `IOException` before they record their failure. Found while gating, older
-than this change (on 33a8713 too): `BufferedStream.closeStream` calls
+than this change (on de1b026 too): `BufferedStream.closeStream` calls
 `failure.addSuppressed(failed)` when the stream's close throws the flush's
 own `IOException` (harness 6.2, IO `IO_EXCEPTION` at 79), and the storage
 thread ends with "IllegalArgumentException: Self-suppression not

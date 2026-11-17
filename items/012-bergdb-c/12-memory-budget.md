@@ -4,7 +4,7 @@
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
 Frans Lundberg. **Status: done 2026-10-29 03:16** (started 02:00);
 approved with 012-01 by Frans's go (012-01, 9.1). In the clone
-`/Users/f/fl/bench/012/12-memory/` (main at `a90a1ba`, then `ca9e583`
+`/Users/f/fl/bench/012/12-memory/` (main at `906154b`, then `e068fba`
 merged), beside 012-11. Section 6.5 says how "Done when" holds.
 Phase D (012-01, section 8). Effort: high. After: 012-10.
 
@@ -193,7 +193,7 @@ the sanitizers on a smaller size; `leaks` after long runs.
   1,000,000), the four budgets at once; the files (`compare_db`: from the
   decided cut for reclaim) and the runner's text must be side A's. **C
   BEFORE COMMIT OK (100 s; 24 budget runs)**.
-* 02:15: main merged (012-11 done, `ca9e583`): both sides kept; eviction
+* 02:15: main merged (012-11 done, `e068fba`): both sides kept; eviction
   runs before reclaim's `transactionCompleted`, as Java's. Reclaim's code
   holds no object across its internal transactions (the maintenance
   follower keeps ids only; its reads' values are copied before the next
@@ -317,7 +317,7 @@ of resident bytes (the write buffer of 10 MB, `idOf`'s cache).
   `-mem`, the workload freed), `c/test/cross/cross.sh` (the budget runs),
   `c/test/unit/main.c`, `c/test/func/f_api.c` (the tables), `c/readme.md`,
   `c/tools/readme.md`.
-* Main is merged at `ca9e583` (012-11); eviction runs before reclaim's
+* Main is merged at `e068fba` (012-11); eviction runs before reclaim's
   `transactionCompleted` in `db_execute`, as Java's. 012-13 touches
   `api.c` and `db.c` too: 012-12's lines there are the calls named above.
 * Not written, for whoever keeps those texts: 012-05's section 6 (the budget

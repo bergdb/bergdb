@@ -23,7 +23,7 @@ SW) means a program's output line, from the programs in
 was run; section 14), and the label F (option (f), section 12b) from
 those in `/Users/f/fl/bench/006-15/020-05/`, 2026-11-08; **code** means
 read in the source named (BergDB at
-`a7fe143`, the Binson implementations as cloned on 2026-11-07); **docs**
+`52f8ee5`, the Binson implementations as cloned on 2026-11-07); **docs**
 means a document of section 15, read on 2026-11-07.
 
 
@@ -87,7 +87,7 @@ encode, decode and one-field reads, both ways (B, two JVM runs; W, a
 worst case); field order and strictness in binson-js (JS), binson-python
 (PY), binson-c-light (C) and Swift's strings (SW).
 
-The terms: **today** is BergDB's code at `a7fe143` (021-08's reader);
+The terms: **today** is BergDB's code at `52f8ee5` (021-08's reader);
 **the field table** is DbObject's per-field 16-bit hash and 32-bit
 offset after its header; **in order** is a read that walks the fields
 from the start.
@@ -1230,7 +1230,7 @@ spec), are in 020-02, section 4.
   `QUIET-BLOCK` marker, no gate, level script, night or performance run,
   and no other JVM but VS Code's (`ps`); load average 1.6 to 1.7 (the
   editor and the Claude sessions).
-* **Code**: BergDB's `java/build/bergdb.jar` at `a7fe143` (021-08's
+* **Code**: BergDB's `java/build/bergdb.jar` at `52f8ee5` (021-08's
   reader; no Java change since); binson-java master `45346ad` (release
   3.5) and binson-java-light v1.2.0, compiled with javac 27.
 * **Programs** (`/Users/f/fl/bench/006-14/020-binson/java/`): `Study`
@@ -1269,7 +1269,7 @@ From documentation: the spec, the licences, the release dates.
   decoder, both converters), and `java/Run.java` (the samples, the sizes,
   the checks, the changed bytes); the output `out-run.txt`, one run.
 * **Code**: javac and java 27 (Homebrew) on F53; BergDB's
-  `java/build/bergdb.jar` at `a7fe143` for DbObject's sizes (`toDbObject`,
+  `java/build/bergdb.jar` at `52f8ee5` for DbObject's sizes (`toDbObject`,
   the `Builder`, as for S); binson-java `45346ad` (release 3.5), compiled
   from the local clone `/Users/f/fl/repos/binson-java`, for the
   cross-checks.
@@ -1317,7 +1317,7 @@ and the clones in `impl/`.
   https://www.rfc-editor.org/rfc/rfc7493.
 * [CBOR]: RFC 8949, section 4.2.1, "Core Deterministic Encoding
   Requirements", https://www.rfc-editor.org/rfc/rfc8949.
-* BergDB: `java/src/bergdb/pubimp/` at `a7fe143`; 020-01, 020-02, 020-03,
+* BergDB: `java/src/bergdb/pubimp/` at `52f8ee5`; 020-01, 020-02, 020-03,
   020-04; 021-04, 021-06, 021-07, 021-08; 012-01; 006-08.
 * For option (f), read on 2026-11-08: [MySQL binary JSON]:
   https://github.com/mysql/mysql-server, `sql-common/json_binary.h` and

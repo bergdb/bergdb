@@ -95,5 +95,5 @@ The probe
 
 In [44-fix-sync-commit-byte/](44-fix-sync-commit-byte/):
 `SyncCommitByteProbe.java`; `probe.sh JAR WORK_DIR [runs]` compiles it
-against a build and runs it; its output on `7306a4a`, before and after the
+against a build and runs it; its output on `cdb7861`, before and after the
 fix, in `probe-before.txt` and `probe-after.txt`.

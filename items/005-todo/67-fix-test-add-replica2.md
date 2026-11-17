@@ -30,7 +30,7 @@ History:
 
 * 2015-07-23: Frans's note in the test, "got non-reproducable unit test
   error, on Cissi": "Expected 800, got 1200", the replica's length after
-  `close()`. In the same commit (`7c458d1` of the 2013 to 2017 history, the
+  `close()`. In the same commit (`c08e4ce` of the 2013 to 2017 history, the
   bundle in F1-007) he added the two assertions of 700 after the append.
 * 2026-10-17, 001-02 (R8's change 2): `level3.sh` failed twice on it,
   "Expected 700, got 200", and "the storage tests fail 1 time in 12 also
@@ -47,7 +47,7 @@ History:
 The question is whether the test is wrong (it reads a length before the
 asynchronous write it depends on, or assumes that a write has not happened
 yet) or the code (a race in adding a replica: bytes lost or written twice,
-a wrong confirmed length). 005-48's group commit (`e611709`: a sync starts
+a wrong confirmed length). 005-48's group commit (`d8ed1aa`: a sync starts
 the flush) changed the timing of syncs; the test makes none.
 
 
@@ -156,7 +156,7 @@ not affected.
 
 **The note of 2015, "Expected 800, got 1200", was a fault of
 `BufferedStream`, fixed by 005-14.** The test then had no assertions of
-700 (they came with the note, in `7c458d1`), so the failure was the
+700 (they came with the note, in `c08e4ce`), so the failure was the
 replica's length after `close()`: 400 bytes too many. 2015's
 `BufferedStream` flushed 0 bytes when its thread woke between `close()`'s
 `flushAndClose` and `stop()`, and a flush of 0 bytes appended the whole
@@ -187,9 +187,9 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), as registered; the change
-in `dad6bd2` (test code only, on `90153f2`). The forced runs are of
-`dad6bd2`; the natural loops ran on the same test code before a rebase
-onto `90153f2` and the comment on 2015's note, which changed comments
+in `82966f8` (test code only, on `90bdddf`). The forced runs are of
+`82966f8`; the natural loops ran on the same test code before a rebase
+onto `90bdddf` and the comment on 2015's note, which changed comments
 only.
 
 * `StorageManagerTester.testAddReplica2` waits for the writes it asserts.
@@ -213,7 +213,7 @@ only.
   (`loop.sh`): 0 failures. With the forced interleavings: 0 failures in
   each (the table above); `testAddReplicaWhileAppending` with the sync's
   pause: 50 runs, 0 failures, none hung (`runs/forced-after.txt`).
-* Gates in the clone on `dad6bd2`, with `nice -n 10` (`runs/gates.txt`):
+* Gates in the clone on `82966f8`, with `nice -n 10` (`runs/gates.txt`):
   `java/before-commit.sh` "BEFORE COMMIT OK (89 s)" (deps: 9 packages as
   `package.html` allows; unit 1,058 tests, f 74);
   `java/stress/core-build.sh unit f` "CORE BUILD OK" (unit 674, f 54);

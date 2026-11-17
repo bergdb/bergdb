@@ -24,13 +24,13 @@ today, which tests check it, which bits are unused or reserved, and where
 the code accepts what a specification should refuse. Short and certain
 content is filled in; the rest is marked **To be written**.
 
-**Reference.** Release 2026.4: the tag `release-2026.4` (`bb8da6dc`),
-record format 6. `main` at `4036bc1d` has the same `java/` but for
+**Reference.** Release 2026.4: the tag `release-2026.4` (`76f66f89`),
+record format 6. `main` at `5b6efdd1` has the same `java/` but for
 `BuildInfo.java`, so every line number here is one of the tag's and of
 today's tree. The code was read, not changed or run.
 
 **What it builds on.** 012-02 describes the stream byte for byte as Java
-wrote it at `404d2ee` (2026-10-28), record format 5. No byte layout has
+wrote it at `aa0f532` (2026-10-28), record format 5. No byte layout has
 changed since: format 6 has the same fields and a new meaning of the
 deletes in a record (section 8.2). What changed are the readers' checks
 and the writer's rules; this document names them and cites 012-02 for the
@@ -67,7 +67,7 @@ a specification, which may refuse what the code accepts.
   be decided before the format is frozen.
 * **Versioning** (section 21): what is versioned today, and four options
   for 2026.5's compatibility rule, none decided.
-* **The C clone** is at 2026.4's candidate `03ce6ec5`, which writes
+* **The C clone** is at 2026.4's candidate `d00096e4`, which writes
   format 5 (022's readme; `c/readme.md`, "Which Java"). Checking the
   specification against C needs C at the release first (024-01, CC1).
 
@@ -501,15 +501,15 @@ pairs) is 41 bytes and 7 zeros: 48.
 
 ### 8.2. The format number, 7
 
-Format 7 since 2026-11-11 (`67925924`; 024-21): format 6's record layout,
+Format 7 since 2026-11-11 (`d502af3d`; 024-21): format 6's record layout,
 and a record's deletes are rerun with the merges of underfull key nodes,
 so a start refuses format 6 (2026.4) with a message that names that
 release. No release has written format 7, and its meaning changed twice
-without a new number: the dead-klong rule (024-23, `08659847`) and the
+without a new number: the dead-klong rule (024-23, `0cb7eff7`) and the
 12-byte node header with CRC32C (024-25; section 9). Format 6, below, as
 it was:
 
-Format 6 since 2026-11-10 (`70b4f788`; 023-07, section 5.8; 023-02, F9
+Format 6 since 2026-11-10 (`8bc7f2a2`; 023-07, section 5.8; 023-02, F9
 (a)). The layout is format 5's; what changed is the meaning of a record's
 deletes when a start reruns it, and so the tree the stream holds
 (`StoredTrans.RECORD_FORMAT`'s Javadoc, :37 to :58; section 11.3):
@@ -1012,7 +1012,7 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 
 A descent or scan that comes back to a node it passed is an SFE
 (`OpData.descentFrom`, `dag/OpData.java`:62, Brent's cycle check;
-`4b36218a`).
+`58eba7cb`).
 
 **To be written**: the rules as a reader's algorithm, with the
 invariants they rely on (INV-1: each node at most once in D;
@@ -1032,15 +1032,15 @@ conformance (`java/stress/level2.sh`). CST (seeds 20767, 20769 and 20770:
 
 * G14 and J3. Which checks are refusals and which are assertions depends
   on -ea: `checkLinkById` runs only with -ea; one of its outcomes is an
-  SFE since `4df672f4`, every other an `AssertionError`. A time klong with
+  SFE since `21e8db97`, every other an `AssertionError`. A time klong with
   bits 56 to 61 set (G1) fails an assertion with -ea and starts without
   it. The specification must say which conditions are refusals, so that
   they do not depend on how the JVM runs.
 * G12 (start). startupPos is not shown to be a record that the take
   wrote (015-73); a damaged one that passes `checkStartupPos` gives
   another section.
-* The C clone lacks the release night's two fixes (`4df672f4`, the
-  prevPos refusal; `4b36218a`, the cycle check): C at `03ce6ec5`.
+* The C clone lacks the release night's two fixes (`21e8db97`, the
+  prevPos refusal; `58eba7cb`, the cycle check): C at `d00096e4`.
 
 
 ## 15. The internal keys
@@ -1294,8 +1294,8 @@ range as numbers, unsigned unless said otherwise.
 a record's size against its content (015-72); the meta version's bytes 6
 and 7 (019-01); a key node's size against its count, its klong types and
 its refs (019-32); a node position below 128 (019-32); a cycle in a
-descent (`4b36218a`); a damaged prevPos under rule 4, with -ea
-(`4df672f4`); strictly increasing record positions and times, and time
+descent (`58eba7cb`); a damaged prevPos under rule 4, with -ea
+(`21e8db97`); strictly increasing record positions and times, and time
 klongs (005-75).
 
 
@@ -1533,7 +1533,7 @@ For any option, to decide with it:
   6's tree; from 012-02, section 8, updated), the internal keys (15), the
   directory (4), and last the pointers (16, 17).
 * **Checked against C.** C must first be at 2026.4 (024-01, CC1: the diff
-  from `03ce6ec5` to the tag, format 6, the release night's two fixes);
+  from `d00096e4` to the tag, format 6, the release night's two fixes);
   then each section's text is checked against C's code and its cross
   tests, and C's vectors are written again at format 6.
 * **Decisions before code.** Section 19's gaps and section 20's questions
@@ -1549,9 +1549,9 @@ For any option, to decide with it:
 
 ## 23. Log
 
-2026-11-11. Written 04:57 to 05:30, read only at `main` `4036bc1d`
+2026-11-11. Written 04:57 to 05:30, read only at `main` `5b6efdd1`
 (`java/` is `release-2026.4`'s but for `BuildInfo.java`); nothing built,
-run or changed. From the code of 2026.4, 012-02 (format 5 at `404d2ee`)
+run or changed. From the code of 2026.4, 012-02 (format 5 at `aa0f532`)
 and the items it cites; every line number cited was checked against the
 code. Nothing decided. 024's readme does not yet list this file in its
 Files section.

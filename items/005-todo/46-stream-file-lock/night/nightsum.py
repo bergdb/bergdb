@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # nightsum.py OUT: the summary of the night steps' outputs in OUT (bergdb 005-46, 006-09's W1.3
 # and W1.4: soak.sh, props.sh, scalebench-c.sh): the soak's report, Props in turns, and
-# ScaleBench from the OS's cache in turns, with HEAD's gets a second against bf19075's.
+# ScaleBench from the OS's cache in turns, with HEAD's gets a second against c1f1f15's.
 # Written 2026-10-27 by Claude (Opus 5.5, Claude Code).
 import glob, os, re, sys
 
@@ -39,7 +39,7 @@ cols = ['startup', 'uniform 1', 'hot 1', 'threads 1', '2', '4', '8', 'sampled 4'
 runs = {}
 for f in sorted(glob.glob(os.path.join(out, 'scalebench-c', 'f53-c-*.txt'))):
     name = os.path.basename(f)[:-4]
-    m = re.match(r'f53-c-[0-9a-z]+-(b\d+-[0-9a-z]+)-(head|bf19075)-(\d+)$', name)
+    m = re.match(r'f53-c-[0-9a-z]+-(b\d+-[0-9a-z]+)-(head|c1f1f15)-(\d+)$', name)
     if not m:
         continue
     t = open(f).read()
@@ -85,21 +85,21 @@ for cfg in sorted(runs):
         print('| %s, round %d%s | ' % (jar, rnd, '' if ok else ', FAILED') +
               ' | '.join(cell(c, v.get(c)) for c in cols) + ' |')
     means = {}
-    for jar in ('bf19075', 'head'):
+    for jar in ('c1f1f15', 'head'):
         vs = [v for j, r, ok, v in runs[cfg] if j == jar and ok]
         means[jar] = dict((c, sum(x[c] for x in vs) / len(vs)) for c in cols
                           if vs and all(c in x for x in vs))
         if vs:
             print('| %s, mean of %d | ' % (jar, len(vs)) +
                   ' | '.join(cell(c, means[jar].get(c)) for c in cols) + ' |')
-    a, b = means.get('bf19075', {}), means.get('head', {})
+    a, b = means.get('c1f1f15', {}), means.get('head', {})
     rel = []
     for c in cols:
         if c in a and c in b and a[c] > 0 and c not in ('startup', 'blocked reading',
                                                          'uniform timed max', 'longest of the thread phases'):
             rel.append('%s %+.1f%%' % (c, 100.0 * (b[c] - a[c]) / a[c]))
     if rel:
-        print('\nHEAD against bf19075, gets a second: ' + ', '.join(rel))
+        print('\nHEAD against c1f1f15, gets a second: ' + ', '.join(rel))
     print()
 
 print('# 4. performance.sh ab, quick suite, 2026.1 against HEAD (009-01, done item 7)\n')

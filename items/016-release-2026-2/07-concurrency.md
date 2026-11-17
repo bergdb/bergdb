@@ -42,7 +42,7 @@ morning"); the reviews' schedule is 016-06, section 6.
 ## 2. What there is to read
 
 The threads of today's code (`grep -n 'new Thread' java/src`, without the
-testers), at `df6ad50`:
+testers), at `9d34ac1`:
 
 * **The callers**: any number of reader threads (`Db.getOne`, `getMany`,
   `getTrans`, the scans) and the writer (`Db.execute`, under the write
@@ -62,7 +62,7 @@ testers), at `df6ad50`:
 * No finalizers since 005-55.
 
 The constructs per file (`synchronized`, `volatile`, atomics and CAS),
-counted at `df6ad50`, without the testers:
+counted at `9d34ac1`, without the testers:
 
 * the most: `core/Db.java` (49 synchronized, 12 volatile),
   `core/Eviction.java` (25, 5), `stream/FileStream.java` (20, 14, 6
@@ -171,9 +171,9 @@ As 016-06, sections 2.4 and 2.6:
   `EvictionRace`, `ValuePublication` (009-02, sections 3.4 and 3.5), and
   the control `PlainPublication`; `run.sh JCSTRESS_DIR [MODE [JAR]]`.
 * They ran in default mode on step 3c on F53 and on s1 (2026-10-25; s1 from
-  22:16 to 22:32), and on F53 on the branch's final `fb0c770` (2026-10-26,
+  22:16 to 22:32), and on F53 on the branch's final `7d325b3` (2026-10-26,
   01:25), with no forbidden outcome (009-03, section 2). Not since: not
-  after 005-65's change of the eviction thread's wake (`988fe1a`), nor
+  after 005-65's change of the eviction thread's wake (`52aeb04`), nor
   005-76's change of `BufferedStream`.
 * 009-02, section 3.5 planned two more that were not made: a re-resolve
   against an eviction, and two loaders of one node.

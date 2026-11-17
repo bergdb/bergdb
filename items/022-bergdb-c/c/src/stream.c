@@ -190,7 +190,7 @@ static enum err_code force_written(struct stream *s, enum plat_force_why why, st
  * the step is done: an empty stream file in the replacement, or, at a
  * cut, the replacement's file of that name deleted. An open there is
  * refused until the empty file is removed, with an error that depends on
- * what else is in the directory, as Java's (021-24's wording, 03ce6ec):
+ * what else is in the directory, as Java's (021-24's wording, d00096e):
  * BadDirStateException beside stream files of its own; in a directory
  * without others, as a stream without a valid meta block. A directory replaced and put
  * back between the two checks is not seen. The check relies on the stream

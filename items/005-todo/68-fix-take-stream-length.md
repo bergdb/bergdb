@@ -54,7 +54,7 @@ Findings
 --------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), in a clone of `main`
-(`24cc15d`, with 005-53's changes to `Db.java`).
+(`dd9a05a`, with 005-53's changes to `Db.java`).
 
 **The finding does not hold: when `take` is called, `getLength()` equals
 `getNextPos()`.** `NodeStream.getNextPos()` is

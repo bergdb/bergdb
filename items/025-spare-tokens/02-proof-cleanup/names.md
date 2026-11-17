@@ -302,5 +302,5 @@ Removed as an earlier version:
   `opCaseOKJ_qdW_delMergeRLC` and `opCaseOKJ_treeInvRange_delMergeRLC`
   (CollapseCommuteRun.lean)
 - `invGetScanOK_merges_chk3L`, `invGetScanOK_merges_chk4L`, `invGetScanOK_merges_joint`:
-  replaced in the night by the next one (commits 075b2e97, 74ff5be5, 3a95f624); superseded
+  replaced in the night by the next one (commits df3f89fa, 49c8664d, f22ca892); superseded
   by `invGetScanOK_merges` [024-12]

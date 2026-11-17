@@ -1,7 +1,7 @@
 # 024-16. One operation a key, strict
 
 Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-11): on
-`main` since `47c93e34`; QS1 to QS5 not marked answered.
+`main` since `e6e93272`; QS1 to QS5 not marked answered.
 
 "One operation a key in a transaction" made strict: a transaction fails
 at the commit when key transformations make two of its keys one key. In
@@ -30,10 +30,10 @@ findings G1 to G4, questions QS1 to QS5; cite them as "024-16, S2".
   transaction's time is taken and before the go point; the key
   transformations moved there from `Db.putKvs`, after the go point,
   where a refusal would have failed the database (section 4).
-* **Gates** on `7177bc0e`: before-commit.sh, level1.sh and level2.sh
+* **Gates** on `9d862b99`: before-commit.sh, level1.sh and level2.sh
   OK; StreamDigest identical (section 10). The review
   (`16-one-operation-a-key/review.md`): land with four small fixes, made
-  in `3412ee7a` (section 7.1), before-commit.sh on it (section 10).
+  in `2f81651e` (section 7.1), before-commit.sh on it (section 10).
 * **For Frans:** QS1 to QS5 (section 13), first the six changed expected
   values. State: section 15.
 
@@ -57,7 +57,7 @@ coordinator then gave three scopes and recommended B; Frans, 09:47:
 
 It replaces 024-10's R2 (of the KVs that became one key, the one called
 last is kept), which replaced 2026.4's rule (023-09, section 7.1, commit
-`96a18987`: the last put in the order of the keys as written, or a
+`0b1d59f4`: the last put in the order of the keys as written, or a
 delete). It reverses Frans's choice of 2026-11-10, 17:46 ("last
 operation takes precedent [...] It should be silent") for this case; he
 had named the alternative himself then (17:41: "Either we should
@@ -300,10 +300,10 @@ suffixes. Rows B, T9, P1 to P3, P9 and P10 keep 024-10's results.
 
 ## 7. The implementation
 
-On the branch `024-16-one-operation-a-key`, on `main` at `6bda69b0`
-(first on `024-13-int` at `524732d8`, whose `java/`, `lean/` and `docs/`
-`main` holds exactly since `a780b957`; rebased at 10:08 and 12:16, the
-same content), commit `190fe6f1` (`023bfa22`, `2229c812` before):
+On the branch `024-16-one-operation-a-key`, on `main` at `7f52260e`
+(first on `024-13-int` at `0a873e46`, whose `java/`, `lean/` and `docs/`
+`main` holds exactly since `36924319`; rebased at 10:08 and 12:16, the
+same content), commit `393f20ce` (`023bfa22`, `2229c812` before):
 
 * **`Db.transformKeys`**, new, called by `executeInner` between
   `transactionBegin` and the go point: the key transformations (moved
@@ -367,7 +367,7 @@ and `PubTester`, then put back (10:01):
 The review (`16-one-operation-a-key/review.md`, by rev16, 11:57 to
 12:20): LAND WITH FIXES, no fault in the commit path, by reading and by
 a concurrency probe with refusals, commits and readers. Its four fixes,
-commit `3412ee7a`:
+commit `2f81651e`:
 
 * **R1.** A refused `Trans` kept `t.tt`, the time it was given and then
   lost. `executeInner` keeps `t.tt` before `transactionBegin`, and
@@ -388,13 +388,13 @@ The review's probes (`/Users/f/fl/bench/2026-11-11/rev16/probe/`) are
 not taken as tests: p2 runs 8 to 10 s a clock, too long for the unit
 suite; p1 and p3 are covered by `testRefusedTransUnchanged`,
 `DbClock.testTransactionCancel` and `DbTesterFailure.failInPut`. No
-expected value of an existing test changed in `3412ee7a` (one test
+expected value of an existing test changed in `2f81651e` (one test
 gained checks).
 
 
 ## 8. Tests
 
-**New**, in commit `190fe6f1`:
+**New**, in commit `393f20ce`:
 
 * `DbTesterDelete.testRefusedTransUnchanged` (section 4's list): a Trans
   with a put, a transformed put whose final key another plain put has,
@@ -421,8 +421,8 @@ gained checks).
   clock back: the next transaction is later than it.
 
 **Expected values changed on purpose**, in a commit of their own,
-`7177bc0e` (`d5617d45`, `33038dc7` before the rebases; QS4: Frans's approval). With
-`190fe6f1` alone the unit suite fails in these six tests, each with the
+`9d862b99` (`d5617d45`, `33038dc7` before the rebases; QS4: Frans's approval). With
+`393f20ce` alone the unit suite fails in these six tests, each with the
 refusal's `DbException`, and no other (section 10):
 
 * `DbTesterDelete.testLastOperationWins` (024-10's rows B and T): T1 to
@@ -459,7 +459,7 @@ loop after the go point, as before).
 
 * **Core workloads without collisions: the same bytes.** StreamDigest
   `all` (level2.sh's and level3.sh's RestartInvariance configurations,
-  four modes each), the base `524732d8` against the branch, both with
+  four modes each), the base `0a873e46` against the branch, both with
   the base's compiled StreamDigest: section 10. By the code: such a
   transaction has no key transformation (StreamDigest's workloads have
   none), so `transformKeys` returns `t.kvs` and `putKvs` does what it
@@ -486,9 +486,9 @@ loop after the go point, as before).
 ## 10. Gates
 
 Each step in a heavy-run slot of its own (`strict/gates.sh`), on the
-branch's head `7177bc0e` (on `main`), the first commit's step on
-`2229c812` (the same files as `190fe6f1`), StreamDigest against the base
-`524732d8`:
+branch's head `9d862b99` (on `main`), the first commit's step on
+`2229c812` (the same files as `393f20ce`), StreamDigest against the base
+`0a873e46`:
 
 | Gate                            | When           | Result                                  |
 |---|---|---|
@@ -497,7 +497,7 @@ branch's head `7177bc0e` (on `main`), the first commit's step on
 | StreamDigest `all`, compare     | 11:34 to 11:35 | DIGESTS IDENTICAL (48 of 48)            |
 | `java/stress/level1.sh`, full   | 11:35 to 11:37 | LEVEL 1 OK, MEM 130 (at most 131)       |
 | `java/stress/level2.sh`, full   | 11:37 to 11:56 | LEVEL 2 OK, 70 traces TRACECHECK OK     |
-| before-commit.sh, `3412ee7a`    | 13:04 to 13:06 | BEFORE COMMIT OK (104 s)                |
+| before-commit.sh, `2f81651e`    | 13:04 to 13:06 | BEFORE COMMIT OK (104 s)                |
 
 * **before-commit.sh**: deps 9 packages; doubles 7 packages, 183 files;
   unit 1,654 tests in 47.8 s; f 89 tests in 69.8 s; demos OK (14 runs).
@@ -612,7 +612,7 @@ sections 2.3 and 6). With this rule:
   stored: `RwEnvironmentImp.indexEntries` takes a replaced put to have
   no previous value, as the final key is known only at the commit. No
   scan is wrong (020-10, section 3.4); storage nothing takes back. Shown
-  on `68c3917e` too. Two fixes, for an entry of its own:
+  on `16759d36` too. Two fixes, for an entry of its own:
   * **A refusal at the commit:** a "must be new" mark on the replaced
     put's `Kv` (a new builder call), and in `transformKeys`, after the
     transformations and before the go point, a lookup of each marked
@@ -643,7 +643,7 @@ not wait:
 * **QS5. B1, the review's old fault** (G4): which fix, if any?
   Chosen: none here; an entry of its own.
 * **QS4. The six changed expected values** (section 8, commit
-  `7177bc0e`): Frans's approval. And G3: give a committed Trans its keys
+  `9d862b99`): Frans's approval. And G3: give a committed Trans its keys
   as written back too? Chosen: no, not in this item.
 
 
@@ -656,7 +656,7 @@ Pub layer's refusals), 024-12 (sections 2.3 and 6), and the code:
 `DbClock`, `Trans`, `Kv`, `KeyTransformation`, `RwEnvironmentImp`,
 `RwTransaction`'s retry loop, `WTransaction`, the Pub API's Javadoc,
 the C clone's `put_kvs`. Clone made, branch from `024-13-int` at
-`524732d8`.
+`0a873e46`.
 
 09:53 to 09:56. Sections 1 to 6 written, before any code. Found then:
 the transformations ran after the go point, where a refusal fails the
@@ -669,8 +669,8 @@ commit `33038dc7`; the mutations M1 and M2; the affected testers pass
 built. 10:03: a background command waits for `int-gates-done` and the
 lock, then runs the gates (`strict/gates.sh`).
 
-10:08. Rebased onto `main` (`68c3917e`, which holds `524732d8`'s
-`java/`, `lean/` and `docs/` since `a780b957`); the same content. Until
+10:08. Rebased onto `main` (`16759d36`, which holds `0a873e46`'s
+`java/`, `lean/` and `docs/` since `36924319`); the same content. Until
 10:51 the lock was taken by others ("tie", "thr", the integration). 10:52:
 the waiting loop replaced by `slot.sh` (two slots since 10:50), one slot
 for each gate step. 11:21: `slot.sh take` waited for ever, as its grep for
@@ -680,32 +680,32 @@ first. 11:32 to 11:56: the gates, all as expected (section 10).
 
 
 12:16 to 12:19. The review's four fixes (section 7.1): rebased onto
-`main` at `6bda69b0` (`190fe6f1`, `7177bc0e`, the same content), commit
-`3412ee7a`; the affected testers pass (246); a mutation (no `t.tt` put
+`main` at `7f52260e` (`393f20ce`, `9d862b99`, the same content), commit
+`2f81651e`; the affected testers pass (246); a mutation (no `t.tt` put
 back) fails `testRefusedTransUnchanged`. 13:04 to 13:06, after a wait for
-a slot ("thr" timing): before-commit.sh on `3412ee7a`, OK.
+a slot ("thr" timing): before-commit.sh on `2f81651e`, OK.
 
 ## 15. State
 
 2026-11-11, 13:07, by an agent of coord-1111 ("strict"). Done.
 
 * **Done.** The rule, the check, the exception, the table (sections 3
-  to 6); the change and the new tests, commit `190fe6f1`; the six
-  changed expected values, commit `7177bc0e` (sections 7 and 8, the
+  to 6); the change and the new tests, commit `393f20ce`; the six
+  changed expected values, commit `9d862b99` (sections 7 and 8, the
   list unchanged since); the stream's bytes (section 9); the gates on
-  `7177bc0e`'s content, all OK (section 10); the review's four fixes,
-  commit `3412ee7a` (section 7.1); C, the Lean model, findings and
+  `9d862b99`'s content, all OK (section 10); the review's four fixes,
+  commit `2f81651e` (section 7.1); C, the Lean model, findings and
   questions (sections 11 to 13), with the review's B1 as G4 and QS5.
-* **Gates on `3412ee7a`:** before-commit.sh OK, 13:04 to 13:06 (unit
+* **Gates on `2f81651e`:** before-commit.sh OK, 13:04 to 13:06 (unit
   1,654, f 89, demos). The full gates on it are the integration agent's.
 * **For Frans.** QS1 to QS5 (section 13); QS4 first: the six changed
-  expected values of commit `7177bc0e`.
+  expected values of commit `9d862b99`.
 * **Where.** Clone `/Users/f/fl/bench/2026-11-11/strict/clone`, branch
-  `024-16-one-operation-a-key` on `main` at `6bda69b0`, head `3412ee7a`,
-  three commits (`190fe6f1`, `7177bc0e`, `3412ee7a`); nothing pushed.
+  `024-16-one-operation-a-key` on `main` at `7f52260e`, head `2f81651e`,
+  three commits (`393f20ce`, `9d862b99`, `2f81651e`); nothing pushed.
   Earlier heads with the same content as the first two: `023bfa22`,
-  `d5617d45` (on `68c3917e`) and `2229c812`, `33038dc7` (on
-  `524732d8`). Worktrees `strict/base` (`524732d8`) and `strict/c1`
+  `d5617d45` (on `16759d36`) and `2229c812`, `33038dc7` (on
+  `0a873e46`). Worktrees `strict/base` (`0a873e46`) and `strict/c1`
   (`2229c812`); gate logs `strict/gates.log`, `unit-c1.txt`,
   `sd-base.txt`, `sd-cur.txt`, `bc.txt`, `l1.txt`, `l2.txt`, `bc2.txt`;
   the Pub probe `strict/probes/`.

@@ -28,7 +28,7 @@ two programs written apart, `F2.java` (adapted from 020-05's `Fmt.java`)
 and `check.py` (written from this text, with another order of checks), in
 `/Users/f/fl/bench/006-15/020-07/` (its `readme.txt` says how to run
 them); BINSON-SPEC-1.1 read in the clone of binson.org at `46459bc`
-(page version 2026-10-07); BergDB's code at `ea5654a`.
+(page version 2026-10-07); BergDB's code at `21936d3`.
 
 
 ## 1. In short
@@ -568,7 +568,7 @@ rule (section 7.4).
   later format reads format 2 too.
 * **Format 1**, BergDB 2026.3's and before, starts with `62 65 72 67 6f
   01`, `bergo` and the version 1 (`DbObject.Builder.buildInner` at
-  `a7fe143`; 020-05, section 3). A reader of format 2 refuses it
+  `52f8ee5`; 020-05, section 3). A reader of format 2 refuses it
   (`format-1`), and says that the object was written by BergDB 2026.3 or
   before, which 2026.4 does not read (4.11). Format 1 is not described
   here, and no binding needs to read it.
@@ -751,7 +751,7 @@ gives the value back; VN both ways; each lookup by the binary search
 against the decoded value; Binson both ways, and binson-java 3.5 reads the
 Binson bytes and writes them again unchanged; each invalid record is
 refused with one of its codes. The format-1 records are made by
-`bergdb.jar` at `a7fe143`. `check.py`, a second implementation written
+`bergdb.jar` at `52f8ee5`. `check.py`, a second implementation written
 from this text, checks each record again, with its own writer, decoder,
 lookup and conversions, and another order of checks (each table whole
 before its fields; the top's trailing bytes before its fields). Then
@@ -841,7 +841,7 @@ check at every read; the others before the release.
   `java/`, if Frans wants the spec there too.
   *Decided* (020-08, section 2, item 5, its default; 2026-11-09 for the
   rest, under the delegation): the vectors are in
-  `java/src/bergdb/pubimp/doc-files/object-vectors.txt` (9a45e06); 020-07
+  `java/src/bergdb/pubimp/doc-files/object-vectors.txt` (41cb0ba); 020-07
   stays the spec of format 2, frozen at the release.
 * **Q7. Names and index paths.** The format allows any name of 1 to 255
   bytes, `.` and `,` included (vector `names-odd`); an index definition
@@ -871,7 +871,7 @@ step of the release, not a blocker of the code (020-11). *Approved*
 * BergDB: 020-02, sections 1, 4 and 5; 020-04, sections 3.3 and 11;
   020-05, sections 3, 5, 9 and 12b; 020-06, sections 3 and 14; 021-04,
   021-06, 021-07, 021-08; 018-01, section 2; 012-02 (a format written as
-  a spec); `java/src/bergdb/pubimp/` at `ea5654a`.
+  a spec); `java/src/bergdb/pubimp/` at `21936d3`.
 * The programs and outputs: `/Users/f/fl/bench/006-15/020-07/`;
   binson-java at `45346ad` (release 3.5), built by 020-05.
 

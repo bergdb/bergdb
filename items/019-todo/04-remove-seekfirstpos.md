@@ -76,7 +76,7 @@ Done
   against older jars, whose interface has the method (the coordinator,
   2026-11-05). `PerfUtil.java` and `PerfTool.java` implement no stream.
   Found on the way: the harness already fails to compile against 2026.2's
-  jar since 005-47 (`188facf`), at `new FileStream(dir, !noForce)`, a
+  jar since 005-47 (`9b67a82`), at `new FileStream(dir, !noForce)`, a
   constructor that 2026.2 lacks; with that line changed in a copy, it
   compiles against 2026.2's jar, and without the kept method it does not.
 * `releases/next.md`: a section Internal with the change; the Core API,
@@ -103,7 +103,7 @@ Log
 ---
 
 2026-11-05. Registered by session bergdb-e8, at Frans's decision (12:30);
-taken by the session's agent, in a clone of `main` at 82eadf7.
+taken by the session's agent, in a clone of `main` at b16e715.
 
 2026-11-05. Done by session bergdb-e8's agent: `seekFirstPos()` removed
 from `AppendOnlyStream` and every stream and wrapper, with harness 6.3's

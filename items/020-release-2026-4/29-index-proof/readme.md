@@ -2,7 +2,7 @@
 ==================
 
 Created 2026-11-09 by Frans Lundberg. Status: done; on main since
-2026-11-13 (b0cd3ac4).
+2026-11-13 (868f353f).
 
 A Lean proof, for every size, of the safety invariants of 2026.4's user
 indexes that 020-26 checked with TLC within small bounds: the protocol of
@@ -330,7 +330,7 @@ no `Classical.choice`), 2026-11-09, 19:45.
 checker too) was not run in the clone: coord-1109 allowed it after 21:00 with
 F53's load under 6, and the work ended at 20:06 with the load at 9.5. The
 library is new and imports nothing of SIS; the branch changes no file of
-SIS (`git diff b0eba12 -- lean/SIS lean/SIS.lean` is empty), and the
+SIS (`git diff 5c296c5 -- lean/SIS lean/SIS.lean` is empty), and the
 lakefile's change, the library's entry and its default target, is read by
 every `lake build BergDB`.
 
@@ -620,8 +620,8 @@ Starve 386; the root 11).
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
-  020-26's (from the code at `83e8e13` with 020-18's fixes) and the code at
-  `b0eba12` (main, 2026-11-09), read for this item:
+  020-26's (from the code at `4ff84fb` with 020-18's fixes) and the code at
+  `5c296c5` (main, 2026-11-09), read for this item:
   `RwEnvironmentImp.indexEntries` (the writers' read sets, the index set per
   key), `IndexBuilderImp` (the build, its tries and errors) and
   `IndexManager` (G, the definition changes, the cleanup, the lock). When
@@ -644,45 +644,45 @@ Log
 (17:26), in a clone at `/Users/f/fl/bench/2026-11-09/clone-l29`, branch
 `020-29-index-proof`:
 
-* 18:01, `12c8099`: 020-26's model in Lean (one name, one directory,
+* 18:01, `81fe8f5`: 020-26's model in Lean (one name, one directory,
   transactions of one key), the invariant and its proof, the theorems, the
   run.
-* 18:07, `b94a25a`: transactions of any keys.
-* 18:31, `96d9ab0`: several index names and directories, with each key's
+* 18:07, `3120f5f`: transactions of any keys.
+* 18:31, `336f8a9`: several index names and directories, with each key's
   index set read under the lock at its own time, as the code does; the
   proofs per name. Before it, on a review of the model against
   `RwEnvironmentImp.indexEntries`: the read set of a transaction has the
   virtual keys and the keys of its object keys only, not of its keys with a
   suffix (the model asked more of the transaction than the code, so it left
   out some of the code's runs).
-* 18:38, `63f3ae5`: on a review of the build, the cleanup and the
+* 18:38, `c0b0bac`: on a review of the build, the cleanup and the
   definition changes against `IndexBuilderImp` and `IndexManager`: the error
   steps `bRetry`, `bAbort` and `cAbort` (runs of the code the model had
   not), and G as the code takes it, max(1, the latest time), with the
   freshness invariant weakened to match (a live generation at most the
   latest time).
-* 18:42, `d5ba3c0`: `cut`, reclaim's cut of lookup times; a second run, with
+* 18:42, `2a5b14a`: `cut`, reclaim's cut of lookup times; a second run, with
   the deletion, the cleanup and a creation again.
-* 18:50, `65a598b`, `4abe7eb`: this readme (the TLA+ model and the Lean
+* 18:50, `6f490bc`, `f30468e`: this readme (the TLA+ model and the Lean
   model side by side; liveness, and why several names need strong fairness
   of the lock); Locked.lean, `locked_phase`: the heart of point 8.
 * 18:50: coord-1109's second request (section 1).
-* 19:04, `d8b5d1b`: the steps labelled by thread; runs, weak and strong
+* 19:04, `9cde43c`: the steps labelled by thread; runs, weak and strong
   fairness; `cleanup_ends`. A build step reads one key at least, a cleanup's
   scan finds one entry at least, `wDrop` ends a transaction in flight, as in
   the code (section 7.1).
-* 19:16, `e22da73`: `build_ends`, with its measure and `build_step`.
-* 19:23, `efd4d28`: Starve.lean, `weak_fairness_not_enough`.
-* 19:25, `3882a47`: no unused section variables in Liveness.lean.
-* 19:38, `e8659ff`: this readme: section 7, the State; lean/README.md.
-* 19:41, `c5e3fa3`: Orphans.lean, `no_orphans`.
-* 19:48, `13561de`: Release.lean, `lock_released` and `build_ends_wf`.
-* 19:50, `9f90c6b`: this readme, for both.
-* 19:57, `a98e2bc`: Finite.lean, `build_ends_finite`.
-* 19:59, `900c458`, `10fc278`: this readme, for it.
-* 20:02, `fac14a1`: `reach_finSys`, `run_bld_finite`, `build_ends_weak`:
+* 19:16, `a9450f0`: `build_ends`, with its measure and `build_step`.
+* 19:23, `d646483`: Starve.lean, `weak_fairness_not_enough`.
+* 19:25, `cce265b`: no unused section variables in Liveness.lean.
+* 19:38, `e49b4df`: this readme: section 7, the State; lean/README.md.
+* 19:41, `4594e83`: Orphans.lean, `no_orphans`.
+* 19:48, `4cb7ba4`: Release.lean, `lock_released` and `build_ends_wf`.
+* 19:50, `95c4d6a`: this readme, for both.
+* 19:57, `d5a41a4`: Finite.lean, `build_ends_finite`.
+* 19:59, `8bb8e20`, `68bd12d`: this readme, for it.
+* 20:02, `4e5f2de`: `reach_finSys`, `run_bld_finite`, `build_ends_weak`:
   finitely many builds proved, not assumed.
-* 20:03, `b0d8638`; 20:04, `1fcd12f`: this readme, for it; the fair
+* 20:03, `db98b9e`; 20:04, `a760155`: this readme, for it; the fair
   lock's Javadoc and HotSpot's comment on succession (section 7.5).
 * 20:06: the end of the session's work; the full `lake build` not run
   (section 6).
@@ -691,7 +691,7 @@ Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
 readme, Files.
 
-2026-11-13. Merged into main (b0cd3ac4; Frans, 08:04: "Merge it."),
+2026-11-13. Merged into main (868f353f; Frans, 08:04: "Merge it."),
 after release 2026.5, by coord-1113: `lean/README.md` keeps both its
 sections (024-09's and this one's), `lakefile.toml`'s default targets
 are main's with `BergDB` added. Checked on the merged tree: `lake build`

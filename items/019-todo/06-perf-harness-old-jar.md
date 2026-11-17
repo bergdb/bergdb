@@ -7,7 +7,7 @@ Created 2026-11-05 by Frans Lundberg.
 What: `java/stress/performance.sh` compiles its harness (`PerfUtil.java`,
 `Perf.java`, `PerfTool.java`) against each build's jar. `Perf.openDb()`
 calls `new FileStream(dir, !noForce)`, a constructor that 005-47 added on
-2026-11-04 (`188facf`), after release 2026.2. 2026.2's jar has no such
+2026-11-04 (`9b67a82`), after release 2026.2. 2026.2's jar has no such
 constructor, so javac fails ("incompatible types: boolean cannot be
 converted to FileStreamIo") and `performance.sh ab 2026.2 current` stops
 at "the harness does not compile". Found 2026-11-05 by the agent of
@@ -28,7 +28,7 @@ per-append forces); `before-commit.sh` prints `BEFORE COMMIT OK`.
 
 First step: compare `FileStream`'s and `FileStreamIo`'s constructors and
 methods in 2026.2's jar and on main (`javap`), and see how the harness
-opened its stream before `188facf`.
+opened its stream before `9b67a82`.
 
 
 Log
@@ -55,7 +55,7 @@ Compiled with `performance.sh`'s javac flags (`--release 17
 main's `java/build/bergdb.jar` (after `build.sh`), OK; against 2026.1's
 jar (`releases/2026.1/`), one error, which is not this fault and is
 left: `bergdb.pub.util.SyncLevel` is not in 2026.1 (`SyncLevel` moved from
-`bergdb.core` in 005-56, `04f1546`, a known change that 2026.2's notes
+`bergdb.core` in 005-56, `8752cf0`, a known change that 2026.2's notes
 list; only 2026.2's jar is required). A probe (in the scratchpad, not
 kept) called `fileStreamWithoutForces`: on main's jar the stream's
 `forcesAppends()` is `false`; on 2026.2's jar it throws `PerfFailure:

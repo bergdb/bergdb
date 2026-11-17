@@ -105,7 +105,7 @@ What differs between the two runs, beside n: **the keys' lengths.**
 
 ## 3. Reproduced
 
-A clone at `release-2026.4` (`bb8da6dc`), built with `java/build.sh`;
+A clone at `release-2026.4` (`76f66f89`), built with `java/build.sh`;
 the probe `MemProbe` (package `bergdb.core`, compiled apart, classes
 before the jar): `Mem`'s method with the keys' shape, the order, the
 value size and n as arguments, a walk of the node table's objects, and
@@ -503,7 +503,7 @@ Written 2026-11-11, 07:24.
 * **For Frans:** Q1 to Q3 of section 10. Until answered: option (a),
   and nothing built.
 * **Clone:** `/Users/f/fl/bench/2026-11-11/mem/clone`, detached at
-  `release-2026.4` (`bb8da6dc`), no branch, no change, no commit; the
+  `release-2026.4` (`76f66f89`), no branch, no change, no commit; the
   probe is outside it, in `/Users/f/fl/bench/2026-11-11/mem/probe`,
   its classes in `mem/classes`, outputs in `mem/out` (copied to
   `08-mem-at-10m/`).

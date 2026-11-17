@@ -2,7 +2,7 @@
 # bergdb 005-64: prepares the night's steps by day (run-f53.sh, trickle.sh, run-s1.sh), so that
 # they compile nothing. Written 2026-10-28 by Claude (Opus 5.5, Claude Code). Run 2026-10-28 on
 # the build main-bf9fc7f (made with: cd CLONE/java && nice -n 10 sh stress/performance.sh build
-# main-bf9fc7f; main's HEAD bf9fc7f, before 007-07).
+# main-bf9fc7f; main's HEAD ffb890a, before 007-07).
 #
 # 1. The harness (PerfUtil, Perf, PerfTool of CLONE/java/stress) compiled into the build, where
 #    performance.sh's prepare_target looks for it (harness- and the first 12 hex digits of the

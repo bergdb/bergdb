@@ -26,7 +26,7 @@ State
 combined gate. Earlier:
 
 2026-11-03, 19:53: the fix, its test and the gate done in the clone
-`/Users/f/fl/bench/016/015-20/repo` (from `c657764`); handed off for
+`/Users/f/fl/bench/016/015-20/repo` (from `66a80f3`); handed off for
 review (`/Users/f/fl/bench/016/015-20/handoff/`). Open: the review, the
 combined gate, the commit in `main`.
 
@@ -37,7 +37,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 19:46 to 19:53, in `/Users/f/fl/bench/016/015-20/repo` from
-`main` at `c657764`: the fix.
+`main` at `66a80f3`: the fix.
 
 * **The cause** (as R3-F12 and verify-1 say): `UseIndexBuilderImp`'s
   `IterStopCondition` ends a page after 100 entries within the prefix

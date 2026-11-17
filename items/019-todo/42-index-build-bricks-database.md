@@ -5,7 +5,7 @@ Status: done. Kind: Fix. Frans: none (the coordinator's default, below;
 Frans may choose otherwise).
 Created 2026-11-06 by Frans Lundberg.
 
-What: since 019-10 (01b0493) and 019-38 (cecaf4c), the index build's
+What: since 019-10 (de95869) and 019-38 (cdabbcf), the index build's
 thread fails the database on any exception but a refusal, an expiry or
 an interrupt. An index function that throws on the user's data does so:
 an object whose indexed `String` field is null gives a

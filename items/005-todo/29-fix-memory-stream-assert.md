@@ -98,8 +98,8 @@ Nothing changes for a database: `DatabaseBuilder.memory()` uses
 makes the first array before the first byte comes. 005-11's probes need no
 `-da:bergdb.stream.MemoryStream` now; their scripts are left as they are.
 
-`before-commit.sh`: BEFORE COMMIT OK on `f6bc3ce` with the change (975
-unit tests, 63 f-tests), and on `948ec00`'s Java code with the change
+`before-commit.sh`: BEFORE COMMIT OK on `1a329d1` with the change (975
+unit tests, 63 f-tests), and on `57b4887`'s Java code with the change
 (978 unit tests, 63 f-tests; 005-28 is in it).
 
 Found on the way, not changed:

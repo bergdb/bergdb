@@ -5,7 +5,7 @@ Created 2026-11-09 by Frans Lundberg. Status: open.
 A concurrency review of the user indexes of release 2026.4 (020-10), one
 of the bug hunts before the release candidate (020): index maintenance at
 writes, build jobs, deletes, stop and close, restarts and lookups. Code at
-`a9e5488`; the work in the clone `/Users/f/fl/bench/2026-11-09/clone-c18`.
+`f8046f3`; the work in the clone `/Users/f/fl/bench/2026-11-09/clone-c18`.
 
 
 ## 1. The request
@@ -25,7 +25,7 @@ atomicity.
 
 ## 2. Method
 
-1. Read 020-10 (sections 3 to 6) and the code at `a9e5488`: `IndexManager`,
+1. Read 020-10 (sections 3 to 6) and the code at `f8046f3`: `IndexManager`,
    `IndexBuilderImp`, `RwEnvironmentImp`, `RwTransaction`, `WTransaction`,
    `UseIndexBuilderImp`, `UsePrimaryBuilderImp`, `DatabaseImp`,
    `IndexDefinition`, `IndexKeys`, `Job`, `JobStatus`, and the Core's
@@ -189,7 +189,7 @@ step 4 that ran it, with no finding.
     not races I saw and did not pursue: `${transactionTime}` in a key's
     directory (the index set read for the directory as written), and the
     previous value read at the key as written. Both are 020-14's X1, fixed
-    on `main` in `a03111e` (read after this report was written).
+    on `main` in `ae698d6` (read after this report was written).
 16. Locks: `lock` and a job's monitor are taken in that order only
     (`start()`), never the other way; the build calls the Core under
     `lock` in its locked phase, and nothing calls the index manager under
@@ -251,14 +251,14 @@ reads after the last key it deleted (F5).
 
 ### 3.1. F1: writes of keys with a suffix and the build's locked step
 
-`IndexBuilderImp.java`, `step()` (line 461 at `a9e5488`), with
+`IndexBuilderImp.java`, `step()` (line 461 at `f8046f3`), with
 `RwEnvironmentImp.getMany()` (line 466): a build step put the hash of every
 KV it read in its read set, values of keys with a suffix (`/p/a.txt`)
 too. Such a key never has an entry, and a write of it takes no index
 manager's lock (`RwEnvironmentImp.indexEntries` returns at once without
 object operations). So a write of it after the step's read made the step
 run again. After three refused tries the step runs under `lock`
-(`runStep`, ab06e26, the fix of I1-starve), assuming that only writers
+(`runStep`, 37c82cd, the fix of I1-starve), assuming that only writers
 that read the index set before it can collide; these writers never take
 `lock`, so the step collided with them again and again while it held
 `lock`, and every write at an object key of the database, in any
@@ -290,7 +290,7 @@ not changed here (for the coordinator).
 
 ### 3.2. F2: the note of a build that ended for a deletion
 
-`IndexBuilderImp.java`, `Status.note()` (line 284 at `a9e5488`): the
+`IndexBuilderImp.java`, `Status.note()` (line 284 at `f8046f3`): the
 note of every FAILED status ended "The next start takes it again.", also
 for the reason "deleted", whose index is gone (IndexBuildException's
 Javadoc: "A deleted index is gone."). Found by `ProbeCreateGap`'s output.
@@ -303,7 +303,7 @@ COMMIT OK (unit 1,418, f 86, demos 14, 155 s).
 
 ### 3.3. F3: a locked build step reads large values under the lock
 
-`IndexBuilderImp.java`, `step()` (lines 444 to 479 at `a9e5488`): a step
+`IndexBuilderImp.java`, `step()` (lines 444 to 479 at `f8046f3`): a step
 read up to 25 values, whatever their size, and its locked phase (after
 three refused tries) does its reads under `lock`. A value over 1 MiB is
 not kept in the cache, so each read of it goes to the storage: in a memory
@@ -337,7 +337,7 @@ one step before the fix. Gate: BEFORE COMMIT OK (unit 1,419, f 86, demos
 
 ### 3.4. F4: a build chased the writers that append to its directory
 
-`IndexBuilderImp.java`, `step()` (lines 444 to 479 at `a9e5488`): each
+`IndexBuilderImp.java`, `step()` (lines 444 to 479 at `f8046f3`): each
 step read the directory's keys after the last one read, up to the
 directory's end at the step's time. The values put after the creation are
 kept by their writers, but the build read them too, so writers that
@@ -367,7 +367,7 @@ finding. Gate: BEFORE COMMIT OK (unit 1,420, f 86, demos 14, 143 s).
 
 ### 3.5. F5: the cleanup read from the generation's prefix at each step
 
-`IndexManager.java`, `startCleanup()` (line 483 at `a9e5488`): each step
+`IndexManager.java`, `startCleanup()` (line 483 at `f8046f3`): each step
 read up to 100 keys from the deleted generation's prefix. The Core keeps
 deleted keys for earlier lookup times, and a read at the latest time
 visits them before the live ones, so step k visited the k × 100 keys the
@@ -402,7 +402,7 @@ Gate: BEFORE COMMIT OK (unit 1,421, f 86, demos 14, 144 s).
 Done, 2026-11-09 (09:22 to 10:40): every interleaving of the brief
 has a verdict (section 2.3), and each defect found has a failing test, a
 minimal fix and a gated commit in the clone
-`/Users/f/fl/bench/2026-11-09/clone-c18`, branch `main`, on `a9e5488`:
+`/Users/f/fl/bench/2026-11-09/clone-c18`, branch `main`, on `f8046f3`:
 
 | Commit    | Finding | Gate                     |
 |---|---|---|
@@ -419,7 +419,7 @@ whitespace elsewhere: `git diff` and `git diff -w` agree). After the last,
 `ProbeIndexStress` (file database, 2 MB cache, appends, steps of 3) and
 `ProbeIndexRestart` ("stop" mode) ran without a finding.
 
-The five also apply cleanly onto `main` at `86dade8` (after 020-14's X1
+The five also apply cleanly onto `main` at `d1c5bfe` (after 020-14's X1
 to X3 and 020-20's commits): the clone's branch `c18-on-main`, `ebd30ef`
 to `d1676e3`, gated as a whole: BEFORE COMMIT OK (unit 1,428, f 86, demos
 14, 135 s).
@@ -465,7 +465,7 @@ gated in the clone (section 4); verdicts for the brief's interleavings and
 three observations. Status stays open until the commits reach `main`.
 Then, the report written, read 020-14's X1 on `main` (two key-replace
 edges seen here and not pursued, section 2.3, item 15), and gated the five
-commits on `main` at `86dade8` (branch `c18-on-main`). The six gates of
+commits on `main` at `d1c5bfe` (branch `c18-on-main`). The six gates of
 this item (09:42 to 10:35) ran before coord-1109's rule that gates run one
 at a time under `lockf /Users/f/fl/bench/006-15/gate.lock`, so outside it;
 one of them may be the gate of 10:28 that loaded other gates' timing

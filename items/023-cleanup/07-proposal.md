@@ -83,7 +83,7 @@ INV-4 (section 8), lemma M (`LM_newer`), and the model's assumptions A1
 to A5, TREE, A6' and A-COPY (sections 3.4 and 15.2). Tests and measures:
 023-03 (T1 to T12, M1 to M14, C1 to C12, a_n).
 
-All branches start from `main`'s Java at `99089978` (no Java commit since),
+All branches start from `main`'s Java at `1901394c` (no Java commit since),
 in `/Users/f/fl/bench/2026-11-10/<p>/clone`, except SE.
 
 | Name | Branch                | Head       | On                     | Report        |
@@ -96,7 +96,7 @@ in `/Users/f/fl/bench/2026-11-10/<p>/clone`, except SE.
 | P7/5 | `023-p7-on-p5`      | `d45894e6` | P5's `71e386de`, in p5clone | p7, 6.2      |
 | P8   | `023-p8-steptime`   | `f56dca40` | P4's `0e66d1c9`             | p8-steptime  |
 | P3   | `023-p3-compact`    | `7b2cf1ec` | `main`                      | p3-compact   |
-| SE   | `scan-deleted-keys` | `eebeb39d` | `c5b1ef5c` (2026-11-09)     | 021-28       |
+| SE   | `scan-deleted-keys` | `eebeb39d` | `5f176575` (2026-11-09)     | 021-28       |
 
 SE's clone is `/Users/f/fl/bench/2026-11-09/clone-q34`. The reports are in
 023-05. Code places below are on the named head, in `java/src/bergdb/`.
@@ -646,8 +646,8 @@ before-commit; then the gates of 6.3 on the head. The core, in order:
    `mergeBound`. Conflicts in `Dag` only.
 4. P8's `edb8e14d` and `1d6494f0`: `Reclaim` only; no conflict expected.
 5. SE's `2bfeb3e3`, `240f2b3e`, `eebeb39d`: `GetMany`, `Dag` (6 lines in
-   `getMany`), the Pub scans, tests. Its base `c5b1ef5c` is an ancestor
-   of `99089978` with no Java commit between in these files.
+   `getMany`), the Pub scans, tests. Its base `5f176575` is an ancestor
+   of `1901394c` with no Java commit between in these files.
 6. P6's `83e1cb86` and `411ae3d1`, without the queue; conflicts in
    `Db.endOfTrans` (P4's `keyNodeTakenBack` beside P6's hooks). Remove the
    CPU-time probe (`ThreadMXBean` in `deadStep`) and the switches.

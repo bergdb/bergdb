@@ -9,7 +9,7 @@ Scratch sources and builds were under `/private/tmp/bergdb-review-a`.
 Each prototype was exported with `git archive`, then built with its
 `java/build.sh`. There was no branch switch in the review clone.
 
-- Main: `e45fd4c1`.
+- Main: `53c394b4`.
 - P4: `023-p4-empty-key`, `0e66d1c9`.
 - P5: `023-p5-merge`, `71e386de`.
 - P6: `023-p6-memory`, `c46d607d`.

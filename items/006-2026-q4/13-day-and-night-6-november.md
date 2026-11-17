@@ -95,15 +95,15 @@ The ten points of 006-12, section 8, one at a time with Frans.
    to the answer (Option 1 now; Option 4, reads wholly in the file
    without `BufferedStream`'s monitor, to 017-07 as reader scaling, to
    measure first), 11:11: "Yes, both. Do it in a new subagent." Agent c6:
-   ada8608 (015-86 done, docs/levels.md section 7, `releases/next.md`'s
+   5446299 (015-86 done, docs/levels.md section 7, `releases/next.md`'s
    limit, 017-07 section 5); README's "Pauses" line by the coordinator
-   (db67ca6).
+   (0c22dca).
 7. W7's rerun (016-10). Frans, 11:21: "Yes." to (A): the flag fixed, all
    five steps in one quiet block on F53 tonight, with a quiet check that
    an idle F53 can pass. Agent w7 prepares it (`/Users/f/fl/bench/016/night4/`).
 
 8. A review of what landed unreviewed. Frans, 11:28: "Item 8, as you
-   recommend.": R6 (01b0493, 8e9eccc, c73daba) and R7 (the night's
+   recommend.": R6 (de95869, be6b95e, 4efb703) and R7 (the night's
    concurrency fixes: 015-66, 67, 70, 82, 80), read-only, at xhigh.
 
 9. Behaviour changes in `releases/next.md` (015-55, 015-57, 015-41's
@@ -127,7 +127,7 @@ level for subagents from now on. To preserve usage." So: up to 6 agents
 at a time, at high; gates one at a time under a lock
 (`/Users/f/fl/bench/006-13/gate.lock`).
 
-Review R6 (11:44): 01b0493, 8e9eccc and c73daba without A findings;
+Review R6 (11:44): de95869, be6b95e and 4efb703 without A findings;
 B1 to B3 and C1 to C9 registered as 019-38 (index jobs fail the database
 on an interrupt, an expiry or a refusal: a regression of today's change),
 019-39 (hangs in the error path) and 019-40 (the C findings).
@@ -147,7 +147,7 @@ inventory, keep, simplify or drop per feature) and two questions, 12:05:
 "Create a new item for it. nnn-release-2026-4. I like your plan. Start
 the agent now." "No, nothing in particular is off the table. No need for
 any backwards-compatibility. API can change." User indexes: "Yes. That is
-included." Done: 020-release-2026-4 (92844c2); agent v1 writes 020-01.
+included." Done: 020-release-2026-4 (2b8ef00); agent v1 writes 020-01.
 
 ### W3. `night.sh` without a fixed time
 
@@ -167,7 +167,7 @@ when 2026.3 is released; until then, bounded work for after 2026.3 waits
 in 017-07.
 Changed at Frans's request, 15:51: "I would like us to start preparing
 for 2026.4 work. I would like a new todo list for this work." 021-todo
-was created (19b8ad1); 019 keeps 2026.3's entries until that release.
+was created (5b80c7b); 019 keeps 2026.3's entries until that release.
 
 ### W2. KISS as a principle
 
@@ -250,7 +250,7 @@ runs; usage up to 90 % of the week.
    `DbObjectTester.testLoneSurrogates` (005-26) requires; a String value
    and a key now refuse it. Recommended: refuse it in objects too, in
    2026.4 (020), with F1's closed list of types.
-3. 019-40's C8 (35f5b72): the start's check of a meta block's last
+3. 019-40's C8 (6670917): the start's check of a meta block's last
    transaction is now the invariant itself (between the stream's first
    position and the block), a tighter check landed the night before the
    release; tonight's `night.sh large` starts many databases.
@@ -264,7 +264,7 @@ session continues with `/coordinator resume` (013-02).
 
 ## 7. Progress
 
-* 08:14 coord-1106 started; main 8df56fc.
+* 08:14 coord-1106 started; main 4296f21.
 * 09:18 W1 started: 006-12's decisions with Frans.
 * 09:40 Agent e1 started (019-10, read-only, xhigh).
 * 09:47 Point 2 decided; 019-36 registered; 010-P13 KISS added.
@@ -274,12 +274,12 @@ session continues with `/coordinator resume` (013-02).
 * 10:31 Point 1 decided: the simple error model; agent i10 to start; 017-07 section 4.
 * 10:32 Agent i10 started (019-10, clone i10).
 * 10:44 Point 4 decided; agent d4 started (clone d4); i10 told to add "BergDB assumes correct storage".
-* 10:57 019-30, 019-31, 019-33 done as decided, 017-08 made, 019-07 moved: ad7187f on `main` (`BEFORE COMMIT OK`; harness 6.1's full sets of seeds 20398 and 20399, 0 failures).
-* 11:05 019-10 done, the simple error model: 01b0493 on `main` (`BEFORE COMMIT OK`; harnesses 6.2 and 6.7's night sets). 019-37 registered (i10's find).
+* 10:57 019-30, 019-31, 019-33 done as decided, 017-08 made, 019-07 moved: 3c612b7 on `main` (`BEFORE COMMIT OK`; harness 6.1's full sets of seeds 20398 and 20399, 0 failures).
+* 11:05 019-10 done, the simple error model: de95869 on `main` (`BEFORE COMMIT OK`; harnesses 6.2 and 6.7's night sets). 019-37 registered (i10's find).
 * 11:05 Point 5 decided; agent p5 started.
-* 11:12 Point 6 decided; agent c6. 11:17 ada8608 on `main`; 11:19 db67ca6 (README).
+* 11:12 Point 6 decided; agent c6. 11:17 5446299 on `main`; 11:19 0c22dca (README).
 * 11:21 Point 7 decided; agent w7 started (preparation only).
-* 11:22 018-04's Q1 to Q5 done: b13991a on `main` (`BEFORE COMMIT OK`; harness 6.7 now checks all five; its night set OK).
+* 11:22 018-04's Q1 to Q5 done: 34b7db6 on `main` (`BEFORE COMMIT OK`; harness 6.7 now checks all five; its night set OK).
 * 11:26 `night.sh`'s launchd job unloaded; 11:27 agent n1 (the words).
 * 11:29 Point 8 decided; reviewers R6 and R7 started.
 * 11:33 n1's words committed.
@@ -287,36 +287,36 @@ session continues with `/coordinator resume` (013-02).
 * 11:44 Review R6 done; 019-38, 019-39, 019-40 registered.
 * 11:47 Agent w7 done: tonight's block `/Users/f/fl/bench/016/night4/block.sh` ready and rehearsed (quiet check: load below 2.5 twice; not started).
 * 11:48 Agents i38, i39, j66, f06 started (high).
-* 11:50 019-37 done: e7102b2 on `main`.
+* 11:50 019-37 done: 792501e on `main`.
 * 11:55 Review R7 done; 019-41 registered; agent f41 started.
 * 12:00 i39: a full heap in a fresh JVM can still hang a sync (first CAS links); the coordinator: no warming (Frans, 10:18), a sentence on the limit instead.
-* 12:02 019-38 done: cecaf4c on `main`. Agent q1 started (tonight's block for 019-35 and 019-36).
+* 12:02 019-38 done: cdabbcf on `main`. Agent q1 started (tonight's block for 019-35 and 019-36).
 * 12:07 020 created; agent v1 started (020-01).
 * 12:08 v1 restarted at xhigh (Frans, 12:07: "This is important.").
 * 12:15 Unattended set up: the night chain (night.sh large at 20:45, then jcstress on F53), the watchdog to 07:00, check-ins; agents r30 (the release's scripts, 018-09) and d30 (the documentation, Ready 4) started.
 * 12:16 015-06 done: 4248141 on `main` (`BEFORE COMMIT OK`, LEVEL 2 OK).
 * 12:19 Harness 6.6 on s1: 8 of 8 jcstress tests OK (018-08, 2691750).
-* 12:24 019-39 done: 940e603 (LEVEL 2 OK). Agent i40 started (019-40).
-* 12:28 019-36 made an Investigate (Frans: performance, not a fault; 727c8d3). 020-01 done (e8ab9ae); its N1 (an index build bricks a database since 019-10) registered as 019-42 with the coordinator's default (b); agent f42 started.
-* 12:30 019-41 done: 8f0d117 (LEVEL 4 OK).
+* 12:24 019-39 done: 7063f10 (LEVEL 2 OK). Agent i40 started (019-40).
+* 12:28 019-36 made an Investigate (Frans: performance, not a fault; ffd5509). 020-01 done (ae6b2b5); its N1 (an index build bricks a database since 019-10) registered as 019-42 with the coordinator's default (b); agent f42 started.
+* 12:30 019-41 done: 37997ac (LEVEL 4 OK).
 * 12:31 Frans: a Core fault found tonight is fixed at once, without waiting for him.
 * 12:33 Usage tight (5-hour window 76 %, reset 13:10): no new agent until then.
 * 12:35 019-43 registered (r30's rehearsal: harness 6.2's sample flaky on s1 with JDK 17); its agent at 13:13.
 * 12:36 Early `night.sh` scheduled for 15:00 (Frans, 12:35).
-* 12:38 019-32 done: 00b184e (LEVEL 2 quick OK).
-* 12:42 019-42 done: e687400 (gated on the combined tree).
+* 12:38 019-32 done: 2cce2c0 (LEVEL 2 quick OK).
+* 12:42 019-42 done: 3cc5874 (gated on the combined tree).
 * 12:44 d30's read-through done (1dde232, landing as 6a7d6f4 after a merge of `releases/next.md`); its four small Pub API faults registered as 019-44; the rest for Frans (above).
-* 12:48 The documentation landed: 8996de0. 12:56 019-40 done: 35f5b72. 12:57 018-09, the release's plan (r30), committed: the candidate scheduled for 20:14. 13:03 q1 done: block-q started (it waits for 02:00); 019-36 on s1, longest wait 19.85 ms.
+* 12:48 The documentation landed: 165bb9e. 12:56 019-40 done: 6670917. 12:57 018-09, the release's plan (r30), committed: the candidate scheduled for 20:14. 13:03 q1 done: block-q started (it waits for 02:00); 019-36 on s1, longest wait 19.85 ms.
 * 13:14 Agents f43 (019-43, the blocker) and f44 (019-44) started.
 * 13:16 f43: 019-43 is the harness's oracle (a read racing the stop's close), being checked that nothing a user sees says "failed".
-* 13:20 019-44 done: a9da30c.
-* 13:35 019-43 done: b63273d, harness 6.2's oracle, not the Core (a read that the stop's close overtook; nothing a user sees reports it; the Core unchanged); loops of 100 runs on s1 (JDK 17, 27) and F53 (JDK 17) clean. 019's open entries are now 019-35 and 019-36 only, both Investigate: no known fault of the Core is open (018-01, "Ready", 1), pending tonight's runs.
-* 15:00 The early `night.sh` started on 3aa2d93.
-* 15:49 The early `night.sh`: NIGHT OK (48 minutes) on 3aa2d93 (`java/build/night/2026-11-06-1500/report.txt`).
+* 13:20 019-44 done: 581c55d.
+* 13:35 019-43 done: a792313, harness 6.2's oracle, not the Core (a read that the stop's close overtook; nothing a user sees reports it; the Core unchanged); loops of 100 runs on s1 (JDK 17, 27) and F53 (JDK 17) clean. 019's open entries are now 019-35 and 019-36 only, both Investigate: no known fault of the Core is open (018-01, "Ready", 1), pending tonight's runs.
+* 15:00 The early `night.sh` started on 60279d7.
+* 15:49 The early `night.sh`: NIGHT OK (48 minutes) on 60279d7 (`java/build/night/2026-11-06-1500/report.txt`).
 * 15:52 021-todo created for 2026.4 (Frans, 15:51).
 * 15:55 and 15:59 020-01 and DbObject.java printed for Frans.
 * 16:13 Frans, 16:12: "What is going on? Are you waiting for something?" Every fix had landed by 13:35 and the early `night.sh` was OK, so the evening moved earlier: the release's candidate now (chain2: commit A, the jar, StreamDigest, the axioms, s1's chain, the jar's tests on F53), then `night.sh large` from about 17:00 to 23:00, then jcstress on F53; W7's block back in, from 22:00 when F53 is quiet (to 02:40 at the latest), then block-q from 00:30 to 06:00.
-* 16:16 Commit A, the release's commit: 929fa33 ("Release 2026.3: BuildInfo says 2026.3"), gated; `night.sh large` on it from 16:16. The coordinator's chain passed "A" for A's hash to `build-a.sh`, so the jar, StreamDigest, the axioms, s1's chain and F53's jar tests did not run; at 16:34 the jar was built by hand and the first four started; F53's jar tests moved to 06:02 (not beside `night.sh large`).
+* 16:16 Commit A, the release's commit: 9a0bf5e ("Release 2026.3: BuildInfo says 2026.3"), gated; `night.sh large` on it from 16:16. The coordinator's chain passed "A" for A's hash to `build-a.sh`, so the jar, StreamDigest, the axioms, s1's chain and F53's jar tests did not run; at 16:34 the jar was built by hand and the first four started; F53's jar tests moved to 06:02 (not beside `night.sh large`).
 * 16:34 StreamDigest on A: OK, 4 configurations differ from 2026.2 (l3-every1, l3-node8, l3-node14, l3-node62), all named by `releases/next.md` (015-54, 015-87), and A equals 015-87's digests, 48 of 48 ("Ready", 3). The axioms: 44 theorems OK.
 * 17:11 s1's jar tests on A: S1 TESTS OK, JDK 27 and 17 (unit 1,262, F 87, night 15, the user's program).
 * 17:51 to 18:00 The network was down; nothing local stopped.
@@ -326,37 +326,37 @@ session continues with `/coordinator resume` (013-02).
 
 ## 8. Outcome
 
-Written 2026-11-07, 06:20, by coord-1106. 48 commits on `main`, 8df56fc
-to 7f9e43f; none pushed.
+Written 2026-11-07, 06:20, by coord-1106. 48 commits on `main`, 4296f21
+to 22eb857; none pushed.
 
 ### Done in `main`
 
 * **006-12's ten decisions with Frans** (W1): 019-10 the simple error
-  model (01b0493; R6 reviewed; 019-38, 019-39, 019-40, 019-42 from it);
+  model (de95869; R6 reviewed; 019-38, 019-39, 019-40, 019-42 from it);
   015-80's C1 as 019-36 (closed, measured); 019-15 (b), words (5394276);
   019-30, 019-31, 019-33 outside the fault model, 017-08 checksums
-  (ad7187f); 018-04's Q1 to Q5 (b13991a); 015-86 Option 1 and 017-07,
-  section 5 (ada8608); W7's rerun (done tonight); reviews R6 and R7;
+  (3c612b7); 018-04's Q1 to Q5 (34b7db6); 015-86 Option 1 and 017-07,
+  section 5 (5446299); W7's rerun (done tonight); reviews R6 and R7;
   next.md's behaviour changes kept; the "Built by Claude" lines moved to
-  the Logs (b5329c1).
+  the Logs (4b9f720).
 * **New principle 010-P13, KISS**; 010-P1's 20 ms a guide, not a limit.
 * **The Core's faults fixed today**: 015-06's rest (4248141), 019-32
-  (00b184e), 019-37 (e7102b2), 019-38 (cecaf4c), 019-39 (940e603),
-  019-40 (35f5b72), 019-41 (8f0d117), 019-42 (e687400), 019-43 (b63273d,
-  the harness's oracle), 019-44 (a9da30c). 019-35 and 019-36 closed from
-  the night's figures (7f9e43f). **No known fault of the Core is open**
+  (2cce2c0), 019-37 (792501e), 019-38 (cdabbcf), 019-39 (7063f10),
+  019-40 (6670917), 019-41 (37997ac), 019-42 (3cc5874), 019-43 (a792313,
+  the harness's oracle), 019-44 (581c55d). 019-35 and 019-36 closed from
+  the night's figures (22eb857). **No known fault of the Core is open**
   (018-01, "Ready", 1). One Investigate opened at 06:06: 019-45 (does a
   start's rerun keep to the cache budget? W7's b133 runs ran out of a
   600 MB heap at the start in 2026.1 and 2026.2 alike), not a known fault.
 * **Harness 6.6**, jcstress (018-08): s1 8 of 8 OK, F53 8 of 8 OK on A.
-* **The documentation read through** (8996de0, Ready 4).
-* **`night.sh` without a fixed time** (fb85272); the launchd job retired.
+* **The documentation read through** (165bb9e, Ready 4).
+* **`night.sh` without a fixed time** (d9f817a); the launchd job retired.
 * **Release 2026.4 begun**: 020-release-2026-4, its inventory 020-01
-  (e8ab9ae), the todo list 021-todo.
-* **Release 2026.3's candidate**: commit A, 929fa33 (`BuildInfo` 2026.3),
+  (ae6b2b5), the todo list 021-todo.
+* **Release 2026.3's candidate**: commit A, 9a0bf5e (`BuildInfo` 2026.3),
   and 018-09, the release's plan and scripts.
 
-### The candidate A (929fa33) and the night
+### The candidate A (9a0bf5e) and the night
 
 | Check ("Ready")                         | Result                                   |
 |---|---|
@@ -366,7 +366,7 @@ to 7f9e43f; none pushed.
 | F53's jar tests, JDK 27 and 17 (2)     | TESTS F53 OK (06:02 to 06:25)            |
 | StreamDigest against 2026.2 (3)        | OK: 4 configurations, all named          |
 | The axioms (44 theorems)               | OK                                       |
-| The early `night.sh`, 3aa2d93          | NIGHT OK, 48 minutes                     |
+| The early `night.sh`, 60279d7          | NIGHT OK, 48 minutes                     |
 
 * **W7** (016-10), quiet, 22:00 to 23:16: 4 of 5 steps; sb-c's two b133
   runs ran out of a 600 MB heap at the start in both versions (a setting).
@@ -400,20 +400,20 @@ to 7f9e43f; none pushed.
 Frans, 07:43, on "For Frans to decide": "1. Yes, make the release. 2.
 Tell more more about "the morning list". 3. As recommended. 4. Later."
 
-* **Release 2026.3 made**: commit B 0bf0dfd (`releases/2026.3/`,
+* **Release 2026.3 made**: commit B 22cbcc9 (`releases/2026.3/`,
   `BuildInfo` 2026.4-dev), the annotated tag `release-2026.3` on A
-  929fa33; BEFORE COMMIT OK (119 s), SHA256SUMS checks; not pushed. The
+  9a0bf5e; BEFORE COMMIT OK (119 s), SHA256SUMS checks; not pushed. The
   notes' two markers edited (the Lean paragraph; 019-35, 019-36 and
   019-45 in Known issues), and 015-61 and 019-42 no longer listed as open
   (A fixes them); 018-09, section 8.
-* **W7 in 2026.2's notes** (point 3): 02ecb39, `releases/2026.2/`'s
+* **W7 in 2026.2's notes** (point 3): 660437f, `releases/2026.2/`'s
   notes, `baseline.zip` (1.27 MB, with the GC logs) and its SHA256SUMS
   line; the b133 runs dropped with one sentence (019-45); 016-10.
 * **The morning list** (point 2): (a) as recommended, 021-01 to 021-03
-  (4b05a7c); (c) as recommended, 019-40's check kept; (b) 021-04, a
-  Decide entry (0d85d22): Frans, 08:10, "Need to think about it."
+  (2b5ffbe); (c) as recommended, 019-40's check kept; (b) 021-04, a
+  Decide entry (7828bc5): Frans, 08:10, "Need to think about it."
 * **The coordinator skill**: subagents at high by default, xhigh at the
-  coordinator's judgment for a hard task (Frans, 07:51; b59e918).
+  coordinator's judgment for a hard task (Frans, 07:51; 8682edd).
 * coord-1106 closed at Frans's word (08:10); coord-1107 is next.
 
 Left for Frans: the push (`git push origin main release-2026.3`);

@@ -14,7 +14,7 @@ copy's. The reader then reads 0 or null below `size`: a search misses a
 key that was there long before its lookup time, or returns the value of a
 later or uncommitted transaction.
 
-Evidence (R1/, on F53 at `6f932f0`): `GrowSearch` 8 keys not found in
+Evidence (R1/, on F53 at `47ba87f`): `GrowSearch` 8 keys not found in
 477 million searches; `GrowFuture` 3 values of time 20 at time 15 in 1.1
 billion. A database probe (4 million transactions, 101 million gets) saw
 no wrong answer. The same code is in 2026.1, so it goes into 2026.1's
@@ -36,7 +36,7 @@ State
 -----
 
 2026-11-03, 17:04: the fix, the jcstress test and the gate done in the
-clone (rebased on `d5fc369`); handed off for review (`/Users/f/fl/bench/016/015-12/handoff/`).
+clone (rebased on `9d0f33c`); handed off for review (`/Users/f/fl/bench/016/015-12/handoff/`).
 Open: the review; the jcstress test in default mode on F53 (Done when).
 
 
@@ -46,7 +46,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 16:49 to 17:04, by agent K (016-05), in
-`/Users/f/fl/bench/016/015-12/repo` from `main` at `c960c34`:
+`/Users/f/fl/bench/016/015-12/repo` from `main` at `17270d1`:
 
 * **The probes on the base** (R1/, compiled against the base's jar, 20 s
   each, F53 at a load average of about 40): `GrowRace` `reads
@@ -86,7 +86,7 @@ Log
   base run: none either).
 * **The gate**: `java/before-commit.sh`, 16:57 to 16:59: `BEFORE COMMIT OK
   (104 s)`, 1,101 unit tests and 78 f-tests. Then the clone rebased on
-  `main` at `d5fc369` (015-07's change, in other files) and gated again,
+  `main` at `9d0f33c` (015-07's change, in other files) and gated again,
   17:01 to 17:03: `BEFORE COMMIT OK (113 s)`, 1,108 unit tests and 78
   f-tests.
 * Not changed: the stream format, the Pub API, 009-02 (its row "node

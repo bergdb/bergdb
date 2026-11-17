@@ -3,7 +3,7 @@
 #
 # Usage: probe.sh JAR CLASS_DIR
 #   JAR: a bergdb.jar (java/build.sh); CLASS_DIR: an empty directory for the probe's
-#   classes. probe-before.txt is the output with the build of cbeb9bd (before the fix),
+#   classes. probe-before.txt is the output with the build of 691794d (before the fix),
 #   probe-after.txt with the fix.
 
 set -e

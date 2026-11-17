@@ -34,7 +34,7 @@ import bergdb.stream.FileStream;
  * 005-52): each phase starts with the budget 'budget', and lowerAt seconds into it, between
  * two of the writer's commits, the budget becomes 'lower'; a sampler reads the resident bytes
  * every 10 ms until they are at most 'lower' or the phase ends, and the phase's block has a
- * line "lowered:" with the time they took. Db.setCacheSizeIndicator (since fd8f513) and the
+ * line "lowered:" with the time they took. Db.setCacheSizeIndicator (since decc677) and the
  * resident bytes are reached by reflection, found once at the start and only with lower, so
  * that without it the probe runs and prints as before.
  * Prints a block per phase and PAUSE PROBE OK, or an error and exits 1.
@@ -206,7 +206,7 @@ public class PauseProbe {
             bytes = residents.getReturnType().getMethod("bytes");
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException("lower is set, but this jar has no " + e.getMessage()
-                    + ": it needs Db.setCacheSizeIndicator (since fd8f513, bergdb 005-52) and "
+                    + ": it needs Db.setCacheSizeIndicator (since decc677, bergdb 005-52) and "
                     + "the resident bytes (Residents, item 009)", e);
         }
     }

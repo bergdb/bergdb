@@ -41,13 +41,13 @@ special case, not a sync level" below.
 The study, in short
 -------------------
 
-By Claude (Opus 5.5, Claude Code), 2026-10-22, on commit `cbeb9bd`; no
+By Claude (Opus 5.5, Claude Code), 2026-10-22, on commit `691794d`; no
 change to `java/` or `lean/`. The full study, which follows the six
 questions of this entry's definition, is in
 [11-replication/report.md](11-replication/report.md); the probes P1 to
 P11, small programs that run today's code, are in
 [11-replication/tools/](11-replication/tools/), their outputs in
-[11-replication/runs/](11-replication/runs/). Run again on `78cc5f3`
+[11-replication/runs/](11-replication/runs/). Run again on `63fa5de`
 (2026-10-23, after 005-01), in
 [11-replication/runs/78cc5f3/](11-replication/runs/78cc5f3/): the same,
 but for P3 and P6, below.
@@ -75,7 +75,7 @@ but for P3 and P6, below.
     would leave, 943 were shorter than the decision, and all 943 were
     broken: 32 did not start, 911 failed lookups at times they claim to
     have (295 at the latest time). The main's 2,570 images were all right.
-    On `78cc5f3`, the same: all 923 short replica images were broken, and
+    On `63fa5de`, the same: all 923 short replica images were broken, and
     none of the main's 2,571.
   * A restart without the replica (P9). After a crash that left the
     replica ahead of the main, a start without it, then with it, mixes two
@@ -84,9 +84,9 @@ but for P3 and P6, below.
   * A failing replica (P6). It is dropped without a word, and a STRONG
     sync then returns as an ORDINARY one. With reclaim, the next cut throws
     `NullPointerException` (the failed replica's stream is null). On
-    `cbeb9bd`, about half of all later transactions threw it after they had
+    `691794d`, about half of all later transactions threw it after they had
     committed, until `removeReplica`, which throws too. Since 005-01
-    (`78cc5f3`), the exception comes after the transaction's go point and
+    (`63fa5de`), the exception comes after the transaction's go point and
     fails the database: every later transaction and read is refused until a
     restart. A replica's disk that fails takes the database down. A cut
     during `addReplica`'s copy does the same (P3: the copying replica's
@@ -121,7 +121,7 @@ Durability and the API
 
 Material for the discussion, 2026-10-23.
 
-**Today**, on `78cc5f3`:
+**Today**, on `63fa5de`:
 
 * A commit returns before its bytes are durable. The application waits
   when it wants to, for the level it wants: `Transaction.sync(level)` for
@@ -423,8 +423,8 @@ Frans's decision
 2026-11-04. Frans: "A with C2 now". Replication is removed from BergDB
 (option A), and copies are left to the OS and the file system (option C2).
 Carried out the same day, in this entry rather than in a following one, by
-Claude (Opus 5.5, Claude Code), on `19e9409`; release 2026.2
-(`release-2026.2`, `95bde62`) still has replication.
+Claude (Opus 5.5, Claude Code), on `c739237`; release 2026.2
+(`release-2026.2`, `d5b1bda`) still has replication.
 
 * **Removed from `java/`.** The Pub API's `DatabaseBuilder.replica`,
   `Database.addReplica`, `removeReplica`, `getStorageInfos` and
@@ -495,7 +495,7 @@ Claude (Opus 5.5, Claude Code), on `19e9409`; release 2026.2
 * **The design for later.** The removed design, in full, with Frans's
   question and the options B, C1 and C3 for a future replication:
   [017-03](../017-long-term/03-replication/readme.md).
-* This entry's probes (`11-replication/tools/`) compile against `19e9409`
+* This entry's probes (`11-replication/tools/`) compile against `c739237`
   or earlier, not against today's `java/`. The leak of "Found on the way"
   below (a replica being copied in at a close) went with the code.
 
@@ -556,9 +556,9 @@ Files
   probes P1 to P11; `run.sh` runs one, `all.sh` all but P8, `p2-all.sh` P2's
   six runs.
 * [11-replication/runs/](11-replication/runs/): their outputs on
-  `cbeb9bd`, and the existing tests' run; in
+  `691794d`, and the existing tests' run; in
   [runs/78cc5f3/](11-replication/runs/78cc5f3/), the same run again on
-  `78cc5f3`, after 005-01 (all but P8).
+  `63fa5de`, after 005-01 (all but P8).
 * [017-03](../017-long-term/03-replication/readme.md): the removed design,
   Frans's question and the options for a future replication.
 

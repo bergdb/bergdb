@@ -10,7 +10,7 @@ reproductions are in `/Users/f/fl/bench/022/apps/`. The rule
 (the session `022-bergdb-c`): C follows Java's Core; where C does what
 Java does, the words change, not the behaviour; the behaviour changes
 only where C alone is at fault. Java's behaviour was read in `main` at
-`a2fa9df` (`Db`, `DbClock`, `Trans`, `GetMany`, `DbBuilder`).
+`4957737` (`Db`, `DbClock`, `Trans`, `GetMany`, `DbBuilder`).
 
 
 # 1. Worker f3: the header, the readme, four small fixes

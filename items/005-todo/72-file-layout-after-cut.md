@@ -55,7 +55,7 @@ deterministic; B can be decided later, on its own merits.
 Decision
 --------
 
-Frans, 2026-10-29, 12:41, on 012-02's Q1: "(a) is good as long as there is an item in 005 to consider (b)". So A for 012's cross tests, done since 012-11 (`ca9e583`:
+Frans, 2026-10-29, 12:41, on 012-02's Q1: "(a) is good as long as there is an item in 005 to consider (b)". So A for 012's cross tests, done since 012-11 (`e068fba`:
 workloads with reclaim are compared from the decided cut). This entry
 stays open to consider B, a Java change on its own merits.
 

@@ -8,7 +8,7 @@
 # Start it only when the marker /Users/f/fl/bench/2026-11-10/ratchet/READY exists.
 # "night-ratchet.sh smoke" checks the script in about a minute (runs/full-smoke/).
 #
-# What it runs, one at a time, on the builds in this directory: wt-main (main, dcfe3b4f,
+# What it runs, one at a time, on the builds in this directory: wt-main (main, 51987a7b,
 # no unlink at the delete) and wt-core (023-core, 2c67f887). The probe CleanupRatchet
 # (probe/) is compiled apart, into classes-main and classes-core, against each build's
 # bergdb.jar; nothing in java/src changes.

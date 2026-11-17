@@ -1,6 +1,6 @@
 Levels 2 to 4 conformance, all levels, bergdb item 001, WP F1, 2026-10-18 (the plan's
 F1; docs/level3-alignment.md, section 7; docs/level4-alignment.md, section 8).
-The final code and model: bergdb 899c547 (P4), its java/ and lean/ in two scratch copies
+The final code and model: bergdb 6319677 (P4), its java/ and lean/ in two scratch copies
 of the work tree, one for the trace sets and the Java tiers, one for the four gates.
 Checker: lean/'s tracecheck (the model's own definitions, with the fast versions proven
 equal to them). Machine: Apple M1 Pro, 10 cores, 32 GB; OpenJDK 27; Lean 4 v4.34.1.

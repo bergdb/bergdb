@@ -82,7 +82,7 @@ Outcome
 -------
 
 2026-10-19, by Claude (Opus 5.5, Claude Code), at Frans's request ("The
-005-04 todo. Do as proposed."). Read at `0597329`; runs in a scratch clone
+005-04 todo. Do as proposed."). Read at `1f4b637`; runs in a scratch clone
 of it. Nothing in `java/`, `lean/` or the gates changed. The tools and their
 outputs are in [04-a6-failures/](04-a6-failures/).
 
@@ -227,9 +227,9 @@ Follow-up
 
 2026-10-20, by Claude (Opus 5.5, Claude Code), at Frans's request (to "Shall
 I do these two now, or add them as a todo entry?": "Yes."): both proposals
-above, made and gated in a scratch clone of `0597329`, then copied into the
+above, made and gated in a scratch clone of `1f4b637`, then copied into the
 work tree. Frans committed it with 005-10's removal of unused code, in
-`c6ca623`.
+`3fdf88b`.
 
 1. **The Java tier.** `A2A3Check2` reports A6', TREE and A-COPY as the
    model's assumptions, each with its failures, and A6's failures only as
@@ -261,7 +261,7 @@ Files: `java/stress/A2A3Check2.java`, `level2.sh` and `conformance.sh`;
 `lean/test-traces/` (`run.sh`, `adopt.trace`, the new `adopt2.trace`); and
 docs/level2-alignment.md (section 12), level4-alignment.md (M43, section 4),
 levels.md and log.md. The tools in [04-a6-failures/](04-a6-failures/) were
-written for the checker of `0597329`: `traces.sh` reads A6 from the
+written for the checker of `1f4b637`: `traces.sh` reads A6 from the
 diagnostics, which no longer have it.
 
 Checks: `lake build` without warnings; `test-traces/run.sh`, TRACE TESTS OK.
@@ -271,7 +271,7 @@ s: step 7's three configurations with TREE, A6' and A-COPY; the small set's
 in all); `LEVEL 3 OK` (502 s: 25 reclaim traces, no adoption below the old
 parent); `LEVEL 4 OK` (875 s: 33 eviction traces, C-P on 521,711 pointers,
 the kind in 3 transactions). Then on the work tree with 005-10's removal, in
-a fresh clone, whose `java/` and `lean/` are those of `c6ca623`: `lake build`
+a fresh clone, whose `java/` and `lean/` are those of `3fdf88b`: `lake build`
 without warnings, TRACE TESTS OK, and the four gates, full: `LEVEL 1 OK` (170
 s), `LEVEL 2 OK` (747 s), `LEVEL 3 OK` (469 s), `LEVEL 4 OK` (857 s), with the
 same numbers of traces and of adoptions below the old parent.

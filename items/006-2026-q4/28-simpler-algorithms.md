@@ -36,7 +36,7 @@ them):
 
 The study follows.
 
-Lean and Java names are those of `main` at `bb255d4b`. Nothing was
+Lean and Java names are those of `main` at `7e188024`. Nothing was
 built or run for this study but two counting scripts, kept with their
 output in [28-simpler-algorithms/](28-simpler-algorithms/). "I" in this
 study is its writer, an agent of coord-1116, not Frans. Proved, reduced

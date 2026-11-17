@@ -9,7 +9,7 @@ the last open premise of the key tree's top theorem `invGetScanOK_merges_noTb`
 Java's parameters (`htbL` was proved tonight, 025-05, section 8). I am the writer,
 an agent of coord-1116. I wrote it on 2026-11-17 from 02:36, after reading 030-01
 (sections 2.3 and 7, and its log from 23:15 on), the provers' final reports of
-the night (l4a to l4d), and the Lean on `main` as of 2434351c (03:00).
+the night (l4a to l4d), and the Lean on `main` as of 775b0044 (03:00).
 
 
 # 1. The result
@@ -193,7 +193,7 @@ l4b's argument at 01:56 and 02:01 is the same; this is it with the steps named.
 ## 5.1 The forms
 
 The definitions below are type-checked with `lake env lean` against `main`
-087214aa's build (the night's land clone), at 03:01 and 03:09; the file, with
+1d7df8a8's build (the night's land clone), at 03:01 and 03:09; the file, with
 `delCaseLive_of_S` proved, is
 `/Users/f/fl/bench/2026-11-16/night/r3plan/MFIForms.lean` (93 lines, imports
 `SIS.Tree.LiveAssembly` and `SIS.Tree.MadeForOld`). No lemma about MFI is
@@ -647,7 +647,7 @@ None blocks a start; each has a default that goes ahead.
 # 12. What I could not check
 
 - No `lake build`, no run. M0 is not written. The definitions of section 5.1 and
-  `DelCaseLiveS` type-check against `main` 087214aa's build; no lemma about MFI is
+  `DelCaseLiveS` type-check against `main` 1d7df8a8's build; no lemma about MFI is
   proved.
 - That every writer function keeps MFL with only local facts is my reading of
   Exec.lean (section 5.3), not a proof.
@@ -681,6 +681,6 @@ hand), LiveUpCascCall.lean (`UpCascCallOK` is in post-condition form), `Within`
 (it requires `Tx.sorted`), the get cases' assembly (GetAssembly.lean,
 GetCaseBridge.lean). Made, outside the repo: the forms of
 section 5.1 in `/Users/f/fl/bench/2026-11-16/night/r3plan/MFIForms.lean`,
-type-checked with `lake env lean` in the night's land clone (`main` 087214aa) at
+type-checked with `lake env lean` in the night's land clone (`main` 1d7df8a8) at
 03:01 and 03:09, no `sorry`. No Lean file of the repo changed; no step of
 section 7 started.

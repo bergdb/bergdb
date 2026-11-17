@@ -58,10 +58,10 @@ The plan, its scripts and the probes by the agent "timing" of coord-1114,
 
 ## 2. The builds
 
-* **R**: release 2026.5, the tag `release-2026.5` (`bf9ab5af`).
-* **B**: `main` before 026-09, `3d2beedc`: 2026.6 so far (026-02, 026-05,
+* **R**: release 2026.5, the tag `release-2026.5` (`3611130c`).
+* **B**: `main` before 026-09, `d6774508`: 2026.6 so far (026-02, 026-05,
   026-06, 026-07, 026-08, 026-10, 026-11 and Javadoc).
-* **C**: `main` with 026-09, `542927c5` (branch `026-09-keys-only-scan`,
+* **C**: `main` with 026-09, `4c645015` (branch `026-09-keys-only-scan`,
   fetched from /Users/f/fl/bench/2026-11-13/kscan/clone). It lands on
   `main` as a fast-forward, so C is `main`'s Java after the landing.
 

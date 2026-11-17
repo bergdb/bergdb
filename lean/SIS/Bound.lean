@@ -61,7 +61,7 @@ def sdPolicy (size : Record V T → Nat) (d : Nat) : Stream V T → Dirty → Ti
 
 /-! ## BergDB's take (bergdb 007-08)
 
-`TransSeq.take` as step 3 of 007-03 and D4:B left it (bergdb 007-07, `f89846d`;
+`TransSeq.take` as step 3 of 007-03 and D4:B left it (bergdb 007-07, `b8ac8a1`;
 005-49's report, section 6). A commit takes whole transactions of D, oldest
 first: as many as its share asks for, and every one that begins the deadline's
 distance or more before the end of the stream. The share is the pace: any rule

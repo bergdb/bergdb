@@ -39,7 +39,7 @@ import bergdb.stream.MemoryStream;
  *   java -ea -cp /tmp/probe:build/bergdb.jar:build/stress bergdb.core.RetainProbe all
  *   java -ea -Dstepreserve=N ... bergdb.core.RetainProbe l3-node8     (P4: the step reserve)
  *
- * The output of 2026-11-05 on 0c6c4be is probe.txt, beside this file (design.md, section
+ * The output of 2026-11-05 on 8defe65 is probe.txt, beside this file (design.md, section
  * 4.1). Every database it starts is stopped; a restart starts on MemoryStream.copy(), as
  * StreamDigest does (a closed MemoryStream refuses appends).
  */

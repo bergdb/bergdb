@@ -32,7 +32,7 @@ index 0000000..7592d01
 +import bergdb.nanotest.Nano;
 +import bergdb.stream.MemoryStream;
 +
-+/** Regression cases for the eviction review of f5a5f66. */
++/** Regression cases for the eviction review of abe7785. */
 +public final class R4EvictionTester {
 +    @Nano
 +    public static void testBatchHandleLimit() {

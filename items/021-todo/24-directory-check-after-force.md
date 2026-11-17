@@ -42,9 +42,9 @@ Log
 
 2026-11-09. Registered by coord-1109 from the Codex review's W1 and
 reviewer v2's V5-1, and taken by its agent d24 (clone `clone-d24`, on
-main's 48d2b00).
+main's 3cb6677).
 
-2026-11-09. Done by d24: commit 4ebd063 in `clone-d24`, on main's 48d2b00,
+2026-11-09. Done by d24: commit 4ebd063 in `clone-d24`, on main's 3cb6677,
 to land. In 2026.4's 021-20 only (main's 2557286).
 
 * The paths that make, delete or open a stream file by its name, and

@@ -9,7 +9,7 @@ section 2.6, fault 13) found the same fault in another form; its probes
 and its quota sketch are judged here too (section 5).
 
 Work in /Users/f/fl/bench/2026-11-10/v8/: the clone `clone/`; worktrees
-`wt-main` (main, `0a0f0016`), `wt-p4` (`023-p4-empty-key`, `0e66d1c9`),
+`wt-main` (main, `75cfc0f1`), `wt-p4` (`023-p4-empty-key`, `0e66d1c9`),
 `wt-p8` (`023-p8-steptime`, `f56dca40`), `wt-fix` (branch `023-v8-fix`
 from `f56dca40`, section 4) and `wt-quota` (branch `023-v8-quota` from
 `f56dca40`, review C's quota, section 5). Probes in `probe/`, their

@@ -21,7 +21,7 @@ when they break:
    `javaTake` and TakeCheck to Java's integer take.
 
 Why: from agent d30's read-through of the documentation for release
-2026.3 (006-13's progress, 12:44; 8996de0), not fixed before the release:
+2026.3 (006-13's progress, 12:44; 165bb9e), not fixed before the release:
 006-13, section 5, "For Frans to decide (in the morning)", point 1.
 Recommended there: after the release. A check that nobody runs breaks
 without a sign, as TakeCheck did.
@@ -63,7 +63,7 @@ at Frans's word (2026-11-07, 08:00).
 2026-11-07. Taken by agent f13 of coord-1107 (006-14).
 
 2026-11-07. By agent f13 of coord-1107. Times on F53, in a clone of `main`
-at bfacd87 (`/Users/f/fl/bench/006-14/f13/`), the machine otherwise quiet
+at 1c72adc (`/Users/f/fl/bench/006-14/f13/`), the machine otherwise quiet
 (no performance.sh, night.sh or level script): `sistest 5 40` 104 s,
 `phystest 5 40` 95 s, `reclaimtest 20 30` 51 s; each scales with its seeds,
 so the README's sizes, 20 40, take about 7 minutes each, as it says. Each
@@ -93,9 +93,9 @@ pass", and exits with status 1 (`return (if bad == 0 then 0 else 1)`).
    when planned and closes the entry after it. `BEFORE COMMIT OK (120 s)` (2026-11-07,
    08:57), on the tree with this entry's and 021-01's changes.
 
-State: done. Point 3: the night run 2026-11-07-0858 on aced82e, NIGHT OK
+State: done. Point 3: the night run 2026-11-07-0858 on 9413319, NIGHT OK
 (53 minutes); its step `lean-tests ok 252 s LEAN TESTS OK`
 (`java/build/night/2026-11-07-0858/report.txt`).
 
 2026-11-07. Closed by coord-1107 after the night run 2026-11-07-0858 on
-aced82e: NIGHT OK (53 minutes), its lean-tests step LEAN TESTS OK in 252 s.
+9413319: NIGHT OK (53 minutes), its lean-tests step LEAN TESTS OK in 252 s.

@@ -1,4 +1,4 @@
-gates on 43d85f9 005-31 done: a transaction whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (step 1 of 007-03), 0 changed files, Sat Oct 24 19:07:22 CEST 2026
+gates on 739ff38 005-31 done: a transaction whose index nodes, by a bound at the largest node size, could take more than 15/16 of the record limit is refused before its go point (step 1 of 007-03), 0 changed files, Sat Oct 24 19:07:22 CEST 2026
 == java/stress/level1.sh: exit 0, 130 s, 19:09:52
    SS:1.50 (1.10, 1.19, 1.62, 2.37) (at most 1.51 1.11 1.20 1.63 2.38)
    CORE:0.27 (0.22, 0.32, 0.25, 0.32) (get, get4t, getmany, set; not checked)

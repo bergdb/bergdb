@@ -21,7 +21,7 @@ index a88926f..a9f0b3c 100644
 +quiet block on F53, on `main` with 005-46: in P4's soak under ZGC the
 +longest commit took [TBD] ms and the longest read [TBD] ms, and the cuts
 +were no longer the slowest; ScaleBench from the OS cache and Props made no
-+fewer reads a second than `bf19075` ([TBD]); `performance.sh ab` against
++fewer reads a second than `c1f1f15` ([TBD]); `performance.sh ab` against
 +2026.1, [TBD] (005-46, [TBD: the section]). So target 2 is met, and with it
 +every item of 009-01's "done" (009-01, section 1, "Where the targets
 +stand"; 009-03, section 0). What is above 20 ms in 009's runs is the

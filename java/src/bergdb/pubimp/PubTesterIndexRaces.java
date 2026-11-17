@@ -315,7 +315,7 @@ public class PubTesterIndexRaces {
      * put of it in an indexed directory is refused with DataFormatException naming the key
      * (020-08, step 3; 020-10, section 5.1, step 4); in a directory without an index the
      * byte[] is stored. A write over it and a delete of it work there, and keep the index: a
-     * previous value of format 1 has no entries (2026-11-09, the review of e92a95a: they were
+     * previous value of format 1 has no entries (2026-11-09, the review of 02995d9: they were
      * refused).
      */
     @Nano

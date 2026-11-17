@@ -297,12 +297,12 @@ not wanted for now. The rest of this section is the state of 2026-10-27.
 in a clone; not yet in `main`.
 
 Where. The clone `/Users/f/fl/bench/006-09/w12/` (a clone of bergdb at
-`af67145`): 11 commits in Frans's name, lean/ only, each with `lake build`
+`0891735`): 11 commits in Frans's name, lean/ only, each with `lake build`
 clean and no `sorry`. They are also patches 0001 to 0011 in this entry's
 directory ([62-lean-t9-t12-over-handles/](62-lean-t9-t12-over-handles/)).
-`git am` applies them on `main` at `9fa1789` (tested in a scratch clone;
+`git am` applies them on `main` at `756b512` (tested in a scratch clone;
 the result's lean/SIS is the clone's, and main's lean/ has not changed
-since `af67145`). In all 16 files, +5,723 and −57 lines:
+since `0891735`). In all 16 files, +5,723 and −57 lines:
 
 1. `03a4b0e`: T9 over handles. New trusted file
    lean/SIS/HandleReclaimTheorems.lean (87 lines): `runHandlesCut`,
@@ -436,7 +436,7 @@ its plan revised (the loads, piece 3).
 2026-10-27, 19:40. T12 over handles proved: the change and the writes
 (`9a17f01`, `0c67750`), one transaction (`074017a`), the cache operations
 and the run (`3a2d2e5`, `t12_handles`); patches 0001 to 0011, which apply
-on `main` at `9fa1789`; what the kept theorems still use of the old files
+on `main` at `756b512`; what the kept theorems still use of the old files
 (State, next step 2).
 2026-10-28, 08:24. Frans's answers: all of steps a to c; prove rule 4 by
 position after a cut; no theorem for a cut without a restart, for now.
@@ -452,7 +452,7 @@ Review, 2026-10-27
 2026-10-27, 19:37, by Claude (Opus 5.5, Claude Code), at max effort: an
 adversarial review of the 11 commits (`03a4b0e` to `3a2d2e5`) before they
 go into `main`, from the code, not from the account above. In a clone of my
-own, `/Users/f/fl/bench/006-09/w12r/`: `main` at `9fa1789` with the 11
+own, `/Users/f/fl/bench/006-09/w12r/`: `main` at `756b512` with the 11
 patches applied by `git am`. My checks are in its `review/` folder (not
 committed; run from lean/ with `lake env lean ../review/<file>`).
 
@@ -561,7 +561,7 @@ SIS.lean's imports and the README.
   but for the time.
 
 **5. The patches.** The 11 patches apply with `git am` on `main` at
-`9fa1789`; the result's lean/ tree is `14b995f`, the same as `3a2d2e5`'s.
+`756b512`; the result's lean/ tree is `14b995f`, the same as `3a2d2e5`'s.
 They touch 16 files, all in lean/; the author is Frans Lundberg, with no AI
 attribution.
 
@@ -580,7 +580,7 @@ attribution.
 
 
 In main, 2026-10-27, 19:39: the 11 commits, after the review, as
-`bba91dd` to `a506b34` (the same lean/ tree as `3a2d2e5`), by the 006-09
+`e2213c2` to `99ef913` (the same lean/ tree as `3a2d2e5`), by the 006-09
 session; the patch files 0001 to 0011 were then removed from this
 directory, as the commits hold them. Left for Frans: questions 2 to 4 of
 the State (the statements, how far to remove the old design, a `RunPos`
@@ -836,7 +836,7 @@ Checks, 2026-10-28
 ------------------
 
 On the combined tree (the removal and question 2, rebased onto `main` at
-`fccafd3`), in a fresh clone without a `.lake`:
+`31cd639`), in a fresh clone without a `.lake`:
 
 * `lake build`: "Build completed successfully (147 jobs)", 56 s, no
   warnings; none of `sorry`, `admit`, `native_decide`, `implemented_by`,

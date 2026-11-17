@@ -25,8 +25,8 @@ done, or at 17:00.
 ## 2. The method
 
 * The work is in the clone `/Users/f/fl/bench/2026-11-09/clone-j25`, from `main` at
-  `b7aa2a0`, rebased onto `b49606b` (with 020-23's Y1 and Y2 of `Time`) and then onto
-  `82edabf` (items only). The other
+  `0a59cf3`, rebased onto `142dabc` (with 020-23's Y1 and Y2 of `Time`) and then onto
+  `38a9492` (items only). The other
   hunts' findings were not read; 020-19 and 020-21 were, as the brief asked.
 * Each Javadoc text of the listed classes was read sentence by sentence, with the
   implementation behind it (`bergdb.pubimp`, and `bergdb.core`'s `DbClock` and `Db.sync`),
@@ -260,13 +260,13 @@ program), low (a wrong or missing sentence or message, no wrong data).
   "NAME-salsa-HEX-x", "NAME-salsa-HEX-" and "a-salsa-HEX-HEX" gave the key, as `split("-")`
   without a limit dropped a trailing empty part and the parts after the third were ignored;
   the Javadoc promised a `FormatException` for a string not in `serialize()`'s format
-  (`CryptoKey.java`, `parse()`, line 109 at `b7aa2a0`). Fix: exactly three parts; the
+  (`CryptoKey.java`, `parse()`, line 109 at `0a59cf3`). Fix: exactly three parts; the
   Javadoc gives the format, and `getAlgo()` null for NULL. Test:
   `R.testCryptoKeyParseExact`, which failed before. Commit `6cbd931`.
 * **C2** (low). `Time.add(null)` and `Time.isBetween()` with a null threw
   `NullPointerException`, where every null argument of the API throws
   `IllegalArgumentException` (020-21, 3, Frans's decision of 10:30); no Javadoc said
-  either (`Time.java`, lines 207 and 214 at `b7aa2a0`). And `RwEnvironment.get(key,
+  either (`Time.java`, lines 207 and 214 at `0a59cf3`). And `RwEnvironment.get(key,
   null)`'s message named a parameter "c" (`KvToObjectImp.java`, line 44). Fix:
   `IllegalArgumentException` with its `@throws`; the message "clazz == null not allowed".
   Test: `R.testTimeNullArguments`, which failed before. Commit `2e95f39`.
@@ -274,7 +274,7 @@ program), low (a wrong or missing sentence or message, no wrong data).
   gives a fifth of the maximum heap as the default and clamps a value to 4 to 100,000, but
   the default was at least 2 with no upper bound, so a heap under 20 MB gave 2 or 3 MB and
   one over 500 GB more than 100,000 (`DatabaseBuilderImp.java`, the constructor, line 62
-  at `b7aa2a0`). Fix: `defaultCacheSizeInMb()` clamps; 100 for a JVM without a maximum, as
+  at `0a59cf3`). Fix: `defaultCacheSizeInMb()` clamps; 100 for a JVM without a maximum, as
   before, now in the Javadoc; J.testBuilderSettings computes the default with the clamp.
   Test: `R.testDefaultCacheSizeClamped`, which failed before ("Expected 4, got 3"). Commit
   `21e87d2`.
@@ -370,7 +370,7 @@ utc(); Time's examples; Duration's rules; CryptoKey's rules.
 Done: every listed class has its promises checked (section 3); three code faults fixed (C1
 to C3), seven Javadoc faults fixed (J1 to J7), 18 tests added, one question for Frans (Q1),
 notes in section 6. The commits are in the clone `/Users/f/fl/bench/2026-11-09/clone-j25`,
-branch `main`, on `82edabf`: `4512291` (the tester), `6cbd931` (C1), `2e95f39` (C2),
+branch `main`, on `38a9492`: `4512291` (the tester), `6cbd931` (C1), `2e95f39` (C2),
 `21e87d2` (C3), `312f857` (J1, J2), `8e651de` (J3), `8cfb428` (J4, J5), `05ded17` (J6),
 `9195bdd` (Time's examples), `769df35` (J7), `dd881ed` (RwEnvironment's refusals). Not
 pushed; the coordinator takes them to the main tree. `releases/next.md` has an entry for
@@ -390,7 +390,7 @@ Log
 ===
 
 2026-11-09. Created by coord-1109's agent j25, 12:55. Every listed class checked, C1 to C3
-and J1 to J7 fixed in the clone with their tests, 11 commits on `82edabf`, the tip gated
+and J1 to J7 fixed in the clone with their tests, 11 commits on `38a9492`, the tip gated
 (BEFORE COMMIT OK, 13:21). Stopped at 13:25: every listed class done.
 
-2026-11-09. Done: every fix on main (020-11, section 10), in release candidate 03ce6ec (coord-1109).
+2026-11-09. Done: every fix on main (020-11, section 10), in release candidate d00096e (coord-1109).

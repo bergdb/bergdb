@@ -61,7 +61,7 @@ only a comment. The tools and their output are in
 
 ## 3. The Core can be built
 
-By `core-build.sh` at `c7c6f10` (`runs/core-build.txt`), the Core Layer's
+By `core-build.sh` at `f410135` (`runs/core-build.txt`), the Core Layer's
 seven packages compile from `java/src` alone, with an empty class path and
 source path: 175 source files, 415 classes, a jar of 680 kB. Of the JDK they
 need `java.base` and `java.management`, for `Jmx`. `CoreDemo` is a program
@@ -71,7 +71,7 @@ writes to a database in a directory with `execute`, reads with `getOne`,
 Layer's own tests pass on that jar alone: 648 unit tests and 52 f-tests, of
 BergDB's 1,023 and 71.
 
-Without the test code (section 4), by `core-size.sh` at `c7c6f10`
+Without the test code (section 4), by `core-size.sh` at `f410135`
 (`runs/core-size.txt`):
 
 | Build | Source files | Classes | Jar | JDK |
@@ -373,7 +373,7 @@ does:
 * `CoreUnit.java`: runs the Nano tests of the given packages, as
   `bergdb.dev.Unit` does for all of them.
 * `runs/`: the output. `core-build.txt`, `core-size.txt` and
-  `closure-lines.txt` are at `c7c6f10`, of 2026-10-27, and `c-size.txt` is
+  `closure-lines.txt` are at `f410135`, of 2026-10-27, and `c-size.txt` is
   of the same day. The others are of 2026-10-26: the checks of the change
   in section 4 (`before-commit.txt`, `powerloss-*.txt`, `deps-before.txt`,
   `deps-after.txt`) and the Core Layer's test logs (`core-unit.txt`,

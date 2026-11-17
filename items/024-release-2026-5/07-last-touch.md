@@ -1,7 +1,7 @@
 # 024-07. The last touch of a reclaim iteration (CL7, OP1)
 
 Created 2026-11-11. Status: done (2026-11-11): on `main` since
-`a780b957` (024-13).
+`36924319` (024-13).
 
 The largest measured fault against aim 2 of release 2026.5 (024-04: no
 Core operation costs out of proportion to its work): with keys in time
@@ -653,9 +653,9 @@ keys (09:33 to 09:36) beside other agents' gates.
 
 ## 9. Gates, and changed tests
 
-On `b33a3daa`, under the heavy lock, 08:47 to 09:02
+On `d29762f3`, under the heavy lock, 08:47 to 09:02
 (`/Users/f/fl/bench/2026-11-11/touch/gates.sh`; the logs are beside it).
-The head, `5bbdbf6e`, is one commit later: T-LATEST's premise made
+The head, `e11c4791`, is one commit later: T-LATEST's premise made
 Java's wait exactly (two Lean files and two documents, no Java, no
 checker); on it `lake build` of the whole tree is OK (09:26).
 
@@ -699,7 +699,7 @@ checker); on it `lake build` of the whole tree is OK (09:26).
   LEVEL 4 OK; its conformance with eviction, 15 traces, TRACECHECK OK
   15, C-P and C-H 0 of 3,461 transactions.
 * **The integration** (024-13, the branch merged with 024-10's, head
-  `524732d8`) ran, under its own holds of the lock: `lake build`, the
+  `0a873e46`) ran, under its own holds of the lock: `lake build`, the
   checker's test traces, `level1.sh` (LEVEL 1 OK), `level2.sh` (LEVEL 2
   OK, 70 traces), `level3.sh` (conformance 25 traces OK, C-CUT 0 of
   310); read from its logs at 10:06, its own item has the results.
@@ -708,13 +708,13 @@ checker); on it `lake build` of the whole tree is OK (09:26).
 
 Changed tests, each its own commit, for Frans's approval:
 
-* The checker's own test, `lean/test-traces/run.sh` (`b33a3daa`): for
+* The checker's own test, `lean/test-traces/run.sh` (`d29762f3`): for
   the hand-made `cut.trace` it expected "C-CUT cuts: 1 of 1 CUT lines
   (and PHYSCUT lines) fail (CUT-reach 1, CUT-top 1)"; now "(CUT-reach 1,
   CUT-top 1, CUT-live 1)". The trace has no data node, so its index
   nodes have none below them, which the new check reports beside the two
   failures the trace was made for. (A new expected line for
-  `touch.trace`, "touchPath fails for nodes", is in `27093089`.)
+  `touch.trace`, "touchPath fails for nodes", is in `b459deba`.)
 
 * `DbTester.testTouchTransactionReplacedNodes` named a key range for its
   touch (`touchFrom`, `touchTo`), fields that are gone. It now names
@@ -828,16 +828,16 @@ merged into the integration branch (024-13).
     10M the last step makes 5 to 15 nodes dirty, the largest record is
     29 kB (it was 206 MB), the slowest commit 78 ms (22.3 s);
   * the gates (section 9): the Lean build and tests, `level3.sh`,
-    `level1.sh`, `before-commit.sh`: all pass, on `b33a3daa`; the head
+    `level1.sh`, `before-commit.sh`: all pass, on `d29762f3`; the head
     is one Lean commit later, built; `level4.sh quick` on the head; 15
     draining traces.
 * **The clone:** `/Users/f/fl/bench/2026-11-11/touch/clone`, branch
-  `024-07-last-touch`, head `5bbdbf6e`, nine commits on `e7aa50f7`:
-  `2d26ead3` the changed test; `98cb7438` the model (T-COVER,
-  `checkSchemeC`); `27093089` the fix, its tests, the checker's
-  `touchPath`, the documents; `84879877` and `8db50555` comments;
-  `e81b8a6d` T-LATEST; `e7b66711` the checker's `CUT-live`; `b33a3daa`
-  the checker's changed test; `5bbdbf6e` T-LATEST's premise. The working
+  `024-07-last-touch`, head `e11c4791`, nine commits on `006d4d3e`:
+  `399f6b76` the changed test; `7f9928b1` the model (T-COVER,
+  `checkSchemeC`); `b459deba` the fix, its tests, the checker's
+  `touchPath`, the documents; `8b2dd11b` and `c05cb849` comments;
+  `f31dc43a` T-LATEST; `07fa31e5` the checker's `CUT-live`; `d29762f3`
+  the checker's changed test; `e11c4791` T-LATEST's premise. The working
   tree is clean. The coordinator merged the branch into `024-13-int`
   (09:33).
 * **Nothing is running or queued** from this subitem; it holds no lock.

@@ -9,7 +9,7 @@ C1 to C9) found, beside its B findings (019-38, 019-39):
 
 * C1: an `Error` under the write lock before the go point is recorded
   after the lock is released, unlike 015-66's order.
-* C2: five new paths of 01b0493 have no test; with all five taken out,
+* C2: five new paths of de95869 have no test; with all five taken out,
   `before-commit.sh` still printed OK.
 * C3: `DbTesterFailure.assertRefused`'s message does not name the case.
 * C4: words: where an `Error` does not fail the database (the Pub API's

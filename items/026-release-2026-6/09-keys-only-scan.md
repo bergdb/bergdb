@@ -1,7 +1,7 @@
 # 026-09. Reclaim's scan without the values it does not rewrite
 
 Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-14): Q1 to
-Q4 decided yes, landed on `main` as `c7c7a02b`. Its timing: 026-15.
+Q4 decided yes, landed on `main` as `37005f6a`. Its timing: 026-15.
 
 For release 2026.6: option (b) of 024-34's Q34-1. A reclaim step's scan
 does not follow a value pointer whose stream position is at the cut
@@ -11,7 +11,7 @@ key's bytes plus 100, its value length unknown. At 1M keys with a 20 MB
 cache these loads are 43 % of a step's loads (024-34, section 4).
 
 Made by the agent "kscan" of coord-1113 in a clone, on top of 026-05
-(P8, on `main` since `fe5000ec`); the coordinator lands it.
+(P8, on `main` since `6816d1ff`); the coordinator lands it.
 
 
 Decided
@@ -44,7 +44,7 @@ What it changes
    scan at the step's time, its end key E, the result with the KVs to
    rewrite only, and fault 13's rule that only KVs stored before pStart
    count toward a step's 16 kB.
-2. The change (section 2), on a branch from `main` `c91443d8`: an option
+2. The change (section 2), on a branch from `main` `f2009ee4`: an option
    of `GetMany`, and two lines of `Reclaim.step`.
 3. The cut's argument (section 3): what of 026-05, section 3, it
    touches.
@@ -181,7 +181,7 @@ liveness tests. No expected value of an existing test changed.
 
 ## 5. Gates
 
-First on `ab2d4aed` (the branch with `main` `9c9650d6` merged), one
+First on `c14b7bc6` (the branch with `main` `bb3a1fcf` merged), one
 slot each; logs in kscan/runs/gates-ab2d4aed/:
 
 * `java/before-commit.sh`: BEFORE COMMIT OK (65 s; 1,714 unit tests,
@@ -200,8 +200,8 @@ slot each; logs in kscan/runs/gates-ab2d4aed/:
   with eviction, 18 traces, C-P and C-H 0 of 4,886 transactions fail;
   gate-l4.txt.
 
-`main` then moved (026-10 landed, `e4ac051f`, and the provers' Lean
-checkpoints), merged without conflict as `8e0de02b`; the gates again on
+`main` then moved (026-10 landed, `557b2255`, and the provers' Lean
+checkpoints), merged without conflict as `cb58e785`; the gates again on
 it, logs in kscan/runs/gates-8e0de02b/:
 
 * before-commit: BEFORE COMMIT OK (68 s); level1: LEVEL 1 OK (156 s).
@@ -209,7 +209,7 @@ it, logs in kscan/runs/gates-8e0de02b/:
   stream identical in its four configurations; the conformance, 35
   traces, C-CUT 0 of 794 CUT lines fail.
 * count-gates: COUNT GATES OK (200 s), the same values as on
-  `ab2d4aed` (G3 4.389, the lag 1,285, G5's dead klongs 32 of 70), the
+  `c14b7bc6` (G3 4.389, the lag 1,285, G5's dead klongs 32 of 70), the
   heaps now plain (026-10).
 * level4 quick: LEVEL 4 OK (219 s); C-P and C-H 0 of 4,886
   transactions fail.
@@ -220,15 +220,15 @@ it, logs in kscan/runs/gates-8e0de02b/:
 
 `main` moved once more (Java comments and Javadoc only, 028-02 and
 028-03 to 028-06, and Lean proofs), merged without conflict; with one
-comment of `Reclaim.step` made to say what the count is (`9f2915fb`),
+comment of `Reclaim.step` made to say what the count is (`dddc77d8`),
 the head: BEFORE COMMIT OK (65 s), kscan/runs/gate-bc.txt.
 
 
 ## 6. Before and after: counts
 
-Before: `main` `c91443d8` with 026-04-lag's three commits cherry-picked
+Before: `main` `f2009ee4` with 026-04-lag's three commits cherry-picked
 (branch `026-09-before`, worktree
-/Users/f/fl/bench/2026-11-13/kscan/before); after: `9667109b` with the
+/Users/f/fl/bench/2026-11-13/kscan/before); after: `7e822f13` with the
 same three (`026-09-after`, worktree kscan/after); neither is to land.
 Counts only, every run deterministic. The runs: kscan/runs/meas.sh and
 meas2.sh, one slot each; outputs kscan/runs/{before,after}-*.txt, the
@@ -365,7 +365,7 @@ The mean is about the same (21.7 and 23.0); `main` reaches 28 of 30.
 The limit B = 30 predates theta: one leaf could reach it, but the
 emptied database has six such leaves, up to 42. Q2 (section 8):
 the limit the twin's plus 70, theta times a_n = 10 nodes; applied in
-its own commit (`c9521d6b`, `CountGates.g5`).
+its own commit (`60514021`, `CountGates.g5`).
 
 ### 6.4 ReclaimCost
 
@@ -464,7 +464,7 @@ digests, `GetMany.valuesBefore` public. The time at 10M: 026-15.
   a phase of the six leaves of BergDB's own keys, each at most theta
   = 7 (024-23); `main` gives 13 to 28 at other sizes. Recommended: the
   twin's plus 70 (theta in each of a_n = 10 key nodes, as M4 allows
-  a_n more nodes than the twin's), in its own commit `c9521d6b`.
+  a_n more nodes than the twin's), in its own commit `60514021`.
   Changes the limit of an existing gate.
 * **Q3. The stream's bytes** (section 6.5): the steps after the first
   iteration end elsewhere, so three configurations with reclaim get
@@ -498,17 +498,17 @@ State
 
 2026-11-13, 13:18. Done, for the coordinator to land. Clone
 /Users/f/fl/bench/2026-11-13/kscan/clone, branch `026-09-keys-only-scan`,
-head: this item's last commit, on `9f2915fb`. Commits: `9667109b` (the
-change and its two tests), `c9521d6b` (G5's dead-klong limit, Q2, its
-own commit), `9f2915fb` (a comment), the items, and merges of `main`
-(last `6f5a67fc`, `main` `a4fbe890`). The gates passed (section 5):
-the full set on `8e0de02b`, before-commit on `9f2915fb`. Q1 to Q4
+head: this item's last commit, on `dddc77d8`. Commits: `7e822f13` (the
+change and its two tests), `60514021` (G5's dead-klong limit, Q2, its
+own commit), `dddc77d8` (a comment), the items, and merges of `main`
+(last `af8d1e3d`, `main` `ab2346e4`). The gates passed (section 5):
+the full set on `cb58e785`, before-commit on `dddc77d8`. Q1 to Q4
 (section 8) applied as recommended. The runs and logs in
 /Users/f/fl/bench/2026-11-13/kscan/runs/; the worktrees kscan/before
 and kscan/after (branches `026-09-before`, `026-09-after`) are for
 measuring only, not to land.
 
 2026-11-14. Q1 to Q4 decided yes (Frans, 11:35). Merged with `main`
-twice (`542927c5`: before-commit, level 3 full with 35 traces and C-CUT
-0 of 794, count gates OK; `c7c7a02b`: before-commit OK) and landed as a
+twice (`4c645015`: before-commit, level 3 full with 35 traces and C-CUT
+0 of 794, count gates OK; `37005f6a`: before-commit OK) and landed as a
 fast-forward by coord-1114.

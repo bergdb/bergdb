@@ -12,7 +12,7 @@ recommendation; then a summary table, possible themes, and the questions
 for Frans in order.
 
 **Nothing is decided here.** The recommendations are proposals. Read at
-`main` `329d78f3`, with the integration branch `023-core` at `b7874541`
+`main` `3cfee1e7`, with the integration branch `023-core` at `f2be6a5b`
 as 023-09 and 023's log describe it; read only, nothing built or run.
 
 
@@ -25,7 +25,7 @@ as 023-09 and 023's log describe it; read only, nothing built or run.
   range's end; a transaction's keys are sorted after their
   transformation, one operation a key; record format 6 (023-08,
   sections 5 and 7). On `023-core` level2 to level4 full passed at
-  `b7874541` (023's log); tonight's fuzzing and the rest of 023-08's
+  `f2be6a5b` (023's log); tonight's fuzzing and the rest of 023-08's
   gates (section 5) come before `main` and the tag.
 * **49 candidates in eight areas** (section 3): the Core's cleanup (8),
   the Core API and its contracts (5), the Pub API (9), the Lean model
@@ -721,7 +721,7 @@ Frans's order: 1M to 100M keys and the worst cases first.
 
 ### 10.1. CC1. C at 2026.4
 
-* **What.** C is at 2026.4's candidate `03ce6ec5`, before 023. After the
+* **What.** C is at 2026.4's candidate `d00096e4`, before 023. After the
   tag: the diff to `release-2026.4` (023's core, a little under 023-07's
   estimate of 500 lines, which counted P8's step; 023-07, section 6.4),
   the cross tests with a new pin, and
@@ -966,6 +966,6 @@ the API that 2026.4 has just made a stable baseline (O16-1).
 ## 16. Log
 
 2026-11-10. Written at Frans's request (19:24 to 19:26), read only at
-`main` `329d78f3` and `023-core` `b7874541`. Nothing decided.
+`main` `3cfee1e7` and `023-core` `f2be6a5b`. Nothing decided.
 
 2026-11-13. Status set after the release (coord-1113).

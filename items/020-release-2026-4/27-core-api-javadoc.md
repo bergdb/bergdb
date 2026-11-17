@@ -23,8 +23,8 @@ topic. Stop at 18:30 or when done.
 
 ## 2. The method
 
-* The work is in the clone `/Users/f/fl/bench/2026-11-09/clone-j27`, from `main` at `82edabf`,
-  rebased onto `cf287ad` (020-25's commits and 021-13's change of `Db.getTrans`). 020-19,
+* The work is in the clone `/Users/f/fl/bench/2026-11-09/clone-j27`, from `main` at `38a9492`,
+  rebased onto `f41a4ba` (020-25's commits and 021-13's change of `Db.getTrans`). 020-19,
   020-22 and 020-25 were read, as the brief asked; the other hunts' findings were not.
 * Each Javadoc text of the classes below was read sentence by sentence, with the code behind
   it, and each promise written down (section 3) with the test that shows it: an existing
@@ -289,7 +289,7 @@ program), low (a wrong or missing sentence or message, no wrong data).
 
 * **C1** (low). `GetMany.GetN` and `GetMany.PrefixN` with a count of 0 gave every KV (of the
   prefix), against "Gets at most N kvs": the count passed 0 before it was compared
-  (`GetMany.java`, `GetN.handleKvt`, line 499 at `82edabf`). And `PrefixN`'s constructor kept
+  (`GetMany.java`, `GetN.handleKvt`, line 499 at `38a9492`). And `PrefixN`'s constructor kept
   the caller's array, its copy assigned to the parameter (line 550), where `Prefix` and
   `Endpoint` copy theirs. Fix: a count that is reached stops the scan; `PrefixN` copies.
   Test: JC.testGetManyAtMostN, which failed before ("GetN(0), expected 0, got 5"). Commit
@@ -297,13 +297,13 @@ program), low (a wrong or missing sentence or message, no wrong data).
 * **C2** (low). `StopCondition.eod()` was not called when the database had no state at the
   lookup time (before its first transaction): `Dag.getMany` returned at once, though the
   interface promises the call at the end of the database (`Dag.java`, line 562 at
-  `82edabf`). BergDB's own readers end on a short page too and did not depend on it. Fix:
+  `38a9492`). BergDB's own readers end on a short page too and did not depend on it. Fix:
   `eod()` then. Test: JC.testEodOnceAtTheEnd, which failed before ("eod at time 0, expected
   1, got 0"). Commit `713768c`.
 * **C3** (low). `DbBuilder.cacheSizeIndicator()` took a value below 1, which
   `Db.setCacheSizeIndicator()` refuses: the start then threw an `AssertionError` from
   `Cache3.setSizeIndicator` (with `-ea`) or ran with a budget of 0 or less
-  (`DbBuilder.java`, line 170 at `82edabf`). The Pub API clamps its value and never passed
+  (`DbBuilder.java`, line 170 at `38a9492`). The Pub API clamps its value and never passed
   one. Fix: `IllegalArgumentException`, and a Javadoc for the method. Test:
   JC.testBuilderCacheSizeIndicatorBelowOneRefused, which failed before. Commit `2fb8b71`.
 
@@ -412,7 +412,7 @@ section's rules for a Core put and delete at an indexed key and for the Core use
 Done: every listed class has its promises checked (section 3); three code faults fixed (C1 to
 C3), nine Javadoc faults fixed (J1 to J6, K1 to K3), 13 tests added, two questions for Frans
 (Q1, Q2), notes in section 6. The commits are in the clone
-`/Users/f/fl/bench/2026-11-09/clone-j27`, branch `main`, on `cf287ad`: `22178c1` (C1),
+`/Users/f/fl/bench/2026-11-09/clone-j27`, branch `main`, on `f41a4ba`: `22178c1` (C1),
 `713768c` (C2), `2fb8b71` (C3), `ef3f8b2` (J1 to J6 and the tests of promises kept),
 `1c666d9` (K1 to K3 and `PubTesterCoreKeys`), `5cf84dd` (DbBuilder's streams in
 `testBuilderRefusals`; the Documentation entry in `releases/next.md`). Not pushed; the
@@ -420,7 +420,7 @@ coordinator takes them to the main tree. `releases/next.md` has an entry for eac
 (Core API) and one for the Javadoc faults (Documentation), as 020-19's.
 
 Gates (`java/before-commit.sh`, under the shared lock, in the clone): `1c666d9`'s tree before
-the rebase onto `cf287ad` (`868b165`, the first five commits): BEFORE COMMIT OK (160 s; unit
+the rebase onto `f41a4ba` (`868b165`, the first five commits): BEFORE COMMIT OK (160 s; unit
 1539, f 86, DEMOS OK), 13:50; the tip, `5cf84dd`: BEFORE COMMIT OK (159 s; unit 1539, f 86,
 DEMOS OK), then `java/stress/level1.sh` LEVEL 1 OK (MEM 129, SS 1.51), 13:59. JAVADOC PUB OK;
 `Db`, `DbBuilder` and `GetMany` pass doclint (html, syntax). Outputs in
@@ -433,7 +433,7 @@ Log
 ===
 
 2026-11-09. Created by coord-1109's agent j27, 13:23. Every listed class checked, C1 to C3,
-J1 to J6 and K1 to K3 fixed in the clone with their tests, 6 commits on `cf287ad`, the tip
+J1 to J6 and K1 to K3 fixed in the clone with their tests, 6 commits on `f41a4ba`, the tip
 gated (BEFORE COMMIT OK and LEVEL 1 OK, 13:59). Stopped at 14:00: every listed class done.
 
 2026-11-09. Q2 decided by Frans, 16:20: "Yes, as recommended. Absolutely." Done by
@@ -459,4 +459,4 @@ that depends on `-ea`), by q27, commit "020-27, Q2: range checks": a key of no s
 the four, `GetN`'s and `PrefixN`'s negative count, `addReadHashes()`'s length; with `-ea`
 three of them failed the database. Test `DbTesterJavadoc.testRangeArguments`, failing before.
 
-2026-11-09. Done: Q1 and Q2 decided by Frans and on main, in release candidate 03ce6ec (coord-1109).
+2026-11-09. Done: Q1 and Q2 decided by Frans and on main, in release candidate d00096e (coord-1109).

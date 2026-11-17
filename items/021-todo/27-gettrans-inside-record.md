@@ -1,7 +1,7 @@
 021-27. Decide: Db.getTrans at a position inside a record fails the database
 ============================================================================
 
-Status: done; landed (3ffe0b51); Q27-1 fixed on branch
+Status: done; landed (9dd125f3); Q27-1 fixed on branch
 `021-27-size-bound`, gated, to land (section 5).
 Kind: Decide, then Fix. Frans: decided 2026-11-12 (section 3).
 Created 2026-11-09 by Frans Lundberg.
@@ -136,7 +136,7 @@ was dropped and is not in the branch.
 ----------
 
 Branch `021-27-gettrans` in the clone (section State), two commits on
-main's `de7227de`.
+main's `5c194e69`.
 
 * **`Db.getTrans(tpos)`, a caller's position.** The checks before the
   read as before (negative, not a multiple of 8, in a meta block, at or
@@ -199,7 +199,7 @@ writer first (021-13), then is refused if it is inside the record.
 Tests (all unit tests):
 
 * `DbTester.testGetTransInsideARecord`, **turned** (its own commit,
-  `5c2cdb5e`, a changed expected value approved by Frans's 13:21 and
+  `91e5f352`, a changed expected value approved by Frans's 13:21 and
   13:26): `getTrans(tpos + d)` for d = 8, 16, 24, 512 now
   `IllegalArgumentException`, then a get, `getTrans(tpos)`, a put and a
   get work.
@@ -248,8 +248,8 @@ Question for Frans:
 5. Q27-1: a large size believed only at a record's start
 --------------------------------------------------------
 
-Branch `021-27-size-bound` in the clone, from main's `8247d9a8` (with
-021-27 landed, 3ffe0b51), commit `79797459`.
+Branch `021-27-size-bound` in the clone, from main's `06e91ff9` (with
+021-27 landed, 9dd125f3), commit `2858ed36`.
 
 What: the public `Db.getTrans(tpos)` reads with
 `NodeStream.createTransIteratorAtCallersPos(tpos)`. When the header's
@@ -309,7 +309,7 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 022's U2-4 and taken by its
-agent h31 (clone `clone-h31`, on main's b3a6b05): reproduced in Java,
+agent h31 (clone `clone-h31`, on main's ef5b52f): reproduced in Java,
 not fixed (a design choice), options above. The test in commit "021-27"
 in `clone-h31`, to land. Under the gate lock (18:22 to 18:30), on the
 tree of 021-26's commit and this one: `BEFORE COMMIT OK (273 s)` (unit
@@ -317,13 +317,13 @@ tree of 021-26's commit and this one: `BEFORE COMMIT OK (273 s)` (unit
 
 2026-11-12. Taken by coord-1112's agent gtr (13:22). Option A built in
 the clone, then dropped at Frans's 13:26 (section 3); option D made on
-branch `021-27-gettrans` (section 4). Gates on its head `104de4d9`, each
+branch `021-27-gettrans` (section 4). Gates on its head `ce3eb857`, each
 in a slot: `BEFORE COMMIT OK (66 s)` (unit 1689, f 89, demos 14),
 `LEVEL 1 OK` (13:38), `LEVEL 3 OK` (13:38 to 13:50).
 
-2026-11-12. Landed by the coordinator (3ffe0b51). Q27-1 decided by
+2026-11-12. Landed by the coordinator (9dd125f3). Q27-1 decided by
 Frans (14:09, "fix it."), fixed by gtr on branch `021-27-size-bound`
-(section 5). Gates on its head `79797459`, each in a slot:
+(section 5). Gates on its head `2858ed36`, each in a slot:
 `BEFORE COMMIT OK (63 s)` (unit 1697, f 89, demos 14; 14:12 to 14:13),
 `LEVEL 1 OK` (14:13 to 14:16).
 
@@ -333,15 +333,15 @@ State
 
 * Done: the fix and the tests, two commits on branch `021-27-gettrans`
   in clone `/Users/f/fl/bench/2026-11-12/gtr/clone` (from main's
-  `de7227de`): `5c2cdb5e` the turned test, `104de4d9` the fix. The
+  `5c194e69`): `91e5f352` the turned test, `ce3eb857` the fix. The
   targeted tests pass (DbTester, DbTesterFailure, the Pub testers, 535
   tests).
-* Gates on `104de4d9`, each in a slot: `BEFORE COMMIT OK (66 s)` (unit
+* Gates on `ce3eb857`, each in a slot: `BEFORE COMMIT OK (66 s)` (unit
   1689, f 89, demos 14; 13:33 to 13:34), `LEVEL 1 OK` (13:38),
   `LEVEL 3 OK` (13:50). Logs in `/Users/f/fl/bench/2026-11-12/gtr/`.
-* Landed on main: 3ffe0b51.
+* Landed on main: 9dd125f3.
 * Q27-1: branch `021-27-size-bound` in the same clone, from main's
-  `8247d9a8`, head `79797459`. `BEFORE COMMIT OK (63 s)`, `LEVEL 1 OK`,
+  `06e91ff9`, head `2858ed36`. `BEFORE COMMIT OK (63 s)`, `LEVEL 1 OK`,
   each in a slot. Logs `before-commit-2.txt`, `level1-2.txt` in
   `/Users/f/fl/bench/2026-11-12/gtr/`.
 * Not done: C (022), later.

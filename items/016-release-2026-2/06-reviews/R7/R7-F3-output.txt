@@ -1,4 +1,4 @@
-== f7974d3
+== 6890ce3
 warmup held at stream pos 296, its time 160000000
 after 1484 puts: first pos 1000000, first available time 873500001
 the held transaction: bergdb.pub.util.LookupTimeNotAvailableException: The lookup at time 160000000 (1970-01-01 00:00:16.000 UTC) expired while it ran: the first time available for lookup is now 873500001 (1970-01-01 00:01:27.350 UTC). Retry with a later time.

@@ -5,7 +5,7 @@
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-16.
 Work package A2 and later of bergdb item 001
 ([01-plan.md](01-plan.md)).
-Source commit `75d3c2d`; line numbers below are at that commit, in
+Source commit `5e3ebaa`; line numbers below are at that commit, in
 `java/src/bergdb/`.
 
 Status, 2026-10-18: the scope (section 1), a first α for the cache (section
@@ -178,7 +178,7 @@ eviction.
 
 ## 3. The register
 
-Checked against the code at `75d3c2d` in A2, 2026-10-16. "Java" names
+Checked against the code at `5e3ebaa` in A2, 2026-10-16. "Java" names
 classes and methods in `java/src/bergdb/`, with lines; "model" names
 definitions in `lean/SIS/`. The stages and WPs are those of the plan,
 section 5. Status: open (o), resolved in a WP (WP name), closed (c). Rows of
@@ -197,7 +197,7 @@ level2-alignment.md's register, where stage 1 closes them.
 | M27 | A first touch swizzles a slot to an object that may be newer than the slot's reference: the version after Rule R, the table's canonical object, or a table snapshot at least as new (`usable`). With a memory slot to a newer snapshot, the slot's serialized reference changes too (2.2) | `NodeCollection.followStreamPointer` (184), lines 202 to 241 | — | Model: allowed by lemma M (stage 1). Level 4 loader: the canonical object, or the exact version the slot names after Rule R (Q7; E1, 5.2) | 1, 2, 3: L1, E1 (designed), R8 (done: `followStreamPointer` takes the canonical object or reads exactly the version the slot names after Rule R, which the node table does not get; the checker's C-L4 compares the FIRST lines with the Level 4 loader, level2-alignment.md 13.5; 2026-10-17); c |
 | M28 | Reclaim's scan reads through the readers' path at the old time tStart, and then reads each KV again at the latest time: both swizzle and register what they read (historical snapshots included) | `Reclaim.step` (345): `db.getMany`, line 368, with `Db.newGetMany`'s readers' follower; `db.getOne`, lines 380 and 382 | — | Code: maintenance reads, without admission or swizzling; the value's position from the slot where it suffices (level4-plan.md, 5.1, point 3) | 3, 4: R8 (done: the scan and the per-KV reads use the step's maintenance follower, `NodeCollection.maintenance`, which neither swizzles nor enters what it reads and reads a version once per step, 2026-10-17; the slot's position in place of a load: the decision could use it, since pCut is a record boundary, but the scan loads every value for its byte estimate, which decides the step's range and so the records, and the per-KV read then finds the scan's object, so it would save no read), J6 (done: under eviction, with the step's reserve and reclaim's loads counted, 7.5, 2026-10-18); c |
 | M29 | Top node skip slots cache the target's time (`pointersTime`); the trace does not export it, so the checker cannot see a wrong cached time (F1-008-13, 5) | `TopNode.pointersTime` (line 20); `StoredTopNode.toLongs` (160) writes it, `parse` (54) reads it; `java/stress/TraceExport.java`, `topEntries` (line 290) | entries `skip` | Trace: SKIPT lines (plan, 8.2); checker: equal to the target's time; kept on unswizzling | 1, 4: L5 done (SKIPT lines; C-S checks every cached time and the slot layout, level2-alignment.md 13.5), J3 (done: kept on unswizzling, `TopNode.setPointer`, 2026-10-18); c |
-| M30 | Top node ordinals of 32,768 and more are written wrong: `node.topNodeId << (2 * 8)` shifts an `int` before it is widened (F1-008-13, 5.1). Confirmed at line 176. The stored ordinal is the low 16 bits, read as a signed number: with bit 15 set the parser refuses it; otherwise, from 65,536 on, it is accepted silently as the ordinal modulo 65,536 with the wrong height, and a restart loses history and goes on with wrong ordinals (review-13-claude, 2). `parse` (54) checks neither the slot count against the ordinal (line 77 against 130 to 145) nor which slots are populated | `StoredTopNode.toLongs` (160), line 176; `StoredTopNode.parse` (54) | — | Code fix, two parser checks, a round-trip test and a restart test (A3, with review-13-claude, 7.1) | A3 done, `280525a`; c |
+| M30 | Top node ordinals of 32,768 and more are written wrong: `node.topNodeId << (2 * 8)` shifts an `int` before it is widened (F1-008-13, 5.1). Confirmed at line 176. The stored ordinal is the low 16 bits, read as a signed number: with bit 15 set the parser refuses it; otherwise, from 65,536 on, it is accepted silently as the ordinal modulo 65,536 with the wrong height, and a restart loses history and goes on with wrong ordinals (review-13-claude, 2). `parse` (54) checks neither the slot count against the ordinal (line 77 against 130 to 145) nor which slots are populated | `StoredTopNode.toLongs` (160), line 176; `StoredTopNode.parse` (54) | — | Code fix, two parser checks, a round-trip test and a restart test (A3, with review-13-claude, 7.1) | A3 done, `7f8f2e1`; c |
 | M31 | One canonical object per node id must survive release and reload | `Cache3.makeCanonical` (137), `isBetter` (167); the `isCanonical` fields of `KeyNode` and `TopNode` | Phys: the node table | Model and code: release clears the table's entry and the flag; the writer's follower makes a reloaded node canonical (E1, 5.2) | 2, 4: E1 (designed), E3 (INV-CAN proved, 5.11), J3 (done: a release clears the flag and the table's entry; the writer's follower promotes a reloaded node; the audit checks that a clean canonical object is its node's latest version, 2026-10-18); bergdb 005-09 (done: a reader's entry of a canonical object in the node table, `Cache3.pointerCreated`, read the flag before it took the table's lock, so a release in between left the released object in the table, a snapshot; now the flag is read again under the lock, and `Cache3.released` clears it under the same lock; no record changes; 7.4, 2026-10-20); c |
 | M39 | Eviction beside concurrent readers | `NodeCollection.followPointer` (93) takes the slot's lock (`PointerLocks`, 128 stripes) on every follow | — (sequential) | Java protocol (Q8) and its tests | 4: J5 (done: the protocol of Q8 in `Eviction`, its tests, 7.4, 2026-10-18); c |
 | M40 | Memory accounting is not implemented: `Cache3.totalSize` and `putSize` are set once and never advanced; access data is `-putSize`, the constant -10,000 | `Cache3` fields (lines 25, 26); `Db.getAccessData` (1605); `Cache3.setSizeIndicator`, called from the `Db` constructor (line 173), stores the budget and nothing reads it | — | Code | 4: R8 (the access clock advances, `Cache3.accessClock`: at loads and at the writer's new nodes, 2026-10-17), J1 (done: the registry's accounting, `Residents`, 2026-10-18), J7 (done: the capacity controller, 7.6, 2026-10-18); c |
@@ -240,7 +240,7 @@ in the Java tier (`java/stress/A2A3Check2.java`, a new line in its summary;
 | Java tier, the 21 configurations of level2-alignment.md, 10.5 | 68,901 | fails in 5 | 0 | 0 |
 
 The traces are those of A1's run of `level2.sh` (small) and of F1-008-11's
-campaign on `d5c56dd` (medium; production code and exporter unchanged since),
+campaign on `8f37d88` (medium; production code and exporter unchanged since),
 checked by the checker with A4's diagnostics and C2's fast versions, which
 compute the same as the model's definitions (proven; 31 s for the medium set).
 
@@ -535,7 +535,7 @@ is: a split's new nodes get the live klongs of the node it splits
 (`KeyNode.lastVersionGivenDel`; `setContentFrom` copies a node of the same
 transaction), and a new super root inherits the old one's skip slots,
 a stream slot as a stream slot ("as after a restart", `TopDs.newSuperRoot`,
-lines 77 to 90, at `a66e4d9`). A copied stream slot to a pinned node whose position moves
+lines 77 to 90, at `0cbb4b3`). A copied stream slot to a pinned node whose position moves
 before the new node is written would be stale: the new node's index is
 later than the pinned node's. Rule 2 excludes it in the model. In Java it
 holds without a change, by the cases above: the live slots that key node
@@ -698,7 +698,7 @@ it is now.
    but rests on how objects can come back into the writer's reach; the new
    walk makes it direct. Java's writer walks from the root and follows every
    pointer on its paths (`NodeCollection.WriterFollower.followPointer`, lines
-   161 to 191 at `e5b643b`), so the model now does what Java does.
+   161 to 191 at `6201b50`), so the model now does what Java does.
 2. **A new pointer's slot comes only from what the writer has in hand**
    (`Mem.newSlot4`, `Mem.applyChange4`): a memory slot to the pointee's
    canonical object; else a copy of the slot of a canonical object of a node
@@ -900,7 +900,7 @@ the pinned set of 5.2), which gives it directly. Java needs nothing for it:
 its virtual root's one slot, `TopDs.superRoot`, is a memory reference to the
 super root's canonical object, set at startup (`DbStarter.prepareDb`, line
 335: `new Dag(superRoot, ...)`, whose constructor makes the `TopDs`,
-`Dag.java` line 48) and by `TopDs.newSuperRoot` (line 109), at `73320ec`.
+`Dag.java` line 48) and by `TopDs.newSuperRoot` (line 109), at `099fc57`.
 It changes no record: a virtual root is never written, and a written root
 with a pointee in D is in D itself. E2's runs with restarts pass with the
 change (`phystest 20 40 evict`).
@@ -994,7 +994,7 @@ and its proofs (E3 to E6, 5.11 to 5.14) ask for, each with its register row,
 the WP that makes it and its check. Option K holds: no change to the record
 format, to existing databases, to the public API or to a default (eviction
 is on by default from J7 on, Q10). The model that Java must match is
-`lean/SIS/Evict.lean`. Lines are at `e2e5bd5`, in `java/src/bergdb/`.
+`lean/SIS/Evict.lean`. Lines are at `fe99e16`, in `java/src/bergdb/`.
 
 ### 6.1 Before eviction (R8): every record stays the same
 
@@ -1042,7 +1042,7 @@ after it began): closed 2026-10-22 by bergdb 005-01, a fail-stop at a go
 point; no model change. The details of Q8's protocol:
 J5. Level 3's corrections come from R7's red list (level3-alignment.md) and
 go into R8 with these. M30 (the top node ordinals) was fixed in A3
-(`280525a`).
+(`7f8f2e1`).
 
 
 ## 7. Level 4 in Java
@@ -1554,7 +1554,7 @@ times slower, as they load from the stream:
 
 Bergdb item 001's plan, section 1.2, point by point for Level 4 (WP F2,
 2026-10-18; Level 3's is in level3-alignment.md, section 7). The final
-campaign (F1) ran on the final code and model, bergdb `899c547`:
+campaign (F1) ran on the final code and model, bergdb `6319677`:
 [07-level3-alignment/level34-conformance.txt](07-level3-alignment/level34-conformance.txt).
 
 1. **Correspondence.** α covers the cache: the resident objects, their

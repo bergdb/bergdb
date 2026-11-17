@@ -1,4 +1,4 @@
-005-08: the four gates, full, in a clone of 8c5a106 with the change, 2026-10-19, on F53.
+005-08: the four gates, full, in a clone of 0739170 with the change, 2026-10-19, on F53.
 Levels 1 and 2 built Cache3.java as in the preserved build fix-0508; levels 3 and 4 built it
 after two of its comments were reworded, and one more was reworded after the runs. The code
 is the same.

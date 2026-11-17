@@ -16,8 +16,8 @@ performance.sh's comparison, verbatim (the median of 3 runs, the CV, and
 the change of the candidate's median against the reference's):
 
 ```
-COMPARE reference cefb473c-20261028T191355-quick-g1-8g-ref [cefb473c61ede0915e69b6a51d8f5f1d9d0f2cb3, build main-cefb473, jar 12777591]
-        candidate f89846da-20261028T191355-quick-g1-8g-cand [f89846da227160851753909e9cce5ea7cb4a9487, build d4b-f89846d, jar 756a375f]
+COMPARE reference cefb473c-20261028T191355-quick-g1-8g-ref [fb67f96d99cbfc9916152d9507c817c06bf4014b, build main-cefb473, jar 12777591]
+        candidate f89846da-20261028T191355-quick-g1-8g-cand [b8ac8a17b68c9e0d05d4be96a7e098ec63e2978b, build d4b-f89846d, jar 756a375f]
 thresholds: /Users/f/fl/bench/006-09/d2-007-07/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
 
 SCENARIO r-1k-fin [restart] reference 3 runs, candidate f89846da-20261028T191355-quick-g1-8g-cand 3 runs

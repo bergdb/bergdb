@@ -8,7 +8,7 @@ index 9e1b5e9..f07eb9e 100644
      
 +    /**
 +     * R6-F5 (bergdb 016-06/R6): "A call with the setting in force writes nothing", also for a
-+     * setting the builder allows below setStartupDistance's clamp, 400,000. On f5a5f66 the
++     * setting the builder allows below setStartupDistance's clamp, 400,000. On abe7785 the
 +     * call writes the 200 kB transaction and sets 400,000.
 +     */
 +    @Nano

@@ -520,7 +520,7 @@ hypothesis of the split's lemmas holds at the state with S'.
   the books' `CacheUnique` in place of the tree. The old three are still
   used by DelStepsGh.lean (the NoOutside route, step 6); when that route
   leaves them too, they can go (the close step).
-- **Gated** 53a7f745 (gate-1, GATE PASS), reported to the coordinator.
+- **Gated** 3b61cfc9 (gate-1, GATE PASS), reported to the coordinator.
 - **Step 6** (09:55): the NoOutside route without `hU`. DelStepsGh.lean:
   `upCascOKHG_of_noU`, `upCascJ2OKHG_of_noU` (with `hHL`, which that route
   still has); NoOutsideRun3.lean: the six lemmas that passed `hU` on, with

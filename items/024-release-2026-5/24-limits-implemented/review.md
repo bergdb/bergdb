@@ -1,14 +1,14 @@
 # 024-24, review (rev24)
 
-An independent review of the branch `024-24-limits`, head `98454653`
-(`git diff 08659847 98454653`; `08659847` is main's option-2 landing),
+An independent review of the branch `024-24-limits`, head `4a9ebcb2`
+(`git diff 08659847 98454653`; `0cb7eff7` is main's option-2 landing),
 before it lands. By rev24, an agent of coord-1111, 2026-11-11, 18:51 to
 19:04. I read the diff first, then 024-17 (sections 5.2a, 5.5, 6, 8) and
 the item (024-24).
 
-Where: my clone `/Users/f/fl/bench/2026-11-11/rev24/clone` at `98454653`
+Where: my clone `/Users/f/fl/bench/2026-11-11/rev24/clone` at `4a9ebcb2`
 (clean, nothing changed), the base `/Users/f/fl/bench/2026-11-11/rev24/base`
-at `08659847`, both built with `java/build.sh`; probes in
+at `0cb7eff7`, both built with `java/build.sh`; probes in
 `/Users/f/fl/bench/2026-11-11/rev24/probe/src/bergdb/core/` (`Rev24Probe.java`,
 `Rev24Reclaim.java`), LimitsTester outputs in
 `/Users/f/fl/bench/2026-11-11/rev24/limits-{base,clone}.txt`. No slot taken:
@@ -165,7 +165,7 @@ and notes. Landing without them writes no wrong data.
 
 ### R7 (note: tests). 021-16's depth is no longer reached at the Db level
 
-* `DbTesterLongKeys` (`d1c136eb`) and `PubTesterLongKeys` (`db9ae6ee`) were
+* `DbTesterLongKeys` (`c303944c`) and `PubTesterLongKeys` (`5f9a5c89`) were
   021-16's regression tests: a recursion with a frame a segment overflowed
   at a key of about 90 KB at the start's check and at 1 MB after 100 kB in
   `Dag.dirtyNodeBound` (`freshTreeBound`). The longest key the Core takes
@@ -183,7 +183,7 @@ and notes. Landing without them writes no wrong data.
 
 ### R8 (note: tests). LimitsTester reaches 005-31 less often
 
-* `099682fb`: with keys of at most 111 bytes and putManyKeys over 500
+* `5182cc8f`: with keys of at most 111 bytes and putManyKeys over 500
   refused by L1 first, the refusals of 005-31 fell. Seeds 5000 to 5011,
   500 steps each, the same on both trees: base "37 index nodes", branch
   "8 index nodes" (size 228 and 239; 100 refusals of the limits). Still
@@ -193,11 +193,11 @@ and notes. Landing without them writes no wrong data.
 
 ### R9 (note: tests). L6 checked in one direction by the harnesses
 
-* `bace1945` IndexHarness: a refusal is checked to have a cause (a write
+* `71b40e6b` IndexHarness: a refusal is checked to have a cause (a write
   whose levels pass L6 for the live index named; an index not live in the
   reference is not checked), but a put that should be refused and is taken
   goes unseen: Java and the reference both give it no entry.
-* `6a633700` FormatFuzzer: the expected refusal is computed by calling
+* `b6b8e563` FormatFuzzer: the expected refusal is computed by calling
   `IndexDefinition.entryForPut` itself, the code under test.
 * The boundary itself is tested independently (`IndexReference.tooLong`,
   `IndexDefinitionTester.testFunctionLimit`,
@@ -227,7 +227,7 @@ and notes. Landing without them writes no wrong data.
 
 ### R12 (note). Q2's 'in one transaction'
 
-* `6da0660b` DbTesterDelete.testDeleteEveryKey: at n = 2,000 the deletes
+* `ced8c219` DbTesterDelete.testDeleteEveryKey: at n = 2,000 the deletes
   are four transactions of 500; the whole tree is still emptied in one
   transaction at n = 100 (node size 8). Adding n = 500 would keep a deeper
   tree emptied whole in one transaction. Q2's recommendation (approve the
@@ -304,7 +304,7 @@ and notes. Landing without them writes no wrong data.
   R5; the user wording "A key is at most 111 bytes; about 100 characters
   as a rule of thumb ..." is in Db's Javadoc, the pub package's "Limits"
   and next.md; Connection's "Keys" says L2 with the "/" counted twice.
-* **Gates by lim3 on `98454653`** (from `lim3/gates.out`, at 19:02): Lean
+* **Gates by lim3 on `4a9ebcb2`** (from `lim3/gates.out`, at 19:02): Lean
   (test-traces) OK, before-commit OK, level1 OK, unlinkfuzz OK; level2 was
   running.
 

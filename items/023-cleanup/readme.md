@@ -104,7 +104,7 @@ Files
   bounded, no growth over repeated mass deletes and restarts; its probe
   and scripts in 10-ratchet/.
 * 11-code-reviews/. 023-11, two independent reviews of the code of
-  `023-core` at 13246f53 (a.md, b.md): both "ready with fixes".
+  `023-core` at 80105ef1 (a.md, b.md): both "ready with fixes".
 
 Earlier work, in 020: 020-30, the first study (sections 1 to 4), with
 four helper studies 020-30-01 to 020-30-04, and an independent study by
@@ -246,13 +246,13 @@ the allowance (023-03, section 10); tonight a night of fuzzing on
 `023-core`, the ratchet test on `main` and `023-core`, and a review of
 the integrated code only.
 
-2026-11-10. `023-core`'s head 13246f53 (17:48 to 18:02): one operation a
-key after the key transformations, by the builder's rule (96a18987); X5
-(c) a `Bug` (96d22be5); Q9's change last (13246f53). before-commit and
+2026-11-10. `023-core`'s head 80105ef1 (17:48 to 18:02): one operation a
+key after the key transformations, by the builder's rule (0b1d59f4); X5
+(c) a `Bug` (abe27089); Q9's change last (80105ef1). before-commit and
 level1 OK (MEM 130 against its limit of 131), UnlinkFuzz 8,200 seeds and
 fault 12's probes 0 failures. level2 full and level4 quick on it next.
 
-2026-11-10. On `023-core`'s head 13246f53 (18:03 to 18:17): level2 full
+2026-11-10. On `023-core`'s head 80105ef1 (18:03 to 18:17): level2 full
 OK (the trace checker 70 of 70; A2A3Check2 with no adoption below the old
 parent) and level4 quick OK. The code reviews of the branch (023-11) run.
 
@@ -265,7 +265,7 @@ as its reclaim stops cutting after the first mass delete. The full run
 (1M transactions) started at 18:27.
 
 2026-11-10. 023-11, two independent code reviews of `023-core` at
-13246f53 (18:04 to 18:35): A by Codex (gpt-6.1-sol, effort max), B by
+80105ef1 (18:04 to 18:35): A by Codex (gpt-6.1-sol, effort max), B by
 Fable 5.2 at max. Both: ready with fixes. A: F1, a fault: the sort's
 compaction changes a reusable `Trans`'s input, so a later run of it can
 lose a put; F2, the dead hand's 2 ms a step is not enforced inside a map
@@ -274,7 +274,7 @@ dead. B: no fault; B1 and B2, two undercounts of the dirty-node checks;
 B3 to B5, comments, test names and small simplifications. The fixes go to
 the integration branch.
 
-2026-11-10. 023-11's fixes on `023-core` (18:36 to 18:54), head b7874541,
+2026-11-10. 023-11's fixes on `023-core` (18:36 to 18:54), head f2be6a5b,
 six commits: A's F1 (a reused `Trans` keeps its KVs; the put loop sorts a
 copy), F2 (a dead-hand step bounds its values and the map copy, in parts
 of 8 handles), S1 with B5 (the dead empty inner root's fallback removed,
@@ -282,5 +282,5 @@ a `Bug` instead); B's B1, B2, B3 and B4. Each fault with a test that fails
 before. before-commit, level1, UnlinkFuzz 8,800 seeds, fault 12's probes
 and A2A3Check2 OK. level2 to level4 full on it started 18:55.
 
-2026-11-10. On `023-core`'s head b7874541 (18:55 to 19:27): level2,
+2026-11-10. On `023-core`'s head f2be6a5b (18:55 to 19:27): level2,
 level3 and level4 full all OK.

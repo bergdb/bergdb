@@ -8,7 +8,7 @@ the outcome. The way of working is 013-02's (the coordinator).
 ## 1. The request
 
 coord-1109's handover (006-17, section 6): the night on 2026.4's
-candidate `03ce6ec` was clean but for a JDK 17 test race; ten decisions
+candidate `d00096e` was clean but for a JDK 17 test race; ten decisions
 for Frans in 006-17, section 6.3, the first whether to tag 2026.4.
 
 Frans, 08:29, on the slow scans of 021-28: "The theme of 2026.4 is a
@@ -47,7 +47,7 @@ asks for it.
 * **W2. 020-30, the same study by Codex** (Frans, 09:07: "How about doing
   this study in Codex too. Codex Sol 6.1 Max. Independent work to start
   with. Then a possible 'merge' of ideas."): `codex exec`, gpt-6.1-sol at
-  effort max, workspace-write in its own clone at `0b93d273`, in
+  effort max, workspace-write in its own clone at `2f018b9e`, in
   `/Users/f/fl/bench/2026-11-10/codex30/`; it does not read d30's work nor
   d30 its. Its study goes to `codex-study.md` on its branch `020-30-codex`.
   The two are compared after both are finished.
@@ -90,7 +90,7 @@ restarts it from there (013-02, `resume`).
   prior art, a30 the upward delete in the Dag, f30 format, Lean and C),
   09:23 to 09:30.
 * 09:33 Phase 1 done: 020-30 section 4 and files 020-30-01 to 04
-  (90f8d315). Codex (W2) still runs its full study.
+  (11eae7e5). Codex (W2) still runs its full study.
 * 09:37 Frans: a wider framing, resource cleanup in general; a new item,
   023-cleanup (09:45).
 * 09:47 023-01 (introduction) and 023-02 (the problem) started, xhigh.
@@ -117,8 +117,8 @@ restarts it from there (013-02, `resume`).
 * 14:43 Frans away (a walk): unattended until about 17:30. While away:
   023-07 committed when written, then the three reviews, then a merged
   verdict for Frans; P7's report committed when done (by 16:30).
-* 14:48 023-07 written (e45fd4c1). 14:49 P7 done: fix (a) closes the
-  window; report 0a0f0016. 14:49 the three reviews of 023-07 started
+* 14:48 023-07 written (53c394b4). 14:49 P7 done: fix (a) closes the
+  window; report 75cfc0f1. 14:49 the three reviews of 023-07 started
   (023-08), each in its own clone, by 16:45.
 * 15:36 to 16:06 the reviews in (B, C, A). All three: P8 can stop the
   cuts; C: fault 12 in the take-back. 15:38 and 15:50 two checks: both
@@ -135,7 +135,7 @@ restarts it from there (013-02, `resume`).
   after the key transformations, by the builder's rule; Q9; T1's small
   misses accepted; 024-release-2026-5 created. 17:51 level2 to level4
   full OK on 2c67f887. 18:04 to 18:35 two code reviews of `023-core`
-  (023-11): ready with fixes; 18:36 to 18:54 the fixes, head b7874541;
+  (023-11): ready with fixes; 18:36 to 18:54 the fixes, head f2be6a5b;
   19:27 level2 to level4 full OK on it. 18:27 the ratchet test (023-10):
   no growth. 19:26 024-01, the inventory for 2026.5, started.
 * 19:33 Frans: "If the night is clean, merge into main, push, and make the
@@ -162,8 +162,8 @@ restarts it from there (013-02, `resume`).
 | after           | 2026.5 on branches: P8 with fault 13's fix on the new main; the builder's rule |
 | 06:00 to 07:00  | The morning summary (news.md, this plan's Outcome)            |
 
-As set up (20:37): commit A is `72c8e0ec` in the release clone: `main`'s
-329d78f3, `023-core` merged, BuildInfo 2026.4, the JDK 17 test fix,
+As set up (20:37): commit A is `6e9671d4` in the release clone: `main`'s
+3cfee1e7, `023-core` merged, BuildInfo 2026.4, the JDK 17 test fix,
 releases/next.md and the docs for 023, and a test race fix found by s1's
 first run (the first night stopped at 20:22 for it); before-commit OK. On
 F53 `night.sh large` from 20:37, then jcstress, checks and Android (about
@@ -182,7 +182,7 @@ watchdog until 07:00. F53's quiet block: nothing else heavy while
 Written 2026-11-11, 05:50, by coord-1110.
 
 **Release 2026.4 made, 04:55** (020-31): the tag `release-2026.4` on A'
-`bb8da6dc`, commit B `04f8863e` with releases/2026.4/ (six files,
+`76f66f89`, commit B `3e09619b` with releases/2026.4/ (six files,
 SHA256SUMS checked), pushed to origin with the tag; BuildInfo 2026.4,
 264; `main` at 2026.5-dev.
 
@@ -233,7 +233,7 @@ night); the integration branch's docs beyond 023-09's list (done in the
 release commit for levels.md and sis-model.md).
 
 Added 06:40: 024-03, the measurements of 2026.4 at 1M and 10M keys, done
-(2ba2759f): the same speed and MEM as 2026.3; P8 not needed; merges'
+(0b010760): the same speed and MEM as 2026.3; P8 not needed; merges'
 underfill measured; the last touch of a reclaim iteration (CL7) the
 biggest fault measured, old (a 200 MB record and 21 s at 10M). So point 4
 above gains CL7. Handed over to coord-1111 at 06:40 (013-02, section

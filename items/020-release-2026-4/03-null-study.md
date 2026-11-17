@@ -329,7 +329,7 @@ BergDB today), or hold the NULLs (SQL, a plain MongoDB index).
 
 ## 5. BergDB today
 
-From the code at `c00e621` and the probe `NullProbe` (BG1 to BG6), run
+From the code at `b7fc20a` and the probe `NullProbe` (BG1 to BG6), run
 on the jar of that commit.
 
 ### 5.1. What is stored
@@ -401,7 +401,7 @@ on the jar of that commit.
   `testArray1`, `testStrings2D`, the 4-D and 5-D array tests and the
   null cases of the object tests); none covers a null into a primitive
   or another type, or null in an index but 019-42's. (020-04, section
-  10, counted them at `7edcbe2`: 19 of the 72 set a null and 4 more hold
+  10, counted them at `b4cf896`: 19 of the 72 set a null and 4 more hold
   nulls by default; note of 2026-11-08.)
 
 
@@ -481,7 +481,7 @@ refused where a null would not read back.
 On F53 (macOS 27, arm64), 2026-11-07; the outputs in full are the
 `out.txt` files in `/Users/f/fl/bench/006-14/020-null/`, by directory.
 
-BergDB, the jar of `c00e621` (`bergdb/NullProbe.java`):
+BergDB, the jar of `b7fc20a` (`bergdb/NullProbe.java`):
 
 * BG1. A class with null `String s`, `byte[] b`, `String[] a`, `Inner
   o`, `Integer w`: stored types `s`, `b`, `a`, `o`, `o`, each null; a

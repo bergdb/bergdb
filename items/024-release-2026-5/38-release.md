@@ -1,8 +1,8 @@
 # 024-38. The release of 2026.5
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-13): the
-tag `release-2026.5` on A `bf9ab5af`, made by Frans at 06:27 and pushed;
-commit B `e9ed4ac9`; `releases/2026.5/`.
+tag `release-2026.5` on A `3611130c`, made by Frans at 06:27 and pushed;
+commit B `3e85ce8b`; `releases/2026.5/`.
 
 The release night of 2026.5, made as 2026.4's (020-31) by the agent
 "rel5" of the day's coordinator (coord-1112), from 15:03: the release
@@ -20,9 +20,9 @@ not in `main`. It reaches `main` only after a clean night (section 4).
 
 | Commit     | What                                                                  |
 |------------|-----------------------------------------------------------------------|
-| `a180a6b6` | main's head at 15:03 (024-37 landed): the base                        |
-| `b63b1b73` | BuildInfo: 2026.5, 265, build 2026.5.261112.1505                      |
-| `bf9ab5af` | releases/next.md complete; StreamDigest's digests in 024-38's folder  |
+| `291fe0df` | main's head at 15:03 (024-37 landed): the base                        |
+| `97607f4d` | BuildInfo: 2026.5, 265, build 2026.5.261112.1505                      |
+| `3611130c` | releases/next.md complete; StreamDigest's digests in 024-38's folder  |
 
 * **releases/next.md** (section 2) and, in `items/024-release-2026-5/
   38-release/` (in A only), `digests-base.txt` (release 2026.4's digests,
@@ -121,7 +121,7 @@ its steps beside them, one after the other.
   fuzz runs to a fixed end, 04:30, and the probe takes minutes, so this
   order lets both end in the window. The probe uses 024-36's jars on s1
   (`/opt/bergdb-bench/2026-11-12-ot2/`): their `FileStream` is A's (`git
-  diff 6103608d bf9ab5af -- java/src/bergdb/stream/FileStream.java` is
+  diff 0b18ddf4 3611130c -- java/src/bergdb/stream/FileStream.java` is
   empty). Five rounds of two JVMs with the fix (300,000 tests), one
   without it as the control; OK if the fix has 0 refusals.
 * **s1-fuzz**: as 2026.4's (020-31, section 2), seeds from 3,000,001
@@ -153,7 +153,7 @@ In `rel/morning/` (its `README.md`). Each script prints one result line.
 2. `COMMIT=1 sh to-main.sh`: A into `main`, a fast-forward if `main` has
    not moved, else a merge in Frans's name if it moved in `items/` only;
    never a force; then `git push origin main`. If `main`'s code moved
-   since `a180a6b6` (a landing in the night), it stops for a look: A was
+   since `291fe0df` (a landing in the night), it stops for a look: A was
    not tested with that code.
 3. `COMMIT=1 sh release.sh`: the jar (the night's users' jar), the zips,
    `baseline.zip`, `SHA256SUMS`, the notes (`notes/readme-template.md`
@@ -163,7 +163,7 @@ In `rel/morning/` (its `README.md`). Each script prints one result line.
    2026.6-dev; the gate, commit B, `git push origin main`. **No tag.** It
    prints last, for Frans:
 
-       git -C /Users/f/fl/repos/bergdb tag -a release-2026.5 bf9ab5afa6b32948563b8229f1db38ae4c8a690b -m "BergDB 2026.5, internal release, DATE"
+       git -C /Users/f/fl/repos/bergdb tag -a release-2026.5 3611130c5bc98d862655695bd116e7fe2a214574 -m "BergDB 2026.5, internal release, DATE"
        git -C /Users/f/fl/repos/bergdb push origin release-2026.5
 
 Smoke-tested 15:24 to 15:28 on scratch repositories (`morning/
@@ -191,7 +191,7 @@ printed), release.sh stopping at COLLECT INCOMPLETE while the night runs.
 
 2026-11-12, 15:30, by the agent "rel5" of coord-1112.
 
-* **Done**: next.md; commit A `bf9ab5af` on branch `release-2026.5-a` in
+* **Done**: next.md; commit A `3611130c` on branch `release-2026.5-a` in
   `/Users/f/fl/bench/2026-11-12/rel/clone` (not pushed, not in `main`);
   A's gate (BEFORE COMMIT OK, lake build OK); the night's step scripts,
   smoke-tested, with READY markers; the conductor running since 15:18 (pid
@@ -206,13 +206,13 @@ printed), release.sh stopping at COLLECT INCOMPLETE while the night runs.
   (020-31, section 1.2's way) and its steps again.
 
 2026-11-13, 06:32. The release's files are on main since commit B
-(e9ed4ac9); the notes were edited by Frans after B, final in 0edf7fde
+(3e85ce8b); the notes were edited by Frans after B, final in 5529d392
 (What it is without the levels; the files as a list; CRC32C as the main
-reason for the faster writes, checked before and after 79f35aa3). The tag
-`release-2026.5` goes on A (bf9ab5af), the code the night tested; the
+reason for the faster writes, checked before and after 3dd38b23). The tag
+`release-2026.5` goes on A (3611130c), the code the night tested; the
 notes are documentation and may be corrected after the release without
 touching the binaries or SHA256SUMS (Frans, 06:22 to 06:32: "fine as is.
 Releases may be unattended too.").
 
 2026-11-13, 06:36. Done: Frans made the tag `release-2026.5` on A
-(`bf9ab5af`) at 06:27 and pushed it.
+(`3611130c`) at 06:27 and pushed it.

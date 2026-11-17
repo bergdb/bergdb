@@ -5,7 +5,7 @@ Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-08 by Frans Lundberg.
 
 What: one run of `java/before-commit.sh` on the night of 2026-11-08 (in
-the clone of 021-09, on `main` at 559b9ac plus 021-09's change to
+the clone of 021-09, on `main` at ddf3e19 plus 021-09's change to
 `PubKeys`, no Core change of the night yet) failed in
 `bergdb.core.EvictionAccountingTester.testAccounting`:
 
@@ -36,7 +36,7 @@ Cause: a real fault of the Core, not of the audit
 
 A stale pointer made by a reader's `Cache3.dropIfEmpty` racing the
 writer's load of the same node. It is in every release with handles (009,
-step 3b, `4a1fc5e`; so 2026.2 and 2026.3).
+step 3b, `85e9283`; so 2026.2 and 2026.3).
 
 The actors: the writer (one thread, Db's write lock held for its
 transaction); readers (any threads, no write lock); eviction (the write

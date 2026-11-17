@@ -51,7 +51,7 @@ over a key such as `/dp/-a/b`. Here they are rows W14, W11 and W9 (section 5).
   worst that a well-formed Core write does to the indexes is to make values **missing**
   from scans, or an index disappear. Reclaim's keys are the one place where a Core write can
   lose data.
-* **Silently wrong today** (`main` at `2c248ff`): W6, a Core put at an object key of an
+* **Silently wrong today** (`main` at `0d17109`): W6, a Core put at an object key of an
   indexed directory that changes the value's entry (the value is left out of scans until
   the Pub API writes the key again); W12, a well-formed definition that the Pub layer did
   not write (active without a build, another generation, other levels or directory: values
@@ -214,7 +214,7 @@ and every entry of an index, a cost of the data's size (B4).
   stored, or an index is lost, with no error).
 
 Abbreviations: IDE `InternalDataException`, VSE `VersioningStreamException`, IAE
-`IllegalArgumentException`. "Today" is `main` at `2c248ff`; "F16" adds 020-16's three
+`IllegalArgumentException`. "Today" is `main` at `0d17109`; "F16" adds 020-16's three
 fixes (clone-f16 at `b1a659f`: `a3c5e61`, `19cd6a4`, `dfb7df4`). U1 to S1 are the probe's
 cases (section 10).
 
@@ -581,7 +581,7 @@ a key whose name holds a `/`".
 * **A1**: none; the text of section 7.
 * **A2**: section 7's text, and:
   * 020-16's three commits (`a3c5e61`, `19cd6a4`, `dfb7df4`, with their tests), which
-    apply to `main` at `2c248ff` without a conflict (020-16's log);
+    apply to `main` at `0d17109` without a conflict (020-16's log);
   * R22-1 in `ConnectionImp.transactionInfo()`: leave out a KV whose key has no ukey
     (`Keys.bkey2ikeyOrNull`, then the ukey's rule as `UsePrimaryBuilderImp` applies it),
     with `Connection.transactionInfo()`'s Javadoc saying so, and a test with U5's three
@@ -636,7 +636,7 @@ Frans, 2026-11-09, 11:13, to the six questions: "Yes", all as recommended.
 ## 10. The probe
 
 `/Users/f/fl/bench/2026-11-09/r22/probe/bergdb/pubimp/R22Probe.java`, compiled with `main`'s
-`java/src` at `2c248ff` (`git archive` into `r22/java/src`, classes in `r22/cls`) and with
+`java/src` at `0d17109` (`git archive` into `r22/java/src`, classes in `r22/cls`) and with
 clone-f16's at `b1a659f` (`r22/f16src`, `r22/f16cls`); outputs `r22/run-main.txt` and
 `r22/run-f16.txt`, one JVM each, a few seconds. Each case starts a memory database with
 `/p/1` and `/p/2` holding `{s: "x"}` and the active index `a` on `/p/`, field `s`, writes
@@ -676,7 +676,7 @@ first (IDE naming the key) and D1 (the start refused with IDE).
 ## Log
 
 2026-11-09. Written at Frans's request (10:43, the coordinator's proposal accepted at
-10:48), by coord-1109's agent r22, from `main` at `2c248ff` and 020-16's clone at
+10:48), by coord-1109's agent r22, from `main` at `0d17109` and 020-16's clone at
 `b1a659f`, with the probe of section 10: the inventory, the rules W1 to W26, R22-1 (new),
 options A1 to A3, K1 and K2, B1 to B4, recommended A2, K2 and B1; the drafts of section 7;
 questions Q1 to Q6 for Frans. No code changed.
@@ -689,7 +689,7 @@ makes R22-1's fix and the five places' text, in its clone
 integrator, not redone here.
 
 2026-11-09, 11:42. R22-1 fixed as Q5 decided, in the clone
-`/Users/f/fl/bench/2026-11-09/clone-r22b`, commit `ff3d5f6` (on `main` at `1691676`):
+`/Users/f/fl/bench/2026-11-09/clone-r22b`, commit `ff3d5f6` (on `main` at `6dd0b26`):
 `ConnectionImp.transactionInfo()` leaves out a KV whose key has no ukey, by the new
 `PubKeys.i2uOrNull` (the ukey only when its ikey is the key: `u2i(i2u(ikey))` equal to the
 ikey). Found while writing the test: `i2u` is lenient, so a key such as `/-q/-t` or `/dq/-`
@@ -719,10 +719,10 @@ for F16-1 to F16-3 (7.5); `releases/next.md`, Documentation. JAVADOC PUB OK; BEF
 COMMIT OK (149 s). Left for the release: 020-16's three fixes through the integrator (B1's
 other part); B4 after the release if wanted. Status stays open until the release.
 
-2026-11-09, 12:05. `main` had moved to `770d88b`, with 020-16's three fixes (`87a1f83`,
-`2fcc546`, `d2f86f4`). The two commits rebased onto it in clone-r22b's `main`: R22-1 as
+2026-11-09, 12:05. `main` had moved to `43f71af`, with 020-16's three fixes (`f1101b0`,
+`3eceeed`, `68068cf`). The two commits rebased onto it in clone-r22b's `main`: R22-1 as
 `119f927`, the rules as `d0a5f6a` (only `releases/next.md` met other entries, both kept;
-the commits on `1691676` are kept on the branch `r22b-on-1691676`); after them `3883740`,
+the commits on `6dd0b26` are kept on the branch `r22b-on-1691676`); after them `3883740`,
 020-15's KR-O1 (at Frans's word, 11:56). The tip gated: JAVADOC PUB OK; BEFORE COMMIT OK
 (144 s, unit 1497, f 86, demos).
 

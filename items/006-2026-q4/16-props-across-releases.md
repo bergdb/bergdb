@@ -33,20 +33,20 @@ SS do not depend on the machine; CORE does. F53, JDK 27, default flags.
 
 | Build      | Code date  | Commit    | MEM | SS (SS1, SS2, SS3, SS4)       | CORE        |
 |------------|------------|-----------|-----|-------------------------------|-------------|
-| 2013.1     | 2013-06-06 | `9ffbdf9` | 144 | 1.83 (1.14, 1.58, 1.50, 4.12) | not run     |
-| 2013-07-05 | 2013-07-05 | `550ce4e` | 144 | 1.83 (1.14, 1.58, 1.50, 4.12) | not run     |
-| 2013.3     | 2013-11-30 | `466a18f` | 153 | 2.11 (1.31, 1.73, 1.90, 4.64) | not run     |
-| 2014.1     | 2014-07-25 | `7e29e8e` | 153 | 2.12 (1.31, 1.74, 1.90, 4.64) | not run     |
-| 2015.1     | 2015-01-08 | `f51fc8d` | 153 | 1.56 (1.25, 1.34, 1.66, 2.12) | not run     |
-| 2015.4     | 2015-07-29 | `9384bce` | 153 | 1.48 (1.16, 1.26, 1.60, 2.06) | not run     |
-| 2015-12-28 | 2015-12-28 | `bc11dbf` | 158 | 1.48 (1.14, 1.23, 1.59, 2.16) | 0.28 (006-02) |
-| 2017-07-29 | 2017-07-29 | `dbf131a` | 166 | 1.52 (1.15, 1.24, 1.65, 2.26) | 0.29 (006-02) |
-| 2017-08-01 | 2017-08-01 | `195cf88` | 271 | 1.56 (1.16, 1.25, 1.74, 2.36) | 0.32 (006-02) |
-| 2026-10-19 | 2026-10-19 | `11ea2f6` | 227 | 1.50 (1.10, 1.19, 1.62, 2.37) | 0.30 (006-02) |
-| 2026.1     | 2026-10-25 | `a42947c` | 191 | 1.50 (1.10, 1.19, 1.62, 2.37) | 0.29 (notes) |
-| 2026.2     | 2026-11-04 | `95bde62` | 129 | 1.51 (1.10, 1.20, 1.65, 2.40) | 0.24 (notes) |
-| 2026.3     | 2026-11-06 | `929fa33` | 129 | 1.51 (1.10, 1.20, 1.65, 2.40) | not run     |
-| 2026.4c    | 2026-11-09 | `f3af680` | 130 | 1.51 (1.10, 1.20, 1.65, 2.40) | not run     |
+| 2013.1     | 2013-06-06 | `3cf8170` | 144 | 1.83 (1.14, 1.58, 1.50, 4.12) | not run     |
+| 2013-07-05 | 2013-07-05 | `d0b3bd1` | 144 | 1.83 (1.14, 1.58, 1.50, 4.12) | not run     |
+| 2013.3     | 2013-11-30 | `9e7e1e4` | 153 | 2.11 (1.31, 1.73, 1.90, 4.64) | not run     |
+| 2014.1     | 2014-07-25 | `5683149` | 153 | 2.12 (1.31, 1.74, 1.90, 4.64) | not run     |
+| 2015.1     | 2015-01-08 | `f023cd7` | 153 | 1.56 (1.25, 1.34, 1.66, 2.12) | not run     |
+| 2015.4     | 2015-07-29 | `9d59c7f` | 153 | 1.48 (1.16, 1.26, 1.60, 2.06) | not run     |
+| 2015-12-28 | 2015-12-28 | `358ad6b` | 158 | 1.48 (1.14, 1.23, 1.59, 2.16) | 0.28 (006-02) |
+| 2017-07-29 | 2017-07-29 | `b64383a` | 166 | 1.52 (1.15, 1.24, 1.65, 2.26) | 0.29 (006-02) |
+| 2017-08-01 | 2017-08-01 | `0257e0b` | 271 | 1.56 (1.16, 1.25, 1.74, 2.36) | 0.32 (006-02) |
+| 2026-10-19 | 2026-10-19 | `0e7292d` | 227 | 1.50 (1.10, 1.19, 1.62, 2.37) | 0.30 (006-02) |
+| 2026.1     | 2026-10-25 | `8e579c6` | 191 | 1.50 (1.10, 1.19, 1.62, 2.37) | 0.29 (notes) |
+| 2026.2     | 2026-11-04 | `d5b1bda` | 129 | 1.51 (1.10, 1.20, 1.65, 2.40) | 0.24 (notes) |
+| 2026.3     | 2026-11-06 | `9a0bf5e` | 129 | 1.51 (1.10, 1.20, 1.65, 2.40) | not run     |
+| 2026.4c    | 2026-11-09 | `90ec60a` | 130 | 1.51 (1.10, 1.20, 1.65, 2.40) | not run     |
 
 MEM and SS: one run of each build today (MEM does not move by more than 1
 between runs, 006-02; SS does not move at all). CORE: not measured today; the
@@ -57,7 +57,7 @@ and 2014 builds run a port of Props (p16, section 1); the others their own.
 
 1. **The 2026.4 candidate against 2026.3: no change in SS; MEM 130 against
    129**, which is within the range "129 to 130 since handles" that
-   `level1.sh`'s limit records (`f648f96`) and below this item's threshold of
+   `level1.sh`'s limit records (`5dda08b`) and below this item's threshold of
    2; CORE not measured. Props does not touch objects: it writes `byte[]`
    values through `Db` (MEM's and SS's keys are Strings made into key
    segments), so format 2 of stored objects (020-07, 020-08) cannot change
@@ -86,7 +86,7 @@ and 2014 builds run a port of Props (p16, section 1); the others their own.
 
 ## 1. What Props measures
 
-`bergdb.dev.props.Props` was created on 2015-01-06 (`35dac3d`, `3e4eedb`) from
+`bergdb.dev.props.Props` was created on 2015-01-06 (`ca7e38e`, `905cb79`) from
 three older tools: CorePerf (`kissdb.dev.CorePerf`, 2012 to 2014, whose four
 tests and baselines became CORE), MemPerf / `PerfDBMem` (2012) and the
 StreamSize tests (`StreamSizeSSX`, 2013 to 2014). Its numbers, as run since
@@ -118,8 +118,8 @@ StreamSize tests (`StreamSizeSSX`, 2013 to 2014). Its numbers, as run since
 **Props's versions.** From 2015.1 to 2026.4c Props and its four Core tests are
 the same code but renames (`CORE` and `MEM` to `Core` and `Mem`, 2015-08-18),
 comments, and the builder lines of the tests: `FixedDurationEvictBoss` in the
-read tests until the old eviction was removed (2015-08-16, `fb72cde`),
-`retainForever()` until 015-87 (2026-11-05, `60f29c7`; forever is the default
+read tests until the old eviction was removed (2015-08-16, `80230a4`),
+`retainForever()` until 015-87 (2026-11-05, `ccb8ab0`; forever is the default
 since 2013-07-07). Each of these builds runs its own Props. Before 2015 there
 is no Props. **p16** ([P16.java.in](16-props-across-releases/P16.java.in)),
 made for each API of the time by `run.sh`, runs MEM and SS as ports of
@@ -130,7 +130,7 @@ code's own four tests (`Get.run`, `GetThreaded.get4t`, `PerfGetMany.standard`,
 keys are the same from 2013.1 to 2026 (checked by diff), CorePerf's fifth test
 `set2` is left out as in Props, and in 2013 the `set` test's database still
 had stream writing on, as Props's `set` has. One deviation: p16's SS builder
-gets `retainForever()`, the default from 2013-07-07 (`8cbd702`); 2013.1's
+gets `retainForever()`, the default from 2013-07-07 (`5cda184`); 2013.1's
 default (7 days, with reclaim) fails in its own `GetMany` during SS (an
 `ArrayIndexOutOfBoundsException`, `runs/smoke/`).
 
@@ -144,7 +144,7 @@ compiled as 006-02 did (one `javac --release 8` of `git archive`; 2013.1
 without `src-icu`, whose ICU jar is not in Git and which nothing else needs).
 The rebuilt 2015-12-28, 2017-07-29, 2017-08-01 and 2026-10-19 have the same
 class hashes as 006-02's builds. 2026.1 to 2026.3 are the release jars,
-checked against their `SHA256SUMS`; 2026.4c is `f3af680` (main at 08:22),
+checked against their `SHA256SUMS`; 2026.4c is `90ec60a` (main at 08:22),
 built by its own `java/build.sh`, as the release jars were. Every build runs
 on JDK 27.
 
@@ -177,12 +177,12 @@ Ratios to 2026.3; cissi's figures for the same code from Frans's logs (Java
 What moves MEM, from the history:
 
 * 2013-07-05 to 2013.3, +9: probably the "forward-pointers" branch, taken in
-  October 2013 (`cd48930`, 2013-10-11: "Let's use this branch! CorePerf fast
+  October 2013 (`908f4a5`, 2013-10-11: "Let's use this branch! CorePerf fast
   enough (0.90)"). Not analysed further.
 * 2015.4 to 2015-12-28, +5: Cache2's weak references to key nodes (August
   2015; Frans in `Mem.java`: "150818, Mem:185 ... Now using more advanced
   caching (Cache2 class)", 169 on cissi by 2015-12-28). 2015-12-28 to 2017-07-29, +8:
-  `ValueNode.offsetFromTrans` (2016-03-30, `3c99e78`; 006-02, section 10).
+  `ValueNode.offsetFromTrans` (2016-03-30, `8a2ea34`; 006-02, section 10).
 * 2017-07-29 to 2017-08-01, +105: Cache3, the node table, its `CacheEntry`,
   the ids of value nodes and the 256 maps whose bins became trees (006-02,
   sections 4 and 10). To 2026-10-19, -44: D1's in-place splits (006-02).
@@ -203,12 +203,12 @@ What moves SS:
   and 2015-05-15 (1.48) by Frans's notes in `SS.java`; not traced to a
   commit.
 * 2015-12-28 to 2017-08-01, 1.48 to 1.56: ids of got-dirty nodes in stored
-  transactions (`bc11dbf`), the value nodes' ids (`290e766`, +0.08 on SS3 and
+  transactions (`358ad6b`), the value nodes' ids (`2b00ae3`, +0.08 on SS3 and
   SS4; 006-02). 2017-08-01 to 2026-10-19, to 1.50: the 50 MB startup distance
   (2026-10-13; the whole difference, 006-02, section 6). 2026.1 to 2026.2,
   1.50 to 1.51 (SS3 1.62 to 1.65, SS4 2.37 to 2.40): 005-49's take (2026.2's
   notes: "SS depends on the startup distance and the take, which 2026.2
-  changed"; `level1.sh`'s SS limits raised after 007-07, `f6fc56b`).
+  changed"; `level1.sh`'s SS limits raised after 007-07, `b68bb55`).
 
 
 ## 3. CORE, and the comparison with 2012 and 2013
@@ -231,14 +231,14 @@ What moves SS:
 | Date       | Code                                  | CORE | get, get4t, getmany, set |
 |------------|---------------------------------------|------|--------------------------|
 | 2013-06-29 | KissDB, 3 weeks after 2013.1          | 0.89 | 0.80, 1.02, 0.84, 0.89   |
-| 2013-07-05 | `550ce4e`, the baseline's own run     | 0.89 | 0.87, 0.98, 0.84, 0.87   |
+| 2013-07-05 | `d0b3bd1`, the baseline's own run     | 0.89 | 0.87, 0.98, 0.84, 0.87   |
 | 2013-09-27 | 2013.2.130818 and later               | 0.91 | 0.81, 0.97, 1.02, 0.87   |
 | 2014-07-15 | about 2014.1                          | 0.89 | 0.78, 1.03, 0.86, 0.92   |
 | 2014-11-09 | kv2 branch (main branch: 0.89)        | 0.75 | 0.74, 0.96, 0.84, 0.54   |
 | 2015-01-08 | 2015.1                                | 0.79 | 0.81, 1.00, 0.86, 0.54   |
 | 2015-07-28 | 2015.4                                | 0.78 | 0.77, 0.99, 0.85, 0.58   |
-| 2015-12-28 | `bc11dbf`                             | 0.81 | 0.82, 0.99, 0.87, 0.60   |
-| 2017-07-29 | `dbf131a`                             | 0.76 | 0.76, 0.94, 0.77, 0.61   |
+| 2015-12-28 | `358ad6b`                             | 0.81 | 0.82, 0.99, 0.87, 0.60   |
+| 2017-07-29 | `b64383a`                             | 0.76 | 0.76, 0.94, 0.77, 0.61   |
 
   So **1.00 is not quite cissi on the code of 2013**: the baseline times were
   rounded up by hand ("Resulting profile (manual edit)", `Core.java`); cissi

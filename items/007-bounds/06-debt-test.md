@@ -44,10 +44,10 @@ spread over the keys, in transactions of 1,000 puts.
 
 All runs use 10M keys of 24 bytes with 8-byte values, in memory as 005-38
 ran it (12 GB heap, no eviction, every version kept), at startup distances
-of 50, 200 and 1000 MB. Today's take is `0f978f8`. The same runs were made
+of 50, 200 and 1000 MB. Today's take is `e6dbc82`. The same runs were made
 on 005-49's paced take
 ([paced-take.diff](../005-todo/49-smooth-index-writes/paced-take.diff),
-applied to `0f978f8`), as "the same runs again after step 3" will need,
+applied to `e6dbc82`), as "the same runs again after step 3" will need,
 and most of them on 007-07's patch.
 Only bytes and nodes were counted, no time.
 
@@ -268,7 +268,7 @@ settles at 1.04 to 1.15 sd, as in a steady run.
 ## 4. 007-07's patch
 
 007-07, step 3 as a patch, was made the same evening by another session:
-[step3.diff](07-step3-paced-take/step3.diff), on `2eaaa45`. The steady
+[step3.diff](07-step3-paced-take/step3.diff), on `fc8f7c3`. The steady
 runs and the one-call decreases at the worst points were run on it, as
 step 3's "Done when" asks (007-07, section 8).
 

@@ -245,7 +245,7 @@ by hand to the shortest run that fails. Then:
 
 All in one new file, `lean/SIS/Tree/Mt.lean`, namespace `SIS.Tree.Mt`,
 importing `SIS.Tree.Exec`. Line numbers of `Exec.lean` are those of
-commit 13beb100.
+commit 603c3feb.
 
 ## 3.1 A separate definition, not a parameter
 

@@ -130,7 +130,7 @@ The preserved before/after snapshots include the pre-existing, unrelated
 Reclaim worktree change on both sides; this task changes only
 BufferedStream's Java code. Only the changed snapshot was timed in these
 performance runs; the earlier measurements cited above are historical
-005-64 results. The digest reference is committed `main`, `3ad171d`.
+005-64 results. The digest reference is committed `main`, `afc3d20`.
 
 StreamDigest's 36 logical streams are identical: length, decided retained
 position, first available lookup time, and SHA-256 from the decided cut.

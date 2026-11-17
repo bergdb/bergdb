@@ -68,7 +68,7 @@ Power-loss tail experiment
 --------------------------
 
 [Report, code and evidence](83-power-loss-tail/readme.md), sections 1 to
-5. Full run on `3ad171d`, with the same structured results on `0e61856`:
+5. Full run on `afc3d20`, with the same structured results on `2306213`:
 56 controls recover and remain usable; all 56 hole images fail the
 readable-prefix oracle (112 checks, two reading orders). Every admissible
 image preserves all already-forced bytes and names. Of the 112 checks,

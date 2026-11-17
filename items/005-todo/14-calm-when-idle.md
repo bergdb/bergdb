@@ -32,7 +32,7 @@ How it works today
 Measured
 --------
 
-F53 (M1 Pro, macOS 27), 2026-10-21, commit fdee608. One process at a
+F53 (M1 Pro, macOS 27), 2026-10-21, commit 82aa58e. One process at a
 time: a JVM with the JDK's defaults (G1) that opens a database on a
 FileStream, writes 1000 small transactions, syncs, and then does nothing
 ([tools/IdleProbe.java](14-calm-when-idle/tools/IdleProbe.java)). From 16 s
@@ -167,7 +167,7 @@ Outcome
    buffered, and `flushToStream()` asserts more than 0 bytes. A database
    that already has such bytes is not repaired by this.
 
-**Tests.** Four unit tests in `BufferedStream`, each failing on fdee608
+**Tests.** Four unit tests in `BufferedStream`, each failing on 82aa58e
 and passing with the change: `testIdleConsumerWaitsForAppend`,
 `testStopAndCloseEndIdleConsumer`, `testWaitCountStaysSmall` (a count of
 21 after 50 ms before the fix) and `testNoFlushOfNothingWhenClosing`.
@@ -175,7 +175,7 @@ and passing with the change: `testIdleConsumerWaitsForAppend`,
 f-tests ([before-commit.txt](14-calm-when-idle/before-commit.txt)).
 
 **Under load, no change.** [tools/load-check.suite](14-calm-when-idle/tools/load-check.suite)
-at 20 ms, fdee608 against the fix, the two builds alternating, three
+at 20 ms, 82aa58e against the fix, the two builds alternating, three
 rounds each (`runs-load/`); medians, with the range where it matters:
 
 | scenario | before the fix | with the fix |

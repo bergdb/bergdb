@@ -135,7 +135,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * constant setting the span is below 2 * sd and S' = S.</p>
      * 
      * <p>The share is computed in integers, once per take (bergdb 005-79; in doubles from
-     * 2026-10-28, f89846d, until then; 2026.1 had no pace): in units of 2^-16 of a node,
+     * 2026-10-28, b8ac8a1, until then; 2026.1 had no pace): in units of 2^-16 of a node,
      * shareFp = floor(D o S 2^16 / (O sd)), at most D 2^16, with one rounding (shareFp()). Its
      * bounds: o is below 2^31 (the record limit, StoredTrans.valueLimit), sd from 10 to
      * 2^31 - 1, and O at least 48 when D has a transaction. Nothing in the code bounds D and S,
@@ -330,7 +330,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * product with a constant alone, as 005-49's prototype had, turns a step of the stream
      * into a fixed step of the number; since what a record takes changes its size, records
      * then took more than their share, up to 30 percent with transactions of one put (bergdb
-     * 007-03, step 3). From 2026-10-28 (f89846d) until 005-79 it was a double, the top 53
+     * 007-03, step 3). From 2026-10-28 (b8ac8a1) until 005-79 it was a double, the top 53
      * bits times 2^-53; this is its floor times 2^16, exactly (bergdb 005-79).
      */
     static int ditherFp(long pos) {

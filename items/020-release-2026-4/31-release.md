@@ -10,7 +10,7 @@ the morning. When night is clean, make the release as soon as possible."
 
 The release is made as 2026.3's was (018-09), with the scripts of the
 candidate night of 9 November (006-17, section 3c) adapted. Its candidate
-of 9 November, `03ce6ec`, was not tagged: 2026.4 waited for item 023,
+of 9 November, `d00096e`, was not tagged: 2026.4 waited for item 023,
 the cleanup of deleted keys (020-30; 023-09). Everything is in
 `/Users/f/fl/bench/2026-11-10/rel/` (`README.md` there for the night,
 `morning/README.md` for the morning).
@@ -23,15 +23,15 @@ A is made in a clone of `main` (`rel/clone`), not in `main`. It reaches
 
 | Commit     | What                                                                  |
 |------------|-----------------------------------------------------------------------|
-| `0c300bb0` | `git merge --no-ff 023-core`: 023-core's head `b7874541` (023-09)     |
-| `cf135967` | BuildInfo: 2026.4, 264, build 2026.4.261110.1938                      |
-| `d99ff27c` | The JDK 17 test fix of 006-17, section 6.3, point 5 (tests only)      |
-| `414d5859` | releases/next.md with 023; StreamDigest's digests in 023-09's folder  |
-| `5d60cc5d` | docs/levels.md and docs/sis-model.md on format 6 and the deletes      |
-| `72c8e0ec` | A test race of DbTesterFailure fixed (section 1.1; tests only) (A)    |
+| `fe82b47a` | `git merge --no-ff 023-core`: 023-core's head `f2be6a5b` (023-09)     |
+| `fce332db` | BuildInfo: 2026.4, 264, build 2026.4.261110.1938                      |
+| `85bed824` | The JDK 17 test fix of 006-17, section 6.3, point 5 (tests only)      |
+| `1151f9eb` | releases/next.md with 023; StreamDigest's digests in 023-09's folder  |
+| `87fd3c11` | docs/levels.md and docs/sis-model.md on format 6 and the deletes      |
+| `6e9671d4` | A test race of DbTesterFailure fixed (section 1.1; tests only) (A)    |
 
-* The base is `main`'s `329d78f3`. `main`'s `java/` and `lean/` had not
-  changed since 023-core's base `22b6ce4c`, so the merge had no conflict.
+* The base is `main`'s `3cfee1e7`. `main`'s `java/` and `lean/` had not
+  changed since 023-core's base `40d06eff`, so the merge had no conflict.
 * The test fix: `close()`, not `stop()`, in the three tests of
   `FileStreamPowerLossTester` that remove their directory after a failed
   storage. No product class changes.
@@ -47,12 +47,12 @@ A is made in a clone of `main` (`rel/clone`), not in `main`. It reaches
   (format 6, the delete's climb, reclaim's touch, the dead hand) and
   docs/sis-model.md (section 3.4 and section 11).
 * The gate of A: `before-commit.sh` in a new clone of A
-  (`candidate/repo`): BEFORE COMMIT OK (252 s), 20:33 (FREEZE OK). The first A, `5d60cc5d`, had
+  (`candidate/repo`): BEFORE COMMIT OK (252 s), 20:33 (FREEZE OK). The first A, `87fd3c11`, had
   BEFORE COMMIT OK (254 s) at 19:57.
 
 ### 1.1 A made again at 20:29
 
-The night started on `5d60cc5d` at 20:04. At 20:05 s1's unit tests with
+The night started on `87fd3c11` at 20:04. At 20:05 s1's unit tests with
 JDK 27 failed one test of 1,643:
 `DbTesterFailure.testUncheckedCloseErrorAfterFailedWriteFailsSync`, "the
 close's error was met, expected true, but was false". A race of the test,
@@ -63,26 +63,26 @@ from 2026-11-05 (015-81) and passed on s1 on 9 November; it is not from
 023. A failed test on s1 would leave the night not clean, so at 20:27 the
 night was stopped (`night.sh large` had run 18 minutes, s1's tests 23),
 the test made to wait for the close, at most 5 seconds, as it waits for
-the sync (`72c8e0ec`), and the night started again on it. The first
+the sync (`6e9671d4`), and the night started again on it. The first
 night's outputs are in `rel/first/`.
 
 ### 1.2 A made again: A' (22:40 to 23:00)
 
-The night of A (`72c8e0ec`) failed one night test, on F53 and on s1
+The night of A (`6e9671d4`) failed one night test, on F53 and on s1
 with JDK 27 and 17: `CorruptStreamTester.testFull`, the day's seed
 20767. A copy of a stream with a key node's `prevPos` damaged, its
 checksum made right, named the version of its own child before the
 startup section; the start's rule R made the node's pointer to that
 child a pointer to the node itself, and a read's descent looped for ever.
 `databasesStopped` failed after it, as that test's database was left
-running. Not from 023: `main`'s `329d78f3` hangs on the same copy. The
+running. Not from 023: `main`'s `3cfee1e7` hangs on the same copy. The
 fixes are on branch `fix-cst` (`/Users/f/fl/bench/2026-11-10/cst/clone`),
 both BEFORE COMMIT OK there:
 
-* `4b36218a`: every descent and scan keeps a cycle check on the node ids
+* `58eba7cb`: every descent and scan keeps a cycle check on the node ids
   it passes; a read that comes back to a node fails with a
   `StreamFormatException`, and the database fails.
-* `4df672f4`: the start's check of rule 4 (`NodeCollection.checkLinkById`,
+* `21e8db97`: the start's check of rule 4 (`NodeCollection.checkLinkById`,
   with `-ea`) refuses a damaged `prevPos` with a `StreamFormatException`
   where it threw an `AssertionError` (seeds 20769 and 20770, 12 and 13
   November). `NodeCollection.testLinkToCanonicalCheck` now expects the
@@ -94,10 +94,10 @@ clone, `rel/clone2`, so that `rel/clone` stays under the running
 
 | Commit     | What                                                                  |
 |------------|-----------------------------------------------------------------------|
-| `4b36218a` | fix-cst: a cycle check in every descent and scan                      |
-| `4df672f4` | fix-cst: checkLinkById refuses a damaged prevPos                      |
-| `6649f080` | releases/next.md: the two fixes (Core API), the test changes          |
-| `bb8da6dc` | BuildInfo's build made new: "Release 2026.4, made again" (A')         |
+| `58eba7cb` | fix-cst: a cycle check in every descent and scan                      |
+| `21e8db97` | fix-cst: checkLinkById refuses a damaged prevPos                      |
+| `cbbcd84f` | releases/next.md: the two fixes (Core API), the test changes          |
+| `76f66f89` | BuildInfo's build made new: "Release 2026.4, made again" (A')         |
 
 The two fix commits are on A already (A is their parent), so A' takes
 them as they are, by a fast-forward. The gate of A': BEFORE COMMIT OK (263 s), 22:58.
@@ -201,7 +201,7 @@ In `rel/morning/` (its `README.md`). Each script prints one result line.
 
 ## 6. Results
 
-2026-11-11, 04:49, `morning/clean.sh`: NIGHT CLEAN on A' `bb8da6dc`.
+2026-11-11, 04:49, `morning/clean.sh`: NIGHT CLEAN on A' `76f66f89`.
 
 | Step                  | On   | Result                                                   |
 |---|---|---|
@@ -220,9 +220,9 @@ In `rel/morning/` (its `README.md`). Each script prints one result line.
   tonight's seed 20767 (and databasesStopped after it), on F53 and on s1
   with both JDKs, is an old weakness, on `main` before 023 too: a
   damaged prevPos with a right checksum made a descent loop. A' fixes it
-  (4b36218a: a cycle check in every descent, the read then fails with a
+  (58eba7cb: a cycle check in every descent, the read then fails with a
   `StreamFormatException`) and the same class at the start with -ea
-  (4df672f4: a refusal where `NodeCollection.checkLinkById` asserted;
+  (21e8db97: a refusal where `NodeCollection.checkLinkById` asserted;
   `NodeCollection.testLinkToCanonicalCheck` now expects the refusal). The
   full CorruptStreamTester set passes on seeds 20766 to 20774. The
   diagnosis: /Users/f/fl/bench/2026-11-10/cst/notes.md.
@@ -231,4 +231,4 @@ In `rel/morning/` (its `README.md`). Each script prints one result line.
   to 61 make a start with -ea fail an assertion in `KeyNode.addKlong`;
   without -ea the database starts and answers right. A known issue; for
   2026.5 (024's readme).
-* `main`: 746f2d00, the merge of A' (morning/to-main.sh, 04:51), pushed.
+* `main`: 0f1c61e5, the merge of A' (morning/to-main.sh, 04:51), pushed.

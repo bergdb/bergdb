@@ -1,4 +1,4 @@
-12:30:09 sweep start, rounds 1 to 3, QUIET=0, 9d909cc
+12:30:09 sweep start, rounds 1 to 3, QUIET=0, ba10cb6
 12:30:12 not waiting (QUIET=0): 73.40 % idle; 84506 /bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot-zsh-1792480090382-2i4rzp.sh 2>/dev/null || true && setopt NO_EXTENDED_GLOB NO_BARE_ 84512 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 92746 sh /private/tmp/claude-502/-Users-f-fl-repos-f1/97e8689c-fe57-4f54-9ed3-bbb706623d5e/scratchpad/wt2/java/nightly.sh 
 12:30:12 force probe 1
 kind      size_bytes  count   mean_ms    p50_ms    p90_ms    p99_ms    max_ms   MB_per_s

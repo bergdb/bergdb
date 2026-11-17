@@ -61,8 +61,8 @@ cites the C code that shows it; none was reproduced.
 
 # 2. What changed in Java's Core
 
-From `release-2026.2` (`95bde62`, 2026-11-04) to `release-2026.3`
-(`929fa33`, 2026-11-06): 93 commits touch `java/`, 67 of them the Core's
+From `release-2026.2` (`d5b1bda`, 2026-11-04) to `release-2026.3`
+(`9a0bf5e`, 2026-11-06): 93 commits touch `java/`, 67 of them the Core's
 packages. The entries are those of the release notes, section "Changes
 since 2026.2"; those of the Core were checked against the diff.
 
@@ -243,7 +243,7 @@ and its refusals (`testEnlargedRecordSizeRefused`,
 
 # 3. What the C clone needs
 
-C as it is (the port of 2026.2, `be51a78`), checked against each change.
+C as it is (the port of 2026.2, `e1ee402`), checked against each change.
 "Fault" means that C's code does what Java's did before the fix.
 
 | ID       | Java's change                      | C today                             | For C    |
@@ -520,7 +520,7 @@ What would show that C matches 2026.3:
   (`plat`: `F_FULLFSYNC`; Linux is 012-16's next step 3), so s1 cannot
   take these runs.
 * **Step 6.** "Which Java", the record of the 2026.2 state (its commit,
-  as `c/readme.md` records `ae4aaf9` for the state before 015-02), 012's
+  as `c/readme.md` records `165efea` for the state before 015-02), 012's
   readme statement and index line (D1), and a subitem for the work's log
   (012-19).
 

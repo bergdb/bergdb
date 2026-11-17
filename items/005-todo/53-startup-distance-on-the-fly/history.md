@@ -36,7 +36,7 @@ Summary
 * So nothing public disappeared. The core setter and the JMX MBean are
   still in the code today, unchanged since 2017. The 2026 work only
   documented the existing behaviour: "Existing databases keep the startup
-  distance stored in their stream" (commit 2bd52c0, 2026-10-14).
+  distance stored in their stream" (commit 0eb07c8, 2026-10-14).
 
 
 Sources
@@ -80,7 +80,7 @@ Before Git, the notes:
 
 In Git:
 
-* The JMX MBean is in the first commit, 76c4792 (2013-06-06, "First commit
+* The JMX MBean is in the first commit, 1f4d0b6 (2013-06-06, "First commit
   of new GIT repository, just before release 2013.1.130606"),
   `KissDB/src/kissdb/core/Jmx.java` lines 37 and 129-130:
   `public void setStartupDistance(int newDistance);` in `DbMonitorMBean`,
@@ -90,18 +90,18 @@ In Git:
   it (`test.Concurrency`, `test.big.Huge`, `LoadA`, later
   `test.manual.Interactive`, which reaches the core through
   `((DatabaseImp) database).getDb()`). It is still there at the last old
-  commit, 49aa48d (2017-08-01), and today.
+  commit, 50786b2 (2017-08-01), and today.
 * The Pub API: `git log -S setStartupDistance -- '*/pub/*' '*/pubimp/*'`
   finds nothing. In 2013 the Pub `Database` had `setRetainDuration`,
   `indexBuilder`, `deleteIndex`, `addReplica` and `removeReplica`, but
   nothing for the startup distance, and the Pub builder had no startup
   distance either.
-* b690311 (2015-07-31), "pub.DatabaseBuilder.startupDistanceInMb()
+* b9df48c (2015-07-31), "pub.DatabaseBuilder.startupDistanceInMb()
   added.", `bergdb/pub/DatabaseBuilder.java` lines 56-64: "Sests the
   startup distance to a non-default value. A small startup distance may
   decrease database startup time; while a larger startup distance may
   improve the overall database performance. For a low-end PC, a value of 5
-  is reasonable, while a high-end server may use 50." f8bcb59 (the same
+  is reasonable, while a high-end server may use 50." f0a4dab (the same
   day) added: "The value should be seen as a proposal, to the database. If
   the database considers the value too small or to high, it may clamp it
   to an internally permitted range." Nothing on existing databases.
@@ -110,7 +110,7 @@ In Git:
 2. How the core did it
 ----------------------
 
-The value was stored in the meta block from the start of Git: 76c4792,
+The value was stored in the meta block from the start of Git: 1f4d0b6,
 `KissDB/src/kissdb/storage/MetaBlock.java` line 22: "40 4 startupDistance
 in bytes. Typically 10M (LE-first byte order)." It still is.
 
@@ -131,7 +131,7 @@ in bytes. Typically 10M (LE-first byte order)." It still is.
 * Line 196: "We must make sure to keep invariant metablock.startupDistance
   >= db.startupDistance."
 
-The code, 76c4792 `KissDB/src/kissdb/core/Db.java` lines 320-378:
+The code, 1f4d0b6 `KissDB/src/kissdb/core/Db.java` lines 320-378:
 `setStartupDistance` refuses a change while an increase is pending
 ("An increase of startupDistance [...] has been requested but not
 finalized"); `decreaseStartupDistance` sets the field, runs
@@ -142,9 +142,9 @@ transaction has written a meta block. The steps were not built; line 345:
 "Note. Possibly, we could split decrease into many parts for large
 decreases to avoid large transactions."
 
-**From 2013-10-23: one method, one dummy transaction.** fc1a421
+**From 2013-10-23: one method, one dummy transaction.** 2236cd1
 (2013-10-23), "Refactored Db.setStartupDistance() and related
-startupDistance stuff. Much simpler now.", the same day as bfa7bf7
+startupDistance stuff. Much simpler now.", the same day as 4243924
 ("Introduced StartupPos. Replaces direct use of Db.startupDistance.").
 `bergdb/src/bergdb/core/Db.java` lines 355-386: the field, the meta block
 and a dummy transaction whose value is `META_BLOCK_DISTANCE` bytes (200 kB),
@@ -154,9 +154,9 @@ distance is reduced drastically, this method can cause a large transaction
 to be run. It is recommended that the startup distance is reduced no more
 than 10M for every call to this method. Call this method repeatedly to
 reduce the startup distance more than 10M." This is the method of 2017
-(49aa48d, lines 244-276) and of today.
+(50786b2, lines 244-276) and of today.
 
-**From 2015-08-09: the take spreads the debt.** e3f34c1 (2015-08-09), "New
+**From 2015-08-09: the take spreads the debt.** a613e58 (2015-08-09), "New
 algo for startupPos (sp) updates avoid huge transactions. Avoiding some
 transactions getting an unfair load of index transactions to store.":
 `TransSeq.take` takes dirty index nodes up to a node limit proportional to
@@ -172,15 +172,15 @@ startupDistance perhaps)".
 
 Ignored, in every version read:
 
-* 76c4792 (2013-06): the constructor writes the builder's value into the
+* 1f4d0b6 (2013-06): the constructor writes the builder's value into the
   in-memory meta block (line 247), `nodeStream.recover()` then copies the
   stream's last valid meta block over it (`RecoverableStream`, line 114,
   `setFromOtherMetaBlock`), and `start` reads it back: "if (!dbCreated) {
   this.startupDistance = nodeStream.getMetaBlock().getStartupDistance();"
   (lines 738-739).
-* 49aa48d (2017): `handleStartParams` (line 508) sets
+* 50786b2 (2017): `handleStartParams` (line 508) sets
   `params.startupDistance = meta.getStartupDistance()`. The unit test
-  `DbTesterRestart.dbShouldRememberStartupDistance1` (from ee3685d,
+  `DbTesterRestart.dbShouldRememberStartupDistance1` (from b8ce188,
   2014-10-14, "Fixed restart / startupDistance bug.") restarts with a
   builder at its default and asserts the old 400 kB: "Db should remember
   startupDistance after restart of initial state database."
@@ -194,9 +194,9 @@ Ignored, in every version read:
 
 It did not: there was no Pub way to lose. The JMX setter and the core
 setter are unchanged from 2017 to today (`git log -L` on today's
-`Db.setStartupDistance` shows only 195cf88, 2026-10-14, "Import the 2017
+`Db.setStartupDistance` shows only 0257e0b, 2026-10-14, "Import the 2017
 BergDB source as the baseline"). The only 2026 change is documentation:
-`git log -S "Existing databases keep"` gives 2bd52c0 (2026-10-14, "Add the
+`git log -S "Existing databases keep"` gives 0eb07c8 (2026-10-14, "Add the
 2026 work: fixes, reclaim, theory and Lean proofs"), which added to
 `DatabaseBuilder.startupDistanceInMb`'s Javadoc: "The default is 50 [...].
 Existing databases keep the startup distance stored in their stream." The

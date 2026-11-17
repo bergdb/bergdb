@@ -163,7 +163,7 @@ will be done tonight; the morning's Outcome lists what was.
 
 * **Q-A, 22:30 to about 23:45: 015-86's measurements.** Frans decided on
   2026-11-05: as the AB/BA step showed that the rise of the gets over 10 ms
-  is the fix's (`988fe1a`), "take the measurements and move the decision
+  is the fix's (`52aeb04`), "take the measurements and move the decision
   to 015". The Recommendation's three: `threads.sh` with 7 threads; with 8
   threads and `-XX:ConcGCThreads=1`; and the get's parts timed in
   ScaleBench (a change to `ScaleBench-065.diff`, made and smoke-tested in
@@ -265,7 +265,7 @@ Times from `date`, CET.
   called coord-1105."). The day session bergdb-e8 handed over
   (`/Users/f/fl/bench/day-1105/handover.md`): 015-87 (U6) and 015-88 done
   in the day, W1's queue shorter, the day's gates under one lock, and
-  Q-A's ScaleBench change not prepared. Its last commits, d0d408d and
+  Q-A's ScaleBench change not prepared. Its last commits, 5fe97c7 and
   1068442, at 14:43; main at 15:00 is 1068442, Q-B's reference.
 * 14:40 Last-minute questions to Frans, each with a default that goes
   ahead: (1) the session's name; (2) Q-A's ScaleBench change prepared by
@@ -286,14 +286,14 @@ Times from `date`, CET.
   00:59 and 05:00 to 05:59; a one-off at 21:53; the watchdog until 07:00.
   Usage at 14:43: 5h 29 %, week 45 % (ceiling 80 %).
 * 15:00 to 15:59 W1's first batches landed, each with `before-commit.sh`
-  on the combined tree: 015-72 (9a315e6) and 015-75 (eb9ab4b); 015-73
+  on the combined tree: 015-72 (4c81849) and 015-75 (dfbba65); 015-73
   skipped for Frans (8616162), then decided by him at 15:35 in session
   bergdb-a2, (a) outside the fault model for 2026.3 and a new 019-07 for
-  a record header checksum at the next format change (49a814e); 015-50
-  (bb3be64, StreamDigest 48 of 48 the same, LEVEL 3 OK), 015-51
-  (8427ff0, Javadoc only, R7's first option: for Frans to confirm),
-  015-52 (0b99498); 015-66 (578c263), 015-67 (4d706da), 015-68 (ec57528),
-  LEVEL 4 OK; 015-26 and 015-79 (7a3d317), 015-33 (8ae7969), their lines
+  a record header checksum at the next format change (e08b1c2); 015-50
+  (efa5a69, StreamDigest 48 of 48 the same, LEVEL 3 OK), 015-51
+  (b185a73, Javadoc only, R7's first option: for Frans to confirm),
+  015-52 (9707300); 015-66 (55d29a9), 015-67 (9869ad0), 015-68 (eccd17a),
+  LEVEL 4 OK; 015-26 and 015-79 (50f8605), 015-33 (d621c45), their lines
   gone from `StreamContract.SKIP`. Started: g1c (015-35, 81, 78, 34, 32),
   g2b (015-69, 70, 71), g3b (015-53, 55, 57, 58).
 * 15:38 Q-A (pid 74282) and Q-B (pid 74284) ready and started, smoke
@@ -306,15 +306,15 @@ Times from `date`, CET.
   coordinator's that matched itself in `pgrep -f` held the gates for five
   minutes.
 * 16:00 to 17:06 W1 landed, each with `before-commit.sh` on the combined
-  tree: 015-53 (fddaf1f), 015-55 (f679430), 015-57 and 015-58 (e24276a),
-  LEVEL 3 OK; 015-35 and 015-81 (dc46c1e), 015-78 and 015-34 (1b66a34),
-  015-32 (37ce61f); 015-63 (825e5b1), 015-76 (f5e73ea, Javadoc only, R6-F5's
-  first option); 015-69 (27d1b07), 015-70 (611d9c5), 015-71 (70d8ec2),
-  LEVEL 4 OK; 015-38 (bf80659), 015-41 (439ec79), 015-60 (3dea90a); 015-82
-  (6b7f5b2), 015-31 (fc87e5c), 015-83 (d9b8dc5), harness 6.3's SKIP down to
-  015-80 and 019-02; 015-65 and S2-F24 of 015-49 (to 95d52c3); 015-11,
+  tree: 015-53 (0f02bd1), 015-55 (ff1752b), 015-57 and 015-58 (d973ac7),
+  LEVEL 3 OK; 015-35 and 015-81 (7bf7074), 015-78 and 015-34 (df3d516),
+  015-32 (85d8fa4); 015-63 (7dc8c84), 015-76 (9ba19b4, Javadoc only, R6-F5's
+  first option); 015-69 (98c2ce0), 015-70 (1155c9f), 015-71 (2738972),
+  LEVEL 4 OK; 015-38 (6b03938), 015-41 (62f8311), 015-60 (90edf84); 015-82
+  (79ced8b), 015-31 (d29ffbb), 015-83 (f8669c9), harness 6.3's SKIP down to
+  015-80 and 019-02; 015-65 and S2-F24 of 015-49 (to b1dbb32); 015-11,
   015-08, 015-04, and 015-19 but ScaleBench, which tonight's blocks use
-  (to b6838e5). W1's groups 2 to 5 are done; group 1 has 019-01 and 019-02
+  (to 361ce76). W1's groups 2 to 5 are done; group 1 has 019-01 and 019-02
   left (g1e, started 16:58) and 015-80, which waits for a day session.
 * 17:01 Not in the plan, the coordinator's decision: two read-only review
   agents check tonight's fixes with fresh eyes (R1 the stream, its storage
@@ -322,40 +322,40 @@ Times from `date`, CET.
   about 30 fixes were made at high effort unattended and several touch
   concurrency. Findings in `/Users/f/fl/bench/006-12/review-r1.md` and
   `review-r2.md`, faults as 019 entries; they stop by 21:45.
-* 17:13 W1's last batch landed: 019-01 (f95840e) and 019-02 (669f0ef);
+* 17:13 W1's last batch landed: 019-01 (f95840e) and 019-02 (774940e);
   harness 6.3's SKIP is down to 015-80. W1 is done but 015-80, which
   waits for a day session.
 * 17:14 to 17:51 The reviews. R1 (the stream, its storage, the start): 9
-  of 10 commits OK; in dc46c1e (015-35, 015-81) a regression, B1, shown by
+  of 10 commits OK; in 7bf7074 (015-35, 015-81) a regression, B1, shown by
   a probe: `Db.close()` could return before a failed storage had closed
-  its stream; fixed by 7a80d0d (`closeInner` closes the stream also after
+  its stream; fixed by 41e906e (`closeInner` closes the stream also after
   a failure; the close's failure kept as suppressed, C2), and R1's
   re-review found the fix right. That re-review found B2, older than
   tonight (2026.1 and 2026.2 have it): `close()` after a background write
   failure that no call met returns normally and reports nothing; it is
-  019-09, waiting for Frans (112ab21). R2 (eviction, transactions,
+  019-09, waiting for Frans (844df91). R2 (eviction, transactions,
   reclaim, the Pub API): all 19 commits OK, 23 of their 25 new tests fail
   without their fix (the other two pin documented behaviour); B1 outside
   the commits, the Core's `DbUtil.dbTimeToUtc` with 015-63's fault,
-  registered and fixed as 019-08 (5a2e6d6); 015-60's Javadoc made exact
+  registered and fixed as 019-08 (0f20a47); 015-60's Javadoc made exact
   and four long lines wrapped (7476107); and C1, 15 closed rows left in
-  015's Open table by the coordinator's union merges, removed (57ad705;
+  015's Open table by the coordinator's union merges, removed (fa02332;
   no union merge for the readmes since). R3 (019-01, 019-02 and group 5):
   all OK; 015-11 closed although the s1 half of its "Done when" was not
   run (for Frans).
-* 17:48 On the combined main 669f0ef, all of W1: LEVEL 2 OK (70 traces,
+* 17:48 On the combined main 774940e, all of W1: LEVEL 2 OK (70 traces,
   TRACECHECK OK), LEVEL 3 OK, LEVEL 4 OK. 17:56 the same again on
-  112ab21, with the review fixes.
+  844df91, with the review fixes.
 * 20:45 to 21:06 Frans on his mobile. 019-09: he chose (a) at 20:50;
-  done by 7295fc5 (`close()` throws `StreamIoException` for a background
+  done by a543e23 (`close()` throws `StreamIoException` for a background
   write failure that no call has reported, also after `stop()`, and is
   quiet for a database that a call has already failed; try-with-resources
   tested). 015-51: he chose (a) at 21:03, "And also add the possibility
   of a refusal to the to-consider list of the long-term item": decided,
-  018-01's sections 3.1 and 6.4, and 017-07, section 3 (8710e89).
+  018-01's sections 3.1 and 6.4, and 017-07, section 3 (f2cfef2).
 * 21:23 to 21:47 Frans on his mobile. 015-11: (a) at 21:25, the night
   tests on s1 tonight; they passed at 21:35 with `java.io.tmpdir` on the
-  disk, JDK 27 and 17 (e60ab74). 21:33: "Will you fix all bugs? I don't
+  disk, JDK 27 and 17 (77b4cb2). 21:33: "Will you fix all bugs? I don't
   want performance testing to take up all night. There is plenty of time
   for you to code as well, right?!" So, at 21:38, 018-01's next step (W2,
   the harnesses) at high: 6.2, failures and interrupts in storage
@@ -369,7 +369,7 @@ Times from `date`, CET.
 * 21:53 Q-A prepared: the four agents write their State notes by 22:10 and
   are resumed after the W7 block; Q-A (pid 74282), Q-W7 (20050) and Q-B
   (74284) alive and ready.
-* 21:56 Harness 6.7 landed (4d7a1bb, 018-04): it fails on 015-41, 42, 47,
+* 21:56 Harness 6.7 landed (63f0ad6, 018-04): it fails on 015-41, 42, 47,
   48, 59 and 62, each with its fix reverted, and found 019-15 (a delete's
   key is not replaced under key replace; for Frans).
 * 22:15 to 00:48 The quiet blocks. Q-A ran 22:15 to 23:33 (015-86's
@@ -384,50 +384,50 @@ Times from `date`, CET.
 * 01:05 to 01:29 015-80, option 2 (xhigh): `BufferedStream` makes one call
   at a time to the stream below (a fair `ioLock`; `getFirstPos` from a
   value kept after each cut). Review R4 (`review-r4.md`): land, no A or B;
-  landed 33a81b9 with `before-commit.sh`, LEVEL 2 quick and LEVEL 3 OK;
+  landed e41df14 with `before-commit.sh`, LEVEL 2 quick and LEVEL 3 OK;
   R4's C2 and C3 (an ownership rule in the Javadoc, two tests made real)
   5214825. R4's C1 for Frans: reclaim's cut now waits for the storage
   thread's append (up to 5 MB) and its force under the write lock.
-  Harness 6.7's second part (e9fc032): directories and a small cache, 103
+  Harness 6.7's second part (71ba7c4): directories and a small cache, 103
   more seeds, no new fault.
-* 01:24 to 01:53 015-19 done (8e2453e): ScaleBench and its 005-65 diff
+* 01:24 to 01:53 015-19 done (0bd5d0d): ScaleBench and its 005-65 diff
   compile against main, 2026.2 and 2026.1.
 * 01:57 Two more harnesses at high, as Frans's word of 21:33 asks: 6.4,
   sizes and times (018-06), and 6.1, corrupt streams at a start (018-07).
-* 01:58 Harness 6.2 landed (e7e9d3e, b45b2fa, 8130710; 018-03): it fails
+* 01:58 Harness 6.2 landed (97137ea, 4c017a3, 8130710; 018-03): it fails
   on 015-32, 35, 53, 78 and 019-09 before their fixes, and found 019-10
   (an unchecked exception or `Error` of a read left the database going
   on), fixed. Unit sample about 4 s beside the f-tests; night tests 3.5
   minutes.
 * 02:10 to 02:54 `night.sh` at 8130710: NIGHT OK (44 minutes; levels 1 to
   4, the night tests, conformance medium).
-* 02:56 Harness 6.5 landed (ed58892, c4dc699, 024a876; 018-05): it fails on
+* 02:56 Harness 6.5 landed (52f3286, c40e6c7, 2843dbc; 018-05): it fails on
   015-67 to 015-71 with their fixes taken out, and found 019-20 and 019-21
   (index nodes counted below their bytes) and 019-22 (a warmup kept a
   value over 1 MiB), fixed; LEVEL 4 OK.
 * 02:02 to 03:02 Review R5 (`review-r5.md`) of 019-10, 019-20 to 019-22: no
   A or B. F1 and F2, for Frans: an `Error` of a read now reaches the
   caller wrapped, against docs/levels.md, section 3 (options in 019-10's
-  entry). F3, words, fixed (59588db, with 015-80 out of harness 6.2's skip
+  entry). F3, words, fixed (0c9a26b, with 015-80 out of harness 6.2's skip
   list). F4, a gap in 019-21's fix (the start's recount ran before linkD),
-  fixed (c73daba, LEVEL 4 quick OK). F5: the start's recount costs about
+  fixed (4efb703, LEVEL 4 quick OK). F5: the start's recount costs about
   0.7 µs per object, 110 ms of a 3 s restart at 1M keys.
-* 03:48 LEVEL 4 quick OK on 59588db, all of the night's fixes combined.
-* 04:20 Harness 6.1 landed (fcc3a62, 45b75fb, f86e62e; 018-07): every
+* 03:48 LEVEL 4 quick OK on 0c9a26b, all of the night's fixes combined.
+* 04:20 Harness 6.1 landed (fcc3a62, 45b75fb, 7be8bef; 018-07): every
   truncation at every byte (52,690) starts with exactly its committed
   transactions; it fails on 005-74, 005-75, 015-07, 015-72 and 015-75
   before their fixes, and found 019-30 to 019-34: 019-34 fixed (a meta
   block's position outside the stream refused), 019-32 a fix left open,
   019-30, 31 and 33 for Frans.
-* 04:24 Harness 6.4 landed (18b374d; 018-06): it fails on 015-50, 015-55
+* 04:24 Harness 6.4 landed (d516d5d; 018-06): it fails on 015-50, 015-55
   and 015-76, and found no new fault in 584 runs. All agents stopped; the
   last landing of the night.
 * 05:08 to 05:49 Q-B, quiet: `performance.sh ab`, quick suite, 1068442
-  against 417e555, three ABBA passes, each exit 0. Losses beyond the CV
+  against 7cf665f, three ABBA passes, each exit 0. Losses beyond the CV
   in every pass: the Core's warm reads of `read-1k` (gets -1.0 to -2.4 %,
   `get_longkey` -3.0 to -6.4 %, scans -1.5 to -3.6 %) and the restart of
   `w-uni-1k-inf` (+2.3 to +2.7 %); the writes within 0.7 %. Not traced
-  in the night: registered as 019-35, with the leads (dc46c1e's check
+  in the night: registered as 019-35, with the leads (7bf7074's check
   in every call; the cache's accounting; R5's F5 for the restart).
 * 06:12 The morning: two agents at high write Q-A's results into 015-86
   and W7's into 016-02 (items only).
@@ -439,7 +439,7 @@ Written 2026-11-06, 06:20, by coord-1105.
 
 ### Done in `main`
 
-69 commits, 1068442..417e555, and this morning's, items only. Each
+69 commits, 1068442..7cf665f, and this morning's, items only. Each
 that changed `java/` landed after `before-commit.sh` on the combined
 tree (`land.sh`); items-only commits without it.
 
@@ -451,7 +451,7 @@ tree (`land.sh`); items-only commits without it.
   `BufferedStream`), checked by review R4 before it landed.
 * **Reviews R1 to R5** (`/Users/f/fl/bench/006-12/review-r1.md` to
   `review-r5.md`), read-only, of the night's fixes but two (item 8
-  below): one regression (R1's B1 in dc46c1e, fixed by 7a80d0d), older
+  below): one regression (R1's B1 in 7bf7074, fixed by 41e906e), older
   faults registered and fixed (019-08, 019-09), the rest words and
   tests, fixed.
 * **W2, the harnesses of 018-01, section 6** (Frans, 21:33: code, not
@@ -463,16 +463,16 @@ tree (`land.sh`); items-only commits without it.
   the night tests. 6.6 (concurrency) not built.
 * **New faults found and fixed** (019): 019-01, 02, 08, 09 (Frans's (a)),
   10, 20, 21 (and R5's F4), 22, 34.
-* **Checks**: LEVEL 2, 3 and 4 OK on 669f0ef and 112ab21 (W1 combined);
+* **Checks**: LEVEL 2, 3 and 4 OK on 774940e and 844df91 (W1 combined);
   `night.sh` NIGHT OK at 8130710 (02:10 to 02:54); LEVEL 4 quick OK on
-  59588db.
+  0c9a26b.
 * **This morning, items only**: 019-35 (Q-B's losses), Q-A's results
   (015-86), W7's results (016-10, 016-02), this Outcome.
 
 ### Open todo entries
 
 The rows of the Open tables in 015's and 019's readmes, at 15:00 on
-2026-11-05 (`main` at 1068442) and at 07:00 on 2026-11-06 (8df56fc):
+2026-11-05 (`main` at 1068442) and at 07:00 on 2026-11-06 (4296f21):
 
 | List  | 15:00, 2026-11-05 | 07:00, 2026-11-06 |
 |---|---|---|
@@ -552,15 +552,15 @@ are all new since 15:00: 019-07 (from Frans's decision on 015-73 at
    the notes now, and again after the rerun. Recommended: (A) tonight,
    with a quiet check that an idle F53 can pass (load 1.82 at 00:15 with
    no run going).
-8. **A review of what landed unreviewed**: 019-34's fix (8e9eccc) and the
-   019-21 follow-up (c73daba); and a second look at the night's
+8. **A review of what landed unreviewed**: 019-34's fix (be6b95e) and the
+   019-21 follow-up (4efb703); and a second look at the night's
    concurrency fixes (015-66, 67, 70, 82, 80). Recommended: one review
    agent at high in the day, as R1 to R5.
 9. **Behaviour changes** to see in `releases/next.md`: 015-55 refuses a
    user transaction in the last 1,024 database times; 015-57 refuses a
    null zone; 015-41's fix touched the object-key path of the
    experimental code, which the night was to leave alone (W1). Recommended:
-   keep them; a look at 015-41's diff (439ec79).
+   keep them; a look at 015-41's diff (62f8311).
 10. **018-04 and 018-07 name Claude in their headers**, as 018-02 does.
     Keep them if that was your wish for 018-02; otherwise the words go.
 

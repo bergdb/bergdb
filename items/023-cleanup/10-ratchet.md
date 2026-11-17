@@ -63,7 +63,7 @@ In short:
   build's `bergdb.jar` (into `classes-main/` and `classes-core/`), as
   023-09, section 6, did with CleanupRule. Nothing in `java/src` changes.
 * **The builds**: worktrees of the clone `ratchet/clone`, each built with
-  `build.sh`: `wt-main` at `main`'s `dcfe3b4f`, and `wt-core` at
+  `build.sh`: `wt-main` at `main`'s `51987a7b`, and `wt-core` at
   `023-core`'s `2c67f887` (branch `023-core-2c67`).
 * **Settings**: T1's (023-03, section 2.1): a CutStream, a test clock of
   1 ms a transaction, R = 1 s, a startup distance of 100 kB, node size 30,

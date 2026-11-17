@@ -1,7 +1,7 @@
 005-73 validation, 2026-11-02
 ============================
 
-Baseline: `0e61856475ab1392ef64ed2ef5f9289ad54e6140`.
+Baseline: `2306213f4f68c9fa9484aba4d768d855e2700e84`.
 
 * `regressions-before.txt`: the three new `DbTester` regressions run
   against an archived baseline, with only the test source copied in.

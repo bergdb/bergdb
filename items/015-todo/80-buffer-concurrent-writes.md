@@ -264,6 +264,6 @@ State (night 006-12)
 --------------------
 
 2026-11-06, 01:20. Clone `/Users/f/fl/bench/006-12/f80`, branch `w1-f80b`
-(from `main` at 33a81b9, the fix landed): the follow-up for R4's C2 and
+(from `main` at e41df14, the fix landed): the follow-up for R4's C2 and
 C3 (test code and words), gated with `before-commit.sh`, one commit. C1
 waits for Frans.

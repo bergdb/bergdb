@@ -1,4 +1,4 @@
-# RetainProbe on 0c6c4be (clone /Users/f/fl/bench/016/005-78), 2026-11-05 07:56, default step reserve
+# RetainProbe on 8defe65 (clone /Users/f/fl/bench/016/005-78), 2026-11-05 07:56, default step reserve
 PROBE 005-78 stepreserve=-1
 CONFIG l3-every1 del=1 retain=1 n=1000 sd=500 keys=100 every=1 long=1
 RUN l3-every1 plain length=1947712 firstPos=1000000 fap=1737216 fat=1000500011 retained=947712 starts=1 firstRestartAfter=-1 user=1000 step=62 table=95 iterations=24 lastIterationT=954900010 cuts=22 lastCutT=1011300010 splitSteps=0 sha256=161ac9d64b1f5699 costB=1976 costA=204544

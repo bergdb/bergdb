@@ -45,10 +45,10 @@ Log
 
 2026-11-09. Registered by coord-1109 from 020-24-12's U12-1 (and the
 Javadoc findings U12-2, U12-3, U12-5 to U12-8), and taken by its agent o23
-(clone `clone-o23`, on main's 9ed1e6c).
+(clone `clone-o23`, on main's 595418e).
 
 2026-11-09. Done by o23: commits 71e909b (021-23, U12-1) and 4d65bb5
-(020-24, U12-2, U12-3, U12-5 to U12-8) in `clone-o23`, on main's 9ed1e6c,
+(020-24, U12-2, U12-3, U12-5 to U12-8) in `clone-o23`, on main's 595418e,
 to land. Severity: high, as 020-24-12 gave it. In 2026.4's Data Objects
 (020-09).
 

@@ -181,7 +181,7 @@ ls /Users/f/fl/bench/016/jcstress-lib/
 
 * What: `java/stress/jcstress/run.sh` in default mode against the jar of
   the commit. F1: the five tests on today's `main`, their first run since
-  `fb0c770` (016-07, section 5.1). F6: the same with H3's new tests, from
+  `7d325b3` (016-07, section 5.1). F6: the same with H3's new tests, from
   the jcstress agent's clone (016-07, section 5.4), after its sanity run.
 * Commands (from the clone's `java/`, after `sh build.sh`):
 

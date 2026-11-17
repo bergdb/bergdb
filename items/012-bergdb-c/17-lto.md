@@ -6,7 +6,7 @@ Created 2026-10-29 by Claude (Opus 5.5, Claude Code), the conductor of
 "build with -flto. Yes, why not? Tell me more."; 12:51: "Just add subitem
 17 for now."). **Status: done** (2026-10-29, 15:27; Frans's go 13:59;
 the coder: Claude, Opus 5.5, Claude Code, in a scratch clone of main at
-`44332aa`).
+`0935005`).
 After: 012-15. Effort: high (Frans, 2026-10-29: agents at high).
 
 
@@ -147,7 +147,7 @@ All times 2026-10-29, from `date`.
 
 # 6. Results
 
-The library's code is `44332aa`'s; this task changes `build.sh`, the gate's
+The library's code is `0935005`'s; this task changes `build.sh`, the gate's
 rule, one unit test, the benchmark scripts and documents, nothing in
 `src/`. F53 (M1 Pro), Apple clang 21, OpenJDK 27 (G1, `-Xms12g -Xmx12g`),
 as 012-15, 6.1. Raw output: `/Users/f/fl/bench/012/17-out/lto/` (its

@@ -111,7 +111,7 @@ Outcome
 -------
 
 2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-71/repo` from
-`main` at `323a54a`:
+`main` at `c8e2f1e`:
 
 * Option A: nothing changes in the code. 010-01's P2, "Where BergDB
   stands", has a bullet: `DbClock`'s last read time is not kept across a
@@ -135,12 +135,12 @@ Log
 010-01's P2 and in 012-05; no code. Nothing changed yet.
 
 2026-11-03, 16:11 to 16:14, by F1 (016-05), in
-`/Users/f/fl/bench/016/005-71/repo` from `main` at `323a54a`:
+`/Users/f/fl/bench/016/005-71/repo` from `main` at `c8e2f1e`:
 
 * **The note in P2** (step 1), 010-01, P2's "Where BergDB stands", a
   bullet after "Checked for the buffer time": the plan's text, with two
   points made exact against `DbClock` (`currentTime`, `transactionBegin`,
-  `setLastTransTime`, read at `323a54a`): the next transaction's time
+  `setLastTransTime`, read at `c8e2f1e`): the next transaction's time
   differs only when the read time was after the last transaction's (else
   both runs give the last transaction's time plus one); and across the
   restart the next transaction may have the very time that

@@ -5,12 +5,12 @@
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, from 2026-10-16.
 Work packages A2, R1 and later of bergdb item 001
 ([01-plan.md](01-plan.md)).
-Source commit `a66e4d9` (R1); line numbers below are at that commit, in
+Source commit `0cbb4b3` (R1); line numbers below are at that commit, in
 `java/src/bergdb/`.
 
 Status, 2026-10-18: complete for stage 3. The scope (section 1), α for
 reclaim (section 2, with R2's traces and R3's model), the register (section
-3, checked against the code at `75d3c2d` in A2 and at `a66e4d9` in R1), the
+3, checked against the code at `5e3ebaa` in A2 and at `0cbb4b3` in R1), the
 arguments for M32 and M38 (section 4), the safety argument in the model's
 terms, every step marked (section 5), R7's red list (section 6), the
 outcome of the plan's 1.2 for Level 3 (section 7, R9) and the conformance
@@ -49,8 +49,8 @@ cut overtakes them (concurrency; decision D1 = A, levels.md, W1).
 Written in A2 as a draft from the plan's 8.1, completed in R1 (2026-10-16).
 Times and records as in level2-alignment.md, 2.1: model time i is the time
 of record R(i), and a Java lookup at time t is a lookup at the model time
-max { i : tt(i) ≤ t }. Line numbers at `a66e4d9` (`core/Reclaim.java` and
-`core/Db.java` are unchanged since `75d3c2d`).
+max { i : tt(i) ≤ t }. Line numbers at `0cbb4b3` (`core/Reclaim.java` and
+`core/Db.java` are unchanged since `5e3ebaa`).
 
 ### 2.1 Records
 
@@ -606,8 +606,8 @@ f on.
 
 ## 3. The register
 
-Checked against the code at `75d3c2d` in A2, and again at `a66e4d9` in R1,
-2026-10-16 (line numbers at `a66e4d9`). Columns as in level2-alignment.md,
+Checked against the code at `5e3ebaa` in A2, and again at `0cbb4b3` in R1,
+2026-10-16 (line numbers at `0cbb4b3`). Columns as in level2-alignment.md,
 section 6. Status: open (o), resolved in a WP (WP name), closed (c). M17 is
 reopened from level2-alignment.md.
 
@@ -895,7 +895,7 @@ cuts, so `CutOK` as now defined holds there too.
 
 | Failure | Where | Row | Smallest | Resolution |
 |---|---|---|---|---|
-| C-S, gd and D: in a reclaim step, Java's gd(i) has nodes that the model's has not: index nodes on the access path of the step's puts (the current row's value, outside the step's range) that the puts replace (a split), so not reachable after the step, and not touched. The model marks the touched nodes (`touchOf`, kept if replaced, as Java keeps them) and the access path of the change after it (`markOf`); Java's `endOfTrans` keeps every mark of a touch transaction (`if (!x.trans.touch && ...)`, Db.java 892; d5c56dd: "reclaim's touch transactions keep every mark"), the put paths' too | 29 transactions of 11 small traces; 191 transactions of the 6 medium traces | M17 | r-del-4, T(189): nodes 1300 and 41514, which the step's put replaces by 224726 and 224724 | R8, a Java change: in a touch transaction, `endOfTrans` takes out of D the replaced nodes that the puts marked, and keeps those the touch marked (the touch's marks are the first `gotDirtyNodes`, made by `endOfOp(true)` after `touchRange`). Then Java's gd(i) is the model's. The other way, a model change (step 3 of a transaction with a touch also marks the put paths' replaced nodes), would add to the model what the Level 2 alignment took out of Java (d5c56dd, M2); and the replaced nodes are dead: writing them later serves no read |
+| C-S, gd and D: in a reclaim step, Java's gd(i) has nodes that the model's has not: index nodes on the access path of the step's puts (the current row's value, outside the step's range) that the puts replace (a split), so not reachable after the step, and not touched. The model marks the touched nodes (`touchOf`, kept if replaced, as Java keeps them) and the access path of the change after it (`markOf`); Java's `endOfTrans` keeps every mark of a touch transaction (`if (!x.trans.touch && ...)`, Db.java 892; 8f37d88: "reclaim's touch transactions keep every mark"), the put paths' too | 29 transactions of 11 small traces; 191 transactions of the 6 medium traces | M17 | r-del-4, T(189): nodes 1300 and 41514, which the step's put replaces by 224726 and 224724 | R8, a Java change: in a touch transaction, `endOfTrans` takes out of D the replaced nodes that the puts marked, and keeps those the touch marked (the touch's marks are the first `gotDirtyNodes`, made by `endOfOp(true)` after `touchRange`). Then Java's gd(i) is the model's. The other way, a model change (step 3 of a transaction with a touch also marks the put paths' replaced nodes), would add to the model what the Level 2 alignment took out of Java (8f37d88, M2); and the replaced nodes are dead: writing them later serves no read |
 
 Nothing else fails: no C-A failure (TouchOK holds for every touch: the
 touched nodes are index nodes reachable before the change, and every node
@@ -906,7 +906,7 @@ available time of the record, and every physical cut at or below the decided
 one), no failing probe of run B (C-R), no C-L failure, and no diagnostic (D
 closed upward, A6, TREE, A-COPY). The Java tier: `level3.sh`'s reclaim checks
 (ReclaimStress, RestartInvariance with reclaim, CrashTest with reclaim,
-ReclaimReaders) passed in P3's gates (2026-10-17 06:13 to 06:33, `8ea39cb`),
+ReclaimReaders) passed in P3's gates (2026-10-17 06:13 to 06:33, `3b65759`),
 and `java/` has not changed since.
 
 **R8** (2026-10-17): the row's change is made (`Db.endOfTrans`; test
@@ -926,10 +926,10 @@ change. The summary per trace: `docs/evidence/level3-redlist-baseline.txt`.
 (points 5 and the second half of 7, the cache, are Level 4's:
 [level4-alignment.md](08-level4-alignment.md), stage 4). The runs: the reclaim
 traces of R2's small and medium sets made again with the current Java
-(`java/` as at `5b1abdd`, R8's last change; the medium set's earlier traces
-were from before R8), the checker at `970c996` on each; and the gates, full,
-on `970c996`. On the final code and model (F1, 2026-10-18, bergdb
-`899c547`, after stage 4's Java), the same two sets made again: small 25
+(`java/` as at `981470f`, R8's last change; the medium set's earlier traces
+were from before R8), the checker at `32816a8` on each; and the gates, full,
+on `32816a8`. On the final code and model (F1, 2026-10-18, bergdb
+`6319677`, after stage 4's Java), the same two sets made again: small 25
 traces (14,448 transactions, 288 cuts, 1,507 probes) and medium 6 (22,460,
 175, 261), every trace `TRACECHECK OK`, with C-A, C-S on the cut stream,
 C-CUT at every cut and C-R's probes without failure; and the four gates
@@ -977,7 +977,7 @@ C-CUT at every cut and C-R's probes without failure; and the four gates
    conditions hold, `CutOK` at its cut position in every later state past
    the waits; R6 part 1b's probes besides). Section 5 marks steps 2 to 6
    checked.
-7. **No regressions.** The gates on `970c996`, full (23:04 to 23:24):
+7. **No regressions.** The gates on `32816a8`, full (23:04 to 23:24):
    `LEVEL 1 OK` (108 s), `LEVEL 2 OK` (731 s; unit tests 918, F tests 37;
    step 7: A2A3Check2 and 60 of 60 small traces TRACECHECK OK), `LEVEL 3 OK`
    (359 s). The quick performance suite: R8's comparison against the Level 3

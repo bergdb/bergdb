@@ -43,7 +43,7 @@ The probe
 ---------
 
 [02-take-blocked/TakeStuckProbe.java](02-take-blocked/TakeStuckProbe.java),
-on bergdb `f6bc3ce` (built in a clone), output in
+on bergdb `1a329d1` (built in a clone), output in
 [02-take-blocked/output.txt](02-take-blocked/output.txt). The record limit
 is lowered to 200 KB, as `DbTester.testRecordsWithinLimit` lowers it, with
 a startup distance of 20 KB. It loads 40,000 keys in random order, 100 per

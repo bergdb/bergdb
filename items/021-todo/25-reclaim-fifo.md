@@ -51,8 +51,8 @@ fresh database for each run, created by the jar under test, so no 2026.3
 database is involved. One JVM at a time on F53; a run of 300,000
 transactions takes 12 to 19 s.
 
-Main at a2fa9df (clone `clone-g30`) and release 2026.3 (tag
-`release-2026.3`, 929fa33, worktree `clone-g30-263`), each built with
+Main at 4957737 (clone `clone-g30`) and release 2026.3 (tag
+`release-2026.3`, 9a0bf5e, worktree `clone-g30-263`), each built with
 `java/build.sh`.
 
 
@@ -94,7 +94,7 @@ directory reaches 349 MB.
 Cause
 -----
 
-Two parts. Places in main (a2fa9df); the same code is in 2026.3, from
+Two parts. Places in main (4957737); the same code is in 2026.3, from
 2026-10-13 (bergdb 011-04, level 3).
 
 1. **The index keeps nodes of deleted keys.** A FIFO of keys in time order
@@ -219,7 +219,7 @@ entry; they are there to keep the high-water mark right.
 
 Measured on F53, loaded by other sessions (load 8 to 13), one JVM at a
 time and one run each, with the jars of this clone before and after the
-change (main's a2fa9df and the change), no `-ea`:
+change (main's 4957737 and the change), no `-ea`:
 
 App u14's `PutCost` (`java PutCost DIR retain`: startup distance 5 MB,
 retain duration 2 s; the rate of puts in `/w/` after K creations and
@@ -270,7 +270,7 @@ and records grew to 149 MB. The number of deleted keys sets when it starts, not
 the number of transactions. A ring of keys overwritten in place, with no deletes,
 stayed bounded.
 
-U18-2 found that the note in `releases/next.md` (69600f9) does not let a user
+U18-2 found that the note in `releases/next.md` (5ddffde) does not let a user
 recognise the fault. A draft to replace it before the tag, if 2026.4 ships without
 fix (a):
 
@@ -296,7 +296,7 @@ Log
 ---
 
 2026-11-09. Registered by coord-1109 from 022-06-3's U3-1 and U3-2; taken
-by investigator g30 (clone `clone-g30` on main's a2fa9df, and a worktree
+by investigator g30 (clone `clone-g30` on main's 4957737, and a worktree
 of `release-2026.3`). The Java workload reproduces the C library's run on
 main and on 2026.3 alike: not a regression. Cause found (parts 1 and 2
 above) from reclaim's table and statistics; no fix made. A known issue in
@@ -315,7 +315,7 @@ decision on (a) and (b).
 
 2026-11-09. Status "waiting" (for Frans's decision), one of 021's
 status values, where it said "for Frans"; the main commits of the
-item: `69600f9` (the known issue), `c6e60ba` (part 3) and `e3b9787` (fix
+item: `5ddffde` (the known issue), `c74164c` (part 3) and `e8cbf9d` (fix
 (c)); its row in 021-todo. By coord-1109.
 
 2026-11-09. Frans, 19:17: "021-25, good catch. Yes it should be for 2026.5." The fixes (a) and (b) wait for 2026.5; fix (c) is in 2026.4 (coord-1109).

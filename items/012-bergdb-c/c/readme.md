@@ -9,7 +9,7 @@ Its first parts, the build, the tests, the gate and the rules below, are
 012-04's.
 
 **Which Java.** C is a port of **Java release 2026.2** (the tag
-`release-2026.2`, `95bde62`, 2026-11-04; bergdb 015-02), not of the Java
+`release-2026.2`, `d5b1bda`, 2026-11-04; bergdb 015-02), not of the Java
 of the day: it writes that release's bytes, opens its databases and
 refuses what it refuses, and its API follows `Db`'s public methods there.
 It does not follow Java's changes after the release, and it is meant to
@@ -21,7 +21,7 @@ its `SHA256SUMS` and extracted once into `build/java-src/`.
 `JAVA_REF=tree` compiles the repository's `java/` instead, and
 `JAVA_REF=DIR` another Java tree; both differ from C where Java changed
 after the release. Until 2026-11-05 C followed `main` as of 2026-10-29
-(`ae4aaf9`).
+(`165efea`).
 
 
 # 1. Build and test

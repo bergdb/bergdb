@@ -19,7 +19,7 @@ First step: the probe of R3-F3, made a test.
 
 **State** (2026-11-03, 20:55): the fix, its test, two mutations and
 `before-commit.sh` done in `/Users/f/fl/bench/016/015-25/repo` (`main`
-at `e427a4c`); handed off for review in
+at `0b739f3`); handed off for review in
 `/Users/f/fl/bench/016/015-25/handoff/`. Open: the review (016-05,
 section 5).
 
@@ -86,7 +86,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 20:46 to 20:55, by agent F1-b (016-05), in
-`/Users/f/fl/bench/016/015-25/repo` (a clone of `main` at `e427a4c`,
+`/Users/f/fl/bench/016/015-25/repo` (a clone of `main` at `0b739f3`,
 after 015-13):
 
 * **Read**: R3-F3 (016-07), its verification (016-06, verify-1, R3-F3),

@@ -146,7 +146,7 @@ section 3). Unless he chooses before the release, it is a known issue of
   (016-06 to 016-08).
 * 15:31 Frans: Java only (D7); the agents told.
 * 15:32 Conductor started for window 1, 22:30 to 23:55.
-* 15:33 Committed 6d81050: 016-01 with Frans's answers and D7, this
+* 15:33 Committed f7d1d52: 016-01 with Frans's answers and D7, this
   subitem, 016's readme.
 * 15:40 Frans: the release by 07:00; only `before-commit.sh` to commit.
   The agents told; the timeline above replaces the earlier one.
@@ -173,7 +173,7 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 15:58 P4's plans done: 016-06 (eight reviews tonight, R1 to R8; S1
   and S2 after the release), 016-07, 016-08 (H4 run by the coordinator;
   `night.sh large` does not fit).
-* 15:59 Review R1 (handles and the node table) started, base `6f932f0`.
+* 15:59 Review R1 (handles and the node table) started, base `47ba87f`.
 * 16:01 s1, JDK 27: `BEFORE COMMIT OK (121 s)`, the first run of the
   unit tests and f-tests on Linux on record; `level1.sh`, the night tests
   and the same on JDK 17 follow (016-08, L1 and L2).
@@ -185,11 +185,11 @@ section 3). Unless he chooses before the release, it is a known issue of
   quick `ab` with two runs per scenario, Props three runs each, no
   Shenandoah; the source zip without `releases/2026.1/`; the write-ups
   of 005-65 and 005-52 after the quiet block.
-* 16:04 Committed `323a54a`: the plans 016-03 to 016-10. All detailed
+* 16:04 Committed `c8e2f1e`: the plans 016-03 to 016-10. All detailed
   plans are in place.
 * 16:04 The tools agent T started (016-10's scripts, then 016-09's). The
   005-65 rerun's smoke test started.
-* 16:05 jcstress on F53, today's five tests on `6f932f0`: all OK, and
+* 16:05 jcstress on F53, today's five tests on `47ba87f`: all OK, and
   the control saw its race (016-08, `08-tests/results.md`). JDK 17's
   `before-commit.sh` and night tests on F53 started (016-08, F2). 005-65's
   rerun smoke-tested and READY for window 2.
@@ -222,11 +222,11 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 16:18 The combined gate of 005-79 A, 005-69 and 005-71 queued behind the
   agents' gates (one at a time).
 * 16:21 Combined gate of 005-79 A, 005-69, 005-71 and 005-80:
-  `BEFORE COMMIT OK (97 s)`. Committed: `dde82e8` (005-79 Part A),
-  `b281d39` (005-69), `af6e762` (005-71), `522b645` (005-80). 005-69,
+  `BEFORE COMMIT OK (97 s)`. Committed: `bb7b6fa` (005-79 Part A),
+  `52ea92c` (005-69), `fdda081` (005-71), `f8e7dc7` (005-80). 005-69,
   005-71 and 005-80 are done.
 * 16:24 005-82 gated on `main` (`BEFORE COMMIT OK (110 s)`) and committed,
-  `3e32f02`; done.
+  `5672e5a`; done.
 * 16:30 005-79's Part B handed off (`BEFORE COMMIT OK (140 s)`; the
   decided digests change in 1 of 12 configurations, by one take of 2,158).
   Its review (H5) by an agent started at 16:42.
@@ -246,13 +246,13 @@ section 3). Unless he chooses before the release, it is a known issue of
   `java.io.tmpdir`). 16:44 s1: jcstress, then the disk stress programs
   until 23:30 (016-08, L3 and L4).
 * 16:47 005-52's PauseProbe change gated on `main` (`BEFORE COMMIT OK (89
-  s)`) and committed, `87d1e2c`. 005-79's agent done: Part B is
+  s)`) and committed, `4d74c19`. 005-79's agent done: Part B is
   `ddbba95` in its clone, `BEFORE COMMIT OK (139 s)`, LEVEL 2 OK
   (RestartInvariance identical in 8 configurations, TRACECHECK OK); its
   review runs.
 * 16:48 Agent K started: 015-12, then 015-15 (R1's faults).
 * 16:52 015-07 gated on `main` (`BEFORE COMMIT OK (113 s)`) and
-  committed, `12610c7`; done. 005-52's night script smoke-tested
+  committed, `de4b0b2`; done. 005-52's night script smoke-tested
   ("lowered (SMOKE): OK") and READY; both steps of the quiet block are in
   `steps.txt` (65-rerun, 52-lowered).
 * 16:52 F3 (the stress programs, fresh seeds) has two failed chunks of
@@ -269,7 +269,7 @@ section 3). Unless he chooses before the release, it is a known issue of
   by a test), two wrong Javadoc dates and a half-true sentence in
   `lean/README.md`. The author answers them, then the commit.
 * 17:06 015-12 (R1-F1) gated on `main` (`BEFORE COMMIT OK (102 s)`) and
-  committed, `dc42409`; done. Its jcstress test fails on the code before
+  committed, `e17dfb2`; done. Its jcstress test fails on the code before
   and passes with the fence; R1's probes go to zero.
 * 17:04 Frans checked in; told that nothing blocks, and the three
   optional decisions (015-13, 015-14, 005-78) with their recommendations.
@@ -277,10 +277,10 @@ section 3). Unless he chooses before the release, it is a known issue of
   usage on). New agents at high effort until the reset at 19:30, still
   up to four (Frans's word); Frans asked once.
 * 17:15 005-79's Part B gated on `main` (`BEFORE COMMIT OK (153 s)`) and
-  committed, `f04cefe`; 005-79 done for 2026.2 (Java), Lean and C after
+  committed, `6bc348d`; 005-79 done for 2026.2 (Java), Lean and C after
   the release (015-03, 015-02). s1: jcstress's five tests OK on Linux.
 * 17:19 015-01 with 015-06's first part gated on `main` (`BEFORE COMMIT
-  OK (142 s)`) and committed, `ed16384`: 015-01 done; 015-06 in progress
+  OK (142 s)`) and committed, `e7da01b`: 015-01 done; 015-06 in progress
   (a start refused after the open still leaves the first file).
 * 17:25 Frans: "Avoid consuming extra usage. Restart agents at high
   effort if needed. Hold new starts until 19:30 if needed." The 5-hour
@@ -289,9 +289,9 @@ section 3). Unless he chooses before the release, it is a known issue of
   015-13 half done in K's clone; 015-16 found: the tester's `stop()`).
   No new start until 19:33.
 * 17:27 015-15 (R1-F4) gated on `main` (`BEFORE COMMIT OK (137 s)`) and
-  committed, `f82e7e7`; done.
+  committed, `f070403`; done.
 * 17:31 015-17 (F3's `InterruptStress`) gated on `main` with the patch
-  (`BEFORE COMMIT OK (130 s)`) and committed, `6105d21`; done: close()
+  (`BEFORE COMMIT OK (130 s)`) and committed, `bce685c`; done: close()
   reported a get's "File closed". 015-19 registered: tools in items that
   still use what 005-79 removed (after the release).
 * 17:57 Frans: xhigh for every agent, no split by task; the pace is set
@@ -310,13 +310,13 @@ section 3). Unless he chooses before the release, it is a known issue of
   wrong answer or lose data), 015-14 and 015-10, at xhigh. 015-13 waits
   for 015-10 (both change `Eviction`). 015-09 and 015-16 reviewed by the
   coordinator, in the combined gate.
-* 19:39 015-09 and 015-16 committed (`d91b619`, `cf6c8e7`), done; gate
+* 19:39 015-09 and 015-16 committed (`5ed54b4`, `63a9e88`), done; gate
   `BEFORE COMMIT OK (103 s)`.
 * 19:44 verify-1: all eight confirmed; 015-20 to 015-27 registered
-  (`c657764`). 19:50 the index faults (015-20, 22, 21) and 015-24 started.
+  (`66a80f3`). 19:50 the index faults (015-20, 22, 21) and 015-24 started.
 * 19:57 Usage at 14% with 9% of the window gone, and extra usage on: three
   agents at a time from now; 015-26 and 015-23 put off.
-* 19:59 015-10 committed (`24bdae5`), done: the eviction thread's stop
+* 19:59 015-10 committed (`f219dc7`), done: the eviction thread's stop
   rule; gate `BEFORE COMMIT OK (115 s)`.
 * 20:06 015-24 committed, done: the directory lock across class loaders,
   new in 2026.2; gate `BEFORE COMMIT OK (107 s)`. The docs agent started
@@ -326,20 +326,20 @@ section 3). Unless he chooses before the release, it is a known issue of
   code before (a harmless outcome, as `usable` checks it); R1-F3's wrong
   answer was not seen. The fix makes the order hold by the memory model.
   Its doc nits are being fixed; the read path's cost is unmeasured.
-* 20:10 to 20:30 the docs agent: next.md complete (`e5bd275`), the draft
+* 20:10 to 20:30 the docs agent: next.md complete (`8c6b8bd`), the draft
   notes (outside the repository until R9), replication's Javadoc
-  (`777f75f`), README.md and docs/levels.md (`fe72238`, `b6515aa`, with
+  (`a25be75`), README.md and docs/levels.md (`60289ee`, `2d7daae`, with
   015-27's correction of section 3), 2026.1's post-release notes
-  (`44bfaae`); D4 and D6 no change. N4 at about 01:00.
-* 20:31 015-20, 015-22 and 015-21 committed (`9971100`, `7cd4cdb`,
-  `377fe7d`), done; review: no fault; gate `BEFORE COMMIT OK (104 s)`.
+  (`16bb031`); D4 and D6 no change. N4 at about 01:00.
+* 20:31 015-20, 015-22 and 015-21 committed (`e5e1179`, `02e9e79`,
+  `68e52ad`), done; review: no fault; gate `BEFORE COMMIT OK (104 s)`.
   The review met two more faults of 2026.1, registered as 015-28 and
   015-29, and 015-30 (time only).
 * 20:29 Usage at 35% with 20% of the window gone: at most two agents until
   00:30.
-* 20:36 015-14 committed (`4e10aa2`), done. 20:48 015-13 committed
-  (`e427a4c`), done: the handles are counted; at a given cache size about a
-  third fewer objects stay in memory. 20:56 015-25 committed (`fa08db4`),
+* 20:36 015-14 committed (`ca02b5e`), done. 20:48 015-13 committed
+  (`0b739f3`), done: the handles are counted; at a given cache size about a
+  third fewer objects stay in memory. 20:56 015-25 committed (`4d56c2d`),
   done: an eviction batch that throws fails the database.
 * 20:56 verify-2: R2's and R3's other nine findings confirmed, all in
   2026.1 too: 015-31 to 015-39.
@@ -353,11 +353,11 @@ section 3). Unless he chooses before the release, it is a known issue of
   (HTTP 400; "OAuth refresh token is no longer valid"), and every later
   request failed; docs/log.md, 2026-11-04. Not done: the release steps of
   00:45 to 02:50, Codex's reviews after 23:06, the morning. Done without
-  the session: `night.sh` 02:10, NIGHT OK on `3386ade` in 38 minutes (all
+  the session: `night.sh` 02:10, NIGHT OK on `c846c0c` in 38 minutes (all
   the night's fixes; the gate on the release's code, as commit A adds
   BuildInfo only); the quiet block's 65-rerun and 52-lowered, exit 0; s1's
-  L4 stress on `3e32f02` failed once in `interrupt`, 015-17's fault (fixed
-  in `6105d21`). R8 wrote its report before it stopped: 10 faults,
+  L4 stress on `5672e5a` failed once in `interrupt`, 015-17's fault (fixed
+  in `bce685c`). R8 wrote its report before it stopped: 10 faults,
   015-56 to 015-64 (R8-F1 is 015-36); 015-56 (R8-F10) is new in 2026.2.
 * 07:39 Frans: unattended until 12:00; the W7 numbers in tonight's quiet
   block; section 7's items 6 to 9 as recommended. The plan to 12:00:
@@ -366,14 +366,14 @@ section 3). Unless he chooses before the release, it is a known issue of
   `tests-f53.sh` and `s1-chain.sh`; N4 (the notes agent); `collect.sh`,
   `axioms.sh`, `finish.sh`; R9 (`stage-b.sh`, commit B, the tag
   `release-2026.2` on A, local); news.md by 12:00. Codex reviews R4, R5
-  and R6 again on `f5a5f66` (stop 10:30); their faults go into the notes as
+  and R6 again on `abe7785` (stop 10:30); their faults go into the notes as
   known issues. Tonight: the W7 numbers on A's jar (016-10), a conductor
   of night 2.
-* 07:47 REHEARSAL OK on `f5a5f66`. 07:52 015-56 fixed, reviewed, gated
-  (`BEFORE COMMIT OK (108 s)`), committed `30e1b61`; 015-65 registered.
-* 07:59 N4 (`8ca243d`): next.md and 2026.1's post-release notes with the
+* 07:47 REHEARSAL OK on `abe7785`. 07:52 015-56 fixed, reviewed, gated
+  (`BEFORE COMMIT OK (108 s)`), committed `1613a45`; 015-65 registered.
+* 07:59 N4 (`b1e6c5a`): next.md and 2026.1's post-release notes with the
   night's changes; the walk over every commit printed nothing. The freeze.
-* 08:01 commit A, `95bde62`: BuildInfo 2026.2, 262, `2026.2.261104.0759`;
+* 08:01 commit A, `d5b1bda`: BuildInfo 2026.2, 262, `2026.2.261104.0759`;
   `BEFORE COMMIT OK (107 s)` in its clone. 08:03 `BUILD A OK`, the jar's
   SHA-256 `f22e193877ef178173671c2488805be7de4d23f77c4edca5e4f23523371a008f`.
 * 08:06 `TESTS F53 OK` (JDK 27 and 17: Unit 1143, F 79, Night 8, the user's
@@ -474,7 +474,7 @@ recommended":
    for fixes (days, not hours).
 
 10. **005-65's fix and the long gets** (005-65, Results 2026-11-04): with
-    8 readers the fix (`988fe1a`) cut the eviction lock's entries from
+    8 readers the fix (`52aeb04`) cut the eviction lock's entries from
     81,877 to 484 a second, but gets over 10 ms rose (298 to 492) and the
     longest get stayed at about 48 ms. Recommended: keep the fix; one more
     quiet run of the two builds, four rounds (about 20 minutes), before
@@ -504,13 +504,13 @@ recommended":
 
 ## 8. Outcome
 
-2026-11-04, 09:35. Release 2026.2 is made: commit A `95bde62` (BuildInfo
+2026-11-04, 09:35. Release 2026.2 is made: commit A `d5b1bda` (BuildInfo
 2026.2, version int 262, build `2026.2.261104.0759`), the tag
 `release-2026.2` on it (annotated, local, not pushed), and commit B
-`eed4ca9` with `releases/2026.2/` (the jar, SHA-256 `f22e1938...008f`, the
+`c459883` with `releases/2026.2/` (the jar, SHA-256 `f22e1938...008f`, the
 source and Javadoc zips, the notes, `baseline.zip`, `SHA256SUMS`) and
 BuildInfo 2026.3-dev. The checks: `night.sh` NIGHT OK on its code
-(`3386ade`); `before-commit.sh` on A; the jar's tests on F53 and s1 with
+(`c846c0c`); `before-commit.sh` on A; the jar's tests on F53 and s1 with
 JDK 27 and 17 (on s1 the night tests with `/tmp` on the disk); the Lean
 axioms of 44 theorems; the digests.
 

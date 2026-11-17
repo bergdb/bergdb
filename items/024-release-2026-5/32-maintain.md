@@ -1,7 +1,7 @@
 # 024-32. maintain(): cleanup on request, in release 2026.5
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `94edfe6b`; Q32-1 to Q32-5 as built (Frans, 13:52),
+`main` since `f4ccbcdc`; Q32-1 to Q32-5 as built (Frans, 13:52),
 followed in 026-03.
 
 Frans, 2026-11-12, 12:10: "maintain(): [...] No, I want this now. In this
@@ -22,7 +22,7 @@ to never gives its space back.
 
 By the agent "maint" of coord-1112, from 12:11. Clone
 `/Users/f/fl/bench/2026-11-12/maint/clone`, branch `024-32-maintain` from
-`main` at `288c973e`. Outputs: [32-maintain/](32-maintain/).
+`main` at `75d0d2c0`. Outputs: [32-maintain/](32-maintain/).
 
 
 ## 1. In short
@@ -41,7 +41,7 @@ By the agent "maint" of coord-1112, from 12:11. Clone
   limit twice it plus 600 kB), quiet after call 6,130; at most 75 kB and
   5 records a call; resident objects 10 against 5, after M7, the
   eviction's dead hand in maintain().
-* Gates on `ec924fd7` all OK (section 5); no existing test changed.
+* Gates on `31e99f29` all OK (section 5); no existing test changed.
 * Section 2 is the design, written before the code. Section 3 is what
   was built, section 4 G5, section 5 the gates, section 6 the questions.
 
@@ -292,7 +292,7 @@ times the twin's: the eviction's dead hand drops the objects of ended
 versions a batch after each transaction, and no transaction followed
 maintain()'s last cut. So M7 (section 2.2).
 
-**With M7** (`32-maintain/g5-dead-hand.txt`, on `ec924fd7`'s code but
+**With M7** (`32-maintain/g5-dead-hand.txt`, on `31e99f29`'s code but
 the tolerances; 8 s for both databases):
 
 | Measure                              | Emptied     | Twin        | Limit       | Result |
@@ -319,7 +319,7 @@ the tolerances; 8 s for both databases):
 
 ## 5. Gates
 
-On the head `ec924fd7`, each in a slot:
+On the head `31e99f29`, each in a slot:
 
 | Gate                       | Result                                           | Time   |
 |---|---|---|
@@ -371,32 +371,32 @@ overturned.
   (P12, 2026-11-09). Recommended: as built.
 
 
-## 7. The merge with main (a156fd51) and its gates
+## 7. The merge with main (75baf383) and its gates
 
 The coordinator, 13:38: merge `main` (024-31's `shareSection`, 024-33
 and 024-34's cache tables and reclaim reads, ST6 counted in G4) and
 gate again. Conflicts in `TransSeq` (`takeTo` beside `shareSection`,
 both kept) and in `count-gates.sh`'s header; `Reclaim`, `CountGates`
-and `docs/levels.md` merged by themselves. Merge commit `ef10ff95`.
+and `docs/levels.md` merged by themselves. Merge commit `25e64469`.
 
 G5 now counts ST6. The first count failed (49,584 slots against the
 twin's 80): since 024-33 a map shrinks to at least 16 slots and keeps
 its table once used, and the emptied database has used 3,099 of the
 4,096 maps, the twin 5. That is a floor independent of n, 4,096 times
 16 = 65,536 slots (about 256 kB), so G5 holds ST6 to the larger of twice
-the twin's and that floor (`5edb773a`). A map that empties could drop
+the twin's and that floor (`1806eb93`). A map that empties could drop
 its table altogether; that is 024-33's to decide, not done here.
 
 | Gate (head)                          | Result                                         |
 |---|---|
-| before-commit.sh (ef10ff95)          | BEFORE COMMIT OK (unit 1,695, F 89), 73 s      |
-| level1.sh (ef10ff95)                 | LEVEL 1 OK                                     |
-| level3.sh (ef10ff95)                 | LEVEL 3 OK, 486 s; 35 traces, C-CUT 0 of 799   |
-| count-gates.sh (5edb773a)            | COUNT GATES OK, 130 s; G5 ST6 0.754 of its limit |
-| level4.sh quick (5edb773a)           | LEVEL 4 OK, 123 s; 18 traces, C-P, C-H 0 fail  |
-| e-r-maint seeds 1 to 3 (5edb773a)    | TRACECHECK OK each                             |
+| before-commit.sh (25e64469)          | BEFORE COMMIT OK (unit 1,695, F 89), 73 s      |
+| level1.sh (25e64469)                 | LEVEL 1 OK                                     |
+| level3.sh (25e64469)                 | LEVEL 3 OK, 486 s; 35 traces, C-CUT 0 of 799   |
+| count-gates.sh (1806eb93)            | COUNT GATES OK, 130 s; G5 ST6 0.754 of its limit |
+| level4.sh quick (1806eb93)           | LEVEL 4 OK, 123 s; 18 traces, C-P, C-H 0 fail  |
+| e-r-maint seeds 1 to 3 (1806eb93)    | TRACECHECK OK each                             |
 
-`5edb773a` changes only `CountGates.java` after `ef10ff95`. Output:
+`1806eb93` changes only `CountGates.java` after `25e64469`. Output:
 `32-maintain/gate-5edb773a.txt`. ST6's count moved by a few slots
 between runs (49,584, 49,392): the eviction thread's timing.
 
@@ -406,9 +406,9 @@ between runs (49,584, 49,392): the eviction thread's timing.
 2026-11-12, 14:02. **Done; merged with main and gated.**
 
 * **Clone** `/Users/f/fl/bench/2026-11-12/maint/clone`, branch
-  `024-32-maintain`, head `5edb773a`, in Frans's name: `c8becd28` (the
-  feature), `ec924fd7` (the dead hand's step, G5's tolerances),
-  `ef10ff95` (merge of `main` at `a156fd51`), `5edb773a` (G5's ST6
+  `024-32-maintain`, head `1806eb93`, in Frans's name: `3839cd65` (the
+  feature), `31e99f29` (the dead hand's step, G5's tolerances),
+  `25e64469` (merge of `main` at `75baf383`), `1806eb93` (G5's ST6
   floor). Not pushed; the coordinator lands it.
 * **Gates**: section 5 (before the merge) and section 7 (after it), all
   OK. No existing test's expected value changed.

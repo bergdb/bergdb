@@ -1,12 +1,12 @@
 016-06/verify-1. Verification of R2's and R3's findings
 =======================================================
 
-Created 2026-11-03 by Frans Lundberg. Base: b9ba427. Started 19:34, ended 19:44 (from date).
+Created 2026-11-03 by Frans Lundberg. Base: b1651a5. Started 19:34, ended 19:44 (from date).
 
 Eight findings, in the order of the list handed to this verification. Each
 probe or patch was copied from R2's folder (06-reviews/R2/) or R3's
 (07-concurrency/r3/) into `/Users/f/fl/bench/016/verify-1/out/` and run
-against a clone of b9ba427 built with `sh java/build.sh`; probes written
+against a clone of b1651a5 built with `sh java/build.sh`; probes written
 for this verification are in `/Users/f/fl/bench/016/verify-1/v/`. One JVM
 at a time. Commands below run from `/Users/f/fl/bench/016/verify-1`, where
 `repo/` is the clone.

@@ -1,4 +1,4 @@
-bergdb 005-42: probe.sh on 98ac9eb with 005-40 and 005-43, uncommitted at the time (2026-10-25, F53).
+bergdb 005-42: probe.sh on 52d7e36 with 005-40 and 005-43, uncommitted at the time (2026-10-25, F53).
 
 A: a put of /e/x, in a directory with an index; a get of /e/x
   kvs(): 2

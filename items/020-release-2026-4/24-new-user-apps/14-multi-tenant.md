@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it (u14, for coord-1109, round 5
 of the common brief of 020-24): only the release jar on the class path, built from a clone
-of main at `b0eba12`, and only what a user reads (README.md, `java/src/overview-pub.html`,
+of main at `5c296c5`, and only what a user reads (README.md, `java/src/overview-pub.html`,
 the Javadoc of `bergdb.pub` and `bergdb.pub.util`, `releases/next.md`). The Core's `Db`, which
 the package's "The API and its jar" names as API, was used once, after the runs, to count
 the stored index entries (`CoreScan`).

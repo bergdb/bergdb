@@ -4,7 +4,7 @@
 Status: done (2026-10-24). Kind: fix. Created 2026-10-24.
 
 Found on 2026-10-23 in 005-29, by Claude (Opus 5.5, Claude Code); the
-streams checked with probes on `685e895`. Added at Frans's request ("Add
+streams checked with probes on `b61cf34`. Added at Frans's request ("Add
 to 005.").
 
 

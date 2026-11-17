@@ -1,4 +1,4 @@
-bergdb 005-30: Props (bergdb.dev.props.Props, without -ea) in ABBA order, the build of ad09b2e (base) and ad09b2e with the fix (cand), 2026-10-23 16:44 to 16:50, F53. Started after 6 checks 30 s apart with no other JVM, gate or lake, no busy Claude session (this one included) and a 1-minute load below 2.0; the load was 2.0 to 2.5 during the runs. CORE: lower is faster (1.00 = cissi, July 2013), (get, get4t, getmany, set).
+bergdb 005-30: Props (bergdb.dev.props.Props, without -ea) in ABBA order, the build of c931cff (base) and c931cff with the fix (cand), 2026-10-23 16:44 to 16:50, F53. Started after 6 checks 30 s apart with no other JVM, gate or lake, no busy Claude session (this one included) and a 1-minute load below 2.0; the load was 2.0 to 2.5 during the runs. CORE: lower is faster (1.00 = cissi, July 2013), (get, get4t, getmany, set).
 
 base MEM:192 CORE:0.29 (0.26, 0.33, 0.25, 0.32) SS:1.50 (1.10, 1.19, 1.62, 2.37) 
 cand MEM:191 CORE:0.28 (0.24, 0.32, 0.25, 0.32) SS:1.50 (1.10, 1.19, 1.62, 2.37) 

@@ -10,7 +10,7 @@ contents as they were in 005-78 (Frans's plan, approved 2026-11-05,
 07:17); its files stay in [005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/),
 the change's in [87-retain-duration-in-stream/](87-retain-duration-in-stream/).
 The study (U1), the probe (U2) and the design (U3) done 2026-11-05, on
-`0c6c4be`, after release 2026.2:
+`8defe65`, after release 2026.2:
 [design.md](../005-todo/78-retain-duration-in-stream/design.md), the
 probe `RetainProbe.java` and its output `probe.txt` beside it. U7, the C
 clone, is left for later (the Log's last entry).
@@ -24,7 +24,7 @@ stream. It must be really, to follow our principle of a deterministic
 stream. Still an Investigate entry. Important to study first." So the
 direction is decided, the retain duration goes into the stream (010-01,
 P2); how is to be studied first, and the design is for Frans. Registered
-only; nothing run or changed. Code cited at `bcc7d3b`.
+only; nothing run or changed. Code cited at `e4b5529`.
 
 
 The issue
@@ -93,7 +93,7 @@ streams agree with the plain ones because each start passes the same
 value; no test restarts without setting it again.
 
 **How the startup distance is kept** (005-53's report, 1.2; its
-Outcome; `Db` and `MetaBlock` at `bcc7d3b`): in the meta blocks, not in a
+Outcome; `Db` and `MetaBlock` at `e4b5529`): in the meta blocks, not in a
 record of its own.
 
 * `MetaBlock`, offset 40, 4 bytes: the startup distance; every meta block,
@@ -119,7 +119,7 @@ record of its own.
   and `testSameStreamAfterDecreaseWithRestartsF` (007-07, 10.2: a
   decrease with a restart right after the call and every 10 commits gives
   the same stream, byte for byte). The Pub setter is
-  `Database.setStartupDistanceInMb` (005-53, `fd8f513`).
+  `Database.setStartupDistanceInMb` (005-53, `decc677`).
 
 
 The rule, and how the retain duration breaks it
@@ -717,8 +717,8 @@ for the plan of that day:
 
 * **2026-11-03:** this plan; nothing run (the night went to the release).
 * **2026-11-05, U0 (07:20):** the clone `/Users/f/fl/bench/016/005-78`, at
-  `0c6c4be` (`main`); `java/build.sh` there at 07:20 (5 s). The base of
-  all answers and runs is `0c6c4be`.
+  `8defe65` (`main`); `java/build.sh` there at 07:20 (5 s). The base of
+  all answers and runs is `8defe65`.
 * **U2, first run (07:22):** `RetainProbe.java` (in this entry's directory)
   compiled against the clone's jar and run on the four `l3-*` workloads,
   5 s. Its first-difference column was wrong (it compared bytes from the
@@ -727,8 +727,8 @@ for the plan of that day:
   no build or run in it.
 * **U1 and U3 (07:24 to 07:31):** the study's answers (questions 1 to 10,
   with the code) and the design, in `design.md`: F1 to F7, the forms side
-  by side, the evidence, the change, the release. Committed `44936c0`,
-  `9d37877`.
+  by side, the evidence, the change, the release. Committed `2ce2db0`,
+  `f232290`.
 * **U2, done (07:56):** the fixed probe, and P4 with `-Dstepreserve=2000`;
   output in `probe.txt`, the table in `design.md`, section 4.1.
   * restarts-each gives plain's stream in all four (lengths after every
@@ -772,7 +772,7 @@ Log
   "Decisions of 2026-11-03".
 
 2026-11-05.
-* U1 to U3 done on `0c6c4be` (section 8, State): the study, the probe,
+* U1 to U3 done on `8defe65` (section 8, State): the study, the probe,
   the design (`design.md`). The probe confirms the fault: a restart that
   does not set the retain duration again stops reclaim for good.
 
@@ -807,7 +807,7 @@ done.
   duration can change at any time and changes nothing until reclaim's
   next step. Reclaim works inside transactions, so a setter call right
   after `start()` comes before any reclaim work.
-* The check of that claim (read-only, lines at `281da42`). It holds for
+* The check of that claim (read-only, lines at `6a97cbc`). It holds for
   the Core; for the Pub API it holds unless the previous run left an index
   job unfinished, and that exception does no harm under the decision.
   * Core: reclaim works only in `Reclaim.transactionCompleted`, which
@@ -883,7 +883,7 @@ session bergdb-e8.
   only by its setter). The step reserve was not discussed; it is taken as
   the design recommends: documented as a setting for tests, not kept.
 * U6, the change, is under way, by session bergdb-e8's agent, in a clone
-  of `6d829b5`.
+  of `0fec98f`.
 
 2026-11-05, 14:20. U6's state, by session bergdb-e8's agent, in the clone
 `/Users/f/fl/bench/day-1105/015-87` (uncommitted).
@@ -940,7 +940,7 @@ session bergdb-e8; F6 and F7 as at 13:33.
   did not discuss it.
 
 2026-11-05. Done by session bergdb-e8's agents (U6: one agent made the
-change in a clone of `6d829b5`, a second reviewed and finished it there).
+change in a clone of `0fec98f`, a second reviewed and finished it there).
 The retain duration and the internal fraction are kept in the stream, in
 reclaim's internal KV `/#i/dreclaim/-settings.txt` (F1 = B); there is no
 builder value (13:23); a stream without the KV runs with the defaults
@@ -1016,7 +1016,7 @@ builder value (13:23); a stream without the KV runs with the defaults
     the retain duration (1 s) and the internal fraction (0.1) set once,
     after commit 100, restarts right after the call and every 50 commits
     without setting them again; the stream from the decided cut is the
-    one without restarts. On `6d829b5` it fails ("retain after a
+    one without restarts. On `0fec98f` it fails ("retain after a
     restart, expected 10000000, got 9223372036854775807"); without that
     check the streams differ: no cut after the first restart, 2,047,056
     bytes against 2,425,200 with a cut at 967,496. Shown with
@@ -1050,15 +1050,15 @@ builder value (13:23); a stream without the KV runs with the defaults
   * `DbTester.testReclaimInternalFractionValidation`'s invalid units go
     to `setSettings`.
 * **StreamDigest** (`87-retain-duration-in-stream/digest-summary.txt`,
-  `digests-base.txt`, `digests-new.txt`): `6d829b5` against the change,
+  `digests-base.txt`, `digests-new.txt`): `0fec98f` against the change,
   12 configurations in 4 modes, one compiled copy of the change's
   StreamDigest on both jars. The 8 without reclaim: the same 32 digests,
   2026.2's. The 4 `l3-*`: their 16 digests change, by the settings'
   record that StreamDigest's first start now writes (216 bytes), and
   what follows from it (iterations and cuts at other positions). On
-  `6d829b5` `restarts-once` differs from plain in each `l3-*` (the fault;
+  `0fec98f` `restarts-once` differs from plain in each `l3-*` (the fault;
   `l3-node8`: 4,355,752 bytes and no cut, against 7,094,096 with a cut);
-  with the change the 4 modes agree in all 12. `6d829b5`'s other 36
+  with the change the 4 modes agree in all 12. `0fec98f`'s other 36
   digests are 015-54's `digests-new.txt`.
 * **Lean and the traces:** nothing in `lean/` changes (the design's Q10):
   the settings' record is a transaction like a table store, and the

@@ -176,7 +176,7 @@ The proposal
 ------------
 
 Made 2026-10-19 by Claude (Opus 5.5, Claude Code), at Frans's request ("Do
-the 005-10 todo item"), on commit `0597329`:
+the 005-10 todo item"), on commit `1f4b637`:
 [10-unused-code/proposal.md](10-unused-code/proposal.md), with its tables,
 plan, tools and runs in [10-unused-code/](10-unused-code/). Nothing is
 removed.
@@ -210,7 +210,7 @@ C2, C3, C4, C5, D1, D2, D3 and E1.
 The removal
 -----------
 
-Made 2026-10-20 by Claude (Opus 5.5, Claude Code), on `0597329`, but for
+Made 2026-10-20 by Claude (Opus 5.5, Claude Code), on `1f4b637`, but for
 part of G1 (next section). The plan, the lists and the checks are in
 [10-unused-code/applied/](10-unused-code/applied/).
 
@@ -308,8 +308,8 @@ Code):
   `NoFieldsSetException`.
 * Not removed, now entries of their own: replication (005-11) and
   transaction outputs with `NoSuchObjectException` (005-12).
-* Checks, on a clone of `c6ca623` with the change: unit tests 944, f-tests
-  36, `LEVEL 1 OK` to `LEVEL 4 OK`, `lake build`; on `39ab4a8` with the
+* Checks, on a clone of `3fdf88b` with the change: unit tests 944, f-tests
+  36, `LEVEL 1 OK` to `LEVEL 4 OK`, `lake build`; on `2fe87ef` with the
   main tree's other changes then, the build and the unit tests. In the
   main tree, not committed.
 

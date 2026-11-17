@@ -1,7 +1,7 @@
 #!/bin/sh
 # 005-51's measurement (2026-10-27, 006-09's W4): an idle JVM, and an idle database whose
-# eviction thread has run (IdleEvict), on the code before 005-51 (565499f) and with it
-# (c2aab10), one process at a time, as 005-14's idle-run.sh: start, wait for READY, SETTLE
+# eviction thread has run (IdleEvict), on the code before 005-51 (74bc2dc) and with it
+# (043a09c), one process at a time, as 005-14's idle-run.sh: start, wait for READY, SETTLE
 # s more, then 005-14's procstat over MEASURE s, then SIGTERM (IdleEvict prints its
 # threads' CPU since T0).
 # Usage: idle-run.sh WORK ROUNDS SETTLE MEASURE OUTDIR

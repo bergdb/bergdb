@@ -1,7 +1,7 @@
 # 024-37. CA3: the Core refuses a caller's writes at its own keys
 
 Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-12): on
-`main` since `335e2578`.
+`main` since `96e66c71`.
 
 Frans, 2026-11-12, 14:34: "CA3, as recommended." CA3 (024-01, section
 5.3; 020-11, section 11; 022-06-2, U2-8; 024-35, finding 2): a Core put
@@ -135,7 +135,7 @@ on them and passes them. Covered by `bergdb.pubimp.PubTesterIndex`,
 `PubTesterIndexJobs` and `IndexDefinitionTester` in the unit tests, and
 by `level1.sh`'s index runs.
 
-Changed existing tests, their own commit (`9b3fd89d`), both following
+Changed existing tests, their own commit (`fee58904`), both following
 directly from the refusal:
 
 * `DbTesterRestart.testMalformedSettingsRefusedAtStart` put malformed
@@ -168,13 +168,13 @@ On the branch head (section 6), each in a slot:
 2026-11-12, 14:59. **Done and gated.**
 
 * **Clone** `/Users/f/fl/bench/2026-11-12/ca3/clone`, branch
-  `ca3-core-keys` from `main` at `2cf42560`, in Frans's name:
-  `915356bf` (the change, `DbTesterCoreKeys`, Javadoc,
-  `releases/next.md`), `9b3fd89d` (the two changed tests, section 4).
+  `ca3-core-keys` from `main` at `5ae523f2`, in Frans's name:
+  `f4ff125b` (the change, `DbTesterCoreKeys`, Javadoc,
+  `releases/next.md`), `fee58904` (the two changed tests, section 4).
   Not pushed; the coordinator lands it. The clone's `lean/.lake` is a
   copy of the main tree's, not tracked.
-* **Gates** on `9b3fd89d`: before-commit, level1, level3 OK (section 5).
-* **Merge with main** (`c49351e1`, 024-36 and 027 since the base): a
+* **Gates** on `fee58904`: before-commit, level1, level3 OK (section 5).
+* **Merge with main** (`54e0a1b9`, 024-36 and 027 since the base): a
   trial merge conflicts only in `releases/next.md`, Known issues, where
   024-36 and this item each add an entry: keep both. Nothing else
   overlaps (024-36 is `FileStream`; 027's reference edits merge).

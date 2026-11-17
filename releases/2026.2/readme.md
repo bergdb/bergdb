@@ -42,7 +42,7 @@ Files
 Identity
 --------
 
-* Tag `release-2026.2`, commit `95bde62439fdf620bc68483fe3488ddf09ef83c2` (2026-11-04).
+* Tag `release-2026.2`, commit `d5b1bda9f77a156ee719b7408116ecc97c0ab7a4` (2026-11-04).
 * `BuildInfo`: release 2026.2, release int 262, build 2026.2.261104.0759;
   `java -cp bergdb-2026.2.jar bergdb.core.BuildInfo` prints them.
 * Built by `java/build.sh` (`javac --release 17`) with OpenJDK 27 (Homebrew, build 27) on F53,
@@ -95,7 +95,7 @@ Requirements
 ------------
 
 * **Java 17 or later.** The jar's classes are for Java 17 (`javac
-  --release 17`, where 2026.1 had `--release 8`; 009, `b10e072`). Tested on
+  --release 17`, where 2026.1 had `--release 8`; 009, `bb7e189`). Tested on
   JDK 27 and JDK 17 (Verification).
 * **The collector**: ZGC, or Shenandoah in its default mode, without
   generations. With eviction, G1 pauses for hundreds of milliseconds and
@@ -117,7 +117,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
 
 ### Requirements
 
-* **Java 17 or later** (009, step 1-0, 2026-10-25, `b10e072`):
+* **Java 17 or later** (009, step 1-0, 2026-10-25, `bb7e189`):
   `java/build.sh` compiles with `javac --release 17`; the jar no longer
   runs on Java 8 to 16.
 * **ZGC, or Shenandoah without generations** (004-04, 009-04): see
@@ -129,30 +129,30 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   * A corrupt record read by `Connection.transactionInfo()` (`Db.getTrans`)
     fails the database, as every other read does, and keeps the cause;
     before, it threw as it was and the database stayed active (005-82,
-    `3e32f02`). How a start handles a damaged tail stays as it is (014-01,
+    `5672e5a`). How a start handles a damaged tail stays as it is (014-01,
     Known issues).
   * A node whose checksum is right but whose key count, value size, key
     size or pointer count does not fit in it is refused by its parser
     with a `StreamFormatException`, and the read fails the database;
     before, an `ArrayIndexOutOfBoundsException` or a
     `NegativeArraySizeException` escaped the reads' failure handling
-    (015-07, `12610c7`).
+    (015-07, `de4b0b2`).
   * Corrupt record and node sizes are refused before anything is
     allocated, instead of looping or exhausting the heap (005-74,
-    `c229ab2`); corrupt startup times (record order, the 56-bit range,
+    `2a3af23`); corrupt startup times (record order, the 56-bit range,
     increasing times in key nodes) are refused before replay (005-75,
-    `0e61856`). Valid streams and the format are unchanged.
-* **Close reports storage failures** (005-73, `3ad171d`). `Db.close()` and
+    `2306213`). Valid streams and the format are unchanged.
+* **Close reports storage failures** (005-73, `afc3d20`). `Db.close()` and
   `Database.close()` throw `StreamIoException` when the final flush or the
   storage's close fails, after cleanup; a later `close()` also reports a
   failure of an asynchronous `stop()` or an earlier `close()`; a
   try-with-resources block suppresses the close's failure when the block
   itself throws. Before, these failures were discarded. A get that runs
   while another thread closes the database fails alone, and the close
-  does not report it (015-17, `6105d21`).
+  does not report it (015-17, `bce685c`).
 * **NaN reclaim fractions are refused** (005-73): `Db.setReclaimInternalFraction(double)`
   throws `IllegalArgumentException` for NaN and keeps the setting.
-* **A directory whose stream is missing is refused** (015-01, `ed16384`).
+* **A directory whose stream is missing is refused** (015-01, `e7da01b`).
   `created.txt` marks a database whose creation reached the disk: a
   creation through the Pub API is forced before `created.txt` is written.
   `DatabaseBuilder.start()` refuses a directory that has `created.txt` and
@@ -165,7 +165,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   directory is still a new database (015-05, Known issues). A start
   refused for its crypto key creates nothing either: no directory, no
   `bergdb.lock`, no empty first stream file (015-06, in part).
-* **One database per directory** (005-63, `322c5d1`). A `FileStream` takes
+* **One database per directory** (005-63, `173544a`). A `FileStream` takes
   an exclusive lock on `bergdb.lock` in its directory before it reads
   anything. A second database on the directory, in the same JVM or in
   another process, is refused at once with a `DirectoryInUseException`
@@ -173,12 +173,12 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   cause); so is one started right after `stop()`, while the first still
   closes: start it after `close()` has returned. Two copies of BergDB in
   one JVM, loaded by two class loaders, refuse each other too, through
-  system properties `bergdb.lock.` and a key (015-24, `c72a02b`). The
+  system properties `bergdb.lock.` and a key (015-24, `08a389e`). The
   operating system drops the lock when the process ends, so a crash
   leaves none; the file stays. On a network file system a crashed
   client's lock may stay until the server notices (NFSv4: about 90 s), and
   where the file system supports no locks, a start fails.
-* **Interrupts** (005-46, `eaec93e`). An interrupt of a thread that calls
+* **Interrupts** (005-46, `1165c90`). An interrupt of a thread that calls
   BergDB never fails or hangs the database, as it could before (a commit
   that waited for room in the write buffer or made a cut failed the
   database; an interrupt of the storage thread stopped its writes).
@@ -186,15 +186,15 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   end on an interrupt; every other call ignores it until it is done; the
   interrupt flag is always kept. The rule is in `Database`'s class
   Javadoc.
-* **STM read sets after a reopening** (005-70, `7d967d7`). The Core
+* **STM read sets after a reopening** (005-70, `24a031a`). The Core
   refuses a transaction with a read dependency whose snapshot predates the
   last recovered commit; before, the empty STM history after a start could
   accept it despite a conflicting write before the close.
 * **Reclaim spaces its iterations by the live startup distance** (005-61,
-  `a175840`). Before, it used the builder's value, so a database made with
+  `4085e2e`). Before, it used the builder's value, so a database made with
   a small startup distance and opened with the default builder nearly
   stopped reclaiming.
-* **A key node's growth is published safely** (015-12, `dc42409`). A key
+* **A key node's growth is published safely** (015-12, `e17dfb2`). A key
   node that grew stored its new arrays with plain stores, so a reader on
   another thread could see them before their contents: a search could
   miss a key that was there long before its lookup time, or return the
@@ -202,7 +202,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   million searches in a probe; none seen through a database). The node's
   array fields are now volatile (015-12, 015-14).
 * **The fast path reads every pointer with an acquire** (015-14,
-  `4e10aa2`), so that a lock-free read is correct by the Java Memory
+  `ca02b5e`), so that a lock-free read is correct by the Java Memory
   Model, not by the hardware's address dependency: a key node or a top
   node reads each pointer with an acquire, paired with the release store
   of each change in place, then its reference with an opaque read. Before,
@@ -210,51 +210,51 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   seen to give it. The cost is not measured: an estimate of seven more
   load-acquires a hop on AArch64, none on x86 (015-14).
 * **A typed primary scan goes on after a page of non-objects** (015-20,
-  `9971100`). A scan of `usePrimary` ended a page after 100 entries,
+  `e5e1179`). A scan of `usePrimary` ended a page after 100 entries,
   filtered ones included, and took the empty page for the end of the
   range, so it left out every later object, without a word.
 * **An index deleted and created again under its name** (015-21, 015-22;
-  `377fe7d`, `7cd4cdb`). A second `deleteIndex` returns the running
+  `68e52ad`, `02e9e79`). A second `deleteIndex` returns the running
   deletion's job, so an old job no longer deletes a new index of the name
   and its entries; a build stops when its index is deleted, and writes
   nothing into a new index of the name, which returned extra objects,
   duplicates and the wrong order. Both lasted after a restart.
-* **The last call on a key in a transaction wins** (015-40, `f7974d3`), for
+* **The last call on a key in a transaction wins** (015-40, `6890ce3`), for
   put and delete in an rw-transaction. Before, a put and then a delete of a
   key committed the put, and of several puts an earlier value could win.
-* **`SystemClock` gives strictly increasing times** (005-69, `b281d39`), as
+* **`SystemClock` gives strictly increasing times** (005-69, `52ea92c`), as
   its Javadoc said; before, calls within a millisecond, or after the
   system clock was set back, gave equal or earlier times. No harm came of
   it: a database's own clock makes its times strictly increasing.
 
 ### API changes
 
-* **`stop()` or `close()` is required** (005-55, `cec0032`).
+* **`stop()` or `close()` is required** (005-55, `14022ad`).
   `Db.finalize()` is gone, with nothing in its place: nothing stops a
   database that the application drops. A `Db` or `Database` that is not
   stopped keeps its storage threads, its open files, its write buffer and
   its memory until the JVM exits; what it has committed is still written
   within the buffer time, and at the JVM's exit what is buffered and not
   yet written is lost, as in a crash, which the database tolerates.
-* **`Db` and `Database` are `AutoCloseable`** (005-59, `f9c3b09`).
+* **`Db` and `Database` are `AutoCloseable`** (005-59, `7dabc2c`).
   `Database.close()` is new: it stops the database as `stop()` does and
   waits until it is closed; `stop()` still returns at once.
-* **`SyncLevel` is in `bergdb.pub.util`** (005-56, `04f1546`), where it was
+* **`SyncLevel` is in `bergdb.pub.util`** (005-56, `8752cf0`), where it was
   `bergdb.core.SyncLevel`, with the same constants (`NONE`, `ORDINARY`,
   `STRONG`). Code that names it changes its import, and code compiled
   against 2026.1 that uses it must be compiled again.
 * **`Database.PRIMARY`** is `Util.identity("primary")` (005-56): the same
   value, but no longer a compile-time constant, so a `case` label with it
   no longer compiles.
-* **The builder opens the directories in `start()`** (005-66, `83b7ac0`).
+* **The builder opens the directories in `start()`** (005-66, `7747325`).
   `DatabaseBuilder.dir()` and `replica()` only record their directories;
   `start()` opens them and closes them again if it fails. A builder that
   is never started holds nothing; a replica given before `dir()` is kept;
   `replica()` no longer throws its `IOException`, and `start()` reports a
   directory that cannot be opened or that another database has. A start
-  that is refused closes only the streams it opened (015-56, `30e1b61`).
+  that is refused closes only the streams it opened (015-56, `1613a45`).
 * **The startup distance changes while the database runs** (005-53,
-  `fd8f513`): `Database.setStartupDistanceInMb(int)` and
+  `decc677`): `Database.setStartupDistanceInMb(int)` and
   `getStartupDistanceInMb()`, clamped as the builder's (5 to 1000 MB); the
   setting is in force when the setter returns, and is written to the
   stream with a small transaction of the database's own (a value of 200
@@ -262,22 +262,22 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   nothing. After a decrease, the commits that follow bring the startup
   section down to the new setting, with no commit writing the whole of it
   (007-07).
-* **The cache size changes while the database runs** (005-52, `fd8f513`):
+* **The cache size changes while the database runs** (005-52, `decc677`):
   `Database.setCacheSizeInMb(int)` and `getCacheSizeInMb()`, clamped as
   the builder's (4 to 100,000 MB), for this run only (a restart takes the
   builder's value). After a decrease the database evicts down to the new
   budget in batches that end after 2 ms (`Eviction.BATCH_NANOS`; a limit,
   not a measured bound: 3 to 4 ms on s1, 009-03), also when no other call
-  follows, and also when every object was just read (015-10, `24bdae5`).
+  follows, and also when every object was just read (015-10, `f219dc7`).
   The Core's side: `Db.setCacheSizeIndicator(long)` and
   `getCacheSizeIndicator()`. The rule for both setters: a setting that
   changes the stream's bytes, as the startup distance, is kept in the
   stream; one that does not lasts for the run.
 * **`DatabaseMissingException`**, new in `bergdb.pub.util` (015-01; see
   Reliability).
-* **`Factory` has no public constructor** (`216fc8b`): only the static
+* **`Factory` has no public constructor** (`f342bd4`): only the static
   `Factory.database()`.
-* **No .NET** (`216fc8b`): `Util.runsIkvm()` is gone, and the Javadoc no
+* **No .NET** (`f342bd4`): `Util.runsIkvm()` is gone, and the Javadoc no
   longer names .NET or C#.
 * **Core diagnostics removed** (005-73): `Db.getCachePutSize()`,
   `getDirtyFraction100()` and `getDirtyFraction1000()`, their JMX
@@ -285,7 +285,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   `CachedMemoryValueSpeedM`, which gave a constant or incorrect values.
   The Core's startup info reports the effective startup distance instead
   of −1.
-* **The reclaim fraction in units of 2^-16** (005-79, `dde82e8`):
+* **The reclaim fraction in units of 2^-16** (005-79, `bb7b6fa`):
   `Db.setReclaimInternalFraction(double)` and JMX's setter keep their
   double and the range 0.001 to 0.90, and use the nearest multiple of
   2^-16, which the getter returns (0.25 exactly, 0.1 as 0.100006).
@@ -296,7 +296,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
 
 ### Format
 
-* **The node size is in the stream** (005-50, `bf19075`). Every meta block
+* **The node size is in the stream** (005-50, `c1f1f15`). Every meta block
   holds the maximum node size the database was written with, in 2 bytes
   at offset 44 that were reserved; the meta block's version stays 154. A
   start with another node size is refused with a `StreamFormatException`
@@ -308,7 +308,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
 * **Every stream differs from what 2026.1 wrote; the format does not**,
   apart from 005-50's two bytes: the paced take (005-49, 007-07, below)
   writes other records, and the Core decides in integers (005-79).
-* **The Core decides in integers** (005-79, `dde82e8`, `f04cefe`). No
+* **The Core decides in integers** (005-79, `bb7b6fa`, `6bc348d`). No
   double or float decides the stream's bytes or the memory: the take's
   share and dither (in units of 2^-16 of a node), reclaim's iteration
   spacing and internal fraction, eviction's low watermark and two buffer
@@ -321,7 +321,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
 
 ### Performance
 
-* **Handles** (009, merged in `178a0d4`). A memory pointer holds its
+* **Handles** (009, merged in `98981f8`). A memory pointer holds its
   pointee's handle, and eviction replaces the handle's object, not the
   pointers:
   * eviction without the sweep that stopped the world: CLOCK over the
@@ -332,14 +332,14 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   * the node table in 4,096 maps with a lock each, so a resize stops one
     map for 0.23 ms, where it took 11.6 ms; reads no longer synchronize on
     `readSync`;
-  * the resident bytes count the handles (015-13, `e427a4c`): each live
+  * the resident bytes count the handles (015-13, `0b739f3`): each live
     handle with its node-table entry, 79 bytes, and 32 bytes for each
     pointer that holds one, as 009-02, 4.7 says; at a given cache size
     about a third fewer objects stay in memory than in 2026.1. The
     constants are JDK 27's, with compact object headers; on other JVMs
     they are an estimate;
   * an exception in a batch of the eviction thread fails the database
-    (015-25, `fa08db4`), where it ended the thread and eviction with it;
+    (015-25, `4d56c2d`), where it ended the thread and eviction with it;
   * measured during the work, against 2026.1 (009-03; docs/levels.md,
     section 7): the longest get from the OS cache at 10M keys under ZGC
     3.45 ms, against 7.3 s; gets in memory from 8 threads 101 and 61
@@ -349,11 +349,11 @@ and [items/015-todo/](../../items/015-todo/readme.md).
     percent fewer (G1, ZGC) in those runs; 009-03 had 3 and 11.
 * **MEM**, heap bytes per KV: 129 to 130 since handles, against 191 in
   2026.1 (`level1.sh`'s limit lowered from 228 to 131).
-* **Group commit** (005-48, `e611709`). A sync that waits has the buffer
+* **Group commit** (005-48, `d8ed1aa`). A sync that waits has the buffer
   written at once, and transactions that arrive during a force go out
   together: on s1, one thread's durable commits went from 38 to 213 a
   second.
-* **The default buffer time is 50 ms** (005-64, `27ec238`), where it was
+* **The default buffer time is 50 ms** (005-64, `ceef804`), where it was
   20 ms; also for replicas added through the Pub API (the Core's replicas
   keep 2,000 ms). A writer that does not sync gets fewer forces, 11 to 14
   percent on F53 and 18 to 35 on s1, with the same throughput, latency and
@@ -363,20 +363,20 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   never more than the 10 MB buffer. What a sync has returned for is never
   lost.
 * **A quarter-full write buffer wakes the storage thread** (005-76,
-  `df6ad50`), where it waited for the next timer check; it mattered at
+  `9d34ac1`), where it waited for the next timer check; it mattered at
   high write rates and long buffer times.
-* **Reads do not wait for the writer** (005-46, `eaec93e`): a read of the
+* **Reads do not wait for the writer** (005-46, `1165c90`): a read of the
   stream's last file no longer waits for the writer's append and its
   force, nor for a new file's force or reclaim's deletes of cut files (a
   thread of their own, `FileStream-cut`); an encrypted database's reads
   no longer wait for each other.
-* **Startup without header reads** (005-57, `07b6375`). A start finds the
+* **Startup without header reads** (005-57, `e773562`). A start finds the
   nodes of the startup section's pointers by their position instead of
   reading a header for each: a cold start of 10M keys on s1 took about 46
   and 51 s at startup distances of 50 and 200 MB in the prototype, where
   it took 214 and 210 s.
 * **Index writes in proportion to each commit, and bounded startup**
-  (005-49; 007-03, step 3; 007-07; `f89846d`). Each commit writes its
+  (005-49; 007-03, step 3; 007-07; `b8ac8a1`). Each commit writes its
   share of the dirty index nodes, in proportion to its size, so that the
   startup section stays near the startup distance, and a deadline takes
   every transaction that begins twice the startup distance or more before
@@ -386,12 +386,12 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   13 percent less at 1000 MB (docs/levels.md, section 5).
 * **Calm when idle**: an idle eviction thread waits with no timeout, where
   it woke once a second, and `close()` returns after it has ended (005-51,
-  `c2aab10`). A reader's load skips the eviction monitor when a request to
-  the eviction thread is pending (005-65, `988fe1a`).
+  `043a09c`). A reader's load skips the eviction monitor when a request to
+  the eviction thread is pending (005-65, `52aeb04`).
 
 ### Documentation
 
-* `Database.stop()`'s and `Db.stop()`'s Javadoc corrected (`a515af3`):
+* `Database.stop()`'s and `Db.stop()`'s Javadoc corrected (`d9d350d`):
   2026.1's said that the files are not forced and that only
   `sync(STRONG)` forces them. `FileStream` forces every append, so
   `sync()` waits until the data is on the device, and `STRONG` adds the
@@ -401,7 +401,7 @@ and [items/015-todo/](../../items/015-todo/readme.md).
 * Replication's Javadoc says that it is experimental, has known faults,
   will change its API, and must not be used in production (016-04).
 * `java/javadoc-pub.sh` builds the Pub API's Javadoc with doclint, and
-  fails on any warning (`216fc8b`); it is the release's
+  fails on any warning (`f342bd4`); it is the release's
   `bergdb-2026.2-javadoc.zip`.
 
 ### Build and tools
@@ -411,8 +411,8 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   the Core Layer's decisions (`java/doubles.py`, 005-79).
 * `java/stress/core-build.sh` builds the Core Layer alone (005-56).
 * `java/stress/PauseProbe.java`, the longest waits of gets and commits
-  under eviction (`e23c96e`), also with the budget lowered in a phase
-  (005-52, `87d1e2c`); jcstress tests in `java/stress/jcstress/`, among
+  under eviction (`732e567`), also with the budget lowered in a phase
+  (005-52, `4d74c19`); jcstress tests in `java/stress/jcstress/`, among
   them a key node's growth (015-12).
 
 
@@ -450,7 +450,7 @@ Where this release's Java is not in the model:
   015-10 and 015-25, in the eviction thread's schedule, for which the
   model proves the same records and answers whatever it is; so the
   alignment above stands. The only change to `lean/`
-  since `df6ad50` is a sentence of lean/README.md on the integer take.
+  since `9d34ac1` is a sentence of lean/README.md on the integer take.
 
 **The C clone** (item 012) is not updated: it writes the bytes of the
 Java it last ported, before 005-79's take and 005-69's clock, and its
@@ -462,9 +462,9 @@ Verification
 
 On the release commit, in a clean clone (`baseline.zip`, `gates/`):
 
-`java/night.sh` on `3386ade`, 2026-11-04 02:10 to 02:48 (`NIGHT OK`, 38
+`java/night.sh` on `c846c0c`, 2026-11-04 02:10 to 02:48 (`NIGHT OK`, 38
 minutes, JDK 27). The release commit differs from it in 015-56's fix
-(`30e1b61`) and `BuildInfo`, and passed `before-commit.sh` itself
+(`1613a45`) and `BuildInfo`, and passed `before-commit.sh` itself
 (`BEFORE COMMIT OK (107 s)`, 2026-11-04 07:59 to 08:01):
 
 | Step | Result | Time |
@@ -533,7 +533,7 @@ minutes, JDK 27). The release commit differs from it in 015-56's fix
   17 on F53, and with JDK 27 and 17 on s1, the first runs on Linux on
   record; the stress programs with fresh seeds, about two hours on F53
   (3,407 runs) and on s1. Their failures were 015-17 (a get during a
-  close, on F53 and once on s1, fixed in `6105d21`) and 015-16 (the
+  close, on F53 and once on s1, fixed in `bce685c`) and 015-16 (the
   power-loss tester's cleanup). `level1.sh` does not fit s1 (3 GB).
 * Every change made for the release was reviewed before its commit by a
   reviewer that did not write it (016-05, section 5), and gated by

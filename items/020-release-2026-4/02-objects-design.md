@@ -319,7 +319,7 @@ program results.
 
 ### 2b.1. Null in BergDB today
 
-020-03, section 5, from a probe of the jar at `c00e621`:
+020-03, section 5, from a probe of the jar at `b7fc20a`:
 
 * Null is a value of four of the eight types: a null `String`, `byte[]`,
   array or object field is stored as a null `s`, `b`, `a` or `o`; a null
@@ -506,7 +506,7 @@ wanted: the same format, with the asymmetry documented.
 * `DbObject`, the stored object's view (`get(key, DbObject.class)`),
   has no null values; its `getString` of an absent field returns
   null, Java's way to say absent.
-* Tests: 19 of `DbObjectTester`'s 72 tests at `7edcbe2` set a null and
+* Tests: 19 of `DbObjectTester`'s 72 tests at `b4cf896` set a null and
   4 more hold nulls by default (020-04, sections 5.1 and 10; 020-03,
   section 5.3, counted about a dozen); 13 of them are refused under (d)
   and 5 change their asserts. They become tests of the new rules, each
@@ -736,7 +736,7 @@ is +16 ns on hot hits at 20 and at 100 fields, +25 and +16 on hot misses.
 
 The hot and warm rows are the realistic ones, the coordinator said: a
 value's bytes are copied before any field lookup, so they are in the
-cache. Checked against the read paths at `79a7e09`:
+cache. Checked against the read paths at `72278e5`:
 
 * **True today, on every path.** `DbObject`'s constructor copies the
   bytes (`b.clone()`, `DbObject.java`, line 155), walks them for

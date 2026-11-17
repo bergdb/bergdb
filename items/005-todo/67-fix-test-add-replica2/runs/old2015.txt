@@ -1,5 +1,5 @@
 bergdb 005-67. Frans's note of 2015 in testAddReplica2, "Expected 800, got 1200": the test as it
-was before the note (probe/Old2015.java) with 2015's BufferedStream (7c458d1, instrumented by
+was before the note (probe/Old2015.java) with 2015's BufferedStream (c08e4ce, instrumented by
 probe/old2015.py, compiled to old2015/cls and put before the jar on the class path) under today's
 StorageManager, whose replica code is that of 2015; then with today's BufferedStream. 20 or 200
 runs each, F53, 2026-10-28 10:38 to 10:41.

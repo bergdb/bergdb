@@ -7,8 +7,8 @@ What an agent, or a person, needs to know before working on any part of
 keys and old versions are concerned. It describes what is, not what should
 be; the problem is stated in 023-02.
 
-Code places are `Class.method` and file:line on `main` at `5535d582`, whose
-Java code is the release candidate's, `03ce6ec`; the files are in
+Code places are `Class.method` and file:line on `main` at `795c2155`, whose
+Java code is the release candidate's, `d00096e`; the files are in
 `java/src/bergdb/dag/`, `core/` and `pubimp/`.
 
 
@@ -55,7 +55,7 @@ keys, about one node per 10 deleted keys in the FIFO, and reclaim's touch
 makes them dirty in every iteration; (2) the touch runs on to the next live
 key, past every key deleted since the iteration began; (3) every
 transaction cleared the whole key access path, whose array grew with the
-largest touch. Fix (c), for part 3, is in the candidate (`e3b9787`). Fix
+largest touch. Fix (c), for part 3, is in the candidate (`e8cbf9d`). Fix
 (a), ending the touch at its range, is a prototype on branch `021-25-fix-a`:
 the FIFO kept cutting (80 MB against 134 MB), but each iteration's first
 step still touched every deleted key's node, with records of up to 7.27 MB,

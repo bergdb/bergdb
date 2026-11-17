@@ -12,7 +12,7 @@ in [performance-harness.md](09-performance-harness.md).
 
 **Status, 2026-10-16: the reference is `quick-2026-10-16-post-task1`** (next section), taken
 on the code after task 1 and the Level 2 alignment, for bergdb item 001 (WP P1). The first
-reference, taken before task 1 changed any production source (commit `506510d9`), follows it
+reference, taken before task 1 changed any production source (commit `2709e277`), follows it
 and stays as the "before".
 
 ## Reference after task 1, 2026-10-16
@@ -20,8 +20,8 @@ and stays as the "before".
 * Tracked results: `java/bench/reference/quick-2026-10-16-post-task1/` (`summary.md` has every
   metric; `session.json` the source, JVM and machine).
 * Source: the preserved build `l34-base` of bergdb item 001 (`performance.sh build`, WP A1):
-  commit `50a2a7be` plus a working-tree diff that changed only test code
-  (`java/stress/StreamDigest.java` and `A2A3Check2.java`); production source as at `d5c56dd`
+  commit `dee7ad60` plus a working-tree diff that changed only test code
+  (`java/stress/StreamDigest.java` and `A2A3Check2.java`); production source as at `8f37d88`
   (task 1, D0's topPos, D1's in-place splits). Jar SHA-256 `45037cbae774cb33...`.
 * Command: `BUILD=l34-base JAVA_HOME=/opt/homebrew/opt/openjdk java/stress/performance.sh
   quick post-task1`, then `performance.sh promote`.
@@ -57,7 +57,7 @@ maxima), as described below.
 
 * Tracked results: `java/bench/reference/quick-2026-10-14-pre-task1/` (`summary.md` has every
   metric; `session.json` the source, JVM and machine; per-run compact results).
-* Source: commit `506510d9196bbf940a8bf6f4df3d5571699e845b` plus an uncommitted working-tree
+* Source: commit `2709e277220745626f31e1632df7f990bb9766ba` plus an uncommitted working-tree
   diff (the new performance files only; production source unchanged). Manifest SHA-256
   `fbee5ba77ed9a0b65e96e84498d1fb912bd35e42faf6079d04b8f8ef204f6479`, jar SHA-256
   `c907f156cc020e625373da9c622b7b4f527b1ae78430c2859ebd69b0fef74a73`.

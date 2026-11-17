@@ -21,9 +21,9 @@ Log
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-05. Done in night 006-12 (W1). Verified: R4's regression test
-(`R4EvictionTester.testBudgetDecreaseAfterPinsFall`) fails on f5a5f66
+(`R4EvictionTester.testBudgetDecreaseAfterPinsFall`) fails on abe7785
 (3,703 bytes resident, budget 3,447, pinned 3,016) but passes on the
-night's `main`: since 015-87 (60f29c7, found by `git bisect`) the
+night's `main`: since 015-87 (ccb8ab0, found by `git bisect`) the
 decrease's batches happen to complete the hand's round, whose fresh pins
 lower the trigger. The fault is still there; whether a batch reaches it
 depends on where the hand stops (timing). The mechanism, in `sweep` and

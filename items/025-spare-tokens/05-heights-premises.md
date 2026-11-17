@@ -692,7 +692,7 @@ one is its corollary under its old statement.
   `freshCache_replaceRoot'` and `segFits_mono'` are the existing
   `freshCache_takeBackRoot`, `freshCache_replaceRoot` and `segFits_mono`.
 
-Gated: f719fb4f (with main, 89273873), gate-1 PASS.
+Gated: 99bae681 (with main, 89273873), gate-1 PASS.
 
 2026-11-15, 13:00 to 13:10. Part 1, step 2 (fit): the take-back's
 family, as step 1, about 600 lines added and 150 removed.
@@ -714,7 +714,7 @@ family, as step 1, about 600 lines added and 150 removed.
   `CollapseFitsOK`. The stop rule did not apply: no step lemma asked for
   the fit other than at its end.
 
-Gated: edb53562, gate-2 PASS.
+Gated: 0846a5e8, gate-2 PASS.
 
 2026-11-15, 13:10 to 13:20. Part 1, step 3 (fit): the joint induction's
 tree family, as step 1. `DelStepsCaseQdG` (DelStepsTree.lean; I gives
@@ -730,7 +730,7 @@ use, and `delStepsCaseQd_fullH`, now a corollary, no longer uses
 `delFullFitsOKR_run`; one line in NoOutsideBase.lean wraps it by name
 (`n_wrap_these`), no statement changed.
 
-Gated: 7afd3be7, gate-3 PASS.
+Gated: 85d38375, gate-3 PASS.
 
 2026-11-15, 13:15 to 13:20. Part 1, step 4 (fit): the dead klongs'
 family. `writerWP_mergeUp_delDWW` (DeadMergeLoop.lean, `DelInvDWW`: `DelInv`
@@ -740,7 +740,7 @@ is `DW`, which speaks of no fuel), its cases, the two walks and
 `delStepsCaseDOK_mergeG`; FuelNext.lean: `writerWP_mergeUp_delDWA`,
 `dw_afterDeleteA`, `opCaseOK_dead_delMergeA`, with no `MergeStepOK`.
 
-Gated: b799d6f8, gate-4 PASS.
+Gated: c4cf497c, gate-4 PASS.
 
 2026-11-15, 13:20 to 13:30. Part 1, step 5 (fit): `hchk`'s discharge.
 The relational loops run for the runs that end in a state of C (`RWPC`,
@@ -760,7 +760,7 @@ unchecked run's end), `opDelChk8OKR_holdsA` and `opDelChk5OKR_of_chk6A`,
 with no `MergeStepOK` and no `CollapseFitsOK` (the fit at the delete's start
 from the heights and `htb`, `htStart_of_ht`, as the chain has it).
 
-Gated: d21270d2, gate-5 PASS.
+Gated: 8f58da68, gate-5 PASS.
 
 2026-11-15, 13:30 to 13:40. Part 1, step 6 (fit): the top theorem
 `invGetScanOK_merges_noFit` (DeadTop.lean): TP7, TP10 and TP11 for Java's
@@ -772,7 +772,7 @@ lean/README.md says so. Part 1 in all: about 2,000 lines added and 600
 removed in 20 files, in about two hours; no statement changed; one line
 added in NoOutsideBase.lean (step 3).
 
-Gated: 96e9c079, gate-6 PASS (the gate's audit list does not name
+Gated: d1f228fb, gate-6 PASS (the gate's audit list does not name
 `invGetScanOK_merges_noFit`; `#print axioms` gives the standard three).
 
 Next, by rule (section 7): part 2, `htb` (steps 7 to 9), or `l4` (024-12,
@@ -1099,7 +1099,7 @@ nodes the claim speaks of; neither that form nor the fallback was needed.
 **Next: step 9**, `invGetScanOK_merges_noTb` (premises `hp`, `hth`, `l4`):
 `invGetScanOK_merges_tbL` with `takeBelowFuelDelSL_holds`.
 
-Gated: 4ee959c9, gate-1 PASS.
+Gated: 1aa8d3c5, gate-1 PASS.
 
 2026-11-17, 00:46. Step 9 done (prover htbl): `invGetScanOK_merges_noTb`
 (HtbNoTb.lean), TP7, TP10 and TP11 for Java's parameters with the premises

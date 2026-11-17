@@ -8,7 +8,7 @@ session's remark on `DbStarter.java:590`: "the stream format version isn't
 checked at start. That's a missing check rather than wrong behaviour
 today." At Frans's request: "Investigate this and propose what to do. If
 you find it appropriate, add an item to 005." The probes, their runs on
-`425d7a7` and a prototype of the fix are in
+`67bcc02` and a prototype of the fix are in
 [40-fix-refused-start-writes/](40-fix-refused-start-writes/). No change to
 `java/` then; fixed the same day, at Frans's request ("fix 005-40").
 
@@ -24,7 +24,7 @@ The line is a TODO in `DbStarter.validateTransactions`:
 It is older than the check it asks for. Frans wrote it on 2014-10-31, in
 `DagStarter`, as a question ("t.version --- stream format version?
 Check?"), when a record's header had four unused bytes. On 2015-07-24
-(`e6f6e80`: "Only version 2 accepted when nodes / trans parsed") records
+(`bcebe1d`: "Only version 2 accepted when nodes / trans parsed") records
 and nodes got a format byte, which their parsers check; on 2015-08-07 the
 note became a "TODO D.", the last of Frans's priority letters A to D (the
 original history: the f1 repository's F1-007,
@@ -48,7 +48,7 @@ The probes agree (`CrossVersion` and `FormatProbe format`, in
 
 | A start on | The start | The stream after it |
 |---|---|---|
-| a database of the 2017 code (`195cf88`, record format 2), by today's code | `StreamFormatException`: "Cannot parse stored transaction of format version 2; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18)." | unchanged |
+| a database of the 2017 code (`0257e0b`, record format 2), by today's code | `StreamFormatException`: "Cannot parse stored transaction of format version 2; this version of BergDB reads format 5 only. A database written before 2026-10-15 (format 2) cannot be opened (docs/level2-alignment.md, M18)." | unchanged |
 | a database of today's code, by the 2017 code | `StreamFormatException`: "Cannot parse stored transaction of format version 5." | unchanged |
 | today's stream with format byte 6 in every record | the message of the first row, with 6 | unchanged |
 | today's stream with version 155 in every meta block | `VersioningStreamException`: "Cannot read meta block with version 155. Version supported: 154" | unchanged |
@@ -158,7 +158,7 @@ The fix, proposed
    stream that is not encrypted, another meta block version) is refused
    before anything is written. A prototype, one line moved
    ([prototype.diff](40-fix-refused-start-writes/prototype.diff)), on
-   `425d7a7`: after each wrong start the stream is unchanged and the
+   `67bcc02`: after each wrong start the stream is unchanged and the
    right start succeeds, also for the 2,560 keys at x = 6; the stream of
    version 155 cut in a meta block is refused unchanged; every other case
    as before. `before-commit.sh` passes, and `CrashTest` as `level2.sh`
@@ -221,7 +221,7 @@ Size and order
 
 S: a line moved and its tests; four checks, a superclass and a message;
 comments and a constant. Any time. 005-39, not committed when this was
-written (it is `98ac9eb`), changes another method of `RecoverableStream`
+written (it is `52d7e36`), changes another method of `RecoverableStream`
 (`getPosOfTransCompletedBefore`); the two do not overlap. 005-33's option
 A would add a check before recovery, for a creation that crashed;
 independent of this one.
@@ -232,7 +232,7 @@ The probes
 
 In [40-fix-refused-start-writes/tools/](40-fix-refused-start-writes/tools/),
 `run.sh` (build with `java/build.sh` first; `run.sh all` takes about 2
-minutes on F53); their runs on `425d7a7` in
+minutes on F53); their runs on `67bcc02` in
 [runs/](40-fix-refused-start-writes/runs/), and after the fix in its
 `after-*.txt` (`run.sh all after-`):
 
@@ -243,7 +243,7 @@ minutes on F53); their runs on `425d7a7` in
   cut 0, 3, 5 and 50 bytes into a meta block, K0 to K18.
 * `FormatProbe keys 2560` (`keys.txt`): 2,560 wrong keys, each on its own
   copy, at cuts 6, 50 and 127 bytes into a meta block.
-* `CrossVersion` (`cross.txt`): the 2017 code (`195cf88`, which `run.sh`
+* `CrossVersion` (`cross.txt`): the 2017 code (`0257e0b`, which `run.sh`
   builds as 006-02 does) and today's, through the Pub API in directories,
   X0 to X5.
 * The prototype: `prototype.diff`, and `prototype-format.txt`,
@@ -254,7 +254,7 @@ Outcome
 -------
 
 2026-10-25, by Claude (Opus 5.5, Claude Code), as proposed, at Frans's
-request ("fix 005-40"); in a clone, on `98ac9eb`:
+request ("fix 005-40"); in a clone, on `52d7e36`:
 
 1. **Read before writing.** `RecoverableStream.recover()` reads the last
    valid meta block before `fixMetaBlockIfNeeded()`, so a stream whose meta

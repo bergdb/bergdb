@@ -6,7 +6,7 @@ An application written as a new user of 2026.4 would write it (u8, for coord-110
 common brief of 020-24, round 3): only the release jar on the class path, and only what a
 user reads (README.md, `java/src/overview-pub.html`, the Javadoc of `bergdb.pub` and
 `bergdb.pub.util`, `releases/next.md`). The jar was built from a clone of main at
-`5d45478`. The implementation was read only afterwards, to explain U8-2 and U8-3, and
+`4338cda`. The implementation was read only afterwards, to explain U8-2 and U8-3, and
 `javap` showed the classes of the exceptions met.
 
 
@@ -350,7 +350,7 @@ Made 2026-11-09 for coord-1109, in `clone-x26`, by the rule for 2026.4: no
 change of the stream's format; a plain bug fixed with a failing test
 first; elsewhere the Javadoc made true where the code is as designed; no
 new API and no change of meaning. The tests are in
-`PubTesterJavadocNewUsers`. The three commits, on main at `20e8d5a`, gated
+`PubTesterJavadocNewUsers`. The three commits, on main at `f2dbcc7`, gated
 on one tree under the gate lock: BEFORE COMMIT OK (149 s, unit 1580, f 86,
 demos), JAVADOC PUB OK, and LEVEL 1 OK for the change of `FileStream`.
 

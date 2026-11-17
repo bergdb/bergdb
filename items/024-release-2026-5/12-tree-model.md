@@ -1,7 +1,7 @@
 # 024-12. The tree model: BergDB's key tree in Lean, run against Java
 
 Created 2026-11-11 by Frans Lundberg. Status: open: on `main` since
-`b84cf761`; the proofs go on (section 6: TP7, TP10, TP11; the second
+`ab1b9e42`; the proofs go on (section 6: TP7, TP10, TP11; the second
 prover's run 4 from 2026-11-13, 07:54).
 
 The main step towards aim 4 of release 2026.5 (024-04, "the model
@@ -204,7 +204,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     `checkRoot_ok_of_segDesc`). So `OpDelChk6OKR` gives `OpDelChk5OKR`
     (`opDelChk5OKR_of_chk6`, with `MergeStepOK` from `hMSF` and `CollapseFitsOK`), and
     `invGetScanOK_merges_chk6` was the top theorem without `hU` (`invGetScanOK_merges_noU`,
-    hu's) with `hchk6` in place of `hchk5` (landed e1e9b836; replaced by `_chk7`, below).
+    hu's) with `hchk6` in place of `hchk5` (landed 42ebc9cb; replaced by `_chk7`, below).
   - `DelHoleJ` carried to the leaf's call (delj, 2026-11-15, `DelHoleLeaf.lean`): a delete
     whose leaf keeps a live klong calls `afterDelete` after the leaf's bitmap, at a state with
     `DelHoleJ`, from every delete's start the joint route has. The descent is the same in both
@@ -216,7 +216,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     delete's call, after its stop node's bitmap, and the merges' loop at both calls
     (`deleteUpwardP2 adK adC`, the two calls apart). `opDelChk6OKR_of_chk7` gives
     `OpDelChk6OKR` from it (with `htb` and the heights at the runs, for the fuel at the
-    delete's start); `invGetScanOK_merges_chk7` was the top theorem with it (landed ada8757c;
+    delete's start); `invGetScanOK_merges_chk7` was the top theorem with it (landed 90acb7d3;
     replaced by `_chk8`, below).
   - `DelHoleJ` carried to the upward delete's call too (delj, 2026-11-15,
     `DelHoleClimb.lean`), so `hchk` asks only the merge's `checkFree`. The upward delete
@@ -231,7 +231,7 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
     `OpDelChk8OKL`: the writer's delete runs as `putKvDelChk8`, whose only check is, at each
     call of `afterDelete`, that the merges' loop from there runs as its copy with the merge's
     `checkFree`. `opDelChk7OKR_of_chk8` gives `OpDelChk7OKR` from it, and
-    `invGetScanOK_merges_chk8` was the top theorem with it (landed fbce47ac; replaced by
+    `invGetScanOK_merges_chk8` was the top theorem with it (landed 3189efbe; replaced by
     `_free`, below).
   - `hchk` gone (delj, 2026-11-15, `DelMergeFree.lean`, `DelMergeUp.lean`): the merge's
     `checkFree` holds at every merge of the merges' loop from a call of `afterDelete` (`hchk5`'s
@@ -1040,7 +1040,7 @@ The rest of this section is of 2026-11-11. Kept current then; section 9 has the 
 Written 12:24.
 
 * **The branch is gated and ready to land:** `024-12-tree-model`, head
-  `d90586d0`, main with 024-07, 024-10, 024-13 and 024-09 merged in
+  `46478dd5`, main with 024-07, 024-10, 024-13 and 024-09 merged in
   (section 7).
 * **The tree of release 2026.4, with 024-07's touch and 024-10's
   builder rule, is in Lean and runs** (`lean/SIS/Tree/`, about 2,400
@@ -1665,7 +1665,7 @@ not carry over to later transactions):
 
 ### 5.2 Results
 
-`java/stress/treeconf.sh all 5` on the clone's head (`0e02cbf0`), 31 s:
+`java/stress/treeconf.sh all 5` on the clone's head (`c20c53a2`), 31 s:
 
 | Set     | Traces | Transactions | Operations | Key nodes made | Taken back |
 |---|---|---|---|---|---|
@@ -1675,7 +1675,7 @@ not carry over to later transactions):
 | all     | 115    | 25,031       | 191,281    | 74,084         | 289        |
 
 * **Failures: 0 in every check**, C-T1 to C-T9; exporter errors 0.
-  (C-T9 from the same sets run again at `dd271920`, on one core, 122
+  (C-T9 from the same sets run again at `01e3c380`, on one core, 122
   s: 25,146 records of the model's own run, R(0) included, equal to
   Java's; the other figures the same to the digit.)
 * Compared besides: 170,198 KN lines, 100,124 GET lines, 25,031 SCAN
@@ -1719,7 +1719,7 @@ equals Java's):
 | RC: a segment root taken back         | 6     | 8      | 0       |
 | a lone time klong (D4)                | 0     | 31     | 0       |
 
-**The medium set** (`PAR=1 treeconf.sh medium 1` at `dd271920`, 991 s
+**The medium set** (`PAR=1 treeconf.sh medium 1` at `01e3c380`, 991 s
 on one core, most of it the exports): `conformance.sh`'s three medium
 configurations and six larger draining ones, 9 traces, node sizes 8,
 14, 30 and 62, up to 5 segments and height 7.
@@ -1734,7 +1734,7 @@ key nodes marked against a bound of 936,409. The first runs at node
 size 62 (bitmaps of up to 62 bits) and the largest transactions (200
 operations).
 
-**After the merges** (`treeconf.sh all 5` at `d90586d0`, 101 s with
+**After the merges** (`treeconf.sh all 5` at `46478dd5`, 101 s with
 two traces at a time): the same 115 configurations and seeds on main's
 code with 024-07, 024-10 and 024-09. TREECONF OK, 0 failures in C-T1 to
 C-T9.
@@ -1833,7 +1833,7 @@ it, with Java's.
   version of Java's of a node with the marker (D4) gets the marker
   entry first; nothing else is adjusted. R(0)'s structure must be the
   model's `initStruct`.
-* **Result** (`treeconf.sh all 5` at `dd271920`): on all 115 traces,
+* **Result** (`treeconf.sh all 5` at `01e3c380`): on all 115 traces,
   25,146 records, every record and every D equal: small 3,585, drain
   7,005, reclaim 14,556 (reclaim's steps with their touches, table
   stores, and Java's cuts: the model's stream is not cut, and T12 says
@@ -2005,7 +2005,7 @@ on size, they would need to be redone for any size change?"; then "OK, do
 C as recommended." The proofs are to hold for every key length and every
 tree size, with no fixed constant in the model; option B's key premise
 is replaced. The second prover's run 3 (07:22 to 07:46, branch
-`024-22-proofs-3`, merged in `2e71a297`;
+`024-22-proofs-3`, merged in `79d190b6`;
 /Users/f/fl/bench/2026-11-13/cx3/REPORT.md):
 
 * `nextGo`'s fuel comes from the parameters, `2 * p.fuel + 2` in
@@ -2028,7 +2028,7 @@ is replaced. The second prover's run 3 (07:22 to 07:46, branch
 Next: TP7, the prover's run 4 (from 07:54, at max).
 
 **TP7, partial, 2026-11-13** (the second prover's run 4, 07:54 to 09:02,
-at max; branch `024-22-proofs-4`, on main since `6caf8750`;
+at max; branch `024-22-proofs-4`, on main since `6521c939`;
 /Users/f/fl/bench/2026-11-13/cx4/REPORT.md): one component of TP7
 proved through the whole writer, the klongs' well-formedness, kept by
 every writer rule and by `execW` (`WriterKlong*.lean`,
@@ -2059,7 +2059,7 @@ The board at the night's end (coord-1113, 2026-11-14, 03:55): every
 prover has closed. "tp7" handed over to "putinv" at 18:01 (its State note:
 /Users/f/fl/bench/2026-11-13/tp7/STATE.md); "cost" closed at 03:16 (State
 note: 024-22, section 11.1), "latest" at 03:42 and "putinv" at 03:48 (its
-State note in commit a24aaa01). TP32 and TP33 were set aside at 16:14 with
+State note in commit ab921d7d). TP32 and TP33 were set aside at 16:14 with
 bounded startup's tree premises (Frans). The outcome, the top theorem
 `invGetScanOK_merges_flat` and its 10 named premises, is section 1;
 the checkpoints landed through the night are in 006-24's progress and in
@@ -2067,7 +2067,7 @@ Git (main-35 to main-107).
 
 Landed checkpoints:
 
-* 11:37, "tp7", `46ba22cb` (checkpoint 37984b68): TP7 reduced to its
+* 11:37, "tp7", `32e603ce` (checkpoint 35d31be7): TP7 reduced to its
   latest time, `invPreserved_of_latest` (`InvLatest.lean`): `InvPreserved
   p` follows from `LatestInvOK p`, `KeyNodesOK` and `PointersOK` of the
   run's structure, for runs within `Within`; `walk_succ_eq_nil_iff`
@@ -2075,11 +2075,11 @@ Landed checkpoints:
   an earlier time (`CacheGood.lean`, `WriterGood.lean`). Checked: `lake
   build` 310 jobs, 82 theorems on the standard axioms, no statement
   changed.
-* 12:21, "latest", `c008bff1` (merged as `3f225564`): TP10 and TP11 at
+* 12:21, "latest", `b6304b30` (merged as `e7f12171`): TP10 and TP11 at
   the latest time reduced to `OpGetOK` and `CommitGetOK`, the paragraph
   below. Checked: `lake build` 316 jobs, 128 theorems on the standard
   axioms, no statement changed.
-* 12:21, "t4", `9f59e364` (merged as `622897b1`): T4 proved (007), on a
+* 12:21, "t4", `43b23dda` (merged as `10adc210`): T4 proved (007), on a
   new statement. In plain words: every record at the ends of a startup
   section holds that section's transaction and only versions of its data
   nodes and of the dirty nodes D, at most (its data nodes) + |D| of them;
@@ -2092,7 +2092,7 @@ Landed checkpoints:
   dirty child may lie one section further back per level); two sections
   is open. Checked: `lake build` 315 jobs, 63 theorems on the standard
   axioms; main with both checkpoints 321 jobs.
-* 12:27, "latest", `5c80a139` (merged as `68aa78c8`): `CommitGetOK`
+* 12:27, "latest", `eb5f8731` (merged as `1ae5b2c4`): `CommitGetOK`
   proved from a smaller premise, `OverlayLiftOK` (the writer's last
   state, node by node, is the structure after the transaction); so TP10
   and TP11 rest on TP7, `OpGetOK` and `OverlayLiftOK`. A finding, proved:
@@ -2103,12 +2103,12 @@ Landed checkpoints:
   `OverlayLiftOK` is also the lift that TP7's `LatestInvOK` needs: "tp7"
   takes it or says so. Checked: 323 jobs, 38 theorems on the standard
   axioms.
-* 12:30, the second prover's run 5, its last (`585a46c3`, merged as
-  `31290858`): TP7 partial, four files (the export history, klong history
+* 12:30, the second prover's run 5, its last (`6dc59fc8`, merged as
+  `5b4be92f`): TP7 partial, four files (the export history, klong history
   times, the space split's dead bound, the writer cache's uniqueness); a
   fifth, unfinished when it stopped, left out. Checked: 325 jobs, 78
   theorems on the standard axioms.
-* 12:30, "t4", `48bfe93f` (merged as `8af385a0`): a cold start's reads
+* 12:30, "t4", `d9895038` (merged as `95abdd11`): a cold start's reads
   bounded (`coldReads_lazy`, `coldReads_handles`, `coldReads_run`,
   `coldReads_tree`; definitions `rerunReach` and `removedAt` in
   `lean/SIS/BoundCold.lean`, for Frans's review): the handles a lazy
@@ -2121,7 +2121,7 @@ Landed checkpoints:
   whose last change below is three sections back (checked by running,
   `#guard`; the kernel cannot reduce the model's sort). Written up in
   007-09. Checked: 327 jobs, 23 theorems on the standard axioms.
-* 12:35, "cost", `07e02625` (merged as `b2c7e9c0`): proved with no
+* 12:35, "cost", `1d2cd62d` (merged as `11ab0ae5`): proved with no
   premise, a transaction's merges into two nodes are at most its deletes
   that deleted (`execW_twoMerges_le_deletes`); TP33 reduced to
   `OneMergeStep` (`mergeAmortized_of_oneMergeStep`). TP32 open. Checked:
@@ -2846,7 +2846,7 @@ and its status:
       merge and collapse. It held at all 6420 states between operations,
       none failing.
     Removed (latest, 23:08, as agreed with cost and the coordinator, after
-    putinv's take-back moved to F2 at 65b84e5b): `DescentOKF`,
+    putinv's take-back moved to F2 at 3df8ef7e): `DescentOKF`,
     `MergePathCond`, `opGetCaseOK_delMergeF`, `writerWP_mergeUp_delF`,
     `writerWP_afterDelete_delF` and `opGetCaseOK'_delMerge`; the route at
     p.fuel in `DelMergeCase.lean` (`DescentOK`, `MergeStepOK`,
@@ -3595,21 +3595,21 @@ them here but where it says so.
 
 ## 7. Gates
 
-**On the head to land, `d90586d0`** (main `0016b9a5`, code `379d8acf`,
+**On the head to land, `46478dd5`** (main `558cdfe3`, code `773c2105`,
 merged in; one slot a run, two traces at a time):
 
 | Gate                            | Result                                |
 |---|---|
 | `cd lean && lake build`         | completed; `treetest` built too       |
 | grep in the tree's Lean files   | no unproved theorem, nothing assumed  |
-| `java/before-commit.sh`         | BEFORE COMMIT OK (105 s), `e52ed151`  |
+| `java/before-commit.sh`         | BEFORE COMMIT OK (105 s), `828a70a5`  |
 | `treeconf.sh all 5`             | TREECONF OK, 115 traces, C-T1 to C-T9 |
 | `java/stress/level2.sh` full    | LEVEL 2 OK (18 min)                   |
 | its step 8, `treeconf.sh`       | 195 traces, 29,794 transactions, OK   |
 | its step 7, `conformance.sh`    | small: 70 traces, TRACECHECK OK;      |
 |                                 | drain (024-09's): 50 traces, OK       |
 
-* `before-commit.sh` ran on `e52ed151`, the merge commit; `d90586d0`
+* `before-commit.sh` ran on `828a70a5`, the merge commit; `46478dd5`
   differs from it by one line of `lean/SIS/Tree/Bound.lean` (F2), so no
   Java file changed after it.
 * `level2.sh`'s step 8 at full size: `small` 70 traces (7,100
@@ -3620,20 +3620,20 @@ merged in; one slot a run, two traces at a time):
   taken back in its 50 traces).
 * Not run on this head: level1, level3 and level4 (the integration
   agent runs level1 and level3 on it before it lands); `treetest`'s
-  whole set (run on `15d04e1c`, 340,276 states; on the head a `model`
-  run and a random run); `treeconf.sh medium` (run on `dd271920`, 9
+  whole set (run on `c8d9ec7f`, 340,276 states; on the head a `model`
+  run and a random run); `treeconf.sh medium` (run on `01e3c380`, 9
   traces to node size 62, OK); `tree-tests.sh` as a script; `night.sh`.
 
 **Before the merges**, on this branch's own commits:
 
 | Gate                            | Result                                | On         |
 |---|---|---|
-| `java/before-commit.sh`         | BEFORE COMMIT OK (262 s)              | `0e02cbf0` |
-| `java/stress/level2.sh` full    | LEVEL 2 OK (11 min)                   | `0e02cbf0` |
-| `treeconf.sh all 5`, one core   | TREECONF OK, 115 traces, C-T1 to C-T9 | `dd271920` |
-| `treeconf.sh medium 1`, one core| TREECONF OK, 9 traces, C-T1 to C-T9   | `dd271920` |
-| `lake exe treetest`             | TREETEST OK, 340,276 states           | `15d04e1c` |
-| `treetest model`, four sizes    | 35 runs, 0 failures                   | `dd271920` |
+| `java/before-commit.sh`         | BEFORE COMMIT OK (262 s)              | `c20c53a2` |
+| `java/stress/level2.sh` full    | LEVEL 2 OK (11 min)                   | `c20c53a2` |
+| `treeconf.sh all 5`, one core   | TREECONF OK, 115 traces, C-T1 to C-T9 | `01e3c380` |
+| `treeconf.sh medium 1`, one core| TREECONF OK, 9 traces, C-T1 to C-T9   | `01e3c380` |
+| `lake exe treetest`             | TREETEST OK, 340,276 states           | `c8d9ec7f` |
+| `treetest model`, four sizes    | 35 runs, 0 failures                   | `01e3c380` |
 
 
 ## 8. Log
@@ -3662,7 +3662,7 @@ of mine ran: the scan, the touch, `Spec.lean`, `Inv.lean`, `Props.lean`,
 08:06 to 08:17, with the lock: `before-commit.sh` (OK), the compile of
 what was written (six small errors of form, no error of content: the
 scan, the touch, the invariants and the bound passed on their first
-run), `treeconf.sh all 5`, the small cases, the commit `0e02cbf0`.
+run), `treeconf.sh all 5`, the small cases, the commit `c20c53a2`.
 **A second mistake:** I kept the lock between `before-commit.sh` and
 `level2.sh` while I edited and ran small things, 11 minutes in which
 touch and cc waited; the coordinator said so at 08:18. `level2.sh`
@@ -3682,7 +3682,7 @@ the first trace and then on all 115; `treetest model`, the existing
 model's assumptions, T1 and T2 on the tree alone; the proofs of TP13
 (but `liveSub`) and `RunPSame`, each at the first try; TP25;
 `tree-tests.sh` and its night step; `treeconf.sh medium` and `large`.
-Commit `dd271920`.
+Commit `01e3c380`.
 
 08:47 to 09:05: `treeconf.sh medium 1` on one core (991 s, OK). 08:50,
 the coordinator: usage is tight; gate, write up, stop; no proofs, no
@@ -3698,10 +3698,10 @@ last operation wins" (024-10), TP26 for 024-17's limits, TP27 for I2
 touch passed. The gates then waited for a slot until main moved again.
 
 11:25 to 12:24: 024-09 on main. Committed the first merge
-(`5b6843cf`), merged again (two conflicts, by the merge notes), closed
+(`1a1abb15`), merged again (two conflicts, by the merge notes), closed
 TP13 with 024-09's `blive_sub`. Gates, one slot a run: `lake build`,
-`before-commit.sh`, the commit `e52ed151`, `treeconf.sh all 5`: F2,
-fixed in one line (`d90586d0`); then `lake build`, `treeconf.sh all 5`
+`before-commit.sh`, the commit `828a70a5`, `treeconf.sh all 5`: F2,
+fixed in one line (`46478dd5`); then `lake build`, `treeconf.sh all 5`
 and `level2.sh` full passed (12:03 to 12:23).
 
 
@@ -3710,13 +3710,13 @@ and `level2.sh` full passed (12:03 to 12:23).
 Written 2026-11-11, 12:24. Nothing of this subitem is running; no slot
 is held.
 
-* **The head to land:** `d90586d0` on `024-12-tree-model`, in
+* **The head to land:** `46478dd5` on `024-12-tree-model`, in
   `/Users/f/fl/bench/2026-11-11/tree/clone`, working tree clean. Its
-  commits: `0e02cbf0`, `15d04e1c`, `dd271920` (this subitem's work,
-  sections 3 to 6), `5b6843cf` (the merge of main with 024-07, 024-10
+  commits: `c20c53a2`, `c8d9ec7f`, `01e3c380` (this subitem's work,
+  sections 3 to 6), `1a1abb15` (the merge of main with 024-07, 024-10
   and 024-13, with the adaptation of the touch, `normalize`, TP26 and
-  TP27), `e52ed151` (the merge of main with 024-09, code `379d8acf`;
-  TP13 closed), `d90586d0` (F2). Gates: section 7. The integration
+  TP27), `828a70a5` (the merge of main with 024-09, code `773c2105`;
+  TP13 closed), `46478dd5` (F2). Gates: section 7. The integration
   agent runs level1 and level3 on it, and the coordinator lands it.
 * **Not run on the head:** level1, level3, level4; `treetest`'s whole
   set; `treeconf.sh medium` and `large`; `tree-tests.sh` as a script;

@@ -9,7 +9,7 @@ What: review S1's finding S1-F1 (items/016-release-2026-2/06-reviews/S1.md,
 section S1-F1: where, intended, actual, effect, a proposed fix).
 
 Evidence: its test in `PubTesterS1` (06-reviews/S1/S1-tests.diff) fails on
-`e427a4c`; rerun by the coordinator, 21:26 (17 of 20 fail, as the report
+`0b739f3`; rerun by the coordinator, 21:26 (17 of 20 fail, as the report
 says). The test's premise against the Javadoc is the review's; no second
 agent has checked it.
 
@@ -23,7 +23,7 @@ State
 
 2026-11-03, 21:38: the fix, its tests, three mutations and
 `before-commit.sh` done in the clone `/Users/f/fl/bench/016/015-40/repo`
-(`main` at `381e3bd`); handed off for review in
+(`main` at `dfc3ca7`); handed off for review in
 `/Users/f/fl/bench/016/015-40/handoff/`. Open: the review (016-05,
 section 5), the combined gate, the commit in `main`.
 
@@ -41,7 +41,7 @@ with a suffix committed the put, and of many puts of one key, the
 `HashMap`'s iteration order chose the one that won (S1-F1). Since before
 2013-06-06: `MapKey.equals`, `deleteIndexEntry` and the comment
 "Non-deletes take precedence over deletes" are in the first commit of
-the 2013 to 2017 Git history (`76c4792`, release 2013.1.130606).
+the 2013 to 2017 Git history (`1f4d0b6`, release 2013.1.130606).
 
 **Why `Trans.Builder` keeps a put over a delete**: no note or commit
 says; the code shows the need. The index maintenance of an object put
@@ -120,16 +120,16 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 21:27 to 21:38, by an agent of 016-05, in
-`/Users/f/fl/bench/016/015-40/repo` (a clone of `main` at `381e3bd`):
+`/Users/f/fl/bench/016/015-40/repo` (a clone of `main` at `dfc3ca7`):
 
 * **Read**: S1-F1 and S1-F2 (016-06, S1), `RwEnvironmentImp`
   (`kvOps`, `objectOps`, `indexOps`, `indexEntries`, `createTrans`,
   `MapKey`), `Trans.Builder`, `WBuilderImp`, `IndexBuilderImp.createStep`,
   `IndexManager`'s transactions, `Reclaim`'s step, `Eviction`'s test
   driver, C's `trans.h` and `trans.c`. `git log -S 'Non-deletes take
-  precedence'` in bergdb gives only the 2017 import (`195cf88`); in the
+  precedence'` in bergdb gives only the 2017 import (`0257e0b`); in the
   2013 to 2017 history (`java/build/props-006-02/orig-git`), the first
-  commit (`76c4792`, 2013-06-06), as for `instanceof long[]` and
+  commit (`1f4d0b6`, 2013-06-06), as for `instanceof long[]` and
   `deleteIndexEntry`. Frans's notes (f1 `a/007-bergdb-261012/bergdb/doc/`)
   have no word on the rule; the 2012 note on indexes describes the delete
   and add in one transaction. The findings: "The cause and the fix".

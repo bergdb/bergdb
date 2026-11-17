@@ -187,24 +187,24 @@ Gates
 Logs in `/Users/f/fl/bench/2026-11-13/ns30/`; the level scripts' own
 logs in the clone's `java/build/level1/` and `java/build/level2/`.
 
-* `java/before-commit.sh` on `babea6b2` (main `c91443d8` and the code
+* `java/before-commit.sh` on `e277a18a` (main `f2009ee4` and the code
   commit): BEFORE COMMIT OK (68 s), 1712 unit tests, 89 f-tests, demos
   (`before-commit.log`).
-* `java/stress/level1.sh` (full) on `9d346c25`: LEVEL 1 OK, 10:24 to
+* `java/stress/level1.sh` (full) on `da63f84f`: LEVEL 1 OK, 10:24 to
   10:27 (`level1.log`): DagFuzz at 8, 14, 30, 62; RestartStress at the
   default and at 8, 14, 62 (through `TestNodeSize`), 50 keys, on disk,
   no restarts; RestartInvariance; Props (MEM 127.1 at 10M keys, SS
   within its limits).
-* `java/stress/level2.sh quick` on `9d346c25`: LEVEL 2 OK, 10:27 to
+* `java/stress/level2.sh quick` on `da63f84f`: LEVEL 2 OK, 10:27 to
   10:29 (`level2.log`): RestartStress at sd 1000 for 8, 14, 30 and 62,
   RestartInvariance (node 8, 14, 62), CrashTest (node 8), treeconf, the
   A2A3 and drain configurations, conformance (14 traces) and drain (10),
   TRACECHECK OK, TAKECHECK OK. Lean built (`lake build`, up to date,
   the `.lake` of a clone with the same `lean/` tree).
-* After main moved (`fe947c7c`, `CountGates.java`, package `bergdb.core`;
-  items only otherwise), merged as `c3aa52fe`; `java/before-commit.sh`
+* After main moved (`eb3b6969`, `CountGates.java`, package `bergdb.core`;
+  items only otherwise), merged as `775ae35f`; `java/before-commit.sh`
   again: BEFORE COMMIT OK (70 s) (`before-commit-2.log`). Since
-  `9d346c25` only `java/stress/CountGates.java` and
+  `da63f84f` only `java/stress/CountGates.java` and
   `java/stress/count-gates.sh` changed under `java/`, neither run by
   level 1 or 2, and CountGates does not set a node size.
 
@@ -215,7 +215,7 @@ State
 2026-11-13, 10:37. Done, to land: code, Javadoc, 027-03,
 releases/next.md, this item and its Files line, committed in the clone
 `/Users/f/fl/bench/2026-11-13/ns30/clone`, branch `026-08-node-size`,
-main merged at `eefd8bb4`; every gate passed (Gates). Open: Frans's
+main merged at `4dc4273f`; every gate passed (Gates). Open: Frans's
 answers to Q1 and Q2 (both applied as recommended). To continue: if he
 wants `maxNodeSize30()` back as a public no-op, make it public again
 with a Javadoc that says it changes nothing; if he wants the hook out of

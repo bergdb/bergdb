@@ -1,7 +1,7 @@
 024-07: the trace checker's touchPath (C-A) on one reclaim trace, r-del seed 1 of reclaimtraces.sh
 (-Dn=500 -Dkeys=100 -Dmaxnode=8 -Dsd=500 -Dops=4 -Ddel=25 -Dnodel=5 -Dempty=5 -Dretain=1 -Dprobe=10), 2026-11-11 08:20.
 
-== main's algorithm (Db.touchRange), the trace of the worktree at 2d26ead3:
+== main's algorithm (Db.touchRange), the trace of the worktree at 399f6b76:
 TraceExport seed=1 n=500 (574 records: 19 steps, 55 table stores; 11 cuts decided, 11 physical; 675 references to versions before a cut): 1831 nodes, 0 errors, 0 probe failures; r-del.trace
 TRACECHECK r-del.trace
 C-A assumptions: 18 of 575 transactions fail (touchPath 18)

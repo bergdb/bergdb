@@ -1,7 +1,7 @@
 bergdb 005-30: StreamDigest all, the build before the change against it with the fix, one compiled copy of StreamDigest, the base's (2026-10-23, F53).
 
-On ad09b2e, the commit the change is on:
+On c931cff, the commit the change is on:
 
 DIGESTS IDENTICAL (36 of 36)
 
-Before, on 948ec00 and on f6bc3ce: DIGESTS IDENTICAL (36 of 36) both times.
+Before, on 57b4887 and on 1a329d1: DIGESTS IDENTICAL (36 of 36) both times.

@@ -1,11 +1,11 @@
-StreamDigest: main 6d829b5 (digests-base.txt) against 015-87's change (digests-new.txt),
+StreamDigest: main 0fec98f (digests-base.txt) against 015-87's change (digests-new.txt),
 2026-11-05, all 12 configurations in the 4 modes plain, reads, restarts and the new
 restarts-once (the retain duration set after the first start only); one compiled copy of
-the change's StreamDigest (built against 6d829b5's jar; it uses no API that the change
+the change's StreamDigest (built against 0fec98f's jar; it uses no API that the change
 adds) on both jars. 'digest' compares the decided fields of plain (length,
 firstAvailablePos, firstAvailableTime, sha256; 005-79's digest-compare.py), the physical
 cut left out; 'modes' says whether the 4 modes give plain's stream (length and sha256).
-6d829b5's plain, reads and restarts digests are 015-54's digests-new.txt, 36 of 36.
+0fec98f's plain, reads and restarts digests are 015-54's digests-new.txt, 36 of 36.
 
 configuration                base     change  change  digest   modes base  modes change
 l2-sd100                  5131920    5131920   +0.0%  same     agree       agree

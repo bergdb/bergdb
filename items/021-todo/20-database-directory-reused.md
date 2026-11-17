@@ -39,11 +39,11 @@ Log
 
 2026-11-09. Registered by coord-1109 from 020-24-10's U10-1 (and U10-2 to
 U10-7, U10-9), and taken by its agent l20 (clone `clone-l20`, on main's
-9ed1e6c).
+595418e).
 
 2026-11-09. Done by l20: commits 3a18e8f (021-20, U10-1), 0ad6fe1
 (020-24, U10-3), 1b2c363 (U10-5), b47b33a (U10-6) and 4824aa3 (U10-2,
-U10-4, U10-7, U10-9, Javadoc only) in `clone-l20`, on main's 9ed1e6c, to
+U10-4, U10-7, U10-9, Javadoc only) in `clone-l20`, on main's 595418e, to
 land. In 2026.1 to 2026.3 (005-63 made the lock).
 
 * Why it happened. The lock is `bergdb.lock` in the directory and, in the
@@ -134,7 +134,7 @@ land. In 2026.1 to 2026.3 (005-63 made the lock).
 Runs, under the gate lock (2026-11-09, 16:25 to 16:49), on the tree of
 the last commit: `BEFORE COMMIT OK (152 s)` (unit 1588, f 86, demos);
 `JAVADOC PUB OK`; `LEVEL 1 OK` (MEM 129, SS 1.51).
-Rebased onto main's 1bd9828 as branch `try-rebase` in `clone-l20`
+Rebased onto main's 907f543 as branch `try-rebase` in `clone-l20`
 (f22a964, 331c77d, fb41e43, 5dbd09e, 9c3936d; only `releases/next.md`
 met main's new entries, both kept): `BEFORE COMMIT OK (230 s)` (unit
 1596, f 86, demos) and `JAVADOC PUB OK` under the gate lock (16:51 to

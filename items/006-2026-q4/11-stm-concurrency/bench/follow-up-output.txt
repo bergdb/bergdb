@@ -1,5 +1,5 @@
 Waiting for main's frozen session to finish
-COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/build.py --out /private/tmp/bergdb-006-11-stripped-build --variants serial-stripped --commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/build.py --out /private/tmp/bergdb-006-11-stripped-build --variants serial-stripped --commit 377ff7af628f1fc214fc5945f9eda9179161868f
 Built serial-stripped
 BUILD_METADATA /private/tmp/bergdb-006-11-stripped-build/builds.json
 COMMAND git apply --check /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/eviction-startup.patch

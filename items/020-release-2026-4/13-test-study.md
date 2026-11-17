@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg. Status: open.
 
 **State (2026-11-09, 10:30).** Parts 1 to 4 done and written here. The
 work is in the clone `/Users/f/fl/bench/2026-11-09/clone-tests`, from
-`main` at `1d1b6f3`; its commits are listed in section 1. The work
+`main` at `25aac35`; its commits are listed in section 1. The work
 files, scripts and outputs are outside the repository, in
 `/Users/f/fl/bench/2026-11-09/tests-work/` (`tests-work/` below). Each
 commit of Java code came after `before-commit.sh` printed BEFORE COMMIT
@@ -40,7 +40,7 @@ test that fails before its fix and passes after:
    Core's storage layer): 12.5 ms at the default buffer time, 15 s in a
    unit test with a buffer time of a minute.
 
-The commits in the clone, after `1d1b6f3`: `a857539` (bug 1), `ca13a43`
+The commits in the clone, after `25aac35`: `a857539` (bug 1), `ca13a43`
 (bug 2), `72dfb65` (bug 3), `6e99055` (three tests for the faults the
 gate missed), `ac3291e` (bug 4), and this item's commit.
 
@@ -52,7 +52,7 @@ accepted); `setRetainDuration(null)` throws `NullPointerException`;
 six corners of the Javadoc.
 
 **Coverage** (section 2), by JaCoCo over the unit and f-tests at
-`1d1b6f3`, of the production classes of `java/src` (the testers left
+`25aac35`, of the production classes of `java/src` (the testers left
 out): 93.6 % of lines and 81.2 % of branches. The Pub layer is the best
 covered: `bergdb.pubimp` has 95.4 % and 90.2 %, its 2026.4 classes 95 to
 99 % of lines. The weakest are the file stream's error paths
@@ -66,7 +66,7 @@ runs in a test but the `toString()`s, two `hashCode()`s and
 **Mutation score** (section 3.2): 47 faults planted by hand in 2026.4's
 code, one at a time. One cannot be caught by any test (P43: the check it
 removes is made again in the next class). Of the other 46 the gate caught
-43: 30 of the first 33 at `1d1b6f3`, and 13 of 13 more at `6e99055`. The
+43: 30 of the first 33 at `25aac35`, and 13 of 13 more at `6e99055`. The
 three it missed now have tests that catch them (`6e99055`): a deletion
 that does not write the directory's virtual key, a build step without its
 definition's hash in its read set, and a scan that does not compare an
@@ -85,7 +85,7 @@ race tests.
 How: the JaCoCo agent 0.8.16 (`org.jacoco.agent-0.8.16-runtime.jar` and
 the CLI `org.jacoco.cli-0.8.16-nodeps.jar`, from Maven Central, their
 SHA-1 checked, in `tests-work/jacoco/`) ran `bergdb.dev.Unit` and
-`bergdb.dev.F` from a copy of `build/bergdb.jar` at `1d1b6f3`, with `-ea`,
+`bergdb.dev.F` from a copy of `build/bergdb.jar` at `25aac35`, with `-ea`,
 as the gate runs them (`tests-work/cov/run-cov.sh`): 1,415 unit tests in
 37 s and 86 f-tests in 71 s under the agent. The reports are
 `tests-work/cov/html/`, `all.xml` and `all.csv`. The scripts in
@@ -142,7 +142,7 @@ HEAD -- java/src`):
 | StringUtil           | 91.6     | 87.0     | formatting helpers                              |
 
 The untested branches that matter, by kind (line numbers at
-`1d1b6f3`):
+`25aac35`):
 
 * **Error paths and refusals**: `IndexManager.createInner`'s build that
   does not start (lines 261 to 264: the job FAILED and the exception
@@ -204,7 +204,7 @@ the `bergdb.pub*` classes, about 15 s; for one in the Core, all of them,
 about 70 s. A fault is caught if either group fails. The results are in
 `results-1d1b6f3.txt` and `results.txt`.
 
-The first 33, at `1d1b6f3`: 30 caught (P28 was dropped before it ran).
+The first 33, at `25aac35`: 30 caught (P28 was dropped before it ran).
 
 | Fault | What is broken | Caught by |
 |---|---|---|

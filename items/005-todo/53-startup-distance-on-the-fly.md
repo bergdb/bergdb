@@ -76,7 +76,7 @@ Question 3: Reclaim's startup distance
 --------------------------------------
 
 By Claude (Opus 5.5, Claude Code), 2026-10-27 (006-09, W6.1), a reading of
-HEAD `a6cd234`. Answer: it is the builder's value, never the stream's, and
+HEAD `e747323`. Answer: it is the builder's value, never the stream's, and
 it ignores later changes. A fault of its own, small: it changes how often
 reclaim runs, not what it may cut. Registered and fixed as
 [005-61](61-reclaim-startup-distance.md) (2026-10-27).
@@ -101,7 +101,7 @@ What the code does:
   (`transactionCompleted`, line 332; the class comment's first point).
 * Nothing else reads the startup distance once at start; `Db`'s other use
   (line 2051) reads its live field.
-* The pattern is in the 2017 code (`195cf88`: `Reclaim.java`, lines 87,
+* The pattern is in the 2017 code (`0257e0b`: `Reclaim.java`, lines 87,
   188 and 262).
 
 What it does to reclaim: only the spacing of iterations. Every cut is
@@ -154,7 +154,7 @@ The Pub API after D4:B: options A to E
 --------------------------------------
 
 By Claude (Opus 5.5, Claude Code), 2026-10-28 (006-10, W4.2), a reading of
-`main` at `b1111f4`, with D4:B in the core since `f89846d` (007-07, 10).
+`main` at `f34f31f`, with D4:B in the core since `b8ac8a1` (007-07, 10).
 The evidence, code citations and numbers, is in
 [53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md).
 Questions 1, 4 and 5 are answered there too (its sections 2, 4 and 5); in
@@ -357,8 +357,8 @@ Outcome
 -------
 
 2026-10-28, by Claude (Opus 5.5, Claude Code), for 006-10, in a clone on
-`8b37ad1`, together with [005-52](52-cache-size-while-running.md), whose
-Outcome has its half; the code is one commit, `fd8f513`.
+`077afea`, together with [005-52](52-cache-size-while-running.md), whose
+Outcome has its half; the code is one commit, `decc677`.
 
 * The API, in `pub/Database`, beside the retain duration:
   `void setStartupDistanceInMb(int)` and `int getStartupDistanceInMb()`.
@@ -408,12 +408,12 @@ Outcome has its half; the code is one commit, `fd8f513`.
     without the state check first and the restore, both fail on the
     refused call ("Expected 1000000, got 3000000"; "the refused call
     changed the setting, expected 20, got 30").
-* StreamDigest, `StreamDigest all` with main's compiled class (`8b37ad1`)
+* StreamDigest, `StreamDigest all` with main's compiled class (`077afea`)
   against main's jar and the change's: "DIGESTS IDENTICAL (36 of 36)",
   and the change's digests are 007-07's `digest-patch.txt`: none of its
   configurations calls a setter, so nothing changes.
-* Gates, on the change (`8b37ad1` and the code, identical in java/ to
-  `fd8f513`), F53 with other sessions' runs about, nice 10:
+* Gates, on the change (`077afea` and the code, identical in java/ to
+  `decc677`), F53 with other sessions' runs about, nice 10:
   `before-commit.sh` "BEFORE COMMIT OK (103 s)" (1,069 unit tests, 77
   f-tests; deps.py: 9 packages, all as package.html allows);
   `level3.sh` (full) "LEVEL 3 OK" (conformance: 25 traces, TRACECHECK OK

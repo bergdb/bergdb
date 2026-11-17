@@ -57,7 +57,7 @@ numbers of 2026-11-03):
   fault class is open (005-83, ...)", now 014-01;
 * section 8, line 493: "Open: group commit (005-48), and a durability of
   "written, not forced" (005-47)". Group commit is in `main` since
-  `e611709`;
+  `d8ed1aa`;
 * section 9: "kept as it is for release 2026.1".
 
 **README.md**: line 26, the latest release is 2026.1; line 37, "Needs a
@@ -228,12 +228,12 @@ In commit B (016-09, R9), drafted by the documents agent in the evening as
 ## 5. State
 
 2026-11-03, 16:05: the plan is written; nothing of D1 to D6 is done. The
-line numbers of section 1 are from 2026-11-03 at `df6ad50`; they move as
+line numbers of section 1 are from 2026-11-03 at `9d34ac1`; they move as
 entries are committed, so the agent finds each line by its text.
 
 2026-11-03, 20:19, the documents agent (in `/Users/f/fl/bench/016/docs/repo`,
-with 016-03): **D1 done** on `main` at `9645bc4` (its `java/` as at
-`e5bd275`). `DatabaseBuilder.replica` and `Database.addReplica` begin
+with 016-03): **D1 done** on `main` at `347f823` (its `java/` as at
+`8c6b8bd`). `DatabaseBuilder.replica` and `Database.addReplica` begin
 with section 2's paragraph; the faults follow in a paragraph of their own,
 "Its known faults: ...", unchanged but for those two words and a reflow.
 `removeReplica` and `getStorageInfos` say "Experimental, as addReplica():
@@ -247,7 +247,7 @@ coordinator's to start (016-05, section 4: subagents start no agents).
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D1/`.
 
 2026-11-03, 20:24, the documents agent: **D2 done** on `main` at
-`777f75f`. README.md's known limit and docs/levels.md, section 9 have the
+`a25be75`. README.md's known limit and docs/levels.md, section 9 have the
 four statements, in section 2's words but for one: section 9 says "its API
 will change", not "may change", as Frans said it and as D1's Javadoc and
 the notes' known issue say it. The check: `grep -n -i 'replica' README.md
@@ -258,36 +258,36 @@ stays. The draft notes (016-03, N2) have the same four in their known
 issues. Hand-off: `/Users/f/fl/bench/016/docs/handoff-D2/`.
 
 2026-11-03, 20:23, the documents agent: **D3 done for what is in `main`
-at `fe72238`**; the lines that tonight's open fixes may change are listed
+at `60289ee`**; the lines that tonight's open fixes may change are listed
 below for their entries. Each line changed in docs/levels.md, with what
 made it out of date (the list for 016-02):
 
 * Section 1, the status date: 2026-10-26 to 2026-11-04, the release's
   date. No row changed: no level's status changed.
 * Section 2, `before-commit.sh`: it also runs `deps.py` (005-56,
-  `04f1546`) and `doubles.py` (005-79, `f04cefe`); one sentence.
+  `8752cf0`) and `doubles.py` (005-79, `6bc348d`); one sentence.
 * Section 3, the second bullet and a new third: the claim that "the
   transaction's time never becomes a lookup time" after any failure past
   the go point is true only for a failure in `putKvs()`; the new bullet
   says what a read may see of a transaction that fails later, an append
   error above all, as the code does it (015-27, review R3's R3-F8,
   confirmed in verify-1; the same in 2026.1). The code stays. `getTrans`
-  in the next bullet is right since 005-82 (`3e32f02`), and corrupt
-  inner fields since 015-07 (`12610c7`): unchanged.
+  in the next bullet is right since 005-82 (`5672e5a`), and corrupt
+  inner fields since 015-07 (`de4b0b2`): unchanged.
 * Section 5, the Lean model's take: one clause, that the model's share
   and dither are the double rule and Java's take computes in integers
   since 005-79, with lean/README.md's figures (300 cases the same; 13 of 3
   million differ) and 015-03; `T3_take` holds for any share.
 * Section 8, holes in an unforced tail: "(014-01; found in 005-83, ...), a
   known issue of release 2026.2".
-* Section 8, `sync()`: group commit (005-48, `e611709`), with its figures
+* Section 8, `sync()`: group commit (005-48, `d8ed1aa`), with its figures
   on s1; the F53 figures of 005-13 marked as before it, as F53 is not
   measured with it.
 * Section 8, "Open": group commit removed; 005-47 stays.
 
 Checked, not changed: 005-79's other lines are in section 6 (its own
 commit); section 5 describes no arithmetic of the take. 015-15 changed
-section 7 itself (`f82e7e7`). 015-01: docs/levels.md describes no start
+section 7 itself (`f070403`). 015-01: docs/levels.md describes no start
 of a directory and no `created.txt` (`grep -n -i creat` finds none), so
 nothing is missing; the same for 015-24 (no directory lock in it), as its
 entry says. 005-82, 015-07, 015-10, 015-12 and 015-17 each found
@@ -311,22 +311,22 @@ author knows the change):
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D3/`.
 
 2026-11-03, 20:28, the documents agent: **D4 and D6 done, with no
-change**, on `main` at `44bfaae`. The lines for 016-02:
+change**, on `main` at `16bb031`. The lines for 016-02:
 
 * lean/README.md: unchanged, because each of the 44 theorems of its
   `#print axioms` lists (the indented lines; 39 in lean/SIS, 5 in
   lean/Check: `markOf_eq_fast`, `writeAll_eq_fast`, `reachList_eq_fast`,
   `step_eq_fast`, `r4Fast_sound`) exists at `main` (`grep -rn "theorem
-  NAME"`), and tonight's Lean work added none: since `df6ad50` only
-  005-79's `f04cefe` touched `lean/`, a sentence of lean/README.md on the
+  NAME"`), and tonight's Lean work added none: since `9d34ac1` only
+  005-79's `6bc348d` touched `lean/`, a sentence of lean/README.md on the
   integer take. 005-79's step 8 (Lean) is not made (015-03).
 * docs/sis-model.md: unchanged, because the model is unchanged tonight;
   it says T3 holds "with any share", which stays true of the integer
   take, and it names no arithmetic of Java's.
-* docs/trace-format.md: unchanged, because no Java change since `df6ad50`
-  touches the trace (`git diff --stat df6ad50..main -- java | grep -i
+* docs/trace-format.md: unchanged, because no Java change since `9d34ac1`
+  touches the trace (`git diff --stat 9d34ac1..main -- java | grep -i
   trace` prints nothing); since 2026.1, `TraceExport`'s format 2 and its
-  handles' lines (009, `851acdf`, `e712874`) are in it already (its
+  handles' lines (009, `2966bca`, `b5e8f2b`) are in it already (its
   section 2). 005-79 changes the values in `REC` lines, not the format.
 
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D4-D6/` (this State only).

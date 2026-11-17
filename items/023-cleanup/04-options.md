@@ -60,12 +60,12 @@ and judges them by 023-03's tests (section 6).
   (Frans's 2012 intent and prior art), 020-30-03 (the upward delete's
   mechanics), 020-30-04 (format, Lean, C, tests). 021-25 with its fix (a)
   (branch `021-25-fix-a`), 021-28 (branch `scan-deleted-keys`).
-* The code of `main` at `9acf5c38`, whose Java is the candidate's
-  `03ce6ec`; the Lean model's assumptions (sis-model.md, 3.4 and 15.2).
+* The code of `main` at `c938c2ca`, whose Java is the candidate's
+  `d00096e`; the Lean model's assumptions (sis-model.md, 3.4 and 15.2).
 
 ### 1.3 What was checked, and how
 
-Code places are file:line on `main` at `9acf5c38`, in
+Code places are file:line on `main` at `c938c2ca`, in
 `java/src/bergdb/dag/` and `core/`. Read for this subitem: every place
 that relies on a klong above the leaf being a lower bound of its child
 (X1), the splits (`Dag.handleFullNode`, `KeyNode.firstAndSecond`), a node
@@ -1232,7 +1232,7 @@ meets. Answered already: F2, F3, F5 and Q2, F7, F9, F10; F1 implied
 ## 8. The probes' numbers
 
 On F53, 2026-11-10, in package `bergdb.core` against `java/build.sh`'s
-jar of `main` at `9acf5c38` (and 2026.3's jar for 8.1); counts, not
+jar of `main` at `c938c2ca` (and 2026.3's jar for 8.1); counts, not
 times. Node size 30, `testSetup()` (memory, no eviction, R forever) but
 in 8.1. "A" counts the key nodes reachable at the latest time that have a
 live key below them, which is what UP with LE-a or LE-b would leave
@@ -1324,12 +1324,12 @@ rewrite reaches them.
 ## 9. State
 
 2026-11-10, 12:35, o23 for coord-1110: written, sections 1 to 8, with
-023-03 (`b23074ea`) and Frans's answers to F2, F3, F5 with Q2, F7, F9 and
+023-03 (`a0e9a256`) and Frans's answers to F2, F3, F5 with Q2, F7, F9 and
 F10 (F1 implied), as the coordinator relayed them by 10:49. The probes:
 `/Users/f/fl/bench/2026-11-10/o23/probe` (`O23Probe.java`: the clean
 close, the FIFO, every 30th; `O23Shapes.java`: 023-03's shapes;
 `O23Rewrites.java`: reclaim's rewrites and dead klongs), against the
-clone `/Users/f/fl/bench/2026-11-10/o23/clone` at `9acf5c38`, built,
+clone `/Users/f/fl/bench/2026-11-10/o23/clone` at `c938c2ca`, built,
 unchanged. Not done: no prototype of any block, as asked; MG's factor in
 "sparse" (2 to 3) and RB's counts there come from their rules, not from
 a run. Next: Frans's answers to Y1 to Y10; phase 2 as in 6.2.

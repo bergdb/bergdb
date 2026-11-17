@@ -2,13 +2,13 @@
 
 Written 2026-11-11, 17:18 to 17:45, by the reviewer "rev23" of coord-1111.
 Reviewed: branch `024-23-option2` of `/Users/f/fl/bench/2026-11-11/o2/clone`,
-head `1f9fdb64`, the diff `67925924..1f9fdb64` (29 files, +1,442/-154): Lean
-`aabafc04`, Java `1838b687`, `6a24e0f0`, the merge of `main` `e633004f`, and
+head `d9795adf`, the diff `67925924..d9795adf` (29 files, +1,442/-154): Lean
+`ec3855f6`, Java `b737d772`, `2e1101df`, the merge of `main` `c680f050`, and
 the five test commits of 024-23, section 4.1.
 Design read: 024-23 (sections 2 to 6), 024-18 (section 4, section 8's QD1),
 024-21, 024-22, and 024-21's review (for the form).
 Probes in my own clone `/Users/f/fl/bench/2026-11-11/rev23/clone`, in a
-worktree of `67925924` (`rev23/base`, the merges alone), and in class
+worktree of `d502af3d` (`rev23/base`, the merges alone), and in class
 directories under `/Users/f/fl/bench/2026-11-11/rev23/` (a planted class put
 before `build/bergdb.jar` on the class path). Neither branch was changed. No
 slot was taken: every probe was a unit test or a run of a few seconds.
@@ -26,7 +26,7 @@ three of the four paths that matter. The fourth, LE-b, cannot be reached at
 format 7 (R3). They also catch the restart's determinism and the missing
 term in `dirtyNodeBound`.
 
-**One test change should be fixed before it lands (R1).** In `c6655215`,
+**One test change should be fixed before it lands (R1).** In `fafe003f`,
 `DbTester.testDecreaseOfStartupDistance`'s "no jump" now passes even when
 the jump is planted, on this branch and on the merges alone. So the test no
 longer tests what it is named for. A fix of two lines restores it, and I
@@ -38,7 +38,7 @@ R2 to R7 are notes. None blocks.
 The verdict assumes that o2's remaining gates end OK. At 17:31,
 `o2/logs/gates-all.txt` showed: level1 OK, unlinkfuzz OK (3,226 rounds),
 and level2 running. 024-23, section 6, gives earlier results: lake build,
-no sorry or axiom, test-traces and before-commit OK on `1f9fdb64`. Section
+no sorry or axiom, test-traces and before-commit OK on `d9795adf`. Section
 5.2 says treeconf (small, drain, reclaim, medium) found Java equal to the
 model.
 
@@ -47,7 +47,7 @@ model.
 
 ### R1. testDecreaseOfStartupDistance's "no jump" passes with the jump (should fix)
 
-* **Where:** `java/src/bergdb/core/DbTester.java:2068` (commit `c6655215`):
+* **Where:** `java/src/bergdb/core/DbTester.java:2068` (commit `fafe003f`):
   `assertTrue("no jump", dueLeft(db, db.getStreamLength(), sd))`, with
   `sd = 500 * 1000` at line 2055.
 * **What the test is for (007-07):** after a decrease of the startup
@@ -67,10 +67,10 @@ model.
   | Build, sd 500 kB  | dueLeft, old end | dueLeft, new end | with the jump: old, new |
   |---|---|---|---|
   | merges (67925924) | true             | true             | false, true             |
-  | option 2 (1f9fdb64) | false          | true             | false, true             |
+  | option 2 (d9795adf) | false          | true             | false, true             |
 
   With the jump planted, the whole of `testDecreaseOfStartupDistance`
-  passes on `1f9fdb64`. Also, with option 2 at 500 kB the span is below
+  passes on `d9795adf`. Also, with option 2 at 500 kB the span is below
   2 sd right after the call (`below` = 0; it was 3 on the merges alone).
   So the test's later part, where the span shrinks commit by commit, no
   longer runs either. The Javadoc's "below twice the setting after 19
@@ -87,13 +87,13 @@ model.
       -        assertTrue("no jump", dueLeft(db, db.getStreamLength(), sd));
       +        assertTrue("no jump", dueLeft(db, length, sd));
 
-  On `1f9fdb64` the test then passes, and the shrink phase lasts 7 commits.
+  On `d9795adf` the test then passes, and the shrink phase lasts 7 commits.
   With the jump planted it fails with "no jump, expected true, but was
   false". 400 kB also catches the jump but gives a shrink phase of only 4
   commits, and 500 kB cannot catch it. Change the Javadoc to match: 2 MB
   lowered to 450 kB (until 024-23, 500 kB); the span below 2 sd after a few
   commits; drop "19". This is a changed value in an existing test, so it is
-  its own commit and needs Frans's approval, like `c6655215`, which it
+  its own commit and needs Frans's approval, like `fafe003f`, which it
   replaces. The test is fragile, because the take's share moves with every
   change of record sizes. A sturdier form would assert that the call's
   record took fewer transactions than a jump would. That is for later.
@@ -102,7 +102,7 @@ model.
 
 * **Where:** 024-23, 2.2 ("No record field, no flag") and QO3;
   `StoredTrans.RECORD_FORMAT` stays 7.
-* **Scenario:** a database is written by `main` at `67925924..4c75ebf1`
+* **Scenario:** a database is written by `main` at `67925924..6fb15f58`
   (merges, no option 2) and later opened with this code. The rerun of its
   last records compacts nodes that the writer did not compact. The node ids
   and the nodes then differ from those in the stream, so later records may
@@ -111,7 +111,7 @@ model.
   databases made by agents on `main`'s build since 14:48.
 * **Suggested:** land soon. In the landing message (and in news.md if the
   coordinator writes one), say that databases written by `main` between
-  `67925924` and the landing must not be reopened. Keep format 7, as QO3
+  `d502af3d` and the landing must not be reopened. Keep format 7, as QO3
   recommends.
 
 ### R3. Java's LE-b compaction is never run (note)
@@ -268,25 +268,25 @@ checks what it claims. The existing restart and crash-cut tests (node size
 
 ### 3.5 The five changed tests
 
-* **`1d38e6f4` CorruptStreamTester:** testFound019_32 asserts only "no
+* **`5efdb3e6` CorruptStreamTester:** testFound019_32 asserts only "no
   failure", so each row must still hit the same damage. My probe
   (`rev23/probeC`) ran every row, old pins on the merges build and new pins
-  on `1f9fdb64`. All ten rows give the same outcome and the same refusal
+  on `d9795adf`. All ten rows give the same outcome and the same refusal
   text, apart from numbers: "Bad klong type, 2", "Bad key of value node",
   "Bad key count", read failed (rows 4, 5, 8 and 10), "names a node of type
   30", "has no klong at or below the key", and "Bad pointer". testFound021_11
   asserts "refused" for each row. testFound021_12 asserts its three texts.
   testFoundDescentCycle asserts "node: read failed" and its scans. Purpose
   kept.
-* **`c6655215` DbTester.testDecreaseOfStartupDistance:** weakened, see R1.
-* **`214d4635` Eviction.testLoweredBudgetAfterPinsFell (520):** the test
+* **`fafe003f` DbTester.testDecreaseOfStartupDistance:** weakened, see R1.
+* **`2aa3902f` Eviction.testLoweredBudgetAfterPinsFell (520):** the test
   asserts its own precondition ("the pins fell", "detachable objects
   resident", budget < bytes <= P0), so it fails when the state is not
   reached. With 500 transactions it failed, which is why it was changed.
   Purpose kept. It is fragile, as its Javadoc says.
-* **`7103d741` EvictionReaderTester (40 keys):** it asserts "pointers
+* **`ceebca4e` EvictionReaderTester (40 keys):** it asserts "pointers
   checked >= 3", its own precondition. Purpose kept.
-* **`1f9fdb64` DagTester.testPointerCreationListener:** the old test on the
+* **`d9795adf` DagTester.testPointerCreationListener:** the old test on the
   new code fails with "time-split-1, missing klong in keyAccessPath,
   10186", as the commit says. Without `clearFast` the path grows across
   puts, so the space root's time split took the previous put's node as its

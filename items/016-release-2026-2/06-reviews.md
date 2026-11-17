@@ -251,7 +251,7 @@ Tonight's reviews (section 6) are made of these areas:
 S2 is two areas in one review: it reads the Javadoc and the code of each
 promise, not the whole of the files.
 
-Sizes are at `df6ad50` (`git diff --numstat release-2026.1..`, lines added
+Sizes are at `9d34ac1` (`git diff --numstat release-2026.1..`, lines added
 plus removed). The whole of `java/src` changed in 120 files, 7,441 lines
 added and 2,084 removed; about 2,250 of the 9,525 changed lines are in the
 testers, which the reviews use but do not review. Paths are under
@@ -752,12 +752,12 @@ within about an hour.
 
 | ID | Base | Agent | Started | Report | Faults | Doubts | Verified by |
 |---|---|---|---|---|---|---|---|
-| R1 | `6f932f0` | Claude | 15:59 | [R1](06-reviews/R1.md) | 4 | 2 | R1-F1, F2, F4 by test; F3 pending |
-| R2 | `b9ba427` | Codex | 18:06 | [R2](06-reviews/R2.md) | 5 | 1 | verify-1 (F1, F5); F2 to F4 pending |
-| R3 | `b9ba427` | Codex | 18:06 | [r3](07-concurrency/r3.md) | 12 | 4 | verify-1 (F1 to F3, F8, F9, F12) |
-| R4 | `b9ba427` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
-| R5 | `b9ba427` | Codex | 19:15 | stopped 19:21, continues 23:09 |  |  |  |
-| R6 | `b9ba427` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
+| R1 | `47ba87f` | Claude | 15:59 | [R1](06-reviews/R1.md) | 4 | 2 | R1-F1, F2, F4 by test; F3 pending |
+| R2 | `b1651a5` | Codex | 18:06 | [R2](06-reviews/R2.md) | 5 | 1 | verify-1 (F1, F5); F2 to F4 pending |
+| R3 | `b1651a5` | Codex | 18:06 | [r3](07-concurrency/r3.md) | 12 | 4 | verify-1 (F1 to F3, F8, F9, F12) |
+| R4 | `b1651a5` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
+| R5 | `b1651a5` | Codex | 19:15 | stopped 19:21, continues 23:09 |  |  |  |
+| R6 | `b1651a5` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
 | R7 |      |       |         |        |        |        |             |
 | R8 |      |       |         |        |        |        |             |
 | S1 |      |       |         |        |        |        |             |

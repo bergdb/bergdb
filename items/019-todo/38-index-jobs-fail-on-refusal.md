@@ -4,7 +4,7 @@
 Status: done. Kind: Fix. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
-What: 019-10's change (01b0493) gave the index build's thread
+What: 019-10's change (de95869) gave the index build's thread
 (`IndexBuilderImp`, about line 337) and the index deletion's thread
 (`DatabaseImp`, about line 313) a `catch (Throwable)` that fails the
 database on everything but `StreamIoException`, `DbStoppingException` and

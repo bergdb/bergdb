@@ -41,7 +41,7 @@ session (022-01, step 2), and taken by its agent p11 (clone
 `clone-p11`).
 
 2026-11-09. Done by p11: confirmed, and wider than reported; commit
-1035b64 in `clone-p11` (on main's 10a2c79), to land.
+1035b64 in `clone-p11` (on main's dfb0c50), to land.
 
 * Harness 6.1's workloads (`CorruptStreamTester`, 018-07) never meet it:
   their keys (`KEYS`) are of one segment and at most 15, so no key node

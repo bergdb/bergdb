@@ -66,15 +66,15 @@ between check-ins.
 
 | ID | Task | Agent | Result |
 |---|---|---|---|
-| 026-09 | Land the keys-only scan (Q1 to Q4 yes) | coordinator | landed c7c7a02b |
-| 028-04 | A value transformation's null deletes the key (A) | nullvt (high) | landed 6a543f13 |
-| 028-11 | P5's sentence | coordinator | 9f00cdd0 |
-| 028-12 | The builder refuses a startup distance above 10^9 | sdmax (high) | landed 5f413438 |
-| 007-09 | Brought up to the Lean of 13 November | doc009 (high) | b99d6124 |
-| 028-13 | The startup distance's two ranges; A for now | coordinator | registered ae20138c |
-| 028-10 | `Db.start(StartParams)` removed | startparams (high) | landed 71932de0 |
-| 026-15 | The timing pass: plan, scripts, probes | timing (xhigh) | READY, dadbf7fd |
-| 006-26 | The proofs as of 14 November, a report | proofreport (Fable, high) | 205b477d |
+| 026-09 | Land the keys-only scan (Q1 to Q4 yes) | coordinator | landed 37005f6a |
+| 028-04 | A value transformation's null deletes the key (A) | nullvt (high) | landed edd9dac9 |
+| 028-11 | P5's sentence | coordinator | 6e828425 |
+| 028-12 | The builder refuses a startup distance above 10^9 | sdmax (high) | landed 68887321 |
+| 007-09 | Brought up to the Lean of 13 November | doc009 (high) | 350d26b3 |
+| 028-13 | The startup distance's two ranges; A for now | coordinator | registered ba1ae96a |
+| 028-10 | `Db.start(StartParams)` removed | startparams (high) | landed 615f621b |
+| 026-15 | The timing pass: plan, scripts, probes | timing (xhigh) | READY, 10bed353 |
+| 006-26 | The proofs as of 14 November, a report | proofreport (Fable, high) | c66877d0 |
 | 026-16 | Simpler algorithms for the remaining premises | simplify (Fable, high) | running |
 | 025-02 | The proofs' cleanup: the plan | cleanplan (xhigh) | running |
 | 025-02 | The proofs' cleanup: the provers | provers (xhigh) | tonight |
@@ -86,51 +86,51 @@ between check-ins.
 * 11:12 coord-1114 started; coord-1113 closed at 11:13.
 * 11:17 024-19's Q2, Q3 and Q5, carried from coord-1112, were decided
   on 13 November (08:54, 09:17) and made in 026-08.
-* 11:36 026-09: `main` (3d2beedc, with 028-09's fix in `Db` and
-  `NodeCollection`) merged into the branch, 542927c5; before-commit,
+* 11:36 026-09: `main` (d6774508, with 028-09's fix in `Db` and
+  `NodeCollection`) merged into the branch, 4c645015; before-commit,
   level 3 (full) and the count gates running
   (/Users/f/fl/bench/2026-11-14/land0909/).
 * 11:40 026-15 registered; the agent "timing" plans the run.
-* 11:52 028-04 landed (6a543f13).
-* 11:59 028-11, P5's sentence (9f00cdd0).
-* 12:04 026-09 landed (c7c7a02b): before-commit, level 3, the count
+* 11:52 028-04 landed (edd9dac9).
+* 11:59 028-11, P5's sentence (6e828425).
+* 12:04 026-09 landed (37005f6a): before-commit, level 3, the count
   gates on the merged tree, and before-commit again after `main` moved.
-* 12:06 028-12 landed (5f413438). 12:09 007-09 (b99d6124).
-* 12:20 028-13 registered (ae20138c).
-* 12:37 028-10 landed (71932de0): before-commit, level 1 and level 2
+* 12:06 028-12 landed (68887321). 12:09 007-09 (350d26b3).
+* 12:20 028-13 registered (ba1ae96a).
+* 12:37 028-10 landed (615f621b): before-commit, level 1 and level 2
   quick on the branch, before-commit on the merged tree.
-* 12:53 026-16 registered (7ced25db); 13:00 025-02 (eb1a04a0).
-* 13:05 006-26 committed (205b477d). Mailing its epub to the Kindle
+* 12:53 026-16 registered (55b74a08); 13:00 025-02 (b8517e8a).
+* 13:05 006-26 committed (c66877d0). Mailing its epub to the Kindle
   failed: the Gmail connector can read but not send or draft; the epub
   given to Frans in the session instead.
-* 13:08 026-15 READY (dadbf7fd). The stale heavy slot of 02:55 (cost's
+* 13:08 026-15 READY (10bed353). The stale heavy slot of 02:55 (cost's
   HeightsFitsR build, no process) released.
 
 
 * 13:31 to 15:45 025-02, the proofs' cleanup, its five steps landed:
-  notes 5458ac36 (14:30), prune b8fae26c (14:43), names 73852c9b
-  (14:58), dups a04dbd78 (15:17), close 2413e669 (15:45). lean/SIS/Tree
+  notes 5fe46999 (14:30), prune 4031da13 (14:43), names 25a0ad9d
+  (14:58), dups a72fcfc5 (15:17), close de83e403 (15:45). lean/SIS/Tree
   227,923 to 140,264 lines, lean/ 296,684 to 209,065; one top theorem
   `invGetScanOK_merges`; every step gated; level 2 OK.
-* 13:46 Frans accepted F1 (026-16); 025-03 created (95b71a6b).
+* 13:46 Frans accepted F1 (026-16); 025-03 created (d37597f1).
 * 15:58 to 03:11 026-15, the timing pass: 105 runs, 9 rounds, every run
-  ok and quiet; stopped by STOP at 03:08 (b9acd055, section 9).
+  ok and quiet; stopped by STOP at 03:08 (8f4d6b92, section 9).
 * 03:07 Frans: "Can you continue to work on the proofs now?"
-* 03:43 025-03 step 1 (f1check, 7a5b6b98): NoOutside holds on every
+* 03:43 025-03 step 1 (f1check, a49e5707): NoOutside holds on every
   traced run with H + 1 (205 traces; 2 transactions need it).
-* 03:50 025-03 step 2 (f1thm, ad4e9cf5): `invGetScanOK_merges_noOutside`
+* 03:50 025-03 step 2 (f1thm, 5f20913a): `invGetScanOK_merges_noOutside`
   without `htb`; step 3 (`hMSF`, `hCoF` from NoOutside) does not follow.
 * 04:00 to 06:03 provers putinv2, cost2 and (from 05:08) coll:
-  * 1d149b59 `hCoU`, `hU` and `hHL` are false as stated (PremisesFalse):
-    the top theorem holds vacuously; 006-26 corrected (858951e5);
-  * bc7d81ea `hMF` proved; 82d68225 the true forms of `hHL` and of
-    `hCoU`'s ids half; 74ff5be5 `hHL` gone on the joint route;
-  * 2fee65cc to 3a95f624 `hchk` narrowed, four of its checks proved;
-  * a4c328a0 to 25b03569 `hCoU` gone by root collapse's commutation
+  * 80828487 `hCoU`, `hU` and `hHL` are false as stated (PremisesFalse):
+    the top theorem holds vacuously; 006-26 corrected (f91dfd65);
+  * 8c432694 `hMF` proved; 02b3ca2c the true forms of `hHL` and of
+    `hCoU`'s ids half; 49c8664d `hHL` gone on the joint route;
+  * 4156f740 to f22ca892 `hchk` narrowed, four of its checks proved;
+  * b5af372b to 892c9206 `hCoU` gone by root collapse's commutation
     (`invGetScanOK_merges_joint6`).
 * 08:27 Frans back. 08:33 his answers to section 7; agents hu-plan
   (025-04, Fable at high) and tops (one top theorem per route).
-* 08:46 tops done on its branch (d6cedb46), not landed: the permission
+* 08:46 tops done on its branch (29632e54), not landed: the permission
   system refused its edit of the gate's copy (the statement check's base
   and 41 new closure lines of `hchk5`); for Frans (a, b or c).
 * 08:54 coord-1115 started; coord-1114 closing. Handed over: hu-plan's

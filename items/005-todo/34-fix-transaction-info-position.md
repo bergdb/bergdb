@@ -129,7 +129,7 @@ second fault of the same position, found on the way, fixed too:
   `DbStarter.rerunTransaction` set the new node's spos from the stored node
   but not its offset, which stayed 0. A get then gave the value node's
   position, and `transactionInfo()` threw: "Transaction at start pos 336 is
-  not committed (its last byte is 0).", in a probe on `5ecb081` with two
+  not committed (its last byte is 0).", in a probe on `b2fa8b8` with two
   values in one transaction. Now the rerun copies the offset too. With the
   next point and without this fix, `transactionInfo()` after a restart
   would have failed the database.
@@ -175,7 +175,7 @@ meta block, with zeros and with random values.
 position 0, in the first meta block, where none starts; `parse` now refuses
 its value node there, so the test uses position 128.
 
-Streams unchanged: StreamDigest `all`, the build of `5ecb081` against the
+Streams unchanged: StreamDigest `all`, the build of `b2fa8b8` against the
 one with the change, DIGESTS IDENTICAL (36 of 36)
 ([digest-compare.txt](34-fix-transaction-info-position/digest-compare.txt)).
 

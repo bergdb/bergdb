@@ -1,6 +1,6 @@
 005-14: the idle cost of a database, by buffer time (tools/idle-table.py).
 
-The fix, 2026-10-21 09:12 to 09:22 (runs-final/); cur is fdee608, before it. VS Code was in use in these windows (see its rows).
+The fix, 2026-10-21 09:12 to 09:22 (runs-final/); cur is 82aa58e, before it. VS Code was in use in these windows (see its rows).
 
 Medians of 2 rounds of 60 s (range when wider than 15 %).
 

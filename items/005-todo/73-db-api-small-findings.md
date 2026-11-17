@@ -6,7 +6,7 @@ Status: done. Kind: fix. Created 2026-10-28. Closed 2026-11-02.
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 012-03's mapping of `Db`'s public methods to the C API (012-03, section
 6.8), as 012-01's decision D5 says. None changes the stream's bytes. F1 to
-F4 and F6 were shown by a probe on `main` at `0b6d08e`.
+F4 and F6 were shown by a probe on `main` at `d025d95`.
 
 
 The findings

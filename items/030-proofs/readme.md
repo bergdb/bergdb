@@ -85,7 +85,7 @@ D1. The key tree, today's model (the main line until 2026-11-17; paused)
 ------------------------------------------------------------------------
 
 * **Paused** since 2026-11-17 (Frans, 09:13 and 11:14; 030-04). Frozen
-  at the tag `proofs-2026-11-17` (89c6cc3a); nothing is deleted. The
+  at the tag `proofs-2026-11-17` (f4d73289); nothing is deleted. The
   state and the next step below are as the night left them, for a
   restart.
 * **Goal:** TP7, TP10 and TP11 proved for the key tree with Java's
@@ -197,7 +197,7 @@ One line a day by the coordinator: what moved, where.
   the contract approach with a fresh start (10:56 to 11:14): D0, written
   down in 030-04; D1 frozen at the tag `proofs-2026-11-17`; Mathlib
   decided for the new package; `lean/README.md` labelled work in
-  progress (bdeca766).
+  progress (050f6d93).
 
 
 Files

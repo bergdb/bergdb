@@ -4811,7 +4811,7 @@ public class PubTester {
      * with the message, and its join() throws IndexBuildException. A put over it and a delete
      * of it work, also in an indexed directory and in one whose build failed: a previous
      * value of format 1 has no entries, as no index of 2026.4 ever indexed one (2026-11-09,
-     * the review of e92a95a: such a key could not be written or deleted while the index
+     * the review of 02995d9: such a key could not be written or deleted while the index
      * existed).
      */
     @Nano
@@ -5083,7 +5083,7 @@ public class PubTester {
         PubTesterPrimary.assertThrows(IllegalArgumentException.class,      // lone surrogate
                 () -> RwEnvironmentImp.stringValue("x\ud800", 100));
         // With a small limit, the path of a String counted first (3 bytes a char over the
-        // limit), which encodes into an array of its counted size (the review of e92a95a):
+        // limit), which encodes into an array of its counted size (the review of 02995d9):
         // the same bytes as getBytes().
         for (String t : new String[] {"a\u00e9", "\u00e9" + "a".repeat(40), "\u0800x", 
                 "\ud83d\ude00", "abc"}) {
@@ -5095,7 +5095,7 @@ public class PubTester {
     /**
      * A String whose UTF-8 fits, 2^30 + 1 bytes (a String of 2^30 chars, one of them U+00E9,
      * so Latin-1 of 1 GiB), is encoded into an array of its size, as a value and as a
-     * DbString (the review of e92a95a: String.getBytes() allocated 2 bytes a char for such a
+     * DbString (the review of 02995d9: String.getBytes() allocated 2 bytes a char for such a
      * String, more than Java's largest array, and threw OutOfMemoryError). Skipped in a JVM
      * of less than 3 GiB of heap.
      */

@@ -1,4 +1,4 @@
-bergdb 005-67. The test with the fix (86e2c84 on fccafd3: the same test code as dad6bd2 but
+bergdb 005-67. The test with the fix (86e2c84 on 31cd639: the same test code as 82966f8 but
 comments), no instrumentation; F53, 2026-10-28 10:37 to 10:58, with a load of about 3 to 8 from other
 sessions (and, from 10:49 to 10:54, the gates of this entry). JDK 27.
 

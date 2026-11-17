@@ -38,7 +38,7 @@ and 007-08's `TakeCheck.java` compiles against `main` again, TakeCheck
 joins 021-03's step, `java/stress/lean-tests.sh` (a step of
 `java/night.sh`), if it takes a few minutes or less.
 
-2026-11-11, done by 024-09 (section 5.2), on `main` since `379d8acf`
+2026-11-11, done by 024-09 (section 5.2), on `main` since `773c2105`
 (Frans, 11:05, on closing it when the branch lands: "yes"):
 `lean/SIS/Bound.lean` has the take in integers (`shareFp`, `ditherFp`
 and Java's test in `javaPace`), `BoundExample.lean`'s `#guard`s are

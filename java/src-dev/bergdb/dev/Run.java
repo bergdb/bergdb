@@ -85,7 +85,7 @@ public class Run {
     
     /**
      * Run starts main() of a class that is not public (2026-11-09: getMethod().invoke() threw
-     * IllegalAccessException for each since 2917cdb narrowed pubimp, bergdb 020-10, B2):
+     * IllegalAccessException for each since 4264ec5 narrowed pubimp, bergdb 020-10, B2):
      * RwEnvironmentImp, IndexHarness (a short run) and src-dev's Demo.
      */
     @Nano

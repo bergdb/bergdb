@@ -1,4 +1,4 @@
-bergdb 005-34: StreamDigest all, the build before the change (5ecb081) against the one with the fix,
+bergdb 005-34: StreamDigest all, the build before the change (b2fa8b8) against the one with the fix,
 one compiled copy of StreamDigest, the base's (2026-10-24, F53).
 
 DIGESTS IDENTICAL (36 of 36)

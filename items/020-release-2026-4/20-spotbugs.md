@@ -3,7 +3,7 @@
 Created 2026-11-09 by Frans Lundberg. Status: open.
 
 A bug hunt for release 2026.4 (020): one run of SpotBugs, a static
-analyser of Java bytecode, over the code of `main` at `a9e5488`, its
+analyser of Java bytecode, over the code of `main` at `f8046f3`, its
 warnings triaged by reading the code, and each true defect turned into a
 failing test and a fix. One of the hunts of 2026-11-09 (coord-1109), each
 done apart from the others.
@@ -31,7 +31,7 @@ in the hunt's clone. SpotBugs is not added to the build.
   the digest GitHub publishes for the asset, and `lib/spotbugs.jar`'s
   (`8d0af71a...665f`) is the release notes' and Maven Central's
   `spotbugs-4.10.5.jar.sha256`.
-* **The code**: a clone of `main` at `a9e5488`
+* **The code**: a clone of `main` at `f8046f3`
   (`/Users/f/fl/bench/2026-11-09/clone-t20`), built with `java/build.sh`
   (JDK 27, `--release 17`): `java/build/classes`, 1,106 classes of `src`
   and `src-dev`. BergDB has no dependency outside the JDK (build.sh's
@@ -65,11 +65,11 @@ in the hunt's clone. SpotBugs is not added to the build.
 
 | ID | Severity | File and line | Tests | Fix (clone) |
 |----|----------|---------------|-------|-------------|
-| T1 | low | FileStream.java:997 | FileStream and PubTester's testUnlistableDirectory | `6db1ac3` (clone `9244d57`) |
+| T1 | low | FileStream.java:997 | FileStream and PubTester's testUnlistableDirectory | `4bba305` (clone `9244d57`) |
 
 T1's other sites: `FileStream.hasStreamBytes` (FileStream.java:685) and
 its caller `DatabaseBuilderImp.refuseMissingStream` (line 333). The
-commit `6db1ac3 (9244d57 in clone-t20)` is in the clone, gated: BEFORE COMMIT OK (unit 1419, f
+commit `4bba305 (9244d57 in clone-t20)` is in the clone, gated: BEFORE COMMIT OK (unit 1419, f
 86, demos OK, 131 s), JAVADOC PUB OK.
 
 **T1. A directory that cannot be listed.** SpotBugs:
@@ -350,8 +350,8 @@ API shape and style:
 2026-11-09, by t20 for coord-1109. Every kept warning has a verdict: no
 true defect among the 655. One true defect outside the kept set, T1,
 fixed with its tests in the clone
-`/Users/f/fl/bench/2026-11-09/clone-t20`, commit `6db1ac3 (9244d57 in clone-t20)` on
-`a9e5488`, gated (BEFORE COMMIT OK). Not on `main`: the coordinator
+`/Users/f/fl/bench/2026-11-09/clone-t20`, commit `4bba305 (9244d57 in clone-t20)` on
+`f8046f3`, gated (BEFORE COMMIT OK). Not on `main`: the coordinator
 takes the commit. Left: N1, for Frans; the other 1,063 warnings were
 glanced at, not triaged.
 
@@ -360,9 +360,9 @@ Log
 ===
 
 2026-11-09. Created by t20 (coord-1109's hunt 020-20). SpotBugs 4.10.5
-downloaded and checked; one run over `a9e5488`, 1,718 warnings; 655 kept
+downloaded and checked; one run over `f8046f3`, 1,718 warnings; 655 kept
 and triaged, none a true defect; T1 found outside the kept set, with a
-failing test for each symptom, then the fix: commit `6db1ac3 (9244d57 in clone-t20)` in the
+failing test for each symptom, then the fix: commit `4bba305 (9244d57 in clone-t20)` in the
 clone, BEFORE COMMIT OK (131 s), JAVADOC PUB OK.
 
 2026-11-09. N1 decided by Frans (09:47: "N1, as recommended. I see no

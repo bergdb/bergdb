@@ -112,7 +112,7 @@ transactions that take the same retry loop (section 2.5), with the waits
 an attempt meets: its reads, the commit, durability waits, and eviction
 and reclaim as competing maintenance work, as far as they shape a retry's
 cost. Replication, which the plan called experimental, was removed on
-2026-11-04 (005-11, `16fb228`; Frans: "A with C2 now"), and its waits with
+2026-11-04 (005-11, `bd77904`; Frans: "A with C2 now"), and its waits with
 it; a future design is 017-03. The C implementation is not a target of
 this file.
 
@@ -124,7 +124,7 @@ is 017-06's.
 ## 2. What the code does today
 
 Reviewed 2026-10-30 against the live worktree. At the end of the review,
-HEAD is `7d967d7b5483aa65e33a68e46b09e503f37964bb`, including the 005-70
+HEAD is `24a031a88e781d40d94a65e6a8d3d59d61a0e8d4`, including the 005-70
 restart fix completed by separate work during this review. The remaining
 Java worktree change is an unrelated Javadoc addition in `RwTransaction`.
 Freeze and record the actual source, patches and build when experiments
@@ -172,7 +172,7 @@ and eventually stalls committing clients. There is no overall room-wait
 deadline. Interrupts are remembered and restored rather than aborting this
 wait: it is after the transaction's go point.
 
-2026-11-04 note: since 005-47 (`188facf`), per-append forcing is a
+2026-11-04 note: since 005-47 (`9b67a82`), per-append forcing is a
 setting of `FileStream`, `FileStream(dir, forceAppends)`, on by default and
 in the core API only. With it off, an append is written but not forced,
 and the forces stay at a file opened for appends, the last file before a
@@ -196,7 +196,7 @@ At the review, `StorageManager.append()` also appended to active replica
 buffers in sequence, so a slow active replica could impose another buffer
 wait in this same path, and the review said not to generalize
 one-main-storage measurements to replication. 2026-11-04 note: replication
-was removed (005-11, `16fb228`); that wait is gone. The removed design and
+was removed (005-11, `bd77904`); that wait is gone. The removed design and
 the options for a future one are 017-03.
 
 Sources: [Db.java](../../../java/src/bergdb/core/Db.java),
@@ -254,7 +254,7 @@ runs before the write lock, waited about as long as the convergence after
 a lowered budget, each of its loads parked up to 2 ms for a batch.
 Its option (B) makes a warmup's loads wake the eviction thread without
 parking; a reader's loads still park. That change was coming, not yet in
-`main`, when 005-81 was split (HEAD `2753f80`); see 005-52's log for its
+`main`, when 005-81 was split (HEAD `ec58389`); see 005-52's log for its
 state.
 
 The memory part of this section, `Residents`' accounting against the whole
@@ -342,7 +342,7 @@ Sources: `RwTransaction.executeRw()`,
 
 ### 2.6. A retrying attempt's wait points
 
-2026-11-05, deliverable 1's map, read from the source at `0c6c4be` (after
+2026-11-05, deliverable 1's map, read from the source at `8defe65` (after
 005-52's option B) and checked against section 8's runs. One attempt of
 `executeRw()`, in order, on the caller's thread:
 
@@ -355,7 +355,7 @@ Sources: `RwTransaction.executeRw()`,
 3. **`Db.execute()`**: an empty `synchronized (readSync) {}`, the state
    check, then `executeInner()`: `checkSize()` and `warmup()`, which reads
    every write key at the newest lookup time with no lock held; since
-   005-52 (`0c6c4be`) the warmup's loads do not park for eviction.
+   005-52 (`8defe65`) the warmup's loads do not park for eviction.
 4. **`Db.writeLock`**: `writersWaiting` is counted, then the monitor is
    taken. The wait is for whoever holds it: another writer's whole
    commit, including its buffer-room wait (section 2.1), its inline
@@ -428,7 +428,7 @@ may be useful, but "a few attempts" alone gives no predictable time budget.
 
 2026-11-05, deliverable 1's second half, for Frans's review; not decided.
 First, what a caller of `Connection.rw(action)` (and of a W transaction
-with object operations) gets today, from the code at `0c6c4be`:
+with object operations) gets today, from the code at `8defe65`:
 
 | Outcome | When | Committed? | Database |
 |---|---|---|---|
@@ -600,7 +600,7 @@ and cover:
 
 Use existing `PubTester.testRw2` and interrupt tests as starting points.
 Do not weaken STM validation or reset its history to reduce retry counts.
-The 005-70 fix, now committed separately as `7d967d7`, must be present
+The 005-70 fix, now committed separately as `24a031a`, must be present
 consistently in both comparison builds.
 
 If the implementation adds a pre-go deadline or admission permit, also test
@@ -692,7 +692,7 @@ Related work:
 * [005-52](../../005-todo/52-cache-size-while-running.md): a transaction's warmup and the
   eviction park (section 2.4); its pause probe is in 017-06's related work.
 * [005-70](../../005-todo/70-keymodset-after-start.md): STM restart fix, done separately
-  in `7d967d7`; include it in the new baseline.
+  in `24a031a`; include it in the new baseline.
 * [005-76](../../005-todo/76-wake-at-a-quarter.md), "The issue": a known source of
   buffer waits before physical storage is necessarily saturated.
 * [010-01](../../010-principles/01-principles.md), P1 and P3:
@@ -748,7 +748,7 @@ the overhead check.
 
 ### 8.2. Method
 
-* Source: `git archive` of `0c6c4be` (HEAD that morning, with 005-52's
+* Source: `git archive` of `8defe65` (HEAD that morning, with 005-52's
   option B), built on s1 by `java/build.sh` with JDK 27 and 005-47's
   `unzip` shim on `PATH` for the build only. Jar SHA-256: stock
   `b4f49819…23af7`, probe `61669197…aacc0`.
@@ -776,7 +776,7 @@ the overhead check.
 
 The build, from the repo on F53 and then on s1:
 
-    git archive --format=tar.gz -o bergdb-0c6c4be.tar.gz 0c6c4be java
+    git archive --format=tar.gz -o bergdb-0c6c4be.tar.gz 8defe65 java
     # copy it, RetryBench.java, run-s1.sh and make-probe.py to
     # s1:/opt/bergdb-bench/005-81/in/; then, in /opt/bergdb-bench/005-81:
     for b in stock probe; do mkdir $b; tar -xzf in/bergdb-0c6c4be.tar.gz -C $b; done

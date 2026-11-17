@@ -9,7 +9,7 @@ import bergdb.pub.Factory;
 
 /**
  * Bergdb 005-40: a database written by one version of BergDB, started by another. Uses
- * only the Pub API that the 2017 code (195cf88) and today's code share; run.sh compiles it
+ * only the Pub API that the 2017 code (0257e0b) and today's code share; run.sh compiles it
  * against each.
  *
  *   create DIR N   creates a database in DIR with N puts, syncs it and stops it

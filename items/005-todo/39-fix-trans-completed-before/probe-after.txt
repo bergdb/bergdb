@@ -1,4 +1,4 @@
-bergdb 005-39: probe.sh on 425d7a7 with the fix (2026-10-25, F53). Part D's counts vary from
+bergdb 005-39: probe.sh on 67bcc02 with the fix (2026-10-25, F53). Part D's counts vary from
 run to run: its loop stops on the CutStream's length, which grows as the write buffer is written.
 
 A: 1300 transactions, stream length 1300896

@@ -74,7 +74,7 @@ yet decided, but there are good options that have been researched."
 
 | Task | Item | Agent | Effort | Scratch | Status |
 |---|---|---|---|---|---|
-| The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | done, 37e8db7 |
+| The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | done, d3577dc |
 | Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | done |
 | Objects' storage ready for decisions: 020-02 to 020-06 checked, summarized in 020-02 | 020-02 | d02 | xhigh | none | done |
 | The spec of stored objects, with vectors; the implementation plan (no code) | 020-07, 020-08 | s07 | xhigh | `/Users/f/fl/bench/006-15/020-07/` | done |
@@ -136,7 +136,7 @@ session continues with `/coordinator resume` (013-02).
 * 09:35 Agents f05 (020-05) and m06 (020-06) started, xhigh.
 * 09:59 f05 done: 020-05's option (f), DbObject's table with Binson's values
   (section 12b), now recommended; the lookup's variant waits for 020-06;
-  committed 37e8db7. Questions for Frans: 020-05, section 12b.11.
+  committed d3577dc. Questions for Frans: 020-05, section 12b.11.
 * 11:00 m06 done: 020-06 written; a scan of 16-bit hashes (FNV-1a,
   a word at a time) is faster than binary search under 20 fields, hot
   and on cold misses; recommended for (f), 2 bytes a field. 020-05,
@@ -185,7 +185,7 @@ session continues with `/coordinator resume` (013-02).
 Written 2026-11-09, 04:35, by coord-1108 at the end of the unattended
 night (Frans away 22:20 to 07:00, all decisions delegated at 22:17).
 
-**In short.** Release 2026.4's code is done on `main` (621ee0e), with no
+**In short.** Release 2026.4's code is done on `main` (00a8277), with no
 known fault open (020-11): objects in format 2 with Data Objects and
 best-effort gets (020-07 to 020-09), the user indexes of 020-10 (new
 layout, jobs, scans, primary scan, no ICU, `bytes` type, the API narrowed
@@ -201,38 +201,38 @@ measurements; the twelve storage decisions (020-02, section 4); the
 spec 020-07 with its vectors and the plan 020-08; the API decisions
 (020-02, sections 2 and 5.1b: two layers, Data Objects with public fields
 only, best effort at a get, null fields left out, no key field, no
-`createFast()`; 017-07, section 6); 020-08's step 1 (9a45e06); the index
+`createFast()`; 017-07, section 6); 020-08's step 1 (41cb0ba); the index
 decisions (020-01, section 14.1).
 
 The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
 
 * Design: 020-09, the conversion rules (8876480); 020-10, the indexes'
-  design (673f3d2).
-* Objects (020-08): step 2, format 2 (8185c07; level2 OK); step 7,
-  `put(Object)` and the key field out (80bc546); step 8, the binding
-  `DataObjects` by 020-09 (ca67411); step 3, format 1 refused (38afb1a);
-  step 8's review fixes (7681710); step 6, docs (9a22bd6); the format-1
-  false positive for Strings and its review (e92a95a, c9e6975); step 4,
-  the measurements (01f02db, 3d8b785, 621ee0e). 020-08 done.
-* Indexes (020-10): B1, the release jar (c88e5fa); P1, the primary scan
-  and H4 (ae68938); I0, keys and definitions (7aca256); H2 part 1
-  (559b9ac); I1, maintenance (249b684); I2 part 1, the new layout, jobs
-  and API (5b08db5); I3, the scans (8be9a95); B2 docs (9a9e920); B2 part
-  1, ICU removed (41ea870); H3, the jobs harness (57f88ea); B2 part 2,
-  `Kv.ikey()` and the narrowing (2917cdb); I2's fixes from three reviews
-  and H3 (ab06e26); H2 part 2 (fd6dd09, c25808e); B3, `DbObject` into
-  `bergdb.pub` (48378fe) and its review's fixes (7b008af); 020-10 done.
-* Entries: 021-06 (d65f5b5, 39fb346, 3cf464e), 021-09 (913ffb4), 021-10
-  (in 38afb1a), registered and fixed tonight; 019-45 answered (705a626,
+  design (064d506).
+* Objects (020-08): step 2, format 2 (01e19c4; level2 OK); step 7,
+  `put(Object)` and the key field out (e4620c3); step 8, the binding
+  `DataObjects` by 020-09 (2ca4610); step 3, format 1 refused (577e867);
+  step 8's review fixes (7681710); step 6, docs (ee61d84); the format-1
+  false positive for Strings and its review (02995d9, 4ff57b6); step 4,
+  the measurements (3fe3f74, 01d2187, 00a8277). 020-08 done.
+* Indexes (020-10): B1, the release jar (51bcb9e); P1, the primary scan
+  and H4 (238b249); I0, keys and definitions (0a6d8f4); H2 part 1
+  (ddf3e19); I1, maintenance (4a6deee); I2 part 1, the new layout, jobs
+  and API (4f8210f); I3, the scans (f3c7966); B2 docs (4e2144d); B2 part
+  1, ICU removed (6cbc619); H3, the jobs harness (9cbaa50); B2 part 2,
+  `Kv.ikey()` and the narrowing (4264ec5); I2's fixes from three reviews
+  and H3 (37c82cd); H2 part 2 (b768ef0, e031ce3); B3, `DbObject` into
+  `bergdb.pub` (fcc151b) and its review's fixes (5e14229); 020-10 done.
+* Entries: 021-06 (a1b505c, fecfb10, 2054805), 021-09 (d099a3a), 021-10
+  (in 577e867), registered and fixed tonight; 019-45 answered (a5a0634,
   by design, documented); 019-46, a real stale-pointer race in the Core
-  with `CACHE_NOTHING` readers since 2026.2 (68830b8; after review
-  25978bc, dee3e48); 019-47, a start kept a value over 1 MiB in memory
-  (c126d7d). The 021 and 019 lists have no open entry.
-* Tools and notes: `bergdb.dev.Run` (3483a62); `releases/next.md`
-  complete (c62e43a, 17f67f7, 9a7b429, b994487, d2de9af); ReleaseDemo
+  with `CACHE_NOTHING` readers since 2026.2 (9ac976d; after review
+  a182faa, 4eaa97a); 019-47, a start kept a value over 1 MiB in memory
+  (db496dc). The 021 and 019 lists have no open entry.
+* Tools and notes: `bergdb.dev.Run` (0586b65); `releases/next.md`
+  complete (90deb45, 72137b1, 2459de5, 4adaf84, 2c60325); ReleaseDemo
   covers `DbObject` (6514764).
 * The audit: 020-11, the known issues of 2026.4, every row with its
-  commit and test (843e2f1 to 1a61e79 and this commit).
+  commit and test (4aa8c70 to 4e8c028 and this commit).
 
 ### 6.2. The night
 
@@ -244,11 +244,11 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
   after a definition's commit, a String taken for a 2026.3 object, a put
   keeping the caller's `DbObject` array, an assert firing on a legal
   schedule, and smaller points; all fixed with tests.
-* `night.sh` on 48378fe: NIGHT OK (65 minutes: levels 1 to 4, the Lean
+* `night.sh` on fcc151b: NIGHT OK (65 minutes: levels 1 to 4, the Lean
   tests, 25 night tests, conformance medium). On the final tree
   (7231771): the night tests SUCCESS (26) and LEVEL 2 OK. `level4.sh` OK
   after each Core fix. A second full `night.sh` on the final commit
-  d6e8989: NIGHT OK (63 minutes, 26 night tests;
+  5fb923f: NIGHT OK (63 minutes, 26 night tests;
   java/build/night/2026-11-09-0436/report.txt).
 * Quiet measurements (020-12): format 2 against format 1, writer 0.29 to
   0.66, lookups 0.13 to 0.44, gets 0.70 to 0.84, an index build 0.46 of
@@ -302,27 +302,27 @@ Frans back at 06:07, early; coord-1108 went on, attended, until the
 handover to coord-1109 (his word, 08:50). Each item in `main`, gated
 where it touches `java/`:
 
-* **Section 6.3 decided**: 020-07 approved (07:33; 102500f), after its
+* **Section 6.3 decided**: 020-07 approved (07:33; 6727631), after its
   section 4.4's examples were rewritten in JSON5 with annotated bytes
-  (6d9b0fb, 36c3811); C-M8 accepted (07:18; 2bb62b3); the four most
-  important decisions under the delegation read, "No changes" (b44e932).
+  (4da2dd9, eba8235); C-M8 accepted (07:18; 0146632); the four most
+  important decisions under the delegation read, "No changes" (c4e699a).
 * **The Core Layer is a simple key-value store of byte arrays**, written
   down at Frans's request in 010-01 (P12), `docs/levels.md` and
-  `AGENTS.md` (ef0da69): 2026.4 added no Core code for objects or
-  indexes. Two small fixes found on the way (626a6bc): the Core's key doc
+  `AGENTS.md` (5a262b6): 2026.4 added no Core code for objects or
+  indexes. Two small fixes found on the way (b4dea15): the Core's key doc
   gave the 2017 index keys; an unused field in `RwEnvironmentImp`.
 * **017-09**, object keys hold objects only: a study for a later release
-  (54dfb1c), at Frans's request; his to read.
-* **The Pub API's Javadoc made welcoming** (14cf30d): the first example
+  (5dfabcb), at Frans's request; his to read.
+* **The Pub API's Javadoc made welcoming** (6fea9a2): the first example
   `c.put("/a.txt", "Hello world!")`; the package page a tour by examples
   from PayDemo and WebsiteCode, the rules lower down.
-* **PayDemo fixed** (f3af680): its index call failed on 2026.4 at run
+* **PayDemo fixed** (90ec60a): its index call failed on 2026.4 at run
   time. Frans: the code must compile and run before every commit; it
   already compiled in the gate, so **the gate now runs the demos**
-  (1d1b6f3, about 3 s), which found WebsiteCode failing on every run
-  (fixed there) and three small faults in the demos (3b29ffd).
+  (25aac35, about 3 s), which found WebsiteCode failing on every run
+  (fixed there) and three small faults in the demos (40a85b5).
 * **`Job.join()` throws `IndexBuildException`** for a failed build
-  (4dc245a), at Frans's word (08:29): Java's convention, and a short
+  (412c739), at Frans's word (08:29): Java's convention, and a short
   `start().join()` no longer hides a failure.
 
 Running at the handover, in coord-1108's process (it stays open in
@@ -331,7 +331,7 @@ closing mode until they report, then sends their results to coord-1109):
 * **020-13, the test study and bug hunt** (Frans, 08:41: "I want the test
   study before the release cut. This release focus is 'bug-free
   database'"): in `/Users/f/fl/bench/2026-11-09/clone-tests`, from
-  1d1b6f3; JaCoCo coverage, a hand mutation sample, probes of the risky
+  25aac35; JaCoCo coverage, a hand mutation sample, probes of the risky
   areas, fixes in its clone with tests; report by about 11:45. **The
   release cut waits for it.**
 * **006-16, Props across releases** (Frans, 08:21): from the 2013 era to

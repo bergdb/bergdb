@@ -1,4 +1,4 @@
-commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+commit 377ff7af628f1fc214fc5945f9eda9179161868f
 code lines after 006-08's test stripping; package/import/braces count
    5  core/IKeyModSet.java
  148  core/KeyModSet.java

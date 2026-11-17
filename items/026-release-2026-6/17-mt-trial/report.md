@@ -9,7 +9,7 @@ section 10.
 
 # 1. What ran
 
-- **The clone:** `/Users/f/fl/bench/026-17/bergdb` at main d8da4a35. The
+- **The clone:** `/Users/f/fl/bench/026-17/bergdb` at main 00a3a29b. The
   branch adds `lean/SIS/Tree/Mt.lean`, `lean/MtTest.lean`, `lean/MtDeps.lean`
   and the stanza `mttest` in `lean/lakefile.toml`. Nothing else changed.
 - **The steps:**

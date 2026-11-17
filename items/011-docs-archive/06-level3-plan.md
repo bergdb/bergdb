@@ -20,7 +20,7 @@ review results are in [levels.md](04-levels.md); the eviction design is in
 Level 3 passes the recorded full Level 1–3 gates, including concurrent
 readers, changing retention, exact cuts, restart invariance and crashes in
 the existing complete-record model. The local baseline for this work is
-`2e0bfe6`. Earlier commit IDs in the recorded review are historical provenance
+`bdba113`. Earlier commit IDs in the recorded review are historical provenance
 from before this repository. Current power-loss evidence is in
 [level3-durability.md](07-level3-durability.md); long-running disk performance
 remains to be measured.
@@ -210,6 +210,6 @@ only after its acceptance criteria are met. Do not commit on Frans's behalf.
 
 The completed W1–W5 implementation and independent review outcomes remain in
 `levels.md`. Older commit IDs describe provenance in the earlier repository;
-they are not local Git commands. The imported work is local commit `2bd52c0`;
-this power-loss task starts from local `2e0bfe6` and records its new source
+they are not local Git commands. The imported work is local commit `0eb07c8`;
+this power-loss task starts from local `bdba113` and records its new source
 identity in `level3-durability.md`.

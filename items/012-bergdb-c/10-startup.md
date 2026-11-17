@@ -30,7 +30,7 @@ Done when:
    positions (`posMap`, `newById`, `posToId`), the key nodes cut back to
    the startup time, Rule R, the memory pointers, the super root at the
    startup time from `topPos`, the section's transactions rerun so that D,
-   the take's state (`TransSeq`: since `f89846d` also each transaction's
+   the take's state (`TransSeq`: since `b8ac8a1` also each transaction's
    own bytes, the sums D and O and their checksum, and the span) and the
    startup position are as Java's, and rule 4 by position (005-57) in
    `linkToCanonical`.
@@ -107,7 +107,7 @@ that do not need 012-09's write path start beside 012-09 proper (another
 agent, in `/Users/f/fl/bench/012/09-proper/`):
 
 * **Part 1** (a subagent, in the clone `/Users/f/fl/bench/012/10-startup/`,
-  a clone of main at `b16e14e` with 012-08's final work merged, `3d1b4f5`;
+  a clone of main at `8a7ceb9` with 012-08's final work merged, `3d1b4f5`;
   started 21:35):
   1. **Recovery** (done item 1), as `RecoverableStream`: the last valid
      meta block, the last whole record after it, the torn record's fill
@@ -234,7 +234,7 @@ Part 1 writes its startup as modules of its own, with an entry point that
   in either, 409,996 reads of 398,511,784 bytes.
 
 * 22:19: **the change of scope** (the conductor, 22:17): 012-09 is done
-  and in main (`e0d5e15`); at a safe point, commit, merge main, gate, and
+  and in main (`1d1e2fb`); at a safe point, commit, merge main, gate, and
   go on past part 1 into 012-10 proper: the startup wired into `db_open`,
   the rerun that rebuilds D and the take's state (part 1 has it,
   decision 1), and done items 5 to 7 (the bytes after restarts, in turns,
@@ -413,7 +413,7 @@ Part 1 writes its startup as modules of its own, with an entry point that
   whose times do not increase is not refused there, though 012-02, 2.6
   says the start checks it. Probe `TimesProbe` (outside the repository,
   `scratchpad/10-startup/probe/src/bergdb/core/TimesProbe.java`, on
-  `build/java/classes` at `fd8f513`'s `java/`): three transactions at
+  `build/java/classes` at `decc677`'s `java/`): three transactions at
   1000, 2000 and 3000 in a memory stream whose section holds them all, the
   last record's time set to 1500 in a copy of the bytes, and a start of the
   copy: without `-ea` it starts, and `getOne("/k2")` at the latest time
@@ -438,7 +438,7 @@ Part 1 writes its startup as modules of its own, with an entry point that
 The rerun as Java does it, written down at the split for 012-10 proper and
 then done by part 1 (decision 1) and wired into `Db` (22:25):
 
-**What the rerun must set** (Java at `fd8f513`: `DbStarter.rerunTransactions`,
+**What the rerun must set** (Java at `decc677`: `DbStarter.rerunTransactions`,
 `rerunTransaction`, `canonicalNode`; ported in `starter.c`, and checked by
 the probe: D's checksum and the node table equal Java's). For each record
 R(j) of the section but its first, R(s), in order:
@@ -540,7 +540,7 @@ after it.
 ## 6.6 For the conductor
 
 The clone `/Users/f/fl/bench/012/10-startup/` has main merged at
-`ceb462b` (012-09 done, `e0d5e15`, and `33b2f65`). The files of 012-10
+`ceb462b` (012-09 done, `1d1e2fb`, and `27c947d`). The files of 012-10
 (all under `items/012-bergdb-c/`): this file; new
 `c/src/{lmap,ntable,ncoll,recover,starter,sdb}.{c,h}`,
 `c/test/unit/{t_sdb,t_ncoll,t_recover}.c`, `c/test/func/f_start.c`;

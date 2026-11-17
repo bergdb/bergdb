@@ -39,7 +39,7 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 17:16 to 17:24, by F1 (016-05), in
-`/Users/f/fl/bench/016/015-09/repo` from `main` at `f04cefe`:
+`/Users/f/fl/bench/016/015-09/repo` from `main` at `6bc348d`:
 
 * **Why it could fail.** After the transaction `t` that ends an
   iteration, the test truncates a copy of the stream at the table record
@@ -78,5 +78,5 @@ Result of the runs on `main`'s jar (17:27:17 to 17:27:52, load about 22 to 30): 
 The change is the test's only (`Reclaim.Tester`); with a buffer time of
 60 s and a sync after each transaction, a cut made in a transaction
 records at most the length synced before it, so it cannot pass the
-crash position. Gated with 015-16 on `main` at `b9ba427` (the gate line
+crash position. Gated with 015-16 on `main` at `b1651a5` (the gate line
 in the commit).

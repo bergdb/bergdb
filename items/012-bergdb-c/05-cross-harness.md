@@ -358,7 +358,7 @@ Exit status: 0; 1 if the start failed; 2 on bad usage.
 
 ## 6.5 cross.sh
 
-As `cross.sh` is at 012-11's end (`main` at `ca9e583`); brought up to
+As `cross.sh` is at 012-11's end (`main` at `e068fba`); brought up to
 date by 012-13 (2026-10-29) from 09-write-path.md, 6.9 and 11-reclaim.md,
 6.5. 012-12 adds runs of side B with memory budgets (its own file says
 which).
@@ -449,7 +449,7 @@ wrappers of Java's classes, one JVM a job, which checks the plumbing of
 `writecheck.sh` on its Java directories (012-09, part 1: C's take and
 append path replayed on Java's records).
 
-**The sets** (at `ca9e583`):
+**The sets** (at `e068fba`):
 
 | Set | Workloads | Crash cuts | Corrupt | Turns |
 |---|---|---|---|---|
@@ -465,8 +465,8 @@ variants, 6 in turns; no difference; 1,751 s.
 # 7. Progress
 
 **Clone:** `/Users/f/fl/bench/012/05-cross-harness/`, a clone of `bergdb`
-at `20dd878`. **Java reference:** `main` at `20dd878` (`java/` as of
-`fd8f513`).
+at `b439af9`. **Java reference:** `main` at `b439af9` (`java/` as of
+`decc677`).
 
 2026-10-28 13:58. Started: the plans and the Java classes read.
 

@@ -13,7 +13,7 @@ Registered only.
 The issue
 ---------
 
-005-65's fix (`988fe1a`, in `main` and pushed, 2026-10-29) also fixed a
+005-65's fix (`52aeb04`, in `main` and pushed, 2026-10-29) also fixed a
 race of 005-52's `setBudget`, found while writing out the eviction
 thread's protocol. One line of that commit, in `Eviction.sweep`:
 
@@ -34,10 +34,10 @@ thread's protocol. One line of that commit, in `Eviction.sweep`:
   other; the comment at the line says why.
 
 Three things are not done: the fix is not recorded in 005-52 (only in
-988fe1a's message and the comment); no test forces the interleaving (005-65's
+52aeb04's message and the comment); no test forces the interleaving (005-65's
 tests are of the lost request, not of this race; the race was found by
 reading); and it is not a commit of its own. In the 006-10 session Claude
-offered to split it out of 988fe1a; Frans did not answer then.
+offered to split it out of 52aeb04; Frans did not answer then.
 
 
 Options
@@ -50,7 +50,7 @@ B. A record and a test: a line in 005-52's Outcome; a test in
    `Eviction`'s tests that forces the interleaving (a batch that ends
    while `setBudget` lowers the budget, with a hook or a latch as
    005-67 forced its interleavings), and fails on the code before
-   988fe1a. Test code only; StreamDigest unchanged (the cache size changes
+   52aeb04. Test code only; StreamDigest unchanged (the cache size changes
    no byte).
 
 C. A commit of its own: not possible without rewriting `main`, which is
@@ -64,7 +64,7 @@ Done when
 ---------
 
 Frans has chosen; for B, the line in 005-52, the test failing on the code
-before 988fe1a and passing after, and `java/before-commit.sh` printing
+before 52aeb04 and passing after, and `java/before-commit.sh` printing
 `BEFORE COMMIT OK`.
 
 
@@ -76,7 +76,7 @@ taken with Frans's D2 (016-01, section 10: "D2. As you recommend unless I
 say otherwise here."): the record in 005-52 and a test that forces the
 interleaving.
 
-The race, written out (the code before `988fe1a`): the batch's last
+The race, written out (the code before `52aeb04`): the batch's last
 statement, outside the monitor, was `trigger = Math.max(high,
 pinnedOfLastRound + (high - low));`. The batch reads `high` and `low` (the
 old budget's); `setBudget` writes `high`, `low` and `trigger` (the new
@@ -108,15 +108,15 @@ The steps, by agent F1 (016-05), after 005-69, in
    * Asserts: the trigger is `B0 / 4` (what `setBudget` wrote last), and
      the thread did not finish inside the hook (`setBudget` waited for the
      batch's monitor). The hook set back to null; the database closed.
-3. **The check against the code before `988fe1a`** (0.2 hours): a
+3. **The check against the code before `52aeb04`** (0.2 hours): a
    mutation in the clone, the three lines of step 1 moved out of the
    `synchronized (this)` block, before it, as the line was before
-   `988fe1a`. The test must fail: `setBudget` finishes inside the hook,
+   `52aeb04`. The test must fail: `setBudget` finishes inside the hook,
    and the batch then writes the old budget's trigger (B0 or more). The
    agent runs the unit test on both, records the two outcomes in the Log,
    and reverts the mutation (`git diff` shows only steps 1 and 2).
 4. **The record** (0.05 hours): a bullet in 005-52's Outcome: "Fixed in
-   `988fe1a` (005-65's commit, 2026-10-29): `Eviction.sweep` computes the
+   `52aeb04` (005-65's commit, 2026-10-29): `Eviction.sweep` computes the
    trigger under the monitor that `setBudget` holds. Before, a batch that
    ended while `setBudget` lowered the budget could put back the old
    budget's trigger, and the decrease then waited until the resident bytes
@@ -146,17 +146,17 @@ Outcome
 -------
 
 2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-80/repo` from
-`main` at `323a54a`:
+`main` at `c8e2f1e`:
 
 * Option B. The record: a bullet in 005-52's Outcome (the fix in
-  `988fe1a`, what the race did, the test).
+  `52aeb04`, what the race did, the test).
 * The test: `Eviction.testSetBudgetAtBatchEnd` (unit), with a hook,
   `Eviction.testBeforeTrigger` (a package-private instance field, null but
   in the test), between the computation of the trigger and its write in
   `sweep`'s `synchronized (this)` block. The test lowers the budget from
   within the hook and checks that `setBudget` waited for the batch's
   monitor and wrote its trigger last. With the three lines moved out of
-  the monitor, as the line was before `988fe1a`, it fails: the batch puts
+  the monitor, as the line was before `52aeb04`, it fails: the batch puts
   back the old budget's trigger (1,000,000 instead of 250,000). What
   `sweep` computes is unchanged, and no stream byte changes (the cache
   size changes none).
@@ -172,7 +172,7 @@ Log
 between the trigger's computation and its write. Nothing changed yet.
 
 2026-11-03, 16:07 to 16:11, by F1 (016-05), in
-`/Users/f/fl/bench/016/005-80/repo` from `main` at `323a54a`, steps 1 to 4:
+`/Users/f/fl/bench/016/005-80/repo` from `main` at `c8e2f1e`, steps 1 to 4:
 
 * **The hook**, `Eviction`: a package-private instance field `Runnable
   testBeforeTrigger`, null but in the test. In `sweep`'s `synchronized
@@ -194,7 +194,7 @@ between the trigger's computation and its write. Nothing changed yet.
   the thread was `BLOCKED` in the hook. The hook is set back to null and
   the database closed in a `finally`.
 * **The mutation** (step 3), the three lines moved before the
-  `synchronized (this)` block, as the line was before `988fe1a`: the test
+  `synchronized (this)` block, as the line was before `52aeb04`: the test
   fails, three runs of three, with "the trigger, setBudget's (setBudget in
   the hook: TERMINATED), expected 250000, got 1000000.": setBudget ended
   within the hook, and the batch then wrote the old budget's trigger. On

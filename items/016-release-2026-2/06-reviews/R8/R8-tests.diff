@@ -34,7 +34,7 @@ index 0000000..e9d08f5
 +import bergdb.pub.util.Job;
 +
 +/**
-+ * Review R8 (bergdb 016-06): tests that fail on 3386ade, one per finding.
++ * Review R8 (bergdb 016-06): tests that fail on c846c0c, one per finding.
 + */
 +public class R8Tester {
 +    private R8Tester() {}

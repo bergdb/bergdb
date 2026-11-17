@@ -121,7 +121,7 @@ What the probes found
 ---------------------
 
 1. **The failure, confirmed (the first step).** 005-38's `RestartNodeSize`
-   on `167597a` gives what 005-38 found, pair for pair: the 12 starts with
+   on `9032948` gives what 005-38 found, pair for pair: the 12 starts with
    another size fail with `StreamFormatException: startup error, node ...
    not found`, and the 4 with the same size read the 20,000 keys back
    ([runs/restart-head.txt](50-fix-node-size-start/runs/restart-head.txt)).
@@ -138,7 +138,7 @@ What the probes found
    distance of 100 bytes, so that the startup section is short (136 to 178
    KB); the stream started with size B; if that succeeds, every key read
    back, 20,000 more written with B, and two restarts, with B and with A.
-   On `167597a`
+   On `9032948`
    ([runs/mixed-head.txt](50-fix-node-size-start/runs/mixed-head.txt),
    [runs/mixed-head-ea.txt](50-fix-node-size-start/runs/mixed-head-ea.txt)):
 
@@ -153,7 +153,7 @@ What the probes found
    smaller size than written can succeed and leave a database that BergDB
    cannot start again.
 3. **Small databases start with any size today.** The fix's three tests of
-   a start (The fix, point 6), run on `167597a` without the fix, fail
+   a start (The fix, point 6), run on `9032948` without the fix, fail
    because the start succeeds: a database just created with 8, started
    with 14; one key written with 30, its meta block's two bytes at 44
    zeroed, started with 8; one key written with 8 through the core API,
@@ -285,7 +285,7 @@ Outcome
 -------
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), as decided, at Frans's
-request; in a clone on `bfa2942`. In `java/src`: `MetaBlock` (the field,
+request; in a clone on `8b3b6b0`. In `java/src`: `MetaBlock` (the field,
 its test, the format table and the version rule), `Db` (the check, the
 size at creation, the Javadoc of `start()`), `NodeStream`
 (`readLastValidMetaBlock()`), the Javadoc of `DbBuilder`'s four
@@ -315,8 +315,8 @@ Checks ([runs/](50-fix-node-size-start/runs/); the probes by
   then starts it as before. X2, a database of the fix, 30 in its 7 meta
   blocks: 2026.1 starts it and writes, and its new meta block has 30 too;
   then the fix refuses 8 and starts it with 30.
-* `StreamDigest all`, with the fix's class, against the jars of `167597a`
-  (the same `java/` as `bfa2942`) and of the fix: with `metamask=44:2`
+* `StreamDigest all`, with the fix's class, against the jars of `9032948`
+  (the same `java/` as `8b3b6b0`) and of the fix: with `metamask=44:2`
   DIGESTS IDENTICAL (36 of 36); without it every digest differs, as every
   stream has the size in its meta blocks (`digest-*.txt`). A first run
   with the mask, beside the gates, differed in one line of 36
@@ -328,6 +328,6 @@ Checks ([runs/](50-fix-node-size-start/runs/); the probes by
 
 Every database written before the fix is refused by the code after it
 (Frans: "There are none."). Among them the bench databases of 007-05
-(`~/fl/bench/007-05/data`, made at `851acdf`, and s1's): a measurement of
+(`~/fl/bench/007-05/data`, made at `2966bca`, and s1's): a measurement of
 a build after the fix makes them again, about 1.5 minutes each at 10M keys
 on F53 (the 005-57 session notes it in 005-57).

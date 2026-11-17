@@ -3,7 +3,7 @@
 
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-17. What
 exists about the bound, gathered as a starting point for the item. Code at
-bergdb `d540066`. Nothing here was run; the statements about code come from
+bergdb `81aee78`. Nothing here was run; the statements about code come from
 reading it. Section 5 says what each source adds, and what is still open.
 
 
@@ -100,7 +100,7 @@ decisions".
     to a wider ordinal (more hops, at most 48) and to any renumbering.
   * Section 6: the Java facts about `TopDs` and `TopNode`, with lines.
 * **bergdb item 001**:
-  * WP A3 fixed the codec (`280525a`): [docs/levels.md](../011-docs-archive/04-levels.md),
+  * WP A3 fixed the codec (`7f8f2e1`): [docs/levels.md](../011-docs-archive/04-levels.md),
     "Bugs found by the alignment of Levels 3 and 4", bug 1;
     [docs/log.md](../../docs/log.md), 2026-10-16; register row M30, closed.
   * WP A2 registered the bound as M46, from review-13-claude, 3. 001-02
@@ -133,18 +133,18 @@ From the archive F1-007 (`f1/a/007-bergdb-261012/`, read-only), its
 * **`bergdb/doc/2013/2013-05-notes.txt`** and `2013-active-replica.txt`:
   the stored top node, "topNodeId - Special id for top nodes (consecutive
   integers)"; "Serialized TopNodes do not change".
-* **The code in 2013** (first commit of the git repository, `76c4792`,
+* **The code in 2013** (first commit of the git repository, `1f4d0b6`,
   2013-06-06, `KissDB/src/kissdb/core/TopNode.java`): already `MAX_HEIGHT =
   30`, with a precomputed `power2` table of 30 entries. `height(id)` had no
   check: for an ordinal of 2^30 or more it returned 30, so the new top
   would have had no slot for its highest bit (2^30 itself: no skip pointers
   at all), and the older tops would no longer be reachable.
-* **`2c6ceb5`, 2014-08-03**, "Refactored TopNode. (Remove precomputed
+* **`691608a`, 2014-08-03**, "Refactored TopNode. (Remove precomputed
   values, little or no performance gain.)": removed the table, added
   `MAX_TOP_NODE_ID_VALUE = power2(MAX_HEIGHT) - 1`, the throw in `height`,
   and the parser's check "TopNode ID too large in stream". This is the
   bound as it stands today.
-* **`bergdb/log.md`**, 2015-07-21 (`91dd40c`): "IMPORTANT FIX, finding
+* **`bergdb/log.md`**, 2015-07-21 (`76b0fe9`): "IMPORTANT FIX, finding
   latest super node in startup section fixed. There was a bug when multiple
   top nodes with different top node id are in the startup section
   (DbStarter)."

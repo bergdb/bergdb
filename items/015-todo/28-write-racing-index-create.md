@@ -21,4 +21,4 @@ Log
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
-2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a write fixes its read time first and puts the hash of its directory's virtual key in its read set, which a creation writes (020-10, 5.1 and 5.2); 249b684 (020-10, I1). The test: PubTesterIndexRaces.testRacesCreate (a write of an object, a String and a delete at each of four points of a creation; the raw entries equal the index function over the latest values), in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: a write fixes its read time first and puts the hash of its directory's virtual key in its read set, which a creation writes (020-10, 5.1 and 5.2); 4a6deee (020-10, I1). The test: PubTesterIndexRaces.testRacesCreate (a write of an object, a String and a delete at each of four points of a creation; the raw entries equal the index function over the latest values), in `before-commit.sh`, passing on `main` at `b768ef0` (020-11). Status: done.

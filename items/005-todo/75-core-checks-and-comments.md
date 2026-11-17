@@ -16,7 +16,7 @@ The findings
 
 * **`KeyNode.checkIncreasingTime` checks nothing**: it never updates its
   `time`, so each TIME klong is compared with `Long.MIN_VALUE` (012-02, section
-  15, finding 4; `KeyNode.java:1569-1583` at `404d2ee`).
+  15, finding 4; `KeyNode.java:1569-1583` at `aa0f532`).
 * **`StoredTopNode.parse`'s "TopNode ID too large" cannot fire**: the
   ordinal, `bytesToLongLE(...) >>> 16`, is at most 2^48 − 1, which is
   `MAX_TOP_NODE_ID_VALUE` (012-06, F4; 012-02, finding 5).
@@ -26,7 +26,7 @@ The findings
   21).
 * **`RecoverableStream.append` checks the size field at the buffer's
   start, not at `offset`** (`Bytes.bytesToIntLE(buffer, 0)`,
-  `RecoverableStream.java:490` at `fd8f513`; 012-09, section 6.3, F2).
+  `RecoverableStream.java:490` at `decc677`; 012-09, section 6.3, F2).
   Every caller passes offset 0, so nothing differs today; with another
   offset the check refuses a right record and passes a wrong one (a probe
   showed both). Added 2026-10-28, 22:17.
@@ -102,10 +102,10 @@ offsets. All four fail with the previous production behavior and pass with
 the fix, with and without `-ea` (five checks per focused run, including the
 stopped-database check). Valid time-order controls pass too.
 
-Validation uses an isolated snapshot of `c229ab2` plus this change, so it
+Validation uses an isolated snapshot of `2a3af23` plus this change, so it
 includes the separately committed 005-74 fix. `before-commit.sh` prints
 `BEFORE COMMIT OK (96 s)`: 1,086 unit tests and 78 f-tests. One compiled
-StreamDigest class, run against the preserved `7f3dab4` jar and the fixed
+StreamDigest class, run against the preserved `b0b4732` jar and the fixed
 jar, gives `DIGESTS IDENTICAL (36 of 36)`; the three modes also agree in
 each of the twelve configurations. The format is unchanged. No checksum
 was added to transaction times: these are range and order checks.

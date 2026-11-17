@@ -59,7 +59,7 @@ output are in `03-measurements/`.
 
 * **Code.** The release jars: `releases/2026.4/bergdb-2026.4.jar`
   (SHA-256 `fed88f75…`, as its `SHA256SUMS`; tag `release-2026.4`,
-  `bb8da6dc`) and `releases/2026.3/bergdb-2026.3.jar`. A clone at the tag
+  `76f66f89`) and `releases/2026.3/bergdb-2026.3.jar`. A clone at the tag
   in `/Users/f/fl/bench/2026-11-11/pf1/clone`; the main tree unchanged
   but for this file and `03-measurements/`.
 * **Probe.** `03-measurements/probe/PF1.java`, package `bergdb.core`,

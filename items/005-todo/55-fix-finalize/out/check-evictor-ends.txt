@@ -1,4 +1,4 @@
-# FinalizeProbe evict on 356c058 with one change, in a scratch clone and not kept: the eviction
+# FinalizeProbe evict on 80b82e8 with one change, in a scratch clone and not kept: the eviction
 # thread ends when it has nothing to do (EvictorRun: 'if (!in.isActive())' became 'if (true)').
 # The diff:
 #   diff --git a/java/src/bergdb/core/Eviction.java b/java/src/bergdb/core/Eviction.java

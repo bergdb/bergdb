@@ -42,8 +42,8 @@ for p in "$@"; do
             done;;
         5)  # Where between 2017-07-29 and 2017-08-01 (and the parent of the
             # 2015-12-28 commit): one Props run of each original commit.
-            for c in 65a0bb1 9d9a038 7327c9c 290e766 931f160 603736c 87d5faa \
-                    fa338b0 de3ca5a 6758194 6dec318; do
+            for c in 7a1c65e e5a21cb e8cb6e1 2b00ae3 d8cd765 3a89728 5268b64 \
+                    9f5b89b 075eb5b 6758194 58ab1d0; do
                 $R one orig-$c sweep
             done;;
         6)  # Added after 3 to 5: four more parallel-collector runs of the main pair

@@ -51,7 +51,7 @@
 #   SEEDS    (environment) harness 6.1's seeds, "1" by default (testSample's copies)
 #   JOBS     (environment) dumps at once on each side, 4 by default
 #   CONTROL  (environment) REV: the negative control. C at REV (a commit of this
-#            repository, such as 86dade8, the port of 2026.2 before step 2), its c/ taken
+#            repository, such as d1c5bfe, the port of 2026.2 before step 2), its c/ taken
 #            by git archive into OUT/control and built there, takes C's side; it must
 #            differ from Java in every base of the refusal tests' cases and of
 #            testFound019_32, testFound021_11 and testFound021_12 (C before 022-02, step 2,

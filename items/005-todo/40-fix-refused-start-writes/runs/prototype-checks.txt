@@ -1,4 +1,4 @@
-The prototype, ../prototype.diff, on 425d7a7, in a clone; 2026-10-25.
+The prototype, ../prototype.diff, on 67bcc02, in a clone; 2026-10-25.
 
 java/before-commit.sh:
     Unit: SUCCESS, 1007 successful tests in 8.6 s.

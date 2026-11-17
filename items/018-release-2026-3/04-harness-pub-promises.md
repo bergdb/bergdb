@@ -186,8 +186,8 @@ reference does not replace `${transactionTime}` in it.
 
 ## 5. The evidence
 
-The known faults were fixed on 2026-11-05 (439ec79, b8c8da7, a46d2b2,
-39cbbec, e451afd). On `main` (45cfb4f) with the harness, in a second
+The known faults were fixed on 2026-11-05 (62f8311, a45a89f, 835db1a,
+660a8ad, 57cf031). On `main` (93f83a7) with the harness, in a second
 clone, each fix's main hunk was reverted alone, the jar built, and
 `PubPromiseTester 1 5000 10` run. Each failed at seed 1:
 
@@ -350,7 +350,7 @@ coord-1106: the Javadoc in `bergdb.pub`, short (010-P13), one line of
   that has not moved (a test clock), the first transaction can have the
   time that currentTime() returned before the restart."
 
-The probe's output (on `main`, 45cfb4f):
+The probe's output (on `main`, 93f83a7):
 
 ```text
 Q3 before a read: getLookupTime 72057594037927935
@@ -381,7 +381,7 @@ Q4 kvs of a delete of a missing key with a put: 1
 ## 8. State (night 006-12)
 
 Clone `/Users/f/fl/bench/006-12/h67`, branch `h67`. Done: the harness,
-this item and 019-15 (landed as 4d7a1bb), and the second part, runs in
+this item and 019-15 (landed as 63f0ad6), and the second part, runs in
 directories and small runs, which found no new fault. 019-15 is done
 (2026-11-06, option (b)); the questions Q1 to Q5 are answered and done
 (2026-11-06, section 6). Next,

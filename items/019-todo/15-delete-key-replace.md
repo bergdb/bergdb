@@ -29,7 +29,7 @@ So, with key replace enabled:
   the put is lost and the delete is of the key as written; a put and then
   a delete of a key without the placeholder gives the same "no entry".
 
-Shown by a probe (2026-11-05, on `main`, 45cfb4f):
+Shown by a probe (2026-11-05, on `main`, 93f83a7):
 
 ```text
 put with replace: replaced; literal still literal

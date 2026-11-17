@@ -3,7 +3,7 @@
 
 By Claude (Opus 5.5, Claude Code) for Frans Lundberg, 2026-10-17, at Frans's request:
 "Investigate this, use subitem 02 for the report", with six questions (the summary below
-answers them in order). Code at bergdb `059dbf1` and, for the final checks, `5b1abdd`
+answers them in order). Code at bergdb `0a732c3` and, for the final checks, `981470f`
 (item 001's commits during the work). All runs used copies of `java/` outside the
 repository, at low priority, on a machine busy with item 001's runs; nothing in bergdb
 was changed but this item. The probes, the patch and their outputs are in
@@ -79,7 +79,7 @@ leave the height decrease.
   bytes 10 to 13 as an `int` and skips 14 and 15 ("2 zero bytes").
 * History ([01-sources.md](01-sources.md), section 4): the 2012 design expected few top
   nodes ("We will never see a height about 12, I believe"). The code of 2013 already had
-  `MAX_HEIGHT = 30`, without a check; the check came in 2014 (`2c6ceb5`). Until
+  `MAX_HEIGHT = 30`, without a check; the check came in 2014 (`691608a`). Until
   2026-10-16, the codec defect (M30, fixed in A3) made the real limit 32,768 top nodes.
 
 
@@ -205,7 +205,7 @@ a hot set and a high rate will meet the bound.
 
 ### 5.1 The change
 
-[widen-48.patch](02-report/widen-48.patch), against `5b1abdd` (`git apply --check`
+[widen-48.patch](02-report/widen-48.patch), against `981470f` (`git apply --check`
 passes on the repository at that commit):
 
 * `TopNode`: `long topNodeId`; the constructor, `createDummy` and `getTopNodeId` take or
@@ -235,8 +235,8 @@ levels only to order nodes.
 ### 5.2 The serialization: no format change
 
 * **Writer.** The same bytes as today for every ordinal that today's code can make.
-  StreamDigest's quick set gave 33 of 33 identical digests, at `059dbf1` and again at
-  `5b1abdd`.
+  StreamDigest's quick set gave 33 of 33 identical digests, at `0a732c3` and again at
+  `981470f`.
 * **Reader.** It reads every stream that today's reader reads, the same way: no writer,
   old or new, has put anything but zeros in bytes 14 and 15 of a top node that today's
   reader accepts. It refuses, as today, the streams the codec defect of M30 wrote (they
@@ -272,12 +272,12 @@ new stream, also those that never pass 2^30, and gain nothing. The comment in
 
 ### 5.4 The evidence
 
-* Unit tests: 918 of 918 on the patched `5b1abdd`. On the patched `059dbf1` (with the
+* Unit tests: 918 of 918 on the patched `981470f`. On the patched `0a732c3` (with the
   probe hook, inactive), 917 of 917 in 6 of 7 runs; the other run, on the loaded
   machine, failed one test, which the output I kept does not name, and it did not recur.
-  The unpatched `059dbf1` passed 5 of 5 runs. Item 001 also notes a test that fails now
+  The unpatched `0a732c3` passed 5 of 5 runs. Item 001 also notes a test that fails now
   and then under load.
-* The gates, on the patched `5b1abdd`, in a scratch copy: `LEVEL 1 OK` and `LEVEL 3 OK`
+* The gates, on the patched `981470f`, in a scratch copy: `LEVEL 1 OK` and `LEVEL 3 OK`
   (full runs). level2.sh quick passed its steps 1 to 6 and the Java half of step 7
   (A2A3Check2), then stopped at `lake build`, since the copy has no `lean/`; its
   conformance check, run with a copy of the checker built in the repository (14:49),
@@ -487,8 +487,8 @@ state).
 
 [02-report/](02-report/):
 
-* `widen-48.patch`: the change of section 5, against `5b1abdd`.
-* `probe-hook-int.patch`, `probe-hook-long.patch`: the scratch hooks (against `059dbf1`,
+* `widen-48.patch`: the change of section 5, against `981470f`.
+* `probe-hook-int.patch`, `probe-hook-long.patch`: the scratch hooks (against `0a732c3`,
   and against it with the widening): the property `m46.firstTop` gives the first top
   node's ordinal, and the parser skips A3's slot check for that top node alone. Never for
   production.
@@ -499,9 +499,9 @@ state).
   tables of sections 3, 6 and 7).
 * `outputs.txt`: the outputs, by section.
 
-To rerun, in a copy of bergdb (`git archive 5b1abdd java | tar -x -C DIR`), with
-`JAVA_HOME=/opt/homebrew/opt/openjdk`. The hook patches apply to `059dbf1` and
-`5b1abdd` alike; `widen-48.patch` has paths from the repository's root, the hook patches
+To rerun, in a copy of bergdb (`git archive 981470f java | tar -x -C DIR`), with
+`JAVA_HOME=/opt/homebrew/opt/openjdk`. The hook patches apply to `0a732c3` and
+`981470f` alike; `widen-48.patch` has paths from the repository's root, the hook patches
 from `java/`:
 
 ```

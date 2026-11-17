@@ -7,7 +7,7 @@ been converted to C? Those for Core, that is." And at 17:15: "If there are
 valuable test to be written, write them, run them. If they fail, fix the
 errors."
 
-Every test method of Java's Core layer at `main` `2566df1` (the packages
+Every test method of Java's Core layer at `main` `e875a34` (the packages
 `bergdb.core`, `bergdb.stream`, `bergdb.dag`, `bergdb.storage`,
 `bergdb.common`, and the methods that nanotest runs without the name
 `test*`) was read against C's tests and classed: P, C already has a test or

@@ -30,19 +30,19 @@ decision beyond "as recommended": the safe part done, the question here.
 ## 2. The method
 
 * Clone `/Users/f/fl/bench/2026-11-09/clone-a21`, on the integration clone's tip
-  (`clone-int`, `80fa169`: `main` at `86dade8` and 020-19's 16 commits), as 020-19's J7 and
+  (`clone-int`, `9e06038`: `main` at `d1c5bfe` and 020-19's 16 commits), as 020-19's J7 and
   J8 changed the Javadoc of `Time` and `WBuilder` that this item changes again.
 * Gates in clones of their own (`/Users/f/fl/bench/2026-11-09/a21-gate`, `a21-gate2`,
   `a21-gate3`), so that the work went on meanwhile, under the shared lock (`lockf
   /Users/f/fl/bench/006-15/gate.lock`); outputs in `/Users/f/fl/bench/2026-11-09/a21-gate*.txt`.
   The messages' "BEFORE COMMIT OK" were written after the gates, by rebuilding the four
-  commits on `80fa169` (the same trees, and a Javadoc line of 106 chars in `Time` broken in
+  commits on `9e06038` (the same trees, and a Javadoc line of 106 chars in `Time` broken in
   the first).
 
 
 ## 3. The changes
 
-Commits in the clone, in order, on `80fa169`; each with its test, which failed before the
+Commits in the clone, in order, on `9e06038`; each with its test, which failed before the
 change, and a line in `releases/next.md`. Gates: section 5.
 
 ### 3.1. A time string is parsed strictly (1)
@@ -182,7 +182,7 @@ Javadoc, each a corner that 020-13 (section 4.2) or 020-19 (section 6) found uns
 ## 5. State
 
 Done: 1 to 4 committed in the clone `/Users/f/fl/bench/2026-11-09/clone-a21`, branch
-`main`, on `80fa169` (the integration clone's tip with 020-19): `c4c96ce` (1), `f15b5e8`
+`main`, on `9e06038` (the integration clone's tip with 020-19): `c4c96ce` (1), `f15b5e8`
 (2), `f370bef` (3), `cce0ff4` (4). Not pushed; the coordinator takes them to the main tree.
 
 Gates (`java/before-commit.sh`, under the shared lock, on a loaded F53):
@@ -212,8 +212,8 @@ that failed first, committed in the clone and gated by 11:14; Q1 for Frans.
 2026-11-09. Q1 decided by Frans (11:23: "Yes, as recommended."): `Duration.seconds(NaN)`
 refused, `e5b6de8`, a failing test first.
 
-2026-11-09. Two faults in 1's strict parse (`648527f` on `main`), from Codex's review of the
-day's fixes, round 2 (020-23), fixed in the clone on `main` at `6bb14a1`, each with a test
+2026-11-09. Two faults in 1's strict parse (`3b3064f` on `main`), from Codex's review of the
+day's fixes, round 2 (020-23), fixed in the clone on `main` at `080a098`, each with a test
 that failed first: Y1 (medium), a minus time's duration went through a double and was
 truncated ("-0.0000021 s" was 20 units, `Time.MAX` minus its own seconds refused), now
 exact and rounded half up, `1fa675f`, BEFORE COMMIT OK (140 s); Y2 (low), a year and a

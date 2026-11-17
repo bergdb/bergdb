@@ -1,5 +1,5 @@
 bergdb 005-27: before-commit.sh and the four gates (full), one after the other, on a
-clone of e2c0dc0 (HEAD, with 005-28 and 005-29) with 005-27's change (2026-10-23, F53).
+clone of a10ebf9 (HEAD, with 005-28 and 005-29) with 005-27's change (2026-10-23, F53).
 
 2026-10-23 15:51:51 before-commit start
 2026-10-23 15:54:03 before-commit: BEFORE COMMIT OK (132 s)
@@ -162,7 +162,7 @@ LEVEL 4 OK
 
 
 Earlier the same day: StreamDigest, before-commit.sh and the four gates (full), on a
-clone of f6bc3ce with the main tree's edits of 14:43 (005-28's change in NodeStream)
+clone of 1a329d1 with the main tree's edits of 14:43 (005-28's change in NodeStream)
 and 005-27's change.
 
 2026-10-23 14:44:23 StreamDigest start
@@ -179,7 +179,7 @@ and 005-27's change.
 2026-10-23 15:27:01 level4: LEVEL 4 OK
 2026-10-23 15:27:01 ALL DONE
 
-== StreamDigest all, compared with f206e58's build
+== StreamDigest all, compared with faa4269's build
 DIGESTS IDENTICAL (36 of 36)
 
 == before-commit

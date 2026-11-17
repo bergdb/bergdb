@@ -11,7 +11,7 @@ his request of that day:
 > seconds" or something. Independent of database size and for how long it
 > has run.
 
-Based on bergdb at `f6bc3ce`. The first theorem, T3, is proved in Lean
+Based on bergdb at `1a329d1`. The first theorem, T3, is proved in Lean
 (section 3). The rest is analysis and a plan, with decisions for Frans in
 section 8. A finding on the way, 007-02: one large transaction can stop
 the startup pos for good.

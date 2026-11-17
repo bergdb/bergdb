@@ -13,7 +13,7 @@ afterDelete, collapseRoot) with checks:
   not taken back holds a taken-back node by a live or previous-version klong
   (UpHolderLiveRunOK), the times of the cached nodes, the chain nodes taken
   back at or above the transaction's first id; and gh as before the loop
-  (UpGhOK, proved since 43ca66fd);
+  (UpGhOK, proved since b614dc36);
 - at every replaceRoot at a segment root (chk): CollapseUnlinkOK, the tree with
   the root's previous version is a tree and that version names ids below the
   next id;

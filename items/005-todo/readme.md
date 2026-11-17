@@ -43,7 +43,7 @@ Closed
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers: moved to 015-86 | moved | 2026-11-05 |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: moved to 015-87 | moved | 2026-11-05 |
 | [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: moved to 015-88 | moved | 2026-11-05 |
-| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: `Database.setCacheSizeInMb` (`fd8f513`); after a decrease a transaction's warmup no longer waits for eviction (option B, `0c6c4be`) | done | 2026-11-05 |
+| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: `Database.setCacheSizeInMb` (`decc677`); after a decrease a transaction's warmup no longer waits for eviction (option B, `8defe65`) | done | 2026-11-05 |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after a physical cut depend on timing: B dropped, A covers it | done | 2026-11-05 |
 | [005-77](77-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: moved to 015-84 | moved | 2026-11-05 |
 | [005-60](60-block-storage.md) | Investigate | Block storage: moved to 017-05 | moved | 2026-11-04 |
@@ -65,12 +65,12 @@ Closed
 | [005-70](70-keymodset-after-start.md) | Fix | STM startup boundary | done | 2026-10-30 |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces of writers that do not sync, with the same throughput, latency and CPU; 100 ms costs 13 to 16 % of the throughput at 1 KB values (the quarter rule seen only at a wake, now 005-76); idle and trickle energy the same; twice the unsynced data at risk at 50 ms (question 5). Decided (Frans, 2026-10-29): 50 ms. `StorageManager.DEFAULT_BUFFER_TIME` 20 to 50, its comment, the docs, `releases/next.md`; StreamDigest identical; the four gates pass | done | 2026-10-29 |
 | [005-68](68-fix-take-stream-length.md) | Fix | `Db.store` passes the stream's `getLength()` to `TransSeq.take`, where the Lean model's argument is where the record begins, `getNextPos()`: after a record that ends on a 200,000-byte boundary they would differ by the meta block's 128 bytes, and Java could leave T3's bound (007-08, review, point 1). Dropped: the finding does not hold. `RecoverableStream.append` writes a meta block together with the record that ends at its position, and recovery fills out one that a crash cut, so when `take` is called the two are equal: by reading, and by running an instrumented copy (0 of 5,524,901 calls differ, 229 after a record that ended exactly on a boundary). No change; the one-line change would pass the same value | dropped | 2026-10-28 |
-| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`fd8f513`); StreamDigest identical | done | 2026-10-28 |
+| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`decc677`); StreamDigest identical | done | 2026-10-28 |
 | [005-67](67-fix-test-add-replica2.md) | Fix | `StorageManagerTester.testAddReplica2` failed about one gate run in twelve on a busy machine, "Expected 700, got 200", since 2015 (Frans's note): the test was wrong, not the code. It asserted both streams' lengths right after an append, but an active replica only means that the sync's last bytes are in the replica's buffer, which writes them a little later, and both buffers write an append within milliseconds. Now it waits for the confirmed lengths; `testAddReplicaWhileAppending`'s writer, which appended without the write lock and could hang the test, takes it. Forced interleavings: each failure certain before, none after; 400,000 runs after the fix without a failure (4 in 40,000 before). 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of nothing at a close, fixed by 005-14. Test code only | done | 2026-10-28 |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`), reviewed at max effort. Then, as Frans decided (2026-10-28), the design before handles removed from lean/: Evict.lean and its proofs, EvictExample.lean, and the seven theorems over it with a counterpart over handles; the startup with handles proved over handles (HandleStart.lean); the assumptions of stage 2 and `Mem.sectionPos` in Phys.lean; lean/ from 144 files and 66,452 lines to 119 and 51,539. And rule 4 by position after a cut, with Java's skip of the pointers below the stream's first position, proved to link what rule 4 by node id links (`rule4PosCut_handles`, `runPosCut_handles`), so T12 holds for Java's startup; no new assumption. A theorem for a cut without a restart: not for now (Frans) | done | 2026-10-28 |
 | [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` opened their `FileStream`s at once, and since 005-63 a builder that was never started, the first of two `dir()` calls or a replica given before `dir()` held a directory's lock until the JVM ended (a builder has no `close()`). Now they record the directories and `start()` opens them, the database's first, and closes them if it fails (005-32); a bad or busy directory is reported by `start()`; a replica given before `dir()` is kept. Two tests that fail on the code before; `releases/next.md` | done | 2026-10-28 |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies against the `package.html` files; Frans's question. Decided 2026-10-28, as the entry's table proposed: the lists of `pub` (`common`, `nanotest` for its tests, `pubimp` for `Factory`'s designed cycle) and `pubimp` (`dag`, `pub.util`, `storage`) changed, all in one form, `Depends on: a, b, c.`; `SyncLevel` moved from `core` to `pub.util` (an API change against 2026.1, in `releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`; `TimeResolver` stays in `pubimp`. `java/deps.py` checks each package's uses against its list, a step of `before-commit.sh`. Follow-ups 2026-10-28: titles, `src-dev`'s lists, the Core Layer built alone nightly (`java/stress/core-build.sh` in `night.sh`) | done | 2026-10-28 |
-| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`e611709`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
+| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`d8ed1aa`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
 | [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` could adopt files that were being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Decided 2026-10-28, option C: `FileStream` holds an operating-system lock on `bergdb.lock` in its directory until it is closed, and a second one on the directory, in the JVM or in another process, is refused with `DirectoryInUseException`; within the JVM a set of the locked directories refuses first, as closing a second channel of the file released the lock for other processes (macOS, Linux), a deviation from 010-P9; `stop()`'s Javadoc says to start again after `close()`; network file systems in `FileStream`'s Javadoc; tests, `releases/next.md` | done | 2026-10-28 |
 | [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable` (005-55's question 6). Decided 2026-10-27, option A: both implement it, `Database` gets a `close()` that waits as `Db.close()` does, so try-with-resources closes the database; Javadoc, tests, a line in `releases/next.md` | done | 2026-10-27 |
 | [005-61](61-reclaim-startup-distance.md) | Fix | Reclaim spaced its iterations by the builder's startup distance, copied before `start()` read the stream's, and never saw `setStartupDistance`: reclaim ran too seldom or too often (found in 005-53, question 3; no wrong cut). Now it uses the database's live startup distance; two unit tests that fail on the code before; StreamDigest identical | done | 2026-10-27 |
@@ -144,7 +144,7 @@ change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
 005-46 is done. 005-56 is done. 005-68 is dropped: its finding did not
 hold. 005-07 is dropped: obsolete since handles (009). 005-52 is done:
-option B (`0c6c4be`). As of 2026-11-05 all entries are closed or moved
+option B (`8defe65`). As of 2026-11-05 all entries are closed or moved
 to 015.
 
 
@@ -286,7 +286,7 @@ Files
   stream's last file waits for the writer's append and its `fsync`, and
   every read waits for a new file's forces and a physical cut's deletes;
   found in 009's measurements and 009-04's soaks; investigated, fixed
-  (`eaec93e`, with interrupts), measured on s1 and F53; done; the probes
+  (`1165c90`, with interrupts), measured on s1 and F53; done; the probes
   and their output, before and after, in
   [46-stream-file-lock/](46-stream-file-lock/).
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
@@ -522,7 +522,7 @@ Claude (Opus 5.5, Claude Code): TREE, A6' and A-COPY are gate checks, in
 `A2A3Check2` (`level2.sh`, step 7) and in the checker's C-A, where A6'
 replaces the diagnostic A6; the small and evict sets have a configuration
 with A6's kind, whose traces must contain it. The four gates pass, also with
-005-10's removal (`c6ca623`). See 005-04, "Follow-up".
+005-10's removal (`3fdf88b`). See 005-04, "Follow-up".
 
 2026-10-20. Added 005-11, replication, and 005-12, transaction outputs, at
 Frans's request, from 005-10's G1 (the Pub API's methods that nothing in
@@ -724,7 +724,7 @@ need to think carefully about this one. Replication is linked to
 durability and it affects the public API."); its options A, B, C1, C2 and
 C3 are now described in the entry itself, with what each means for the
 syncs of the API, and Frans's earlier design of durability levels from
-F1-007 is summarized there. The probes ran again on `78cc5f3`: since
+F1-007 is summarized there. The probes ran again on `63fa5de`: since
 005-01, a replica that fails, or `addReplica` during cuts, fails the whole
 database at the next cut (a `NullPointerException` after the go point),
 where before some transactions threw. No change to `java/`.
@@ -791,7 +791,7 @@ recovery takes the one before it. Two unit tests that fail without the fix;
 of each transaction that ends at one (three in `level2.sh`'s full run,
 which fail without the fix); P11 again: none of its 13 images fails.
 Streams unchanged (StreamDigest); `before-commit.sh` and the four gates
-pass, on `e2c0dc0` with the change. The change in `java/` is left for
+pass, on `a10ebf9` with the change. The change in `java/` is left for
 Frans to commit.
 
 2026-10-23. 005-30 done, at Frans's request ("Fix bergdb 005-30. As
@@ -822,7 +822,7 @@ its go point. Not started; it is step 1 of item 007's plan (007-03).
 2026-10-24. Added 005-35, at Frans's request ("Investigate this further,
 then write this down as a fix item in 005."), by Claude (Opus 5.5, Claude
 Code), from Frans's note in `Db.close()`: both methods are meant to close
-the database properly, stop() without waiting. Probes on `685e895`: stop()
+the database properly, stop() without waiting. Probes on `b61cf34`: stop()
 loses what is still buffered (after 2,000 puts and a stop, a restart found
 0 of them in two runs of three; close() kept all); close() returns at once
 after stop() or beside another close(); a writer that waits for room in
@@ -837,7 +837,7 @@ completes and is written ("As you propose."). Not started.
 
 2026-10-24. Added 005-36 and 005-37, at Frans's request ("Add to 005."),
 by Claude (Opus 5.5, Claude Code), from 005-29's findings, checked again
-on `685e895`: `DbTester.testCrash3` has never tested a truncation, and on
+on `b61cf34`: `DbTester.testCrash3` has never tested a truncation, and on
 its copies it fails in the database's creation (005-33's case) unless it
 syncs first, a two-line fix; `MemoryStream` takes a negative length to
 `append` and a `pretruncate` past its length, after some of which it takes
@@ -907,8 +907,8 @@ the paths of a large transaction's keys under the write lock
 `before-commit.sh` passes. Step 1 of 007-03.
 
 2026-10-24. The final checks of the six fixes of the day (005-31, 005-32,
-005-34 to 005-37), on `43d85f9`: the four level scripts pass, and Props in
-ABBA order against `7f08273`, the commit before them, shows no difference
+005-34 to 005-37), on `739ff38`: the four level scripts pass, and Props in
+ABBA order against `fe95f01`, the commit before them, shows no difference
 (MEM 191, SS 1.50, CORE 0.27 to 0.29). See 005-31's outcome. With them, no
 entry of kind Fix is open.
 
@@ -930,7 +930,7 @@ Claude (Opus 5.5, Claude Code), from another session's remark that the
 stream format version is not checked at start (`DbStarter.java:590`). It
 is: since 2015-07-24 the parsers check the format byte of each record and
 node they read, and recovery the meta blocks' version; the TODO there is
-from 2014. Probes on `425d7a7` found instead that recovery writes before
+from 2014. Probes on `67bcc02` found instead that recovery writes before
 it checks: after a crash that ends the stream at or just inside a meta
 block, a start with a wrong crypto key, or with none, appends the rest of
 the block, and then the right key fails at every start (at 0, 3 and 5
@@ -1226,8 +1226,8 @@ separate work item in 005. Go ahead. Implement and commit this." Rule 4
 by its position, with no read of the stream but for a top node's pointer
 that the maps do not resolve; with assertions on it also runs by node id
 and fails on a difference. Four tests; before-commit, level2.sh quick and
-level4.sh quick pass on `cec0032` with the change, level2.sh full on
-`bf19075` with it, with the check at every startup. Part 2 not made.
+level4.sh quick pass on `14022ad` with the change, level2.sh full on
+`c1f1f15` with it, with the check at every startup. Part 2 not made.
 005-58 added for the Lean theorem.
 
 2026-10-27. Added 005-59, at Frans's request ("Add Question 6 as a new 005
@@ -1272,7 +1272,7 @@ opened again.
 2026-10-27. 005-58 done, by Claude (Opus 5.5, Claude Code; the review at
 max effort, at Frans's word), as 006-09's W3: rule 4 by position is proved
 in the Lean model to link what rule 4 by node id links (`Rule4_positions`,
-`Rule4Pos_handles`, `RunPos_handles`; `7c1ce2f`), with no new assumption;
+`Rule4Pos_handles`, `RunPos_handles`; `4e63e3d`), with no new assumption;
 lake build clean, trace tests OK, axioms standard. 005-57's report and
 docs/levels.md cite it. For Frans: the trusted additions, and whether the
 by-id check in `linkToCanonical` goes (recommended: it stays).
@@ -1281,7 +1281,7 @@ by-id check in `linkToCanonical` goes (recommended: it stays).
 without a file system, as a ring of a fixed size, at Frans's request (his
 idea). The questions; nothing started.
 
-2026-10-27. 005-48 in the code (`e611709`), by Claude (Opus 5.5, Claude
+2026-10-27. 005-48 in the code (`d8ed1aa`), by Claude (Opus 5.5, Claude
 Code), as Frans decided (006-09: "Yes", if it passes the gates, keeps the
 stream's bytes and measures well): a sync that waits starts the flush. The
 level3 failure seen with it was a race in `ReclaimReaders`'s check, also
@@ -1320,12 +1320,12 @@ passes.
 for Frans to decide: one database per directory, also while one closes;
 found when level2's step 6 (`BryanRepro`) failed on `main` from 005-46 on,
 as the test started a database right after `stop()`; the test now uses
-`close()` (`b0661ba`).
+`close()` (`f74fece`).
 
 2026-10-27. 005-62 added and its theorems proved, at Frans's request
 (006-09: "Lean: T9 and T12 over handles"), by Claude (Opus 5.5, Claude
 Code, at max effort): `T9_handles` and `T12_handles`, Level 3's reclaim
-theorems with eviction over handles' runs (`bba91dd` to `a506b34`); an
+theorems with eviction over handles' runs (`e2213c2` to `99ef913`); an
 independent review at max effort found them faithful to `T9_readCut` and
 `T12_evictCut` and not vacuous; lake build clean, axioms standard, trace
 tests OK. Open: what to remove of the design before handles, for Frans.
@@ -1349,7 +1349,7 @@ call `close()`; `releases/next.md`. `before-commit.sh`, `level3.sh`,
 `level2.sh` and `level4.sh quick` pass.
 
 2026-10-28. 005-48 closed by Frans ("Close, keep 20 ms as recommended.
-Commit."): group commit is in `main` (`e611709`); the buffer time stays
+Commit."): group commit is in `main` (`d8ed1aa`); the buffer time stays
 20 ms; F53's runs, refused in 006-09's night by `performance.sh`'s quiet
 check, are no longer a condition. The test runs' raw outputs and the
 prototype's diff removed from `48-group-commit/`; the scripts, the tables,
@@ -1376,8 +1376,8 @@ checks each package's uses against its list, a step of
 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under
 ZGC, with waits of a reader's load for the eviction thread over 10 ms; a
 hypothesis to test (the readers take F53's 8 performance cores since
-005-46) and a night step that runs 4, 6 and 8 threads on `bf19075`,
-`eaec93e` and `4f7cd60` with the eviction thread's CPU, smoke-tested. Item
+005-46) and a night step that runs 4, 6 and 8 threads on `c1f1f15`,
+`1165c90` and `f9e295d` with the eviction thread's CPU, smoke-tested. Item
 009 is closed with this case open here.
 
 2026-10-28. Added 005-66, at Frans's request (09:43), by Claude (Opus
@@ -1426,7 +1426,7 @@ nothing at a close, fixed by 005-14. `before-commit.sh`, `core-build.sh
 unit f` and `level2.sh quick` pass.
 
 2026-10-28. 005-53 and 005-52's questions 1 and 3 ready to decide, by
-Claude (Opus 5.5, Claude Code), for 006-10's W4.2, a reading of `b1111f4`
+Claude (Opus 5.5, Claude Code), for 006-10's W4.2, a reading of `f34f31f`
 with D4:B in the core: options in full in both entries, the evidence in
 [53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md).
 005-53: options A to E; B (a `Job`) and D are obsolete, as one call is
@@ -1444,7 +1444,7 @@ answer.
 2026-10-28. 005-53 and 005-52 done, by Claude (Opus 5.5, Claude Code),
 for 006-10, as Frans decided (2026-10-28, 12:32: "53 and 52. Yes, do this
 as recommended.", the smaller questions as recommended), in one commit
-(`fd8f513`): `Database.setStartupDistanceInMb` and
+(`decc677`): `Database.setStartupDistanceInMb` and
 `getStartupDistanceInMb` (005-53's E), kept in the stream through
 `Db.setStartupDistance`, which now writes nothing for the value in force
 and changes nothing when the call is refused; `Database.setCacheSizeInMb`
@@ -1562,7 +1562,7 @@ back in Open.
 
 2026-10-29. 005-80 registered at Frans's request ("Add an entry for \"The
 setBudget split\" since I want to finish and I don't remember this
-one."): `setBudget`'s race, fixed inside 005-65's commit `988fe1a`, with
+one."): `setBudget`'s race, fixed inside 005-65's commit `52aeb04`, with
 options for a record and a test; kind decide, registered only.
 
 2026-10-30. 005-70 done, option A accepted by Frans: the STM coverage
@@ -1609,7 +1609,7 @@ refused before changing the reclaim fraction; double API retained,
 005-79 separate. Regression fails before and passes after. BEFORE COMMIT
 OK (1,090 unit, 78 f-tests), all 36 stream digests identical.
 
-2026-11-02. 005-83 experiment complete on 3ad171d: 56 ordinary controls
+2026-11-02. 005-83 experiment complete on afc3d20: 56 ordinary controls
 recover, all 56 hole images fail at startup or later reads (112 checks),
 all already-forced bytes preserved in admitted images. The original
 refused-start case appends 1,057,153 bytes before refusing. Item remains
@@ -1661,7 +1661,7 @@ per-append forces, with hole images, counted (014-01), and two negative
 controls. Left: the sync latency on and off.
 
 2026-11-04. 005-47: the sync latency on s1, `d-1k-t1`, 10 runs each on
-`188facf`: the durable commit's p50 4.2 ms with forcing on, 0.1 ms off;
+`9b67a82`: the durable commit's p50 4.2 ms with forcing on, 0.1 ms off;
 p99 12.3 and 1.1 ms. F53's runs are left for a quiet block.
 
 2026-11-04. 005-81 split at Frans's decision (19:11): "005-81, I like
@@ -1685,7 +1685,7 @@ untouched, at Frans's decision (decided 2026-11-04/05): "005-77 (cap
 pace factor, about a day of F53) moves to 015 untouched."
 
 2026-11-05. 005-52 done: option B, decided by Frans on 2026-11-04 ("52,
-do as recommend, Option B."), in `0c6c4be`: a transaction's warmup no
+do as recommend, Option B."), in `8defe65`: a transaction's warmup no
 longer waits for eviction after a decrease. The six runs again, on s1 as
 F53 was not quiet: no wait from the lowering on is longer than with a
 fixed budget; four LONGER verdicts, all before the lowering, the
@@ -1695,7 +1695,7 @@ rule, recorded in the entry, so that Frans can reopen it.
 2026-11-05. 005-47 and 005-65: the morning's quiet block on F53 (marker
 from 07:22, limit 07:55) was not quiet, so neither timing run ran: 005-47's
 sync latency on F53 and 005-65's AB/BA step (`threads.sh` with
-`BUILDS="5a6befd 988fe1a" ROUNDS=4`), which Frans approved (decided
+`BUILDS="bb25185 52aeb04" ROUNDS=4`), which Frans approved (decided
 2026-11-04/05: "Run the AB/BA step in tonight's quiet block. Close the
 entry if the fix isn't the cause; otherwise take the measurements and move
 the decision to 015."). `mediaanalysisd` was paused by the coordinator at

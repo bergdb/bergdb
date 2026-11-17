@@ -31,7 +31,7 @@ The decisions it holds (020-02, section 2's decision and section 5.1b):
   information.
 
 Where this document and 020-02 differ, 020-02 wins. Code read at
-`b9d87e7` (`java/` as at `460709a`); today's behaviour, where section 7
+`31b5523` (`java/` as at `777d88e`); today's behaviour, where section 7
 gives it, was also probed on 2026-11-08 with a small program against the
 jar built from that code.
 
@@ -631,7 +631,7 @@ and 3.
 
 ## 7. Today's code and the change
 
-Today's behaviour at `460709a`, from the code and the probe; the
+Today's behaviour at `777d88e`, from the code and the probe; the
 conversion is `DbValue.toJavaObject` (lines 160 to 209) with `checkFits`
 (211 to 254) and `toLong()` (128 to 130, 0 for a value that is not a
 number), `DbDouble.toString`, `DbByteArray.toJavaObject`,
@@ -988,7 +988,7 @@ those taken here.
   sections 2.2, 3, 5 (R3, R6, R7, R9, R11, R12, R14, R15), 11, 12 and 14
   (Q1, Q4); 020-01, sections 4.1 and 5.3 (S2-F4 to F9, F18, F19, F21);
   021-04; 005-22; 005-23; 019-10; 018-01 (P7).
-* The code at `b9d87e7`: `java/src/bergdb/pubimp/DbObject.java`,
+* The code at `31b5523`: `java/src/bergdb/pubimp/DbObject.java`,
   `DbValue.java`, `DbArray.java`, `DbInt.java`, `DbLong.java`,
   `DbDouble.java`, `DbBoolean.java`, `DbString.java`, `DbByteArray.java`,
   `KvToObjectImp.java`, `BlankConstructorFactory.java`, `PubUtil.java`,
@@ -1005,7 +1005,7 @@ those taken here.
 2026-11-08. Written for coord-1108 at Frans's request (21:59, "Yes, do
 so": the rules in full, with a test for each), with what the decisions
 left open decided under his delegation of 22:17 (section 6); read-only at
-`b9d87e7`, today's behaviour probed against its build. No code changed.
+`31b5523`, today's behaviour probed against its build. No code changed.
 020-08 brought up to date with it (its steps 7 and 8).
 
 2026-11-09. Section 5.2: the Codex review's X2 (020-14) fixed, with its

@@ -6,7 +6,7 @@ An application written as a new user of 2026.4 would write it (u7, for coord-110
 common brief of 020-24, round 3): only the release jar on the class path, and only what a
 user reads (README.md, `java/src/overview-pub.html`, the Javadoc of `bergdb.pub` and
 `bergdb.pub.util`, `releases/next.md`). The jar was built from a clone of main at
-`5d45478`. The implementation was read only afterwards, to explain U7-1, U7-2, U7-3 and
+`4338cda`. The implementation was read only afterwards, to explain U7-1, U7-2, U7-3 and
 U7-5; `probe/Forge.java` was written after that reading.
 
 
@@ -275,8 +275,8 @@ Made 2026-11-09 for coord-1109 by the fixer e07, in the clone
 `/Users/f/fl/bench/2026-11-09/clone-e07`, by the rule for 2026.4: a stable baseline, no
 change of the stream's format, the Javadoc made true, a plain bug fixed with a failing
 test first. Three commits, each with a line in `releases/next.md`: on its branch `main`
-from `bd92096` (`9598088`, `16b2063`, `14de355`), each gated under the gate lock; and on
-the branch `try-rebase`, the same rebased on `main` at `62345d3` (`7c6ad11`, `f15d1a7`,
+from `dc3ca71` (`9598088`, `16b2063`, `14de355`), each gated under the gate lock; and on
+the branch `try-rebase`, the same rebased on `main` at `5cb2807` (`7c6ad11`, `f15d1a7`,
 `bc3cd44`; a conflict of `releases/next.md` alone, both entries kept), gated on its tip
 under the lock: BEFORE COMMIT OK (151 s, unit 1580, f 86), JAVADOC PUB OK.
 
@@ -320,7 +320,7 @@ under the lock: BEFORE COMMIT OK (151 s, unit 1580, f 86), JAVADOC PUB OK.
   bytes of the last meta block, one at every 200,000 bytes, so "its beginning" only for a
   database of less than 200 kB. Test `PubTester.testDamagedStreamWithTheRightKey`,
   failing before. JAVADOC PUB OK, BEFORE COMMIT OK (145 s).
-* **Removed from 2026.4's API** (020-28, `b78865d` on `main`; Frans, 2026-11-09, 16:12):
+* **Removed from 2026.4's API** (020-28, `50caeb0` on `main`; Frans, 2026-11-09, 16:12):
   the crypto key, `CryptoKey` and `BadCryptoKey` left the public API; the code stays inside
   BergDB, internal and tested, with the fixes of U7-2 and U7-5; a database that 2026.3
   encrypted is refused. The options below are 017-10, for a later release.

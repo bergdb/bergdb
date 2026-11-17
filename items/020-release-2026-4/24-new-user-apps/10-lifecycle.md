@@ -4,7 +4,7 @@ Created 2026-11-09 by Frans Lundberg.
 
 An application written as a new user of 2026.4 would write it (u10, for coord-1109, round 4
 of the common brief of 020-24): only the release jar on the class path, built from a clone
-of main at `20e8d5a`, and only what a user reads: README.md, `releases/next.md`,
+of main at `f2dbcc7`, and only what a user reads: README.md, `releases/next.md`,
 `java/src/overview-pub.html`, and the Javadoc in the sources of `bergdb.pub` and
 `bergdb.pub.util` (`Factory`, `DatabaseBuilder`, `Database`, `StartupInfo`, `Connection`,
 `WBuilder`, `UsePrimaryBuilder`, `Kv`, `SyncLevel`, the exceptions, the package page). The
@@ -294,19 +294,19 @@ puts not synced.
 
 ## 4. Fixes
 
-Made by l20 for coord-1109 on 2026-11-09 in `clone-l20`, on main's `9ed1e6c`, one commit
+Made by l20 for coord-1109 on 2026-11-09 in `clone-l20`, on main's `595418e`, one commit
 each; the details in 021-20's log.
 
 | ID    | What was done                                                         | Commit  |
 |-------|-----------------------------------------------------------------------|---------|
 | U10-1 | a start at the path waits; a database whose directory went fails      | 2557286 |
-| U10-3 | the write buffer is released when the storage's thread ends           | 2e9ea7d |
-| U10-5 | the losers of the race to make the directory are refused as in use    | 5ca4249 |
-| U10-6 | `sync()` after `close()` returns                                      | 10335ee |
-| U10-2 | Javadoc: 10 MB of heap per started database, no setting in 2026.4     | 41e4da5 |
-| U10-4 | Javadoc: `close()`, not `stop()`, before `System.exit()` and in hooks | 41e4da5 |
-| U10-7 | Javadoc: what `getStartupDuration()` includes and leaves out          | 41e4da5 |
-| U10-9 | Javadoc: the write buffer and the buffer time, 50 ms                  | 41e4da5 |
+| U10-3 | the write buffer is released when the storage's thread ends           | d10bcce |
+| U10-5 | the losers of the race to make the directory are refused as in use    | 49c2db9 |
+| U10-6 | `sync()` after `close()` returns                                      | 41eb7cf |
+| U10-2 | Javadoc: 10 MB of heap per started database, no setting in 2026.4     | e5765ab |
+| U10-4 | Javadoc: `close()`, not `stop()`, before `System.exit()` and in hooks | e5765ab |
+| U10-7 | Javadoc: what `getStartupDuration()` includes and leaves out          | e5765ab |
+| U10-9 | Javadoc: the write buffer and the buffer time, 50 ms                  | e5765ab |
 
 U10-8, and a setting of the write buffer (U10-2), are on Frans's list. On the fixed build:
 ProbeRecreate `b2` takes the start once the old close is done, with `/new.txt` there after

@@ -22,7 +22,7 @@ rebuild, as the touch no longer marks the nodes it replaces; with the marks
 kept (a switch) the checker passes every check.
 
 The clone `/Users/f/fl/bench/2026-11-10/p3/clone`, branch `023-p3-compact`
-(on `main`'s `99089978` with 023-03's `CleanupRule`, `251c4b65`). Code
+(on `main`'s `1901394c` with 023-03's `CleanupRule`, `251c4b65`). Code
 places below are file:line at the branch's head, in `java/src/bergdb/`.
 
 

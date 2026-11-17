@@ -72,7 +72,7 @@ Outcome
   `PubKeys.testUdir2idirRefusesBadDirs`: null, "", "/a", "a" and "/a//b/"
   throw `IllegalArgumentException`, and "/a/" and "/a/b/" convert; without
   the change it fails with the `BadFormatException`.
-* `before-commit.sh` passes, 1,018 unit tests and 67 f-tests, on `98ac9eb`
+* `before-commit.sh` passes, 1,018 unit tests and 67 f-tests, on `52d7e36`
   with 005-40 and the comment changes of 006-05, all uncommitted at the
   time.
 

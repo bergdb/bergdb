@@ -83,7 +83,7 @@ which is cheap and decides the GC assumption'"): G1 against ZGC on 004-02's 10M 
 shortened P4 soak, on F53. Started at 16:43.
 
 2026-10-25. 004-04 done (runs 2026-10-24 16:43 to 2026-10-25 06:30, unattended, on bergdb
-`7d14f65`), with Shenandoah (generational) and G1 with a 10 ms pause goal added, and
+`4fdec5b`), with Shenandoah (generational) and G1 with a 10 ms pause goal added, and
 Frans's target recorded: no stop-the-world above about 10 ms. Results in 004-04 section 3:
 under eviction only the concurrent collectors meet it (ZGC's pauses at most 0.02 ms and its
 safepoints 3.9 ms; Shenandoah's at most 0.53 and 0.55 ms; no stalls or fallbacks); G1

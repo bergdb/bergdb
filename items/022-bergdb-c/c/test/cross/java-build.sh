@@ -21,9 +21,9 @@
 #                      a release's source zip holds them, extracted once into
 #                      build/java-src/git-HASH/java/. Until 2026.4's tag the
 #                      default was the release candidate of 2026.4, main at
-#                      03ce6ec, 2026-11-09 18:42 (bergdb 022-02 and 022-04; record
+#                      d00096e, 2026-11-09 18:42 (bergdb 022-02 and 022-04; record
 #                      format 5, which C no longer writes or reads):
-#                      git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616
+#                      git:d00096e4d4a423dd36622617d32d0dc5ee00bf6a
 #   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01), the same
 #                      way. The harness's CorruptSet.java does not compile
 #                      against it (CorruptStreamTester.Config takes the keys

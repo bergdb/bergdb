@@ -1,4 +1,4 @@
-deps.py on java/src at cc8effb (before 006-08), all packages:
+deps.py on java/src at 4e0a849 (before 006-08), all packages:
 
 common uses nanotest
     package.html allows nanotest

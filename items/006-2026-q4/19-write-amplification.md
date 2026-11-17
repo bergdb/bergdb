@@ -460,7 +460,7 @@ On F53, one JVM at a time, nice 19, bytes only (deterministic; the
 machine was busy with other sessions' gates). WriteBench of 007-06 with a
 value size option (`-Dwb.val`), in
 `/Users/f/fl/bench/2026-11-09/a19/wb/`, on a copy of the main tree's
-`java/build/bergdb.jar` of 08:45 (main at 1d1b6f3, today's paced take),
+`java/build/bergdb.jar` of 08:45 (main at 25aac35, today's paced take),
 1,000 puts a transaction, 3M updates after the load:
 
 | Run                      | Bytes a put | Model | Checks                                | Time |

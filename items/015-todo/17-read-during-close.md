@@ -5,7 +5,7 @@ Status: done. Kind: Investigate. Created 2026-11-03 by Frans Lundberg.
 
 For release 2026.2, if it is a fault.
 
-What: in 016-08's F3 (F53, main at `323a54a`), `InterruptStress` failed
+What: in 016-08's F3 (F53, main at `c8e2f1e`), `InterruptStress` failed
 after 485 s of a 600 s run: "a worker failed", `StreamIoException: File
 closed, .../00000000022200.bergdb` at `Db.close` (1307), from a worker's
 close (`InterruptStress$1.once`, 167); its cause, the `IOException` "File
@@ -48,8 +48,8 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-03, 17:07 to 17:26, by agent J (016-05), in
-`/Users/f/fl/bench/016/015-17/repo` from `main` at `437cb48` (the code
-of the run, `323a54a`, differs in none of the classes below but `Db`'s
+`/Users/f/fl/bench/016/015-17/repo` from `main` at `60b7074` (the code
+of the run, `c8e2f1e`, differs in none of the classes below but `Db`'s
 line numbers):
 
 * **The promise.** For the get: a read while the database stops throws
@@ -61,7 +61,7 @@ line numbers):
   (`Db.close`, the Pub API's `Database.close`; 005-73, F5). Here nothing
   of the close failed: the get's read failed, and close() reported it.
   A fault, of 2026.2 only: `release-2026.1`'s `Db.close` dropped
-  `closeStorage`'s failure (F5 came in `3ad171d`).
+  `closeStorage`'s failure (F5 came in `afc3d20`).
 * **The interleaving**, from the trace in
   `/Users/f/fl/bench/016/h4-stress/f3/interrupt-111110000.txt` (W, the
   writer worker in its restart, `InterruptStress` line 167; R, a reader
@@ -97,7 +97,7 @@ line numbers):
      = ioException`, now R's exception; every file is closed already;
      `throw failure`. `closeInner` keeps it, `closeStorage` sets
      `closeFailure`, and `Db.close` throws `StreamIoException(closeFailure)`
-     (`Db` 1307 at `323a54a`), with R's `IOException` as the cause: the
+     (`Db` 1307 at `c8e2f1e`), with R's `IOException` as the cause: the
      trace exactly.
 * **Not the database's failure, nothing for a later start.** W's write
   of `STOPPING` (under `readSync`) comes before its `BufferedStream.close`
@@ -136,7 +136,7 @@ line numbers):
 * **The smoke**: `InterruptStress 180` on the fix, 17:19 to 17:22 (F53
   at a load of about 33): `INTERRUPT STRESS OK`, 47,050,490 calls, 19
   restarts. (The fault needs a stalled read; 1 in 485 s of F3.)
-* **The gate**: the clone rebased on `main` at `a047815` (015-01's
+* **The gate**: the clone rebased on `main` at `4948ec6` (015-01's
   change to `FileStream`, elsewhere in the file); `java/before-commit.sh`,
   17:22 to 17:24: `BEFORE COMMIT OK (134 s)`, 1,121 unit tests and 78
   f-tests.
@@ -151,5 +151,5 @@ line numbers):
   `STOPPING`.
 
 2026-11-03, 17:31, by the coordinator (016-05, H5): the review found no
-faults. The combined gate on `main` at `f82e7e7` with the patch:
+faults. The combined gate on `main` at `f070403` with the patch:
 `BEFORE COMMIT OK (130 s)`, 17:27 to 17:30.

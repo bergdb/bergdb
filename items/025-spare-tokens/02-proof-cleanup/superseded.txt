@@ -1,5 +1,5 @@
 # 025-02 (2026-11-14): names that items cite and that the prune removes as earlier versions,
-# each with what replaces it at the base (eb1a04a0). Feeds the name map (names.md); the
+# each with what replaces it at the base (b8517e8a). Feeds the name map (names.md); the
 # names step maps the successor to its new name. "-" = retired, the reason after it.
 DelFullFitsOK DelFullFitsOKR
 UpCascFitsOK UpCascFitsOKR

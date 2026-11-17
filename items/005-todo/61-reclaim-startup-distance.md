@@ -32,7 +32,7 @@ last valid meta block). But iterations start too seldom or too often.
 builder's default: 1 iteration instead of 65, and 20 times the stream
 kept. Made at 1000 MB (as 005-38 suggests for a large database) and opened
 with the default, an iteration may start every 100 MB of growth instead of
-every 2000 MB. The pattern is in the 2017 code (`195cf88`).
+every 2000 MB. The pattern is in the 2017 code (`0257e0b`).
 
 
 The fix
@@ -76,7 +76,7 @@ Outcome
 -------
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), at Frans's request (006-09),
-in a clone on `0f978f8`; the commit there is `59c6771` (java/ only).
+in a clone on `e6dbc82`; the commit there is `59c6771` (java/ only).
 
 * The change, as "The fix" says: `Reclaim.transactionCompleted` starts an
   iteration when `streamSize > lastPStart() + 2L * db.getStartupDistance()`;
@@ -97,7 +97,7 @@ in a clone on `0f978f8`; the commit there is `59c6771` (java/ only).
   * On the code before both fail: "Expected 21, got 1", and an iteration
     that started 224 KB after the last at a distance of 400 000.
 * StreamDigest (P2): `StreamDigest all` (12 configurations, modes plain,
-  reads, restarts), HEAD `0f978f8` against the fix: "DIGESTS IDENTICAL (36
+  reads, restarts), HEAD `e6dbc82` against the fix: "DIGESTS IDENTICAL (36
   of 36)". As expected: its restarts give the builder the configuration's
   distance, which is the stream's, and nothing in it calls
   `setStartupDistance`, so the copy and the live value were equal. A stream
