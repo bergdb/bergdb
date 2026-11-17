@@ -1538,3 +1538,16 @@ descent at the copy's pair finds it. `upCascSplitRest5OK_of_rest6`: left `UpCasc
 alone, the copy under the fill below an inner parent without room for its klong or
 compacting (the parent's split and the cascade above with the copy the hole: 030-01's R4,
 as l4b's `DelFullTimeHole2M` for the leaf); `upCascCallRuns_of_rest6` at the runs.
+
+2026-11-17, 02:51 to 02:55. Step 6, the copy below a made parent, prover l4e
+(`LiveUpCascCopy2.lean`, about 680 lines, most of them 02:50's lemma again).
+`writerWP_upCasc_below_copyMadeParent`: the copy of a stop node below the root, not made,
+split in time, under the fill below an inner parent that the transaction made, without
+room for the copy's klong or compacting, whose own last version is within a split's bound:
+the parent splits in time in place, its klong of the stop node naming the copy (l4b's
+`writerWP_handleFull_timeMadeParent_liveGh` at the swapped state), and the merges' descent
+finds the copy (`holeAtW_stopCopy` with the parent's new node, `KNode.searchLte_redirect`).
+`upCascSplitRest6OK_of_rest7`: left `UpCascSplitRest7OK`, the copy's parent not made by the
+transaction, or splitting in space, or the space root (the parent's own split and the
+cascade above with the copy the hole, as l4b's `DelFullTimeHole2M` for the leaf);
+`upCascCallRuns_of_rest7` at the runs.
