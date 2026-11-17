@@ -241,10 +241,24 @@ Decisions, with reasons:
   checker's B8 is now the statement's (key nodes). B11 stays the model's
   own check (a node made outside G and H was taken back); the statement
   asks that none is made (`within`, `OpsRun`), and the checker counts the
-  operations where that differs: 1 of 318,900 (a delete in the drain set
-  that makes a root one height too far and takes it back in the same
-  operation). Its transaction is accepted by the model and not covered by
-  `OpsRun` (D3); for puts there is no such case (`opsRun_of_runOps`).
+  operations after which the writer's list of such nodes is not empty: 55
+  of 318,900, all in one trace of the drain set (`d-long3b-5`: a delete
+  makes a root one height too far and takes it back in the same
+  operation; the list stays to the transaction's end). Such a transaction
+  is accepted by the model and not covered by `OpsRun` (D3); for puts
+  there is no such case (`opsRun_of_runOps`).
+- **Restated at 22:15, in 030-16's files, at the merge of main 53e66e73**
+  (030-16's delete with the merges on, root collapse and the merges' loop
+  were written on the statement of before the two restatements above; the
+  coordinator's message of 22:00). Its theorems now carry `OldReach` as
+  the put's do: `collapseRoot_spec`, `AfterOk`, `AfterOkW`, `MergeOk`,
+  `mergeUp_spec` take `OldReach i s w` after the invariant and give
+  `OldReach i s w'`; `wmg_pick_spec`, `merge_spec_of_rest` and the open
+  premise `WmgRestOk` (what is left of the merge) likewise; `wmg_sibling`
+  also takes that the klong it follows is live (the balance rule speaks
+  of live klongs). No conclusion is weaker than 030-16's. New:
+  `mergeOk_of_rest`, the merges' loop's premise `MergeOk` from
+  `WmgRestOk` (the two had been stated apart).
 
 
 # 4. What is proved (items 3 and 4)
@@ -494,6 +508,38 @@ the premises that are not proved or not given back, each tested:
   (`opsRun_of_runOps`), the view and `changesOf` are not. Tested: S, with
   the model's view computed from Java's structure before every traced
   transaction; the tree checker's C-T2.
+  A route for it (a plan, nothing of it written in Lean): a relation
+  between the model's abstract structure P and the tree s with the top tp
+  before time i, stronger than `Shows` because it speaks of every node of
+  P, reached or not: the key node x of s with klongs ks is in P with its
+  level and the entries of ks (`SIS.Tree.entriesOf`), the top nodes and
+  the root's entries are tp's, the values are s's. Then three parts.
+  (1) The relation gives `Shows` for `rootless (SIS.view P (i-1))`: the
+  model's reachable nodes at i-1 (`SIS.reachFrom`, by the live entries up
+  to the time, a pointer followed only to a lower level) are the tree's
+  reached ones (`reach`, by the live klongs; the level test is the
+  balance rule), and klongs to entries and back is the identity for
+  `klongsWf` klongs. (2) `P.apply i (changesOf i w)` has the relation
+  with `treeOf i s w` and `topOf i tp w`: for a node of the overlay not
+  taken, the entries of time i added are the new klongs' (the frame: the
+  klongs of earlier times are kept); a node made and not taken is new; a
+  node made and taken is in neither; a node of s taken keeps its entries.
+  (3) The same for the top node made. With (1) to (3), `Runs` no longer
+  takes the view at each step, only the relation at the start. The old
+  package has two of the pieces, proved for every accepted run with
+  premises on P only, none of them the joint induction's (read 22:30, not
+  yet used here): the round trip (`SIS.Tree.klongsRoundTrip`,
+  KlongRoundTrip.lean), and part (2) for the key nodes
+  (`SIS.Tree.apply_keyNode`, ApplyBridge.lean, the old TP7: a key node of
+  the structure after the transaction is an overlay node not taken, with
+  the overlay's klongs, or a node of P as it was; its premises
+  `KeyHistOK`, `ViewLinksOK`, `StructTimesLE` and the ids are the relation
+  in the old package's words, and `keyHistOK_step` keeps the first).
+  They can be imported: lean/contract depends on the old package since
+  030-07. Left to write: the relation in the contract's words, part (1)
+  (the two notions of reached), the top's part (3), and the join with
+  `Mid`. Estimate: 2,000 to 4,000 lines. No old hard case is in it:
+  nothing here reads the fill or asks that the writer accepts.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
@@ -517,16 +563,18 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 22:00. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 22:30. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
-evening on findings (section 3: the balance rule, `Shows`, the checker).
+evening on findings (section 3: the balance rule, `Shows`, the checker),
+and 030-16's delete, merges and root collapse (main 53e66e73) are carried
+to the restated statement.
 
 - Branch `030-10-writer` in the clone
-  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main dc642af1.
-  Last gated commit: caa4bdd4.
+  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 53e66e73.
+  Last gated commit: a3ec5ff8.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
-  dc642af1` (main's head as merged); after a change of a pinned file
+  53e66e73` (main's head as merged); after a change of a pinned file
   `lean/contract/pin.sh`, the pin file in the same commit.
 - Traces: `java/build.sh`, `cd lean && lake build treecheck`,
   `java/stress/treeconf.sh small`, `drain` and `reclaim`; then
@@ -704,3 +752,27 @@ this order:
    (the statement: key nodes); its B11 lets a node outside the bounds
    pass if it was taken back (the statement: none outside).
 4. `BalancedAll` in `WriterMeets`: restated (ea73b414).
+2026-11-17, 21:35 to 22:05. `Shows` restated for the nodes reached, with
+`OldReach` through every operation's theorem of the puts and of 030-16's
+landed delete files (three provers); `writercheck` with the model's view
+(caa4bdd4). `gate.sh dc642af1`: GATE OK; `writer.sh`: WRITER OK on the 195
+traces (the old `Shows` fails before 29,153 of the 29,735 transactions,
+the new one before none; 55 operations with a node outside the bounds,
+taken back, on the list); `contractcheck`, `bridgecheck` on small and
+drain: CONTRACT OK, BRIDGE OK. Not logged as gated on its own: it is in
+the merge below, which is the one to land.
+2026-11-17, 22:00. The coordinator: ea73b414 could not be landed, its
+merge into main 53e66e73 conflicts with 030-16's later work in
+`WriterDelSpace.lean` and `WriterDelTime.lean`; pull main, resolve, gate.
+2026-11-17, 22:05 to 22:30. Main 53e66e73 merged (1cf23286). 030-16's
+files of that work (`WriterDelDefs`, `WriterDelTime`, `WriterDelSpace`,
+`WriterCollapse`, `WriterMergeParent`, `WriterMerge`, `WriterMergeUp`)
+carried to the restated statement: its statements and proofs kept, the
+balance rule by the nodes reached, `OldReach` taken and given (section 3,
+"Restated at 22:15"; two provers). Then a3ec5ff8: `WmgRestOk` carries
+`OldReach`, and `mergeOk_of_rest`. `gate.sh 53e66e73`: GATE OK (192
+theorems, 128 files pinned). On the merge, before a3ec5ff8 (which
+changes two proof files and no checker): `writer.sh`: WRITER OK, the
+counts as above; `contractcheck`, `bridgecheck` on small and drain:
+CONTRACT OK, BRIDGE OK.
+GATED a3ec5ff8: main 53e66e73 merged; the balance rule and Shows restated (the nodes reached; OldReach) through the puts and 030-16's delete, merges and root collapse; writercheck with the model's view; mergeOk_of_rest.
