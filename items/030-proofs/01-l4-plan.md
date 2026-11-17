@@ -1827,3 +1827,13 @@ splits in time in place: q's node a leaf whose search of k1 names p's copy, whic
 last version and p's cached segment and height. `_R1` with the reads of the split's start as
 the round's above q: the descent at (g, h + 1) after the split finds the copy
 (`descendToHeight_redirectSeg`). The split step's R1: 46 of the 69 (25 + 15 + 6).
+
+2026-11-17, 04:04 to 04:06. The split step's R1 for the 15 where q splits in space below q0,
+prover l4g (`LiveSpaceRoomChildHole.lean`, about 370 lines, about 250 of them l4b's space
+split and 03:49's lemma again with the cache). `writerWP_handleFull_spaceRoomChildHole` and
+`_R1`: p's split (not made, in time) below q (a leaf, not made, without room, over the
+split's bound), which splits in space below q0 (inner, room for two klongs): q0's search at
+k1 names the half on k1's side, which names p's copy; with the round's descent and the
+reads of the split's start as S's above q0, the descent at (g, h + 1) after the split finds
+the copy (`descendToHeight_redirectSeg2`). The split step's R1: 61 of the 69; left the 8 at
+the space root through a space split (1 + 6) or q made in place at the root (1).
