@@ -404,7 +404,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`liveDel_upRoom`, `LiveUpRoom.lean`) calls `afterDelete key g 0` at the stop node (a
   segment leaf) with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW`, given the heights through
   the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
-  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
+  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). 01:25 (l4d):
+  `UpHtWalk` is false for every context (`upHtWalk_false`, `LiveUpHtFalse.lean`: a take-back
+  that leaves another node naming the node taken back), so these two never apply as stated. R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
@@ -440,9 +442,18 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (premises `MergeLiveOK`, `CollapseLiveOK`). 01:18 (l4b): the made segment root's space
   split in place below its segment leaf (`DelFullSegSpaceMadeM`, no room asked: the segment
   leaf's klong is repointed; `liveEdgesX_segSpaceInPlaceStep`, `LiveDelSegSpaceMade.lean`):
-  `liveDel_fullSegSpaceMade`, `liveDel_fullSegSpaceMade_live`. Left of step 5: the parent
-  full (the cascade), the made space root's space split, and a compacting split
-  ("bitmap.dead") of a last version above h below a parent. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  `liveDel_fullSegSpaceMade`, `liveDel_fullSegSpaceMade_live`. 01:20 (l4b): the made space
+  root's space split in place (`DelFullRootSpaceMadeM`, `liveEdgesX_rootSpaceInPlaceStep`,
+  `LiveDelRootMade.lean`): `liveDel_fullRootSpaceMade`, `liveDel_fullRootSpaceMade_live`.
+  01:26 (l4b): the space split's cascade: after a space split no hole is left, so the
+  parent's klongs go up through `writerWP_appendKlongs_chainGL` whatever the parents' room
+  (`writerWP_handleFull_spaceChain_live`, `LiveDelSpaceChain.lean`; the chain's premises
+  from `PathOK` and `RangeOrder` as the tree's proof takes them): the leaf not made by the
+  transaction below an inner parent (`DelFullSpaceChainM`): `liveDel_fullSpaceChain`,
+  `liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (the copy the hole
+  below the chain, R4), the made leaf's and the segment root's space split with a full
+  parent, and a compacting split ("bitmap.dead") of a last version above h below a parent or
+  at a made root. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into

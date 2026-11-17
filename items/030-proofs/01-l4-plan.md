@@ -1007,6 +1007,16 @@ room asked); the live counts hold after with no hole
 Left of step 5: the parent full (the cascade), the made space root's space split,
 and a compacting split of a last version above h below a parent.
 
+2026-11-17, 01:18 to 01:20. Step 5, the made space root's space split, prover
+l4b: the leaf at the space root made by the transaction, "bitmap.full", its last
+version without the key above h (`DelFullRootSpaceMadeM`, LiveDelRootMade.lean):
+it keeps the first half, a new node the second, under a new inner root
+(`writerWP_handleFull_rootSpaceMade_live`, by `liveEdgesX_rootSpaceInPlaceStep`):
+`liveDel_fullRootSpaceMade` and, with l4a's loop,
+`liveDel_fullRootSpaceMade_live`. Left of step 5: the parent full (the cascade),
+and a compacting split ("bitmap.dead") of a last version above h, below a parent
+or at a made root (a time split: the copy, or the leaf in place, is the hole).
+
 2026-11-17, 01:13 to 01:22. Step 3's rest, third part, prover l4c
 (`LiveMergeMade.lean`, about 1,000 lines; about 450 of them the room tail again, with the
 parent's change and the heights' cache's frame). `MergeTailFullRestOK` reduced to
@@ -1021,6 +1031,36 @@ reads and heights alike from the tail's frames, `writerWP_mergeCleanup_ghp` for 
 Left: p's space split (made, in place, or not), p not made and the space root (d = 1) or
 a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
 fired.
+
+2026-11-17, 01:00 to 01:25. R2's heights, prover l4d: `UpHtWalk` is false for
+every context, oracle and B (`upHtWalk_false`, `not_exists_upHtWalk`,
+LiveUpHtFalse.lean), so `liveDel_upRoom` and `liveDel_upRoom_live` never apply
+as stated. Its take-back step asks Ju kept by `takeBack x q k` for every x, q
+and k, from every state that `HtJ0` gives Ju. A state of three nodes of the
+transaction, q and z inner nodes of height 1 that both name the empty leaf x
+(x made by a split), meets `HtJ0` for every context; `takeBack x q 0` succeeds
+and leaves z, not taken back, naming x, taken back, so `HtCache` fails at z.
+The checked copy's `checkFree` is what excludes that state (`ht_takeBackChk`);
+at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
+true form needs the heights at the stop node's call from the walk's start and
+the loop's frame, not an invariant of every step (next).
+
+2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
+a space split no hole is left (both halves `HalfOK`), so R4's hole below the
+chain does not arise: the parent's klongs to the halves go up through
+`writerWP_appendKlongs_chainGL` (s = 0), whose live post needs only the live
+counts of the tree with the halves in place and the parent's klongs put
+(`liveEdgesX_spaceSplit_gen` from the start's), then the leaf left behind is not
+reached (`liveEdges_updN_unreach`): `writerWP_handleFull_spaceChain_live`
+(LiveDelSpaceChain.lean). Its chain premises come from the walk's `PathOK` and
+`RangeOrder` as in `writerWP_appendDeleteKlong_full_invT` (`rangeG_of_rangeOrder`,
+`lenG_of_splitAbove`, `pathOK_dist`; the divider in the parent's range by
+`mrg_child_range`). The case: the leaf not made by the transaction,
+"bitmap.full", above h, below an inner parent with or without room
+(`DelFullSpaceChainM`): `liveDel_fullSpaceChain` and, with l4a's loop,
+`liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (R4), the
+made leaf's and the segment root's space split below a full parent (the same
+route), and a compacting split of a last version above h.
 
 2026-11-17, 01:23 to 01:31. Step 3's rest, fourth part, prover l4c
 (`LiveMergeSpace.lean`, about 1,200 lines; about 700 of them the full tails' preludes and
@@ -1039,4 +1079,3 @@ Left: p not made and the space root (d = 1) or a segment root (q a segment leaf;
 split needs R1 at the root; a space split needs l4b's segment-root split on the merged
 tree), q full or compacting (the cascade, R4), and p made and split in space (in place,
 l4b's `writerWP_handleFull_spaceInPlaceRoom_live` on the merged tree). No stop rule fired.
-
