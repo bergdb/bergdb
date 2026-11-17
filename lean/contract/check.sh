@@ -10,7 +10,8 @@
 # Prints the summary of each set, then CONTRACT OK or CONTRACT FAILED; the lines
 # of every trace go to java/build/traces/tree-SET/contract.txt. First the checker's
 # own test, faults.sh (bergdb 030-09) and faults-top.sh (030-08): faults made in a
-# trace must fail it.
+# trace must fail it. PAR=N checks a set in N parts at once (default 4; par.sh,
+# bergdb 030-13): the medium set 1359 s in one part, under load.
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/contractcheck
 [ -x "$CHECK" ] || { echo "CONTRACT FAILED: no checker; run lake build in lean/contract/"; exit 1; }
@@ -21,7 +22,7 @@ FAILED=0
 for set in $SETS; do
     dir=../../java/build/traces/tree-$set
     ls $dir/*.trace > /dev/null 2>&1 || { echo "CONTRACT FAILED: no traces in $dir"; exit 1; }
-    "$CHECK" $dir/*.trace > $dir/contract.txt 2>&1 || FAILED=$((FAILED + 1))
+    sh par.sh "$CHECK" $dir/contract.txt $dir/*.trace || FAILED=$((FAILED + 1))
     echo "tree-$set: $(grep '^total: ' $dir/contract.txt | sed 's/^total: //')"
     grep 'first: ' $dir/contract.txt | head -5
 done
