@@ -220,3 +220,4 @@ BEFORE COMMIT OK (63 s), TRANSCHECK OK; gate base 9a6692cf.
 2026-11-17, 15:27 to 15:57. Pulled main 9a6692cf (030-08's C4), faults.sh
 still passes; TransCheck and its tester, measured, transcheck.sh; the
 medium set, contract check only, 27 of 27.
+GATED 0adeacb6: the item done: the medium set 27 of 27 CONTRACT OK; result and State note.
