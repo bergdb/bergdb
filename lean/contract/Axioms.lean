@@ -55,3 +55,8 @@ open Contract
 #print axioms bridge_cut_restart
 #print axioms bridge_cut_handles
 #print axioms Contract.BridgeExample.meetsEvict
+#print axioms checkBridgeTx_sound
+#print axioms checkEvictTx_sound
+#print axioms frame_modelD
+#print axioms bridge_debt
+#print axioms bridge_liveHeight

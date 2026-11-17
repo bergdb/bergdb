@@ -34,6 +34,11 @@ assumptions for lazy reading and eviction hold too (`bridge_treeRunOK`,
   records stay those of the run without cuts, also with eviction
   (`bridge_cut_recover`, `bridge_cut_restart`, `bridge_cut_handles`).
 
+D as state (bergdb 030-06, finding 5): the frame, clause 3 of the contract,
+holds with the model's D in place of the contract's free D (`frame_modelD`,
+Proof/BridgeDirty.lean): every key node that a transaction changes or makes
+is in the model's D when the transaction ends.
+
 The model's algorithm `al` is any: its startup pos policy (the take) is free.
 Its still-dirty test is BergDB's (`javaTest`).
 
@@ -54,6 +59,7 @@ import SIS.Proof.HandleCutT12
 import Contract.Theorems
 import Contract.TheoremsShape
 import Contract.Proof.BridgeTree
+import Contract.Proof.BridgeDirty
 
 namespace Contract
 
