@@ -67,7 +67,10 @@ Kept current; the Log has the times.
   every key node of the tree, not only D's; the frame carries the rest). Its
   fault: `faults.sh`'s `kindh0` (the TREE line's h set to 0: KIND fails, no
   other clause). On the small, drain and reclaim sets: CONTRACT OK, 195
-  traces, 29,735 transactions, KIND 0 in both checkers.
+  traces, 29,735 transactions, KIND 0 in both checkers; on the whole medium
+  set (`treeconf.sh medium`, 27 traces: m-big, m-mixed, m-long, m-long3,
+  m-r-del, m-fifo, m-d8, m-d30, m-d62, 3 seeds each; 13,667 transactions,
+  736,718 operations): every trace passes `contractcheck`, KIND 0.
 - **One premise for every time** (brief item 3, 030-14's State note item
   3): Java's tree after a startup need only hold the model's structure
   **whole** (`HoldsP`: every node but the root and the top nodes, a key node
@@ -269,3 +272,15 @@ one premise for every time (`HoldsP`: Java's tree holds the structure whole;
 `holdsView_whole` from the prefix lemmas W1 to W5 and `entriesOf_prefixAt`);
 the premise met by the tree as written; `gate.sh 3f1e2fea` GATE OK (182
 theorems).
+21:38 Merged `main` d7966251 (the coordinator had landed 3a7d6c87 and
+d295d76a with 030-10's work): `statements.pin` in conflict, rebuilt with
+pin.sh. `gate.sh d7966251`: GATE OK (188 theorems; with base 3f1e2fea step 4
+would name main's own items/006 file). `check.sh small drain reclaim` on the
+merged tree: CONTRACT OK. Commit 1e87043b.
+GATED 1e87043b: item 3 (`HoldsP`, the whole-node premise, f5ec04d6) on main
+d7966251; `gate.sh d7966251` GATE OK (188 theorems); check.sh small drain
+reclaim CONTRACT OK.
+21:40 `contractcheck` (KIND in it) on the whole medium set, written here
+(`treeconf.sh medium`, TREECHECK=none, 87 s): 27 traces, 13,667
+transactions, all pass, KIND 0 (par.sh, 4 parts, about 12 minutes at a load
+of 40). The large set started the same way.
