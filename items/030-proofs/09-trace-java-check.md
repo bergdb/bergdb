@@ -116,3 +116,6 @@ commit-time check) next, then item 6 (the medium set).
 2026-11-17, 15:09 to 16:10. Read the brief, 030-04 to 030-06 and the
 package; the completeness pass, `historyOk_meets`, the LIVE check, the
 exporter's klong diff and fault, faults.sh; the level 2 sets rerun.
+GATED e58d56f8: the trace's completeness (F1, F2, F7), KN from a klong diff, LIVE lines
+checked, `historyOk_meets`, faults.sh, 030-04 3.5 items 6 to 9 (F6); BEFORE COMMIT OK,
+level 2 sets TREECONF OK and CONTRACT OK.
