@@ -83,3 +83,5 @@ import Contract.Proof.WriterTimeSplitH
 import Contract.Proof.WriterPutSeg
 import Contract.Proof.WriterTimeSplitO
 import Contract.Proof.WriterSpaceSplitO
+import Contract.Proof.WriterDelKeep
+import Contract.WriterBalancedFalse

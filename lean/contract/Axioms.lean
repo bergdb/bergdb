@@ -148,3 +148,11 @@ open Contract
 #print axioms writerMeets_puts
 #print axioms handleFull_time_o
 #print axioms handleFull_space_o
+#print axioms handleFullD_time
+#print axioms handleFullD_space
+#print axioms appendDeleteKlong_spec
+#print axioms afterOk_off
+#print axioms putKv_del1_keep
+#print axioms putKv_del1_keep_off
+#print axioms Contract.WriterBalancedFalse.writerMeets_false
+#print axioms Contract.WriterBalancedFalse.opStep_false
