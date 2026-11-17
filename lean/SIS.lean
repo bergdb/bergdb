@@ -146,6 +146,7 @@ import SIS.Tree.LiveUpCascBelow
 import SIS.Tree.LiveUpCascMade
 import SIS.Tree.LiveUpCascTime
 import SIS.Tree.LiveUpCascRootMade
+import SIS.Tree.LiveUpCascCopy
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace

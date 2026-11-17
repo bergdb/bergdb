@@ -1524,6 +1524,21 @@ the 69 (R4's general case: the copy is the hole and q's cascade moves it; the ne
 descent must find it through the changed levels, R1 through the cascade), a space split
 below a full inner parent (0), p made and split in space (0). No stop rule fired.
 
+2026-11-17, 02:38 to 02:50. Step 6, the copy below a parent with room, prover l4e
+(`LiveUpCascCopy.lean`, about 1,100 lines, about 600 of them `holeAtW_stop` and the swap
+prelude again). R1 at the copy (`holeAtW_stopCopy`): `holeAtW_stop`'s argument (the key's
+descent at the walk's end is the walk's path, the stop node ends one segment's search) with
+the parent's step redirected to the copy (`lteP_redirect`), the parent inner so the copy is
+not its segment's root (`dsrFold_shape`), and the cut at the copy (`holeAtW_cut`).
+`writerWP_upCasc_below_copyRoom`: a stop node below the root, not made, split in time below
+an inner parent with room for the copy's klong and no compaction: at the state with the
+stop node's bitmap, l4a's `writerWP_handleFull_timeRoom_liveGh` leaves the live counts but at
+the copy, moved by the swap; with the kinds after the split (`kd_handleFull`) the merges'
+descent at the copy's pair finds it. `upCascSplitRest5OK_of_rest6`: left `UpCascSplitRest6OK`
+alone, the copy under the fill below an inner parent without room for its klong or
+compacting (the parent's split and the cascade above with the copy the hole: 030-01's R4,
+as l4b's `DelFullTimeHole2M` for the leaf); `upCascCallRuns_of_rest6` at the runs.
+
 2026-11-17, 02:44 to 02:55. Step 3's rest, the merge tails' shared prelude folded (the
 coordinator's step 1, scaled to what fits), prover l4f. Rule: the full continuation lemma
 (the prelude up to `mergeParent` with the state's facts handed on) was judged too big for
