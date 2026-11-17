@@ -722,6 +722,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   made and split in space (0). Top: `invGetScanOK_merges_noL4Night` (`LiveNightTop.lean`),
   premises `hp`, `hth`, `MergeTailRuns10`, `R3Calls` (believed false at unreached states),
   `DelCaseLive DelFullTimeHole2M`, `UpCascSplitRest7Runs`.
+  03:19 (prover l4g, `LiveRedirectSeg2.lean`): R1 for the 69 at the state level,
+  `descendToHeight_redirectSeg2` (no premises): `descendToHeight_redirectSeg` with the
+  redirect one level up: p a segment root below its segment leaf q, q below an inner q0;
+  where q0's search now names a new leaf q' (q's copy or half) whose klong names p's copy,
+  the descent one height up ends at the copy. Left: the writer's two splits (p's, then q's
+  with the copy's klong put) with the copy the hole.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

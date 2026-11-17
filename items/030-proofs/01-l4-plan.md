@@ -1625,3 +1625,16 @@ the hole's parent splits too (its copy or a half between q0 and the hole): l4b's
 R1 at the state level (a `holeAtW_stopCopy` with this lemma for `lteP_redirect`) and the
 writer's two splits with the hole below (the parent's split with the copy's klong put,
 `handleFullWith` with `ins`), as a successor's step.
+
+2026-11-17, 03:13 to 03:19. R4's two changed levels at the merges' descent, prover l4g
+(`LiveRedirectSeg2.lean`, about 290 lines). `descendToHeight_redirectSeg2`, no premises:
+`descendToHeight_redirectSeg` (02:22's R1 for a segment root p below its segment leaf q
+with room) with the redirect one level higher, for l4f's 69 thin-copy cascades (each a
+segment root below a full segment leaf). The descent at (g, h) found x below p, p below q,
+q below q0, inner (so q is no segment root: q0 is in the same segment's tree); on a state T
+that reads alike above q0, where q0's search of the previous segment's compare value names
+a new leaf q' (q's copy, or the half that keeps p's klong) whose klong names y of height
+h + 1, the descent at (g, h + 1) ends at y. By `lteP_redirect` at q0 (q' a leaf, so one
+level suffices in the segment's tree) and the segment search's last step at q'. Not
+covered: q a segment root too (q0 a segment leaf) and q the space root (a new root).
+Left for the 69: the writer's two splits with the copy the hole.
