@@ -1580,3 +1580,24 @@ for Java's parameters, premises `hp`, `hth`, `MergeTailRuns9`, `R3Calls` (believ
 at unreached states, so the theorem is believed vacuous until R3 is restated),
 `DelCaseLive DelFullTimeHole2M` and `DelCaseLive DelEmptyCascM`: l4b's
 `invGetScanOK_merges_noL4d` with `MergeTailRuns9` for `MergeTailRuns6`.
+
+2026-11-17, 03:00 to 03:04. Step 3's rest, eleventh part, and step 7, prover l4f
+(`LiveMergeInnerChain.lean`, about 560 lines, about 260 of them l4b's leaf cascade again;
+`LiveNightTop.lean`). `MergeTailFullRest9OK` reduced to `MergeTailFullRest10OK`, its case
+`MergeFullSpaceInnerChain` proved: p, not made, split in space below an inner parent q,
+whatever q's room (0 on the runs; with the segment-root case every space split of a
+not-made parent is now proved). The split is `splitStepOKX_innerChain`: l4b's
+`writerWP_handleFull_spaceChain_live` on the merged tree
+(`writerWP_handleFull_spaceChainV_live`), the halves' divider in q's link's range from
+the last version's (`hhalves_of_sorted`, with `mergeLast_range` at the round and
+`mergeGOK_mergeM2`). `writerWP_afterDelete_liveTR10`, `MergeTailRuns10`,
+`invGetScanOK_merges_noL4g`. At the coordinator's ask, the night's one top theorem:
+`invGetScanOK_merges_noL4Night` (`LiveNightTop.lean`), TP7, TP10 and TP11 for Java's
+parameters with premises `hp`, `hth`, `MergeTailRuns10` (l4f), `R3Calls` (believed false
+at unreached states: the theorem is believed vacuous until R3 is restated),
+`DelCaseLive DelFullTimeHole2M` (l4b) and `UpCascSplitRest7Runs` (l4e, through
+`upCascCallRuns_of_rest7` and `delCaseLive_emptyCasc`). Left in `MergeTailFullRest10OK`:
+the time split's cascade into one node with the copy thin (69 on the runs: a segment root
+below a full segment leaf, the copy one live klong; the classifier's hole note shows the
+descent at h + 1 finding the copy on every one, so the case's R1 holds on the runs), and
+p made by the transaction split in space (in place; 0 on the runs).
