@@ -76,3 +76,8 @@ open Contract
 #print axioms full_cut
 #print axioms writerMeets_of_opStep
 #print axioms runs_meetsTop_of_opStep
+#print axioms Contract.BridgeExample4.meetsFull
+#print axioms Contract.BridgeExample4.meetsAll
+#print axioms policyCutOK_of_blind
+#print axioms full_cut_blind
+#print axioms Contract.BridgeExample4.entries_forget

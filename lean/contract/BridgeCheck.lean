@@ -33,7 +33,13 @@ twice as long.
 D is as in the contract checker: D after the record before and the nodes
 that got dirty. Prints one line per trace and BRIDGE OK or BRIDGE FAILED; a
 failure names the trace and the transaction.
+
+Before that, the trace must be whole, as for the contract checker
+(`completeFault`, Complete.lean; bergdb 030-11, finding 4): no ERROR line, no
+line of an unknown kind, the transactions numbered 0, 1, 2, ... and a DONE
+line naming the last.
 -/
+import Contract.Complete
 import Contract.BridgeHeap
 import Contract.Trace
 import Contract.TraceTop
@@ -166,6 +172,9 @@ def main (args : List String) : IO UInt32 := do
   let mut total : BCounts := {}
   for path in paths do
     let lines ← IO.FS.lines path
+    if let some e := completeFault lines then
+      IO.println s!"{path}: not whole: {e}"
+      failed := failed + 1
     let old := SIS.Check.parseTrace (← IO.FS.readFile path)
     match readTrace lines with
     | .error e =>
