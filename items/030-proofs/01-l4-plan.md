@@ -1501,3 +1501,25 @@ copy of a stop node below the root, not made, split in time, under the fill belo
 parent (the hole at the copy: R1 at the copy with the key's descent cut there, and with a
 parent without room the cascade above it, 030-01's R4); `upCascCallRuns_of_rest5` at the
 runs.
+
+2026-11-17, 02:33 to 02:40. Step 3's rest, tenth part, prover l4f
+(`LiveMergeTimeChain.lean`, about 460 lines, about 250 of them l4b's time-split cascade
+again). `MergeTailFullRest8OK` reduced to `MergeTailFullRest9OK`, its case
+`MergeFullTimeChain` proved: p, not made, split in time below q (d ≥ 2; it compacts or its
+last version is within the split's bound), whatever q's room, with no hole after (into two
+nodes, or into one whose last version holds m live klongs or more). The no-hole tail takes
+it with the split `splitStepOKX_timeChain`: l4b's `writerWP_handleFull_timeChain_live` on
+the merged tree (`writerWP_handleFull_timeChainV_live`, from V's live counts, with the
+nodes reached after), its chain premises from the path at the merge's start as for the
+segment-root cascade. Before this part the no-hole tail was generalized (gate 3): the
+split gets the compaction flag (`compact = true ↔ C`), and into one node any last version
+with m live klongs or more serves, not only a space split's. Runs: l4c's classifier with
+the hole after a merge into one node and the copy's count
+(`/Users/f/fl/bench/2026-11-16/night/l4f/runs/merge-full-holes.lean.txt`, out.txt, 2 min
+27 s): of the 196 time-split cascades, 79 into two nodes, 48 into one with the copy
+filled (no hole), 69 into one with the copy thin (a hole; every one a segment root below a
+full segment leaf). Proved: 1,065 of the 1,134 full-parent merges (94%).
+`writerWP_afterDelete_liveTR9`: premises `MergeTailFullRest9OK`, `MergeParamsOK`, R3. Left:
+the 69 (R4's general case: the copy is the hole and q's cascade moves it; the next round's
+descent must find it through the changed levels, R1 through the cascade), a space split
+below a full inner parent (0), p made and split in space (0). No stop rule fired.
