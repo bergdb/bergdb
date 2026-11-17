@@ -1,6 +1,6 @@
 # 030-09. The trace's completeness and Java's own check of the contract
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 Step 4c of 030-04, the night of 17 to 18 November: the tested half of the
 contract approach made solid. Every traced transaction is checked
@@ -50,7 +50,21 @@ in its tests. Written by an agent of coord-1117 ("I" below), on the branch
   291,691 operations, 84,000 GET, 21,000 SCAN, 2,729,666 LIVE, no failure.
 - **The assumptions reads rest on** beyond 030-04's five (F6): written into
   030-04, section 3.5, as items 6 to 9, each with its test.
-- **Java's commit-time check:** in progress (section 3).
+- **Java checks the contract itself, in its tests** (section 3):
+  `TransCheck`, off by default, on with `transcheck=1`. After each
+  transaction's puts it checks, on the nodes the transaction made, changed
+  or replaced and on their neighbours, the invariants, the contents of the
+  transaction's keys and of the leaves it touched, the frame and D, and
+  Java's search. On in the unit tests (`before-commit.sh`, `unit.sh`; no
+  cost seen); the f-tests with it are `java/stress/transcheck.sh`, a step
+  of `night.sh`, since there it costs about 7 s. No failure in 4.3 million
+  transactions of the unit tests and f-tests, with restarts, eviction,
+  reclaim and the Pub layer; `TransCheckTester` shows that it finds four
+  kinds of fault made on purpose.
+- **The medium set, contract check only** (030-05 stopped at 16 of 27):
+  all 27 traces CONTRACT OK, 13,667 transactions, 736,718 operations,
+  109,336 GET, 27,334 SCAN, node sizes 8 to 62; no trace not whole, no
+  ERROR line. 51 s to export, 319 s to check, four at a time (section 4).
 
 
 # 2. Decisions
@@ -162,15 +176,30 @@ step 2b of `night.sh`.
 - `java/before-commit.sh`: BEFORE COMMIT OK (67 s).
 - `java/stress/treeconf.sh small` and `drain`: TREECONF OK.
 - `lean/contract/check.sh small drain`: CONTRACT OK (36 s, with faults.sh).
-- `lean/contract/faults.sh`: FAULTS OK.
+- `lean/contract/faults.sh`: FAULTS OK (also after 030-08's merge, with C4).
+- Java's check: `java/stress/transcheck.sh` TRANSCHECK OK (unit and f-tests
+  with the check, 66 s); `before-commit.sh` with it in the unit tests:
+  BEFORE COMMIT OK (63 s); `TransCheckTester`: 4 faults found.
+- The medium set: `TraceExport` with `tree=1` on `treeconf.sh medium`'s 9
+  configurations, seeds 1 to 3, then `contractcheck` on each trace (no
+  `treecheck`): 27 of 27 CONTRACT OK, C1 to C4, R1 no failure. The script
+  is in my scratch (`/Users/f/fl/bench/2026-11-17/night/s4c/medium.sh`):
+  the medium function's lines of `treeconf.sh`, each config with
+  `-Dtree=1` and seeds 1 to 3, then `lean/contract/.lake/build/bin/contractcheck`.
 
 
 # State
 
-2026-11-17, 16:10. Items 1 to 4 of the brief done and gated; item 5 (Java's
-commit-time check) next, then item 6 (the medium set).
+2026-11-17, 15:57. The brief's six items are done; the last gated commit is
+2c8a9da3 (gate base 9a6692cf). Nothing is open here. What could follow:
+the f-tests' check in `before-commit.sh` if its 7 s are made smaller (the
+walk at tt - 1 and the reads of the leaves' keys are most of it, by
+reading the code, not measured); the check in the startup's rerun
+(DbStarter puts through the Dag, not `Db.putKvs`); `live=1` in more tree
+configurations.
 
 - Branch `030-09-java-check` in `/Users/f/fl/bench/2026-11-17/night/s4c/clone`.
+- Java's check: `java/stress/transcheck.sh`; `java/unit.sh -c TransCheckTester`.
 - To build: `java/build.sh`; `cd lean/contract && lake build`. The traces:
   `java/stress/treeconf.sh small` and `drain` (needs `cd lean && lake build
   treecheck`). The check: `lean/contract/check.sh small drain`. The gate:
@@ -179,9 +208,16 @@ commit-time check) next, then item 6 (the medium set).
 
 # Log
 
-2026-11-17, 15:09 to 16:10. Read the brief, 030-04 to 030-06 and the
+2026-11-17, 15:09 to 15:27. Read the brief, 030-04 to 030-06 and the
 package; the completeness pass, `historyOk_meets`, the LIVE check, the
 exporter's klong diff and fault, faults.sh; the level 2 sets rerun.
 GATED e58d56f8: the trace's completeness (F1, F2, F7), KN from a klong diff, LIVE lines
 checked, `historyOk_meets`, faults.sh, 030-04 3.5 items 6 to 9 (F6); BEFORE COMMIT OK,
 level 2 sets TREECONF OK and CONTRACT OK.
+GATED 2c8a9da3: Java's own check of the contract in its tests (TransCheck, off by default;
+on in the unit tests, the f-tests in stress/transcheck.sh, a night.sh step), TransCheckTester;
+BEFORE COMMIT OK (63 s), TRANSCHECK OK; gate base 9a6692cf.
+2026-11-17, 15:27 to 15:57. Pulled main 9a6692cf (030-08's C4), faults.sh
+still passes; TransCheck and its tester, measured, transcheck.sh; the
+medium set, contract check only, 27 of 27.
+GATED 0adeacb6: the item done: the medium set 27 of 27 CONTRACT OK; result and State note.
