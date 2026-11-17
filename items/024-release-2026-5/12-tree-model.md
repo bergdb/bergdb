@@ -531,7 +531,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `LiveUpCascCopy.lean`: l4a's `writerWP_handleFull_timeRoom_liveGh` at the swapped state; R1
   at the copy, `holeAtW_stopCopy`: `holeAtW_stop` with the parent's step redirected); left
   `UpCascSplitRest6OK`: the copy's parent without room or compacting (the cascade with the
-  copy the hole, R4), `upCascCallRuns_of_rest6`.
+  copy the hole, R4), `upCascCallRuns_of_rest6`. 02:55 (l4e): the copy below an inner parent
+  that the transaction made, full or compacting, split in time in place, is proved
+  (`writerWP_upCasc_below_copyMadeParent`, `LiveUpCascCopy2.lean`, by l4b's
+  `writerWP_handleFull_timeMadeParent_liveGh`); left `UpCascSplitRest7OK` (the copy's parent not
+  made, split in space, or the space root), `upCascCallRuns_of_rest7`.
   (the copy below an inner parent with fewer than m live klongs). 02:18 (l4b): R4 narrowed
   further (`LiveDelHoleMade.lean`): below a parent that the transaction made, full or
   compacting, whose own split is in time (in place), the copy stays the hole under the same
