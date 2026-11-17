@@ -523,6 +523,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   is proved through the cascade (`writerWP_upCasc_below_timeFillH`, `LiveUpCascTime.lean`, by
   l4b's `writerWP_handleFull_timeChain_live`); left `UpCascSplitRest4OK` (the copy under the
   fill below an inner parent: the hole at the copy; a made space root), `upCascCallRuns_of_rest4`.
+  02:36 (l4e): a made space root's split (in place, in time or in space) leaves no hole
+  (`writerWP_upCasc_rootMade_H`, `LiveUpCascRootMade.lean`); left `UpCascSplitRest5OK` alone: a
+  stop node below the root, not made, split in time, its copy under the fill below an inner
+  parent (the hole at the copy, with room or the cascade), `upCascCallRuns_of_rest5`.
   (the copy below an inner parent with fewer than m live klongs). 02:18 (l4b): R4 narrowed
   further (`LiveDelHoleMade.lean`): below a parent that the transaction made, full or
   compacting, whose own split is in time (in place), the copy stays the hole under the same
