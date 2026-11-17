@@ -1046,6 +1046,7 @@ true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
 
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1122,6 +1123,7 @@ of a last version above h.
 
 
 
+
 2026-11-17, 01:39 to 01:41. Step 5, the compacting split, prover l4b
 (LiveDelFullDead.lean): a full leaf whose bitmap compacts ("bitmap.dead",
 "bitmap.inplace.dead") splits in time whatever its last version's size; the split
@@ -1155,6 +1157,28 @@ h + 1. Into two nodes the copy is filled under the segment leaf too
 `writerWP_mergeTail_liveFullTimeRoundG` takes both; the earlier ones are its instances.
 `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`, `MergeParamsOK`, R3.
 Left: p not made and the space root (d = 1; 93 on the runs), a segment root's space split
+(127), q full or compacting (the cascade, R4; 196), and p made and split in space (0 on the
+runs). No stop rule fired.
+
+2026-11-17, 01:44 to 01:50. Step 7, the assembly, prover l4b (LiveAssembly.lean):
+`invGetScanOK_merges_noL4`, TP7, TP10 and TP11 for Java's parameters without
+`l4`, a corollary of `invGetScanOK_merges_l4L` with `htbL` proved
+(`takeBelowFuelDelSL_holds`) and `l4L` from `liveDelSL_of_pieces`. Its premises
+besides `hp` and `hth` are `l4`'s open narrow pieces, each at the induction's runs
+(`RunTreeQ p (LatestQD p)`): `MergeTailRuns` (l4c's `MergeTailFullRest3OK` at the
+runs' contexts), `R3Calls` (R3 at the calls of `afterDelete`, with the call's
+facts), and in the delete cases' form (`DelCaseLive`: from the first stratum's
+start to the call of `afterDelete` with the hole) the full leaf split in time below
+a parent without room (`DelFullTimeCascM`, R4) and the upward delete whose stop
+node has no room (`DelEmptyCascM`, prover l4e's). `liveDelSL_of_pieces`: `SJ0` from
+the induction's facts (as `jointHtJ_reached0L` builds it), `TakeJ2` is `J2At`, and
+the cases: the noop and the key with no leaf excluded by the open case,
+`delMerge_cover`, the emptied leaf by `delEmptyM_split` and `delEmptyOther_split`
+(l4d's `liveDel_upRoomH`, `liveDel_emptyRoot`, the premise), the bitmap with room
+(`liveDel_room`), the full leaf by `delFullM_cover` into nine cases, all proved but
+R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
+(`afterDelete_live_runs`). When a piece lands, its premise goes.
+
 (127, 60 of them with a cascade), q full or compacting (the cascade, R4; 256 in all: 196
 in time, 60 in space), and p made and split in space (0 on the runs). No stop rule fired.
 
@@ -1176,6 +1200,11 @@ below the chain, R4's general case), and p made and split in space (0 on the run
 this part the proved cases cover 785 of the 1,134 full-parent merges on the runs (69%);
 left 349: the cascade 256, the space root 93. No stop rule fired.
 
+2026-11-17, 01:53. Step 7, a successor as l4c's fifth part landed:
+`invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
+(l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
+`mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
+
 2026-11-17, 01:52 to 01:59. Step 3's rest, seventh part, prover l4c (`LiveMergeRoot.lean`,
 about 900 lines, about 450 of them the time tail's prelude again). `MergeTailFullRest5OK`
 reduced to `MergeTailFullRest6OK`, its case `MergeFullTimeRoot1` proved: a merge into one
@@ -1189,4 +1218,3 @@ leaf, so the key's segment is the first). `writerWP_afterDelete_liveTR6`: premis
 `MergeTailFullRest6OK`, `MergeParamsOK`, R3. On the runs the proved cases now cover 837 of
 the 1,134 full-parent merges (74%); left 297: the cascade 256, the space root split in
 time into two nodes 29 or in space 12. No stop rule fired.
-
