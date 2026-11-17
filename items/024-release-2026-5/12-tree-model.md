@@ -423,9 +423,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   halves hold m live klongs and more (`halves_del_halfOK`), so the live counts hold after
   with no hole (`writerWP_handleFull_spaceRoom_live`, `LiveDelSpace.lean`):
   `liveDel_fullSpaceRoom`, `liveDel_fullSpaceRoom_live` (premises `MergeLiveOK`,
+  `CollapseLiveOK`). 01:02 (l4b): the full leaf at the space root, not made by the
+  transaction (`DelFullRootM`), split in time (a new root holds its last version; a leaf
+  root asks no count, `liveEdges_root_shrink`) or in space (halves under a new inner root):
+  the live counts hold after with no hole (`writerWP_handleFull_root_live`,
+  `LiveDelRoot.lean`): `liveDel_fullRoot`, `liveDel_fullRoot_live` (premises `MergeLiveOK`,
   `CollapseLiveOK`). Left of step 5: the parent full (the cascade), the parent a segment
-  leaf or the leaf at the space root (a new root), the made leaf's space split (in place),
-  and a compacting split ("bitmap.dead") of a last version above h. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  leaf (a new segment root), the made leaf's space split (in place), the made space root's
+  space split, and a compacting split ("bitmap.dead") of a last version above h below a
+  parent. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into

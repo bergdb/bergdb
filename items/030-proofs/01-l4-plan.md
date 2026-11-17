@@ -934,3 +934,17 @@ parent, which needs a live copy of `writerWP_fullSplit_chainG`'s premises (its
 a segment leaf or the leaf at the space root (a new root above the halves), the
 made leaf's space split in place, and a compacting split ("bitmap.dead") of a
 last version above h.
+
+
+
+2026-11-17, 00:58 to 01:02. Step 5, the full leaf at the space root, prover
+l4b: not made by the transaction (`DelFullRootM`, LiveDelRoot.lean), any branch
+of the bitmap: a time split puts its last version without the key in a new root
+(a leaf root asks no count of its own, `liveEdges_root_shrink`; then
+`liveEdgesX_rootTimeStep`), a space split puts its halves (`HalfOK`) under a new
+inner root of two live klongs (`liveEdgesX_rootSpaceStep`); the live counts hold
+after with no hole (`writerWP_handleFull_root_live`): `liveDel_fullRoot` and,
+with l4a's loop, `liveDel_fullRoot_live`. Left of step 5: the parent full (the
+cascade), the parent a segment leaf, the made leaf's space split in place, the
+made space root's space split, and a compacting split of a last version above h
+below a parent.
