@@ -31,7 +31,7 @@ Files
   Artificial Analysis comparison of GPT-6.1 Sol, GPT-6 Astra, Claude Opus,
   Sonnet and Haiku 5.5: intelligence, estimated task time, time to first
   token, time for a 500-token answer and API-equivalent cost per task;
-  what the figures mean for Frans's subscriptions and model choices.
+  the model choices made from it.
 
 
 Log
@@ -86,3 +86,7 @@ for such a task at the coordinator's judgment, when usage is plenty or
 normal; the coordinator itself stays at xhigh, all at high when usage is
 tight or limit (013-02, section 9; the skill; 013-01, section 4). This
 replaces xhigh for every subagent.
+
+2026-11-17. 013-03 rewritten for the public repository (029): the
+comparison kept (the table, the figures, the method), the personal and
+business details removed; the earlier versions are not published.
