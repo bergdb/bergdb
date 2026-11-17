@@ -118,3 +118,4 @@ The defaults below go ahead unless Frans says otherwise before he leaves.
   reports its gated pieces in its item's Log; the coordinator lands them.
 * **The morning:** the outcome in section 6 and a `news.md` summary by 06:30.
 * 15:50 030-08 done and landed (2043fc00): the top in the contract, Java's top search proved right (TP24), Java's get and scan right at every time. Started 030-10, a spike: does the model's writer meet the contract (Fable at high; the coordinator's decision).
+* 15:58 030-09 done and landed: Java checks the contract itself in its tests (4.3 million transactions, no failure); a checked trace is proved to be a history that meets the contract. Started 030-12: the contract on the large sets (Opus at high).
