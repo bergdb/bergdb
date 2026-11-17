@@ -165,6 +165,12 @@ open Contract
 #print axioms Sound.mergeOne
 #print axioms Sound.mergeTwo
 #print axioms mergeParent_spec
+#print axioms Contract.WriterExample2.meets
+#print axioms opsRun_of_runOps
+#print axioms writerMeets_exec_put
+#print axioms putKv_put_named
+#print axioms writerMeets_put_named
+#print axioms runs_meetsTop_puts
 #print axioms Contract.findRoot_from
 #print axioms java_search_from
 #print axioms handles_top

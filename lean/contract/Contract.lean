@@ -89,6 +89,9 @@ import Contract.WriterBalancedFalse
 import Contract.Proof.TreeRulesMerge
 import Contract.Proof.WriterCollapse
 import Contract.Proof.WriterMergeParent
+import Contract.WriterExample2
+import Contract.Proof.WriterExec
+import Contract.Proof.WriterPutNamed
 import Contract.RecoverCut
 import Contract.Proof.TopFrom
 import Contract.Proof.RecoverCut
