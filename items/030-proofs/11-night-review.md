@@ -1,6 +1,6 @@
 # 030-11. An independent review of the night's proofs
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 A review, with fresh eyes and skeptically, of what three agents proved on
 the evening of 17 November on top of the writer's contract (030-05,
@@ -27,8 +27,8 @@ pointer, a delete, an overwrite and a touch, meets every statement at once
 model is the trace checker's own (`bspec`, with BergDB's still-dirty test
 and marking, as `tracecheck` runs it), and its theorems carry over with no
 premise in the abstract model's words. I found no clause that Java fails:
-the bridge's clauses pass on 030-07's 195 traces again, and on 13 traces
-of the medium and large sets that no one had run them on (10,360
+the bridge's clauses pass on 030-07's 195 traces again, and on 15 traces
+of the medium and large sets that no one had run them on (20,360
 transactions, node sizes 8 to 62).
 
 The findings, most serious first:
@@ -78,13 +78,12 @@ The findings, most serious first:
    `contractcheck`'s is its loop, by reading (030-08, section 5, item 3),
    but only it checks the GET, SCAN, LIVE and SKIPT lines. Neither runs in
    `level2.sh` yet (030-07's State, item 1). Run both.
-7. **Note: the bridge checker is slow on large traces** (section 4.1): A5,
+7. **Note: the bridge checker is slow on large trees** (section 4.1): A5,
    A-COPY, A6' and the touch test membership in lists of the nodes reached
    (`noResOk`, `copyOk`, `adoptOk`, `touchOk`), about quadratic in the
-   tree, for every transaction, and the verdict computes it all again. The
-   medium traces took 118 s; l-5000-1 of the large set (5,000
-   transactions) had not ended after 13 minutes of CPU, where
-   `contractcheck` takes 72 s.
+   tree, for every transaction, and the verdict computes it all again.
+   l-big62 of the large set (node size 62, 3,000 keys) took 1,032 s, where
+   `contractcheck` took 132 s; on small trees the two take about as long.
 8. **Note: what the trust rests on** (section 6). Beyond the package, the
    bridge's statements rest on the abstract model's definitions in `lean/`
    (about 3,600 lines), and its proofs on 51,000 lines of the old package;
@@ -290,10 +289,10 @@ the other agents wrote them (format 3, the exporter of `main`):
   and 1.2 GB a trace with their LIVE lines; the old reader that the bridge
   checker also runs reads a trace as one string), with the machine at a
   load of 20 to 30.
-- The large set, 030-12's `live=0` traces, one trace a run: l-hot, l-mixed,
-  l-long (keys of several segments) and l-big62 (node size 62): BRIDGE OK,
-  4 traces, 7,000 transactions, 42,503 nodes made, 102,661 entries; 10, 62,
-  290 and 1,032 s. l-few and l-5000 (5,000 transactions each): see the Log.
+- The large set, 030-12's `live=0` traces, one trace a run (l-hot,
+  l-mixed, l-long with keys of several segments, l-big62 with node size 62,
+  l-few, l-5000): BRIDGE OK, 6 traces, 17,000 transactions, 71,148 nodes
+  made, 187,190 entries; 10, 62, 290, 1,032, 83 and 71 s.
 - `check.sh small drain reclaim` (with `faults.sh` and `faults-top.sh`
   first): CONTRACT OK, 195 traces, 29,735 transactions, 2,729,666 LIVE
   lines, 75,568 SKIPT lines, no failure; 168 s.
@@ -411,7 +410,7 @@ which each transaction meets the writer's contract with its clauses:
 
 **Given these assumptions, each tested** (030-04, 3.5, with 10 to 12 of
 this review): that Java's writer meets the contract and its clauses (the
-traces: 195 traces, 29,735 transactions with every clause, and more with
+traces: 210 traces, 50,095 transactions with every clause, and more with
 the contract alone; Java's own `TransCheck` in every unit test and
 f-test); that Java's searches are the Lean ones; that Java writes the
 model's records; that a cut is safe; that a trace's lines are Java's
@@ -518,7 +517,12 @@ GATED f63f8ab6: the review written (sound, with fixes; findings 1 to 8),
 requires a whole trace; `gate.sh 903a228a` GATE OK (72 theorems).
 17:24 Findings 1, 2 and 5 fixed in words (030-07, 030-04 3.5 items 10 to
 12, two Lean headers); GATE OK. Commit accdf158. The large set's first run
-stopped after 13 minutes of CPU on l-5000-1 (finding 7); run again one
-trace a run, smaller ones first.
+had not ended l-5000-1 after 13 minutes of CPU; I stopped it and ran the
+set again, one trace a run. l-5000-1 then took 71 s: the first run's
+binary had been relinked under it at 17:11 (the completeness fix), which I
+take to be the cause, not the checker. A lesson: no rebuild while a run
+uses the binary.
 17:48 The large set's l-hot, l-mixed, l-long and l-big62: BRIDGE OK (7,000
 transactions; l-big62 1,032 s).
+17:50 l-few and l-5000: BRIDGE OK; the large set done, 17,000
+transactions.

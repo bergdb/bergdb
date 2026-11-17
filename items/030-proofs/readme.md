@@ -269,7 +269,7 @@ Files
   repeatability is 030-04, 3.5, item 9); three tested assumptions missing
   from 3.5; reads after a crash not stated end to end. Fixed: the bridge
   checker now requires a whole trace; `PolicyCutOK` proved for policies
-  that read no stream. Written 2026-11-17, 17:02 to 17:30. Status: open.
+  that read no stream. Written 2026-11-17, 17:02 to 17:55. Status: done.
 
 
 Log
