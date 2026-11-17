@@ -241,10 +241,24 @@ Decisions, with reasons:
   checker's B8 is now the statement's (key nodes). B11 stays the model's
   own check (a node made outside G and H was taken back); the statement
   asks that none is made (`within`, `OpsRun`), and the checker counts the
-  operations where that differs: 1 of 318,900 (a delete in the drain set
-  that makes a root one height too far and takes it back in the same
-  operation). Its transaction is accepted by the model and not covered by
-  `OpsRun` (D3); for puts there is no such case (`opsRun_of_runOps`).
+  operations after which the writer's list of such nodes is not empty: 55
+  of 318,900, all in one trace of the drain set (`d-long3b-5`: a delete
+  makes a root one height too far and takes it back in the same
+  operation; the list stays to the transaction's end). Such a transaction
+  is accepted by the model and not covered by `OpsRun` (D3); for puts
+  there is no such case (`opsRun_of_runOps`).
+- **Restated at 22:15, in 030-16's files, at the merge of main 53e66e73**
+  (030-16's delete with the merges on, root collapse and the merges' loop
+  were written on the statement of before the two restatements above; the
+  coordinator's message of 22:00). Its theorems now carry `OldReach` as
+  the put's do: `collapseRoot_spec`, `AfterOk`, `AfterOkW`, `MergeOk`,
+  `mergeUp_spec` take `OldReach i s w` after the invariant and give
+  `OldReach i s w'`; `wmg_pick_spec`, `merge_spec_of_rest` and the open
+  premise `WmgRestOk` (what is left of the merge) likewise; `wmg_sibling`
+  also takes that the klong it follows is live (the balance rule speaks
+  of live klongs). No conclusion is weaker than 030-16's. New:
+  `mergeOk_of_rest`, the merges' loop's premise `MergeOk` from
+  `WmgRestOk` (the two had been stated apart).
 
 
 # 4. What is proved (items 3 and 4)
@@ -517,16 +531,18 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 22:00. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 22:30. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
-evening on findings (section 3: the balance rule, `Shows`, the checker).
+evening on findings (section 3: the balance rule, `Shows`, the checker),
+and 030-16's delete, merges and root collapse (main 53e66e73) are carried
+to the restated statement.
 
 - Branch `030-10-writer` in the clone
-  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main dc642af1.
-  Last gated commit: caa4bdd4.
+  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 53e66e73.
+  Last gated commit: a3ec5ff8.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
-  dc642af1` (main's head as merged); after a change of a pinned file
+  53e66e73` (main's head as merged); after a change of a pinned file
   `lean/contract/pin.sh`, the pin file in the same commit.
 - Traces: `java/build.sh`, `cd lean && lake build treecheck`,
   `java/stress/treeconf.sh small`, `drain` and `reclaim`; then
@@ -704,3 +720,27 @@ this order:
    (the statement: key nodes); its B11 lets a node outside the bounds
    pass if it was taken back (the statement: none outside).
 4. `BalancedAll` in `WriterMeets`: restated (ea73b414).
+2026-11-17, 21:35 to 22:05. `Shows` restated for the nodes reached, with
+`OldReach` through every operation's theorem of the puts and of 030-16's
+landed delete files (three provers); `writercheck` with the model's view
+(caa4bdd4). `gate.sh dc642af1`: GATE OK; `writer.sh`: WRITER OK on the 195
+traces (the old `Shows` fails before 29,153 of the 29,735 transactions,
+the new one before none; 55 operations with a node outside the bounds,
+taken back, on the list); `contractcheck`, `bridgecheck` on small and
+drain: CONTRACT OK, BRIDGE OK. Not logged as gated on its own: it is in
+the merge below, which is the one to land.
+2026-11-17, 22:00. The coordinator: ea73b414 could not be landed, its
+merge into main 53e66e73 conflicts with 030-16's later work in
+`WriterDelSpace.lean` and `WriterDelTime.lean`; pull main, resolve, gate.
+2026-11-17, 22:05 to 22:30. Main 53e66e73 merged (1cf23286). 030-16's
+files of that work (`WriterDelDefs`, `WriterDelTime`, `WriterDelSpace`,
+`WriterCollapse`, `WriterMergeParent`, `WriterMerge`, `WriterMergeUp`)
+carried to the restated statement: its statements and proofs kept, the
+balance rule by the nodes reached, `OldReach` taken and given (section 3,
+"Restated at 22:15"; two provers). Then a3ec5ff8: `WmgRestOk` carries
+`OldReach`, and `mergeOk_of_rest`. `gate.sh 53e66e73`: GATE OK (192
+theorems, 128 files pinned). On the merge, before a3ec5ff8 (which
+changes two proof files and no checker): `writer.sh`: WRITER OK, the
+counts as above; `contractcheck`, `bridgecheck` on small and drain:
+CONTRACT OK, BRIDGE OK.
+GATED a3ec5ff8: main 53e66e73 merged; the balance rule and Shows restated (the nodes reached; OldReach) through the puts and 030-16's delete, merges and root collapse; writercheck with the model's view; mergeOk_of_rest.
