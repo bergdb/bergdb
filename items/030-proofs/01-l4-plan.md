@@ -1335,3 +1335,17 @@ parent, fewer than m live klongs), `delCaseLive_timeCasc_of_hole`.
 `invGetScanOK_merges_noL4c`: premises `hp`, `hth`, `MergeTailRuns6` (l4c's
 `MergeTailFullRest6OK`), `R3Calls` (believed false), `DelFullTimeHoleM`,
 `DelEmptyCascM`.
+
+2026-11-17, 02:05 to 02:08. Step 6, the obligation at the space root, prover l4e
+(`LiveUpCascRootH.lean`, about 400 lines, about 170 of them 01:56's root lemma's
+prelude again). `upCascCallOK_of_below`: `UpCascCallOK` holds where the stop node is
+the space root not made by the transaction, so it is left only below the root or at a
+made root (`UpCascCallBelowOK`). After the root's split no node is under the fill, so the
+hole's form holds for the stop node's pair; the tree's facts by `upCascJ2OKT_holds`, the
+books by `putBook_appendDeleteKlong`, and the heights (`writerWP_upCasc_root_ht`): at the
+state whose root has its bitmap, `htInv_upFrame` gives `HtInv` from the walk's start, the
+books by `book_putNode`, and `ht_handleFull` gives it after the split (the root a leaf, the
+last version's klongs its live ones, not taken back), moved by the swap. Corollary
+`invGetScanOK_merges_noL4bU` (l4b's `invGetScanOK_merges_noL4b` with
+`UpCascCallBelowRuns` for `hCasc`, by `upCascCallRuns_of_below` and
+`delCaseLive_emptyCasc`).
