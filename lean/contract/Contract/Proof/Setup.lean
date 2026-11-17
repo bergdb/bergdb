@@ -401,4 +401,234 @@ theorem setupSearch_spec {x : NodeId} {lo : Nat} {hi : Option Nat} (hg : Good s 
         exact ⟨hG'.1, fun c y h => ⟨(hG'.2 c y h).1, (hG'.2 c y h).2.1, (hG'.2 c y h).2.2.1,
           fun _ _ => (hG'.2 c y h).2.2.2⟩⟩
 
+/-! ## The setup -/
+
+/-- What the setup's chain meets: it is a path; the keys before it are before
+the start key and the keys after it are after the start key; the klong at it
+holds the start key itself, or keys on the side that the scan leaves behind,
+and then the chain is not at the start key. -/
+structure SetupOK (s : Tree) (r : NodeId) (fwd : Bool) (Kp : List Pos) (ch : Chain) : Prop where
+  path : Path s r ch.links ch.segs
+  before : ∀ kv ∈ restD s false ch.links ch.segs, kp kv.1 < Kp
+  after : ∀ kv ∈ restD s true ch.links ch.segs, Kp < kp kv.1
+  at_ : ((∀ kv ∈ atOf s ch.links ch.segs, Side fwd Kp kv.1) ∧
+      ∀ x c above, ch.links = (x, Pos.at c) :: above → kp (ch.segs ++ [c]) ≠ Kp) ∨
+    (∃ x c above v, ch.links = (x, Pos.at c) :: above ∧
+      atOf s ch.links ch.segs = [(ch.segs ++ [c], v)] ∧ kp (ch.segs ++ [c]) = Kp)
+
+theorem Side.ne {fwd : Bool} {Kp : List Pos} {k : Key} (h : Side fwd Kp k) : kp k ≠ Kp := by
+  intro he
+  unfold Side at h
+  rw [he] at h
+  cases fwd <;> simp at h
+
+theorem getElem?_of_startSeg {fwd : Bool} {Kp : List Pos} {index : Nat} (hi : index < Kp.length)
+    {c : Nat} (h : startSeg fwd Kp index = Pos.at c) : Kp[index]? = some (Pos.at c) := by
+  have h1 : Kp[index]? = some Kp[index] := List.getElem?_eq_getElem hi
+  simp only [startSeg, h1] at h
+  rw [h1, h]
+
+theorem setupGo_spec {r : NodeId} (hG : Good s r 0 none) (fwd : Bool) {Kp : List Pos}
+    (hK : StartOK Kp) :
+    ∀ (f : Nat) (x : NodeId) (index : Nat) (hasDiff : Bool) (ch : Chain) (n : KNode),
+      s.obj x = some (.key n) → n.level + 1 ≤ f →
+      (∀ p, Path s r ((x, p) :: ch.links) ch.segs) →
+      (∀ kv ∈ restD s false ch.links (segsUp s ch.links ch.segs), kp kv.1 < Kp) →
+      (∀ kv ∈ restD s true ch.links (segsUp s ch.links ch.segs), Kp < kp kv.1) →
+      (hasDiff = false →
+        index = ch.segs.length ∧ index < Kp.length ∧ Kp.take index = kp ch.segs) →
+      (hasDiff = true →
+        (∀ kv ∈ ent s ch.segs n (live n.ks), Side fwd Kp kv.1) ∧ ¬ (kp ch.segs <+: Kp)) →
+      SetupOK s r fwd Kp (setupGo s fwd Kp f x index hasDiff ch) := by
+  intro f
+  induction f with
+  | zero => intro x index hasDiff ch n _ hf; omega
+  | succ f ih =>
+    intro x index hasDiff ch n hobj hf hpath hbef haft hA hB
+    obtain ⟨lo, hi, hg⟩ := (hpath Pos.lo).good hG _ _ _ rfl
+    obtain ⟨links, segs, first, eqm⟩ := ch
+    simp only at hpath hbef haft hA hB
+    simp only [setupGo, hobj]
+    have hAd : hasDiff = false → ∃ tail, Kp = kp segs ++ startSeg fwd Kp index :: tail :=
+      fun h => ⟨_, modeA_decomp (hA h).2.1 (hA h).2.2 fwd⟩
+    obtain ⟨hnone, hsome⟩ := setupSearch_spec hg hobj fwd hasDiff segs (startSeg fwd Kp index) hAd
+      (fun h => (hB h).1)
+    have hbefore : ∀ q, NB s Kp segs n q →
+        ∀ kv ∈ restD s false ((x, q) :: links) segs, kp kv.1 < Kp := by
+      intro q hq kv hkv
+      simp only [restD, hobj] at hkv
+      rcases List.mem_append.mp hkv with h | h
+      · exact hq.entD kv h
+      · exact hbef kv h
+    have hafter : ∀ q, NA s Kp segs n q →
+        ∀ kv ∈ restD s true ((x, q) :: links) segs, Kp < kp kv.1 := by
+      intro q hq kv hkv
+      simp only [restD, hobj] at hkv
+      rcases List.mem_append.mp hkv with h | h
+      · exact hq.entD kv h
+      · exact haft kv h
+    cases hres : setupSearch fwd hasDiff n.leaf n.ks (startSeg fwd Kp index) with
+    | none =>
+      simp only
+      obtain ⟨hnb, hna⟩ := hnone hres
+      refine ⟨hpath _, hbefore _ hnb, hafter _ hna, Or.inl ⟨?_, ?_⟩⟩
+      · intro kv hkv
+        exfalso
+        simp only [atOf, hobj] at hkv
+        have hf0 : (live n.ks).filter (fun cy =>
+            (if (fwd || !fwd && !hasDiff && !n.leaf) = true then Pos.lo else Pos.hi).is cy.1) =
+            [] := by
+          rw [List.filter_eq_nil_iff]
+          intro a _
+          split <;> simp [Pos.is]
+        rw [hf0] at hkv
+        simp [ent] at hkv
+      · intro x' c above he
+        injection he with h1 _
+        injection h1 with _ h2
+        split at h2 <;> simp at h2
+    | some a =>
+      obtain ⟨c, y⟩ := a
+      simp only
+      obtain ⟨hm, hnb, hna, hrel⟩ := hsome c y hres
+      have hbef2 := hbefore _ hnb
+      have haft2 := hafter _ hna
+      rcases hg.kind hobj hm with ⟨hl, hlong, v, hv⟩ | ⟨hk, m, lo', hi', hy, hlt, hne, hgy⟩
+      · -- the klong names a value: the chain ends here
+        simp only [hl, hlong, Bool.not_false, Bool.and_self, ite_true]
+        have hk1 : ([c], v) ∈ klongList s n.leaf (L s) c y := by
+          simp [klongList, hl, hlong, hv]
+        have hat : atOf s ((x, Pos.at c) :: links) segs = [(segs ++ [c], v)] := by
+          obtain ⟨pre', post, he⟩ := List.append_of_mem hm
+          simp [atOf, hobj, (live_split3 he).2.1, ent, klongList, hl, hlong, hv, pre]
+        have hno : Side fwd Kp (segs ++ [c]) →
+            (∀ kv ∈ atOf s ((x, Pos.at c) :: links) segs, Side fwd Kp kv.1) ∧
+            ∀ x' c' above, (x, Pos.at c) :: links = (x', Pos.at c') :: above →
+              kp (segs ++ [c']) ≠ Kp := by
+          intro hside
+          refine ⟨?_, ?_⟩
+          · intro kv hkv
+            rw [hat] at hkv
+            simp only [List.mem_singleton] at hkv
+            rw [hkv]
+            exact hside
+          · intro x' c' above he
+            injection he with h1 _
+            injection h1 with _ h2
+            injection h2 with h2
+            subst h2
+            exact hside.ne
+        refine ⟨hpath _, hbef2, haft2, ?_⟩
+        cases hd : hasDiff with
+        | false =>
+          obtain ⟨hidx, hilt, htake⟩ := hA hd
+          have hdec := modeA_decomp hilt htake fwd
+          by_cases heq : startSeg fwd Kp index = Pos.at c
+          · right
+            refine ⟨x, c, links, v, rfl, hat, ?_⟩
+            have h2 := hK.short index c (getElem?_of_startSeg hilt heq) hlong
+            rw [hdec, heq, List.drop_eq_nil_of_le (by omega)]
+            simp [kp]
+          · left
+            apply hno
+            have hrel' := hrel hd hl
+            unfold Side
+            cases fwd with
+            | true =>
+              simp only [ite_true] at hrel' ⊢
+              exact kp_lt_of_seg hdec [] (lt_of_le_of_ne hrel' (fun h => heq h.symm))
+            | false =>
+              simp only [Bool.false_eq_true, ite_false] at hrel' ⊢
+              exact kp_gt_of_seg hdec [] (lt_of_le_of_ne hrel' heq)
+        | true =>
+          left
+          apply hno
+          exact (hB hd).1 _ (mem_ent_of_klong hm hk1)
+      · -- the klong names a key node: the setup goes on below
+        have hnl : (n.leaf && !isLong c) = false := by
+          cases hl : n.leaf with
+          | false => rfl
+          | true => simp [hk hl]
+        simp only [hnl, Bool.false_eq_true, ite_false]
+        have hfy : m.level + 1 ≤ f := by omega
+        by_cases hl : n.leaf = true
+        · simp only [hl, ite_true]
+          have hlong := hk hl
+          have hentsub : ∀ kv ∈ ent s (segs ++ [c]) m (live m.ks),
+              ∃ k v, (k, v) ∈ klongList s n.leaf (L s) c y ∧ kv = (segs ++ k, v) := by
+            intro kv hkv
+            rw [hgy.ent_live hy] at hkv
+            obtain ⟨⟨k, v⟩, hk0, rfl⟩ := List.mem_map.mp hkv
+            exact ⟨c :: k, v, mem_klongList.mpr (Or.inl ⟨hl, hlong, k, rfl, hk0⟩), by simp [pre]⟩
+          apply ih y (index + 1) _ _ m hy hfy
+          · intro p
+            have := Path.push (p := p) (hpath (Pos.at c)) hobj hm hy
+            simpa [hl] using this
+          · simpa [segsUp, hobj, hl] using hbef2
+          · simpa [segsUp, hobj, hl] using haft2
+          · intro hd'
+            simp only [Bool.or_eq_false_iff, Bool.not_eq_false'] at hd'
+            obtain ⟨hidx, hilt, htake⟩ := hA hd'.1
+            have hσ : startSeg fwd Kp index = Pos.at c := (Pos.is_iff _ _).mp hd'.2
+            have h1 := getElem?_of_startSeg hilt hσ
+            have h2 := hK.long index c h1 hlong
+            refine ⟨by simp [hidx], h2, ?_⟩
+            rw [List.take_add_one, htake, h1]
+            simp [kp]
+          · intro hd'
+            cases hd : hasDiff with
+            | true =>
+              obtain ⟨hS, hnp⟩ := hB hd
+              refine ⟨?_, ?_⟩
+              · intro kv hkv
+                obtain ⟨k, v, hk1, rfl⟩ := hentsub kv hkv
+                exact hS _ (mem_ent_of_klong hm hk1)
+              · intro hpre
+                apply hnp
+                refine List.IsPrefix.trans ?_ hpre
+                simp [kp]
+            | false =>
+              obtain ⟨hidx, hilt, htake⟩ := hA hd
+              have hdec := modeA_decomp hilt htake fwd
+              have hne' : startSeg fwd Kp index ≠ Pos.at c := by
+                intro h
+                rw [hd] at hd'
+                simp [(Pos.is_iff _ _).mpr h] at hd'
+              have hrel' := hrel hd hl
+              refine ⟨?_, ?_⟩
+              · intro kv hkv
+                obtain ⟨k, v, hk1, rfl⟩ := hentsub kv hkv
+                obtain ⟨d, rest, rfl, _, hdc, _⟩ := hg.klong_head hobj hm hk1
+                have hdc' := hdc hl
+                subst hdc'
+                unfold Side
+                cases fwd with
+                | true =>
+                  simp only [ite_true] at hrel' ⊢
+                  exact kp_lt_of_seg hdec rest (lt_of_le_of_ne hrel' (fun h => hne' h.symm))
+                | false =>
+                  simp only [Bool.false_eq_true, ite_false] at hrel' ⊢
+                  exact kp_gt_of_seg hdec rest (lt_of_le_of_ne hrel' hne')
+              · intro hpre
+                rw [hdec] at hpre
+                have h3 : kp (segs ++ [c]) = kp segs ++ [Pos.at c] := by simp [kp]
+                rw [h3, List.prefix_append_right_inj, List.cons_prefix_cons] at hpre
+                exact hne' hpre.1.symm
+        · have hl' : n.leaf = false := by simpa using hl
+          simp only [hl', Bool.false_eq_true, ite_false]
+          apply ih y index hasDiff _ m hy hfy
+          · intro p
+            have := Path.push (p := p) (hpath (Pos.at c)) hobj hm hy
+            simpa [hl'] using this
+          · simpa [segsUp, hobj, hl'] using hbef2
+          · simpa [segsUp, hobj, hl'] using haft2
+          · intro hd; exact hA hd
+          · intro hd
+            obtain ⟨hS, hnp⟩ := hB hd
+            refine ⟨?_, hnp⟩
+            intro kv hkv
+            rw [hgy.ent_live hy] at hkv
+            obtain ⟨⟨k, v⟩, hk0, rfl⟩ := List.mem_map.mp hkv
+            exact hS _ (mem_ent_of_klong hm (mem_klongList.mpr (Or.inr (Or.inr ⟨hl', hk0⟩))))
+
 end Contract
