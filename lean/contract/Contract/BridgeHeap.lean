@@ -61,4 +61,38 @@ def checkEvictTx (sp : Spec BVal Nat) (P : Struct BVal) (i : Nat) (h' : Heap)
     (c : Changes BVal) : Bool :=
   treeOkB (h'.tree.at i) && adoptB sp (P.apply i c) i && copyB sp P (P.apply i c) i c
 
+/-! ## A whole trace -/
+
+/-- A traced transaction: its operations, the dirty nodes when it ends, the
+heap after it, and its change. -/
+structure TStep where
+  ops : List Op
+  D : List NodeId
+  heap : Heap
+  c : Changes BVal
+
+/-- The history of a trace: the heap and the change of TX 0, and the traced
+transactions. -/
+def histOf (h0 : Heap) (c0 : Changes BVal) (steps : List TStep) : BHist :=
+  { s0 := h0.tree, c0 := c0,
+    txs := steps.map (fun st => { ops := st.ops, D := st.D, s := st.heap.tree, c := st.c }) }
+
+/-- The checker's verdict on the transactions from time i on, the first from
+the heap h and the model's structure P: each meets the writer's contract
+(`checkTx`), the bridge's clauses (`checkBridgeTx`) and what eviction needs
+(`checkEvictTx`). -/
+def stepsOk (p : Params) (sp : Spec BVal Nat) : Nat → Heap → Struct BVal → List TStep → Bool
+  | _, _, _, [] => true
+  | i, h, P, st :: rest =>
+    checkTx p i h st.ops st.D st.heap && checkBridgeTx sp P i h st.D st.heap st.c &&
+    checkEvictTx sp P i st.heap st.c && stepsOk p sp (i + 1) st.heap (P.apply i st.c) rest
+
+/-- The checker's verdict on a whole trace: the start, TREE and A6' at the
+start, and every transaction, the j-th at time j, on the model's instance of
+the trace's history. -/
+def bridgeHistoryOk (p : Params) (h0 : Heap) (c0 : Changes BVal) (steps : List TStep) : Bool :=
+  startCheck c0 h0 && treeOkB (h0.tree.at 0) &&
+  adoptB (histOf h0 c0 steps).spec (histOf h0 c0 steps).p0 0 &&
+  stepsOk p (histOf h0 c0 steps).spec 1 h0 (histOf h0 c0 steps).p0 steps
+
 end Contract

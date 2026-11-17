@@ -227,7 +227,7 @@ changed or made there):
   klong before it of that compare value (`Dag.bitsOf`: a delete sets the bits
   of every klong of its compare value). W4 asks this of the klongs before the
   new bit only; the map needs it of all the klongs before the bitmap
-  (`W5.lean`: an example).
+  (BridgeExample.lean, `w4_not_enough`).
 * A4. Every key klong of it, live or dead, names a node of s' on a lower
   level (a value has level 0). -/
 

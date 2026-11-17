@@ -7,10 +7,15 @@
 # Needs: the traces (as lean/contract/check.sh) and the checker
 # (cd lean/contract && lake build bridgecheck).
 # Prints the summary of each set, then BRIDGE OK or BRIDGE FAILED; the lines of
-# every trace go to java/build/traces/tree-SET/bridge.txt.
+# every trace go to java/build/traces/tree-SET/bridge.txt. First the checker's own
+# test, bridge-faults.sh, if the small and the reclaim set are there: faults made
+# in a trace must fail it. About 6 minutes for the three sets.
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/bridgecheck
 [ -x "$CHECK" ] || { echo "BRIDGE FAILED: no checker; run lake build in lean/contract/"; exit 1; }
+if ls ../../java/build/traces/tree-small/mixed-1.trace ../../java/build/traces/tree-reclaim/r-del-1.trace > /dev/null 2>&1; then
+    ./bridge-faults.sh > /dev/null 2>&1 || { echo "BRIDGE FAILED: the checker's own test, lean/contract/bridge-faults.sh"; exit 1; }
+fi
 SETS=${*:-small drain}
 FAILED=0
 for set in $SETS; do

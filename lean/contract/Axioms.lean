@@ -47,3 +47,5 @@ open Contract
 #print axioms frame_modelD
 #print axioms bridge_debt
 #print axioms bridge_liveHeight
+#print axioms Contract.BridgeExample.w4_not_enough
+#print axioms bridgeHistoryOk_meets
