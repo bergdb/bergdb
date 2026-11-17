@@ -87,7 +87,73 @@ in its tests. Written by an agent of coord-1117 ("I" below), on the branch
 
 # 3. Java's commit-time check
 
-In progress.
+`java/src/bergdb/core/TransCheck.java`, test-only: on with the system
+property `transcheck=1`, off by default, so production runs none of it
+(Db holds a `TransCheck` only when the property is set; the cost when off
+is a null test per node change). `before-commit.sh` and `unit.sh` turn it
+on in the unit tests; the f-tests run with it in a script of their own,
+`java/stress/transcheck.sh`, a step of `night.sh` (measured below). Db calls it at the start and the end of each
+transaction's puts (`Db.putKvs`), under the write lock, and tells it the
+key nodes the transaction made, changed, replaced and took back (Db's
+`Dag.NodeChangeListener`). It reads no stream: a pointer to a node not in
+memory ends the check there.
+
+Two walks from the space root through the live klongs, at the
+transaction's time tt and at tt - 1, visit the nodes on the paths of the
+transaction's keys and every node made, changed or replaced that they reach
+from such a node. On them, the clauses that can be checked locally:
+
+- **Clause 1:** at most M klongs; W1 to W4; a pointer for every key klong;
+  a live klong (but in a space root that is a segment leaf); the key order
+  with the ranges passed down; on every live child, in memory, of a node
+  made or changed, its kind (key node or value), a live klong, and the key
+  order in it. No node is reached twice (TREE, beyond the contract).
+- **Clause 2:** each key of the transaction has its new value at tt, or
+  none if deleted; every other key of a segment leaf made, changed or
+  replaced has the same value at tt - 1 and at tt (its keys at tt - 1 are
+  found at tt, and its keys at tt were there at tt - 1).
+- **Clause 3:** a node the check has seen after an earlier transaction
+  keeps its klongs (a hash of them and their number), and the klongs added
+  start with a time klong of tt; a node replaced has none added; a node
+  made or changed is dirty (in D) unless replaced or taken back. Beyond the
+  contract (030-06, finding 4): every time klong of a node made is of tt.
+- **The search:** in each node made or changed, `KeyNode.searchEq` of each
+  live compare value finds the klong that the contract's live klongs name.
+
+Not local, so not checked in Java: a node not in D is unchanged, the key
+order and kinds beyond the nodes visited, the levels, the contents beyond
+the leaves touched. The traces check them. The walks keep no Java stack
+(keys of thousands of segments; `DbTesterLongKeys` runs the writer with a
+256 kB stack, which a first, recursive version overflowed).
+
+`TransCheckTester` makes four faults in the space root during a
+transaction, through `Db.TestHooks.kvApplied`: a klong of an old node
+changed, its last klong removed, a klong added without the time klong, and
+a bitmap at tt that deletes a key the transaction does not touch. The
+check finds each (the frame three times, the contents once).
+
+Where it runs: in every Db of the unit tests and the f-tests, so with
+restarts, eviction, reclaim's internal transactions, the Pub layer's
+objects and indexes, and threads; not in the startup's rerun, which puts
+through the Dag, not `putKvs`. This is what ties assumption 9 of 030-04,
+3.5 to runs other than the traces' run A.
+
+**What it checked, one run of each** (no failure): the unit tests 130,517
+transactions, 1,591,928 nodes visited, 385,895 made, 562,624 keys of the
+transactions, 2,559,611 reads; the f-tests 3,833,784 transactions,
+11,884,861 nodes visited, 760,395 made, 4,464,540 keys, 28,606,929 reads.
+No node made or changed was left unreached by the walks.
+
+**The cost, measured on F53 (load 6 to 9, other sessions busy):** the unit
+tests 39.2 and 38.0 s with the check, 49.4 (load 21) and 39.2 s without:
+no cost seen. The f-tests alone, twice each: 49.9 and 49.8 s without, 57.4
+and 56.7 s with: about 7 s more. Side by side, as `before-commit.sh` runs
+them, the f-tests set the wall time (54 to 59 s without, 62 to 63 s with).
+**Decision:** by the brief's rule (more than a few seconds goes to a script
+of its own), `before-commit.sh` turns the check on in the unit tests only,
+which end 15 to 20 s before the f-tests, so its time is unchanged; the
+f-tests with the check are `java/stress/transcheck.sh` (about a minute),
+step 2b of `night.sh`.
 
 
 # 4. Tests run
