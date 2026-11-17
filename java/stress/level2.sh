@@ -43,6 +43,16 @@
 #      1 and 3): the Lean model of the key tree (lean/SIS/Tree) gives Java's
 #      change of every traced transaction, node by node and klong by klong,
 #      and Java's answers to gets and scans; the tree's invariants hold.
+#  8b. The writer's contract on the same traces (bergdb 030-04, 030-13):
+#      lean/contract/check.sh on the small and drain sets (contractcheck: each
+#      transaction meets the contract, the trace is whole, the LIVE lines are
+#      Java's searches; first its fault tests, faults.sh and faults-top.sh),
+#      and lean/contract/bridge-check.sh on the same sets (bridgecheck: the
+#      bridge's clauses to the abstract model, bergdb 030-07; first its fault
+#      test, bridge-faults.sh, on a small and a reclaim trace). About 3 minutes.
+#      It builds the contract package (lean/contract/, a Lake project with
+#      Mathlib); if its .lake has no Mathlib, lake exe cache get fetches the
+#      Mathlib cache first (about 5 GB; minutes, with the network).
 #   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
@@ -67,8 +77,9 @@
 #      model's javaTake (lean/SIS/BoundExample.lean), and its integer share
 #      and dither those of the model's shareFp and ditherFp.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
-# needs javac too. Step 7 needs Lean (elan, with the toolchain of
-# ../lean/lean-toolchain); it builds the checker with lake.
+# needs javac too. Steps 7, 8 and 8b need Lean (elan, with the toolchain of
+# ../lean/lean-toolchain and ../lean/contract/lean-toolchain); they build the
+# checkers with lake.
 
 cd "$(dirname "$0")/.."
 
@@ -185,6 +196,24 @@ for set in small drain reclaim; do
     grep -q '^TREECONF OK' $LOG/treeconf-$set.txt || fail "treeconf.sh $set" $LOG/treeconf-$set.txt
     echo "   treeconf $set: $(grep ' transactions, ' $LOG/treeconf-$set.txt | sed 's/^ *//')"
 done
+
+echo "8b. The writer's contract and the bridge on the tree traces (bergdb 030-13)"
+# The contract package (lean/contract/, with Mathlib): its Mathlib cache is fetched
+# once if it is missing (lake exe cache get, about 5 GB), then it is built.
+if [ ! -d ../lean/contract/.lake/packages/mathlib ]; then
+    (cd ../lean/contract && lake exe cache get) > $LOG/lake-contract-cache.txt 2>&1 \
+        || fail "the contract package, lake exe cache get" $LOG/lake-contract-cache.txt
+fi
+(cd ../lean/contract && lake build) > $LOG/lake-contract.txt 2>&1 \
+    || fail "the contract package, lake build" $LOG/lake-contract.txt
+sh ../lean/contract/check.sh small drain > $LOG/contract.txt 2>&1
+grep -q '^CONTRACT OK' $LOG/contract.txt || fail "lean/contract/check.sh small drain" $LOG/contract.txt
+grep '^tree-' $LOG/contract.txt | sed 's/^/   contract, /' | cut -c1-150
+[ -f build/traces/tree-reclaim/r-del-1.trace ] \
+    || fail "no reclaim trace for lean/contract/bridge-faults.sh" build/traces/tree-reclaim
+sh ../lean/contract/bridge-check.sh small drain > $LOG/bridge.txt 2>&1
+grep -q '^BRIDGE OK' $LOG/bridge.txt || fail "lean/contract/bridge-check.sh small drain" $LOG/bridge.txt
+grep '^tree-' $LOG/bridge.txt | sed 's/^/   bridge, /' | cut -c1-150
 
 echo "7. Conformance with the Lean model"
 n=0
