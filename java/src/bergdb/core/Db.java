@@ -506,6 +506,12 @@ public class Db implements AutoCloseable {
     private final int auditEvery;
 
     /**
+     * Java's own check of the writer's contract after each transaction's puts (bergdb 030-09;
+     * test-only): null unless the system property transcheck=1 (TransCheck.ON).
+     */
+    private final TransCheck transCheck;
+
+    /**
      * The audit's oracle of latest positions (test-only), kept only when the audit is on;
      * see Audit.
      */
@@ -545,6 +551,7 @@ public class Db implements AutoCloseable {
         secondTopOrdinal = b.secondTopOrdinal;
  
         this.maxNodeSize = b.maxNodeSize;
+        this.transCheck = TransCheck.ON ? new TransCheck(b.maxNodeSize) : null;
         this.startupDistance = b.startupDistance;
         this.metaBlock = new MetaBlock();        
         // Before the storage, whose threads and open files nothing would close if this threw
@@ -1355,6 +1362,7 @@ public class Db implements AutoCloseable {
             }
             
             public void keyNodeCreated(KeyNode node) {
+                if (transCheck != null) transCheck.made(node);
                 setIdOfNode(node);
                 registerNewNode(node);
                 markAtEndOfOp(node);
@@ -1362,6 +1370,7 @@ public class Db implements AutoCloseable {
             }
             
             public void keyNodeChanged(KeyNode node) {
+                if (transCheck != null) transCheck.changed(node);
                 markAtEndOfOp(node);
                 opChanged = true;
             }
@@ -1380,6 +1389,7 @@ public class Db implements AutoCloseable {
             }
             
             public void keyNodeReplaced(KeyNode node) {
+                if (transCheck != null) transCheck.replaced(node);
                 if (x.transInfo != null) replacedInTrans.add(node);
                 final TestHooks hooks = testHooks;
                 if (hooks != null) {
@@ -1388,6 +1398,7 @@ public class Db implements AutoCloseable {
             }
             
             public void keyNodeTakenBack(KeyNode node) {
+                if (transCheck != null) transCheck.takenBack(node);
                 keyNodeReplaced(node);
                 takenBackInTrans.add(node);
             }
@@ -3346,6 +3357,7 @@ public class Db implements AutoCloseable {
         replacedInTrans.clear();
         takenBackInTrans.clear();
         touchMarks = 0;
+        if (transCheck != null) transCheck.begin(dag.getTopDs().getSuperRoot(), x.trans.tt);
 
         if (x.trans.touch) {
             // 2026-10-13: was after the puts. Before them, the touch makes dirty 
@@ -3388,6 +3400,7 @@ public class Db implements AutoCloseable {
         }
         
         endOfTrans();
+        if (transCheck != null) transCheck.end(dag.getTopDs().getSuperRoot(), kvs);
         x.putData.clear();
     }
 

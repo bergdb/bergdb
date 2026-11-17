@@ -18,3 +18,8 @@ import Contract.ExampleShape
 import Contract.Bridge
 import Contract.BridgeHeap
 import Contract.Proof.BridgeMap
+import Contract.Top
+import Contract.TraceTop
+import Contract.TheoremsTop
+import Contract.HistoryTop
+import Contract.Rebuild

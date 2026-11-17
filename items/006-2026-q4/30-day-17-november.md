@@ -117,3 +117,4 @@ The defaults below go ahead unless Frans says otherwise before he leaves.
   trace's completeness and Java's own check of the contract (Opus at high). Each
   reports its gated pieces in its item's Log; the coordinator lands them.
 * **The morning:** the outcome in section 6 and a `news.md` summary by 06:30.
+* 15:50 030-08 done and landed (2043fc00): the top in the contract, Java's top search proved right (TP24), Java's get and scan right at every time. Started 030-10, a spike: does the model's writer meet the contract (Fable at high; the coordinator's decision).
