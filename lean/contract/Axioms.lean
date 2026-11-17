@@ -186,3 +186,12 @@ open Contract
 #print axioms Contract.RecoverCutExample.evict_java_get8
 #print axioms Contract.RecoverCutExample.search_before
 #print axioms checkVerdict_sound
+#print axioms entriesOf_prefixAt
+#print axioms klongsWf_prefixAt
+#print axioms fullOk_prefixAt
+#print axioms MeetsFull.holdsView_whole
+#print axioms crash_java_whole
+#print axioms restart_java_whole
+#print axioms handles_java_whole
+#print axioms crash_java_tree_whole
+#print axioms Contract.RecoverCutExample.crash_whole_get16
