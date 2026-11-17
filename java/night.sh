@@ -29,6 +29,8 @@
 #   2. stress/core-build.sh unit f: the Core Layer built alone, with an empty
 #      class path, a program that calls Db with only it, and its unit and
 #      f-tests on it; about a minute (bergdb 006-08, 005-56; 010-01, P12).
+#  2b. stress/transcheck.sh: the unit and f-tests with Java's own check of
+#      the writer's contract on (TransCheck); about a minute (bergdb 030-09).
 #   3. stress/level1.sh to level4.sh, full: the random stress programs at
 #      scale (RestartStress, CrashTest, RestartInvariance, ReclaimStress,
 #      EvictionInvariance, LargerThanMemory, ...), conformance with the Lean
@@ -126,6 +128,7 @@ night_tests() {
 
 step before-commit sh before-commit.sh
 step core-build sh stress/core-build.sh unit f
+step transcheck sh stress/transcheck.sh
 step level1 sh stress/level1.sh
 step level2 sh stress/level2.sh
 step level3 sh stress/level3.sh

@@ -13,7 +13,10 @@
 # Layer's production code outside its list of allowed places (API conversions,
 # statistics, the users' values as bits; bergdb 005-79; a few seconds), then
 # runs at the same time, each in its own JVM with assertions on (-ea):
-#   * the unit tests (bergdb.dev.Unit, the Nano test group "unit"), about 30 s;
+#   * the unit tests (bergdb.dev.Unit, the Nano test group "unit"), about 30 s, with
+#     Java's own check of the writer's contract on (TransCheck, the system property
+#     transcheck=1; bergdb 030-09): no cost here, as the f-tests take longer; the
+#     f-tests run with it in stress/transcheck.sh, a step of night.sh;
 #   * the f-tests (bergdb.dev.F, the Nano test group "f"), about 1 minute;
 #   * the demos of the Pub API in src-dev on small sizes (since 2026-11-09), about 3 s,
 #     one after the other, each in its own JVM, in build/before-commit/demos/, made
@@ -106,7 +109,7 @@ demos() {
     echo "DEMOS OK, $RUNS runs in $(( $(date +%s) - T0 )) s."
 }
 
-$JAVA -ea -cp build/bergdb.jar bergdb.dev.Unit > $LOG/unit.txt 2>&1 &
+$JAVA -ea -Dtranscheck=1 -cp build/bergdb.jar bergdb.dev.Unit > $LOG/unit.txt 2>&1 &
 $JAVA -ea -cp build/bergdb.jar bergdb.dev.F > $LOG/f.txt 2>&1 &
 demos > $LOG/demos.txt 2>&1 &
 wait
