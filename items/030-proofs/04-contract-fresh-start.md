@@ -263,6 +263,24 @@ startup rests on one more, tested (added by 030-14):
     under eviction; `erestart=K`), level 2 to level 4; the bytes by item 5.
     The kind's agreement with the level, which the reads after a crash use,
     is a checked clause, K-LEVEL (`bridgecheck`, KIND), not an assumption.
+    **Extended by 030-17** to eviction, a lazy startup and reclaim's cut:
+    the same for the view that a read through the handles, a lazy read or a
+    startup from a cut stream gives back, and for the top it is enough that
+    Java's top holds, as written, the top nodes that its search reads
+    (`TopFrom f`: the super root, every top node made at or after f, and the
+    top node of time f, each with its root pointer and its skip pointers with
+    their cached times; f the lookup time, or after a cut the first
+    available time). A top node that Java evicted and loads again through its
+    handle, or reads from the stream after a cut, is the top node as written.
+    That the cut stream still holds those top nodes is proved
+    (`cut_keeps_top`), and so is that Java's search then reads no other.
+    Tested besides by run E with eviction (`conformance.sh evict`, level 4),
+    `ReclaimReaders` (readers at old lookup times on a cold cache after a
+    restart while reclaim cuts, level 3; with forced eviction, level 4), and
+    `conformance.sh reclaim` (probes after restarts from the cut stream,
+    level 3). After a startup without a cut it can be said once for every
+    time (030-17, `HoldsP`): Java's tree holds the structure whole, each key
+    node with well-formed klongs whose entries are the node's in the stream.
 
 ## 3.6 Later, optional
 

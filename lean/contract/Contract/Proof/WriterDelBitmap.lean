@@ -144,12 +144,17 @@ theorem wdb_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbal : Balanced p (treeOf i s w))
     (hVI : PInv p i base s tp (some x) C (w.withNode x V)) (hVl : V.leaf = n.leaf)
     (t : String) :
-    CasPreD p i base s tp { w with trail := t :: w.trail } depth x n V (V.lastVersion i) C :=
-  ⟨hlk, hon, hpath.congr rfl rfl rfl rfl (treeOf_congr i s rfl rfl rfl rfl rfl rfl), hin,
+    CasPreD p i base s tp { w with trail := t :: w.trail } depth x n V (V.lastVersion i) C := by
+  have ht : w.taken.contains x = false := by
+    obtain ⟨c0, hc0⟩ := hon
+    exact (hpath.lookup (Nat.le_refl _) hc0).choose_spec.2
+  have hlkV : (w.withNode x V).nodes.lookup x = some V := lookup_upsert_self _ _ _
+  have hVI' : PInv p i base s tp (some x) C (MW.withNode { w with trail := t :: w.trail } x V) :=
+    hVI.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  exact ⟨hlk, hon, hpath.congr rfl rfl rfl rfl (treeOf_congr i s rfl rfl rfl rfl rfl rfl), hin,
     putBooks_congr hbooks rfl rfl rfl rfl rfl rfl rfl rfl rfl, hwf, hsize, hroot, hframe, htop,
-    hbal, hVl,
-    (lastVersion_leaf V i).trans hVl, lastVersion_ks i,
-    hVI.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl⟩
+    hbal, hVl, (lastVersion_leaf V i).trans hVl, lastVersion_ks i, hVI'.sound, hVI'.balanced,
+    hVI.books.timeFirst x V hlkV ht, wput_timesLe hVI.books hlkV⟩
 
 /-- The bitmap, for a compare value whose bits are not all in the node's last
 bitmap already (`isNoop` false); `appendDeleteKlong_spec` is its case of a

@@ -13,7 +13,9 @@
 # the model's words too: .lake/build/bin/bridgecheck --model TRACE... (about 8
 # minutes for the three sets). A trace passes the contract package's checks only if
 # it passes this checker and the contract checker: lean/contract/check.sh runs both
-# (bergdb 030-15); this script is the bridge checker alone.
+# (bergdb 030-15); this script is the bridge checker alone. PAR=N checks a set in N
+# parts at once (default 4; par.sh, bergdb 030-13): the medium set 4097 s in one
+# part, under load.
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/bridgecheck
 [ -x "$CHECK" ] || { echo "BRIDGE FAILED: no checker; run lake build in lean/contract/"; exit 1; }
@@ -25,7 +27,7 @@ FAILED=0
 for set in $SETS; do
     dir=../../java/build/traces/tree-$set
     ls $dir/*.trace > /dev/null 2>&1 || { echo "BRIDGE FAILED: no traces in $dir"; exit 1; }
-    "$CHECK" $dir/*.trace > $dir/bridge.txt 2>&1 || FAILED=$((FAILED + 1))
+    sh par.sh "$CHECK" $dir/bridge.txt $dir/*.trace || FAILED=$((FAILED + 1))
     echo "tree-$set: $(grep '^total: ' $dir/bridge.txt | sed 's/^total: //')"
     grep 'first: ' $dir/bridge.txt | head -5
 done

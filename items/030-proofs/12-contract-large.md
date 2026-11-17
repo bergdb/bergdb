@@ -24,12 +24,25 @@ clause, no trace not whole, no ERROR line.
   17,000 SCAN, 202,519,832 LIVE lines, 42,241 SKIPT. Traces of 0.16 to
   4.1 GB; 3.7 hours, three at a time (l-few's check 10,696 s, l-5000's
   6,150 s).
-- **The large set**, without `live=1`, 1 seed: 6 of 6 CONTRACT OK, the
-  same 17,000 transactions; 248 s.
-- **The medium set**, `live=1`, 3 seeds: running (m-mixed, m-long,
-  m-big, m-d8 CONTRACT OK so far; m-d8's 530 MB traces take 53 minutes
-  each to check).
-
+- **The large set**, without `live=1`, 10 seeds: 60 of 60 CONTRACT OK;
+  170,000 transactions, 551,124 operations, 680,000 GET, 170,000 SCAN,
+  419,440 SKIPT; 2,837 s, three at a time. (Seed 1 alone first: 6 of 6,
+  248 s.)
+- **The medium set**, without `live=1`, 3 seeds: 27 of 27 CONTRACT OK;
+  13,667 transactions, 736,718 operations, 54,668 GET, 13,667 SCAN,
+  62,172 SKIPT; 554 s (as 030-09's run).
+- **The medium set**, `live=1`, 3 seeds: 24 of 27 CONTRACT OK so far,
+  all but m-d62 (running); 12,467 transactions, 499,669 operations,
+  172,401,282 LIVE lines
+  (m-d8, m-d30, m-mixed, m-long, m-big, m-long3, m-fifo, m-r-del).
+  m-d30's traces (1.2 GB, 17 million LIVE lines) take 4.4 to 4.5 hours
+  each to check, and the checker grows to 4 GB; m-d62's are 1.7 GB.
+- **The check's time with LIVE lines is not linear in the trace**:
+  l-5000's 4.1 GB (57.7 million LIVE lines) took 1.7 hours, m-d30's
+  1.2 GB 4.4 hours. By reading (not measured): each LIVE line is checked
+  by a search in the history, `liveOk h' topRoot x t ys` in
+  `ContractCheck.lean`, so its cost grows with the history's size, which
+  is largest for the many keys and large nodes of m-d30 and m-d62.
 
 # 2. How the sets were run
 
@@ -51,6 +64,17 @@ on each trace. No script under `java/stress` is changed.
   the same configurations. A flag in `treeconf.sh` would be the lasting
   form; left for a later item, since `check.sh` already takes any set
   whose traces exist.
+- **After 030-13 landed (main 6fb4fe9a), the old script stays in my
+  scratch.** `treeconf.sh` now has `TREECHECK=none` and
+  `java/stress/contractconf.sh` runs both checkers on a set: the lasting
+  form the brief asked for exists, so I change no script. My runs began
+  before it; I keep them, and recheck their traces with main's checkers.
+- **Main's checkers on the same traces, in a second worktree.** Reason:
+  main's `contractcheck` has K-LEVEL (030-17) and `bridgecheck` (030-07)
+  is new; the m-d62 checks run from my clone's binary, which a `lake
+  build` there would replace under them. So main is built in
+  `/Users/f/fl/bench/2026-11-17/night/s4e/bw` (a worktree at main) and
+  `recheck.sh` in my scratch runs both on the traces without LIVE lines.
 - **`live=1` on every set** (the reclaim set too: the exporter writes
   LIVE lines with reclaim on, 0 errors). Reason: the LIVE lines are the
   readers' half of the contract (L1, L2); the traces grow with nodes times
@@ -72,3 +96,8 @@ the checker; started the reclaim set with `live=1`.
 2026-11-17, 16:07 to 19:55. The reclaim set (live), the large set (live
 and not), most of the medium set (live); the large set with 10 seeds, not
 live, started.
+2026-11-17, 20:40 to 21:50. The medium set with and without LIVE lines;
+pulled main (bridgecheck, K-LEVEL, contractconf.sh); built main's
+checkers in a worktree; rechecking the reclaim, medium and large traces
+without LIVE lines with both.
+GATED a33be2f4: the reclaim set (live=1) 15 of 15 and the large set (live=1) 6 of 6 CONTRACT OK, 25,735 transactions; gate base 6db019b3.

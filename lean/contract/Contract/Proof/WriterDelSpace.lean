@@ -20,6 +20,22 @@ open SIS.Tree (Ctx)
 
 /-! ## 1. The state before the step -/
 
+/-- The root of the map of the state with x set to V is that of w. -/
+theorem wds_rootA {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
+    {x : NodeId} {w : MW} {n V last : MNode} {C : List (Key × Nat)}
+    (h : CasPreD p i base s tp w depth x n V last C) :
+    (treeOf i s (w.withNode x V)).root = some w.top.rootKey := h.wroot
+
+/-- An id at or above the next id is no node of the map with x set to V. -/
+theorem wds_freshA {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
+    {x : NodeId} {w : MW} {n V last : MNode} {C : List (Key × Nat)} (hb : Books i base s tp)
+    (h : CasPreD p i base s tp w depth x n V last C) (htx : w.taken.contains x = false)
+    {z : NodeId} (hz : w.next ≤ z) : (treeOf i s (w.withNode x V)).obj z = none := by
+  have hzx : z ≠ x := fun e => absurd (h.books.ids.1 x n h.look) (by rw [← e]; omega)
+  rw [treeOf_withNode i s _ htx]
+  simp only [Tree.set, hzx, ↓reduceIte]
+  exact (treeOf_fresh hb h.books hz).1
+
 /-- The state before the step keeps what the steps keep (`CasPreD` gives its
 frame, top and BalancedOK), and its map is that of the state with x set to V,
 but at x. -/
@@ -39,6 +55,19 @@ theorem wds_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   rw [hr] at he
   cases he
 
+/-- A fresh id names nothing in the map of the state with x set to V. -/
+theorem wds_fresh {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
+    {x : NodeId} {w : MW} {n V last : MNode} {C : List (Key × Nat)}
+    (hb : Books i base s tp) (h : CasPreD p i base s tp w depth x n V last C)
+    (htx : w.taken.contains x = false) {z : NodeId} (hz : w.next ≤ z) :
+    (treeOf i s (w.withNode x V)).obj z = none := by
+  obtain ⟨-, -, hAz⟩ := wds_start h htx
+  have hxz : z ≠ x := fun e => by
+    have := h.books.ids.1 x n h.look
+    omega
+  rw [hAz z hxz]
+  exact (treeOf_fresh hb h.books hz).1
+
 /-- V starts with a time klong, and has M + 3 klongs at most if x is reached
 in the map of the state with x set to V. -/
 theorem wds_vfacts {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
@@ -48,8 +77,8 @@ theorem wds_vfacts {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top
       ((treeOf i s (w.withNode x V)).fuel w.top.rootKey) w.top.rootKey) :
     (∃ t rest, V.ks = .time t :: rest) ∧ V.size ≤ p.M + 3 := by
   obtain ⟨-, hAx, -⟩ := wds_start h htx
-  refine ⟨h.hyp.books.timeFirst x V (lookup_upsert_self _ _ _) htx, ?_⟩
-  have h1 := h.hyp.sound.nodes x hx _ hAx
+  refine ⟨h.vfirst, ?_⟩
+  have h1 := h.vsound.nodes x hx _ hAx
   simp only [nodeOk, Bool.and_eq_true, decide_eq_true_eq, ite_true] at h1
   rw [← ksOf_length]
   exact h1.1.1
@@ -240,7 +269,6 @@ theorem wds_path {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
       x ∈ reachAt (treeOf i s (w.withNode x V))
         ((treeOf i s (w.withNode x V)).fuel w.top.rootKey) w.top.rootKey := by
   obtain ⟨-, -, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   have hTx : (treeOf i s w).obj x = some (.key ⟨wLevel s w x, n.leaf, ksOf n⟩) :=
     treeOf_obj_overlay i s h.look htx
   -- the levels along the path, in the map of w
@@ -303,7 +331,7 @@ theorem wds_path {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
       have hux := hnx e c0' u' (by omega) h1
       rw [← hAz u' hux] at h3
       have hz := tc_kid h3 h4 (tc_self _ nu.level u)
-      exact hI.sound.good.tr_closed hq (g := nu.level + 1) hz
+      exact h.vsound.good.tr_closed hq (g := nu.level + 1) hz
   obtain ⟨c0', q, k1, y, nq', h1, h2, h3, h4⟩ := h.path.links d (by omega)
   rw [hon] at h2
   cases h2
@@ -338,7 +366,7 @@ theorem wds_named_some {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     ((treeOf i s (w.withNode x V)).obj y).isSome = true := by
   obtain ⟨-, hAx, -⟩ := wds_start h htx
   obtain ⟨c', hc'⟩ := hy
-  exact ss_nodeOk_names (h.hyp.sound.nodes x hx _ hAx) hc'
+  exact ss_nodeOk_names (h.vsound.nodes x hx _ hAx) hc'
 
 /-! ## 5. At the space root, x made by the transaction -/
 
@@ -371,7 +399,6 @@ theorem wds_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree
     cases this
     rfl
   obtain ⟨hO, hAx, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   have hxreach : x ∈ reachAt (treeOf i s (w.withNode x V))
       ((treeOf i s (w.withNode x V)).fuel w.top.rootKey) w.top.rootKey := by
     rw [← hxr]; exact tc_self _ _ _
@@ -386,8 +413,8 @@ theorem wds_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree
     | none => rfl
     | some o => rw [e] at this; exact absurd rfl (this.mp rfl)
   obtain ⟨-, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
-  have hA0 := (treeOf_fresh hb hI.books (Nat.le_refl w.next)).1
-  have hA2 := (treeOf_fresh hb hI.books (Nat.le_add_right w.next 2)).1
+  have hA0 := wds_fresh hb h htx (Nat.le_refl w.next)
+  have hA2 := wds_fresh hb h htx (Nat.le_add_right w.next 2)
   have hxlt : x < w.next := h.books.ids.1 x n hlook
   -- the bound of the new root
   have hout6 : w6.outside = [] := by
@@ -513,7 +540,7 @@ theorem wds_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree
     rw [hBo z h1 h2 h3, ← hAz z h3]
     exact hz
   have hS : Sound p.M (some x) (treeOf i s (w.withNode x V)) w.top.rootKey C :=
-    hI.sound
+    h.vsound
   rw [← hxr] at hS
   have hsc0 : 0 < sc := Good.tr_split_lo hS.good hAx hsplit hL1
   have hnames : ∀ (m : MNode), (∀ c y, SIS.Tree.Klong.key c y ∈ m.ks →
@@ -541,7 +568,7 @@ theorem wds_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree
     (fun z h1 _ h3 h4 => by rw [hBo z h4 h3 h1, hAz z h1])
   -- BalancedOK of the map after the step
   have hxR : x ∈ reach (treeOf i s (w.withNode x V)) := by
-    rw [reach_of_root hI.root]
+    rw [reach_of_root (wds_rootA h)]
     show x ∈ reachAt _ ((treeOf i s (w.withNode x V)).fuel w.top.rootKey)
       w.top.rootKey
     rw [← hxr]; exact tc_self _ _ _
@@ -560,23 +587,22 @@ theorem wds_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree
     · rw [hA2] at hm; cases hm)
   have hHL := wds_halves_live hsplit hlf hls
   have hBal : Balanced p (treeOf i s (MW.afterSuperRoot w6 p i (w.next + 2))) := by
-    refine ss_bal_of hI.balanced hI.root
+    refine ss_bal_of h.vbal (wds_rootA h)
       (treeOf_afterSuperRoot i s p (w.next + 2) hO6.books.ids.1).2.1 (fun z hz => ?_) hold hlevB
       (fun z hz _ m hm => ?_)
     · rcases hRB z hz with h1 | h1 | h1 | h1
       · left
-        have hW0r : (w.withNode x V).top.rootKey = x := hxr.symm
-        rw [hW0r]; exact h1
+        rw [← hxr]; exact h1
       · right; simp [h1]
       · right; simp [h1]
       · right; simp [h1]
     · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
       rcases hz with rfl | rfl | rfl
       · rw [hBx] at hm; cases hm
-        exact ss_rule_node hI.balanced hxR hAx hlevB hfl rfl
+        exact ss_rule_node h.vbal hxR hAx hlevB hfl rfl
           (fun c y hy => Or.inl (hHL.1 c y hy))
       · rw [hBs] at hm; cases hm
-        exact ss_rule_node hI.balanced hxR hAx hlevB hsl hlev.symm
+        exact ss_rule_node h.vbal hxR hAx hlevB hsl hlev.symm
           (fun c y hy => Or.inl (hHL.2 c y hy))
       · rw [hBr] at hm; cases hm
         refine ss_rule_root (keyLevel_pos p g (hh + 1)) (by rw [heightOf_keyLevel p hH1]; simp)
@@ -644,7 +670,7 @@ theorem wds_root_inPlace {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
   refine ss_wp_step (newKey_eq _ _ _ _ _ _) ?_
   refine ss_wp_step (replacedBy_eq _ _ _) ?_
   refine ss_wp_step (ss_setMadeFor _ _ _ _) ?_
-  refine ss_wp_step (newSuperRoot_eq v _ h.hyp.top) ?_
+  refine ss_wp_step (newSuperRoot_eq v _ h.wtop) ?_
   simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]
   refine (wp_pure _ _ _ _).mpr ?_
   exact wds_root_inPlace_post hp hb h hcase hin hgh hH rfl rfl rfl rfl rfl rfl
@@ -705,7 +731,6 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     cases this
     rfl
   obtain ⟨hO, hAx, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   have hxreach : x ∈ reachAt (treeOf i s (w.withNode x V))
       ((treeOf i s (w.withNode x V)).fuel w.top.rootKey) w.top.rootKey := by
     rw [← hxr]; exact tc_self _ _ _
@@ -721,9 +746,9 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     have h3 : @Ne Nat t0 i := h2
     omega
   obtain ⟨-, hs0, hn0, -, ht0, hm0⟩ := treeOf_fresh hb h.books (Nat.le_refl w.next)
-  have hA0 := (treeOf_fresh hb hI.books (Nat.le_refl w.next)).1
-  have hA2 := (treeOf_fresh hb hI.books (Nat.le_add_right w.next 2)).1
-  have hA4 := (treeOf_fresh hb hI.books (Nat.le_add_right w.next 4)).1
+  have hA0 := wds_fresh hb h htx (Nat.le_refl w.next)
+  have hA2 := wds_fresh hb h htx (Nat.le_add_right w.next 2)
+  have hA4 := wds_fresh hb h htx (Nat.le_add_right w.next 4)
   -- the bound of the new root
   have hout4 : w4.outside = [] := by
     rw [← hout]
@@ -927,7 +952,7 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     rw [hBo z h0 h1 h2 h4, ← hAz z h0]
     exact hz
   have hS : Sound p.M (some x) (treeOf i s (w.withNode x V)) w.top.rootKey C :=
-    hI.sound
+    h.vsound
   rw [← hxr] at hS
   have hsc0 : 0 < sc := Good.tr_split_lo hS.good hAx hsplit hL1
   have hnames : ∀ (m : MNode), (∀ c y, SIS.Tree.Klong.key c y ∈ m.ks →
@@ -957,7 +982,7 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     (fun z h0 h1 h2 h4 => by rw [hBo z h0 h1 h2 h4, hAz z h0])
   -- BalancedOK of the map after the step
   have hxR : x ∈ reach (treeOf i s (w.withNode x V)) := by
-    rw [reach_of_root hI.root]
+    rw [reach_of_root (wds_rootA h)]
     show x ∈ reachAt _ ((treeOf i s (w.withNode x V)).fuel w.top.rootKey)
       w.top.rootKey
     rw [← hxr]; exact tc_self _ _ _
@@ -989,13 +1014,12 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
   have hHL := wds_halves_live hsplit hlf hls
   have hBal : Balanced p (treeOf i s ((MW.afterSuperRoot w8 p i (w.next + 4)).withNode x
       (n.toPrev (i - 1)))) := by
-    refine ss_bal_of hI.balanced hI.root (r' := w.next + 4)
+    refine ss_bal_of h.vbal (wds_rootA h) (r' := w.next + 4)
       (by rw [treeOf_withNode i s _ htx9]; exact hroot9) (fun z hz => ?_) hold hlevB
       (fun z hz hzR m hm => ?_)
     · rcases hRB z hz with h1 | h1 | h1 | h1
       · left
-        have hW0r : (w.withNode x V).top.rootKey = x := hxr.symm
-        rw [hW0r]; exact h1
+        rw [← hxr]; exact h1
       · right; simp [h1]
       · right; simp [h1]
       · right; simp [h1]
@@ -1003,10 +1027,10 @@ theorem wds_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
       rcases hz with rfl | rfl | rfl | rfl
       · exact absurd hzR (hxB hxn.symm)
       · rw [hBf] at hm; cases hm
-        exact ss_rule_node hI.balanced hxR hAx hlevB hfl hlev.symm
+        exact ss_rule_node h.vbal hxR hAx hlevB hfl hlev.symm
           (fun c y hy => Or.inl (hHL.1 c y hy))
       · rw [hBs] at hm; cases hm
-        exact ss_rule_node hI.balanced hxR hAx hlevB hsl hlev.symm
+        exact ss_rule_node h.vbal hxR hAx hlevB hsl hlev.symm
           (fun c y hy => Or.inl (hHL.2 c y hy))
       · rw [hBr] at hm; cases hm
         refine ss_rule_root (keyLevel_pos p g (hh + 1)) (by rw [heightOf_keyLevel p hH1]; simp)
@@ -1079,7 +1103,7 @@ theorem wds_root_new {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
   refine ss_wp_step (putNode_eq _ _ _ _) ?_
   refine ss_wp_step (putNode_eq _ _ _ _) ?_
   refine ss_wp_step (putNode_eq _ _ _ _) ?_
-  refine ss_wp_step (newSuperRoot_eq v _ h.hyp.top) ?_
+  refine ss_wp_step (newSuperRoot_eq v _ h.wtop) ?_
   simp only [Bool.not_false, ↓reduceIte]
   exact wds_root_new_post hp hb h hcase hin hgh hH rfl rfl rfl rfl rfl rfl rfl rfl
 
@@ -1126,7 +1150,6 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
         z ∈ reachOf i s (w.withNode x V) ∨ z = first ∨ z = second) ∧
       x ∈ reachOf i s (w.withNode x V) := by
   obtain ⟨-, hAx, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   have hlook := h.look
   have hxlt : x < w.next := h.books.ids.1 x n hlook
   have hqlt : q < w.next := h.books.ids.1 q nq hq3
@@ -1134,7 +1157,7 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       some (.key ⟨wLevel s w q, nq.leaf, ksOf nq⟩) := by
     rw [hAz q hqx, treeOf_obj_overlay i s hq3 hq4]
   -- q's node: well formed, of size M at most
-  have hnq := hI.sound.nodes q hqr _ hAq
+  have hnq := h.vsound.nodes q hqr _ hAq
   simp only [ss_ite_neg (show ¬ some x = some q from fun e => hqx (Option.some.inj e).symm)]
     at hnq
   have hnq' := hnq
@@ -1142,7 +1165,7 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
   obtain ⟨⟨hnqs, hnqwf⟩, -⟩ := hnq'
   rw [ksOf_length] at hnqs
   -- x is reached in A, and a kid of q there
-  obtain ⟨loq, hiq, hgq⟩ := hI.sound.good.tr_reach_good _ q hqr _ hAq
+  obtain ⟨loq, hiq, hgq⟩ := h.vsound.good.tr_reach_good _ q hqr _ hAq
   obtain ⟨pre, post, he⟩ := List.append_of_mem hk1
   obtain ⟨hpre, -, hpp⟩ := live_split he
   have hkx := (hgq.tr_kids hAq _ (bounds_mem hiq he)).2.2.2 (by simp [hql])
@@ -1150,7 +1173,7 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
   simp only [hql, Bool.false_eq_true, ite_false] at hgx
   have hxreach : x ∈ reachAt (treeOf i s (w.withNode x V))
       ((treeOf i s (w.withNode x V)).fuel w.top.rootKey) w.top.rootKey :=
-    hI.sound.good.tr_closed hqr (g := wLevel s w q + 1) (tc_kid hAq hk1 (tc_self _ _ x))
+    h.vsound.good.tr_closed hqr (g := wLevel s w q + 1) (tc_kid hAq hk1 (tc_self _ _ x))
   have hsc1 : max loq k1 < sc := Good.tr_split_lo hgx hAx hsplit hL1
   have hscpost : ∀ b ∈ post, sc < b.1 :=
     tr_lt_post hpp (Good.tr_hi hgx hAx (y := y0) (by rw [hsplit]; simp))
@@ -1253,9 +1276,9 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
   have hfirstA : first = x ∨ (treeOf i s (w.withNode x V)).obj first = none := by
     rcases hfirst with e | e
     · exact Or.inl e
-    · exact Or.inr (treeOf_fresh hb hI.books e).1
-  obtain ⟨hSB, hxB, hRB⟩ := Sound.spaceSplit (ex' := some q) hI.sound hqr hAq hql hk1 hAx hsplit
-    hL1 hfirstA (treeOf_fresh hb hI.books hsecond).1 hfs hNf hNs hNq hBx hsame
+    · exact Or.inr (wds_fresh hb h htx e)
+  obtain ⟨hSB, hxB, hRB⟩ := Sound.spaceSplit (ex' := some q) h.vsound hqr hAq hql hk1 hAx hsplit
+    hL1 hfirstA (wds_fresh hb h htx hsecond) hfs hNf hNs hNq hBx hsame
   have hrkq : (wU.withNode q (addAll i nq insU)).top.rootKey = w.top.rootKey := by
     show wU.top.rootKey = _
     rw [htopU]
@@ -1314,11 +1337,11 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       have e1 : (treeOf i s wU).root = (treeOf i s (w.withNode x V)).root := by
         simp only [Tree.root, treeOf, hntU, htopU]
         rfl
-      exact e1.trans hI.root
+      exact e1.trans (wds_rootA h)
     have hxR : x ∈ reach (treeOf i s (w.withNode x V)) := by
-      rw [reach_of_root hI.root]; exact hxreach
+      rw [reach_of_root (wds_rootA h)]; exact hxreach
     have hqR : q ∈ reach (treeOf i s (w.withNode x V)) := by
-      rw [reach_of_root hI.root]; exact hqr
+      rw [reach_of_root (wds_rootA h)]; exact hqr
     have hHL := wds_halves_live hsplit hlf hls
     have hxs : x ≠ second := Nat.ne_of_lt (Nat.lt_of_lt_of_le hxlt hsecond)
     have hBf' : (treeOf i s (wU.withNode q (addAll i nq insU))).obj first =
@@ -1353,14 +1376,14 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       · rw [e] at hm ⊢; exact hxcase m hm
       · rcases hfirst with ef | ef
         · rw [e, ef] at hm ⊢; exact hxcase m hm
-        · rw [e, (treeOf_fresh hb hI.books ef).1] at hm; cases hm
-      · rw [e, (treeOf_fresh hb hI.books hsecond).1] at hm; cases hm
+        · rw [e, wds_freshA hb h htx ef] at hm; cases hm
+      · rw [e, wds_freshA hb h htx hsecond] at hm; cases hm
       · rw [e] at hm ⊢
         rw [hAq] at hm
         cases hm
         exact ⟨_, hBq, rfl⟩)
     have hBal : Balanced p (treeOf i s (wU.withNode q (addAll i nq insU))) := by
-      refine ss_bal_of hI.balanced hI.root hrootQ (fun z hz => ?_) hold hlevB
+      refine ss_bal_of h.vbal (wds_rootA h) hrootQ (fun z hz => ?_) hold hlevB
         (fun z hz hzR m hm => ?_)
       · rcases hRB z hz with h1 | h1 | h1
         · exact Or.inl h1
@@ -1375,7 +1398,7 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
           intro m hm
           rw [hBf'] at hm
           cases hm
-          exact ss_rule_node hI.balanced hxR hAx hlevB hfl rfl
+          exact ss_rule_node h.vbal hxR hAx hlevB hfl rfl
             (fun c y hy => Or.inl (hHL.1 c y hy))
         rcases hz with e | e | e | e
         · rw [e] at hzR hm
@@ -1385,11 +1408,11 @@ theorem wds_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
         · rw [e] at hm; exact hfr m hm
         · rw [e, hBs'] at hm
           cases hm
-          exact ss_rule_node hI.balanced hxR hAx hlevB hsl rfl
+          exact ss_rule_node h.vbal hxR hAx hlevB hsl rfl
             (fun c y hy => Or.inl (hHL.2 c y hy))
         · rw [e, hBq] at hm
           cases hm
-          refine ss_rule_node hI.balanced hqR hAq hlevB rfl rfl (fun c y hy => ?_)
+          refine ss_rule_node h.vbal hqR hAq hlevB rfl rfl (fun c y hy => ?_)
           rw [addAll_live hnqwf] at hy
           rcases mem_foldl_insertCv_src insU _ hy with h1 | h1
           · exact Or.inl ⟨c, h1⟩
@@ -1441,7 +1464,6 @@ theorem wds_parent_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tr
   rw [hq3] at hq3'
   cases hq3'
   obtain ⟨hO, hAx, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   obtain ⟨hVf, hVs⟩ := wds_vfacts h htx hxA
   obtain ⟨L1, y0, rest, hsplit, hL1, hfl, hsl, hlf, hls, hwff, hwfs, ⟨rf, hf1⟩, ⟨rs, hs1⟩, htf,
     hts, hszf, hszs, hkf, hks⟩ :=
@@ -1643,7 +1665,6 @@ theorem wds_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} 
   rw [hon'] at hon''
   cases hon''
   obtain ⟨hO, hAx, hAz⟩ := wds_start h htx
-  have hI := h.hyp
   obtain ⟨hVf, hVs⟩ := wds_vfacts h htx hxA
   obtain ⟨L1, y0, rest, hsplit, hL1, hfl, hsl, hlf, hls, hwff, hwfs, ⟨rf, hf1⟩, ⟨rs, hs1⟩, htf,
     hts, hszf, hszs, hkf, hks⟩ :=

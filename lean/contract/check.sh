@@ -22,6 +22,8 @@
 # faults made in a trace must fail it. About 2 minutes for small, drain and reclaim.
 # The bridge's clauses in the model's words too: bridge-check.sh, or
 # .lake/build/bin/bridgecheck --model TRACE...
+# PAR=N checks a set in N parts at once with each checker (default 4; par.sh,
+# bergdb 030-13): the medium set 1359 s (contract) and 4097 s (bridge) in one part.
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/contractcheck
 BCHECK=.lake/build/bin/bridgecheck
@@ -38,9 +40,9 @@ FAILED=0
 for set in $SETS; do
     dir=../../java/build/traces/tree-$set
     ls $dir/*.trace > /dev/null 2>&1 || { echo "CONTRACT FAILED: no traces in $dir"; exit 1; }
-    "$CHECK" $dir/*.trace > $dir/contract.txt 2>&1 &
+    sh par.sh "$CHECK" $dir/contract.txt $dir/*.trace &
     pc=$!
-    "$BCHECK" $dir/*.trace > $dir/bridge.txt 2>&1 &
+    sh par.sh "$BCHECK" $dir/bridge.txt $dir/*.trace &
     pb=$!
     wait $pc; sc=$?
     wait $pb; sb=$?
