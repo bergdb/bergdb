@@ -72,3 +72,4 @@ the checker; started the reclaim set with `live=1`.
 2026-11-17, 16:07 to 19:55. The reclaim set (live), the large set (live
 and not), most of the medium set (live); the large set with 10 seeds, not
 live, started.
+GATED a33be2f4: the reclaim set (live=1) 15 of 15 and the large set (live=1) 6 of 6 CONTRACT OK, 25,735 transactions; gate base 6db019b3.
