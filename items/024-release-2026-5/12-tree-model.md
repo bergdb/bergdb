@@ -553,6 +553,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeTailFullRest3OK`: p not made and the space root (d = 1) or a segment root, q full or
   compacting (the cascade, R4), and p made and split in space (in place).
   `writerWP_afterDelete_liveTR3`: premises `MergeTailFullRest3OK`, `MergeParamsOK` and R3.
+  01:45 (prover l4c): `MergeTailFullRest3OK` reduced to `MergeTailFullRest4OK`, its case
+  `MergeFullTimeRoomG` proved: p, not made, a segment root (q a segment leaf) split in time
+  below q with room, one node or two (`descendToHeight_redirectSeg`: the next round's
+  segment search finds p's copy through q's long klong; `writerWP_mergeTail_liveFullTime2G`).
+  On step 0's runs this is the most frequent full-parent case (454 of 1,198; counts in
+  030-01's log). Left in `MergeTailFullRest4OK`: p not made and the space root (d = 1), a
+  segment root that splits in space, q full or compacting (the cascade, R4), and p made and
+  split in space. `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`,
+  `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

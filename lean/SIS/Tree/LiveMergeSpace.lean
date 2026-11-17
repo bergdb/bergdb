@@ -1260,4 +1260,82 @@ theorem writerWP_afterDelete_liveTR3 (key : Key) (g : Nat) (c : Ctx) (base : Vie
   writerWP_afterDelete_liveTR2 key g c base hvc hm hMP KO B hv hk hICEk hsa2 hcap hpos hvo hkw top0 hB
     (mergeTailFullRest2OK_of_rest3 c base hvc hm hMP hF) v hJ hpb hhi hLH hR3
 
+/-! ## What is left of `MergeTailFullRest3OK` -/
+
+/-- `MergeTailFullRest3OK` but in its case `MergeFullTimeRoomG` (bergdb 030-01,
+step 3's rest): the merge's tail where its parent p goes `full`, and p, not made
+by the transaction, is the space root (d = 1), or is a segment root that splits
+in space, or q has no room for p's new klongs or would compact (the cascade); or
+p, made by the transaction, splits in space (in place). -/
+def MergeTailFullRest4OK (c : Ctx) (base : View BVal) (B : NodeId) (H : NodeId → Nat → Prop) :
+    Prop :=
+  ∀ (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
+    (top0 : Top) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (x p : NodeId)
+    (pn xn : KNode),
+    descendToHeight key g h c v = .ok (d, v1) → 0 < d →
+    ReadsAs c.p base v1 v3 → ObsKept c v1 v3 → v3.path = v1.path →
+    LiveHoleW key g h c base v →
+    DelInvJ c base w0 k0 F KO B B v3 → PutBook c B top0 v3 → PathOK c v3 d X K Nn →
+    Book B c v1 → HtInv H B c v1 → PathFreeTo v1 v1.path.length → HtInv H B c v3 →
+    (v3.path[d]?).map (·.2) = some x → (v3.path[d - 1]?).map (·.2) = some p →
+    v3.nodes.lookup p = some pn → pn.leaf = false → v3.nodes.lookup x = some xn →
+    xn.cnt < c.p.mergeBelow →
+    ∀ (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode)
+      (ir cL cR : Nat) (w3 : W), ReadsAs c.p base v3 w3 →
+    w3.nodes.lookup p = some pn → ObsKept c v3 w3 →
+    (∀ z, (w3.nodes.lookup z).isSome = true → (v3.nodes.lookup z).isSome = true ∨
+      (c.view z).isSome = true) →
+    pn.ks[il]? = some (.key cL l) → LastLive pn.ks pn.lastBitmap il cL →
+    pn.ks[ir]? = some (.key cR r) → LastLive pn.ks pn.lastBitmap ir cR → cL < cR →
+    (∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc) →
+    ln.leaf = xn.leaf → rn.leaf = xn.leaf →
+    (x = l ∨ x = r) → wNode c.p base v3 l = some ln → wNode c.p base v3 r = some rn →
+    v3.nodes <+: w3.nodes → w3.path = v3.path →
+    ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next) →
+    ¬ MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullMadeTime c v3 pn xn ln rn il cL ir cR →
+    ¬ MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR →
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
+        (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey))
+
+/-- `MergeTailFullRest3OK` from its rest: its case `MergeFullTimeRoomG` (p a
+segment root, its time split below its segment leaf with room) is proved
+(`writerWP_mergeTail_liveFullTimeRoundG`). -/
+theorem mergeTailFullRest3OK_of_rest4 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) {B : NodeId} {H : NodeId → Nat → Prop}
+    (hvo : ViewHtOK H B c) (hF : MergeTailFullRest4OK c base B H) :
+    MergeTailFullRest3OK c base B H := by
+  intro key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3 hb1
+    hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3
+    hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS
+  by_cases hN : MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR
+  · exact writerWP_mergeTail_liveFullTimeRoundG c base hvc hm hMP hvo key g h v v1 v3 d F w0 k0 KO
+      X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hb1 hi1 hpf1 hx hpath hplk hpleaf hxlk
+      leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn
+      hpre3 hpath3 hnB hN
+  · exact hF key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3
+      hb1 hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3
+      hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS hN
+
+/-- `afterDelete` with the hole (bergdb 030-01, steps 3 and 4): from the call's
+facts to `LiveEdges`, premises `MergeTailFullRest4OK`, `MergeParamsOK` and R3
+after the merges' loop. -/
+theorem writerWP_afterDelete_liveTR4 (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) (KO : KindOracle)
+    (B : NodeId) (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c)
+    (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
+    (hpos : 0 < c.i) {H : NodeId → Nat → Prop} (hvo : ViewHtOK H B c)
+    (hkw : ViewKlongsWf c.p c.view) (top0 : Top) (hB : PutBase c base B)
+    (hF : MergeTailFullRest4OK c base B H)
+    (v : W) (hJ : DelInvJAE c base KO B B v) (hpb : PutBook c B top0 v) (hhi : HtInv H B c v)
+    (hLH : LiveHoleW key g 0 c base v)
+    (hR3 : WriterWP (mergeUp key g c.p.fuel 0 false) c v
+      (fun merged v' => merged = true → R3At key g c v')) :
+    WriterWP (afterDelete key g 0) c v
+      (fun _ v' => LiveEdges c.p (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_afterDelete_liveTR3 key g c base hvc hm hMP KO B hv hk hICEk hsa2 hcap hpos hvo hkw top0 hB
+    (mergeTailFullRest3OK_of_rest4 c base hvc hm hMP hvo hF) v hJ hpb hhi hLH hR3
+
 end SIS.Tree

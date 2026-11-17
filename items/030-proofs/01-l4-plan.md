@@ -1044,6 +1044,7 @@ The checked copy's `checkFree` is what excludes that state (`ht_takeBackChk`);
 at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
 true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1118,6 +1119,7 @@ segment root's (no cascade), every space split of the full leaf is proved, given
 l4a's loop. Left of step 5: the time split's cascade (R4), and a compacting split
 of a last version above h.
 
+
 2026-11-17, 01:39 to 01:41. Step 5, the compacting split, prover l4b
 (LiveDelFullDead.lean): a full leaf whose bitmap compacts ("bitmap.dead",
 "bitmap.inplace.dead") splits in time whatever its last version's size; the split
@@ -1129,6 +1131,30 @@ unchanged otherwise: `liveDel_fullMadeG_live` (made, in place) and
 cases are now all proved but one, given l4a's loop: the leaf not made, split in
 time, its parent without room for the copy's klong (the cascade with the copy the
 hole below the chain, R4).
+
+2026-11-17, 01:33 to 01:45. Step 3's rest, fifth part, prover l4c. Which full-parent
+merges occur on step 0's runs: step 0's checker with each merge whose parent goes `full`
+classified by its notes (`/Users/f/fl/bench/2026-11-16/night/l4c/runs/merge-full-cases.lean.txt`,
+2 min 30 s, the same 15 families). Of 1,198 full-parent merges: the parent a segment root
+split in time below its segment leaf, no cascade, 454 (233 into one node, 221 into two);
+the same with a cascade, 194; made, split in time in place, about 155 (proved); below an
+inner parent, split in time, no cascade, about 100 (proved); the space root split in time
+(d = 1), 81; a segment root split in space, 67 without a cascade and 60 with; the space
+root split in space, 12; below an inner parent split in space, 2 (proved); in time with
+a cascade, 2. So the segment root case was taken next: `MergeTailFullRest3OK` reduced to
+`MergeTailFullRest4OK`, its case `MergeFullTimeRoomG` proved (p not made, split in time,
+below q, a segment leaf or inner, with room; one node or two). R1 at the segment root
+(`descendToHeight_redirectSeg`, LiveMergeFull.lean): the round's descent below the segment
+root is one step (q, a leaf, cannot be inner on it), so p is the segment root and q the
+leaf above; at the next round the segment search reads alike up to q, q's long klong now
+names the copy (`KNode.add_key_searchEq`), and the descent stops at the copy, of height
+h + 1. Into two nodes the copy is filled under the segment leaf too
+(`writerWP_mergeTail_liveFullTime2G`, by `childOK_grow`). The round lemma
+`writerWP_mergeTail_liveFullTimeRoundG` takes both; the earlier ones are its instances.
+`writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`, `MergeParamsOK`, R3.
+Left: p not made and the space root (d = 1; 93 on the runs), a segment root's space split
+(127), q full or compacting (the cascade, R4; 196), and p made and split in space (0 on the
+runs). No stop rule fired.
 
 2026-11-17, 01:44 to 01:50. Step 7, the assembly, prover l4b (LiveAssembly.lean):
 `invGetScanOK_merges_noL4`, TP7, TP10 and TP11 for Java's parameters without
