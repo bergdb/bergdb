@@ -1658,3 +1658,18 @@ its search naming the leaf). So R1 at the state level covers all 69. Left for th
 writer's cascade with the copy the hole: the live counts after it by l4b's
 `writerWP_appendKlongs_chainGLX` with E the copy (a segment root, named by segment leaves
 only), and the nodes' shapes that these lemmas take.
+
+2026-11-17, 03:26 to 03:30. The writer's side of the largest group of the 69, prover l4g
+(`LiveRootTimeHole.lean`, about 140 lines). The 25 where q, p's segment leaf, is the space
+root, not made by the transaction, and splits in time: p's split calls
+`appendKlongs 0 q [(k1, y)]`. `writerWP_handleFullWith_rootTimeSplit_ins`: the space root's
+time split with klongs to put (l4b's `_nil` form with `writerWP_replaceOrAdd_lastN`): the
+next id holds q's last version with the klongs, the new space root; q its klongs before the
+transaction; the rest kept. `writerWP_appendKlongs_rootTime` for `appendKlongs` at depth 0
+(no room, or compacting; the last version within a split's bound when no room), and
+`writerWP_appendKlongs_rootTimeHole`: the new space root is a leaf whose search of k1 names
+y, the other nodes and the taken set kept: the premises of
+`descendToHeight_topSeg_leafRoot` but y's node and height (p's split's). The live counts
+after, y the hole, are l4b's `writerWP_appendKlongs_chainGLX` with s = D = 0 and E the copy
+y (a segment root named by a segment leaf). Left for the 25: the merge's tail with the hole
+(`writerWP_mergeTail_liveSplitX` with a hole after the split and `LiveHoleW` at h + 1).

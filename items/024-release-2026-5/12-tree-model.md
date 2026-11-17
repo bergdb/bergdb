@@ -739,6 +739,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   after q's in-place space split (6), `topSeg`. So R1 at the state level covers all 69; left:
   the writer's cascade with the copy the hole (`writerWP_appendKlongs_chainGLX` with E the
   copy, a segment root named by segment leaves only, gives the live counts after it).
+  03:30 (prover l4g, `LiveRootTimeHole.lean`): the writer's side for the largest group (25,
+  q the space root, not made, split in time): `writerWP_appendKlongs_rootTimeHole` (no
+  premises): `appendKlongs 0 q [(k1, y)]` at the space root without room (or compacting),
+  its last version within a split's bound, ends with a new space root, a leaf whose search
+  of k1 names y, the other nodes and the taken set kept: what `_leafRoot` takes
+  (`writerWP_handleFullWith_rootTimeSplit_ins`, the root's time split with klongs to put).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
