@@ -1260,3 +1260,17 @@ the halves, no hole); and p made and split in space, in place (0). Before more c
 the five tails' common prelude into one continuation lemma (about 1,000 lines fewer), and
 give the round lemmas one shared derivation of the tail's facts.
 
+2026-11-17, 01:58 to 02:04. Step 6, the stop node without room, prover l4e
+(`LiveUpCascCall.lean`, about 490 lines, most of them near-copies of the stratum's walk
+and of l4d's `writerWP_del_upRoomLiveH`). l4b's premise `hCasc` (`DelCaseLive …
+DelEmptyCascM`) reduced to one narrow obligation, `UpCascCallOK`: at the upward loop's
+end, a full segment-leaf stop node's bitmap (its split, maybe a cascade) ends at the
+call's facts (`DelInvJT`, `PutBook`, `HtInv`, `LiveHoleW key g 0`, (g, 0) the stop
+node's pair). `delCaseLive_emptyCasc` (premise `UpCascCallRuns`, the obligation at the
+runs) and `invGetScanOK_merges_noL4U` (`invGetScanOK_merges_noL4` with it for `hCasc`).
+`DelEmptyCascM`'s stop candidate need not be the climb's stop, so the walk
+(`takeJ2_deleteUpward_stepMBKGDS`) splits by the room at the climb's stop: with room,
+l4d's argument (`liveEdgesH_up`, `holeAtW_stop`, `htInv_upFrame`) over the new walk;
+full, the obligation; an inner stop node is excluded by the live counts. Next: the
+obligation at the space root (01:56's argument, with the heights through the swap),
+then the space splits below it.

@@ -478,6 +478,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `SJ0` from the induction's facts, then the cases (`delMerge_cover`, `delEmptyM_split`,
   `delEmptyOther_split`, `delFullM_cover`). 01:53 (l4b): `invGetScanOK_merges_noL4b`, the
   same with l4c's narrower `MergeTailFullRest4OK` (`MergeTailRuns4`). 23:35 (prover l4a, step 3's first part): the merges' loop with
+
+  `delEmptyOther_split`, `delFullM_cover`). 02:04 (l4e): `DelCaseLive … DelEmptyCascM` is
+  reduced to the full stop node's split alone (`delCaseLive_emptyCasc`, `LiveUpCascCall.lean`,
+  premise `UpCascCallRuns`: at the upward loop's end a full segment-leaf stop node's bitmap
+  ends at the call's facts); where the stop node has room, l4d's argument over the new walk;
+  `invGetScanOK_merges_noL4U` is `invGetScanOK_merges_noL4` with that premise for `hCasc`. 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
