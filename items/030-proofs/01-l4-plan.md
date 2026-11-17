@@ -1368,6 +1368,46 @@ node made by the transaction, is the hole), a made stop node's split in space in
 and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
 coordinator's word, 02:10: none more carrying `R3Calls`).
 
+2026-11-17, 02:10 to 02:18. R4 narrowed further, prover l4b (LiveDelHoleMade.lean):
+the leaf's time split whose copy is a hole, below a parent q that the transaction
+made, not the space root, full or compacting with the copy's klong, whose own
+last version is within a split's bound: q splits in time in place
+(`writerWP_handleFullWith_timeInPlace_termGh`), its node its last version with
+its klong of the leaf naming the copy, so the copy stays the hole under q
+(`writerWP_handleFull_timeMadeParent_liveGh`, by `liveEdgesH_redirect`) and R1
+holds as for a parent with room (`holeAtW_copyG`: `holeAtW_copy` for any new
+parent node whose searches are q's but its klong naming the copy;
+`KNode.searchLte_redirect`). `liveDel_fullTimeMadeParent`. Left of R4:
+`DelFullTimeHole2M` (the hole's parent the space root, not made by the
+transaction, or splitting in space). `invGetScanOK_merges_noL4d`.
+
+2026-11-17, 02:04 to 02:18. Step 3's rest, eighth part, prover l4f (`LiveMergeChain.lean`,
+about 450 lines, about 280 of them l4b's segment-root cascade again; `LiveMergeSpace.lean`
+generalized, about 180 lines added). Order: the coordinator's step 1 (fold the five tails'
+prelude into one continuation lemma) was put after this part, by rule: the cascade's space
+split needs no new tail (the space tail takes the split as a premise), so the fold would
+not shorten it; the fold serves the next new tails (the space root's two cases).
+`MergeTailFullRest6OK` reduced to `MergeTailFullRest7OK`, its case `MergeFullSpaceSegChain`
+proved: p, not made, a segment root split in space below its segment leaf q, whatever q's
+room (60 on the runs with a cascade, 67 without). The split's premise is now
+`SplitStepOKW`: `SplitStepOK` with the merge start's frame (the same path, taken set and
+top; the nodes below its next id but x alike; nothing at or above the next id; a tree whose
+reach includes the start's; each link one of the start's or below its next id), and the
+top after free (a cascade may split the space root). The space tail
+(`writerWP_mergeTail_liveSpaceW`) and its round (`writerWP_mergeTail_liveSpaceRoundW`, the
+split given for q's facts) take it; `writerWP_mergeTail_liveSpaceG` and
+`writerWP_mergeTail_liveSpaceRoundG` are their instances (`splitStepOKW_of`), statements
+unchanged. The instance for the cascade (`splitStepOKW_segChain`): l4b's
+`writerWP_handleFull_segSpaceChain_live` on the merged tree V (p's node its last version;
+`writerWP_handleFull_segSpaceChainV_live`, with the reach after, for the cleanup), its chain
+premises from the path at the merge's start (`rangeG_of_rangeOrder`, `lenG_of_splitAbove`,
+`pathOK_dist`) and its links from `PutInvG`. `writerWP_afterDelete_liveTR7`: premises
+`MergeTailFullRest7OK`, `MergeParamsOK`, R3. Proved cases on the runs: 897 of 1,134 (79%).
+Left: the space root split in time into two nodes (29) or in space (12), the time split's
+cascade (196, R4), a space split below a full inner parent (0; the inner cousin
+`writerWP_handleFull_spaceChain_live` would carry over the same way), and p made and split
+in space (0). No stop rule fired.
+
 2026-11-17, 02:16 to 02:22. Step 6, the made stop node's split in time, prover l4e
 (`LiveUpCascMade.lean`, about 720 lines, about 330 of them the swap prelude again for the
 heights). `writerWP_upCasc_below_madeTime`: a full stop node below the space root that the
