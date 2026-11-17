@@ -35,3 +35,6 @@ import Contract.Proof.TreeCtx
 import Contract.Proof.NodeAlg
 import Contract.Proof.Sound
 import Contract.Proof.WriterState
+import Contract.Proof.NodeAlg2
+import Contract.Proof.WriterPrim
+import Contract.Proof.WriterTop
