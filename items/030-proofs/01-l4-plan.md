@@ -1179,3 +1179,37 @@ R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
 `invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
 (l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
 `mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
+
+2026-11-17, 01:56 to 02:00. R3Calls checked, prover l4b. No Lean counterexample
+found within the time box; what was found:
+
+- At the runs R3 holds, by key order. A delete that reaches `afterDelete`
+  removes a key that existed before its transaction (a transaction's keys are
+  strictly increasing, `sortedKeys`, so no key is put and deleted in one
+  transaction). Every segment root on such a key's path is a node from before
+  the transaction, or a node the transaction made by a split or a merge with a
+  made-for entry: `split.space2` and `split.space3` set `some x`;
+  `split.space2.inplace`, `split.space3.inplace` and a merge's node copy
+  `replacedBy` of a made node, which has an entry when that node lies on an old
+  key's path. A node with no made-for entry (`setMadeFor _ none`) arises only
+  in a segment tree under a prefix new in the transaction, which holds only
+  keys put in it, none of which a later delete of the same transaction names.
+  R3At asks `madeFor.lookup x = none` of the root it finds, so at the runs it
+  holds vacuously. Probe: the step-0 checker with one transaction that makes a
+  new segment, splits it in place and deletes under that prefix is not within
+  reach (its operations are not sorted), as the argument says.
+- `R3Calls` as stated (as `writerWP_afterDelete_liveTR3`'s `hR3`) asks R3At at
+  every state with the call's facts (`DelInvJT`, `PutBook`, `HtInv`,
+  `LiveHoleW`), and none of these mentions made-for entries (`PutInv`,
+  `PutInvG`, `RangeOrder`, `InnerChildrenExist`, `PutBase`, `PutBook`, `Book`,
+  `KdInv`, `TakeJ2`). A state whose segment root is made by the transaction,
+  has no made-for entry and two live klongs, one the hole leaf, the other a leaf
+  that fits it in one node, would run the merge into one node and stop there
+  with R3At false. I believe `R3Calls` is false at such unreached states (as
+  `UpHtWalk` was), but did not build one: a state meeting `DelInvJT` is large.
+- The restatement that follows: R3 at the calls given the made-for fact,
+  "segment g's root on the key's path is from before the transaction or has a
+  made-for entry", which the merges' loop keeps (a split of the root copies its
+  entry) and which makes R3At vacuous; the fact itself at the calls is the key
+  order argument above, an obligation of the delete's walk (the stratum's
+  facts do not carry made-for entries today).
