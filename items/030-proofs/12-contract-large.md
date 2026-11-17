@@ -37,6 +37,14 @@ clause, no trace not whole, no ERROR line.
   (m-d8, m-d30, m-mixed, m-long, m-big, m-long3, m-fifo, m-r-del).
   m-d30's traces (1.2 GB, 17 million LIVE lines) take 4.4 to 4.5 hours
   each to check, and the checker grows to 4 GB; m-d62's are 1.7 GB.
+- **Main's checkers (d7966251) on the traces without LIVE lines**:
+  `contractcheck` with K-LEVEL (030-17) and `bridgecheck` (030-07) on
+  the reclaim set (3 seeds, 15 traces), the medium set (3 seeds, 27) and
+  the large set (10 seeds, 60): 102 of 102 CONTRACT OK and BRIDGE OK.
+  192,402 transactions, 1,315,051 operations; the bridge: 1,359,030
+  nodes made, 3,585,447 entries, 17,453 touched (reclaim and m-r-del
+  only); no failure of any clause (KIND 0). 2.3 hours of the contract
+  check and 5.1 hours of the bridge check, summed over the traces.
 - **The check's time with LIVE lines is not linear in the trace**:
   l-5000's 4.1 GB (57.7 million LIVE lines) took 1.7 hours, m-d30's
   1.2 GB 4.4 hours. By reading (not measured): each LIVE line is checked
@@ -100,5 +108,8 @@ live, started.
 pulled main (bridgecheck, K-LEVEL, contractconf.sh); built main's
 checkers in a worktree; rechecking the reclaim, medium and large traces
 without LIVE lines with both.
+2026-11-17, 21:50, to 2026-11-18, 00:30. The recheck: 102 of 102 with
+both of main's checkers; the large set's seeds 11 to 30 started, without
+LIVE lines, with main's checkers.
 GATED a33be2f4: the reclaim set (live=1) 15 of 15 and the large set (live=1) 6 of 6 CONTRACT OK, 25,735 transactions; gate base 6db019b3.
 GATED b22c6cce: the medium set not live 27 of 27, live 24 of 27 (m-d62 running), large 10 seeds not live 60 of 60; gate base d7966251.
