@@ -57,3 +57,5 @@ Frans's words:
 * 11:16 Mathlib (Frans delegated it): yes, in the new proofs' own Lake
   package, so that `lean/`'s build and the level scripts are untouched
   (030-04 gives the reasons).
+* 11:17 The freeze: tag proofs-2026-11-17 on 89c6cc3a, pushed. Agents w04 (030-04, Fable high) and wip (Lean labelled work in progress, Opus high) started 11:16.
+* 11:18 W2 done: lean/README.md labelled work in progress (bdeca766); the users' README on 029-public-files without Lean or proofs (6e136f82, not pushed). The release notes of 2026.1 to 2026.5 still speak of the proved Lean model: Frans's call.

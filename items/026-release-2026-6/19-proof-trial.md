@@ -1,7 +1,30 @@
 # 026-19. The proof trial of 026-18: subtransactions in Lean
 
-Created 2026-11-16 by Frans Lundberg. Status: done (the trial run
-2026-11-16, 22:03, to 2026-11-17, 00:55; the result below).
+Created 2026-11-16 by Frans Lundberg. 
+
+Brief:
+
+* Background. 16 Nov. Prooving seemed hard. No end in sight and
+  a need to conclude for public release.
+
+* Idea. The idea by Frans is about maintenance transactions MT
+  (a type of subtransaction) and user transactions. 
+  To simplify the algorithms by divide-and-conquer. 
+  Each transaction type would be simpler to prove.
+
+* Trial. This trial investigated this. Done 17 Nov. 
+  Not a complete investigation. 
+
+* Results. No evidence for a major reduction of simplicity.
+  MT seems similar in complexity cost to the current solution.
+  The evidence suggests a minor performance degradation. 
+
+* Concluding. Stay with the current model.
+
+
+
+Status: done (the trial run 2026-11-16, 22:03, to 2026-11-17, 
+00:55; the result below).
 
 A short proof trial of 026-18's idea, on MT's rules as 026-17 tried them
 (`Mt.lean` on the branch `026-17-mt-trial`): prove that one fix step
