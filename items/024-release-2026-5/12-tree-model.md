@@ -410,7 +410,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   01:30 (l4d): the true form, `liveDel_upRoom_liveH` (`LiveUpRoomH.lean`, premises `MergeLiveOK`,
   `CollapseLiveOK`): the heights at the stop node's call from the walk's start through the
   loop's frame (`htInv_upFrame`, `LiveUpHt.lean`); R2's heights done for the upward delete with
-  room. R1 at the stop
+  room. 01:55 (l4e): the upward delete whose climb reaches the space root, not made by the
+  transaction, with room or full (`DelEmptyUpRootM`, `UpToRoot`): no hole is left (the root
+  is a leaf; its split by `writerWP_handleFull_root_live` at the state with its bitmap, moved
+  by the swap), so the merges' loop merges nothing: `liveDel_upRoot_live`
+  (`LiveUpCascRoot.lean`), no premise; the walk `takeJ2_deleteUpward_stepMBKGDS`
+  (`LiveUpCascWalk.lean`) gives the leaf stop node the climb's stop and its `gh` entry. R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
@@ -558,11 +563,32 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeFullTimeRoomG` proved: p, not made, a segment root (q a segment leaf) split in time
   below q with room, one node or two (`descendToHeight_redirectSeg`: the next round's
   segment search finds p's copy through q's long klong; `writerWP_mergeTail_liveFullTime2G`).
-  On step 0's runs this is the most frequent full-parent case (454 of 1,198; counts in
+  On step 0's runs this is the most frequent full-parent case (454 of 1,134; counts in
   030-01's log). Left in `MergeTailFullRest4OK`: p not made and the space root (d = 1), a
   segment root that splits in space, q full or compacting (the cascade, R4), and p made and
   split in space. `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`,
   `MergeParamsOK` and R3.
+  01:50 (prover l4c): `MergeTailFullRest4OK` reduced to `MergeTailFullRest5OK`, its case
+  `MergeFullSpaceG` proved: p, not made, a segment root split in space below its segment
+  leaf with room (l4b's `writerWP_handleFull_segSpaceRoom_live` on the merged tree,
+  `writerWP_handleFull_segSpaceRoomV_live`); the space tail now takes the split as a premise
+  (`SplitStepOK`, `writerWP_mergeTail_liveSpaceG`), with the inner parent's and the segment
+  leaf's splits its instances. Left in `MergeTailFullRest5OK`: p not made and the space root
+  (d = 1; 93 on the runs), q full or compacting (the cascade, R4; 256 on the runs, 60 of
+  them a segment root's space split, which l4b's cascade lemmas may serve on the merged
+  tree), and p made and split in space (0 on the runs). `writerWP_afterDelete_liveTR5`:
+  premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3.
+  01:59 (prover l4c, `LiveMergeRoot.lean`): `MergeTailFullRest5OK` reduced to
+  `MergeTailFullRest6OK`, its case `MergeFullTimeRoot1` proved: a merge into one node whose
+  parent p, the space root, not made, splits in time (52 on the runs): p's copy becomes the
+  space root (`newSuperRoot`) and the hole (`writerWP_handleFull_timeRoot_live`,
+  `liveEdgesH_newRoot`), and the next round's descent starts and stops there
+  (`descendToHeight_newRoot`: the key's segment is the first). Left in
+  `MergeTailFullRest6OK`: the space root split in time with a merge into two nodes (29) or
+  in space (12), q full or compacting (the cascade, R4; 256), and p made and split in space
+  (0). `writerWP_afterDelete_liveTR6`: premises `MergeTailFullRest6OK`, `MergeParamsOK` and R3.
+  02:00: prover l4c stopped by 030-01's size rule (about 6,500 lines, about 3,000 of them
+  near-copies of the merge tail's prelude); what is left and how: 030-01's log, 02:00.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

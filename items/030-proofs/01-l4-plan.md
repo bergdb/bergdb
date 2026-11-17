@@ -1045,6 +1045,8 @@ at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
 true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
+
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1120,6 +1122,8 @@ l4a's loop. Left of step 5: the time split's cascade (R4), and a compacting spli
 of a last version above h.
 
 
+
+
 2026-11-17, 01:39 to 01:41. Step 5, the compacting split, prover l4b
 (LiveDelFullDead.lean): a full leaf whose bitmap compacts ("bitmap.dead",
 "bitmap.inplace.dead") splits in time whatever its last version's size; the split
@@ -1135,10 +1139,10 @@ hole below the chain, R4).
 2026-11-17, 01:33 to 01:45. Step 3's rest, fifth part, prover l4c. Which full-parent
 merges occur on step 0's runs: step 0's checker with each merge whose parent goes `full`
 classified by its notes (`/Users/f/fl/bench/2026-11-16/night/l4c/runs/merge-full-cases.lean.txt`,
-2 min 30 s, the same 15 families). Of 1,198 full-parent merges: the parent a segment root
+2 min 30 s, the same 15 families). Of 1,134 full-parent merges: the parent a segment root
 split in time below its segment leaf, no cascade, 454 (233 into one node, 221 into two);
-the same with a cascade, 194; made, split in time in place, about 155 (proved); below an
-inner parent, split in time, no cascade, about 100 (proved); the space root split in time
+the same with a cascade, 194; made, split in time in place, 162 (proved); below an
+inner parent, split in time, no cascade, 100 (proved); the space root split in time
 (d = 1), 81; a segment root split in space, 67 without a cascade and 60 with; the space
 root split in space, 12; below an inner parent split in space, 2 (proved); in time with
 a cascade, 2. So the segment root case was taken next: `MergeTailFullRest3OK` reduced to
@@ -1175,10 +1179,86 @@ the cases: the noop and the key with no leaf excluded by the open case,
 R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
 (`afterDelete_live_runs`). When a piece lands, its premise goes.
 
+(127, 60 of them with a cascade), q full or compacting (the cascade, R4; 256 in all: 196
+in time, 60 in space), and p made and split in space (0 on the runs). No stop rule fired.
+
+2026-11-17, 01:46 to 01:50. Step 3's rest, sixth part, prover l4c. `MergeTailFullRest4OK`
+reduced to `MergeTailFullRest5OK`, its case `MergeFullSpaceG` proved: a segment root, not
+made, split in space below its segment leaf with room (67 on the runs). l4b's segment-root
+split on the merged tree (`writerWP_handleFull_segSpaceRoomV_live`, with the nodes reached
+after from `treeOK_segSpaceStep`); the space tail and its round now take the split as a
+premise (`SplitStepOK`; `writerWP_mergeTail_liveSpaceG`, `writerWP_mergeTail_liveSpaceRoundG`;
+`splitStepOK_spaceRoom` and `splitStepOK_segSpace` its instances; the earlier lemmas are
+instances, statements unchanged). `writerWP_afterDelete_liveTR5`: premises
+`MergeTailFullRest5OK`, `MergeParamsOK`, R3. Left: p not made and the space root (d = 1;
+93 on the runs: a time split makes the copy the new space root, `newSuperRoot`, R1 at the
+root; a space split a new root above the halves, no hole), q full or compacting (the
+cascade, R4; 256 on the runs, 196 in time and 60 in space; for a space split l4b's
+cascade lemmas for the leaf may
+serve on the merged tree, as its split lemmas did; a time split's cascade keeps the hole
+below the chain, R4's general case), and p made and split in space (0 on the runs). With
+this part the proved cases cover 785 of the 1,134 full-parent merges on the runs (69%);
+left 349: the cascade 256, the space root 93. No stop rule fired.
+
 2026-11-17, 01:53. Step 7, a successor as l4c's fifth part landed:
 `invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
 (l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
 `mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
+
+2026-11-17, 01:37 to 01:56. Step 6, the stop node at the space root, prover l4e
+(`LiveUpCascWalk.lean`, about 620 lines, near-copies; `LiveUpCascRoot.lean`, about 650
+lines, about 400 of them near-copies of the stratum's walk and of the tree's root swap).
+`liveDel_upRoot_live`: a delete that empties its leaf, not the space root, whose climb
+reaches the space root (`DelEmptyUpRootM`: every node strictly between the root and the
+leaf on the key's path empties, and the root was not made by the transaction), keeps the
+live counts, the root with room or full, with no premise and no heights. The stop node is
+the root, a segment leaf (`lebStop_false` excludes an inner one), which asks no count: after
+its bitmap the live counts hold (`liveEdgesH_up`, the root the only hole), and a full root
+splits (`writerWP_upCasc_root_live`: l4b's `writerWP_handleFull_root_live` at the state whose
+root has its bitmap, moved to the writer's state by `writerWP_handleFullWith_root_swap`, as the
+tree's `writerWP_upCasc_root_j2S` does). With no hole the merges' loop merges nothing
+(`writerWP_afterDelete_none`), so neither `MergeLiveOK` nor `CollapseLiveOK` nor the stop
+node's pair is needed. The walk (`takeJ2_deleteUpward_stepMBKGDS`, `writerWP_deleteUpward_stepJGS`:
+the stratum's with the climb's stop fact, the stop node's `gh` entry and an inner stop node's
+leaf flag given to the continuations) pins the stop node to the root. Choice (R4, narrower
+lemmas): the case by the path (`UpToRoot`), not by `DelEmptyCascM`, whose stop candidate
+need not be the climb's stop. Left of step 6: the root made by the transaction (in place),
+and a stop node below the root that is full (its split and cascade; a time split's copy is
+the hole, which needs the stop node's pair, now given by the new walk).
+
+2026-11-17, 01:52 to 01:59. Step 3's rest, seventh part, prover l4c (`LiveMergeRoot.lean`,
+about 900 lines, about 450 of them the time tail's prelude again). `MergeTailFullRest5OK`
+reduced to `MergeTailFullRest6OK`, its case `MergeFullTimeRoot1` proved: a merge into one
+node whose parent p is the space root, not made, split in time (52 on the runs). The copy
+becomes the space root (`writerWP_handleFullWith_time_root_gh`, `newSuperRoot`,
+`writerWP_newSuperRoot_frameG`) and the hole (`liveEdgesH_newRoot`: the reached nodes are
+the copy and the ones reached before but p; `writerWP_handleFull_timeRoot_live`); the
+cleanup changes nothing reached; the next round's descent starts at the new space root
+and stops there (`descendToHeight_newRoot`: p, inner, at depth 0 is not above a segment
+leaf, so the key's segment is the first). `writerWP_afterDelete_liveTR6`: premises
+`MergeTailFullRest6OK`, `MergeParamsOK`, R3. On the runs the proved cases now cover 837 of
+the 1,134 full-parent merges (74%); left 297: the cascade 256, the space root split in
+time into two nodes 29 or in space 12. No stop rule fired.
+
+2026-11-17, 02:00. Prover l4c stops, by section 7's size rule: its additions for
+`MergeLiveFullOK` are about 6,500 lines (LiveMergeTail, LiveMergeFull, LiveMergeMade,
+LiveMergeSpace, LiveMergeRoot; LiveMergeRoom's room lemmas generalized), about 3,000 of
+them near-copies of the merge tail's prelude (the reads, the new nodes, the books up to
+`mergeParent`) in its five tails. State for a successor: `MergeLiveFullOK` follows from
+`MergeTailFullRest6OK` (`writerWP_afterDelete_liveTR6`; the chain of reductions
+`mergeLiveFullOK_of_tailFull`, `mergeTailFullOK_of_rest`, `..._of_rest2` to
+`..._of_rest6`). Left in it, with the runs' counts of step 0's families (1,134 merges with
+a full parent; 837 in the proved cases): the cascade, q full or compacting (256: 196 time
+splits, mostly a segment root below a full segment leaf, the hole below the chain, R4's
+general case; 60 space splits, no hole, for which l4b's leaf cascade
+`writerWP_handleFull_spaceChain_live` and its segment-root cousins should carry over to
+the merged tree as `writerWP_handleFull_spaceRoomV_live` did, with the divider's range
+`hrK` from `hhalves_of_sorted`'s last part); the space root split in time with a merge
+into two nodes (29; `writerWP_mergeTail_liveFullTime2G` with
+`writerWP_handleFull_timeRoot_live`, no descent) or in space (12; a new space root above
+the halves, no hole); and p made and split in space, in place (0). Before more cases: fold
+the five tails' common prelude into one continuation lemma (about 1,000 lines fewer), and
+give the round lemmas one shared derivation of the tail's facts.
 
 2026-11-17, 01:56 to 02:00. R3Calls checked, prover l4b. No Lean counterexample
 found within the time box; what was found:
