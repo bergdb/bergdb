@@ -24,8 +24,10 @@ clause, no trace not whole, no ERROR line.
   17,000 SCAN, 202,519,832 LIVE lines, 42,241 SKIPT. Traces of 0.16 to
   4.1 GB; 3.7 hours, three at a time (l-few's check 10,696 s, l-5000's
   6,150 s).
-- **The large set**, without `live=1`, 1 seed: 6 of 6 CONTRACT OK, the
-  same 17,000 transactions; 248 s.
+- **The large set**, without `live=1`, 10 seeds: 60 of 60 CONTRACT OK;
+  170,000 transactions, 551,124 operations, 680,000 GET, 170,000 SCAN,
+  419,440 SKIPT; 2,837 s, three at a time. (Seed 1 alone first: 6 of 6,
+  248 s.)
 - **The medium set**, `live=1`, 3 seeds: running (m-mixed, m-long,
   m-big, m-d8 CONTRACT OK so far; m-d8's 530 MB traces take 53 minutes
   each to check).
