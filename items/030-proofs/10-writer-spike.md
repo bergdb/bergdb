@@ -70,8 +70,8 @@ night of 17 November.
   What does come back, smaller: the take-back's link invariant (which
   klongs name a node the transaction made), started clean at each
   transaction's start.
-- **What it cost** (section 5.3): the puts took 24,000 lines of proof in
-  four hours (15:50 to 19:55), 23 runs of provers, about 15 points of the
+- **What it cost** (section 5.3): the puts took 22,500 lines of proof in
+  four hours (15:50 to 19:55), 20 runs of provers, about 15 points of the
   week with the other agents' work in them. My estimate for the deletes is
   20,000 to 35,000 lines more. The old line has about 230,000 lines of
   proof for the same writer, with `l4` open.
@@ -376,11 +376,12 @@ forms, root collapse's four).
 
 ## 5.3 The cost, and the estimate for the deletes
 
-Measured, the puts (all of them, section 4): 24,000 lines of proof and
+Measured, the puts (all of them, section 4): 22,500 lines of proof and
 1,300 of statements, definitions and the checker, in four hours of the
-clock, by 23 runs of nine provers (Opus, xhigh), one file each, about 9
-million tokens of provers; the week went from 27 to 44 points in that
-time, with the other agents' work in it. About 6,000 lines are shared by
+clock, by 20 runs of eight provers (Opus, xhigh), one file each, about 3.5
+million tokens of provers (the first delete, the example and the delete's
+time split: 2,600 lines and five runs more); the week went from 27 to 44
+points in that time, with the other agents' work in it. About 6,000 lines are shared by
 every operation (the context lemma, the node algebra, the primitives, the
 top node, the run).
 
