@@ -51,9 +51,7 @@ a snapshot of the former `docs/` of 2026-11-12.
   the demos, about 2 minutes. It is the only requirement. The level scripts
   (`java/stress/level1.sh` to `level4.sh`) are deeper checks, not commit
   gates; `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for their
-  conformance steps, and `level2.sh` also the contract package
-  `lean/contract/`, with Mathlib (030-13; it runs `lake exe cache get` there
-  if the cache is missing).
+  conformance steps.
 - Some tasks need more testing than that, depending on the job: work on
   performance runs the performance tests (`java/stress/performance.sh` with
   a suite, or `java/perf.sh`); a change to a level's mechanism runs that
