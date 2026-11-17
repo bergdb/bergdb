@@ -65,8 +65,8 @@ Files
   its signatures; the rest is not API, whatever is public in it.
 * The source zip holds the whole tree but the earlier releases'
   directories, `releases/2026.1/` to `releases/2026.4/`, whose files stay
-  in the repository and their tags (016-09, R-1). License: Apache-2.0
-  (`LICENSE`, `NOTICE`).
+  in the repository and their tags (016-09, R-1). License:
+  Apache-2.0 (`LICENSE`, `NOTICE`).
 * The Javadoc is `java/javadoc-pub.sh`'s: `bergdb.pub` and
   `bergdb.pub.util`, with `overview-pub.html`. The Core API's Javadoc is
   in the source (`Db`), not published (020-24-15, Q1).

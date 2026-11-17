@@ -6,6 +6,9 @@
 #   build/bergdb-release.jar  the jar for users, which a release ships (bergdb 020-10,
 #                             section 7): the classes and resources of src only, no
 #                             Main-Class. Neither jar has ICU since 020-10's step B2.
+# Both jars hold META-INF/LICENSE and META-INF/NOTICE, the repository's (Apache-2.0); a
+# copy of java/ alone, as stress/performance.sh builds, has no ../LICENSE, and its jars
+# have neither.
 # Both jars seal the packages bergdb.pub and bergdb.pubimp (the review of 020-10's B3): no
 # class of another jar or directory joins them, so none outside BergDB extends DbValue or
 # reads their package-private members. A probe in one of them runs with build/classes on
@@ -18,8 +21,9 @@
 # build/release-jar/):
 #   1. Its entries are bergdb.jar's but for those in a directory of src-dev (so not
 #      bergdb.Help either), none is under bergdb/dev/, bergdb/test/, bergdb/demo/,
-#      frans/, bergdb/icu50/ or bergdb/pubimpicu/ (ICU's, gone), and its manifest has no
-#      Main-Class and seals bergdb/pub/ and bergdb/pubimp/.
+#      frans/, bergdb/icu50/ or bergdb/pubimpicu/ (ICU's, gone), its manifest has no
+#      Main-Class and seals bergdb/pub/ and bergdb/pubimp/, and its META-INF/LICENSE and
+#      META-INF/NOTICE are the repository's (if ../LICENSE is there).
 #   2. jdeps --missing-deps: every class that it uses is in it or in the JDK.
 #   3. stress/release-jar/ReleaseDemo.java, user code compiled and run with the release
 #      jar alone on the class path: no class of src-dev; the Pub API's String and byte[]
@@ -37,11 +41,12 @@ SRC=.
 OUT=build
 REL=$OUT/bergdb-release.jar
 CHECK=$OUT/release-jar
+LEGAL=$OUT/legal
 
 # Removes the files this script makes, not the directories: Finder can put a
 # .DS_Store in a directory at any time, and removing the directory then fails.
-mkdir -p $OUT/classes $OUT/stress $CHECK
-find $OUT/classes $OUT/stress $CHECK -type f -delete
+mkdir -p $OUT/classes $OUT/stress $CHECK $LEGAL/META-INF
+find $OUT/classes $OUT/stress $CHECK $LEGAL -type f -delete
 rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF $OUT/RELEASE-MANIFEST.MF $REL
 
 $JAVAC --release 17 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $OUT/classes \
@@ -60,7 +65,12 @@ find $OUT/classes -name .DS_Store -delete
 SEALED='Name: bergdb/pub/\nSealed: true\n\nName: bergdb/pubimp/\nSealed: true\n'
 printf "Main-Class: bergdb.dev.Run\n\n$SEALED" > $OUT/MANIFEST.MF
 printf "Manifest-Version: 1.0\n\n$SEALED" > $OUT/RELEASE-MANIFEST.MF
-$JAR cfm $OUT/bergdb.jar $OUT/MANIFEST.MF -C $OUT/classes .
+LEGALFILES=
+if [ -f ../LICENSE ]; then
+    cp ../LICENSE ../NOTICE $LEGAL/META-INF/
+    LEGALFILES="-C $HERE/$LEGAL META-INF/LICENSE -C $HERE/$LEGAL META-INF/NOTICE"
+fi
+$JAR cfm $OUT/bergdb.jar $OUT/MANIFEST.MF -C $OUT/classes . $LEGALFILES
 echo "Built $OUT/bergdb.jar"
 
 # The release jar (bergdb 020-10, section 7).
@@ -85,7 +95,7 @@ fi
 RELFILES=$(while read d; do
     if [ -d "$OUT/classes/$d" ]; then (cd $OUT/classes && find "$d" -maxdepth 1 -type f); fi
 done < $CHECK/release-dirs.txt)
-(cd $OUT/classes && $JAR cfm "$HERE/$REL" "$HERE/$OUT/RELEASE-MANIFEST.MF" $RELFILES)
+(cd $OUT/classes && $JAR cfm "$HERE/$REL" "$HERE/$OUT/RELEASE-MANIFEST.MF" $RELFILES $LEGALFILES)
 
 # Check 1: the entries and the manifest.
 unzip -Z1 $OUT/bergdb.jar | grep -v '/$' |
@@ -111,6 +121,11 @@ for d in pub pubimp; do
         release_failed "its manifest does not seal bergdb/$d/"
     fi
 done
+if [ -n "$LEGALFILES" ]; then
+    for f in LICENSE NOTICE; do
+        unzip -p $REL META-INF/$f | cmp -s - ../$f || release_failed "its META-INF/$f is not ../$f"
+    done
+fi
 
 # Check 2: jdeps prints each use of a class that is not there.
 $JDEPS --missing-deps $REL > $CHECK/jdeps.txt 2>&1 || { cat $CHECK/jdeps.txt >&2; release_failed "jdeps"; }
