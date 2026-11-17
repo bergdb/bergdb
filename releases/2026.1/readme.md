@@ -1,9 +1,8 @@
 BergDB 2026.1
 =============
 
-Released 2026-10-25 by Frans Lundberg. **Internal: not published, not for
-production.** Made by Claude (Opus 5.5, Claude Code) for Frans, as planned
-in bergdb item 008 ([../../items/008-release-2026-1/01-plan.md](../../items/008-release-2026-1/01-plan.md)).
+Released 2026-10-25 by Frans Lundberg. **A preview: not for
+production.** As planned in bergdb item 008 ([../../items/008-release-2026-1/01-plan.md](../../items/008-release-2026-1/01-plan.md)).
 
 The first release since 2015.4 (July 2015); 2017.1 was prepared in 2017 and
 never released. 2026.1 is the baseline before the next major change,
