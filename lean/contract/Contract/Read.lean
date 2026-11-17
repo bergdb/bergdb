@@ -116,13 +116,17 @@ def chainEq (ch : Chain) (start : Option Key) : Bool :=
       k.getLast? == some lc
   | _, _ => false
 
+/-- The start key as `Chain.setup` has it: its segments; without a start key,
+the one segment -1 forward and `Long.MAX_VALUE` backward. -/
+def startPos (req : ScanReq) : List Pos :=
+  match req.start with
+  | some k => k.map Pos.at
+  | none => [if req.forward then .lo else .hi]
+
 /-- `Chain.setup`: the chain at or before the start key, from the space root
 r with fuel f. -/
 def chainSetup (s : Tree) (req : ScanReq) (f : Nat) (r : NodeId) : Chain :=
-  let start : List Pos := match req.start with
-    | some k => k.map Pos.at
-    | none => [if req.forward then .lo else .hi]
-  let ch := setupGo s req.forward start f r 0 false {}
+  let ch := setupGo s req.forward (startPos req) f r 0 false {}
   { ch with eqMatch := chainEq ch req.start }
 
 /-- The order of keys: that of their segments' compare values, the first
