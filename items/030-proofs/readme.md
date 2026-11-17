@@ -242,6 +242,11 @@ Files
   before step 4: the checker passes ERROR lines and does not check that a
   trace is a history; the clauses step 4 needs (TREE shown not implied,
   in Lean). Written 2026-11-17, 14:48 to 15:40. Status: done.
+* [030-09](09-trace-java-check.md). Step 4c, the night of 17 November: the
+  trace's completeness (ERROR and unknown lines fail, TX 0, 1, 2, ... and
+  DONE, every change in NEW, ADD and KN lines; KN from a klong diff;
+  `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
+  030-04, 3.5, and Java's commit-time check in its tests. Status: open.
 
 
 Log
