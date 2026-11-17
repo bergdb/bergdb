@@ -158,7 +158,7 @@ and `TopFrom`.
 
 # State
 
-2026-11-17, 22:00. Item 1 done and gated (the Log has the commit). Next:
+2026-11-17, 21:20. Item 1 done and gated (the Log has the commit). Next:
 item 2 (K-LEVEL in contractcheck), then item 3 if useful.
 
 
@@ -167,7 +167,13 @@ item 2 (K-LEVEL in contractcheck), then item 3 if useful.
 2026-11-17, 21:00. Started, on the branch `030-17-top-eviction-cut` from
 3f1e2fea. Read 030-14, 030-11, 030-08, 030-04 3.5 and the package's
 Recover, Top and Bridge files; `lake build` passes (80 s).
-21:40 `findTop_from`, `findRoot_from` (the search reads only what `TopFrom`
+21:15 `findTop_from`, `findRoot_from` (the search reads only what `TopFrom`
 names); the end-to-end theorems under eviction, after a lazy startup and
 after the cut; `cut_keeps_top`; the example. `gate.sh 3f1e2fea`: GATE OK
-(172 theorems).
+(172 theorems). Commit 3a7d6c87.
+GATED 3a7d6c87: Java's readers with Java's top search under eviction, after a
+lazy startup and after reclaim's safe cuts (`evict_java_reads`,
+`handles_java_reads`, `lazy_java_reads`, `cut_java_reads`); the search reads
+only the top nodes that `TopFrom f` names (`findRoot_from`), which the cut
+stream keeps (`cut_keeps_top`); a closed example without a gone top node;
+030-04 3.5 item 13 extended; `gate.sh 3f1e2fea` GATE OK (172 theorems).
