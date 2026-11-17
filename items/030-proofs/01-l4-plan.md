@@ -1032,6 +1032,18 @@ Left: p's space split (made, in place, or not), p not made and the space root (d
 a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
 fired.
 
+2026-11-17, 01:00 to 01:25. R2's heights, prover l4d: `UpHtWalk` is false for
+every context, oracle and B (`upHtWalk_false`, `not_exists_upHtWalk`,
+LiveUpHtFalse.lean), so `liveDel_upRoom` and `liveDel_upRoom_live` never apply
+as stated. Its take-back step asks Ju kept by `takeBack x q k` for every x, q
+and k, from every state that `HtJ0` gives Ju. A state of three nodes of the
+transaction, q and z inner nodes of height 1 that both name the empty leaf x
+(x made by a split), meets `HtJ0` for every context; `takeBack x q 0` succeeds
+and leaves z, not taken back, naming x, taken back, so `HtCache` fails at z.
+The checked copy's `checkFree` is what excludes that state (`ht_takeBackChk`);
+at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
+true form needs the heights at the stop node's call from the walk's start and
+the loop's frame, not an invariant of every step (next).
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1048,6 +1060,42 @@ reached (`liveEdges_updN_unreach`): `writerWP_handleFull_spaceChain_live`
 `liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (R4), the
 made leaf's and the segment root's space split below a full parent (the same
 route), and a compacting split of a last version above h.
+
+2026-11-17, 01:25 to 01:30. R2's heights, true form, prover l4d: the upward
+delete with room keeps the live counts with no heights premise
+(`liveDel_upRoom_liveH`, LiveUpRoomH.lean; premises `MergeLiveOK` and
+`CollapseLiveOK`), and `liveDel_upRoomH` calls `afterDelete` with `HtInv` from
+no premise. The heights at the stop node's call come from `HtInv` at the upward
+walk's start w3 through the loop's frame (`htInv_upFrame`, LiveUpHt.lean, about
+230 lines): between w3 and the call only the chain and the stop node change; a
+chain node the transaction made is taken back, and its one holder is its tree
+parent (`liveHolder_unique`, from `TakeJ2` at w3), the next chain node or the
+stop node, whose klong to it is gone; another chain node is unlinked to its
+version before the transaction, which names only nodes below B (`OldBelowN`),
+never taken back; the stop node's version before the transaction is unchanged
+(`bitmapOf_prefix`, `retFormS_prefix`). The walks were not touched: the copy of
+`writerWP_del_upRoomLive` (`writerWP_del_upRoomLiveH`, about 330 lines, one B
+for the books and the kinds) passes the frame that `takeJ2_deleteUpward_upTMBKDS`
+already gives its continuation. R2's heights are done for the upward delete with
+room; the full stop node (the cascade) is left with step 6.
+
+2026-11-17, 01:23 to 01:31. Step 3's rest, fourth part, prover l4c
+(`LiveMergeSpace.lean`, about 1,200 lines; about 700 of them the full tails' preludes and
+l4b's space split again). `MergeTailFullRest2OK` reduced to `MergeTailFullRest3OK`, its
+case `MergeFullSpaceRoom` proved: the merge's parent p, not made by the transaction, goes
+`full` and splits in space, below its inner parent q with room for the halves' klongs and
+no compaction. A space split leaves no hole: p's last version has more than `splitAbove`
+klongs, so p was filled after the merge though it lost a klong (`liveEdges_of_oneHole`;
+into two nodes there is no hole before, `liveEdges_mergeTwo`), and its halves are `HalfOK`
+(`halves_mergeLast`, from `halves_facts_nil` and `halves_live_fill`); l4b's split lemma
+carries over to the merged tree (`writerWP_handleFull_spaceRoomV_live`), and the cleanup
+changes only p, l and r, which are no longer reached. No descent is needed after
+(`writerWP_mergeTail_liveSpace`, `writerWP_mergeTail_liveSpaceRound`).
+`writerWP_afterDelete_liveTR3`: premises `MergeTailFullRest3OK`, `MergeParamsOK`, R3.
+Left: p not made and the space root (d = 1) or a segment root (q a segment leaf; a time
+split needs R1 at the root; a space split needs l4b's segment-root split on the merged
+tree), q full or compacting (the cascade, R4), and p made and split in space (in place,
+l4b's `writerWP_handleFull_spaceInPlaceRoom_live` on the merged tree). No stop rule fired.
 
 2026-11-17, 01:28. Step 6, R2's heights, prover l4b: `UpHtWalk` (00:18's premise
 of `liveDel_upRoom` and `liveDel_upRoom_live`) is false for every context, oracle
