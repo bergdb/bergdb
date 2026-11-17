@@ -946,3 +946,14 @@ with l4a's loop, `liveDel_fullRoot_live`. Left of step 5: the parent full (the
 cascade), the parent a segment leaf, the made leaf's space split in place, the
 made space root's space split, and a compacting split of a last version above h
 below a parent.
+
+2026-11-17, 01:10 to 01:11. Step 5, the made leaf's space split in place,
+prover l4b: the leaf made by the transaction, "bitmap.full", its last version
+without the key above h, below an inner parent with room for the second half's
+klong (`DelFullSpaceMadeRoomM`, LiveDelSpaceMade.lean): the leaf keeps the first
+half, a new node the second, and both are `HalfOK`; the live counts hold after
+with no hole (`writerWP_handleFull_spaceInPlaceRoom_live`, by
+`liveEdgesX_spaceInPlaceStep`): `liveDel_fullSpaceMadeRoom` and, with l4a's
+loop, `liveDel_fullSpaceMadeRoom_live`. Left of step 5: the parent full (the
+cascade), the parent a segment leaf, the made space root's space split, and a
+compacting split of a last version above h below a parent.
