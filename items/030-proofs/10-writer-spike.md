@@ -559,7 +559,25 @@ the premises that are not proved or not given back, each tested:
   the files are outside what this item may change). Not tested apart: it
   is proved, and the traced M (the map is Java's tree) with the tree
   checker's C-T2 (the model's changes are Java's) test the same.
-  Left: part (1), part (3), the values, the join with `Runs`.
+  Part (1) for the key nodes (22:57, the same file, 410 lines in all):
+  `reachable_of_holds`, the key nodes that the tree reaches are reachable
+  in the model's structure at the time, if the space root is; and
+  `shows_key_of_holds`, the model's own view (`SIS.view` of P at i-1,
+  without the root) then shows them as `Shows` asks. Premises, named: the
+  levels fall along the live klongs of the nodes reached (`LevFalls`; the
+  model follows a pointer only to a lower level), and the nodes reached
+  have well-formed klongs with W5 (030-07's `AllWf`, for the nodes
+  reached); both are tested for every node and klong by `bridgecheck`
+  (its clauses A4 and W5: BRIDGE OK on small and drain).
+  Left, in this order: part (3), the top (the root's last top node and
+  its root pointer: the space root is reachable, and `Shows.top`; kept by
+  the changes of a new top node); `LevFalls` and the well-formed klongs
+  from `Mid` (for inner nodes the balance rule gives the levels; for a
+  segment leaf the segments' levels are needed); the old package's
+  premises on P along the run (`keyHistOK_step` keeps the first; the
+  others have their run theorems there); the join: `Runs` with the
+  structure's relation at the start in place of the view at each step.
+  Estimate for what is left: 1,500 to 3,000 lines.
 - **The bounds G and H** (D3): each accepted operation leaves no key node
   outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
   this kind. For a transaction of puts that the model's `runOpsFrom`
@@ -583,7 +601,7 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
-2026-11-17, 22:50. Items 1 and 2 done; item 3 (the puts) done for every
+2026-11-17, 23:00. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
 evening on findings (section 3: the balance rule, `Shows`, the checker),
@@ -592,7 +610,7 @@ to the restated statement.
 
 - Branch `030-10-writer` in the clone
   `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, on main 53e66e73.
-  Last gated commit: 10489bff.
+  Last gated commit: 6ad9b53a.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
   53e66e73` (main's head as merged); after a change of a pinned file
   `lean/contract/pin.sh`, the pin file in the same commit.
@@ -608,8 +626,9 @@ to the restated statement.
   `WriterView.lean` (the structure after a transaction), `WriterCheck.lean`.
 - Open on the put side (section 6), in the order I would take them:
   the view after a transaction (the model's `changesOf` and `SIS.view`
-  give `Shows` again; section 6 has the route in three parts, part (2)
-  is done for the key nodes: next part (1), the two notions of reached); `SNamed` as a book of `Mid`; the delete's books
+  give `Shows` again; section 6 has the route in three parts, parts (1)
+  and (2) are done for the key nodes: next part (3), the top, then the
+  join); `SNamed` as a book of `Mid`; the delete's books
   through the put (with 030-16: its `LinkLive`, parked in
   `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`, was proved for the
   forms of before the restatements); the bounds by heights, so that
@@ -807,3 +826,11 @@ the gate's step 1 prints "lake build has warnings" for the old package's
 files built with it (section 6, the decision to import). No checker
 changed: the traces' results of 22:25 stand.
 GATED 10489bff: the model's structure after a transaction holds the tree of the writer's state (Holds, holds_apply), by the old package's apply_keyNode, imported.
+2026-11-17, 22:47 to 22:57. Part (1) of the view's route: `LevFalls`,
+`reachable_of_holds`, `shows_key_of_holds` (the same prover, 8 minutes;
+one hypothesis added: the nodes reached have well-formed klongs with W5,
+needed for 030-07's `mem_blive_entriesOf`). `gate.sh 53e66e73`: GATE OK
+(195 theorems). No checker changed.
+GATED 6ad9b53a: the model's own view shows the key nodes that the tree reaches (reachable_of_holds, shows_key_of_holds), given the space root reachable, falling levels and well-formed klongs.
+2026-11-17, 23:00. The week is at 58 %: by the coordinator's word of 22:00
+no new part is started. The night's STOP file is not there yet.
