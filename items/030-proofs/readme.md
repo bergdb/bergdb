@@ -242,6 +242,12 @@ Files
   before step 4: the checker passes ERROR lines and does not check that a
   trace is a history; the clauses step 4 needs (TREE shown not implied,
   in Lean). Written 2026-11-17, 14:48 to 15:40. Status: done.
+* [030-07](07-bridge.md). The bridge from the contract to the abstract
+  model (step 4a): the klongs as entries, the clauses the model assumes
+  (`MeetsBridge`), each checked on the traces; `RunOK`, recovery (T1) and
+  restart invariance (T2) proved for the key tree by the old proofs, then
+  lazy reading, the handles and the cut. Started 2026-11-17, 15:09.
+  Status: open.
 * [030-08](08-shape-top.md). The tree's shape and its top in the
   contract (step 4b): TREE as a clause, Java's top nodes and skip
   pointers with the readers' top search (TP24), the reads' theorems over

@@ -20,3 +20,12 @@ open Contract
 #print axioms checkShapeTx_sound
 #print axioms Contract.Example3.meetsShape
 #print axioms Contract.ExampleDag.not_tree
+#print axioms mem_blive_entriesOf
+#print axioms bridge_runOK
+#print axioms bridge_rep
+#print axioms bridge_recovery
+#print axioms bridge_crash
+#print axioms bridge_restart
+#print axioms MeetsBridge.meets
+#print axioms madeCheck_sound
+#print axioms Contract.BridgeExample.meets

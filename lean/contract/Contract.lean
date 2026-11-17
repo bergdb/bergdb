@@ -18,3 +18,8 @@ import Contract.ExampleShape
 import Contract.Bridge
 import Contract.BridgeHeap
 import Contract.Proof.BridgeMap
+import Contract.Proof.BridgeInv
+import Contract.Proof.BridgeReach
+import Contract.Proof.BridgeStep
+import Contract.BridgeTheorems
+import Contract.BridgeExample
