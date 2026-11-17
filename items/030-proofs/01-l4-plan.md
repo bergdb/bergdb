@@ -1006,3 +1006,13 @@ room asked); the live counts hold after with no hole
 `liveDel_fullSegSpaceMade` and, with l4a's loop, `liveDel_fullSegSpaceMade_live`.
 Left of step 5: the parent full (the cascade), the made space root's space split,
 and a compacting split of a last version above h below a parent.
+
+2026-11-17, 01:18 to 01:20. Step 5, the made space root's space split, prover
+l4b: the leaf at the space root made by the transaction, "bitmap.full", its last
+version without the key above h (`DelFullRootSpaceMadeM`, LiveDelRootMade.lean):
+it keeps the first half, a new node the second, under a new inner root
+(`writerWP_handleFull_rootSpaceMade_live`, by `liveEdgesX_rootSpaceInPlaceStep`):
+`liveDel_fullRootSpaceMade` and, with l4a's loop,
+`liveDel_fullRootSpaceMade_live`. Left of step 5: the parent full (the cascade),
+and a compacting split ("bitmap.dead") of a last version above h, below a parent
+or at a made root (a time split: the copy, or the leaf in place, is the hole).
