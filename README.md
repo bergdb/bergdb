@@ -63,8 +63,7 @@ new one. The `main` branch moves ahead of the latest release.
 
 The repository also holds `lean/`, a model of BergDB's algorithm in the
 Lean language, which the tests check Java against. It is work in
-progress, for the database's developers, and it is why GitHub's language
-statistics show Lean as the largest part. BergDB itself is Java.
+progress, for the database's developers. BergDB itself is Java.
 
 Each release's jar and Javadoc are on the repository's GitHub Releases
 page, under the release's tag; `releases/VERSION/` holds its notes and
