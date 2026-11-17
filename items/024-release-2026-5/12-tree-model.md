@@ -791,6 +791,14 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`searchLte_twoRoot`): `descendToHeight_topSeg_innerRoot`'s premises. Writer shapes for
   R1: 63 of the 69; left the 6 where q, made, splits in space in place below the space root,
   which splits in time.
+  03:54 (prover l4g, `LiveInPlaceSpaceHole.lean`): those 6:
+  `writerWP_appendKlongs_inPlaceSpaceRootHole` (no premises but the range fact): q keeps the
+  first half, the second at the next id, the space root's copy with the second's klong the
+  new space root, whose search at k1 names the half on k1's side, which names y
+  (`searchLte_lookup_addNew`): `_innerRoot`'s premises. Writer shapes for R1: all 69. Left for
+  the 69: the merge's tail with the hole (the split from V with p thin, the live counts by
+  `writerWP_handleFull_timeChainV_liveHole`, R1 by these shapes with y's node and height, and
+  the cleanup), then `MergeTailFullRest10OK` reduced.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
