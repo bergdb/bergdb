@@ -1,18 +1,19 @@
 #!/bin/sh
 # Runs a trace checker of this package on traces in PAR parts at once (bergdb
 # 030-13), for check.sh and bridge-check.sh: the traces, largest first, are dealt
-# to PAR parts (default 4), the checker runs once per part, and OUT gets each
-# part's lines but its own summary, then one `total:` line, the numbers of the
-# parts' `total:` lines summed place by place. Exits with 1 if a part fails.
+# to PAR parts (default 4), each to the part with the fewest bytes so far; the
+# checker runs once per part; OUT gets each part's lines but its own summary,
+# then one `total:` line, the numbers of the parts' `total:` lines summed place
+# by place. Exits with 1 if a part fails.
 #
 # Usage: lean/contract/par.sh CHECKER OUT TRACE...
 CHECK=$1; OUT=$2; shift 2
 PAR=${PAR:-4}
-i=0
-for t in $(ls -S "$@"); do
-    echo $t >> $OUT.list$((i % PAR))
-    i=$((i + 1))
-done
+rm -f $OUT.list*
+# Largest first, each to the part with the fewest bytes so far.
+ls -l "$@" | awk '{ print $5, $NF }' | sort -k1,1nr \
+    | awk -v par=$PAR -v out=$OUT '{ m = 0; for (p = 1; p < par; p++) if (b[p] < b[m]) m = p;
+                                     b[m] += $1; print $2 >> (out ".list" m) }'
 FAILED=0
 pids=""
 p=0
