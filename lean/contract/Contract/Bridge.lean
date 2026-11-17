@@ -26,6 +26,13 @@ changes meet its assumptions. Here:
 * Section 4, a history that meets the contract and the bridge's clauses
   (`MeetsBridge`, and `MeetsEvict` for eviction).
 
+The clauses in the model's words here (`TopOK`, `TouchOK`, and A6' and
+A-COPY in `MeetsEvict`) are a step between: BridgeTop.lean says the same of
+the tree and its top (bergdb 030-08), in the contract's words (`MeetsFull`),
+and Proof/BridgeTop.lean and Proof/BridgeWords.lean prove that a history
+that meets `MeetsFull` meets `MeetsBridge` and `MeetsEvict`. The statement
+to read first is `MeetsFull`; the theorems for it are in BridgeFull.lean.
+
 The definitions here import the abstract model's definitions (lean/SIS, the
 old package, by a Lake dependency) and none of its proofs of the tree
 (SIS/Tree). They do not need Mathlib.
@@ -142,7 +149,7 @@ def BHist.spec (h : BHist) : Spec BVal Nat := bspec h.chs h.p0 true
 def BHist.ts (h : BHist) : List Nat := List.range' 1 h.txs.length
 
 /-- The model's structure after the first j transactions: each change applied
-at its time (`BridgeTheorems.lean`, `run_P`: it is the P of the model's
+at its time (Proof/BridgeStep.lean, `run_P`: it is the P of the model's
 run). -/
 def BHist.P (h : BHist) : Nat → Struct BVal
   | 0 => h.p0
@@ -227,7 +234,7 @@ changed or made there):
   klong before it of that compare value (`Dag.bitsOf`: a delete sets the bits
   of every klong of its compare value). W4 asks this of the klongs before the
   new bit only; the map needs it of all the klongs before the bitmap
-  (`W5.lean`: an example).
+  (BridgeExample.lean, `w4_not_enough`).
 * A4. Every key klong of it, live or dead, names a node of s' on a lower
   level (a value has level 0). -/
 

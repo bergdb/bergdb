@@ -230,4 +230,29 @@ example (al : SIS.Algo BVal Nat) (hst : al.stillDirty = SIS.javaTest h.spec) :
     Rep (SIS.startup h.spec (SIS.run h.spec al h.ts).S).P Example.s1 :=
   (bridge_recovery meets al hst).2.2
 
+/-! ## The map needs W5
+
+W4 asks of a bitmap that deletes a key klong that it deletes every earlier
+key klong of the same compare value. The klongs below meet W1 to W4: the
+bitmap deletes the first klong of compare value 7 and not the second, which
+stands before the bitmap too. They do not meet W5. Their live klong is the
+second one, with pointee 9; but the bitmap's entry is `D 7`, which deletes
+every key entry of compare value 7 before it, so the model's live children
+of the entries are none. So the map keeps the live children only with W5
+(`mem_blive_entriesOf`), which Java's writer meets (`Dag.bitsOf`) and the
+bridge checker tests. -/
+
+/-- Klongs that meet W1 to W4 and not W5. -/
+def ksW : List Klong := [.time 1, .key 7 8, .key 7 9, .del [1]]
+
+theorem ksW_entries : entriesOf ksW = [⟨1, .key 7 8⟩, ⟨1, .key 7 9⟩, ⟨1, .del [7]⟩] := by
+  simp [ksW, entriesOf, entriesFrom, newCvs, cvAt, List.eraseDups_cons]
+
+/-- Without W5 the map does not keep the live children. -/
+theorem w4_not_enough : klongsWf ksW = true ∧ fullOk ksW = false ∧
+    (live ksW).map (·.2) = [9] ∧ blive (entriesOf ksW) = [] := by
+  refine ⟨by decide, by decide, by decide, ?_⟩
+  rw [ksW_entries]
+  decide
+
 end Contract.BridgeExample

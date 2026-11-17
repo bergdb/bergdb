@@ -42,6 +42,10 @@ is in the model's D when the transaction ends.
 The model's algorithm `al` is any: its startup pos policy (the take) is free.
 Its still-dirty test is BergDB's (`javaTest`).
 
+A history that meets every clause in the contract's words (`MeetsFull`,
+BridgeTop.lean) meets `MeetsBridge` and `MeetsEvict`
+(Proof/BridgeWords.lean); BridgeFull.lean states the main theorems for it.
+
 What is proved: these theorems, with no premise but `MeetsBridge`. What is
 not: that Java's writer meets `MeetsBridge` (tested per transaction on the
 traces, BridgeCheck.lean; the clauses in the model's words by `tracecheck`),
@@ -264,18 +268,6 @@ theorem bridge_liveAppend (h : BHist) : SIS.LiveAppend h.spec :=
 it sees the root only through its live children (`ExecRootOK`). -/
 theorem bridge_execRootOK (h : BHist) : SIS.ExecRootOK h.spec :=
   fun _ _ _ _ _ _ _ _ _ => rfl
-
-theorem blive_tops : ∀ (hst : History BVal), (∀ e ∈ hst, ∃ z, e.val = BVal.top z) →
-    hst.foldl SIS.Check.bstep ([], none, none) =
-      ([], none, hst.getLast?.bind (fun e => (bptrs e.val).head?)) := by
-  intro hst
-  induction hst using List.reverseRecOn with
-  | nil => intro _; rfl
-  | append_singleton l e ih =>
-    intro hall
-    rw [List.foldl_append, ih (fun e' he' => hall e' (List.mem_append_left _ he'))]
-    obtain ⟨z, hz⟩ := hall e (List.mem_append_right _ List.mem_cons_self)
-    simp [SIS.Check.bstep, hz, bptrs]
 
 /-- The root's live children are those of its last entry (`VirtLiveOK`): a
 fact of `blive`. -/

@@ -114,8 +114,10 @@ theorem not_time_mem {more : List Klong} (h : more.all (fun k => !k.isTime) = tr
   have := List.all_eq_true.mp h _ hm
   simp [Klong.isTime] at this
 
-/-- The clauses of one transaction, in one place. -/
-structure StepFacts (p : Params) (h : BHist) (j : Nat) (hj : j < h.txs.length) : Prop where
+/-- The clauses of one transaction about key nodes and values, in one place,
+with the one fact of the top that they need: the ids made are new in the
+model's structure. -/
+structure TreeFacts (p : Params) (h : BHist) (j : Nat) (hj : j < h.txs.length) : Prop where
   contract : Contract p (j + 1) (h.tree j) h.txs[j].ops h.txs[j].D (h.tree (j + 1))
   news : newsOk h.topLevel (h.tree j) (h.tree (j + 1)) h.txs[j].c = true
   adds : addsOk (h.tree j) (h.tree (j + 1)) h.txs[j].D h.txs[j].c = true
@@ -124,21 +126,36 @@ structure StepFacts (p : Params) (h : BHist) (j : Nat) (hj : j < h.txs.length) :
   mkd : madeOk ((h.tree (j + 1)).at (j + 1)) h.txs[j].c (reach ((h.tree (j + 1)).at (j + 1))) = true
   nores : noResOk h.txs[j].c (reach ((h.tree j).at j)) (reach ((h.tree (j + 1)).at (j + 1))) = true
   made : Made (h.tree j) (h.tree (j + 1)) h.txs[j].c
+  fresh : ∀ nn ∈ h.txs[j].c.new, (h.tree j).obj nn.id = none → (h.P j).get? nn.id = none
+
+/-- The clauses of one transaction, in one place. -/
+structure StepFacts (p : Params) (h : BHist) (j : Nat) (hj : j < h.txs.length) : Prop
+    extends TreeFacts p h j hj where
   top : TopOK h.spec (h.P j) (j + 1) (h.tree j) (h.tree (j + 1)) h.txs[j].c
   touch : TouchOK h.spec (h.P j) (j + 1) h.txs[j].c
+
+theorem bridgeOk_parts {topLevel i : Nat} {s s' : Tree} {D : List NodeId}
+    {c : Changes BVal} (h2 : bridgeOk topLevel i s s' D c = true) :
+    newsOk topLevel s s' c = true ∧ addsOk s s' D c = true ∧ localOk i s s' D = true ∧
+    currentOk (s'.at i) c (reach (s'.at i)) = true ∧ madeOk (s'.at i) c (reach (s'.at i)) = true ∧
+    noResOk c (reach (s.at (i - 1))) (reach (s'.at i)) = true := by
+  simp only [bridgeOk, Bool.and_eq_true] at h2
+  exact ⟨h2.1.1.1.1.1, h2.1.1.1.1.2, h2.1.1.1.2, h2.1.1.2, h2.1.2, h2.2⟩
 
 theorem MeetsBridge.facts {p : Params} {h : BHist} (hm : MeetsBridge p h) (j : Nat)
     (hj : j < h.txs.length) : StepFacts p h j hj := by
   obtain ⟨h1, h2, h3, h4, h5⟩ := hm.step j hj
-  simp only [bridgeOk, Bool.and_eq_true, Nat.add_sub_cancel] at h2
-  exact ⟨h1, h2.1.1.1.1.1, h2.1.1.1.1.2, h2.1.1.1.2, h2.1.1.2, h2.1.2, h2.2, h3, h4, h5⟩
+  obtain ⟨b1, b2, b3, b4, b5, b6⟩ := bridgeOk_parts h2
+  simp only [Nat.add_sub_cancel] at b6
+  exact { contract := h1, news := b1, adds := b2, loc := b3, cur := b4, mkd := b5, nores := b6,
+          made := h3, fresh := h4.fresh, top := h4, touch := h5 }
 
 section Step
 
 variable {p : Params} {h : BHist} {j : Nat} {hj : j < h.txs.length}
 
 /-- The local clauses for a key node of D. -/
-theorem StepFacts.local_of (f : StepFacts p h j hj) {x : NodeId} (hx : x ∈ h.txs[j].D)
+theorem TreeFacts.local_of (f : TreeFacts p h j hj) {x : NodeId} (hx : x ∈ h.txs[j].D)
     {n' : KNode} (hn : (h.tree (j + 1)).obj x = some (.key n')) :
     (match (h.tree j).obj x with
       | some (.key n) => extKs4 (j + 1) n.ks n'.ks
@@ -152,7 +169,7 @@ theorem StepFacts.local_of (f : StepFacts p h j hj) {x : NodeId} (hx : x ∈ h.t
 /-- A key node of after the transaction, as it was before: the same level, and
 its klongs kept, with klongs of the transaction's time after them if any; or
 made, with klongs of the transaction's time. -/
-theorem StepFacts.key_cases (f : StepFacts p h j hj) {x : NodeId} {n' : KNode}
+theorem TreeFacts.key_cases (f : TreeFacts p h j hj) {x : NodeId} {n' : KNode}
     (hn : (h.tree (j + 1)).obj x = some (.key n')) :
     (∃ n, (h.tree j).obj x = some (.key n) ∧ n'.level = n.level ∧
       (n'.ks = n.ks ∨ (x ∈ h.txs[j].D ∧ ∃ more, n'.ks = n.ks ++ Klong.time (j + 1) :: more ∧
@@ -187,7 +204,7 @@ theorem StepFacts.key_cases (f : StepFacts p h j hj) {x : NodeId} {n' : KNode}
         left; rw [h1]
 
 /-- A value of after the transaction was a value before, or is made. -/
-theorem StepFacts.val_cases (f : StepFacts p h j hj) {x : NodeId} {v : Nat}
+theorem TreeFacts.val_cases (f : TreeFacts p h j hj) {x : NodeId} {v : Nat}
     (hn : (h.tree (j + 1)).obj x = some (.val v)) :
     (h.tree j).obj x = some (.val v) ∨ (h.tree j).obj x = none := by
   obtain ⟨f1, _, _⟩ := f.contract.2
@@ -205,7 +222,7 @@ theorem StepFacts.val_cases (f : StepFacts p h j hj) {x : NodeId} {v : Nat}
       rw [this]
 
 /-- Clause K for every node of the tree after the transaction. -/
-theorem StepFacts.adds_all (f : StepFacts p h j hj) (x : NodeId)
+theorem TreeFacts.adds_all (f : TreeFacts p h j hj) (x : NodeId)
     (hx : ((h.tree (j + 1)).obj x).isSome = true) :
     (h.txs[j].c.adds.filter (fun a => a.1 == x)).map (·.2) =
       newVals (h.tree j) (h.tree (j + 1)) x := by
@@ -261,7 +278,7 @@ theorem newNodeOf_mem {c : Changes BVal} (hnd : (c.new.map (·.id)).Nodup) {nn :
   exact SIS.get?_of_mem_nodup h1 (p := (nn.id, _)) (List.mem_map.mpr ⟨nn, hnn, rfl⟩)
 
 /-- The made node with id x, by clause N. -/
-theorem StepFacts.new_of (f : StepFacts p h j hj) {x : NodeId} (hno : (h.tree j).obj x = none)
+theorem TreeFacts.new_of (f : TreeFacts p h j hj) {x : NodeId} (hno : (h.tree j).obj x = none)
     (hs : ((h.tree (j + 1)).obj x).isSome = true) :
     ∃ nn ∈ h.txs[j].c.new, nn.id = x ∧ (h.P j).get? x = none ∧
       SIS.newNodeOf h.txs[j].c x = some { level := nn.level, isData := nn.isData, hist := [] } ∧
@@ -275,7 +292,7 @@ theorem StepFacts.new_of (f : StepFacts p h j hj) {x : NodeId} (hno : (h.tree j)
   simp only [newsOk, Bool.and_eq_true, decide_eq_true_eq] at hnews
   have h1 := List.all_eq_true.mp hnews.2 nn hnn
   simp only [Bool.and_eq_true] at h1
-  refine ⟨nn, hnn, rfl, f.top.fresh nn hnn hno, newNodeOf_mem hnews.1 hnn, ?_⟩
+  refine ⟨nn, hnn, rfl, f.fresh nn hnn hno, newNodeOf_mem hnews.1 hnn, ?_⟩
   cases ho : (h.tree (j + 1)).obj nn.id with
   | none => trivial
   | some o =>
@@ -285,7 +302,7 @@ theorem StepFacts.new_of (f : StepFacts p h j hj) {x : NodeId} (hno : (h.tree j)
     | val v => simpa using h1.2
 
 /-- The model's structure holds the tree after the transaction. -/
-theorem StepFacts.rep (f : StepFacts p h j hj) (hr : RepT j (h.P j) (h.tree j)) :
+theorem TreeFacts.rep (f : TreeFacts p h j hj) (hr : RepT j (h.P j) (h.tree j)) :
     RepT (j + 1) (h.P (j + 1)) (h.tree (j + 1)) := by
   rw [h.P_succ hj]
   intro x o' hx
@@ -341,7 +358,7 @@ theorem StepFacts.rep (f : StepFacts p h j hj) (hr : RepT j (h.P j) (h.tree j)) 
       rw [hx, hno]
       simp [hkind.1, hkind.2]
 
-theorem StepFacts.timely (f : StepFacts p h j hj) (ht : Timely j (h.tree j)) :
+theorem TreeFacts.timely (f : TreeFacts p h j hj) (ht : Timely j (h.tree j)) :
     Timely (j + 1) (h.tree (j + 1)) := by
   refine ⟨?_, ?_⟩
   · intro x n' hx t hmem
@@ -367,7 +384,7 @@ theorem StepFacts.timely (f : StepFacts p h j hj) (ht : Timely j (h.tree j)) :
     · exact Nat.le_succ_of_le (ht.2 r h3)
     · exact Nat.le_of_eq (h2 r h3)
 
-theorem StepFacts.wf (f : StepFacts p h j hj) (hw : AllWf (h.tree j)) :
+theorem TreeFacts.wf (f : TreeFacts p h j hj) (hw : AllWf (h.tree j)) :
     AllWf (h.tree (j + 1)) := by
   intro x n' hx
   by_cases hD : x ∈ h.txs[j].D
@@ -379,7 +396,7 @@ theorem StepFacts.wf (f : StepFacts p h j hj) (hw : AllWf (h.tree j)) :
       · exact absurd hD' hD
     · exact absurd hD' hD
 
-theorem StepFacts.lev (f : StepFacts p h j hj) (hl : LevOK (h.tree j)) :
+theorem TreeFacts.lev (f : TreeFacts p h j hj) (hl : LevOK (h.tree j)) :
     LevOK (h.tree (j + 1)) := by
   intro x n' hx c y hmem
   by_cases hD : x ∈ h.txs[j].D
