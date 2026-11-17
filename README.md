@@ -180,6 +180,6 @@ Copyright 2013-2026 Frans Lundberg.
 Licensed under the Apache License, Version 2.0: see [LICENSE](LICENSE)
 and [NOTICE](NOTICE).
 
-TO CHECK (Frans): the name. "BergDB" is Frans Lundberg's name for this
-software. The licence gives no right to use it, except to say where the
-code comes from (Apache License 2.0, section 6).
+"BergDB" is Frans Lundberg's name for this software. The licence gives
+no right to use the name, except to say where the code comes from
+(Apache License 2.0, section 6).

@@ -4,17 +4,14 @@ Security
 How to report a vulnerability
 -----------------------------
 
-Do not open a public issue. Report it privately, in one of two ways:
-
-* On GitHub: the repository's **Security** tab, **Report a
-  vulnerability**.
-* By e-mail to SECURITY-ADDRESS (TO CHECK, Frans: the address).
+Do not open a public issue. Report it privately on GitHub: the
+repository's **Security** tab, **Report a vulnerability**.
 
 Say which release or commit, which JDK and which operating system, what
 an attacker can do, and how to reproduce it. A short program helps most.
 
 BergDB is maintained by one person. You get an answer as soon as Frans
-can give one, normally within a week (TO CHECK, Frans: the time). Please
+can give one, normally within a week. Please
 give him time to fix the vulnerability before you publish it; he will
 say when a fix is out and, if you wish, name you in the release notes.
 
@@ -35,6 +32,8 @@ stream's files must not be writable by an attacker. Its checks of damaged
 bytes in those files are a best effort. It has no encryption, no users
 and no access control.
 
-TO CHECK (Frans): whether a crash or a hang on a crafted or damaged
-stream file counts as a vulnerability, or as an ordinary bug to report in
-an issue.
+A crash or a hang on a crafted or damaged stream file, or on other
+input, is an ordinary bug: report it in a public issue. A vulnerability
+is a file or an input that makes BergDB do more than crash or hang: for
+example read or write outside its stream, or run code. Report that
+privately, as above.
