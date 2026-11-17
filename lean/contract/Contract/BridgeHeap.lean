@@ -4,15 +4,18 @@ program can hold, for the trace checker (BridgeCheck.lean). The computed
 clauses of Bridge.lean (`bridgeOk`) run on a heap as they stand
 (`Heap.tree`). `Made` speaks of every node, so it is computed here over the
 nodes of the heap (`madeCheck`), and `madeCheck_sound` proves that the
-computation gives `Made`. The start is computed by `startCheck`, and
-`startCheck_sound` proves that it gives `StartB`.
+computation gives `Made`. The start is computed by `startCheck`.
+`checkBridgeTx` is all of the bridge's clauses for one traced transaction,
+with the ones in the model's words (BridgeModel.lean), and `checkEvictTx`
+what eviction needs besides; Proof/BridgeModel.lean proves that they give
+the clauses (`checkBridgeTx_sound`, `checkEvictTx_sound`).
 -/
-import Contract.Bridge
+import Contract.BridgeModel
 import Contract.Check
 
 namespace Contract
 
-open SIS (Changes NewNode)
+open SIS (Struct Changes NewNode Spec)
 open SIS.Check (BVal)
 
 /-- `Made`, computed over the nodes of the heap after the transaction. -/
@@ -43,5 +46,19 @@ def startCheck (c0 : Changes BVal) (h : Heap) : Bool :=
     h.objs[r]? == some (.key { level := lr, leaf := true, ks := [.time 0] }) &&
     h.objs.toList.all (fun xo => xo.1 == r) && h.roots == [(0, r)]
   | _, _ => false
+
+/-- The bridge's clauses for one traced transaction, computed: at time i, from
+the heap h and the model's structure P, with the dirty nodes D, to the heap
+h', with the change c. -/
+def checkBridgeTx (sp : Spec BVal Nat) (P : Struct BVal) (i : Nat) (h : Heap) (D : List NodeId)
+    (h' : Heap) (c : Changes BVal) : Bool :=
+  bridgeOk sp.topLevel i h.tree h'.tree D c && madeCheck h h' c &&
+  topOkB sp P (P.apply i c) i h.tree h'.tree c && touchB sp P i c
+
+/-- What eviction needs besides, for one traced transaction, computed: TREE
+and A6' after it, A-COPY for its change. -/
+def checkEvictTx (sp : Spec BVal Nat) (P : Struct BVal) (i : Nat) (h' : Heap)
+    (c : Changes BVal) : Bool :=
+  treeOkB (h'.tree.at i) && adoptB sp (P.apply i c) i && copyB sp P (P.apply i c) i c
 
 end Contract

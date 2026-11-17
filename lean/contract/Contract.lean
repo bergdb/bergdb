@@ -16,11 +16,15 @@ import Contract.CheckShape
 import Contract.TheoremsShape
 import Contract.ExampleShape
 import Contract.Bridge
+import Contract.BridgeModel
 import Contract.BridgeHeap
+import Contract.Proof.BridgeModel
 import Contract.Proof.BridgeMap
 import Contract.Proof.BridgeInv
 import Contract.Proof.BridgeReach
 import Contract.Proof.BridgeStep
 import Contract.Proof.BridgeTree
+import Contract.Proof.BridgeDirty
 import Contract.BridgeTheorems
 import Contract.BridgeExample
+import Contract.BridgeBound
