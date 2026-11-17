@@ -1,7 +1,7 @@
 # bergdb 020-07, conformance vectors of stored objects, format 2.
 #
-# Written 2026-11-08 by Vectors.java (/Users/f/fl/bench/006-15/020-07/) and checked by a
-# second implementation written from the spec alone (check.py, same directory). The format
+# Written 2026-11-08 by Vectors.java (a tool outside the repository) and checked by a
+# second implementation written from the spec alone (check.py, beside it). The format
 # of this file: 020-07, section 13. A draft, with 020-07, for Frans's approval under
 # 018-01's rule (020-02, section 4.12).
 #
@@ -111,7 +111,7 @@ valid index-definition
 # index-definition-2: added 2026-11-08 by bergdb 020-10, step I0: an index definition of
 # 2026.4 (020-10, section 4.2), two levels, as IndexDefinition writes it; the index's name,
 # "fromAmount", is its key's. Checked by ObjectFormatTester (T1, with its second codec Ref)
-# and by check.py (/Users/f/fl/bench/006-15/020-07/).
+# and by check.py (outside the repository).
 valid index-definition-2
   bytes 824805101d62707a03646972140a2f7061796d656e74732f0367656e1300b09baaedbd3f00066c6576656c734248020d1a047061746842140466726f6d4304747970651406737472696e6748020f1a0470617468421406616d6f756e7443047479706514046c6f6e674305737461746514066163746976650776657273696f6e1001
   value {"dir":s"/payments/","gen":i17941752000000000,"levels":[{"path":[s"from"],"type":s"string"},{"path":[s"amount"],"type":s"long"}],"state":s"active","version":i1}

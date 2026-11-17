@@ -16,7 +16,7 @@ a check where the writer takes a node back. The checks:
 
 `OpDelChkOK` (HeightsChkRun.lean) is the named premise: a delete, from a state
 that the transaction's earlier operations reach, runs as its copy with the
-checks. It is checked on runs by /Users/f/fl/bench/2026-11-13/cost/fit/DelChk.lean.
+checks. It is checked on runs by a check outside the repository (DelChk.lean, 2026-11-13).
 -/
 import SIS.Tree.WriterHeightsMerge
 

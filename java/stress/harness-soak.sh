@@ -69,7 +69,7 @@
 # On s1 (bergdb 020-17), started under nohup until 18:00:
 #   nohup sh harness-soak.sh -j bergdb.jar -o soak -u 18:00 > soak.out 2>&1 &
 # and checked with one command:
-#   ssh root@s1 cat /root/bench/2026-11-09-s17/soak/summary.txt
+#   ssh HOST cat DIR/summary.txt
 
 ORIG=$(pwd)
 JAVADIR=$(cd "$(dirname "$0")/.." && pwd)

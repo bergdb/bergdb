@@ -3,7 +3,7 @@ Step 4 (B) at the operation level (bergdb 024-22; 024-12's (4)): every
 operation of a transaction within reach adds at most one to the cached heights
 (`opHtStep_of`). The put is proved (`seenHeight_putKv_put`); the delete is a
 named premise, `OpDelHtStepOK`, checked on runs (the same bound per segment,
-`/Users/f/fl/bench/2026-11-13/cost/fit/HeightsOp.lean`). A delete's bitmap, a
+a check outside the repository, `HeightsOp.lean` of 2026-11-13). A delete's bitmap, a
 merge and a cascade each add at most one (proved); a whole delete runs several
 merges, and one per operation needs the merges' fill.
 -/
