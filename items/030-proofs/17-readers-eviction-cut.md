@@ -80,10 +80,12 @@ Kept current; the Log has the times.
   (`klongsWf_prefixAt`, `fullOk_prefixAt`), and their entries are the whole
   entries up to t (`entriesOf_prefixAt`, under W1). The tree as written meets
   the premise (`crash_java_tree_whole`); a closed example
-  (`crash_whole_get16`). Not for the cut: a startup from a cut stream gives
-  back a structure whose nodes may lack the entries before the cut, while
-  Java's key node keeps its klongs; there the view's form (`HoldsView` from
-  the first available time on) is the right premise.
+  (`crash_whole_get16`). Not for the cut: the structure that a startup from
+  a cut stream gives back agrees with the run's only on what a reader from
+  the first available time on reaches (`SameFrom`); a node dead before then
+  may be missing or hold part of its history, so "Java's tree holds the
+  structure whole" is not the premise to ask there; the view's form
+  (`HoldsView` at each time from the first available time on) is.
 - **Found and fixed: `bridge-faults.sh` failed on `main` 3f1e2fea.** The
   hand-made `test/small.trace` (030-15) has a segment leaf on level 2 with
   the TREE line's h = 3, which K-LEVEL (030-14) refuses: `bridgecheck` gives
