@@ -262,3 +262,4 @@ GATED 0444f826: the top in the contract (MeetsTop), TP24 proved, the reads resta
 2026-11-17, 15:45 to 15:50. Item 4: `Rebuild.lean`, `LinesOf`,
 `applyTx_rebuilds`, `applyTx_linesOf`, `java_start`, `java_meetsTop`; the
 reclaim set checked (CONTRACT OK, C4 and C5 0). Status: done.
+GATED b975567a: item 4, the step from trace lines to Java's tree reduced to one named premise (LinesOf, java_meetsTop); the item done.
