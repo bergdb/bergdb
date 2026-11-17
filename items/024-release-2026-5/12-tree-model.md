@@ -772,6 +772,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   Left for the 69: the merge's tail with the hole after the split (l4f's
   `writerWP_mergeTail_liveSplitX` with `LiveHoleW` at h + 1 for a merge into one node), the
   copy's node and height for R1, and the writer shapes of q's space splits (22).
+  03:46 (prover l4g, `LiveInPlaceHole.lean`): the writer shapes for the 7 where q, made by the
+  transaction, splits in time in place: `writerWP_appendKlongs_timeInPlaceHole` (below a
+  parent) and `writerWP_appendKlongs_rootInPlaceHole` (the space root), no premises: q's node
+  is a leaf whose search of k1 names y, the rest kept (`descendToHeight_redirectSeg`'s
+  premises). Writer shapes for R1 now cover 25 + 15 + 7 = 47 of the 69; left q's space splits
+  (15 below q0, 7 at the root).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

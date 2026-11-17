@@ -1729,3 +1729,12 @@ segment's root), `lteP_redirect2` at q0, the cut at the copy as before. With 03:
 `holeAtW_copyG2` and 03:19's `descendToHeight_redirectSeg2`, R1 through two changed levels
 is proved in the three forms R4's open part takes, where q0 keeps its id; q a segment root
 or the space root is left (for the merge's 69, `descendToHeight_topSeg` covers the root).
+
+2026-11-17, 03:44 to 03:46. The writer's side of the 7 of the 69 whose segment leaf q the
+transaction made, prover l4g (`LiveInPlaceHole.lean`, about 120 lines).
+`writerWP_appendKlongs_timeInPlaceHole` (q below a parent) and
+`writerWP_appendKlongs_rootInPlaceHole` (q the space root): p's copy y put by k1 into q
+without room (or compacting), within a split's bound when no room, makes q split in time in
+place (l4b's `writerWP_handleFullWith_timeInPlace_termN`, `_term0N`): q's node is a leaf
+whose search of k1 names y, nothing else changes: 02:22's `descendToHeight_redirectSeg`'s
+premises. Writer shapes for R1: 47 of the 69 (25 + 15 + 7); left q's space splits.
