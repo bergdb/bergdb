@@ -5,8 +5,8 @@ side. This is the file to read and to trust, with Tree.lean (what a tree is)
 and Read.lean (the readers). The theorems that follow from it are stated in
 Theorems.lean.
 
-Everything here but `Frame`, `Contract`, `Start` and `Meets` is a function
-that runs: the trace checker (ContractCheck.lean) runs these same
+Everything here but `Ext`, `Frame`, `Contract`, `Start` and `Meets` is a
+function that runs: the trace checker (ContractCheck.lean) runs these same
 definitions on Java's tree before and after every traced transaction.
 Nothing here needs Mathlib.
 
@@ -294,8 +294,9 @@ def ScanReq.wf (req : ScanReq) : Bool :=
 /-! ## 5. The contract
 
 English. A transaction with the operations `ops` is run by the writer at time
-i on the tree s, and the writer accepts it. It ends in the tree s' and names
-D, the nodes it marked dirty. The writer's contract:
+i on the tree s, and the writer accepts it. It ends in the tree s' with D,
+the dirty nodes when it ends, before its record is written: the nodes that
+were dirty before it and the nodes that it marked. The writer's contract:
 
 1. s' at time i meets the invariants.
 2. The contents of s' at time i are the contents of s at time i - 1 with the
