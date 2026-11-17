@@ -70,4 +70,5 @@ a snapshot of the former `docs/` of 2026-11-12.
 ## General
 
 - Preserve unrelated worktree changes.
-- Preserve files in `frans/`.
+- Frans's private notes are kept outside this repository; `frans/` is
+  ignored by Git (since 2026-11-16).
