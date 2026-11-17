@@ -390,4 +390,11 @@ theorems).
 18:50 on the merged tree: `bridge-faults.sh` BRIDGE FAULTS OK;
 `bridge-check.sh small drain reclaim` BRIDGE OK (195 traces, 29,735
 transactions, KIND 0). The item, 030-04 3.5 item 13 narrowed, 030's Files.
-GATED HEAD: see the next line.
+GATED e9260c8f: K-LEVEL (a key node's kind is its level's), checked by
+`bridgecheck` (KIND 0 on 195 traces; fault `kind-h0`), after the independent
+review's `FullLeafGap` (in the package as a test, ruled out:
+`kinds_exclusive`); the reads restated with the kinds from the view's levels;
+Java's reads after a crash and restarts with the top that the stream holds
+(`crash_java_reads`, `restart_java_reads`, `crash_java_tree`, `topOfP_eq`,
+`tree_holds`); merged `main` 556cc927; `gate.sh 556cc927` GATE OK (122
+theorems).
