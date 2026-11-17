@@ -1848,3 +1848,8 @@ in time: the new root's search at k1 names the half on k1's side, which names p'
 descent at (g, h + 1) after the split finds the copy (`descendToHeight_topSeg_innerRoot`).
 The split step's R1: 67 of the 69; left two at the space root (its own space split, and q
 made in place there).
+
+2026-11-17, 04:09 to 04:11. The split step's R1 for the one where q, made, is the space root
+and splits in time in place, prover l4g (`LiveRootInPlaceChildHole.lean`, about 180 lines).
+`writerWP_handleFull_rootInPlaceChildHole` and `_R1` (`descendToHeight_topSeg_leafRoot`, the
+space root kept). The split step's R1: 68 of the 69; left the space root's own space split.
