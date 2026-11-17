@@ -1,6 +1,13 @@
 Self-indexed streams in Lean
 ============================
 
+**Work in progress.** This directory is for developers of BergDB. It is
+not part of what a user of BergDB relies on, and not a feature. Today it is
+used as the executable model that Java's runs are checked against by the
+trace checkers of levels 2 to 4 (`level2.sh` to `level4.sh`, `night.sh`).
+The proofs below are partial and paused since 2026-11-17; a fresh start is
+planned (030-04).
+
 The model of sis-model.md (bergdb 027-01, [sis-model.md](../items/027-algorithms/01-docs-2026-11-12/sis-model.md)) in Lean 4:
 the definitions, the assumptions, and the theorems T1 (recovery) and T2
 (restart invariance), and those below, with their proofs. See Status.
