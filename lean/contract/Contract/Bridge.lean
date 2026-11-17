@@ -26,6 +26,13 @@ changes meet its assumptions. Here:
 * Section 4, a history that meets the contract and the bridge's clauses
   (`MeetsBridge`, and `MeetsEvict` for eviction).
 
+The clauses in the model's words here (`TopOK`, `TouchOK`, and A6' and
+A-COPY in `MeetsEvict`) are a step between: BridgeTop.lean says the same of
+the tree and its top (bergdb 030-08), in the contract's words (`MeetsFull`),
+and Proof/BridgeTop.lean and Proof/BridgeWords.lean prove that a history
+that meets `MeetsFull` meets `MeetsBridge` and `MeetsEvict`. The statement
+to read first is `MeetsFull`; the theorems for it are in BridgeFull.lean.
+
 The definitions here import the abstract model's definitions (lean/SIS, the
 old package, by a Lake dependency) and none of its proofs of the tree
 (SIS/Tree). They do not need Mathlib.

@@ -42,6 +42,10 @@ is in the model's D when the transaction ends.
 The model's algorithm `al` is any: its startup pos policy (the take) is free.
 Its still-dirty test is BergDB's (`javaTest`).
 
+A history that meets every clause in the contract's words (`MeetsFull`,
+BridgeTop.lean) meets `MeetsBridge` and `MeetsEvict`
+(Proof/BridgeWords.lean); BridgeFull.lean states the main theorems for it.
+
 What is proved: these theorems, with no premise but `MeetsBridge`. What is
 not: that Java's writer meets `MeetsBridge` (tested per transaction on the
 traces, BridgeCheck.lean; the clauses in the model's words by `tracecheck`),

@@ -265,7 +265,7 @@ The computed clauses are the definitions of `Bridge.lean` and
 `BridgeTop.lean`, run on the checker's heap as they stand; `Made`, 030-08's
 `TopStep` and TREE are computed by functions proved to give them
 (`madeCheck_sound`, `topStepB_sound`, `treeOkB_sound`). The three sets take
-about three minutes, with `--model` about eleven. `bridge-faults.sh`: faults
+about two minutes, with `--model` about eleven. `bridge-faults.sh`: faults
 made by hand (an entry with another compare value, a delete entry with
 another one, a value without its NEW line, a key node on level 0, a skip
 pointer left out, another root pointer, a node left out of a TOUCH line,
