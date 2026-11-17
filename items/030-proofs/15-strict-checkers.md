@@ -183,3 +183,9 @@ Log
   `check.sh` runs both checkers (small, drain, reclaim: CONTRACT OK, both,
   195 traces, 3 minutes); `Statements.lean`, `pin.sh`, `statements.pin` (65
   files), `gate.sh` step 5. GATE OK against 0b677a63 (76 theorems).
+- 18:56 Four traces with every kind of line of formats 2 and 3 (probe,
+  run E, retain, live) pass the strict contract checker. Done.
+- 18:57 GATED 900c66a9: strict trace parsing (the review's faults fail both
+  checkers), `contractVerdict_sound`, `check.sh` runs both checkers,
+  `gate.sh` step 5 pins the statements (65 files). Gate against 0b677a63
+  (a25b8b03 plus the coordinator's 006-30 file): GATE OK, 76 theorems.
