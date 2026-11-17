@@ -62,3 +62,5 @@ Frans's words:
 * 11:21 2026.5's release notes: the Lean model no longer a feature (Frans, 11:20): ba10b652.
 * 11:25 W3, Apache-2.0 everywhere (Frans, 11:23: "Change everything to that, including all releases. [...] Change in place as if not other license was ever used. History in items and so on can be kept as is."): agent apache, Opus at high.
 * 11:25 W1 done: 030-04 written (440 lines) and 030's map (D0 the contract approach, D1 paused); committed. Waits for Frans: when the spike runs.
+* 11:31 W3 done: Apache-2.0 everywhere, the releases' src zips and SHA256SUMS included, NOTICE, the jars ship LICENSE and NOTICE (66db6126; BEFORE COMMIT OK). The drafts branch: a8e8a94e. The public history's old LICENSE: a filter rule described, for Frans.
+* 11:31 W4, the spike of 030-04 (Frans, 11:30: "Run it now. Use Fable High for this. We need high intelligence for this."): agent spike, clone /Users/f/fl/bench/2026-11-17/spike/clone, branch 030-04-spike; STOP at a week of 30 % (a watcher).
