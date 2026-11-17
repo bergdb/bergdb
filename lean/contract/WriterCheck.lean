@@ -84,6 +84,10 @@ def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMa
       if !(z == z' && t.id == z && t.time == zn.time && t.rootKey == zn.root &&
           t.skips == zn.skips.map (fun q => (q.1, q.2.1))) then
         f := f ++ ["the view's super root is not the last top node"]
+      if t.skips.map (·.1) != (List.range (SIS.Tree.topHeight t.ord)).filter (fun j => t.ord.testBit j) then
+        f := f ++ ["the super root's skip pointers are not at the bits of its ordinal"]
+      if !zn.skips.all (fun q => (tp.node q.2.1).map (·.time) == some q.2.2) then
+        f := f ++ ["a skip pointer of the super root does not name a top node with its time"]
     | .error e => f := f ++ [s!"the view's super root: {e}"]
   | _, _ => f := f ++ ["no super root"]
   for (z, _) in tp do
@@ -122,7 +126,8 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
   -- B5: the level of an overlay node is that of its segment and height; a
   -- segment leaf exactly at height 0.
   (if live.all (fun q => match w.gh.lookup q.1 with
-      | some (g, ht) => wLevel h.tree w q.1 == p.keyLevel g ht && q.2.leaf == (ht == 0)
+      | some (g, ht) => decide (g ≤ p.G) && decide (ht ≤ p.H) &&
+        wLevel h.tree w q.1 == p.keyLevel g ht && q.2.leaf == (ht == 0)
       | none => false) then [] else ["B5 levels are the segments and heights"]) ++
   -- B6: every id of the state is below the next id; a node made is at or
   -- above the first id, and no node of s.
@@ -237,7 +242,8 @@ def checkWriterTrace (p : MParams) (tr : Trace) (old : SIS.Check.Trace)
                     c := { c.fail s!"TX {i}, operation {k}: J3, the frame" with j3 := c.j3 + 1 }
                   if !(treeOkB s') then
                     c := { c.fail s!"TX {i}, operation {k}: J4, TREE" with j4 := c.j4 + 1 }
-                  if !(topStepB i tp tpw && (treeOf i h.tree w).roots == rootsOf tpw) then
+                  if !(topStepB i tp tpw && (treeOf i h.tree w).roots == rootsOf tpw &&
+                      (if w.newTop then w.top.time == i else w.top == top)) then
                     c := { c.fail s!"TX {i}, operation {k}: J5, the top" with j5 := c.j5 + 1 }
                   for b in bookFaults p i base h w do
                     c := { c.fail s!"TX {i}, operation {k}: {b}" with books := bump c.books b }

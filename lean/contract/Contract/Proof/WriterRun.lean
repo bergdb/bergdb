@@ -85,14 +85,65 @@ theorem topOf_start (i : Time) (tp : Top) (base : NodeId) (t : SIS.Tree.Top) :
     topOf i tp { next := base, top := t } = tp := by
   simp [topOf]
 
+/-- J5 gives the top's clauses. -/
+theorem TopInv.step {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : TopInv i s tp w.top w.newTop) : TopStep i tp (topOf i tp w) := by
+  unfold topOf
+  cases hn : w.newTop with
+  | false => exact Or.inl rfl
+  | true =>
+    obtain ⟨h1, h2, h3⟩ := h.2.2 hn
+    exact Or.inr ⟨_, _, rfl, h2, rfl, h3⟩
+
+/-- J5 gives that the space roots are the top's. -/
+theorem TopInv.roots {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : TopInv i s tp w.top w.newTop) : (treeOf i s w).roots = rootsOf (topOf i tp w) := by
+  unfold topOf treeOf
+  cases hn : w.newTop with
+  | false => simpa using h.1
+  | true => simp [rootsOf, h.1]
+
+/-- The skip pointers of the last top node name top nodes and cache their
+times, after the transaction too. -/
+theorem TopInv.skips {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : TopInv i s tp w.top w.newTop)
+    (hb : ∀ z zn, tp.getLast? = some (z, zn) → ∀ q ∈ zn.skips,
+      (tp.node q.2.1).map (·.time) = some q.2.2) :
+    ∀ z zn, (topOf i tp w).getLast? = some (z, zn) → ∀ q ∈ zn.skips,
+      ((topOf i tp w).node q.2.1).map (·.time) = some q.2.2 := by
+  unfold topOf
+  cases hn : w.newTop with
+  | false => simpa using hb
+  | true =>
+    obtain ⟨_, _, h3⟩ := h.2.2 hn
+    intro z zn hl q hq
+    simp only [ite_true, List.getLast?_append, List.getLast?_singleton, Option.some_or,
+      Option.some.injEq, Prod.mk.injEq] at hl
+    obtain ⟨_, rfl⟩ := hl
+    simp only [skipsOk, Bool.and_eq_true, List.all_eq_true, beq_iff_eq] at h3
+    have h4 := h3.1.2 q hq
+    simp only [Top.node] at h4 ⊢
+    cases hlk : List.lookup q.2.1 tp with
+    | none => simp [hlk] at h4
+    | some n => simp [List.lookup_append, hlk] at h4 ⊢; exact h4
+
 /-- `Mid` holds at the start of a transaction. -/
 theorem mid_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
-    (t : SIS.Tree.Top) (hb : Before p i base s tp) :
+    {v : View BVal} {z : NodeId} {t : SIS.Tree.Top} (hs : Shows p v z s tp)
+    (ht : SIS.Tree.topOf p v z = .ok t) (hb : Before p i base s tp) :
     Mid p i base s tp [] { next := base, top := t } := by
   have h0 := treeOf_start i s base t
-  have h1 := topOf_start i tp base t
-  refine ⟨by rw [h0]; exact hb.inv, by rw [h0]; rfl, ?_, by rw [h0]; exact hb.tree,
-    by rw [h1]; exact Or.inl rfl, by rw [h0, h1]; exact hb.books.roots,
+  have htop : TopInv i s tp t false := by
+    obtain ⟨t', zn, h1, h2, h3, h4, _, h6, h7⟩ := hs.top
+    rw [ht] at h1
+    obtain rfl : t = t' := by injection h1
+    refine ⟨hb.books.roots, fun _ => ⟨?_, zn, by rw [h3]; exact h2, h6, h7,
+      hb.books.skips z zn h2⟩, fun h => by cases h⟩
+    rw [h4]
+    apply hb.books.rootTimes (zn.time, zn.root)
+    rw [hb.books.roots]
+    exact List.mem_map.mpr ⟨(z, zn), List.mem_of_getLast? h2, rfl⟩
+  refine ⟨by rw [h0]; exact hb.inv, by rw [h0]; rfl, ?_, by rw [h0]; exact hb.tree, htop,
     by rw [h0]; exact hb.balanced, ?_⟩
   · rw [h0]
     refine ⟨fun x o hx => ⟨o, hx, Ext.refl i o, fun _ => rfl⟩, ?_, [], by simp, by simp⟩
@@ -199,10 +250,10 @@ theorem mid_run {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
 contract for the transaction. -/
 theorem writerMeets_of_opStep (p : MParams) (ops : List MOp) (hop : ∀ op ∈ ops, OpStep p op) :
     WriterMeets p ops := by
-  intro i base s tp v z t w hbf hs _ht hrun
+  intro i base s tp v z t w hbf hs ht hrun
   have hb := hbf.books
   have hm : Mid p i base s tp (ops.map opOf) w := by
-    have := mid_run hs hb ops _ w hrun hop [] (mid_start t hbf)
+    have := mid_run hs hb ops _ w hrun hop [] (mid_start hs ht hbf)
     simpa using this
   have hat : (treeOf i s w).at i = treeOf i s w :=
     Tree.at_eq_self (hm.times hb) (hm.rootTimes hb)
@@ -212,8 +263,8 @@ theorem writerMeets_of_opStep (p : MParams) (ops : List MOp) (hop : ∀ op ∈ o
       exact Nat.le_sub_one_of_lt (timesBefore_iff.mp (hb.times x n hx) t' ht')
     · intro r hr
       exact Nat.le_sub_one_of_lt (hb.rootTimes r hr)
-  refine ⟨⟨?_, hm.frame⟩, by rw [hat]; exact hm.tree, hm.top, hm.roots, hm.inv, hm.tree,
-    hm.balanced, hm.first hb, ?_, ?_, hm.ids hb⟩
+  refine ⟨⟨?_, hm.frame⟩, by rw [hat]; exact hm.tree, hm.top.step, hm.top.roots, hm.inv, hm.tree,
+    hm.balanced, hm.first hb, ?_, ?_, hm.ids hb, hm.top.skips hb.skips⟩
   · simp only [contractOk, hat, hat0, hm.inv, hm.contents, Bool.true_and, beq_self_eq_true]
   · intro x n hx
     rw [timesBefore_iff]
@@ -231,6 +282,8 @@ structure RunInv (p : MParams) (txs : List (List Op)) (s : Tree) (tp : Top) : Pr
   times : ∀ x n, s.obj x = some (.key n) → timesBefore (txs.length + 1) n.ks = true
   rootTimes : ∀ r ∈ s.roots, r.1 < txs.length + 1
   roots : s.roots = rootsOf tp
+  skips : ∀ z zn, tp.getLast? = some (z, zn) → ∀ q ∈ zn.skips,
+    (tp.node q.2.1).map (·.time) = some q.2.2
 
 /-- If the model's writer meets the contract for every transaction, a run of
 the writer is a history that meets the writer's contract, TREE and the top's
@@ -250,16 +303,16 @@ theorem runs_meetsTop {p : MParams} (hW : ∀ ops, WriterMeets p ops) :
     refine ⟨MeetsTop.start s tp ⟨by rw [hat]; exact hb.inv, by rw [hat]; exact hc⟩
       (by rw [hat]; exact hb.tree) ht hb.books.roots, ?_⟩
     exact ⟨hb.inv, hb.tree, hb.balanced, hb.books.first, hb.books.times, hb.books.rootTimes,
-      hb.books.roots⟩
+      hb.books.roots, hb.books.skips⟩
   | step txs s tp ops base v z t w _ hs ht hids hrun ih =>
     obtain ⟨hmeets, hinv⟩ := ih
     have hbf : Before p (txs.length + 1) base s tp :=
       ⟨hinv.inv, hinv.tree, hinv.balanced,
-        ⟨hinv.first, hinv.times, hinv.rootTimes, hids, hinv.roots⟩⟩
-    obtain ⟨h1, h2, h3, h4, h5, h6, h7, hf, h8, h9, _⟩ :=
+        ⟨hinv.first, hinv.times, hinv.rootTimes, hids, hinv.roots, hinv.skips⟩⟩
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, hf, h8, h9, _, h11⟩ :=
       hW ops (txs.length + 1) base s tp v z t w hbf hs ht hrun
     refine ⟨MeetsTop.step txs s tp (ops.map opOf) (dirtyOf w) _ _ hmeets h1 h2 h3 h4, ?_⟩
-    refine ⟨h5, h6, h7, hf, ?_, ?_, h4⟩
+    refine ⟨h5, h6, h7, hf, ?_, ?_, h4, h11⟩
     · simpa using h8
     · simpa using h9
 

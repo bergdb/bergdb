@@ -118,7 +118,10 @@ tp to the writer:
   segment leaf exactly if its level says height 0;
 * the writer's super root z is the last top node of tp, and the view gives it
   the root pointer, the root time and the skip pointers of that top node;
-  its ordinal is whatever the view says (no clause of the contract needs it).
+  its skip pointers have the indexes of the bits set in its ordinal, as
+  `TopDs.newSuperRoot` makes them (the ordinal is the view's; the contract
+  has none, and the writer needs this to make the next top node's lowest skip
+  pointer name the super root).
 
 `Books`, the writer's own rules that it relies on at the start of the
 transaction at time i with first id `base`, beside the contract's invariants:
@@ -127,7 +130,8 @@ transaction at time i with first id `base`, beside the contract's invariants:
   of s, and of a space root, is before i;
 * every node of s and every top node has an id below `base`: the ids that the
   transaction makes are new;
-* the space root of s is the root pointer of the last top node. -/
+* the space roots of s are the root pointers of the top nodes, and each skip
+  pointer of the last top node names a top node and caches its root time. -/
 
 /-- The view v shows the tree s and the top tp, with super root z. -/
 structure Shows (p : MParams) (v : View BVal) (z : NodeId) (s : Tree) (tp : Top) : Prop where
@@ -135,7 +139,8 @@ structure Shows (p : MParams) (v : View BVal) (z : NodeId) (s : Tree) (tp : Top)
     nd.level = n.level ∧ n.level ≤ p.keyMax ∧ (SIS.Tree.klongsOf nd.hist).map kOf = n.ks ∧
     n.leaf = (p.heightOf n.level == 0)
   top : ∃ t zn, SIS.Tree.topOf p v z = .ok t ∧ tp.getLast? = some (z, zn) ∧ t.id = z ∧
-    t.time = zn.time ∧ t.rootKey = zn.root ∧ t.skips = zn.skips.map (fun q => (q.1, q.2.1))
+    t.time = zn.time ∧ t.rootKey = zn.root ∧ t.skips = zn.skips.map (fun q => (q.1, q.2.1)) ∧
+    t.skips.map (·.1) = (List.range (SIS.Tree.topHeight t.ord)).filter (fun j => t.ord.testBit j)
 
 /-- The time of every time klong of the klongs is before i. -/
 def timesBefore (i : Time) (ks : List Klong) : Bool :=
@@ -151,6 +156,8 @@ structure Books (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
   rootTimes : ∀ r ∈ s.roots, r.1 < i
   ids : ∀ x, base ≤ x → s.obj x = none ∧ tp.node x = none
   roots : s.roots = rootsOf tp
+  skips : ∀ z zn, tp.getLast? = some (z, zn) → ∀ q ∈ zn.skips,
+    (tp.node q.2.1).map (·.time) = some q.2.2
 
 /-! ## 3. The statement
 
@@ -168,7 +175,10 @@ the tree at time i is the tree, and s at time i - 1 is s.
 * J2. Its contents are those of s with the operations done applied.
 * J3. The frame, from s, with D the overlay.
 * J4. TREE.
-* J5. The top's clauses, and the space roots are the top's.
+* J5. The top (`TopInv`): either the writer has made no top node, and its
+  super root is the one it started with; or it has made one, of time i, with
+  a new id and skip pointers that meet the top's clause T3. With it the
+  top's clauses hold (`TopStep`) and the space roots are the top's.
 * BalancedOK, of the writer's own rules, for every key node of the tree,
   reached or not, and every key klong of it, live or dead (`BalancedAll`): a
   key node has a level above 0 and is a segment leaf exactly at height 0 of
@@ -182,8 +192,8 @@ the tree at time i is the tree, and s at time i - 1 is s.
   * B2. No klong of the overlay has a time after i.
   * B3. A node replaced (`W.madeFor`'s second) is a key node of s.
   * B4. No klong, live or dead, of a node kept names a node taken back.
-  * B5. A node kept has the level of its segment and height (`W.gh`), and is
-    a segment leaf exactly at height 0.
+  * B5. A node kept has the level of its segment and height (`W.gh`), which
+    are within G and H, and is a segment leaf exactly at height 0.
   * B6. Every id of the state is below the next id, the top node's too if
     the writer made it; a node made has an id at or above the first id, and
     so has the next id.
@@ -246,6 +256,18 @@ def BalancedAll (p : MParams) (s : Tree) : Prop :=
     (n.leaf = false → ∀ c y, Klong.key c y ∈ n.ks → ∃ m, s.obj y = some (.key m) ∧
       m.level + 1 = n.level)
 
+/-- J5: the writer's super root t, and whether the writer made it. -/
+def TopInv (i : Time) (s : Tree) (tp : Top) (t : SIS.Tree.Top) (newTop : Bool) : Prop :=
+  s.roots = rootsOf tp ∧
+  (newTop = false → t.time < i ∧ ∃ zn, tp.getLast? = some (t.id, zn) ∧
+    t.skips = zn.skips.map (fun q => (q.1, q.2.1)) ∧
+    t.skips.map (·.1) = (List.range (SIS.Tree.topHeight t.ord)).filter (fun j => t.ord.testBit j) ∧
+    ∀ q ∈ zn.skips, (tp.node q.2.1).map (·.time) = some q.2.2) ∧
+  (newTop = true → t.time = i ∧ tp.node t.id = none ∧
+    skipsOk tp { time := i, root := t.rootKey,
+                 skips := t.skips.map (fun q => (q.1, q.2, ((tp.node q.2).map (·.time)).getD 0)) }
+      = true)
+
 /-- The writer's books within the transaction at time i, B1 to B14. -/
 structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) : Prop where
   first : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
@@ -255,7 +277,8 @@ structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) 
   named : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
     ∀ c y, SIS.Tree.Klong.key c y ∈ n.ks → w.taken.contains y = false
   levels : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
-    ∃ g h, w.gh.lookup x = some (g, h) ∧ wLevel s w x = p.keyLevel g h ∧ n.leaf = (h == 0)
+    ∃ g h, w.gh.lookup x = some (g, h) ∧ g ≤ p.G ∧ h ≤ p.H ∧ wLevel s w x = p.keyLevel g h ∧
+      n.leaf = (h == 0)
   ids : (∀ x n, w.nodes.lookup x = some n → x < w.next) ∧
     (∀ x h, w.vals.lookup x = some h → x < w.next) ∧
     (∀ m ∈ w.made, m.id < w.next ∧ base ≤ m.id) ∧
@@ -287,8 +310,7 @@ structure Mid (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (do
   contents : contents (treeOf i s w) = applyOps done (contents s)
   frame : Frame i s (dirtyOf w) (treeOf i s w)
   tree : TreeOk (treeOf i s w)
-  top : TopStep i tp (topOf i tp w)
-  roots : (treeOf i s w).roots = rootsOf (topOf i tp w)
+  top : TopInv i s tp w.top w.newTop
   balanced : BalancedAll p (treeOf i s w)
   books : MidBooks p i base s w
 
@@ -333,7 +355,9 @@ def WriterMeets (p : MParams) (ops : List MOp) : Prop :=
       (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧
-      (∀ x, w.next ≤ x → (treeOf i s w).obj x = none ∧ (topOf i tp w).node x = none)
+      (∀ x, w.next ≤ x → (treeOf i s w).obj x = none ∧ (topOf i tp w).node x = none) ∧
+      (∀ z zn, (topOf i tp w).getLast? = some (z, zn) → ∀ q ∈ zn.skips,
+        ((topOf i tp w).node q.2.1).map (·.time) = some q.2.2)
 
 /-! ## 4. A run
 
