@@ -159,6 +159,7 @@ import SIS.Tree.LiveTimeChainHole
 import SIS.Tree.LiveDelHole2
 import SIS.Tree.LiveUpCascCopy3
 import SIS.Tree.LiveInPlaceHole
+import SIS.Tree.LiveSpaceRoomHole
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace

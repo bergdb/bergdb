@@ -1738,3 +1738,15 @@ without room (or compacting), within a split's bound when no room, makes q split
 place (l4b's `writerWP_handleFullWith_timeInPlace_termN`, `_term0N`): q's node is a leaf
 whose search of k1 names y, nothing else changes: 02:22's `descendToHeight_redirectSeg`'s
 premises. Writer shapes for R1: 47 of the 69 (25 + 15 + 7); left q's space splits.
+
+2026-11-17, 03:46 to 03:49. The writer's side of the 15 of the 69 whose segment leaf q, not
+made, splits in space, prover l4g (`LiveSpaceRoomHole.lean`, about 260 lines).
+`writerWP_appendKlongs_spaceRoomHole`: p's copy y put by k1 into q (a leaf) without room,
+its last version over the split's bound, q's parent q0 inner with room for two klongs: q's
+halves at the next two ids (l4b's `writerWP_handleFullWith_space_up`), y's klong in the
+half on its side of the divider (l4b's `halves_leaf_searchEq_ins`), q0 names them by q's
+klong kq and the divider (`writerWP_appendKlongs_room2`); q0's search at k1, where it named
+q, names that half (`searchLte_add_two`: kq's klong renamed and a new one above it, the
+divider above kq by `divider_gt_first` and the range fact that q's live compare values are
+at least kq). The premises of `descendToHeight_redirectSeg2` but y's node and height.
+Writer shapes for R1: 62 of the 69; left the 7 through a space split at the space root.
