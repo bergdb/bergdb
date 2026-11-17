@@ -134,3 +134,4 @@ import SIS.Tree.LiveDelSpace
 import SIS.Tree.LiveDelRoot
 import SIS.Tree.LiveDelSpaceMade
 import SIS.Tree.LiveDelSegSpace
+import SIS.Tree.LiveDelSegSpaceMade
