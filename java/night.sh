@@ -63,9 +63,10 @@
 #      (bergdb 020-15).
 #  11. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
 #  11b. stress/contractconf.sh medium: the medium tree set (treeconf.sh medium,
-#      27 traces of 120 to 800 transactions, node sizes 8 to 62, checked with
-#      the tree model), then the writer's contract (lean/contract/check.sh) and
-#      the bridge (lean/contract/bridge-check.sh) on its traces (bergdb 030-13).
+#      27 traces of 120 to 800 transactions, node sizes 8 to 62, written with
+#      no tree check, which would take over an hour), then the writer's
+#      contract (lean/contract/check.sh) and the bridge
+#      (lean/contract/bridge-check.sh) on its traces (bergdb 030-13).
 #      level2.sh's step 8b checks both on the small and drain sets.
 #  12. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two

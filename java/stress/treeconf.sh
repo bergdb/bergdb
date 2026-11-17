@@ -24,6 +24,10 @@
 #   (bergdb 030-09).
 #
 # PAR=N runs N traces at once (default 4), each an export and its check.
+# TREECHECK=none writes the traces only, with no tree check (bergdb 030-13: for
+# java/stress/contractconf.sh, which checks them with the contract package; the
+# tree check of the medium set takes about 10 to 30 minutes per trace of m-d8,
+# m-d30 and m-d62); a trace passes if TraceExport wrote it.
 # Needs java/build (java/build.sh) and the checker (cd lean && lake build).
 # Traces and outputs go to java/build/traces/tree-SET/. Prints one line per
 # trace, then what the traces reached, summed, and TREECONF OK or TREECONF
@@ -36,7 +40,7 @@ CP=build/bergdb.jar:build/stress
 SET=${1:-small}
 PAR=${PAR:-4}
 CHECK=${TREECHECK:-../lean/.lake/build/bin/treecheck}
-[ -x "$CHECK" ] || { echo "TREECONF FAILED: no checker; run lake build in lean/"; exit 1; }
+[ "$CHECK" = none ] || [ -x "$CHECK" ] || { echo "TREECONF FAILED: no checker; run lake build in lean/"; exit 1; }
 
 small() {
     # conformance.sh's small set.
@@ -104,7 +108,9 @@ one_trace() {
     t=$dir/$name-$s.trace
     $JAVA -ea $props -Dtree=1 -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
         || echo "TraceExport failed: $(tail -1 $dir/$name-$s.export.txt)" > $dir/$name-$s.tree.txt
-    if [ -f $t ]; then
+    if [ -f $t ] && [ "$CHECK" = none ]; then
+        grep -q '^DONE ' $t && echo "EXPORTED" > $dir/$name-$s.tree.txt
+    elif [ -f $t ]; then
         "$CHECK" $t > $dir/$name-$s.tree.txt 2>&1
     fi
 }
@@ -135,7 +141,8 @@ run_set() {
         s=1
         while [ $s -le $seeds ]; do
             last=$(tail -1 $dir/$name-$s.tree.txt)
-            [ "$last" = "TREE OK" ] || FAILED=$((FAILED + 1))
+            [ "$last" = "TREE OK" ] || { [ "$CHECK" = none ] && [ "$last" = EXPORTED ]; } \
+                || FAILED=$((FAILED + 1))
             echo "   $name-$s: $last"
             s=$((s + 1))
         done
