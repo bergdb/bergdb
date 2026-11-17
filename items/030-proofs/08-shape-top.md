@@ -1,6 +1,6 @@
 # 030-08. The tree's shape and its top in the contract
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 Step 4b of 030-04: the two simplifications that 030-05 and 030-06 name,
 and the shape clauses of 030-06's finding F3. TREE (no node is reached
@@ -13,7 +13,7 @@ with its top. Written by an agent of coord-1117, "I" below, on the branch
 
 # 1. The result
 
-Items 1 to 3 of the work list are done; item 4 is open (section 6).
+All four items of the work list are done.
 
 - **TREE is a clause** (item 1). `MeetsShape`
   (`Contract/ShapeStatement.lean`): a history that meets the writer's
@@ -63,11 +63,24 @@ Items 1 to 3 of the work list are done; item 4 is open (section 6).
   against the cached times), L2 (every LIVE 0 line, Java's own top search
   at every time, against `findTop`). On the small and drain sets with
   030-09's LIVE lines: 180 traces, 21,000 transactions, 56,910 SKIPT
-  lines, 1,106,157 LIVE 0 lines, no failure. What the checker computes for
+  lines, 1,106,157 LIVE 0 lines, no failure; and the reclaim set, 15
+  traces, 8,735 transactions with reclaim's records, 18,658 SKIPT lines,
+  no failure (no LIVE lines there). What the checker computes for
   a whole trace gives `MeetsTop` (`historyTopOk_meetsTop`). Its own test,
   `faults-top.sh` (run by `check.sh`): six faults made in the top lines of
   a good trace each fail C5 or L2.
-- **Lines:** about 1,400 of Lean and script, 420 of them TP24's proof.
+- **The step from trace lines to Java's tree** (item 4) is reduced to one
+  named premise, `LinesOf` (`Contract/Rebuild.lean`): the lines of a
+  transaction describe the change from Java's tree before it to Java's
+  tree after it. Proved: from such lines the checker's `applyTx` rebuilds
+  Java's tree exactly (`applyTx_rebuilds`); the premise can be met
+  (`applyTx_linesOf`: the checker's own tree meets it whenever the lines
+  name each node once); and if every transaction's lines are Java's
+  change, Java's top is the one its lines give, and the checker passes the
+  trace, then Java's own trees and tops meet `MeetsTop`, so the theorems
+  hold for Java's trees (`java_start`, `java_meetsTop`). Section 5.
+- **Lines:** 1,654 of Lean and script, 420 of them TP24's proof. About 40
+  minutes, 15:09 to 15:50.
 
 
 # 2. What is proved, in plain words
@@ -80,9 +93,13 @@ contract with the shape clauses (checked on traces, not proved for Java):
   node for every lookup time, so readers start from the right space root;
 - so Java's get and scan, as written in Lean, are right at every time.
 
+And if a trace's lines are Java's change and the checker passes the
+trace, Java's own trees meet those clauses (section 5).
+
 What stays assumed and tested: that Java's writer meets the clauses (C1
 to C5 on traces), that Java's search code is the Lean `findTop` (L1 and L2
-on the LIVE lines), and that the trace is all of Java's change (030-09).
+on the LIVE lines), and that a trace's lines are Java's change (`LinesOf`;
+030-09's completeness checks).
 
 
 # 3. Decisions
@@ -163,9 +180,61 @@ The link: the tree's space roots are the top nodes' root pointers, with
 their root times (`Tree.roots = rootsOf tp`).
 
 
+# 5. Item 4: from trace lines to Java's tree
+
+**What the risk is.** The checker checks the contract on trees it builds
+from the trace's lines (`applyTx`). The theorems then speak of those
+trees. They speak of Java's trees only if the lines are all of Java's
+change and each line is right. 030-06 put the risk in the first part,
+completeness, and 030-09 closed it by tests.
+
+**What is proved now.** One premise, `LinesOf s s' tx`, in Lean:
+
+- every node of Java's tree after (s') that is not as it was before (s)
+  has a line: a value its V entry, a key node its KN line;
+- every V entry is a value of s', every KN line a key node of s' with
+  those klongs and that kind, and the level of its NEW line or the level
+  it had;
+- the space roots of s' are those of s, then the root pointer of each top
+  node made, at the transaction's time.
+
+From it, `applyTx` gives s' exactly (`applyTx_rebuilds`, about 40 lines
+of proof). Over a whole trace (`java_start`, `java_meetsTop`): given
+`LinesOf` for every transaction and Java's top equal to the one the lines
+give (`applyTop`), a trace that the checker passes (`runOk`) makes Java's
+trees meet `MeetsTop`. With the theorems of section 1, Java's trees, read
+by the Lean readers, are right at every time.
+
+**The premises that are left**, each tested, not proved:
+
+1. `LinesOf` for every transaction: the exporter (`TraceExport`) writes
+   Java's change. Tested by 030-09's completeness checks (a NEW line for
+   every node made, a KN line for every key node made or given a klong,
+   from Java's klong diff, an ERROR line for a change lines cannot express,
+   which fails) and by the old checkers (`tracecheck` ties the ADD lines to
+   the records written; `treecheck` ties the KN lines to the model's
+   writer). "Nothing removed" is part of it: a node that Java dropped would
+   have no line, so `LinesOf` would be false; the exporter keeps every node
+   ever made (run A).
+2. Java's top is the lines' top: the T, R and S lines, with the cached
+   times. Tested by the SKIPT lines (C5), the LIVE 0 lines (L1, L2), and
+   030-09's checks that a top node gets pointers only when it is made.
+3. `runOk` is what `ContractCheck.lean`'s loop computes. By reading: the
+   loop builds the same heaps and tops, computes `checkTopTx` of them and
+   compares it with its parts, which it counts.
+4. The levels need no premise about Java. Java has no levels; the
+   exporter computes them after the run (027-02). A level is only a witness
+   that every walk ends, and the invariants check it (KindsOK).
+
+**What a proof of `LinesOf` would need:** Java in Lean, or a proof of
+`TraceExport` against Java's objects. Not planned (030-04, section 3.6).
+It would say little more than the tests: the exporter reads Java's nodes
+directly, and its errors would be seen as failures of the old checkers.
+
+
 # State
 
-2026-11-17, 15:45. Items 1 to 3 done and gated; item 4 next. Branch
+2026-11-17, 15:50. All four items done and gated. Branch
 `030-08-top` in the clone `/Users/f/fl/bench/2026-11-17/night/s4b/clone`,
 main 9a6692cf merged in (030-09's completeness and LIVE lines).
 
@@ -190,3 +259,6 @@ contract: `Top.lean`, `MeetsTop`, TP24 (`findTop_right`, `top_right`),
 `historyTopOk_meetsTop`; C5 and L2 in the checker; `faults-top.sh`. The
 small and drain sets: CONTRACT OK, no C4, C5 or L2 failure.
 GATED 0444f826: the top in the contract (MeetsTop), TP24 proved, the reads restated over Java's top search (jget_right, jscan_right), C5 and L2 on the traces.
+2026-11-17, 15:45 to 15:50. Item 4: `Rebuild.lean`, `LinesOf`,
+`applyTx_rebuilds`, `applyTx_linesOf`, `java_start`, `java_meetsTop`; the
+reclaim set checked (CONTRACT OK, C4 and C5 0). Status: done.
