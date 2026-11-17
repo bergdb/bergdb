@@ -1204,3 +1204,24 @@ left 349: the cascade 256, the space root 93. No stop rule fired.
 `invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
 (l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
 `mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
+
+2026-11-17, 01:37 to 01:56. Step 6, the stop node at the space root, prover l4e
+(`LiveUpCascWalk.lean`, about 620 lines, near-copies; `LiveUpCascRoot.lean`, about 650
+lines, about 400 of them near-copies of the stratum's walk and of the tree's root swap).
+`liveDel_upRoot_live`: a delete that empties its leaf, not the space root, whose climb
+reaches the space root (`DelEmptyUpRootM`: every node strictly between the root and the
+leaf on the key's path empties, and the root was not made by the transaction), keeps the
+live counts, the root with room or full, with no premise and no heights. The stop node is
+the root, a segment leaf (`lebStop_false` excludes an inner one), which asks no count: after
+its bitmap the live counts hold (`liveEdgesH_up`, the root the only hole), and a full root
+splits (`writerWP_upCasc_root_live`: l4b's `writerWP_handleFull_root_live` at the state whose
+root has its bitmap, moved to the writer's state by `writerWP_handleFullWith_root_swap`, as the
+tree's `writerWP_upCasc_root_j2S` does). With no hole the merges' loop merges nothing
+(`writerWP_afterDelete_none`), so neither `MergeLiveOK` nor `CollapseLiveOK` nor the stop
+node's pair is needed. The walk (`takeJ2_deleteUpward_stepMBKGDS`, `writerWP_deleteUpward_stepJGS`:
+the stratum's with the climb's stop fact, the stop node's `gh` entry and an inner stop node's
+leaf flag given to the continuations) pins the stop node to the root. Choice (R4, narrower
+lemmas): the case by the path (`UpToRoot`), not by `DelEmptyCascM`, whose stop candidate
+need not be the climb's stop. Left of step 6: the root made by the transaction (in place),
+and a stop node below the root that is full (its split and cascade; a time split's copy is
+the hole, which needs the stop node's pair, now given by the new walk).

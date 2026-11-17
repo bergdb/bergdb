@@ -410,7 +410,12 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   01:30 (l4d): the true form, `liveDel_upRoom_liveH` (`LiveUpRoomH.lean`, premises `MergeLiveOK`,
   `CollapseLiveOK`): the heights at the stop node's call from the walk's start through the
   loop's frame (`htInv_upFrame`, `LiveUpHt.lean`); R2's heights done for the upward delete with
-  room. R1 at the stop
+  room. 01:55 (l4e): the upward delete whose climb reaches the space root, not made by the
+  transaction, with room or full (`DelEmptyUpRootM`, `UpToRoot`): no hole is left (the root
+  is a leaf; its split by `writerWP_handleFull_root_live` at the state with its bitmap, moved
+  by the swap), so the merges' loop merges nothing: `liveDel_upRoot_live`
+  (`LiveUpCascRoot.lean`), no premise; the walk `takeJ2_deleteUpward_stepMBKGDS`
+  (`LiveUpCascWalk.lean`) gives the leaf stop node the climb's stop and its `gh` entry. R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
