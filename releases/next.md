@@ -11,6 +11,12 @@ that keeps its digests before and after (bergdb 018-01, section 2).
 
 Emptied at release 2026.5 (2026-11-13), whose notes hold what was there.
 
+The release's files are on GitHub Releases, under its tag: the jar and
+the Javadoc zip. `releases/VERSION/` holds the notes
+(`readme.md`) and `SHA256SUMS`; there is no source zip (GitHub archives
+each tag), and `baseline.zip` is not published (bergdb 026, "How the
+release is made"; 029). The notes say so where they list the files.
+
 
 ### Pub API
 

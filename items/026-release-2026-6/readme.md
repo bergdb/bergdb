@@ -62,6 +62,36 @@ Work moved here from 2026.5:
   is a first case.
 
 
+How the release is made
+=======================
+
+As 2026.5's (024-38: commit A, the night, the morning's scripts), with
+the changes of the public repository (029; Frans, 2026-11-17, 11:40):
+
+* **The binaries go to GitHub Releases, not into the repository.** After
+  Frans has pushed the tag `release-2026.6`, the morning makes the
+  release on GitHub with the jar and the Javadoc zip as its assets:
+
+      gh release create release-2026.6 --verify-tag --title "BergDB 2026.6" \
+          --notes-file releases/2026.6/readme.md \
+          bergdb-2026.6.jar bergdb-2026.6-javadoc.zip
+
+  The script prints this command after the tag's, for Frans, as 024-38's
+  `release.sh` printed the tag's; it does not run it itself.
+* **`releases/2026.6/` in commit B holds `readme.md` and `SHA256SUMS`
+  only.** `SHA256SUMS` lists the jar and the Javadoc zip as uploaded;
+  a user checks a download with `shasum -a 256 -c SHA256SUMS`. The
+  notes say that the files are on the GitHub release of the tag.
+* **No source zip.** GitHub makes an archive of each tag; the notes
+  name the tag and commit A.
+* **`baseline.zip` is not published.** It is made as before and kept
+  with the night's outputs, outside the repository; it is not in
+  `SHA256SUMS`. The notes' numbers stay in `readme.md`.
+* 024-38's scripts (`release.sh`, `stage-b.sh`, `finish.sh`), adapted for
+  2026.6, stage no binaries in `releases/2026.6/` and write
+  `SHA256SUMS` for the two uploaded files only.
+
+
 Proposed for 2026.6, not decided
 ================================
 
@@ -237,3 +267,7 @@ Frans's idea (12:54, 13:11).
 (Frans, 13:48).
 
 2026-11-17. 026-19 done: the proof trial's result (00:55 to 01:10).
+
+2026-11-17. How the release is made: the binaries to GitHub Releases,
+`releases/2026.6/` with the notes and `SHA256SUMS` only, no source zip,
+`baseline.zip` not published (029; Frans, 11:40).
