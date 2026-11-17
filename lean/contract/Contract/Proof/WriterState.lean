@@ -57,7 +57,7 @@ structure PInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   root : (treeOf i s w).root = some w.top.rootKey
   sound : Sound p.M ex (treeOf i s w) w.top.rootKey C
   frame : Frame i s (dirtyOf w) (treeOf i s w)
-  top : TopInv i s tp w.top w.newTop
+  top : WTopInv i s tp w.top w.newTop
   balanced : BalancedAll p (treeOf i s w)
   books : PutBooks p i base s w
 

@@ -175,7 +175,7 @@ the tree at time i is the tree, and s at time i - 1 is s.
 * J2. Its contents are those of s with the operations done applied.
 * J3. The frame, from s, with D the overlay.
 * J4. TREE.
-* J5. The top (`TopInv`): either the writer has made no top node, and its
+* J5. The top (`WTopInv`): either the writer has made no top node, and its
   super root is the one it started with; or it has made one, of time i, with
   a new id and skip pointers that meet the top's clause T3. With it the
   top's clauses hold (`TopStep`) and the space roots are the top's.
@@ -257,7 +257,7 @@ def BalancedAll (p : MParams) (s : Tree) : Prop :=
       m.level + 1 = n.level)
 
 /-- J5: the writer's super root t, and whether the writer made it. -/
-def TopInv (i : Time) (s : Tree) (tp : Top) (t : SIS.Tree.Top) (newTop : Bool) : Prop :=
+def WTopInv (i : Time) (s : Tree) (tp : Top) (t : SIS.Tree.Top) (newTop : Bool) : Prop :=
   s.roots = rootsOf tp ∧
   (newTop = false → t.time < i ∧ ∃ zn, tp.getLast? = some (t.id, zn) ∧
     t.skips = zn.skips.map (fun q => (q.1, q.2.1)) ∧
@@ -310,7 +310,7 @@ structure Mid (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (do
   contents : contents (treeOf i s w) = applyOps done (contents s)
   frame : Frame i s (dirtyOf w) (treeOf i s w)
   tree : TreeOk (treeOf i s w)
-  top : TopInv i s tp w.top w.newTop
+  top : WTopInv i s tp w.top w.newTop
   balanced : BalancedAll p (treeOf i s w)
   books : MidBooks p i base s w
 

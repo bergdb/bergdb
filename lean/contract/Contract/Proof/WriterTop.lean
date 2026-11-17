@@ -7,7 +7,7 @@ ordinal.
 
 * Section 1, the state after the step, in closed form (`MW.afterSuperRoot`),
   and the step as an equation: in place when the transaction made the top
-  node, else a new one (`newSuperRoot_eq`, from J5, `TopInv`).
+  node, else a new one (`newSuperRoot_eq`, from J5, `WTopInv`).
 * Section 2, the top: J5 holds after the step (`topInv_afterSuperRoot`). The
   hard part is T3's last clause, that the lowest skip pointer of a new top
   node names the old super root: the old super root's skip pointers are at
@@ -121,7 +121,7 @@ theorem newSuperRoot_new_eq (c : Ctx) (w : MW) (y : NodeId) (h : c.i ≠ w.top.t
 
 /-- The step, from J5: in place exactly if the transaction made the top node. -/
 theorem newSuperRoot_eq {p : MParams} {i : Time} {s : Tree} {tp : Top} (v : View BVal)
-    (y : NodeId) {w : MW} (hT : TopInv i s tp w.top w.newTop) :
+    (y : NodeId) {w : MW} (hT : WTopInv i s tp w.top w.newTop) :
     SIS.Tree.newSuperRoot y { p := p, i := i, view := v } w =
       .ok ((), MW.afterSuperRoot w p i y) := by
   obtain ⟨-, hold, hnew⟩ := hT
@@ -268,11 +268,11 @@ theorem nsrSkips_head (t : SIS.Tree.Top) (hidx : t.skips.map (·.1) =
 
 /-- J5 after a new top node. -/
 theorem topInv_superRootNew {i : Time} {base : NodeId} {s : Tree} {tp : Top} (p : MParams)
-    (y : NodeId) {w : MW} (hT : TopInv i s tp w.top false) (hb : Books i base s tp)
-    (hbase : base ≤ w.next) : TopInv i s tp (MW.superRootNew w p i y).top true := by
+    (y : NodeId) {w : MW} (hT : WTopInv i s tp w.top false) (hb : Books i base s tp)
+    (hbase : base ≤ w.next) : WTopInv i s tp (MW.superRootNew w p i y).top true := by
   obtain ⟨hroots, hold, -⟩ := hT
   obtain ⟨-, zn, hlast, hsk, hidx, hcache⟩ := hold rfl
-  unfold TopInv
+  unfold WTopInv
   refine ⟨hroots, fun h => absurd h (by simp), fun _ => ⟨rfl, (hb.ids _ hbase).2, ?_⟩⟩
   have hnamed : ∀ q ∈ nsrSkips w.top (nsrOrd w.top.ord), (tp.node q.2).isSome = true := by
     intro q hq
@@ -308,9 +308,9 @@ theorem topInv_superRootNew {i : Time} {base : NodeId} {s : Tree} {tp : Top} (p 
 
 /-- J5 after the step. -/
 theorem topInv_afterSuperRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
-    (y : NodeId) {w : MW} (hT : TopInv i s tp w.top w.newTop) (hb : Books i base s tp)
+    (y : NodeId) {w : MW} (hT : WTopInv i s tp w.top w.newTop) (hb : Books i base s tp)
     (hbase : base ≤ w.next) :
-    TopInv i s tp (MW.afterSuperRoot w p i y).top (MW.afterSuperRoot w p i y).newTop := by
+    WTopInv i s tp (MW.afterSuperRoot w p i y).top (MW.afterSuperRoot w p i y).newTop := by
   rw [(afterSuperRoot_fields w p i y).2.1]
   cases hnt : w.newTop
   · rw [hnt] at hT
@@ -319,7 +319,7 @@ theorem topInv_afterSuperRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree
   · rw [hnt] at hT
     rw [afterSuperRoot_of_true hnt]
     obtain ⟨hroots, -, hnew⟩ := hT
-    unfold TopInv
+    unfold WTopInv
     exact ⟨hroots, fun h => absurd h (by simp), fun _ => hnew rfl⟩
 
 /-! ## 3. The map and the books -/
@@ -426,11 +426,11 @@ the transaction, and the same overlay, values, nodes taken back, segments and
 heights, `madeFor`, path and nodes outside; in place the same nodes made and
 next id, else the new top node made at the end, with the next id. -/
 theorem newSuperRoot_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
-    (v : View BVal) (y : NodeId) {w : MW} (hT : TopInv i s tp w.top w.newTop)
+    (v : View BVal) (y : NodeId) {w : MW} (hT : WTopInv i s tp w.top w.newTop)
     (hb : Books i base s tp) (hbase : base ≤ w.next) :
     ∃ w', SIS.Tree.newSuperRoot y { p := p, i := i, view := v } w = .ok ((), w') ∧
       w' = MW.afterSuperRoot w p i y ∧
-      TopInv i s tp w'.top w'.newTop ∧ w'.top.rootKey = y ∧ w'.newTop = true ∧
+      WTopInv i s tp w'.top w'.newTop ∧ w'.top.rootKey = y ∧ w'.newTop = true ∧
       w'.nodes = w.nodes ∧ w'.vals = w.vals ∧ w'.taken = w.taken ∧ w'.gh = w.gh ∧
       w'.madeFor = w.madeFor ∧ w'.path = w.path ∧ w'.outside = w.outside ∧
       (w.newTop = true → w'.made = w.made ∧ w'.next = w.next ∧ w'.top.id = w.top.id) ∧
@@ -445,7 +445,7 @@ theorem newSuperRoot_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
 /-- The step for the rules of the writer's steps (`WP`): from J5, every
 result is the state `MW.afterSuperRoot`. -/
 theorem wp_newSuperRoot {p : MParams} {i : Time} {s : Tree} {tp : Top} (v : View BVal)
-    (y : NodeId) {w : MW} (hT : TopInv i s tp w.top w.newTop) (post : Unit → MW → Prop) :
+    (y : NodeId) {w : MW} (hT : WTopInv i s tp w.top w.newTop) (post : Unit → MW → Prop) :
     WP (SIS.Tree.newSuperRoot y) { p := p, i := i, view := v } w post ↔
       post () (MW.afterSuperRoot w p i y) := by
   constructor

@@ -1243,11 +1243,11 @@ theorem pathOk_afterNewValue {i : Time} {s : Tree} {w : MW} {d : Nat} (h : Nat)
 
 /-! ### 4.5 The top, and a step that leaves the map -/
 
-/-- `TopInv` speaks only of the state's super root and whether the writer
+/-- `WTopInv` speaks only of the state's super root and whether the writer
 made it. -/
 theorem topInv_congr {i : Time} {s : Tree} {tp : Top} {w w' : MW}
-    (h : TopInv i s tp w.top w.newTop) (h1 : w'.top = w.top) (h2 : w'.newTop = w.newTop) :
-    TopInv i s tp w'.top w'.newTop := by
+    (h : WTopInv i s tp w.top w.newTop) (h1 : w'.top = w.top) (h2 : w'.newTop = w.newTop) :
+    WTopInv i s tp w'.top w'.newTop := by
   rw [h1, h2]; exact h
 
 /-- `PutBooks` depends only on these fields of the state. -/

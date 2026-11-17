@@ -86,8 +86,8 @@ theorem topOf_start (i : Time) (tp : Top) (base : NodeId) (t : SIS.Tree.Top) :
   simp [topOf]
 
 /-- J5 gives the top's clauses. -/
-theorem TopInv.step {i : Time} {s : Tree} {tp : Top} {w : MW}
-    (h : TopInv i s tp w.top w.newTop) : TopStep i tp (topOf i tp w) := by
+theorem WTopInv.step {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : WTopInv i s tp w.top w.newTop) : TopStep i tp (topOf i tp w) := by
   unfold topOf
   cases hn : w.newTop with
   | false => exact Or.inl rfl
@@ -96,8 +96,8 @@ theorem TopInv.step {i : Time} {s : Tree} {tp : Top} {w : MW}
     exact Or.inr ⟨_, _, rfl, h2, rfl, h3⟩
 
 /-- J5 gives that the space roots are the top's. -/
-theorem TopInv.roots {i : Time} {s : Tree} {tp : Top} {w : MW}
-    (h : TopInv i s tp w.top w.newTop) : (treeOf i s w).roots = rootsOf (topOf i tp w) := by
+theorem WTopInv.roots {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : WTopInv i s tp w.top w.newTop) : (treeOf i s w).roots = rootsOf (topOf i tp w) := by
   unfold topOf treeOf
   cases hn : w.newTop with
   | false => simpa using h.1
@@ -105,8 +105,8 @@ theorem TopInv.roots {i : Time} {s : Tree} {tp : Top} {w : MW}
 
 /-- The skip pointers of the last top node name top nodes and cache their
 times, after the transaction too. -/
-theorem TopInv.skips {i : Time} {s : Tree} {tp : Top} {w : MW}
-    (h : TopInv i s tp w.top w.newTop)
+theorem WTopInv.skips {i : Time} {s : Tree} {tp : Top} {w : MW}
+    (h : WTopInv i s tp w.top w.newTop)
     (hb : ∀ z zn, tp.getLast? = some (z, zn) → ∀ q ∈ zn.skips,
       (tp.node q.2.1).map (·.time) = some q.2.2) :
     ∀ z zn, (topOf i tp w).getLast? = some (z, zn) → ∀ q ∈ zn.skips,
@@ -133,7 +133,7 @@ theorem mid_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (ht : SIS.Tree.topOf p v z = .ok t) (hb : Before p i base s tp) :
     Mid p i base s tp [] { next := base, top := t } := by
   have h0 := treeOf_start i s base t
-  have htop : TopInv i s tp t false := by
+  have htop : WTopInv i s tp t false := by
     obtain ⟨t', zn, h1, h2, h3, h4, _, h6, h7⟩ := hs.top
     rw [ht] at h1
     obtain rfl : t = t' := by injection h1

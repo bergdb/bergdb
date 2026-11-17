@@ -82,3 +82,6 @@ open Contract
 #print axioms ctx_reach
 #print axioms lastVersion_ks
 #print axioms replaceOrAdd_spec
+#print axioms getNode_spec
+#print axioms newSuperRoot_spec
+#print axioms halves_spec
