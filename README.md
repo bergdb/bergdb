@@ -177,8 +177,8 @@ What a running database needs:
 
 * `stop()` or `close()` for every database that is started.
 * The ZGC collector (`-XX:+UseZGC`), or Shenandoah without generations,
-  for short pauses. With G1, eviction (dropping cached index nodes from
-  memory when the cache is full) brings pauses of hundreds of
+  for short pauses. With G1, eviction (dropping cached data from memory
+  when the cache's budget is reached) brings pauses of hundreds of
   milliseconds.
 * Storage that returns the bytes as they were written. BergDB's checks
   for damaged bytes are a best effort.
