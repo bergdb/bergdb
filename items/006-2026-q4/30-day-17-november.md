@@ -59,3 +59,6 @@ Frans's words:
   (030-04 gives the reasons).
 * 11:17 The freeze: tag proofs-2026-11-17 on 89c6cc3a, pushed. Agents w04 (030-04, Fable high) and wip (Lean labelled work in progress, Opus high) started 11:16.
 * 11:18 W2 done: lean/README.md labelled work in progress (bdeca766); the users' README on 029-public-files without Lean or proofs (6e136f82, not pushed). The release notes of 2026.1 to 2026.5 still speak of the proved Lean model: Frans's call.
+* 11:21 2026.5's release notes: the Lean model no longer a feature (Frans, 11:20): ba10b652.
+* 11:25 W3, Apache-2.0 everywhere (Frans, 11:23: "Change everything to that, including all releases. [...] Change in place as if not other license was ever used. History in items and so on can be kept as is."): agent apache, Opus at high.
+* 11:34 W1 done: 030-04 written (440 lines) and 030's map (D0 the contract approach, D1 paused); committed. Waits for Frans: when the spike runs.

@@ -56,9 +56,38 @@ Every direction follows these; a direction's item may add its own.
 The map
 =======
 
-D1. The key tree, today's model (the main line)
------------------------------------------------
+D0. The contract approach, a fresh start
+----------------------------------------
 
+* **Goal:** claims of the form "proved, given five stated assumptions,
+  each of which is tested". The writer's contract says what holds when
+  a transaction ends: the invariants, the old contents with the
+  transaction's net change, only nodes in D changed. Proved from it:
+  every get and scan right at every time, for any history of
+  transactions that meet the contract; then recovery, restarts,
+  eviction and reclaim's cut. That the writer meets the contract is
+  tested, one transaction at a time, not proved (030-04, section 3).
+* **State (2026-11-17, 11:26):** decided by Frans (10:56, 11:00, 11:14)
+  and written down in 030-04; not started. The new proofs are written
+  from scratch in a Lake package of their own, `lean/contract/`, with
+  Mathlib (the coordinator's decision, delegated by Frans). The old
+  Lean is a quarry; the executable model and the trace checkers stay as
+  the test oracle.
+* **Next:** the spike (030-04, section 7): one agent, about a day; Frans
+  decides when. If it succeeds, 030-04's step 4 follows without asking.
+* **What it changes here:** D1 is paused; D3's goal moves to 030-04's
+  step 4. "The aim" above is as written on 16 November; D0's aim is its
+  goal. The rules above hold for `lean/` as before; the new package's
+  gate is 030-04, section 7.6.
+* **Items:** 030-04.
+
+D1. The key tree, today's model (the main line until 2026-11-17; paused)
+------------------------------------------------------------------------
+
+* **Paused** since 2026-11-17 (Frans, 09:13 and 11:14; 030-04). Frozen
+  at the tag `proofs-2026-11-17` (89c6cc3a); nothing is deleted. The
+  state and the next step below are as the night left them, for a
+  restart.
 * **Goal:** TP7, TP10 and TP11 proved for the key tree with Java's
   parameters and the merges on: after any run, the tree keeps its
   invariants and every get and scan, at the latest time and at every
@@ -148,6 +177,7 @@ How the directions hang together
 * The next decision point: Tuesday 2026-11-17, morning. Side by side:
   `htbL` proved or how far it got, `l4`'s plan and size (030-01), and
   026-19's evidence. Frans decides the direction.
+* Its outcome (2026-11-17, 09:13 to 11:14): D0; D1 paused (030-04).
 
 
 Days
@@ -163,6 +193,11 @@ One line a day by the coordinator: what moved, where.
   (about 60 landings, `lean/` 236k to 279k lines); 026-19 done (MT not
   supported nor refuted as a proof saving); `UpHtWalk` refuted; R3 found
   to need a made-for invariant (030-03); 030-02 and 030-03 written.
+* 2026-11-17 (coord-1117): Frans paused the main line (09:13) and chose
+  the contract approach with a fresh start (10:56 to 11:14): D0, written
+  down in 030-04; D1 frozen at the tag `proofs-2026-11-17`; Mathlib
+  decided for the new package; `lean/README.md` labelled work in
+  progress (bdeca766).
 
 
 Files
@@ -186,6 +221,13 @@ Files
   through the merges' loop; no statement change; 6 steps, 3,200 to 7,200
   lines, one night for three provers; what else is left of `l4` (R4).
   Written 2026-11-17, 02:36 to 03:15. Status: open.
+* [030-04](04-contract-fresh-start.md). The contract approach and a
+  fresh start (Frans, 2026-11-17): the writer's contract, what is proved
+  from it and what is tested; the five assumptions in one list; new
+  proofs from scratch in `lean/contract/`, with Mathlib; the old line
+  paused and frozen at the tag `proofs-2026-11-17`; the steps; the
+  spike's brief. Waits for Frans: the spike's time. Written 2026-11-17,
+  11:19 to 11:26. Status: open.
 
 
 Log
