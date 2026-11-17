@@ -197,5 +197,6 @@ open Contract
 #print axioms Contract.RecoverCutExample.crash_whole_get16
 #print axioms merge_spec_of_rest
 #print axioms mergeOk_of_rest
+#print axioms holds_apply
 #print axioms mergeUp_spec
 #print axioms afterOkW_on
