@@ -1551,3 +1551,16 @@ finds the copy (`holeAtW_stopCopy` with the parent's new node, `KNode.searchLte_
 transaction, or splitting in space, or the space root (the parent's own split and the
 cascade above with the copy the hole, as l4b's `DelFullTimeHole2M` for the leaf);
 `upCascCallRuns_of_rest7` at the runs.
+
+2026-11-17, 02:56 to 03:02. Step 6, which full stop nodes occur on runs, prover l4e.
+Step 0's checker with each upward delete whose stop node (a segment leaf) is full
+classified as the reductions of `UpCascCallOK` take it
+(`/Users/f/fl/bench/2026-11-16/night/l4e/runs/upcasc-cases.lean.txt`, a copy of l4c's
+merge-full-cases; output `upcasc-cases-out.txt` beside it; 2 min 30 s, the same 15
+families, 0 failures of C1 to C6). Of 294 full stop nodes: the space root not made 98
+(01:56), made 48 (02:36); below the root, made, in time 56 (02:22) and in space 27 (02:27);
+not made, in space 12 without a cascade and 13 with (02:15); in time with the copy filled
+26 without a cascade and 6 with (02:33); the copy under the fill below a parent with room
+8 (02:50); below a made parent split in place 0 (02:55); `UpCascSplitRest7OK`'s case (the
+copy's parent not made, splitting in space, or the space root) 0. So every full stop node
+on the runs is in a proved case; the premise left never ran (as R3's C4 branch).
