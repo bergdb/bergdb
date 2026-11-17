@@ -31,3 +31,5 @@ import Contract.BridgeTheorems
 import Contract.BridgeExample
 import Contract.Writer
 import Contract.Proof.WriterRun
+import Contract.Proof.TreeCtx
+import Contract.Proof.NodeAlg

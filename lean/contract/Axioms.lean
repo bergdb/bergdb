@@ -57,3 +57,9 @@ open Contract
 #print axioms Contract.BridgeExample.meetsEvict
 #print axioms writerMeets_of_opStep
 #print axioms runs_meetsTop_of_opStep
+#print axioms invOk_iff
+#print axioms Good.ctx
+#print axioms ctx_route
+#print axioms ctx_reach
+#print axioms lastVersion_ks
+#print axioms replaceOrAdd_spec

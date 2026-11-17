@@ -175,7 +175,7 @@ the tree at time i is the tree, and s at time i - 1 is s.
   its segment tree, and a key klong of an inner node names a key node one
   level below it. (The other four rules of Shape.lean, the fill among them,
   are not here: see 3.3.)
-* The writer's books within a transaction (`MidBooks`), B1 to B12:
+* The writer's books within a transaction (`MidBooks`), B1 to B14:
   * B1. A key node of the overlay that is kept (not taken back) is a node of s
     exactly if its first time is not i: the nodes made are those of first
     time i.
@@ -196,6 +196,9 @@ the tree at time i is the tree, and s at time i - 1 is s.
   * B12. A node made with a node it replaces is of that node's segment, at
     its height or above.
   * B13. A key node kept starts with a time klong.
+  * B14. The link of a key node made and kept: the klongs that name it are
+    klongs of the transaction (after the last time klong, of time i), all in
+    one node kept. (The checker's B15; its B14 is BalancedOK on the overlay.)
 
 ### 3.2 The statement
 
@@ -243,7 +246,7 @@ def BalancedAll (p : MParams) (s : Tree) : Prop :=
     (n.leaf = false → ∀ c y, Klong.key c y ∈ n.ks → ∃ m, s.obj y = some (.key m) ∧
       m.level + 1 = n.level)
 
-/-- The writer's books within the transaction at time i, B1 to B12. -/
+/-- The writer's books within the transaction at time i, B1 to B14. -/
 structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) : Prop where
   first : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
     ((s.obj x).isSome = true ↔ n.firstTime ≠ some i)
@@ -268,6 +271,12 @@ structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) 
     s.obj o = some (.key n) → g = p.segOf n.level ∧ p.heightOf n.level ≤ h
   timeFirst : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
     ∃ t rest, n.ks = SIS.Tree.Klong.time t :: rest
+  link : ∀ m ∈ w.made, m.isData = false → w.taken.contains m.id = false →
+    ∀ x n x' n', w.nodes.lookup x = some n → w.taken.contains x = false →
+      w.nodes.lookup x' = some n' → w.taken.contains x' = false →
+      (∀ j c, n.ks[j]? = some (SIS.Tree.Klong.key c m.id) →
+        n.lastTime = some i ∧ ∃ ti, n.lastTimeIndex = some ti ∧ ti < j) ∧
+      ((∃ c, SIS.Tree.Klong.key c m.id ∈ n.ks) → (∃ c, SIS.Tree.Klong.key c m.id ∈ n'.ks) → x = x')
 
 /-- What holds between two operations of the transaction at time i from the
 tree s with the top tp, after the operations `done`: J1 to J5, BalancedOK and

@@ -327,3 +327,16 @@ top, 030-09) merged into the branch.
 (S, M, J1 to J5, B1 to B12, no shape fault after any operation).
 2026-11-17, 16:05 to 16:15. The statement (`Mid`, `OpStep`, `WriterMeets`,
 `Runs`); `writerMeets_of_opStep`, `runs_meetsTop_of_opStep`.
+2026-11-17, 16:15 to 16:25. Main 863b69cb merged (030-07 landed; the
+coordinator's word, 16:15); the statement restated (D5's list); the item's
+sections 4 and 5. The gate passes against 863b69cb; against 79678f4e the
+one file outside is main's own line in 006-30.
+GATED 7332f7d2: the map and its check on the traces, the statement, the step from operations to a transaction and a history (writerMeets_of_opStep, runs_meetsTop_of_opStep).
+2026-11-17, 16:25 to 16:45. Two provers (Opus, xhigh), one file each, from
+statements I wrote: `TreeCtx.lean` (two trees that differ below one node:
+the context lemma, 989 lines) and `NodeAlg.lean` (the node algebra of
+`add`, `lastVersion`, `replaceOrAdd` and the model's searches, 918 lines).
+All proved; the provers fixed four of my statements (three needed "q is a
+key node", `L_agree` needed no soundness) and dropped three unused
+hypotheses. B14, the link of a made node, added to `Mid` and tested (the
+checker's B15). `writer.sh` on the three sets: WRITER OK.

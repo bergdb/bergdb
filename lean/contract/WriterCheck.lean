@@ -153,6 +153,14 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
   (if live.all (fun q => q.2.leaf || (named q.2.ks).all (fun y => match s.obj y, s.obj q.1 with
       | some (.key m), some (.key n) => m.level + 1 == n.level
       | _, _ => false)) then [] else ["B14 every klong of an inner node names a node one level below"]) ++
+  -- B15: the klongs that name a key node made and kept are klongs of the
+  -- transaction (after the last time klong, of time i), all in one node.
+  (if (w.made.filter (fun m => !m.isData && !w.taken.contains m.id)).all (fun m =>
+      let holders := live.filter (fun q => (named q.2.ks).contains m.id)
+      decide (holders.length ≤ 1) && holders.all (fun q =>
+        q.2.lastTime == some i && q.2.ks.zipIdx.all (fun (k, j) => match k with
+          | .key _ y => y != m.id || decide (q.2.lastTimeIndex.getD 0 < j)
+          | _ => true))) then [] else ["B15 a made node is named by klongs of the transaction in one node"]) ++
   -- B12: a made node's `madeFor`, if any, is of its segment, at its height or
   -- below (a root made by a split replaces the node split).
   (if w.madeFor.all (fun q => match w.gh.lookup q.1, h.objs[q.2]? with
