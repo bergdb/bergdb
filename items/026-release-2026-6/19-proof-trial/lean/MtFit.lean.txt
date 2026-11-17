@@ -1,0 +1,193 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, A4's support): the state after a fix step from a
+reached state fits the fuel (`FitFix`, FixW's fuel hypothesis), for the three kinds of fix
+step, from the heights' cache at the step's end (`segFits_of_heightsU`, HeightsFit.lean).
+-/
+import SIS.Tree.MtCollapse
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-- The fuel fit at the end of a subtransaction from its books and its heights' cache. -/
+theorem segFits_end (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (top : Top) (w : W)
+    (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t) (hL : RunLinksOK p P t)
+    (hK : KindsAllOK p P) (hA : HeightAllOK p P t) (hE : EndW p P (t + 1) base top w)
+    (hHt : HtCache (ctxAt p P t) (htOracleOf p P) w) :
+    SegFits (wNode p (viewOf P) w) (t + 1) (p.fuel - 1) w.top.rootKey := by
+  have hvo := viewHtOK_at p P t base hfresh htimes hL hK hA
+  have hbase := baseHeights_of p P t (ctxAt p P t) rfl (by show t ≤ t + 1; omega) htimes hL.1 hK hA
+  have hbk : Book base (ctxAt p P t) w := hE.book
+  have hFH := fuel_gt_H p
+  refine segFits_of_heightsU hbk hHt hvo.heights (viewOf P) hbase (p.fuel - 1) _ ?_
+  intro x n _ h hh
+  rcases hh with ⟨g, hm⟩ | ⟨ny, _, _, _, hny⟩
+  · rcases hbk.tag x g h hm with ⟨nd, _, _, _, _, hh⟩ | ⟨_, _, hout⟩
+    · have := heightOf_le p nd.level
+      show h ≤ p.fuel - 1
+      rw [hh]
+      have : (ctxAt p P t).p = p := rfl
+      simp only [this]
+      omega
+    · have hle : h ≤ p.H := by
+        rcases Nat.lt_or_ge p.H h with hlt | hge
+        · have := hout (Or.inr hlt)
+          rw [hE.out0] at this
+          cases this
+        · exact hge
+      omega
+  · have := heightOf_le p ny.level
+    omega
+
+/-- The state at a fix step's start fits the fuel: `segFits_end` at `wStart`, whose cache is
+empty. -/
+theorem segFits_start (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (z : NodeId)
+    (top : Top) (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P t)
+    (hL : RunLinksOK p P t) (hEnc : ViewEncoded (viewOf P)) (hK : KindsAllOK p P)
+    (hA : HeightAllOK p P t) (htop : topOf p (ctxAt p P t).view z = .ok top) :
+    SegFits (wNode p (viewOf P) (wStart base top)) (t + 1) (p.fuel - 1) top.rootKey := by
+  have hb0 := putBook_at p P t base hfresh htimes hL z top htop
+  have hE : EndW p P (t + 1) base top (wStart base top) :=
+    ⟨hb0.good, hb0.klongs, hb0.alloc,
+      ⟨by intro nn hn; simp [wStart] at hn, by intro q hq; simp [wStart] at hq,
+        by intro h; simp [wStart] at h⟩,
+      hb0.book, rfl, rfl, by intro m hm; simp [wStart] at hm, hb0.commit,
+      by intro m hm; simp [wStart] at hm, by intro m hm; simp [wStart] at hm,
+      ptrs_start _ (ctxAt p P t) base top (topOf_old p P t htimes hL.1 z top htop),
+      by intro q hq; simp [wStart] at hq,
+      ⟨by intro q hq; simp [wStart] at hq, by intro q hq; simp [wStart] at hq⟩⟩
+  exact segFits_end p P t base top _ hfresh htimes hL hK hA hE
+    (by intro x n g h hx; simp [wStart] at hx)
+
+/-- The heights' cache at the end of a fix step that made an unlink. -/
+theorem htCache_fix_unlink (p : Params) (s : St) (k : Key) (rest : List Key) (base : NodeId)
+    (w : W) (d : Nat) (w1 : W) (z : NodeId) (top : Top) (hs : Reached p s)
+    (hI : StInv p s) (hpend : s.pend = k :: rest) (hfresh : ∀ q ∈ s.P, q.1 < base)
+    (htop : topOf p (ctxAt p s.P s.t).view z = .ok top)
+    (hfs : fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w))
+    (hpt : (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (.unlink d, w1)) :
+    HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w := by
+  have hkey : k ≠ [] := key_ne_nil_of_wf k (reached_pend_wf p s hs k (by rw [hpend]; exact List.mem_cons_self))
+  obtain ⟨hsub, htimes, _, _, _, _⟩ := hI
+  rw [hpend] at hsub
+  have hvc := viewCoherent_at p s.P s.t htimes
+  have hN : wNode p (viewOf s.P) (wStart base top) = knodeOf p (viewOf s.P) := wNode_wStart _ _ _ _
+  have hwf0 : ∀ y yn, wNode p (viewOf s.P) (wStart base top) y = some yn → klongsWf yn.ks = true := by
+    intro y yn hy
+    rw [hN] at hy
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ y yn hy
+    subst hn
+    exact (hsub.links.2.1 y nd hg hd hlv).1
+  obtain ⟨hr1, _, _, hcached, _, _⟩ := writerWP_pathTarget k hkey (ctxAt p s.P s.t) (viewOf s.P) hvc
+    (wStart base top) (fun _ _ => rfl) (fun y yn _ hy => hwf0 y yn hy) _ w1 hpt
+  obtain ⟨u, w2, hpth, htg, hul⟩ := fixStep_unlink_split k _ _ w d w1 hfs hpt
+  have hB := putBase_at p s.P s.t base hfresh htimes hsub.links
+  have hvo := viewHtOK_at p s.P s.t base hfresh htimes hsub.links hsub.kinds hsub.heights
+  obtain ⟨hhb2, hhi2, _⟩ := ht_path (H := htOracleOf p s.P) base k _ _ hvo (book_start base _ top)
+    (htInv_start _ base _ top) hB.wf (by intro q hq; simp [wStart] at hq) u w2 hpth
+  obtain ⟨hhb1, hhi1, _, hp12⟩ := ht_target base _ w2 hvo hhb2 hhi2 _ w1 htg
+  obtain ⟨a, q', kk, hq', -, hadk⟩ := unlinkTree_run d _ w1 w hul
+  obtain ⟨n1, hn1⟩ := hcached (a, q') (List.mem_of_getElem? hq')
+  obtain ⟨gq, hq0, hgh⟩ := kd_tag_of_lookup hhb1 hn1
+  have hnote : note "fix.unlink" (ctxAt p s.P s.t) w1 =
+      .ok ((), { w1 with trail := "fix.unlink" :: w1.trail }) := run_note _ _ _
+  obtain ⟨hhbt, hhit, _⟩ := ht_note base "fix.unlink" _ w1 hvo hhb1 hhi1 () _ hnote
+  exact (ht_appendDeleteKlong base q' (d - 1) kk _ _ hvo (by show 0 < s.t + 1; omega) hhbt
+    hhit gq hq0 hgh a hq' (by intro _ _ y _ _; show w1.taken.contains y = false; rw [hr1.2.2.1]; rfl)
+    false w hadk).2.1.cache
+
+/-- The heights' cache at the end of a fix step that made a collapse. -/
+theorem htCache_fix_collapse (p : Params) (s : St) (k : Key) (rest : List Key) (base : NodeId)
+    (w : W) (x : NodeId) (d : Nat) (w1 : W) (z : NodeId) (top : Top) (hs : Reached p s)
+    (hI : StInv p s) (hpend : s.pend = k :: rest) (hfresh : ∀ q ∈ s.P, q.1 < base)
+    (htop : topOf p (ctxAt p s.P s.t).view z = .ok top)
+    (hfs : fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w))
+    (hpt : (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (.collapse x d, w1)) :
+    HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w := by
+  have hkey : k ≠ [] := key_ne_nil_of_wf k (reached_pend_wf p s hs k (by rw [hpend]; exact List.mem_cons_self))
+  obtain ⟨hsub, htimes, _, _, _, _⟩ := hI
+  rw [hpend] at hsub
+  have hvc := viewCoherent_at p s.P s.t htimes
+  have hN : wNode p (viewOf s.P) (wStart base top) = knodeOf p (viewOf s.P) := wNode_wStart _ _ _ _
+  have hwf0 : ∀ y yn, wNode p (viewOf s.P) (wStart base top) y = some yn → klongsWf yn.ks = true := by
+    intro y yn hy
+    rw [hN] at hy
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ y yn hy
+    subst hn
+    exact (hsub.links.2.1 y nd hg hd hlv).1
+  obtain ⟨hr1, _, _, hcached, _, _⟩ := writerWP_pathTarget k hkey (ctxAt p s.P s.t) (viewOf s.P) hvc
+    (wStart base top) (fun _ _ => rfl) (fun y yn _ hy => hwf0 y yn hy) _ w1 hpt
+  obtain ⟨u, w2, hpth, htg, hcl⟩ := fixStep_collapse_split k _ _ w x d w1 hfs hpt
+  obtain ⟨hr2, _, _⟩ := path_path (ctxAt p s.P s.t) (viewOf s.P) hvc k (wStart base top)
+    (fun _ => rfl) hwf0 u w2 hpth
+  have ht2 : ∀ y, w2.taken.contains y = false := by intro y; rw [hr2.2.2.1]; rfl
+  obtain ⟨⟨a, xn, hxp, hxn, hxl⟩, hseg0⟩ := target_collapse _ _ hvc w2 ht2 x d w1 htg
+  have hB := putBase_at p s.P s.t base hfresh htimes hsub.links
+  have hvo := viewHtOK_at p s.P s.t base hfresh htimes hsub.links hsub.kinds hsub.heights
+  obtain ⟨hhb2, hhi2, _⟩ := ht_path (H := htOracleOf p s.P) base k _ _ hvo (book_start base _ top)
+    (htInv_start _ base _ top) hB.wf (by intro q hq; simp [wStart] at hq) u w2 hpth
+  obtain ⟨hhb1, hhi1, _, hp12⟩ := ht_target base _ w2 hvo hhb2 hhi2 _ w1 htg
+  have hxp1 : w1.path[d]? = some (a, x) := by rw [hp12]; exact hxp
+  have hw12 : wNode p (viewOf s.P) w1 = wNode p (viewOf s.P) w2 := hr1.1.trans hr2.1.symm
+  have ht1 : ∀ y, w1.taken.contains y = false := by intro y; rw [hr1.2.2.1]; rfl
+  have hcache : ∀ e, e ∈ w1.path → ∀ m, wNode p (viewOf s.P) w2 e.2 = some m →
+      w1.nodes.lookup e.2 = some m := by
+    intro e he m hm
+    obtain ⟨n1, hn1⟩ := hcached e he
+    have h1 : wNode p (viewOf s.P) w1 e.2 = some n1 := by
+      simp only [wNode, ht1 e.2, Bool.false_eq_true, ↓reduceIte, hn1]
+    rw [hw12, hm] at h1
+    rw [hn1, h1]
+  have hxlk : w1.nodes.lookup x = some xn :=
+    hcache (a, x) (List.mem_of_getElem? hxp1) xn hxn
+  have hseg : ∀ a' q, d ≠ 0 → w1.path[d - 1]? = some (a', q) → ∃ g', (q, g', 0) ∈ w1.gh := by
+    intro a' q hd hq
+    rcases hseg0 with h0 | ⟨q0, qn, hq0, hqn, hql⟩
+    · exact absurd h0 hd
+    · rw [hp12, hq0] at hq
+      simp only [Option.some.injEq] at hq
+      subst hq
+      have hqlk := hcache _ (by rw [hp12]; exact List.mem_of_getElem? hq0) qn hqn
+      obtain ⟨g', h', hm⟩ := kd_tag_of_lookup hhb1 hqlk
+      have := kd_leaf hhb1 hqlk hm
+      rw [hql] at this
+      have h0 : h' = 0 := by simpa using this.symm
+      subst h0
+      exact ⟨g', hm⟩
+  exact (ht_mtCollapse base x d _ w1 xn hxlk hxl hvo (by show 0 < s.t + 1; omega) hhb1 hhi1 a
+    hxp1 (by intro _ _ y _ _; exact ht1 y) hseg () w hcl).2.cache
+
+/-- The fuel fit after a fix step of each kind. -/
+theorem t_fitFix (p : Params) (C : Fix → Prop)
+    (hC3 : ∀ f, C f → IsMerge f ∨ IsUnlink f ∨ IsCollapse f) : FitFix p C := by
+  intro s k rest base w f w1 z top hs hI hpend hfresh _ htop hfs hout hpt hC
+  have hI0 := hI
+  obtain ⟨hsub, htimes, _, _, hEnc, _⟩ := hI
+  rw [hpend] at hsub
+  have hcache : HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w ∧ ∀ q ∈ w.nodes, q.2.ks ≠ [] := by
+    rcases hC3 f hC with ⟨x, d, rfl⟩ | ⟨d, rfl⟩ | ⟨x, d, rfl⟩
+    · exact ⟨htCache_fix_merge p s k rest base w x d w1 z top hs hI0 hpend hfresh htop hfs hpt,
+        ne_fix_merge p s.P s.t base k z top w x d w1 hfresh htimes hsub.links htop hfs hpt⟩
+    · exact ⟨htCache_fix_unlink p s k rest base w d w1 z top hs hI0 hpend hfresh htop hfs hpt,
+        ne_fix_unlink p s.P s.t base k z top w d w1 hfresh htimes hsub.links htop hfs hpt⟩
+    · exact ⟨htCache_fix_collapse p s k rest base w x d w1 z top hs hI0 hpend hfresh htop hfs hpt,
+        ne_fix_collapse p s.P s.t base k z top w x d w1 hfresh htimes hsub.links htop hfs hpt⟩
+  have hE := endW_fix p s.P s.t base k z top w hfresh htimes hsub.links hEnc htop hfs hout hcache.2
+  exact ⟨segFits_start p s.P s.t base z top hfresh htimes hsub.links hEnc hsub.kinds hsub.heights htop,
+    segFits_end p s.P s.t base top w hfresh htimes hsub.links hsub.kinds hsub.heights hE hcache.1⟩
+
+/-- B3 for the unlink: an unlink fix step keeps the run's invariant from `FixW` and `FrameW`. -/
+theorem t_fixStep_unlink_of (p : Params) (hp : MergeParamsOK p) (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hF : FixW p IsUnlink) (hFr : FrameW p) : FixStepOK p IsUnlink :=
+  t_fixStepOK_of p IsUnlink hF hFr (t_liftFix_unlink p) (t_partsFix_unlink p hp hth)
+    (t_fitFix p IsUnlink (fun _ h => Or.inr (Or.inl h)))
+
+/-- B3 for the collapse: a collapse fix step keeps the run's invariant from `FixW` and `FrameW`. -/
+theorem t_fixStep_collapse_of (p : Params) (hp : MergeParamsOK p) (hth : 2 ≤ p.theta ∨ p.theta = 0)
+    (hF : FixW p IsCollapse) (hFr : FrameW p) : FixStepOK p IsCollapse :=
+  t_fixStepOK_of p IsCollapse hF hFr (t_liftFix_collapse p) (t_partsFix_collapse p hp hth)
+    (t_fitFix p IsCollapse (fun _ h => Or.inr (Or.inr h)))
+
+end SIS.Tree.Mt

@@ -1,0 +1,212 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, B3's parts): the kinds and the heights after a fix
+step, at the structure: `kindsAllOK_step` and `heightAllOK_step` (KindsStep.lean,
+HeightsStep.lean) restated with the books of the last state (`EndW`), from the writer-level
+facts `KindCache` and `HtCache` at the step's end (premise `KindsHtEnd`).
+-/
+import SIS.Tree.MtDead
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+section
+variable (p : Params) (P : Struct BVal) (i : Time) (base : NodeId) (top : Top) (w : W)
+
+-- restated from kindsStep_gh (KindsStep.lean)
+theorem kindsStep_gh_e (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P (i - 1))
+    (hE : EndW p P i base top w)
+    (y : NodeId) (g h : Nat) (hgh : (y, g, h) ∈ w.gh) (ny : Node BVal)
+    (hy : (P.apply i (changesOf i w)).get? y = some ny) :
+    ny.isData = false ∧ ny.level ≤ p.keyMax ∧ p.segOf ny.level = g ∧ p.heightOf ny.level = h := by
+  rcases hE.book.tag y g h hgh with ⟨nd, hv, hd, hlv, hg, hh⟩ | ⟨hB, hmade, hout⟩
+  · have hg' := view_eq_get? p P (i - 1) htimes y nd (rootless_some_eq _ y nd hv)
+    obtain ⟨h1, h2⟩ := kindsStep_old P i _ y nd ny hg' hy
+    rw [h1, h2]
+    exact ⟨hd, hlv, hg.symm, hh.symm⟩
+  · have hPy := get?_none_of_ge P base y hfresh hB
+    obtain ⟨nn, hnn, hid, hnt, h1, h2⟩ := kindsStep_new P i w y ny hPy hy
+    have halloc := hE.alloc
+    have heq := made_unique base w halloc _ _ hnn hmade hid
+    subst heq
+    have hin : ¬ (p.G < g ∨ p.H < h) := by
+      intro hc
+      have := hE.outT _ (hout hc)
+      simp only at this
+      rw [hnt] at this
+      cases this
+    rw [h1, h2]
+    exact ⟨rfl, keyLevel_le_keyMax p g h (by omega),
+      Params.segOf_keyLevel p g h (by omega) (by omega), Params.heightOf_keyLevel p g h (by omega)⟩
+
+-- restated from kindsStep_vals (KindsStep.lean)
+theorem kindsStep_vals_e (hfresh : ∀ q ∈ P, q.1 < base) (hE : EndW p P i base top w)
+    (y : NodeId) (hh : Nat) (hv : (y, hh) ∈ w.vals) (ny : Node BVal)
+    (hy : (P.apply i (changesOf i w)).get? y = some ny) : ny.isData = true := by
+  have hledger := hE.ledger
+  have halloc := hE.alloc
+  have hmade : (⟨y, 0, true⟩ : NewNode) ∈ w.made := hledger.2.1 _ hv
+  have hB : base ≤ y := (halloc.2.2 _ hmade).1
+  have hPy := get?_none_of_ge P base y hfresh hB
+  obtain ⟨nn, hnn, hid, _, _, h2⟩ := kindsStep_new P i w y ny hPy hy
+  have heq := made_unique base w halloc _ _ hnn hmade hid
+  subst heq
+  exact h2
+
+-- restated from kindsStep_keySeg (KindsStep.lean)
+theorem kindsStep_keySeg_e (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P (i - 1))
+    (hE : EndW p P i base top w)
+    (y : NodeId) (g : Nat) (hk : IsKeySeg (kindOracleOf p P) w y g) (ny : Node BVal)
+    (hy : (P.apply i (changesOf i w)).get? y = some ny) :
+    ny.isData = false ∧ ny.level ≤ p.keyMax ∧ p.segOf ny.level = g := by
+  rcases hk with ⟨h, hgh⟩ | ⟨n, hPy, hd, hlv, hg⟩
+  · obtain ⟨a, b, c, _⟩ := kindsStep_gh_e p P i base top w hfresh htimes hE y g h hgh ny hy
+    exact ⟨a, b, c⟩
+  · obtain ⟨h1, h2⟩ := kindsStep_old P i _ y n ny hPy hy
+    rw [h1, h2]
+    exact ⟨hd, hlv, hg⟩
+
+-- restated from kindsStep_valId (KindsStep.lean)
+theorem kindsStep_valId_e (hfresh : ∀ q ∈ P, q.1 < base) (hE : EndW p P i base top w)
+    (y : NodeId) (hk : IsValId (kindOracleOf p P) w y) (ny : Node BVal)
+    (hy : (P.apply i (changesOf i w)).get? y = some ny) : ny.isData = true := by
+  rcases hk with ⟨hh, hv⟩ | ⟨n, hPy, hd⟩
+  · exact kindsStep_vals_e p P i base top w hfresh hE y hh hv ny hy
+  · obtain ⟨_, h2⟩ := kindsStep_old P i _ y n ny hPy hy
+    rw [h2]
+    exact hd
+
+end
+
+-- restated from kindsAllOK_step (KindsStep.lean)
+theorem kindsAllOK_e (p : Params) (P : Struct BVal) (i : Time) (base : NodeId) (top : Top) (w : W)
+    (hpos : 0 < i) (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P (i - 1))
+    (hroot : ∃ r, P.get? root = some r ∧ p.keyMax < r.level) (hH : KeyHistOK p P)
+    (hP : PointersOK P) (hE : EndW p P i base top w)
+    (hK : KindsAllOK p P) (hKW : KindCache (kindOracleOf p P) w) :
+    KindsAllOK p (P.apply i (changesOf i w)) := by
+  intro x nd' hx hd hlv c y hk ny' hy
+  rcases apply_keyNode_e p P i base top w hpos hfresh htimes hroot hH hE x nd' hx hd hlv with
+    ⟨n, hlook, _, _, hks, _⟩ | ⟨hPx, _⟩
+  · have hmem := mem_ids_of_lookup w.nodes x n hlook
+    have hxg : x ∈ (w.gh.map (·.1)).reverse := by
+      rw [← hE.book.ids]
+      exact List.mem_map.mpr ⟨(x, n), hmem, rfl⟩
+    obtain ⟨⟨x', g, h⟩, hgh, hx'⟩ := List.mem_map.mp (List.mem_reverse.mp hxg)
+    have hxx : x' = x := hx'
+    rw [hxx] at hgh
+    obtain ⟨_, _, hg, hh⟩ := kindsStep_gh_e p P i base top w hfresh htimes hE x g h hgh nd' hx
+    have hkk := hKW x n g h hmem hgh c y (by rw [← hks]; exact hk)
+    subst hg
+    subst hh
+    obtain ⟨hk1, hk2⟩ := hkk
+    refine ⟨fun h0 => ?_, fun h0 => ⟨fun h7 => ?_, fun h7 => ?_⟩⟩
+    · exact kindsStep_keySeg_e p P i base top w hfresh htimes hE y _ (hk1 h0) ny' hy
+    · exact kindsStep_keySeg_e p P i base top w hfresh htimes hE y _ ((hk2 h0).1 h7) ny' hy
+    · exact kindsStep_valId_e p P i base top w hfresh hE y ((hk2 h0).2 h7) ny' hy
+  · obtain ⟨ny, hPy⟩ := kindsStep_ptr P hP x nd' hPx c y hk
+    obtain ⟨h1, h2⟩ := kindsStep_old P i _ y ny ny' hPy hy
+    rw [h1, h2]
+    exact hK x nd' hPx hd hlv c y hk ny hPy
+
+-- restated from heightsStep_hasHt (HeightsStep.lean)
+theorem heightsStep_hasHt_e (p : Params) (P : Struct BVal) (i : Time) (base : NodeId) (top : Top)
+    (w : W) (hfresh : ∀ q ∈ P, q.1 < base) (htimes : StructTimesLE P (i - 1))
+    (hE : EndW p P i base top w) (y : NodeId) (h : Nat)
+    (hy : HasHt (htOracleOf p P) w y h)
+    (ny : Node BVal) (hny : (P.apply i (changesOf i w)).get? y = some ny) :
+    p.heightOf ny.level = h := by
+  rcases hy with ⟨g, hgh⟩ | ⟨nd, hPy, _, _, hh⟩
+  · exact (kindsStep_gh_e p P i base top w hfresh htimes hE y g h hgh ny hny).2.2.2
+  · obtain ⟨h1, _⟩ := kindsStep_old P i _ y nd ny hPy hny
+    rw [h1]
+    exact hh
+
+/-- A transaction keeps `HeightAllOK` when the writer's overlay at its end has
+`HtCache`. -/
+-- restated from heightAllOK_step (HeightsStep.lean)
+theorem heightAllOK_e (p : Params) (P : Struct BVal) (i : Time) (base : NodeId) (top : Top) (w : W)
+    (hpos : 0 < i) (hfresh : ∀ q ∈ P, q.1 < base)
+    (htimes : StructTimesLE P (i - 1))
+    (hroot : ∃ r, P.get? root = some r ∧ p.keyMax < r.level) (hH : KeyHistOK p P)
+    (hP : PointersOK P) (hE : EndW p P i base top w)
+    (hA : HeightAllOK p P (i - 1))
+    (hHt : HtCache { p := p, i := i, view := rootless (view (treeSpec p) P (i - 1)) }
+      (htOracleOf p P) w) :
+    HeightAllOK p (P.apply i (changesOf i w)) i := by
+  intro x nd' hx hd hlv h0 cv y hlive ny' hy
+  rcases apply_keyNode_e p P i base top w hpos hfresh htimes hroot hH hE x nd' hx hd hlv with
+    ⟨n, hlook, htk, _, hks, _⟩ | ⟨hPx, _⟩
+  · have hmem := mem_ids_of_lookup w.nodes x n hlook
+    have hxg : x ∈ (w.gh.map (·.1)).reverse := by
+      rw [← hE.book.ids]
+      exact List.mem_map.mpr ⟨(x, n), hmem, rfl⟩
+    obtain ⟨⟨x', g, h⟩, hgh, hx'⟩ := List.mem_map.mp (List.mem_reverse.mp hxg)
+    have hxx : x' = x := hx'
+    rw [hxx] at hgh
+    obtain ⟨_, _, _, hh⟩ := kindsStep_gh_e p P i base top w hfresh htimes hE x g h hgh nd' hx
+    have hN := hHt x n g h hmem hgh htk
+    have hnk : nodeK p nd' = ⟨p.heightOf nd'.level == 0, n.ks⟩ := by
+      unfold nodeK; rw [hks]
+    rw [hnk, ht_liveAt_leaf _ n.leaf] at hlive
+    have hlive' : (cv, y) ∈ n.liveAt i := hlive
+    rw [KNode.liveAt_of_times n i hN.3] at hlive'
+    have hh0 : h ≠ 0 := by rw [← hh]; exact h0
+    have hy' := (hN.1 cv y hlive').2 hh0
+    have := heightsStep_hasHt_e p P i base top w hfresh htimes hE y (h - 1) hy' ny' hy
+    omega
+  · have hkx : knodeOf p (viewOf P) x = some (nodeK p nd') := by
+      unfold knodeOf viewOf
+      rw [hPx]
+      have : ¬ (nd'.isData || decide (p.keyMax < nd'.level)) = true := by
+        simp only [hd, Bool.false_or, decide_eq_true_eq]; omega
+      simp only [this]
+      rfl
+    have hi1 : i = (i - 1) + 1 := by omega
+    have hlive0 : (cv, y) ∈ (nodeK p nd').liveAt (i - 1) := by
+      rw [← liveAt_succ_of_timesLE p P (i - 1) htimes x _ hkx, ← hi1]
+      exact hlive
+    obtain ⟨ny, hPy⟩ := kindsStep_ptr P hP x nd' hPx cv y
+      (KNode.liveAt_key_mem _ _ _ _ hlive0)
+    obtain ⟨h1, _⟩ := kindsStep_old P i _ y ny ny' hPy hy
+    rw [h1]
+    exact hA x nd' hPx hd hlv h0 cv y hlive0 ny hPy
+
+/-! ## The kinds and heights after a fix step that made a merge -/
+
+/-- At the end of a fix step of kind C from a reached state, the writer's overlay has the
+kinds' and the heights' caches for P's oracles (`KindCache`, `HtCache`): what `execW_kinds` and
+the heights' walk give today's transactions; for the merge, `kd_merge` and `ht_merge` through
+the bridge and the path's books. -/
+def KindsHtEnd (p : Params) (C : Fix → Prop) : Prop :=
+  ∀ (s : St) (k : Key) (rest : List Key) (base : NodeId) (w : W) (f : Fix) (w1 : W) (z : NodeId)
+    (top : Top), Reached p s → StInv p s → s.pend = k :: rest → (∀ q ∈ s.P, q.1 < base) →
+    lastTop (view (treeSpec p) s.P s.t) = some z → topOf p (ctxAt p s.P s.t).view z = .ok top →
+    fixStep k (ctxAt p s.P s.t) (wStart base top) = .ok (true, w) →
+    (do path k; target : M Fix) (ctxAt p s.P s.t) (wStart base top) = .ok (f, w1) → C f →
+    KindCache (kindOracleOf p s.P) w ∧ HtCache (ctxAt p s.P s.t) (htOracleOf p s.P) w
+
+/-- The kinds and the heights after a merge step from the writer-level caches. -/
+theorem t_partsKH_merge (p : Params) (hKH : KindsHtEnd p IsMerge) : PartsKH p IsMerge := by
+  intro s k rest base w f w1 hs hI hpend hfresh hrun hfix hC
+  have hKH' := hKH
+  obtain ⟨hsub, htimes, _, _, hEnc, _⟩ := hI
+  rw [hpend] at hsub
+  obtain ⟨z, top, hz, htop, hfs, hout, hfo⟩ := runFix_true p s.P s.t base k w hrun
+  have hpt := hfo _ w1 hfix
+  obtain ⟨hKW, hHt⟩ := hKH' s k rest base w f w1 z top hs ⟨by rw [hpend]; exact hsub, htimes,
+    by assumption, by assumption, hEnc, by assumption⟩ hpend hfresh hz htop hfs hpt hC
+  obtain ⟨x, d, rfl⟩ := hC
+  have hrootL : ∃ r, s.P.get? root = some r ∧ p.keyMax < r.level := by
+    obtain ⟨nd, h1, h2, _⟩ := reached_root p s hs
+    exact ⟨nd, h1, by rw [h2]; exact rootLevel_gt p⟩
+  have hne := ne_fix_merge p s.P s.t base k z top w x d w1 hfresh htimes hsub.links htop hfs hpt
+  have hE := endW_fix p s.P s.t base k z top w hfresh htimes hsub.links hEnc htop hfs hout hne
+  exact ⟨kindsAllOK_e p s.P (s.t + 1) base top w (by omega) hfresh htimes hrootL hsub.links.2.1
+      hsub.links.1 hE hsub.kinds hKW,
+    heightAllOK_e p s.P (s.t + 1) base top w (by omega) hfresh htimes hrootL hsub.links.2.1
+      hsub.links.1 hE hsub.heights hHt⟩
+
+end SIS.Tree.Mt

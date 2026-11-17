@@ -1,7 +1,7 @@
 # 026-19. The proof trial of 026-18: subtransactions in Lean
 
-Created 2026-11-16 by Frans Lundberg. Status: open (the plan written; the
-trial not started).
+Created 2026-11-16 by Frans Lundberg. Status: done (the trial run
+2026-11-16, 22:03, to 2026-11-17, 00:55; the result below).
 
 A short proof trial of 026-18's idea, on MT's rules as 026-17 tried them
 (`Mt.lean` on the branch `026-17-mt-trial`): prove that one fix step
@@ -21,6 +21,68 @@ in-between invariant, the full invariant with holes on the paths of the
 keys still being fixed; (2) gets and scans right at visible times from
 the full invariant, reusing today's proofs; (3) if time allows, the holes
 close when the driver ends, for one key.
+
+# Result
+
+**Verdict: reduced, not proved. By section 4's rule 026-18's gain is
+not supported** (`T_fixW_merge` is reduced; A3 stopped by size on its
+last case), **nor refuted** (nothing was found false). Reduced: at every
+visible time of an MT run the tree has today's invariant and gets and
+scans are right (`VisibleOK`), given nine named premises. All 27 gates
+passed; 49 theorems `t_...` on the standard axioms; the code on the
+branch `026-19-proof-trial`. By an agent of coord-1116, 2026-11-17.
+
+- **Proved:** the induction; scans at a visible time; the driver's end
+  for a key (`t_doneOK`); a merge whose parent has room keeps the fill
+  but at the holes and its key's path, R3's empty leaves too
+  (`t_fixWLive_room`); for each kind of fix step, the lift and the other
+  parts of the invariant; the bridge to today's merge.
+- **Reduced to the full node** (the room case proved): the merge, the
+  unlink and the collapse at the writer; the user's delete.
+- **The best top,** `t_visible_userL`: from `hp`, `hth`, `p.merges =
+  true` (parameters; the last follows from `hp`, by reading) and nine
+  premises: a full node's cascade (`MergeFullLive`, the fill;
+  `MergeFullEmpty`, `FixWUnlinkFull`, `FixWCollapseSeg`, `DelWFull`);
+  `PutWH`, a put with holes; `PartsUser`, the parts after the user
+  subtransaction; the frames `FrameW` and `FrameUser`.
+
+**E1 to E7** ([19-proof-trial/](19-proof-trial/), `counts.txt`):
+- E1: two provers, about 4.5 prover-hours, 13,050 lines (plan: 4,200 to
+  11,000, 14 h); the run's layer, unsized in 006-28: about 5,800 lines.
+- E2, the fill: 1,603 lines in 46 min with room (main's same case: about
+  2,500); a full parent 2,500 to 4,000 more by A's estimate: over 3,000.
+- E3: the merge's tree, range and reading lemmas reused unchanged
+  through the bridge (1,131 lines); 39 `restated from` comments.
+- E4: `scan_eq_contents` unchanged; the readers in 74 lines.
+- E5: none of `htbL`'s kind, none of `l4`'s (each is about one step),
+  but `MergeFullLive` is main's open case; only it was tested on runs.
+- E6: 16 declaration lines name a take-back book (as `taken = []`).
+- E7: the collapse's `FixW` false as first written, repaired; `FixW`
+  took 4 hypotheses; four steps stopped by size, by estimate.
+
+**The main line, the same night** (030-01): `htbL` proved (3,940 lines,
+one prover); D1's top `invGetScanOK_merges_noTb` from `hp`, `hth`, `l4`;
+`l4` reduced in parts (11,641 lines, four provers), open mainly at a
+merge's full parent and its cascade: the case MT leaves open too.
+
+**The frames, the largest new cost.** A hole is a node on a pending
+key's path in the current tree, so each step must show the other keys'
+holes still on their paths (`FrameW` a fix step, `FrameUser` a user
+operation): the visited-node form of today's proof that a merge keeps
+every reading (GetMerge*.lean, 5,934 lines), with no lemma to reuse;
+about 6,000 lines each (B's estimate, not tried); today's `l4` has a
+like cost for one hole (R1, about 2,400). B's two ways (not checked):
+1. Holes as key ranges: a reached node whose range holds a pending key;
+   under `RangeOrder` that is the path (1,000 to 1,500 lines), and a
+   frame is "unchanged nodes' ranges do not shrink", a few hundred.
+   Splits narrow ranges: open. A change of `Hole`, not of MT.
+2. Holes as node ids: each step adds the ids it writes; no frame; the
+   driver fixes by node, not key: a change of MT, its tests, `DoneOK`.
+
+**For Frans:** (a) go on with today's model (D1), the branch kept as a
+record; or (b) one more MT night, way 1 and the full parent, before
+2026.6's format is fixed (SF10). No proof-size reason to switch now.
+
 
 The plan follows.
 
@@ -1044,3 +1106,9 @@ MtRun.lean and MtSub.lean in `19-proof-trial/`, type-checked by
 `lake env lean` from the clone of 026-17 (MtSub against stand-ins).
 Nothing proved, nothing built; the trial not started. Status: open (the
 plan written; the trial not started).
+
+2026-11-16, 22:03, to 2026-11-17, 00:55. The trial ran: provers A (to
+23:42, stopped by the size rule) and B (to 00:55, stopped by the
+coordinator), 27 gates passed; the branch `026-19-proof-trial` at
+5fea7405. 2026-11-17, 01:10: the Result written and the evidence
+directory filled by an agent of coord-1116. Status: done.

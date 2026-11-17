@@ -1,0 +1,950 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step B1): the writer's books kept by MT's
+fix step (SIS/Tree/Mt.lean), family by family, as Exec's functions keep them
+(WriterStateInvariant.lean and the files of each family). Mt's functions are
+compositions of Exec's; each lemma here is the family's automation run over Mt's text.
+-/
+import SIS.Tree.MtSub
+import SIS.Tree.CollapseCascade
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## Every state invariant (`WriterStateInvariant`): ids, ledger, made nodes and data -/
+
+section State
+variable [inv : WriterStateInvariant]
+
+theorem state_pathGo (key : List Nat) (x : NodeId) : KeepsState (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hw; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hw
+    unfold pathGo
+    repeat' first
+      | siSimplify
+      | siCore
+      | siUse (state_descendLte _ _ _)
+      | siUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem state_path (key : Key) : KeepsState (path key) := by
+  intro c w hw
+  unfold path
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_pathGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_targetGo (d : Nat) : KeepsState (targetGo d) := by
+  induction d with
+  | zero => intro c w hw; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hw
+    unfold targetGo
+    repeat' first
+      | siSimplify
+      | siCore
+      | siUse ih
+      | wpSplit
+      | split
+      | contradiction
+
+theorem state_target : KeepsState target := by
+  intro c w hw
+  unfold target
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_targetGo _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem state_mtMerge (x : NodeId) (d : Nat) : KeepsState (Mt.merge x d) := by
+  intro c w hw
+  unfold Mt.merge
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_sibling _ _ _ _)
+    | siUse (state_mergeParent _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_unlinkTree (d : Nat) : KeepsState (unlinkTree d) := by
+  intro c w hw
+  unfold unlinkTree
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_mtCollapse (x : NodeId) (d : Nat) : KeepsState (Mt.collapse x d) := by
+  intro c w hw
+  unfold Mt.collapse
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_replaceRoot _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_fixStep (key : Key) : KeepsState (fixStep key) := by
+  intro c w hw
+  unfold fixStep
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_path _)
+    | siUse (state_target)
+    | siUse (state_mtMerge _ _)
+    | siUse (state_unlinkTree _)
+    | siUse (state_mtCollapse _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+end State
+
+/-! ## Family `good` -/
+
+theorem good_pathGo (B : NodeId) (key : List Nat) (x : NodeId) : KeepsGood B (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hw;  have hpos := hv.pos; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hv hw
+    have hpos := hv.pos
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | gdCore
+      | gdUse (good_descendLte _ _ _ _)
+      | gdUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem good_path (B : NodeId) (key : Key) : KeepsGood B (path key) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold path
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_pathGo B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_targetGo (B : NodeId) (d : Nat) : KeepsGood B (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hw;  have hpos := hv.pos; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hv hw
+    have hpos := hv.pos
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | gdCore
+      | gdUse (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem good_target (B : NodeId) : KeepsGood B (target) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold target
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_targetGo B _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem good_mtMerge (B : NodeId) (x : NodeId) (d : Nat) : KeepsGood B (Mt.merge x d) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_sibling _ _ _ _ _)
+    | gdUse (good_mergeParent _ _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_unlinkTree (B : NodeId) (d : Nat) : KeepsGood B (unlinkTree d) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_mtCollapse (B : NodeId) (x : NodeId) (d : Nat) : KeepsGood B (Mt.collapse x d) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_replaceRoot _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_fixStep (B : NodeId) (key : Key) : KeepsGood B (fixStep key) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_path B _)
+    | gdUse (good_target B)
+    | gdUse (good_mtMerge B _ _)
+    | gdUse (good_unlinkTree B _)
+    | gdUse (good_mtCollapse B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `book` -/
+
+theorem book_pathGo (B : NodeId) (key : List Nat) (x : NodeId) : KeepsBook B (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hb; simpa only [pathGo, writerWP_pure] using ⟨hb, Kept.refl w⟩
+  | cons cv rest ih =>
+    intro c w hv hb
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | bkCore
+      | bkUse (book_descendLte _ _ _ _)
+      | bkUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem book_path (B : NodeId) (key : Key) : KeepsBook B (path key) := by
+  intro c w hv hb
+  unfold path
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_pathGo B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_targetGo (B : NodeId) (d : Nat) : KeepsBook B (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hb; simpa only [targetGo, writerWP_pure] using ⟨hb, Kept.refl w⟩
+  | succ d ih =>
+    intro c w hv hb
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | bkCore
+      | bkUse (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem book_target (B : NodeId) : KeepsBook B (target) := by
+  intro c w hv hb
+  unfold target
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_targetGo B _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem book_mtMerge (B : NodeId) (x : NodeId) (d : Nat) : KeepsBook B (Mt.merge x d) := by
+  intro c w hv hb
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkSibling
+    | bkUse (book_mergeParent _ _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_unlinkTree (B : NodeId) (d : Nat) : KeepsBook B (unlinkTree d) := by
+  intro c w hv hb
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_mtCollapse (B : NodeId) (x : NodeId) (d : Nat) : KeepsBook B (Mt.collapse x d) := by
+  intro c w hv hb
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_replaceRoot _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_fixStep (B : NodeId) (key : Key) : KeepsBook B (fixStep key) := by
+  intro c w hv hb
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_path B _)
+    | bkUse (book_target B)
+    | bkUse (book_mtMerge B _ _)
+    | bkUse (book_unlinkTree B _)
+    | bkUse (book_mtCollapse B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `freshCache` -/
+
+theorem freshCache_pathGo {base : NodeId} (key : List Nat) (x : NodeId) : KeepsFreshCache base (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hview hw; simpa only [pathGo, writerWP_pure] using ⟨hw, Nat.le_refl _⟩
+  | cons cv rest ih =>
+    intro c w hview hw
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | frCore base
+      | frUse base using (freshCache_descendLte _ _ _)
+      | frUse base using (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem freshCache_path {base : NodeId} (key : Key) : KeepsFreshCache base (path key) := by
+  intro c w hview hw
+  unfold path
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frUse base using (freshCache_pathGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem freshCache_targetGo {base : NodeId} (d : Nat) : KeepsFreshCache base (targetGo d) := by
+  induction d with
+  | zero => intro c w hview hw; simpa only [targetGo, writerWP_pure] using ⟨hw, Nat.le_refl _⟩
+  | succ d ih =>
+    intro c w hview hw
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | frCore base
+      | frUse base using (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem freshCache_target {base : NodeId} : KeepsFreshCache base (target) := by
+  intro c w hview hw
+  unfold target
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frUse base using (freshCache_targetGo _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem freshCache_mtMerge {base : NodeId} (x : NodeId) (d : Nat) : KeepsFreshCache base (Mt.merge x d) := by
+  intro c w hview hw
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frSibling base
+    | frUse base using (freshCache_mergeParent _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem freshCache_unlinkTree {base : NodeId} (d : Nat) : KeepsFreshCache base (unlinkTree d) := by
+  intro c w hview hw
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frUse base using (freshCache_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem freshCache_mtCollapse {base : NodeId} (x : NodeId) (d : Nat) : KeepsFreshCache base (Mt.collapse x d) := by
+  intro c w hview hw
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frUse base using (freshCache_replaceRoot _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem freshCache_fixStep {base : NodeId} (key : Key) : KeepsFreshCache base (fixStep key) := by
+  intro c w hview hw
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | frCore base
+    | frUse base using (freshCache_path _)
+    | frUse base using (freshCache_target)
+    | frUse base using (freshCache_mtMerge _ _)
+    | frUse base using (freshCache_unlinkTree _)
+    | frUse base using (freshCache_mtCollapse _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `ptrs` -/
+
+theorem ptrs_pathGo (Old : NodeId → Prop) (key : List Nat) (x : NodeId) : KeepsPtrs Old (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hw; simpa only [pathGo, writerWP_pure] using ⟨hw, MadeKept.refl w⟩
+  | cons cv rest ih =>
+    intro c w hv hw
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | ptCore
+      | ptUse (ptrs_descendLte _ _ _ _)
+      | ptUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem ptrs_path (Old : NodeId → Prop) (key : Key) : KeepsPtrs Old (path key) := by
+  intro c w hv hw
+  unfold path
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_pathGo Old _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_targetGo (Old : NodeId → Prop) (d : Nat) : KeepsPtrs Old (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hw; simpa only [targetGo, writerWP_pure] using ⟨hw, MadeKept.refl w⟩
+  | succ d ih =>
+    intro c w hv hw
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | ptCore
+      | ptUse (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem ptrs_target (Old : NodeId → Prop) : KeepsPtrs Old (target) := by
+  intro c w hv hw
+  unfold target
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_targetGo Old _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem ptrs_mtMerge (Old : NodeId → Prop) (x : NodeId) (d : Nat) : KeepsPtrs Old (Mt.merge x d) := by
+  intro c w hv hw
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptSibling
+    | ptUse2 (ptrs_mergeParent _ _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_unlinkTree (Old : NodeId → Prop) (d : Nat) : KeepsPtrs Old (unlinkTree d) := by
+  intro c w hv hw
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_mtCollapse (Old : NodeId → Prop) (x : NodeId) (d : Nat) : KeepsPtrs Old (Mt.collapse x d) := by
+  intro c w hv hw
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_replaceRoot _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_fixStep (Old : NodeId → Prop) (key : Key) : KeepsPtrs Old (fixStep key) := by
+  intro c w hv hw
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_path Old _)
+    | ptUse (ptrs_target Old)
+    | ptUse (ptrs_mtMerge Old _ _)
+    | ptUse (ptrs_unlinkTree Old _)
+    | ptUse (ptrs_mtCollapse Old _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `encoded` -/
+
+theorem encoded_pathGo (key : List Nat) (x : NodeId) : KeepsEncoded (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hw; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hv hw
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | encCore
+      | encUse (encoded_descendLte _ _ _)
+      | encUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem encoded_path (key : Key) : KeepsEncoded (path key) := by
+  intro c w hv hw
+  unfold path
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_pathGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_targetGo (d : Nat) : KeepsEncoded (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hw; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hv hw
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | encCore
+      | encUse (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem encoded_target : KeepsEncoded (target) := by
+  intro c w hv hw
+  unfold target
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_targetGo _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem encoded_mtMerge (x : NodeId) (d : Nat) : KeepsEncoded (Mt.merge x d) := by
+  intro c w hv hw
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encSibling
+    | encMergeParent
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_unlinkTree (d : Nat) : KeepsEncoded (unlinkTree d) := by
+  intro c w hv hw
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_mtCollapse (x : NodeId) (d : Nat) : KeepsEncoded (Mt.collapse x d) := by
+  intro c w hv hw
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_replaceRoot _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_fixStep (key : Key) : KeepsEncoded (fixStep key) := by
+  intro c w hv hw
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_path _)
+    | encUse (encoded_target)
+    | encUse (encoded_mtMerge _ _)
+    | encUse (encoded_unlinkTree _)
+    | encUse (encoded_mtCollapse _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `takenP` -/
+
+theorem takenP_pathGo (Pt : List NodeId → Prop) (key : List Nat) (x : NodeId) : KeepsTakenP Pt (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hw; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hw
+    unfold pathGo
+    repeat' first
+      | tkSimplifyP
+      | tkCoreP
+      | tkUseP (takenP_descendLte _ _ _ _)
+      | tkUseP (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem takenP_path (Pt : List NodeId → Prop) (key : Key) : KeepsTakenP Pt (path key) := by
+  intro c w hw
+  unfold path
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_pathGo Pt _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_targetGo (Pt : List NodeId → Prop) (d : Nat) : KeepsTakenP Pt (targetGo d) := by
+  induction d with
+  | zero => intro c w hw; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hw
+    unfold targetGo
+    repeat' first
+      | tkSimplifyP
+      | tkCoreP
+      | tkUseP (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem takenP_target (Pt : List NodeId → Prop) : KeepsTakenP Pt (target) := by
+  intro c w hw
+  unfold target
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_targetGo Pt _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem takenP_mtMerge (Pt : List NodeId → Prop) (x : NodeId) (d : Nat) : KeepsTakenP Pt (Mt.merge x d) := by
+  intro c w hw
+  unfold Mt.merge
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_sibling _ _ _ _ _)
+    | tkUseP (takenP_ghOf _ _)
+    | tkUseP (takenP_mergeParent _ _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_unlinkTree (Pt : List NodeId → Prop) (d : Nat) : KeepsTakenP Pt (unlinkTree d) := by
+  intro c w hw
+  unfold unlinkTree
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_mtCollapse (Pt : List NodeId → Prop) (x : NodeId) (d : Nat) : KeepsTakenP Pt (Mt.collapse x d) := by
+  intro c w hw
+  unfold Mt.collapse
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_replaceRoot _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_fixStep (Pt : List NodeId → Prop) (key : Key) : KeepsTakenP Pt (fixStep key) := by
+  intro c w hw
+  unfold fixStep
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_path Pt _)
+    | tkUseP (takenP_target Pt)
+    | tkUseP (takenP_mtMerge Pt _ _)
+    | tkUseP (takenP_unlinkTree Pt _)
+    | tkUseP (takenP_mtCollapse Pt _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Family `nex` -/
+
+theorem nex_pathGo (B : NodeId) (key : List Nat) (x : NodeId) : KeepsNE B (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro E c w hv hw hn;  have hpos := hv.pos; simpa only [pathGo, writerWP_pure] using ⟨hw, hn⟩
+  | cons cv rest ih =>
+    intro E c w hv hw hn
+    have hpos := hv.pos
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | neCore
+      | neUse (nex_descendLte _ _ _ _)
+      | neUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem nex_path (B : NodeId) (key : Key) : KeepsNE B (path key) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold path
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_pathGo B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_targetGo (B : NodeId) (d : Nat) : KeepsNE B (targetGo d) := by
+  induction d with
+  | zero => intro E c w hv hw hn;  have hpos := hv.pos; simpa only [targetGo, writerWP_pure] using ⟨hw, hn⟩
+  | succ d ih =>
+    intro E c w hv hw hn
+    have hpos := hv.pos
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | neCore
+      | neUse (ih)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem nex_target (B : NodeId) : KeepsNE B (target) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold target
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_targetGo B _)
+    | wpSplit
+    | split
+    | contradiction
+
+set_option maxHeartbeats 1600000 in
+theorem nex_mtMerge (B : NodeId) (x : NodeId) (d : Nat) : KeepsNE B (Mt.merge x d) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold Mt.merge
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neSibling
+    | neUse (nex_mergeParent _ _ _ _ _ _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_unlinkTree (B : NodeId) (d : Nat) : KeepsNE B (unlinkTree d) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+
+/-! ## Family `klongsWf` -/
+
+theorem klongsWf_pathGo (key : List Nat) (x : NodeId) : KeepsKlongsWf (pathGo key x) := by
+  induction key generalizing x with
+  | nil => intro c w hv hw; simpa only [pathGo, writerWP_pure] using hw
+  | cons cv rest ih =>
+    intro c w hv hw
+    unfold pathGo
+    repeat' first
+      | wpSimplify
+      | kwCore
+      | kwUse (klongsWf_descendLte _ _ _)
+      | kwUse (ih _)
+      | wpSplit
+      | split
+      | contradiction
+
+theorem klongsWf_path (key : Key) : KeepsKlongsWf (path key) := by
+  intro c w hv hw
+  unfold path
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_findRoot)
+    | kwUse (klongsWf_pathGo _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_targetGo (d : Nat) : KeepsKlongsWf (targetGo d) := by
+  induction d with
+  | zero => intro c w hv hw; simpa only [targetGo, writerWP_pure] using hw
+  | succ d ih =>
+    intro c w hv hw
+    unfold targetGo
+    repeat' first
+      | wpSimplify
+      | kwCore
+      | kwUse (klongsWf_pathNode _)
+      | kwUse ih
+      | wpSplit
+      | split
+      | contradiction
+
+theorem klongsWf_target : KeepsKlongsWf target := by
+  intro c w hv hw
+  unfold target
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_pathSize)
+    | kwUse (klongsWf_targetGo _)
+    | wpSplit
+    | split
+    | contradiction
+
+-- restated from klongsWf_merge (WriterKlongMerge.lean)
+set_option maxHeartbeats 1800000 in
+theorem klongsWf_mtMerge (x : NodeId) (d : Nat) : KeepsKlongsWf (Mt.merge x d) := by
+  intro c w hv hw
+  unfold Mt.merge
+  simp only [writerWP_bind, writerWP_read]
+  refine writerWP_mono (klongsWf_pathNode (d - 1) c w hv hw) ?_
+  intro parent state hstate
+  refine writerWP_mono (klongsWf_getNode_caches parent c state hv hstate) ?_
+  rintro pn state ⟨hstate, hpn, hcache⟩
+  repeat' first
+    | contradiction
+    | wpSimplify
+    | kwCachedCore parent with pn
+    | kwMergeParentDone parent with pn
+    | assumption
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_unlinkTree (d : Nat) : KeepsKlongsWf (unlinkTree d) := by
+  intro c w hv hw
+  unfold unlinkTree
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_pathNode _)
+    | kwUse (klongsWf_klongAt _)
+    | kwUse (klongsWf_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_mtCollapse (x : NodeId) (d : Nat) : KeepsKlongsWf (Mt.collapse x d) := by
+  intro c w hv hw
+  unfold Mt.collapse
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_replaceRoot _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_fixStep (key : Key) : KeepsKlongsWf (fixStep key) := by
+  intro c w hv hw
+  unfold fixStep
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_path _)
+    | kwUse klongsWf_target
+    | kwUse (klongsWf_mtMerge _ _)
+    | kwUse (klongsWf_unlinkTree _)
+    | kwUse (klongsWf_mtCollapse _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+end SIS.Tree.Mt

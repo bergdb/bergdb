@@ -1,0 +1,127 @@
+# 1. Lines per file on 026-19-proof-trial (5fea7405), the trial's files (not 026-17's Mt.lean)
+   950  MtBooks
+  1131  MtBridge
+   390  MtCollapse
+   667  MtCollapseW
+   521  MtDead
+   640  MtDone
+   193  MtFit
+   396  MtHeights
+   212  MtKinds
+   255  MtKindsW
+   442  MtLift
+   908  MtLiftProof
+    28  MtLiveTop
+   251  MtMerge
+   540  MtMergeEmpty
+  1575  MtMergeLive
+   282  MtParts
+   398  MtPath
+    74  MtReaders
+    83  MtRun
+   216  MtStep
+   201  MtSub
+   231  MtTop
+   315  MtUnlink
+   656  MtUnlinkW
+   309  MtUser
+   694  MtUserBooks
+   492  MtUserDel
+ 13050  total, 28 files
+
+# 2. Lines per step (the steps of 026-19, section 6.1, as the provers reported them)
+   284  P0b, the statements (MtRun MtSub)
+  1131  A1, the bridge (MtBridge)
+   398  A2, the path and the target (MtPath)
+  1603  A3, the fill with holes (MtMergeLive MtLiveTop)
+   251  A4, FixW for the merge (MtMerge)
+   540  A5, the empty child (MtMergeEmpty)
+  2300  B1, the lift (MtLift MtBooks MtLiftProof)
+    74  B2, the readers (MtReaders)
+   216  B3, the step at the structure (MtStep)
+   231  B4, the induction and the tops (MtTop)
+  1666  the merge's other parts (MtParts MtDead MtKinds MtKindsW MtHeights)
+   640  E, the driver's end (MtDone)
+   898  unlink and collapse at the structure, the fit (MtUnlink MtCollapse MtFit)
+   656  tier 3, the unlink with room (MtUnlinkW)
+   667  tier 3, the collapse (MtCollapseW)
+   492  tier 3, the user's delete (MtUserDel)
+   309  the user step reduced (MtUser)
+   694  the user run's lift (MtUserBooks)
+  (prover A: A1, A2, A3; prover B: the rest)
+
+# 3. E3: comments '-- restated from' (or 'restated from') per file
+     1  MtBooks
+     2  MtDead
+     3  MtHeights
+     7  MtKinds
+     1  MtKindsW
+     6  MtLift
+    11  MtLiftProof
+     2  MtMergeLive
+     4  MtParts
+     2  MtReaders
+    39  total
+
+# 4. E6: lines naming a take-back book (taken, madeFor, TakeJ2, J2At, retarget, toPrev) per file
+    22  MtBooks
+    24  MtBridge
+     6  MtCollapse
+    19  MtCollapseW
+     7  MtDead
+    11  MtDone
+     3  MtFit
+     2  MtHeights
+    50  MtLiftProof
+     4  MtMerge
+     9  MtMergeEmpty
+    10  MtMergeLive
+     4  MtPath
+     2  MtSub
+     8  MtUnlink
+     7  MtUnlinkW
+    15  MtUserBooks
+    14  MtUserDel
+   217  total lines
+    16  declaration lines (theorem, lemma, def, abbrev, structure) among them
+
+# 5. The main line the same night: files added to main's lean/SIS/Tree, 308299c5..454c05c3
+   459  HtbDefs
+   262  HtbExc
+   231  HtbExcFrame
+   358  HtbExcShape
+   376  HtbExcWalk
+   724  HtbFrame
+   386  HtbLoop
+    21  HtbNoTb
+   456  HtbPrefix
+   415  HtbTop
+   252  HtbWalk
+  3940  Htb*.lean total, 11 files
+   635  LiveCollapse
+   456  LiveCollapseFull
+   304  LiveCollapseStep
+   337  LiveDelFull
+   770  LiveDelFullCopy
+   477  LiveDelLeaf
+   217  LiveHole
+   802  LiveHoleDescent
+   557  LiveHoleLeaf
+   824  LiveHolePilot
+   615  LiveLoop
+  1556  LiveMergeRoom
+   153  LiveMergeTail
+   326  LiveRedirectDescent
+   229  LiveSplitRoom
+   199  LiveSplitRoom2
+   453  LiveTop
+   676  LiveUpHole
+   367  LiveUpLeaf
+   535  LiveUpRoom
+  1153  LiveUpWalk
+ 11641  Live*.lean total, 21 files
+
+# 6. Sums the Result cites
+  5774  E1, the run's layer (lifts, parts, step, fit; unsized in 006-28) (MtLift MtBooks MtLiftProof MtParts MtDead MtKinds MtKindsW MtHeights MtStep MtFit MtUnlink MtCollapse MtUserBooks)
+  2541  E2, main's merges with room inside a delete (not R1's descent) (LiveHole LiveLoop LiveMergeRoom LiveMergeTail)
+  2361  the frames, main's R1 (the descent finds the one hole again) (LiveHoleDescent LiveRedirectDescent LiveHoleLeaf LiveUpHole)

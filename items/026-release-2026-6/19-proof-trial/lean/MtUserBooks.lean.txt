@@ -1,0 +1,694 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, the user's run): the writer's books kept by MT's delete
+(`Mt.putKv (.del key)`), family by family, as `MtBooks.lean` has them for the fix step.
+-/
+import SIS.Tree.MtUser
+import SIS.Tree.WriterNonemptyRun
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+section State
+variable [inv : WriterStateInvariant]
+
+theorem state_deleteLeaf (leaf : NodeId) (depth cv : Nat) :
+    KeepsState (deleteLeaf leaf depth cv) := by
+  intro c w hw
+  unfold deleteLeaf
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_mtSetValueDel (segRoot : NodeId) (cv : Nat) :
+    KeepsState (Mt.setValue segRoot cv none) := by
+  intro c w hw
+  unfold Mt.setValue
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_descendLte _ _ _)
+    | siUse (state_deleteLeaf _ _ _)
+    | siUse (state_fresh)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem state_mtPutSegsDel :
+    ∀ (key : List Nat) (r : NodeId), KeepsState (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact state_mtSetValueDel r cv
+    | cons d rest' =>
+      intro c w hw
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | siSimplify
+        | siCore
+        | siUse (state_setNode _ _ _)
+        | siUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem state_mtPutKvDel (key : Key) : KeepsState (Mt.putKv (.del key)) := by
+  intro c w hw
+  unfold Mt.putKv
+  repeat' first
+    | siSimplify
+    | siCore
+    | siUse (state_mtPutSegsDel _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+end State
+
+theorem good_deleteLeaf (B : NodeId) (leaf : NodeId) (depth cv : Nat) :
+    KeepsGood B (deleteLeaf leaf depth cv) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_mtSetValueDel (B : NodeId) (segRoot : NodeId) (cv : Nat) :
+    KeepsGood B (Mt.setValue segRoot cv none) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_descendLte _ _ _ _)
+    | gdUse (good_deleteLeaf B _ _ _)
+    | gdUse (good_fresh _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem good_mtPutSegsDel (B : NodeId) :
+    ∀ (key : List Nat) (r : NodeId), KeepsGood B (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hv hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact good_mtSetValueDel B r cv
+    | cons d rest' =>
+      intro c w hv hw
+      have hpos := hv.pos
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | wpSimplify
+        | gdCore
+        | gdUse (good_setNode _ _ _ _)
+        | gdUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem good_mtPutKvDel (B : NodeId) (key : Key) : KeepsGood B (Mt.putKv (.del key)) := by
+  intro c w hv hw
+  have hpos := hv.pos
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | gdCore
+    | gdUse (good_mtPutSegsDel B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_deleteLeaf (B : NodeId) (leaf : NodeId) (depth cv : Nat) :
+    KeepsBook B (deleteLeaf leaf depth cv) := by
+  intro c w hv hb
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_mtSetValueDel (B : NodeId) (segRoot : NodeId) (cv : Nat) :
+    KeepsBook B (Mt.setValue segRoot cv none) := by
+  intro c w hv hb
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_descendLte _ _ _ _)
+    | bkUse (book_deleteLeaf B _ _ _)
+    | bkUse (book_fresh _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem book_mtPutSegsDel (B : NodeId) :
+    ∀ (key : List Nat) (r : NodeId), KeepsBook B (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hv hb; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact book_mtSetValueDel B r cv
+    | cons d rest' =>
+      intro c w hv hb
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | wpSimplify
+        | bkCore
+        | bkUse (book_setNode _ _ _ _)
+        | bkUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem book_mtPutKvDel (B : NodeId) (key : Key) : KeepsBook B (Mt.putKv (.del key)) := by
+  intro c w hv hb
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | bkCore
+    | bkUse (book_mtPutSegsDel B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_deleteLeaf (Old : NodeId → Prop) (leaf : NodeId) (depth cv : Nat) :
+    KeepsPtrs Old (deleteLeaf leaf depth cv) := by
+  intro c w hv hw
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_mtSetValueDel (Old : NodeId → Prop) (segRoot : NodeId) (cv : Nat) :
+    KeepsPtrs Old (Mt.setValue segRoot cv none) := by
+  intro c w hv hw
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_descendLte _ _ _ _)
+    | ptUse (ptrs_deleteLeaf Old _ _ _)
+    | ptUse (ptrs_fresh _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem ptrs_mtPutSegsDel (Old : NodeId → Prop) :
+    ∀ (key : List Nat) (r : NodeId), KeepsPtrs Old (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hv hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact ptrs_mtSetValueDel Old r cv
+    | cons d rest' =>
+      intro c w hv hw
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | wpSimplify
+        | ptCore
+        | ptUse (ptrs_setNode _ _ _ _)
+        | ptUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem ptrs_mtPutKvDel (Old : NodeId → Prop) (key : Key) : KeepsPtrs Old (Mt.putKv (.del key)) := by
+  intro c w hv hw
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | ptCore
+    | ptUse (ptrs_mtPutSegsDel Old _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_deleteLeaf (Pt : List NodeId → Prop) (leaf : NodeId) (depth cv : Nat) :
+    KeepsTakenP Pt (deleteLeaf leaf depth cv) := by
+  intro c w hw
+  unfold deleteLeaf
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_mtSetValueDel (Pt : List NodeId → Prop) (segRoot : NodeId) (cv : Nat) :
+    KeepsTakenP Pt (Mt.setValue segRoot cv none) := by
+  intro c w hw
+  unfold Mt.setValue
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_descendLte _ _ _ _)
+    | tkUseP (takenP_deleteLeaf Pt _ _ _)
+    | tkUseP (takenP_fresh _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem takenP_mtPutSegsDel (Pt : List NodeId → Prop) :
+    ∀ (key : List Nat) (r : NodeId), KeepsTakenP Pt (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact takenP_mtSetValueDel Pt r cv
+    | cons d rest' =>
+      intro c w hw
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | tkSimplifyP
+        | tkCoreP
+        | tkUseP (takenP_setNode _ _ _ _)
+        | tkUseP (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem takenP_mtPutKvDel (Pt : List NodeId → Prop) (key : Key) : KeepsTakenP Pt (Mt.putKv (.del key)) := by
+  intro c w hw
+  unfold Mt.putKv
+  repeat' first
+    | tkSimplifyP
+    | tkCoreP
+    | tkUseP (takenP_mtPutSegsDel Pt _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_deleteLeaf (leaf : NodeId) (depth cv : Nat) :
+    KeepsKlongsWf (deleteLeaf leaf depth cv) := by
+  intro c w hv hw
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_mtSetValueDel (segRoot : NodeId) (cv : Nat) :
+    KeepsKlongsWf (Mt.setValue segRoot cv none) := by
+  intro c w hv hw
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_descendLte _ _ _)
+    | kwUse (klongsWf_deleteLeaf _ _ _)
+    | kwUse (klongsWf_fresh)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem klongsWf_mtPutSegsDel :
+    ∀ (key : List Nat) (r : NodeId), KeepsKlongsWf (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro c w hv hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact klongsWf_mtSetValueDel r cv
+    | cons d rest' =>
+      intro c w hv hw
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      repeat' first
+        | wpSimplify
+        | kwCore
+        | kwUse (klongsWf_setNode _ _ _)
+        | kwUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem klongsWf_mtPutKvDel (key : Key) : KeepsKlongsWf (Mt.putKv (.del key)) := by
+  intro c w hv hw
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | kwCore
+    | kwUse (klongsWf_mtPutSegsDel _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_setNodeF (B : NodeId) (segRoot : NodeId) (cv : Nat) :
+    KeepsNE B (setNode segRoot cv false) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold setNode
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_descendLte _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_deleteLeaf (B : NodeId) (leaf : NodeId) (depth cv : Nat) :
+    KeepsNE B (deleteLeaf leaf depth cv) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_appendDeleteKlong _ _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_mtSetValueDel (B : NodeId) (segRoot : NodeId) (cv : Nat) :
+    KeepsNE B (Mt.setValue segRoot cv none) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_descendLte _ _ _ _)
+    | neUse (nex_deleteLeaf B _ _ _)
+    | neUse (nex_fresh _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem nex_mtPutSegsDel (B : NodeId) :
+    ∀ (key : List Nat) (r : NodeId), KeepsNE B (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r; intro E c w hv hw hn; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact nex_mtSetValueDel B r cv
+    | cons d rest' =>
+      intro E c w hv hw hn
+      have hpos := hv.pos
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      simp only [Option.isSome_none]
+      repeat' first
+        | wpSimplify
+        | neCore
+        | neUse (nex_setNodeF _ _ _)
+        | neUse (ih _)
+        | wpSplit
+        | split
+        | contradiction
+
+theorem nex_mtPutKvDel (B : NodeId) (key : Key) : KeepsNE B (Mt.putKv (.del key)) := by
+  intro E c w hv hw hn
+  have hpos := hv.pos
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | neCore
+    | neUse (nex_mtPutSegsDel B _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_deleteLeaf (leaf : NodeId) (depth cv : Nat) : KeepsEncoded (deleteLeaf leaf depth cv) := by
+  intro c w hv hw
+  unfold deleteLeaf
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_appendDeleteKlong _ _ _)
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_mtSetValueDel (segRoot : NodeId) (cv : Nat) :
+    KeepsEncoded (Mt.setValue segRoot cv none) := by
+  intro c w hv hw
+  unfold Mt.setValue
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_descendLte _ _ _)
+    | encUse (encoded_deleteLeaf _ _ _)
+    | encUse encoded_fresh
+    | wpSplit
+    | split
+    | contradiction
+
+theorem encoded_mtPutSegsDel :
+    ∀ (key : List Nat) (r : NodeId), (∀ c ∈ key, CompareValueOK c) →
+      KeepsEncoded (Mt.putSegs none key r) := by
+  intro key
+  induction key with
+  | nil => intro r _; intro c w hv hw; rw [Mt.putSegs.eq_1]; exact writerWP_throw _ _ _ _
+  | cons cv rest ih =>
+    intro r hs
+    cases rest with
+    | nil =>
+      rw [Mt.putSegs.eq_2]
+      exact encoded_mtSetValueDel r cv
+    | cons d rest' =>
+      intro c w hv hw
+      rw [Mt.putSegs.eq_3 none r cv (d :: rest') (by simp)]
+      have hcv : CompareValueOK cv := hs cv List.mem_cons_self
+      have hs' : ∀ c ∈ d :: rest', CompareValueOK c := fun c hc => hs c (List.mem_cons_of_mem _ hc)
+      repeat' first
+        | wpSimplify
+        | encCore
+        | encUse (encoded_setNode _ _ _ hcv)
+        | encUse (ih _ hs')
+        | wpSplit
+        | split
+        | contradiction
+
+theorem encoded_mtPutKvDel (key : Key) (hs : ∀ c ∈ key, CompareValueOK c) :
+    KeepsEncoded (Mt.putKv (.del key)) := by
+  intro c w hv hw
+  unfold Mt.putKv
+  repeat' first
+    | wpSimplify
+    | encCore
+    | encUse (encoded_mtPutSegsDel _ _ hs)
+    | wpSplit
+    | split
+    | contradiction
+
+/-! ## Each family for MT's put (today's) and delete -/
+
+theorem state_mtPutKv [inv : WriterStateInvariant] (op : Op) : KeepsState (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact state_putKv _
+  | del key => exact state_mtPutKvDel key
+
+theorem good_mtPutKv (B : NodeId) (op : Op) : KeepsGood B (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact good_putKv B _
+  | del key => exact good_mtPutKvDel B key
+
+theorem book_mtPutKv (B : NodeId) (op : Op) : KeepsBook B (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact book_putKv B _
+  | del key => exact book_mtPutKvDel B key
+
+theorem ptrs_mtPutKv (Old : NodeId → Prop) (op : Op) : KeepsPtrs Old (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact ptrs_putKv Old _
+  | del key => exact ptrs_mtPutKvDel Old key
+
+theorem takenP_mtPutKv (Pt : List NodeId → Prop) (op : Op) : KeepsTakenP Pt (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact takenP_putKv_put Pt key h
+  | del key => exact takenP_mtPutKvDel Pt key
+
+theorem klongsWf_mtPutKv (op : Op) : KeepsKlongsWf (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact klongsWf_putKv _
+  | del key => exact klongsWf_mtPutKvDel key
+
+theorem encoded_mtPutKv (op : Op) (hs : ∀ c ∈ op.key, CompareValueOK c) :
+    KeepsEncoded (Mt.putKv op) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact encoded_putKv _ hs
+  | del key => exact encoded_mtPutKvDel key hs
+
+theorem neBook_mtPutKv (B : NodeId) (op : Op) (c : Ctx) (w : W) (hv : ViewGood B c)
+    (hM : 2 ≤ c.p.M) (hw : CacheGood B c w) (hb : Book B c w) (hn : NEx [] w) :
+    WriterWP (Mt.putKv op) c w (fun _ v => CacheGood B c v ∧ Book B c v ∧ NEx [] v) := by
+  cases op with
+  | put key h => rw [mt_putKv_put]; exact nex_run_putKv B _ c w hv hM hw hb hn
+  | del key =>
+    refine writerWP_mono (writerWP_and (nex_mtPutKvDel B key [] c w hv hw hn)
+      (book_mtPutKvDel B key c w hv.ids hb)) ?_
+    rintro _ v ⟨⟨h1, h2⟩, h3, _⟩
+    exact ⟨h1, h3, h2⟩
+
+/-! ## The user's run: a fact every operation keeps holds at its end -/
+
+theorem userStep_ok' (op : Op) (c : Ctx) (w w1 : W) (b : Bool) (h : userStep op c w = .ok (b, w1)) :
+    putKv op c w = .ok (b, w1) ∧ w1.outside = [] := by
+  unfold userStep at h
+  obtain ⟨noop, u, h1, h2⟩ := (m_bind_ok _ _ _ _ _).mp h
+  obtain ⟨_, u', h3, h4⟩ := (m_bind_ok _ _ _ _ _).mp h2
+  obtain ⟨rfl, hout⟩ := boundsNow_ok _ _ _ _ h3
+  simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h4
+  obtain ⟨rfl, rfl⟩ := h4
+  exact ⟨h1, hout⟩
+
+theorem userRun_keeps (Inv : W → Prop) (c : Ctx) :
+    ∀ (ops : List Op), (∀ op ∈ ops, ∀ v, Inv v → WriterWP (putKv op) c v (fun _ v' => Inv v')) →
+      ∀ (w : W) (noops : List Bool) (w' : W), Inv w → ops.mapM userStep c w = .ok (noops, w') →
+        Inv w' ∧ (ops ≠ [] → w'.outside = []) := by
+  intro ops
+  induction ops with
+  | nil =>
+    intro _ w noops w' hw hrun
+    simp only [List.mapM_nil, pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+      Prod.mk.injEq] at hrun
+    obtain ⟨_, rfl⟩ := hrun
+    exact ⟨hw, fun h => absurd rfl h⟩
+  | cons op ops ih =>
+    intro hop w noops w' hw hrun
+    rw [List.mapM_cons] at hrun
+    obtain ⟨b, w1, h1, h2⟩ := (m_bind_ok _ _ _ _ _).mp hrun
+    obtain ⟨bs, w2, h3, h4⟩ := (m_bind_ok _ _ _ _ _).mp h2
+    simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+      Prod.mk.injEq] at h4
+    obtain ⟨_, rfl⟩ := h4
+    obtain ⟨hp1, hout1⟩ := userStep_ok' op c w w1 b h1
+    have hw1 := hop op List.mem_cons_self w hw b w1 hp1
+    obtain ⟨hw2, hout2⟩ := ih (fun o ho => hop o (List.mem_cons_of_mem _ ho)) w1 bs w2 hw1 h3
+    refine ⟨hw2, fun _ => ?_⟩
+    cases ops with
+    | nil =>
+      simp only [List.mapM_nil, pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+        Prod.mk.injEq] at h3
+      obtain ⟨_, rfl⟩ := h3
+      exact hout1
+    | cons o os => exact hout2 (by simp)
+
+/-- The books at the end of the user's run (B1's `EndW`, as `endW_fix` for a fix step). -/
+theorem endW_user (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (z : NodeId) (top : Top)
+    (ops : List Op) (noops : List Bool) (w : W) (hfresh : ∀ q ∈ P, q.1 < base)
+    (htimes : StructTimesLE P t) (hL : RunLinksOK p P t) (hEnc : ViewEncoded (viewOf P))
+    (hM : 2 ≤ p.M) (htop : topOf p (ctxAt p P t).view z = .ok top)
+    (hkw : ∀ op ∈ ops, keyWf op.key = true)
+    (hrun : ops.mapM userStep (ctxAt p P t) (wStart base top) = .ok (noops, w)) :
+    EndW p P (t + 1) base top w := by
+  have hB := putBase_at p P t base hfresh htimes hL
+  have hb0 := putBook_at p P t base hfresh htimes hL z top htop
+  let c := ctxAt p P t
+  have run := fun (Inv : W → Prop) (hop : ∀ op ∈ ops, ∀ v, Inv v → WriterWP (putKv op) c v
+    (fun _ v' => Inv v')) (h0 : Inv (wStart base top)) => (userRun_keeps Inv c ops hop _ _ _ h0 hrun).1
+  have hgood := run (CacheGood base c) (fun op _ v hv => good_mtPutKv base op c v hB.good hv) hb0.good
+  have hkwf := run WriterKlongsWf (fun op _ v hv => klongsWf_mtPutKv op c v hB.wf hv) hb0.klongs
+  have halloc := run ((allocatedIdsInvariant base).pred c)
+    (fun op _ v hv => @state_mtPutKv (allocatedIdsInvariant base) op c v hv) hb0.alloc
+  have hled := run (Ledger c) (fun op _ v hv => @state_mtPutKv ledgerInvariant op c v hv)
+    (show Ledger c (wStart base top) from
+      ⟨by intro nn hn; simp [wStart] at hn, by intro q hq; simp [wStart] at hq, by intro h; simp [wStart] at h⟩)
+  have hbook := run (Book base c) (fun op _ v hv =>
+    writerWP_mono (book_mtPutKv base op c v hB.good.ids hv) (fun _ _ h => h.1)) hb0.book
+  have htk := run (fun v => v.taken = []) (fun op _ v hv => takenP_mtPutKv (fun l => l = []) op c v hv) rfl
+  have hmn := run (MadeNodes c) (fun op _ v hv => @state_mtPutKv madeNodesInvariant op c v hv)
+    (show MadeNodes c (wStart base top) by intro m hm; simp [wStart] at hm)
+  have hcommit := run ((commitInvariant top).pred c)
+    (fun op _ v hv => @state_mtPutKv (commitInvariant top) op c v hv) hb0.commit
+  have hmd := run MadeData (fun op _ v hv => @state_mtPutKv madeDataInvariant op c v hv)
+    (show MadeData (wStart base top) by intro m hm; simp [wStart] at hm)
+  have hmk := run (MadeKinds c) (fun op _ v hv => @state_mtPutKv madeKindsInvariant op c v hv)
+    (show MadeKinds c (wStart base top) by intro m hm; simp [wStart] at hm)
+  have hpt := run (PtrsOK (fun y => (P.get? y).isSome = true) c) (fun op _ v hv =>
+    writerWP_mono (ptrs_mtPutKv _ op c v (viewPtrsOld_at p P t htimes hL.1) hv) (fun _ _ h => h.1))
+    (ptrs_start _ c base top (topOf_old p P t htimes hL.1 z top htop))
+  have hne := run (fun v => CacheGood base c v ∧ Book base c v ∧ NEx [] v)
+    (fun op _ v hv => neBook_mtPutKv base op c v hB.good hM hv.1 hv.2.1 hv.2.2)
+    ⟨hb0.good, hb0.book, by intro q hq; simp [wStart] at hq⟩
+  have hen := run WriterEncoded (fun op hop v hv => encoded_mtPutKv op
+    (keyWf_pairs_encoded op.key (hkw op hop)) c v (viewEncoded_rootless p P t htimes hEnc) hv)
+    (show WriterEncoded (wStart base top) from
+      ⟨by intro q hq; simp [wStart] at hq, by intro q hq; simp [wStart] at hq⟩)
+  have hout : w.outside = [] := by
+    by_cases hops : ops = []
+    · subst hops
+      simp only [List.mapM_nil, pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq,
+        Prod.mk.injEq] at hrun
+      obtain ⟨_, rfl⟩ := hrun
+      rfl
+    · exact (userRun_keeps (fun _ => True) c ops (fun _ _ _ _ _ _ _ => trivial) _ _ _ trivial hrun).2 hops
+  exact ⟨hgood, hkwf, halloc, hled, hbook, htk, hout, hmn, hcommit, hmd, hmk, hpt,
+    fun q hq h => by have := hne.2.2 q hq h; simp at this, hen⟩
+
+/-- B1's lift after a user subtransaction, by proof. -/
+theorem t_liftUser (p : Params) (hp : MergeParamsOK p) : LiftUser p := by
+  intro s tx noops w hs hI hpend hsorted hwf hfresh hrun
+  obtain ⟨hsub, htimes, hK, hD, hEnc, _⟩ := hI
+  obtain ⟨z, top, hz, htop, hmap⟩ := runUser_ok p s.P s.t tx.base tx.ops noops w hrun
+  have hroot0 := rootAt_of_top p s.P s.t htimes z top hz htop
+  have hkw : ∀ op ∈ tx.ops, keyWf op.key = true := by
+    intro op hop
+    have := List.all_eq_true.mp hwf op hop
+    simpa using this
+  have hM : 2 ≤ p.M := by have := hp.2.2.2.1; omega
+  exact liftOK_of_end p s.P s.t tx.base top w hfresh htimes hsub.links hD hK hEnc (reached_root p s hs)
+    hroot0 (endW_user p s.P s.t tx.base z top tx.ops noops w hfresh htimes hsub.links hEnc hM htop hkw
+      hmap)
+
+/-- The top with the user run's lift proved: what is left are the full nodes' cascades, the puts
+with holes, the two frames and the user run's parts. -/
+theorem t_visible_userL (p : Params) :
+    MergeParamsOK p → p.merges = true → (2 ≤ p.theta ∨ p.theta = 0) →
+    PutWH p → DelWFull p → FrameUser p → PartsUser p →
+    MergeFullLive p → MergeFullEmpty p → FixWUnlinkFull p → FixWCollapseSeg p →
+    FrameW p → VisibleOK p :=
+  fun hp hmg hth hPut hDF hFU hPa hM hE hUf hSeg hFr =>
+    t_visible_user p hp hmg hth hPut hDF hFU hPa (t_liftUser p hp) hM hE hUf hSeg hFr
+
+end SIS.Tree.Mt

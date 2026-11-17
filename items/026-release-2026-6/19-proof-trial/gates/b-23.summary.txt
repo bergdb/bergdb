@@ -1,0 +1,43 @@
+head: 508e4369 026-19: the user subtransaction reduced (t_userStep_of, MtUser.lean): the run's induction o; 2026-11-17 00:49
+forbidden: 0 lines
+main's lean/ unchanged: 30 files added; MT's four files as 026-17-mt-trial
+lake build: exit 0, Build completed successfully (704 jobs), real 0m0.288s
+lake build SIS.Tree.Mt SIS.Tree.MtBooks SIS.Tree.MtBridge SIS.Tree.MtCollapse SIS.Tree.MtCollapseW SIS.Tree.MtDead SIS.Tree.MtDone SIS.Tree.MtFit SIS.Tree.MtHeights SIS.Tree.MtKinds SIS.Tree.MtKindsW SIS.Tree.MtLift SIS.Tree.MtLiftProof SIS.Tree.MtLiveTop SIS.Tree.MtMerge SIS.Tree.MtMergeEmpty SIS.Tree.MtMergeLive SIS.Tree.MtParts SIS.Tree.MtPath SIS.Tree.MtReaders SIS.Tree.MtRun SIS.Tree.MtStep SIS.Tree.MtSub SIS.Tree.MtTop SIS.Tree.MtUnlink SIS.Tree.MtUnlinkW SIS.Tree.MtUser SIS.Tree.MtUserDel : exit 0, real 0m0.176s
+audit: 47 theorems t_..., 47 on the standard axioms only: t_delWB_of t_doneOK t_fitFix t_fixLiveW_merge t_fixStepOK_of t_fixStep_collapse_of t_fixStep_merge_of t_fixStep_unlink_of t_fixWEmpty_of t_fixWLive_merge t_fixWLive_room t_fixW_collapse_of t_fixW_merge_of t_fixW_unlink_of t_full_of_sub t_htEnd_merge t_kindsHtEnd_merge t_liftFix_collapse t_liftFix_merge t_liftFix_unlink t_liveCountsH_none t_partsFix_collapse t_partsFix_merge t_partsFix_unlink t_partsKHD_merge t_partsKH_merge t_reached_inv t_scans_of_full t_sub_of_full t_userStep_of t_visible t_visible_A3 t_visible_A4 t_visible_A5 t_visible_HtW t_visible_KH t_visible_KHW t_visible_best t_visible_collapse t_visible_fixW t_visible_merge t_visible_mergeKHD t_visible_now t_visible_now2 t_visible_unlinkRoom t_visible_user t_visible_writer 
+fixed statements: git diff P0b (c778c01794fc3bb7d87cf7fa63d2bed59da87a48) -- MtRun.lean MtSub.lean: 17 lines changed
+diff --git a/lean/SIS/Tree/MtSub.lean b/lean/SIS/Tree/MtSub.lean
+index 945bedc3..493d6cd8 100644
+--- a/lean/SIS/Tree/MtSub.lean
++++ b/lean/SIS/Tree/MtSub.lean
+@@ -87,13 +87,28 @@ def FixStart (c : Ctx) (base : View BVal) (w : W) : Prop :=
+ 
+ /-- (b), at the writer's state: a fix step of kind C keeps `PutInv`, the ranges
+ and every reading, and leaves the live counts' holes where they were or on its
+-key's path. The interface between the two provers. -/
++key's path. The interface between the two provers. Two hypotheses added by prover B
++on 2026-11-16 (A4): the writer's books at the start (`PutBase`, `PutBook`, which
++give `PutInvG` after the step), and the state after the step fitting the fuel
++(`SegFits`, which `writerWP_merge_get_inv` asks to keep the readings); both hold at
++the first state of a fix step from a reached state (`putBase_at`, `putBook_at`,
++and the heights after the step, `t_fitFix_*`). A third added by prover B on 2026-11-17
++(tier 3, the collapse): the state before the step fitting the fuel (`SegFits`, which
++`getFromR_collapse` asks; from the structure's heights, `segFits_start`). A fourth, the same
++day: the live children of a reached inner node exist (`InnerChildrenExist`, from the
++structure's kinds and pointers, `innerChildren_of_kinds`); without it a collapse of the space
++root at the empty key, which reads no child, could make a root that is no node. -/
+ def FixW (p : Params) (C : Fix → Prop) : Prop :=
+   ∀ (key : Key) (c : Ctx) (base : View BVal) (w : W) (H : NodeId → Prop), c.p = p →
+     ViewCoherent c base → FixStart c base w → PutInv c base w → PutInvG c base w →
+     RangeOrder (wNode p base w) c.i w.top.rootKey →
+     LiveCountsH p (wNode p base w) c.i w.top.rootKey H →
+     (∀ f w1, (do path key; target : M Fix) c w = .ok (f, w1) → C f) →
++    (∃ B top0, PutBase c base B ∧ PutBook c B top0 w) →
++    (∀ w', fixStep key c w = .ok (true, w') →
++      SegFits (wNode p base w') c.i (p.fuel - 1) w'.top.rootKey) →
++    SegFits (wNode p base w) c.i (p.fuel - 1) w.top.rootKey →
++    InnerChildrenExist (wNode p base w) c.i w.top.rootKey →
+     WriterWP (fixStep key) c w (fun r w' => r = true →
+       PutInv c base w' ∧ PutInvG c base w' ∧
+       RangeOrder (wNode p base w') c.i w'.top.rootKey ∧
+lines: 12356 in the trial's files (SIS/Tree/MtBooks.lean SIS/Tree/MtBridge.lean SIS/Tree/MtCollapse.lean SIS/Tree/MtCollapseW.lean SIS/Tree/MtDead.lean SIS/Tree/MtDone.lean SIS/Tree/MtFit.lean SIS/Tree/MtHeights.lean SIS/Tree/MtKinds.lean SIS/Tree/MtKindsW.lean SIS/Tree/MtLift.lean SIS/Tree/MtLiftProof.lean SIS/Tree/MtLiveTop.lean SIS/Tree/MtMerge.lean SIS/Tree/MtMergeEmpty.lean SIS/Tree/MtMergeLive.lean SIS/Tree/MtParts.lean SIS/Tree/MtPath.lean SIS/Tree/MtReaders.lean SIS/Tree/MtRun.lean SIS/Tree/MtStep.lean SIS/Tree/MtSub.lean SIS/Tree/MtTop.lean SIS/Tree/MtUnlink.lean SIS/Tree/MtUnlinkW.lean SIS/Tree/MtUser.lean SIS/Tree/MtUserDel.lean )
+GATE PASS

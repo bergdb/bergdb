@@ -1,0 +1,640 @@
+/-
+The proof trial of 026-18 (bergdb 026-19, step E): the driver's end for a key (`DoneOK`).
+When a fix step for the first pending key finds no fix (`runFix` returns false), every node
+on the key's access path meets the three live counts, so the key leaves the pending keys
+and I_sub holds without its holes. The path that `Mt.path` builds is a chain from the space
+root that holds every node a reading of the key visits (`fromVisits`); `Mt.target`'s walk
+returning `Fix.none` gives the counts at every node of the chain.
+-/
+import SIS.Tree.MtLiftProof
+import SIS.Tree.MtStep
+
+set_option autoImplicit false
+
+namespace SIS.Tree.Mt
+
+open SIS SIS.Check SIS.Tree
+
+/-! ## The path that `path` builds -/
+
+/-- A key access path from r: its first node is r, each next node a live child of the one
+before. -/
+def PathChain (N : NodeId → Option KNode) (i : Time) (r : NodeId) (L : List (Option Nat × NodeId)) :
+    Prop :=
+  (∀ e, L[0]? = some e → e.2 = r) ∧
+  ∀ d e e', L[d]? = some e → L[d + 1]? = some e' → ∃ n c, N e.2 = some n ∧ (c, e'.2) ∈ n.liveAt i
+
+theorem pathChain_snoc (N : NodeId → Option KNode) (i : Time) (r : NodeId)
+    (L : List (Option Nat × NodeId)) (h : PathChain N i r L) (x : NodeId)
+    (hl : (L.getLast?).map (·.2) = some x) (a : Option Nat) (y : NodeId)
+    (hy : ∃ n c, N x = some n ∧ (c, y) ∈ n.liveAt i) : PathChain N i r (L ++ [(a, y)]) := by
+  have hne : L ≠ [] := by intro h0; subst h0; simp at hl
+  obtain ⟨h0, hs⟩ := h
+  refine ⟨?_, ?_⟩
+  · intro e he
+    apply h0 e
+    rw [List.getElem?_append_left (by cases L with | nil => exact absurd rfl hne | cons _ _ => simp)] at he
+    exact he
+  · intro d e e' he he'
+    by_cases hd : d + 1 < L.length
+    · rw [List.getElem?_append_left (by omega)] at he
+      rw [List.getElem?_append_left hd] at he'
+      exact hs d e e' he he'
+    · have hdl : d + 1 = L.length := by
+        have := (List.getElem?_eq_some_iff.mp he').1
+        simp at this
+        omega
+      rw [List.getElem?_append_left (by omega)] at he
+      rw [List.getElem?_append_right (by omega), hdl, Nat.sub_self] at he'
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at he'
+      subst he'
+      have hlast : L.getLast? = L[d]? := by
+        rw [List.getLast?_eq_getElem?]
+        congr 1
+        omega
+      rw [hlast, he] at hl
+      simp only [Option.map_some, Option.some.injEq] at hl
+      rw [hl]
+      exact hy
+
+theorem getNode_path (x : NodeId) (c : Ctx) (w : W) :
+    WriterWP (getNode x) c w (fun _ v => v.path = w.path) := by
+  unfold getNode
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · simp only [writerWP_pure]
+  · simp only [writerWP_bind, writerWP_read]
+    split
+    · split
+      · exact writerWP_throw _ _ _ _
+      · simp only [writerWP_bind, writerWP_set, writerWP_pure]
+    · exact writerWP_throw _ _ _ _
+
+theorem getNode_rp (x : NodeId) (c : Ctx) (w : W) (base : View BVal) (hvc : ViewCoherent c base) :
+    WriterWP (getNode x) c w (fun n v => ReadsAs c.p base w v ∧ v.path = w.path ∧
+      (w.taken.contains x = false → wNode c.p base w x = some n)) :=
+  fun n v h => ⟨(writerWP_getNode_reads x c w base hvc n v h).1, getNode_path x c w n v h,
+    (writerWP_getNode_reads x c w base hvc n v h).2.2⟩
+
+theorem pathAdd_rp (a : Option Nat) (y : NodeId) (c : Ctx) (w : W) (base : View BVal) :
+    WriterWP (pathAdd a y) c w (fun _ v => ReadsAs c.p base w v ∧ v.path = w.path ++ [(a, y)]) := by
+  simp only [pathAdd, writerWP_modify]
+  refine ⟨⟨?_, ?_, ?_, ?_, ?_⟩, ?_⟩ <;> first | rfl | trivial | (funext y; rfl)
+
+theorem mem_path_of_last (L : List (Option Nat × NodeId)) (x : NodeId)
+    (hl : (L.getLast?).map (·.2) = some x) : x ∈ L.map (·.2) := by
+  cases h : L.getLast? with
+  | none => rw [h] at hl; cases hl
+  | some e =>
+    rw [h] at hl
+    simp only [Option.map_some, Option.some.injEq] at hl
+    subst hl
+    exact List.mem_map.mpr ⟨e, List.mem_of_getLast? h, rfl⟩
+
+/-- `descendLte` from the path's last node x: the path grows by a chain to the segment
+leaf, which is its new last node, and holds every node that a search of cv from x visits. -/
+theorem descendLte_path (cv : Nat) (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (r : NodeId) :
+    ∀ (f : Nat) (x : NodeId) (w : W), PathChain (wNode c.p base w) c.i r w.path →
+      (w.path.getLast?).map (·.2) = some x → (∀ y, w.taken.contains y = false) →
+      WriterWP (descendLte cv f x) c w (fun L v => ReadsAs c.p base w v ∧
+        PathChain (wNode c.p base w) c.i r v.path ∧ (v.path.getLast?).map (·.2) = some L ∧
+        (∃ ext, v.path = w.path ++ ext) ∧
+        (∀ q ∈ eqVisits (wNode c.p base w) c.i cv f x, q.1 ∈ v.path.map (·.2)) ∧
+        ∃ n, wNode c.p base w L = some n ∧ n.leaf = true ∧
+          getEqR (wNode c.p base w) c.i cv f x = (n.searchEq c.i cv).map (·.y)) := by
+  intro f
+  induction f with
+  | zero => intro x w _ _ _; exact writerWP_throw _ _ _ _
+  | succ f ih =>
+    intro x w hch hlast ht
+    unfold descendLte
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (getNode_rp x c w base hvc) ?_
+    intro n v ⟨hrv, hpv, hx'⟩
+    have hx := hx' (ht x)
+    have hxm := mem_path_of_last w.path x hlast
+    split
+    · rename_i hleaf
+      simp only [writerWP_pure]
+      refine ⟨hrv, by rw [hpv]; exact hch, by rw [hpv]; exact hlast, ⟨[], by rw [hpv]; simp⟩, ?_,
+        n, hx, hleaf, by simp [getEqR, hx, hleaf]⟩
+      intro q hq
+      simp only [eqVisits, hx, hleaf, ↓reduceIte, List.mem_cons, List.not_mem_nil, or_false] at hq
+      subst hq
+      rw [hpv]
+      exact hxm
+    · rename_i hleaf
+      split
+      · exact writerWP_throw _ _ _ _
+      · rename_i fd hfd
+        simp only [writerWP_bind]
+        refine writerWP_mono (pathAdd_rp (some fd.c) fd.y c v base) ?_
+        intro _ v1 ⟨hr1, hp1⟩
+        have hr01 := ReadsAs.trans _ _ _ _ _ hrv hr1
+        have hch1 : PathChain (wNode c.p base v1) c.i r v1.path := by
+          rw [hr01.1, hp1, hpv]
+          exact pathChain_snoc _ _ _ _ hch x hlast _ _ ⟨n, fd.c, hx, KNode.searchLte_mem n c.i cv fd hfd⟩
+        have hlast1 : (v1.path.getLast?).map (·.2) = some fd.y := by rw [hp1]; simp
+        have ht1 : ∀ y, v1.taken.contains y = false := by intro y; rw [hr01.2.2.1]; exact ht y
+        refine writerWP_mono (ih fd.y v1 hch1 hlast1 ht1) ?_
+        intro L v2 ⟨hr2, hch2, hlast2, ⟨ext, hext⟩, hcov2, m, hm, hml, hget⟩
+        rw [hr01.1] at hch2 hcov2 hm hget
+        refine ⟨ReadsAs.trans _ _ _ _ _ hr01 hr2, hch2, hlast2, ⟨(some fd.c, fd.y) :: ext, ?_⟩, ?_, m, hm,
+          hml, ?_⟩
+        · rw [hext, hp1, hpv]; simp
+        · intro q hq
+          simp only [eqVisits, hx, hleaf, Bool.false_eq_true, ↓reduceIte, hfd, List.mem_cons] at hq
+          rcases hq with hq | hq
+          · subst hq
+            rw [hext, hp1, hpv]
+            simp only [List.map_append, List.mem_append]
+            exact Or.inl (Or.inl hxm)
+          · exact hcov2 q hq
+        · simp only [getEqR, hx, hleaf, Bool.false_eq_true, ↓reduceIte, hfd]
+          exact hget
+
+/-- `pathGo` from the path's last node x: the path grows by a chain and holds every node that a
+reading of the key's segments from x visits. -/
+theorem pathGo_path (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (r : NodeId) :
+    ∀ (key : List Nat) (x : NodeId) (w : W), PathChain (wNode c.p base w) c.i r w.path →
+      (w.path.getLast?).map (·.2) = some x → (∀ y, w.taken.contains y = false) →
+      (∀ y n, wNode c.p base w y = some n → klongsWf n.ks = true) →
+      WriterWP (pathGo key x) c w (fun _ v => ReadsAs c.p base w v ∧
+        PathChain (wNode c.p base w) c.i r v.path ∧ (∃ ext, v.path = w.path ++ ext) ∧
+        ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key x, q.1 ∈ v.path.map (·.2)) := by
+  intro key
+  induction key with
+  | nil =>
+    intro x w hch _ _ _
+    simp only [pathGo, writerWP_pure]
+    exact ⟨ReadsAs.refl _ _ _, hch, ⟨[], by simp⟩, by simp [fromVisits]⟩
+  | cons cv rest ih =>
+    intro x w hch hlast ht hwf
+    unfold pathGo
+    simp only [writerWP_bind, writerWP_read]
+    refine writerWP_mono (descendLte_path cv c base hvc r c.p.fuel x w hch hlast ht) ?_
+    intro L v ⟨hrv, hchv, hlastv, ⟨ext, hext⟩, hcov, m, hm, hml, hget⟩
+    cases rest with
+    | nil =>
+      simp only [List.isEmpty_nil, ↓reduceIte, writerWP_pure]
+      exact ⟨hrv, hchv, ⟨ext, hext⟩, by simpa [fromVisits] using hcov⟩
+    | cons d rest' =>
+      simp only [List.isEmpty_cons, Bool.false_eq_true, ↓reduceIte, writerWP_bind]
+      have htv : ∀ y, v.taken.contains y = false := by intro y; rw [hrv.2.2.1]; exact ht y
+      refine writerWP_mono (getNode_rp L c v base hvc) ?_
+      intro n' v1 ⟨hr1, hp1, hn'⟩
+      have hn1 := hn' (htv L)
+      rw [hrv.1, hm] at hn1
+      cases hn1
+      have hr01 := ReadsAs.trans _ _ _ _ _ hrv hr1
+      split
+      · rename_i hse
+        simp only [writerWP_pure]
+        refine ⟨hr01, by rw [hp1]; exact hchv, ⟨ext, by rw [hp1]; exact hext⟩, ?_⟩
+        intro q hq
+        simp only [fromVisits, hget, hse, Option.map_none, List.append_nil] at hq
+        rw [hp1]
+        exact hcov q hq
+      · rename_i fd hse
+        simp only [writerWP_bind]
+        refine writerWP_mono (pathAdd_rp (some fd.c) fd.y c v1 base) ?_
+        intro _ v2 ⟨hr2, hp2⟩
+        have hr02 := ReadsAs.trans _ _ _ _ _ hr01 hr2
+        have hlink : (cv, fd.y) ∈ m.liveAt c.i := KNode.searchEq_mem m c.i cv fd (hwf L m hm) hse
+        have hch2 : PathChain (wNode c.p base v2) c.i r v2.path := by
+          rw [hr02.1, hp2, hp1]
+          exact pathChain_snoc _ _ _ _ hchv L hlastv _ _ ⟨m, cv, hm, hlink⟩
+        have hlast2 : (v2.path.getLast?).map (·.2) = some fd.y := by rw [hp2]; simp
+        have ht2 : ∀ y, v2.taken.contains y = false := by intro y; rw [hr02.2.2.1]; exact ht y
+        have hwf2 : ∀ y n, wNode c.p base v2 y = some n → klongsWf n.ks = true := by
+          intro y n hy; rw [hr02.1] at hy; exact hwf y n hy
+        refine writerWP_mono (ih fd.y v2 hch2 hlast2 ht2 hwf2) ?_
+        intro _ v3 ⟨hr3, hch3, ⟨ext3, hext3⟩, hcov3⟩
+        rw [hr02.1] at hch3 hcov3
+        refine ⟨ReadsAs.trans _ _ _ _ _ hr02 hr3, hch3, ⟨ext ++ (some fd.c, fd.y) :: ext3, ?_⟩, ?_⟩
+        · rw [hext3, hp2, hp1, hext]; simp
+        · intro q hq
+          simp only [fromVisits, hget, hse, Option.map_some, List.mem_append] at hq
+          rcases hq with hq | hq
+          · have := hcov q hq
+            rw [hext3, hp2, hp1]
+            simp only [List.map_append, List.mem_append]
+            exact Or.inl (Or.inl this)
+          · exact hcov3 q hq
+
+/-- `path key`: a chain from the space root that holds every node a reading of the key visits. -/
+theorem path_path (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) (key : Key) (w : W)
+    (ht : ∀ y, w.taken.contains y = false)
+    (hwf : ∀ y n, wNode c.p base w y = some n → klongsWf n.ks = true) :
+    WriterWP (path key) c w (fun _ v => ReadsAs c.p base w v ∧
+      PathChain (wNode c.p base w) c.i w.top.rootKey v.path ∧
+      ∀ q ∈ fromVisits (wNode c.p base w) c.i c.p.fuel key w.top.rootKey, q.1 ∈ v.path.map (·.2)) := by
+  unfold path findRoot
+  simp only [pathClear, pathAdd, writerWP_bind, writerWP_modify, writerWP_get, writerWP_pure]
+  let w1 : W := { w with path := [(none, w.top.rootKey)] }
+  have hr1 : ReadsAs c.p base w w1 := ⟨by funext y; rfl, rfl, rfl, rfl, rfl⟩
+  have hch1 : PathChain (wNode c.p base w1) c.i w.top.rootKey w1.path := by
+    refine ⟨?_, ?_⟩
+    · intro e he
+      simp only [w1, List.getElem?_cons_zero, Option.some.injEq] at he
+      subst he; rfl
+    · intro d e e' _ he'
+      simp [w1] at he'
+  have h := pathGo_path c base hvc w.top.rootKey key w.top.rootKey w1 hch1 (by simp [w1]) ht
+    (by intro y n hy; rw [hr1.1] at hy; exact hwf y n hy)
+  refine writerWP_mono h ?_
+  intro _ v ⟨hrv, hch, _, hcov⟩
+  rw [hr1.1] at hch hcov
+  exact ⟨ReadsAs.trans _ _ _ _ _ hr1 hrv, hch, hcov⟩
+
+/-! ## `target`'s walk returning no fix -/
+
+/-- Whether the node at depth j of the path is a segment root, as `targetGo` reads it. -/
+def isRootAt (N : NodeId → Option KNode) (L : List (Option Nat × NodeId)) : Nat → Bool
+  | 0 => true
+  | e + 1 => match L[e]? with
+    | some q => match N q.2 with
+      | some qn => qn.leaf
+      | none => false
+    | none => false
+
+/-- What `targetGo` saw at depth j when it passed it. -/
+def PassOK (p : Params) (N : NodeId → Option KNode) (L : List (Option Nat × NodeId)) (j : Nat) : Prop :=
+  ∃ e xn, L[j]? = some e ∧ N e.2 = some xn ∧
+    (xn.leaf = false → xn.cnt ≠ 0) ∧
+    (isRootAt N L j = true → xn.leaf = true → xn.cnt = 0 → j = 0) ∧
+    (isRootAt N L j = true → xn.leaf = false → xn.cnt ≠ 1) ∧
+    (isRootAt N L j = false → xn.cnt < p.mergeBelow →
+      ∃ e' qn, L[j - 1]? = some e' ∧ N e'.2 = some qn ∧ qn.cnt < 2)
+
+theorem pathNode_wp (d : Nat) (c : Ctx) (w : W) (post : NodeId → W → Prop)
+    (h : ∀ e, w.path[d]? = some e → post e.2 w) : WriterWP (pathNode d) c w post := by
+  unfold pathNode
+  simp only [writerWP_bind, writerWP_get]
+  split
+  · rename_i e he
+    simp only [writerWP_pure]
+    exact h e he
+  · exact writerWP_throw _ _ _ _
+
+theorem targetGo_none (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base) :
+    ∀ (d : Nat) (w : W), (∀ y, w.taken.contains y = false) →
+      WriterWP (targetGo d) c w (fun f _ => f = Fix.none →
+        ∀ j < d, PassOK c.p (wNode c.p base w) w.path j) := by
+  intro d
+  induction d with
+  | zero => intro w _; simp only [targetGo, writerWP_pure]; intro _ j hj; omega
+  | succ d ih =>
+    intro w ht
+    rw [targetGo]
+    simp only [writerWP_bind, writerWP_read]
+    apply pathNode_wp
+    intro e he
+    refine writerWP_mono (getNode_rp e.2 c w base hvc) ?_
+    intro xn v ⟨hrv, hpv, hxn'⟩
+    have hxn := hxn' (ht e.2)
+    have htv : ∀ y, v.taken.contains y = false := by intro y; rw [hrv.2.2.1]; exact ht y
+    -- the walk goes on at depth d - 1 from a state that reads as w
+    have finish : ∀ v', ReadsAs c.p base w v' → v'.path = w.path →
+        PassOK c.p (wNode c.p base w) w.path d →
+        WriterWP (targetGo d) c v' (fun f _ => f = Fix.none →
+          ∀ j < d + 1, PassOK c.p (wNode c.p base w) w.path j) := by
+      intro v' hr hp hpass
+      have ht' : ∀ y, v'.taken.contains y = false := by intro y; rw [hr.2.2.1]; exact ht y
+      refine writerWP_mono (ih v' ht') ?_
+      intro f _ h hf j hj
+      by_cases hjd : j < d
+      · have := h hf j hjd
+        rw [hr.1, hp] at this
+        exact this
+      · have : j = d := by omega
+        subst this
+        exact hpass
+    split
+    · simp only [writerWP_bind]
+      exact writerWP_throw _ _ _ _
+    · rename_i hne
+      have hne' : xn.leaf = false → xn.cnt ≠ 0 := by
+        intro hl h0
+        apply hne
+        simp [hl, h0]
+      cases d with
+      | zero =>
+        simp only [writerWP_bind, writerWP_pure]
+        have hroot : isRootAt (wNode c.p base w) w.path 0 = true := rfl
+        rw [if_pos trivial]
+        by_cases hl : xn.leaf = true
+        · rw [if_pos hl]
+          have h00 : ¬ ((xn.cnt == 0 && 0 != 0) = true) := by simp
+          rw [if_neg h00]
+          refine finish v hrv hpv ⟨e, xn, he, hxn, hne', fun _ _ _ => rfl, ?_, ?_⟩
+          · intro _ hl'; rw [hl] at hl'; cases hl'
+          · intro h; rw [hroot] at h; cases h
+        · rw [if_neg hl]
+          by_cases hc : (xn.cnt == 1) = true
+          · rw [if_pos hc]; simp only [writerWP_pure]; intro h; cases h
+          · rw [if_neg hc]
+            refine finish v hrv hpv ⟨e, xn, he, hxn, hne', fun _ _ _ => rfl, ?_, ?_⟩
+            · intro _ _ h1; apply hc; simp [h1]
+            · intro h; rw [hroot] at h; cases h
+      | succ e1 =>
+        simp only [writerWP_bind, writerWP_pure]
+        apply pathNode_wp
+        intro e' he'
+        rw [hpv] at he'
+        refine writerWP_mono (getNode_rp e'.2 c v base hvc) ?_
+        intro qn v2 ⟨hr2, hp2, hqn'⟩
+        have hqn := hqn' (htv e'.2)
+        rw [hrv.1] at hqn
+        have hr02 := ReadsAs.trans _ _ _ _ _ hrv hr2
+        have hp02 : v2.path = w.path := hp2.trans hpv
+        have hroot : isRootAt (wNode c.p base w) w.path (e1 + 1) = qn.leaf := by
+          simp [isRootAt, he', hqn]
+        by_cases hql : qn.leaf = true
+        · rw [if_pos hql]
+          by_cases hl : xn.leaf = true
+          · rw [if_pos hl]
+            by_cases hc : (xn.cnt == 0 && e1 + 1 != 0) = true
+            · rw [if_pos hc]; simp only [writerWP_pure]; intro h; cases h
+            · rw [if_neg hc]
+              refine finish v2 hr02 hp02 ⟨e, xn, he, hxn, hne', ?_, ?_, ?_⟩
+              · intro _ _ h0; exfalso; apply hc; simp [h0]
+              · intro _ hl'; rw [hl] at hl'; cases hl'
+              · intro h; rw [hroot, hql] at h; cases h
+          · rw [if_neg hl]
+            by_cases hc : (xn.cnt == 1) = true
+            · rw [if_pos hc]; simp only [writerWP_pure]; intro h; cases h
+            · rw [if_neg hc]
+              refine finish v2 hr02 hp02 ⟨e, xn, he, hxn, hne', ?_, ?_, ?_⟩
+              · intro _ hl'; exact absurd hl' hl
+              · intro _ _ h1; apply hc; simp [h1]
+              · intro h; rw [hroot, hql] at h; cases h
+        · rw [if_neg hql]
+          have hql' : qn.leaf = false := by simpa using hql
+          by_cases hlt : xn.cnt < c.p.mergeBelow
+          · rw [if_pos hlt]
+            by_cases hq2 : 2 ≤ qn.cnt
+            · rw [if_pos hq2]; simp only [writerWP_pure]; intro h; cases h
+            · rw [if_neg hq2]
+              simp only [writerWP_bind]
+              rw [writerWP_note_iff]
+              refine finish _ (ReadsAs.trans _ _ _ _ _ hr02 ⟨by funext y; rfl, rfl, rfl, rfl, rfl⟩)
+                hp02 ⟨e, xn, he, hxn, hne', ?_, ?_, ?_⟩
+              · intro h; rw [hroot, hql'] at h; cases h
+              · intro h; rw [hroot, hql'] at h; cases h
+              · intro _ _
+                exact ⟨e', qn, he', hqn, by omega⟩
+          · rw [if_neg hlt]
+            refine finish v2 hr02 hp02 ⟨e, xn, he, hxn, hne', ?_, ?_, ?_⟩
+            · intro h; rw [hroot, hql'] at h; cases h
+            · intro h; rw [hroot, hql'] at h; cases h
+            · intro _ h; exact absurd h hlt
+
+/-! ## From the walk to the live counts -/
+
+/-- With m at least 2, a node that is no segment root has m live klongs or more: else the
+walk merges it, or passes it over as an only child and finds its parent under the fill
+or a root to collapse. -/
+theorem passOK_fill (p : Params) (hm : 2 ≤ p.mergeBelow) (N : NodeId → Option KNode)
+    (L : List (Option Nat × NodeId)) (hP : ∀ j < L.length, PassOK p N L j) :
+    ∀ j, j < L.length → ∀ e xn, L[j]? = some e → N e.2 = some xn →
+      isRootAt N L j = false → p.mergeBelow ≤ xn.cnt := by
+  intro j
+  induction j with
+  | zero => intro _ e xn _ _ hroot; simp [isRootAt] at hroot
+  | succ e1 ih =>
+    intro hj e xn he hxn hroot
+    obtain ⟨e0, xn0, he0, hxn0, hne, _, _, hpass⟩ := hP (e1 + 1) hj
+    rw [he] at he0; cases he0
+    rw [hxn] at hxn0; cases hxn0
+    refine Nat.le_of_not_lt (fun hlt' => ?_)
+    obtain ⟨e', qn, he', hqn, hq2⟩ := hpass hroot hlt'
+    simp only [Nat.add_sub_cancel] at he'
+    have hql : qn.leaf = false := by
+      simpa [isRootAt, he', hqn] using hroot
+    have he1 : e1 < L.length := by omega
+    obtain ⟨e2, qn2, he2, hqn2, hne2, _, hcol, _⟩ := hP e1 he1
+    rw [he'] at he2; cases he2
+    rw [hqn] at hqn2; cases hqn2
+    have hq1 : qn.cnt = 1 := by have := hne2 hql; omega
+    cases hr1 : isRootAt N L e1 with
+    | true => exact hcol hr1 hql hq1
+    | false =>
+      have := ih he1 e' qn he' hqn hr1
+      omega
+
+/-- A node of the path is reached with the flags that `targetGo` reads. -/
+theorem pathChain_fReach (N : NodeId → Option KNode) (i : Time) (r : NodeId)
+    (L : List (Option Nat × NodeId)) (hch : PathChain N i r L) :
+    ∀ j e, L[j]? = some e → ∃ s, FReach N i r e.2 (isRootAt N L j) s := by
+  intro j
+  induction j with
+  | zero =>
+    intro e he
+    rw [hch.1 e he]
+    exact ⟨true, FReach.root⟩
+  | succ e1 ih =>
+    intro e he
+    have hlt : e1 + 1 < L.length := (List.getElem?_eq_some_iff.mp he).1
+    obtain ⟨e', he'⟩ : ∃ e', L[e1]? = some e' := ⟨L[e1], List.getElem?_eq_getElem (by omega)⟩
+    obtain ⟨s1, hs1⟩ := ih e' he'
+    obtain ⟨n, c, hn, hc⟩ := hch.2 e1 e' e he' he
+    have hroot : isRootAt N L (e1 + 1) = n.leaf := by simp [isRootAt, he', hn]
+    rw [hroot]
+    cases hl : n.leaf with
+    | true => exact ⟨false, FReach.seg e'.2 _ _ n c e.2 hs1 hn hl hc⟩
+    | false => exact ⟨s1, FReach.inner e'.2 _ _ n c e.2 hs1 hn hl hc⟩
+
+/-- In a tree a node is reached with one pair of flags. -/
+theorem fReach_flags (N : NodeId → Option KNode) (i : Time) (r : NodeId) (hT : TreeOK N i r) :
+    ∀ x b s, FReach N i r x b s → ∀ b' s', FReach N i r x b' s' → b = b' ∧ s = s' := by
+  intro x b s h
+  induction h with
+  | root =>
+    intro b' s' h2
+    cases h2 with
+    | root => exact ⟨rfl, rfl⟩
+    | inner x' _ _ n c _ hx' hn _ hc =>
+      exact absurd ⟨n, hn, hc⟩ (hT.rootFree x' c (fReach_tReach hx'))
+    | seg x' _ _ n c _ hx' hn _ hc =>
+      exact absurd ⟨n, hn, hc⟩ (hT.rootFree x' c (fReach_tReach hx'))
+  | inner x b s n c y hx hn hl hc ih =>
+    intro b' s' h2
+    cases h2 with
+    | root => exact absurd ⟨n, hn, hc⟩ (hT.rootFree x c (fReach_tReach hx))
+    | inner x' b2 s2 n' c' _ hx' hn' hl' hc' =>
+      obtain ⟨hxx, _⟩ := hT.oneLink x c x' c' y (fReach_tReach hx) (fReach_tReach hx')
+        ⟨n, hn, hc⟩ ⟨n', hn', hc'⟩
+      subst hxx
+      exact ⟨rfl, (ih _ _ hx').2⟩
+    | seg x' b2 s2 n' c' _ hx' hn' hl' hc' =>
+      obtain ⟨hxx, _⟩ := hT.oneLink x c x' c' y (fReach_tReach hx) (fReach_tReach hx')
+        ⟨n, hn, hc⟩ ⟨n', hn', hc'⟩
+      subst hxx
+      rw [hn] at hn'; cases hn'
+      rw [hl] at hl'; cases hl'
+  | seg x b s n c y hx hn hl hc ih =>
+    intro b' s' h2
+    cases h2 with
+    | root => exact absurd ⟨n, hn, hc⟩ (hT.rootFree x c (fReach_tReach hx))
+    | inner x' b2 s2 n' c' _ hx' hn' hl' hc' =>
+      obtain ⟨hxx, _⟩ := hT.oneLink x c x' c' y (fReach_tReach hx) (fReach_tReach hx')
+        ⟨n, hn, hc⟩ ⟨n', hn', hc'⟩
+      subst hxx
+      rw [hn] at hn'; cases hn'
+      rw [hl] at hl'; cases hl'
+    | seg x' b2 s2 n' c' _ hx' hn' hl' hc' => exact ⟨rfl, rfl⟩
+
+/-! ## The driver's end -/
+
+/-- A fix step that found no fix: the path, then the walk returning `Fix.none`. -/
+theorem runFix_false (p : Params) (P : Struct BVal) (t : Time) (base : NodeId) (k : Key) (w : W)
+    (h : runFix p base k (t + 1) (view (treeSpec p) P t) = .ok (false, w)) :
+    ∃ z top, lastTop (view (treeSpec p) P t) = some z ∧ topOf p (ctxAt p P t).view z = .ok top ∧
+      ∃ u w1 w2, path k (ctxAt p P t) (wStart base top) = .ok (u, w1) ∧
+        targetGo w1.path.length (ctxAt p P t) w1 = .ok (.none, w2) := by
+  unfold runFix at h
+  split at h
+  · cases h
+  unfold runWith at h
+  cases hz : lastTop (view (treeSpec p) P t) with
+  | none => rw [hz] at h; cases h
+  | some z =>
+    rw [hz] at h
+    simp only at h
+    cases htop : topOf p (rootless (view (treeSpec p) P t)) z with
+    | error e => rw [htop] at h; cases h
+    | ok top =>
+      rw [htop] at h
+      simp only [ReaderT.run, StateT.run] at h
+      obtain ⟨a, w', hfs, hb⟩ := (m_bind_ok _ _ _ _ _).mp h
+      obtain ⟨u0, w'', _, hp0⟩ := (m_bind_ok _ _ _ _ _).mp hb
+      simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp0
+      obtain ⟨ha, _⟩ := hp0
+      subst ha
+      unfold fixStep at hfs
+      obtain ⟨u, w1, hpath, hrest⟩ := (m_bind_ok _ _ _ _ _).mp hfs
+      obtain ⟨f, w2, htgt, hm⟩ := (m_bind_ok _ _ _ _ _).mp hrest
+      refine ⟨z, top, rfl, htop, u, w1, w2, hpath, ?_⟩
+      cases f with
+      | none =>
+        unfold target at htgt
+        obtain ⟨n, w3, hsz, hgo⟩ := (m_bind_ok _ _ _ _ _).mp htgt
+        simp only [pathSize, bind, ReaderT.bind, StateT.bind, get, getThe, MonadStateOf.get,
+          liftM, monadLift, MonadLift.monadLift, StateT.get, pure, ReaderT.pure, StateT.pure,
+          Except.pure, Except.bind] at hsz
+        have hsz' : (Except.ok (w1.path.length, w1) : Except String (Nat × W)) = .ok (n, w3) := hsz
+        simp only [Except.ok.injEq, Prod.mk.injEq] at hsz'
+        obtain ⟨rfl, rfl⟩ := hsz'
+        exact hgo
+      | merge x d =>
+        obtain ⟨_, _, _, hp1⟩ := (m_bind_ok _ _ _ _ _).mp hm
+        simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp1
+        cases hp1.1
+      | unlink d =>
+        obtain ⟨_, _, _, hp1⟩ := (m_bind_ok _ _ _ _ _).mp hm
+        simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp1
+        cases hp1.1
+      | collapse x d =>
+        obtain ⟨_, _, _, hp1⟩ := (m_bind_ok _ _ _ _ _).mp hm
+        simp only [pure, ReaderT.pure, StateT.pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at hp1
+        cases hp1.1
+
+/-- E: when the first pending key's path needs no fix, the key leaves the pending keys and
+I_sub holds without it. -/
+theorem t_doneOK (p : Params) (hp : MergeParamsOK p) : DoneOK p := by
+  intro s k rest base w hs hI hpend hfresh hrun
+  obtain ⟨hsub, htimes, hK, hD, hE, hR⟩ := hI
+  rw [hpend] at hsub
+  obtain ⟨z, top, hz, htop, u, w1, w2, hpath, hgo⟩ := runFix_false p s.P s.t base k w hrun
+  have hroot := rootAt_of_top p s.P s.t htimes z top hz htop
+  have hvc := viewCoherent_at p s.P s.t htimes
+  have hN : wNode p (viewOf s.P) (wStart base top) = knodeOf p (viewOf s.P) := wNode_wStart _ _ _ _
+  have hwf0 : ∀ y n, wNode p (viewOf s.P) (wStart base top) y = some n → klongsWf n.ks = true := by
+    intro y n hy
+    rw [hN] at hy
+    obtain ⟨nd, hg, hd, hlv, hn⟩ := knodeOf_viewOf p _ y n hy
+    subst hn
+    exact (hsub.links.2.1 y nd hg hd hlv).1
+  obtain ⟨hr1, hch, hcov⟩ := path_path (ctxAt p s.P s.t) (viewOf s.P) hvc k (wStart base top)
+    (fun _ => rfl) hwf0 u w1 hpath
+  have ht1 : ∀ y, w1.taken.contains y = false := by intro y; rw [hr1.2.2.1]; rfl
+  have hpass := targetGo_none (ctxAt p s.P s.t) (viewOf s.P) hvc w1.path.length w1 ht1 _ w2 hgo rfl
+  have hw1N : wNode p (viewOf s.P) w1 = knodeOf p (viewOf s.P) := hr1.1.trans hN
+  have hpass' : ∀ j < w1.path.length, PassOK p (knodeOf p (viewOf s.P)) w1.path j := by
+    intro j hj
+    have := hpass j hj
+    rw [show (ctxAt p s.P s.t).p = p from rfl, hw1N] at this
+    exact this
+  have hch' : PathChain (knodeOf p (viewOf s.P)) (s.t + 1) top.rootKey w1.path := by
+    have := hch
+    rw [show (ctxAt p s.P s.t).p = p from rfl, hN] at this
+    exact this
+  have hT1 : TreeOK (knodeOf p (viewOf s.P)) (s.t + 1) top.rootKey := by
+    have := treeOK_at p s.P s.t htimes hsub.tree base top hroot
+    rw [wNode_wStart] at this
+    exact this
+  have hm2 : 2 ≤ p.mergeBelow := hp.1
+  refine ⟨⟨hsub.links, hsub.tree, hsub.kinds, hsub.heights, hsub.size, hsub.left, hsub.dead,
+    hsub.range, ?_⟩, htimes, hK, hD, hE, hR⟩
+  intro r hr x b s' n hx hn hnot
+  rw [hroot] at hr
+  simp only [Option.some.injEq] at hr
+  subst hr
+  by_cases hold : Hole p s.P s.t (k :: rest) x
+  · obtain ⟨k', hk', r', cv, hr', hm⟩ := hold
+    rcases List.mem_cons.mp hk' with hkk | hk''
+    · subst hkk
+      rw [hroot] at hr'
+      simp only [Option.some.injEq] at hr'
+      subst hr'
+      have hm1 : (x, cv) ∈ fromVisits (wNode p (viewOf s.P) (wStart base top)) (s.t + 1) p.fuel k'
+          top.rootKey := by
+        rw [hN, fromVisits_succ p s.P s.t htimes]
+        exact hm
+      have hxL := hcov (x, cv) hm1
+      obtain ⟨e, heL, hex⟩ := List.mem_map.mp hxL
+      obtain ⟨j, hje⟩ := List.mem_iff_getElem?.mp heL
+      have hj : j < w1.path.length := (List.getElem?_eq_some_iff.mp hje).1
+      obtain ⟨e0, xn, he0, hxn, hne, hz0, hc1, _⟩ := hpass' j hj
+      rw [hje] at he0
+      cases he0
+      simp only at hex
+      subst hex
+      rw [hn] at hxn
+      cases hxn
+      have hfill := passOK_fill p hm2 _ _ hpass' j hj e n hje hn
+      obtain ⟨s0, hs0⟩ := pathChain_fReach _ _ _ _ hch' j e hje
+      have hx1 := fReach_succ p s.P s.t htimes _ _ _ _ hx
+      obtain ⟨hbb, hss⟩ := fReach_flags _ _ _ hT1 _ _ _ hx1 _ _ hs0
+      have hcnt : n.cnt = (n.liveAt s.t).length := by
+        rw [KNode.liveAt_of_times n s.t (knodeOf_timesLE p s.P s.t htimes e.2 n hn)]
+        rfl
+      refine ⟨fun h0 => ?_, fun hl hb => ?_, fun _ hb => ?_⟩
+      · have hc0 : n.cnt = 0 := by rw [hcnt, h0]; rfl
+        cases hrt : isRootAt (knodeOf p (viewOf s.P)) w1.path j with
+        | false => have := hfill hrt; omega
+        | true =>
+          cases hl : n.leaf with
+          | false => exact absurd hc0 (hne hl)
+          | true =>
+            have hj0 := hz0 hrt hl hc0
+            subst hj0
+            have he2 : e.2 = top.rootKey := hch'.1 e hje
+            rw [he2] at hx1
+            obtain ⟨hb1, hs1⟩ := fReach_flags _ _ _ hT1 _ _ _ hx1 _ _ FReach.root
+            exact ⟨hb1, hs1, rfl⟩
+      · rw [hbb] at hb
+        have h1 := hc1 hb hl
+        have h0 := hne hl
+        rw [hcnt] at h1 h0
+        show 2 ≤ (n.liveAt s.t).length
+        omega
+      · rw [hbb] at hb
+        rw [← hcnt]
+        exact hfill hb
+    · exact absurd ⟨k', hk'', r', cv, hr', hm⟩ hnot
+  · exact hsub.live top.rootKey hroot x b s' n hx hn hold
+
+end SIS.Tree.Mt
