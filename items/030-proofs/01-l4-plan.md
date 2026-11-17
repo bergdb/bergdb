@@ -1046,6 +1046,7 @@ true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
 
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1119,6 +1120,7 @@ through `writerWP_appendKlongs_chainGL`: `liveDel_fullSpaceMadeChain_live`
 segment root's (no cascade), every space split of the full leaf is proved, given
 l4a's loop. Left of step 5: the time split's cascade (R4), and a compacting split
 of a last version above h.
+
 
 
 
@@ -1198,3 +1200,7 @@ below the chain, R4's general case), and p made and split in space (0 on the run
 this part the proved cases cover 785 of the 1,134 full-parent merges on the runs (69%);
 left 349: the cascade 256, the space root 93. No stop rule fired.
 
+2026-11-17, 01:53. Step 7, a successor as l4c's fifth part landed:
+`invGetScanOK_merges_noL4b`, `invGetScanOK_merges_noL4` with `MergeTailRuns4`
+(l4c's `MergeTailFullRest4OK` at the runs' contexts) for `MergeTailRuns`, by
+`mergeTailFullRest3OK_of_rest4` (`mergeTailRuns_of_4`).
