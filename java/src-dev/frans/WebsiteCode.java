@@ -6,7 +6,7 @@ import bergdb.pub.Factory;
 import bergdb.pub.Time;
 
 /**
- * Code snippets that are shown on www.bergdb.com.
+ * Code snippets that are shown on www.bergdb.org.
  * Sync with bergdb/www/in/index.html.
  * 
  * @author Frans Lundberg
