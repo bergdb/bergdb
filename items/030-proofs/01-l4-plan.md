@@ -1293,3 +1293,30 @@ found within the time box; what was found:
   entry) and which makes R3At vacuous; the fact itself at the calls is the key
   order argument above, an obligation of the delete's walk (the stratum's
   facts do not carry made-for entries today).
+
+2026-11-17, 02:01 to 02:08. R3's fix and R4 narrowed, prover l4b. The fix of
+R3 (the coordinator's ask): it does not fit tonight. R3At needs a made-for fact at
+`afterDelete`'s call and no fact the case theorems hand to it carries made-for
+entries, so every afterDelete form with only those facts (l4a's `CollapseLiveOK`,
+`hR3` of TR3 to TR6, `R3Calls`) is believed false at unreached states. A premise
+"R3 at the delete's own call" in the cases' continuation form is not narrow (it
+subsumes the case theorems: two continuation statements about one run do not
+combine). The fix is an invariant carried from the delete's start to the call:
+a reached node that the transaction made with no made-for entry names only such
+nodes (no-made-for nodes arise only in segment trees under prefixes new in the
+transaction), and the deleted key's leaf is old or has an entry (key order); then
+the segment root on the key's path is old or has an entry, R3At is vacuous, and
+the merges' loop keeps it (a split of the root copies its entry). The invariant
+must be kept by every writer step, like MFB (MadeForOld.lean) but on links: days.
+No Lean counterexample: a concrete state meeting `DelInvJT` is beyond tonight.
+R4 narrowed (LiveAssembly2.lean): the leaf's time split below a parent without
+room has its copy filled (`ChildOK` at the copy, m live klongs or more below an
+inner parent, any below a segment leaf: no hole) or a hole. Filled: through the
+cascade as the space splits (`writerWP_handleFull_timeChain_live`: the tree with
+the leaf's node its last version meets `LiveEdges`, `liveEdges_of_holeChild`;
+then `liveEdgesX_timeSplit_gen` and `writerWP_appendKlongs_chainGL`),
+`liveDel_fullTimeChainF`. Left of R4: `DelFullTimeHoleM` (the copy below an inner
+parent, fewer than m live klongs), `delCaseLive_timeCasc_of_hole`.
+`invGetScanOK_merges_noL4c`: premises `hp`, `hth`, `MergeTailRuns6` (l4c's
+`MergeTailFullRest6OK`), `R3Calls` (believed false), `DelFullTimeHoleM`,
+`DelEmptyCascM`.
