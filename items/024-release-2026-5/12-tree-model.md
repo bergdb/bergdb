@@ -476,7 +476,8 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (R3 at `afterDelete`'s calls), `DelCaseLive … DelFullTimeCascM` (R4) and `DelCaseLive …
   DelEmptyCascM` (the stop node without room, l4e's). `liveDelSL_of_pieces` gives `l4L`:
   `SJ0` from the induction's facts, then the cases (`delMerge_cover`, `delEmptyM_split`,
-  `delEmptyOther_split`, `delFullM_cover`). 02:04 (l4e): `DelCaseLive … DelEmptyCascM` is
+  `delEmptyOther_split`, `delFullM_cover`). 01:53 (l4b): `invGetScanOK_merges_noL4b`, the
+  same with l4c's narrower `MergeTailFullRest4OK` (`MergeTailRuns4`). 02:04 (l4e): `DelCaseLive … DelEmptyCascM` is
   reduced to the full stop node's split alone (`delCaseLive_emptyCasc`, `LiveUpCascCall.lean`,
   premise `UpCascCallRuns`: at the upward loop's end a full segment-leaf stop node's bitmap
   ends at the call's facts); where the stop node has room, l4d's argument over the new walk;
@@ -581,6 +582,17 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   them a segment root's space split, which l4b's cascade lemmas may serve on the merged
   tree), and p made and split in space (0 on the runs). `writerWP_afterDelete_liveTR5`:
   premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3.
+  01:59 (prover l4c, `LiveMergeRoot.lean`): `MergeTailFullRest5OK` reduced to
+  `MergeTailFullRest6OK`, its case `MergeFullTimeRoot1` proved: a merge into one node whose
+  parent p, the space root, not made, splits in time (52 on the runs): p's copy becomes the
+  space root (`newSuperRoot`) and the hole (`writerWP_handleFull_timeRoot_live`,
+  `liveEdgesH_newRoot`), and the next round's descent starts and stops there
+  (`descendToHeight_newRoot`: the key's segment is the first). Left in
+  `MergeTailFullRest6OK`: the space root split in time with a merge into two nodes (29) or
+  in space (12), q full or compacting (the cascade, R4; 256), and p made and split in space
+  (0). `writerWP_afterDelete_liveTR6`: premises `MergeTailFullRest6OK`, `MergeParamsOK` and R3.
+  02:00: prover l4c stopped by 030-01's size rule (about 6,500 lines, about 3,000 of them
+  near-copies of the merge tail's prelude); what is left and how: 030-01's log, 02:00.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
