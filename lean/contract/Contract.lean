@@ -48,3 +48,5 @@ import Contract.Proof.WriterState
 import Contract.Proof.NodeAlg2
 import Contract.Proof.WriterPrim
 import Contract.Proof.WriterTop
+import Contract.Proof.TreeRules
+import Contract.Proof.WriterCascadeDefs

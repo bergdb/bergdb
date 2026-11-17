@@ -85,3 +85,8 @@ open Contract
 #print axioms getNode_spec
 #print axioms newSuperRoot_spec
 #print axioms halves_spec
+#print axioms sound_iff
+#print axioms Sound.put
+#print axioms Sound.timeSplit
+#print axioms Sound.spaceSplit
+#print axioms Sound.spaceSplitRoot
