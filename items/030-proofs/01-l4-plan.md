@@ -1687,3 +1687,20 @@ height. Writer shapes for R1 now cover 25 + 15 of the 69; the 7 where q, made, s
 time in place keep q's id (02:22's R1 with q's new node; below a parent, l4b's
 `writerWP_handleFullWith_timeInPlace_termN` gives it); left the 15 with q split in space
 and the 7 at the root through a space split.
+
+2026-11-17, 03:33 to 03:36. The live counts of the 69's split with the hole, prover l4g
+(`LiveTimeChainHole.lean`, about 410 lines, about 300 of them l4f's time chain and l4b's
+time split's live counts again). `writerWP_handleFull_timeChainV_liveHole`: l4f's
+`writerWP_handleFull_timeChainV_live` with the hole: the merge's parent p (X (D + 1)), not
+made, thin after the merge, named by segment leaves only (a segment root, as in all 69),
+split in time with any cascade above: from `LiveEdgesX` with E p on the tree V with p's node
+its last version, the live counts after hold but at p's copy (the next id; `LiveEdgesX` with
+E the copy), whose node is p's last version. The time split moves the hole
+(`liveEdgesX_timeSplit_hole`: `liveEdgesX_timeSplit_gen` with E1 before, E2 after, by
+`liveEdgesX_of_sim2`); the cascade keeps it (l4b's `writerWP_appendKlongs_chainGLX` with E
+the copy, named by q, a segment leaf, and then by q's copy or half). `liveEdgesX_of_holeH`:
+the merge's `LiveEdgesH` with the hole p (`liveEdgesH_mergeOne`'s form) as `LiveEdgesX`;
+`liveEdgesH_of_holeX` back, the copy keeping a live klong. Left for the 69: the merge's tail
+with this split (`writerWP_mergeTail_liveSplitX`'s one-node branch with `LiveHoleW` at h + 1
+instead of `liveEdges_of_oneHole`), R1 with the copy's node and height, and the writer
+shapes of q's space splits (15 below q0, 7 at the root).

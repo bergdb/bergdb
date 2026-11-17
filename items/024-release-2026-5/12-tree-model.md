@@ -750,6 +750,17 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   q0's search at k1 names q's copy (the next id), a leaf whose search of k1 names y, the
   other nodes kept: what `redirectSeg2` takes. Left of the 69's writer shapes: q split in
   space (15), the 7 at the root through a space split (6 + 1), and q made, in place (7).
+  03:36 (prover l4g, `LiveTimeChainHole.lean`): the live counts of the 69's split, any
+  cascade: `writerWP_handleFull_timeChainV_liveHole` (no premises): l4f's
+  `writerWP_handleFull_timeChainV_live` with the hole: p, not made, thin in V (`LiveEdgesX`
+  with E p, its namers segment leaves), split in time; after the split and its cascade the
+  live counts hold but at p's copy (`LiveEdgesX` with E the copy), whose node is p's last
+  version. By `liveEdgesX_timeSplit_hole` (the hole moving from p to its copy) and l4b's
+  `writerWP_appendKlongs_chainGLX` with E the copy. `liveEdgesX_of_holeH` and
+  `liveEdgesH_of_holeX` convert from the merge's `LiveEdgesH` with the hole p and back.
+  Left for the 69: the merge's tail with the hole after the split (l4f's
+  `writerWP_mergeTail_liveSplitX` with `LiveHoleW` at h + 1 for a merge into one node), the
+  copy's node and height for R1, and the writer shapes of q's space splits (22).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
