@@ -234,13 +234,13 @@ theorem liveWith_snoc_time (d : List Nat) (ks : List Klong) (t : Time) :
   rw [foldl_zipIdx_snoc]
 
 /-- One step of `liveWith`. -/
-def liveStep (d : List Nat) (m : List (Nat × NodeId)) (ki : Klong × Nat) : List (Nat × NodeId) :=
+def n3LiveStep (d : List Nat) (m : List (Nat × NodeId)) (ki : Klong × Nat) : List (Nat × NodeId) :=
   match ki.1 with
   | .key c y => if d.contains ki.2 then m else insertCv c y m
   | _ => m
 
 theorem liveWith_snoc (d : List Nat) (L : List (Klong × Nat)) (x : Klong × Nat) :
-    liveWith d (L ++ [x]) = liveStep d (liveWith d L) x := by
+    liveWith d (L ++ [x]) = n3LiveStep d (liveWith d L) x := by
   unfold liveWith
   rw [List.foldl_append]
   obtain ⟨k, i⟩ := x
@@ -255,7 +255,7 @@ theorem liveWith_nil_iff (d : List Nat) (L : List (Klong × Nat)) :
     obtain ⟨k, i⟩ := x
     cases k with
     | key c y =>
-      unfold liveStep
+      unfold n3LiveStep
       simp only [List.contains_iff_mem]
       by_cases hi : i ∈ d
       · simp only [hi, ite_true, ih, List.mem_append, List.mem_singleton]
@@ -274,7 +274,7 @@ theorem liveWith_nil_iff (d : List Nat) (L : List (Klong × Nat)) :
         · intro h
           exact absurd (h c y i (List.mem_append_right _ List.mem_cons_self)) hi
     | time t =>
-      simp only [liveStep, ih, List.mem_append, List.mem_singleton]
+      simp only [n3LiveStep, ih, List.mem_append, List.mem_singleton]
       constructor
       · rintro h c' y' i' (h1 | h1)
         · exact h c' y' i' h1
@@ -282,7 +282,7 @@ theorem liveWith_nil_iff (d : List Nat) (L : List (Klong × Nat)) :
       · intro h c' y' i' h1
         exact h c' y' i' (Or.inl h1)
     | del b =>
-      simp only [liveStep, ih, List.mem_append, List.mem_singleton]
+      simp only [n3LiveStep, ih, List.mem_append, List.mem_singleton]
       constructor
       · rintro h c' y' i' (h1 | h1)
         · exact h c' y' i' h1
