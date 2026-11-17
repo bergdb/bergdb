@@ -149,7 +149,7 @@ def BHist.spec (h : BHist) : Spec BVal Nat := bspec h.chs h.p0 true
 def BHist.ts (h : BHist) : List Nat := List.range' 1 h.txs.length
 
 /-- The model's structure after the first j transactions: each change applied
-at its time (`BridgeTheorems.lean`, `run_P`: it is the P of the model's
+at its time (Proof/BridgeStep.lean, `run_P`: it is the P of the model's
 run). -/
 def BHist.P (h : BHist) : Nat → Struct BVal
   | 0 => h.p0

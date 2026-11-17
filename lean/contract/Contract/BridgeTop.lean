@@ -30,6 +30,11 @@ rules, 030-08's top clauses and TB. Proof/BridgeTop.lean proves that it meets
 `MeetsBridge` (`MeetsBridgeTop.meetsBridge`): `TopOK` is then a theorem, and
 the theorems of BridgeTheorems.lean hold with no premise in the model's words
 about the top.
+
+`MeetsFull`, at the end of this file, is the whole statement: with the touch,
+A6' and A-COPY said of the tree and its top too, every clause is in the
+contract's words. It is the statement to read; BridgeFull.lean has the
+theorems for it, and the bridge checker computes it for a trace.
 -/
 import Contract.Bridge
 import Contract.ShapeStatement
