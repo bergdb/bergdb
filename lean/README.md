@@ -120,8 +120,7 @@ its parent full in the cases left (`MergeTailRuns`), R3 at the calls of
 whose stop node has no room (`DelEmptyCascM`); every other delete case is proved
 (`liveDelSL_of_pieces`, the full leaf's cases by `delFullM_cover`).
 `invGetScanOK_merges_noL4U` (SIS/Tree/LiveUpCascCall.lean) narrows the last to the
-full stop node's split at the upward loop's end (`UpCascCallRuns`).
-(`liveDelSL_of_pieces`, the full leaf's cases by `delFullM_cover`). Its
+full stop node's split at the upward loop's end (`UpCascCallRuns`). Other
 successors narrow the pieces (`invGetScanOK_merges_noL4c`, SIS/Tree/LiveAssembly2.lean:
 l4c's `MergeTailFullRest6OK`, and of R4 only the copy that is a hole). `R3Calls` is
 believed false at unreached states (bergdb 030-01's log, 2026-11-17, 01:56): no fact
