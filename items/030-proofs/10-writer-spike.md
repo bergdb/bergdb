@@ -26,13 +26,26 @@ night of 17 November.
   books of the writer, B1 to B13); `WriterMeets`, one transaction meets
   the contract. Checked on the same traces after every one of the 318,900
   operations, inside the transactions too: no failure.
-- **Proved so far** (items 3 and 4, section 4): the step from operations
-  to a transaction and to a history. If every operation keeps `Mid`, the
-  writer meets the contract for every transaction
-  (`writerMeets_of_opStep`), and a run of the writer is a history that
-  meets `MeetsTop` (`runs_meetsTop_of_opStep`), the premise of the theorems
-  on reads. What is left is `OpStep` itself, for a put and for a delete:
-  reduced, not proved.
+- **Proved** (item 3, section 4): **a put of a one-segment key** (a key
+  of at most 6 bytes), for a tree of any shape. `putKv_put1`: the put
+  keeps the contract's invariants, the contents with the put applied, the
+  frame, TREE, the top and the put's books, through the descent, the
+  leaf's klong, the time split (also in place, also by dead klongs), the
+  space split under a parent and at the space root (also in place), the
+  recursion up the path, and the new top node with its skip pointers.
+  `writerMeets_put1`: a transaction of such puts that the writer accepts
+  meets the writer's contract. `runs_meetsTop_put1`: a run of such
+  transactions is a history that meets `MeetsTop`, so every get and scan
+  of it is right at every time (030-08's theorems). On the standard three
+  axioms; no premise but the parameters (`ParamsOK`: node size 6 or more,
+  2 ≤ h, h + 2 ≤ M; Java's meet it) and the view's (`Shows`). 11,600
+  lines with the map, the statement and the checker.
+- **Reduced, not proved:** a put of a key of more segments (the descent
+  through segment leaves, a segment root's split, a new segment leaf) and
+  every delete. For any operation the step from operations to a
+  transaction and a history is proved (`writerMeets_of_opStep`,
+  `runs_meetsTop_of_opStep`): what is left is `OpStep` for those
+  operations.
 - **The main answer** (item 5, section 5): the old route's hard cases do
   not come back. `l4`, R3, R4 and ValOld are all about the fill and the
   rule of two live klongs in an inner root. The old theorem needed them
@@ -164,35 +177,72 @@ Decisions, with reasons:
 
 # 4. What is proved (items 3 and 4)
 
-In `lean/contract/Contract/Proof/`, on the standard three axioms:
+In `lean/contract/Contract/Proof/`, on the standard three axioms. The
+package does not import the old proofs: the old lemmas speak of the old
+invariants (`TreeOK` on a node map, the kinds' walk, the live counts), not
+the contract's; 70 lines were copied (`WriterWP.lean`, the rules for the
+writer's steps).
 
-- `WriterWP.lean`: the rules for the writer's steps (a reader, a state and
-  an error), copied from the old `SIS/Tree/WriterWP.lean`, 70 lines. The
-  package does not import the old proofs: a copy is cleaner than a
-  dependency on 230,000 lines for 70, and the old lemmas speak of the old
-  invariants (`TreeOK` on a node map, the kinds' walk), not the
-  contract's.
-- `WriterRun.lean`: `mid_start` (`Mid` holds at a transaction's start),
-  `mid_run` (the accepted operations keep it if each does),
-  `writerMeets_of_opStep` (then the contract, TREE, the top's clauses, and
-  what the next transaction starts from), `runs_meetsTop_of_opStep` (a run
-  of the writer is then a history that meets `MeetsTop`).
+The files, in the order they build:
 
-So the proof is reduced to `OpStep`, one operation from a state between
-operations. That is the form 030-04, section 3.6 hoped for: one
-self-contained statement that starts from a tree with all invariants,
-with no induction over the history inside it.
+- `WriterRun.lean` (430 lines): from one operation to a transaction and a
+  history (`mid_start`, `mid_run`, `writerMeets_of_opStep`,
+  `runs_meetsTop_of_opStep`).
+- `TreeCtx.lean` (990): two trees that differ below one node. The context
+  lemma (`Good.ctx`, `ctx_L`, `ctx_route`, `ctx_reach`): if the trees
+  agree outside q's subtree and q is sound in the second for every range
+  it is sound for in the first, the root is; the keys are the same, or
+  with a put or a delete applied if the key is routed to q; TREE is kept
+  if q's new subtree holds only its old nodes and new ones.
+- `NodeAlg.lean`, `NodeAlg2.lean` (920, 570): the node algebra: what
+  `add`, `lastVersion`, `replaceOrAdd`, `halves` and `toPrev` do to a
+  node's live klongs, well-formedness, size and frame; the model's
+  searches as lookups in the live klongs; the levels' arithmetic.
+- `Sound.lean`, `TreeRules.lean` (40, 2,040): `Sound M ex T r C` (the
+  invariants, TREE and the keys C from the space root r, the node `ex`
+  maybe over its size), and each rule of a put as a statement about two
+  trees: `Sound.put`, `Sound.inPlace`, `Sound.timeSplit`,
+  `Sound.timeSplitRoot`, `Sound.spaceSplit`, `Sound.spaceSplitRoot`.
+- `WriterState.lean`, `WriterPrim.lean` (110, 1,290): the writer's state
+  within a put (`PInv`, the put's books) and its primitives: each as an
+  equation, what it does to the map, and that the books, the frame,
+  BalancedOK and the path are kept over a change of one node.
+- `WriterTop.lean` (460): `newSuperRoot`, the new top node; the lowest
+  skip pointer names the old super root since the lowest bit set in
+  ord + 1 is not set in ord.
+- `WriterCascadeDefs.lean`, `WriterTimeSplit.lean`,
+  `WriterSpaceSplit.lean` (100, 1,110, 2,250): `handleFullWith`, in the
+  form "if node x had these klongs added, the state would be sound with x
+  over its size" (`CasPre`), which each split hands to the parent.
+- `WriterPut.lean` (690): `appendKlongs_spec` (the recursion), the
+  descent, `putKv_put1`, `writerMeets_put1`, `runs_meetsTop_put1`.
 
-Measured: the statement, the checker and these 330 lines of proof took 35
-minutes (15:50 to 16:25), most of it reading.
+How it went: I wrote the definitions and each file's statements; ten
+runs of provers (Opus, xhigh) proved one file each, in three waves; they
+corrected six of my statements (a missing "q is a key node", three unused
+hypotheses, an unneeded case split) and found none false beyond that.
+Measured: 10,900 lines of proof in two and a half hours (15:50 to 18:25),
+2.7 million tokens of provers, about 7 points of the week with the other
+agents' work in them.
+
+What the proof showed that the statement did not have (all now in
+`Contract/Writer.lean`, each tested by `writercheck`):
+
+- the keys' form (`keyWf`), a time klong first in every key node, the
+  levels' bounds in B5, BalancedOK for every node and klong;
+- the top's books: the super root's skip pointers are at the bits of its
+  ordinal (`Shows`), and name top nodes with their times (`Books`);
+- `ParamsOK`: with a node size below 6, or h + 2 above M, a split makes a
+  node over its size or an empty half. The model and Java do not check
+  it; Java's sizes meet it.
 
 
 # 5. How hard is the rest (item 5)
 
 ## 5.1 The route for one operation
 
-Worked out, not built. All of it is about two trees that differ below one
-node.
+Worked out at 16:20; built since for the put of a one-segment key
+(section 4). All of it is about two trees that differ below one node.
 
 - **The context lemma.** If two trees agree on every node reached that is
   not below a node q, and q in the second tree is sound for every range q
@@ -276,25 +326,33 @@ forms, root collapse's four).
 
 ## 5.3 The estimate
 
-Lines of Lean with Mathlib, from the route of 5.1; one prover-night is
-what one agent did on 16 November, 3,000 to 5,000 lines.
+My first estimate (16:20, from the route alone) was 6,000 to 9,000 lines
+for the puts. The put of a one-segment key alone took 10,900 lines of
+proof, of which about 6,000 are shared by every operation (the context
+lemma, the node algebra, the primitives, the top node, the run) and about
+4,900 are the put's own (its rules as trees, the two splits, the
+recursion, the descent). So I was low by a factor of two. With that
+factor, and the same method (statements first, one prover a file):
 
-- The tree's lemmas (context, ranges widened, TREE under a replacement,
-  no node below itself): 800 to 1,200.
-- The node algebra: 1,000 to 1,800.
-- The writer's primitives on the map, with the books: 600 to 1,000.
-- The put's rules (descent and path, room, two time splits, six space
-  splits, the recursion, a new segment, the top node): 3,500 to 5,000.
-- The delete's rules (the bitmap, the unlink and the take-back, LE-b, the
-  merges and their loop, root collapse): 5,000 to 8,500.
-- The link invariant of the take-back, through every rule: 800 to 1,500.
+- **The puts of keys of more segments:** 2,500 to 4,500 lines: the
+  descent through segment leaves, a segment root's split (a new root under
+  a segment leaf, and its in-place form), a new segment leaf (it is empty
+  until its first klong, so the "if x had these klongs" form must carry a
+  node that is not yet filled; this is the one open design point of the
+  puts).
+- **The deletes:** 15,000 to 25,000 lines: the bitmap's four forms and
+  their well-formedness (W2 to W4), the upward unlink with the take-back,
+  LE-b, the merge's forms with the parent's five, the loop, root
+  collapse's four forms; and the delete's books (B3, B4, B7, B8, B12,
+  B14) through every rule of the put too, about 2,000 of them.
+- **Together 17,000 to 30,000 lines** more, three to six waves like
+  today's three (two and a half hours, 7 points of the week): one to two
+  nights of this kind. Against about 230,000 lines of proof in the old
+  line for the same writer, with `l4` open.
 
-Together 12,000 to 19,000 lines: the puts 6,000 to 9,000 (two to three
-prover-nights), the deletes 6,000 to 10,000 (two to four). The reason it
-is not more: every rule is local once the context lemma is there, and the
-fill is gone. The reason it is not less: thirty rules, each with the
-frame, TREE and thirteen books. The uncertain part is the merges' loop
-and root collapse, which descend again from the root after each change
+The reason it is not more: every rule is local once the context lemma is
+there, and the fill is gone. The uncertain part is the merges' loop and
+root collapse, which descend again from the root after each change
 (`descendToHeight`, `descendToSegmentRoot`): each round needs the tree
 closed, so `Mid`-like facts must hold between rounds, not only between
 operations. I did not check that on traces (the checker looks between
@@ -303,20 +361,29 @@ operations).
 
 # State
 
-2026-11-17, 16:15. Items 1 and 2 done; the reduction from `OpStep` proved;
-`OpStep` open.
+2026-11-17, 18:30. Items 1 and 2 done; item 3 done for keys of one
+segment; item 4 (the deletes) not started; item 5 written (section 5).
 
 - Branch `030-10-writer` in the clone
-  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, from 030-07's branch
-  (d579f7e9) with main 5081565d merged in.
+  `/Users/f/fl/bench/2026-11-17/night/s4d/clone`, main d656263a merged in.
+  Last gated commit: 2aad54c9.
 - Build: `cd lean/contract && lake build`. Gate: `lean/contract/gate.sh
-  5081565d` (the main commit merged in; 9a6692cf is before it, and main's
-  own later files then count as changed).
+  d656263a`.
 - Traces: `java/build.sh`, `cd lean && lake build treecheck`,
   `java/stress/treeconf.sh small`, `drain` and `reclaim`; then
   `lean/contract/writer.sh` (and `check.sh` as before).
 - To read first: `Contract/Writer.lean` (the map, the statement),
-  `Contract/Proof/WriterRun.lean` (the reduction), `WriterCheck.lean`.
+  `Contract/Proof/WriterState.lean` and `WriterCascadeDefs.lean` (the
+  put's invariant and the recursion's form), `WriterPut.lean` (the
+  theorems), `WriterCheck.lean`.
+- To go on: the next put is a key of more segments (drop `PathInner` from
+  `CasPre`; the tree rule for a segment root's split; the descent's leaf
+  step with `searchEq_some`). The first delete is the one that changes
+  only its leaf (a bitmap, no merge): a tree rule `Sound.del` with
+  `ctx_route` and `mapDel_local`, the bitmap's node algebra, and the
+  delete's books in `PInv`.
+- The provers' briefs, as examples of the method:
+  `/Users/f/fl/bench/2026-11-17/night/s4d/scratch/brief-*.md`.
 
 
 # Log
@@ -340,3 +407,12 @@ All proved; the provers fixed four of my statements (three needed "q is a
 key node", `L_agree` needed no soundness) and dropped three unused
 hypotheses. B14, the link of a made node, added to `Mid` and tested (the
 checker's B15). `writer.sh` on the three sets: WRITER OK.
+GATED 0212cae0: the context lemma, the node algebra, the primitives, the top node; main d656263a merged (gate base d656263a).
+2026-11-17, 16:45 to 18:25. Three waves of provers, one file each, from
+statements I wrote: the rules as statements about two trees
+(`TreeRules.lean`), the primitives (`WriterPrim.lean`), the top node
+(`WriterTop.lean`), `NodeAlg2.lean`; then the time split, the space split
+and the put (`WriterTimeSplit.lean`, `WriterSpaceSplit.lean`,
+`WriterPut.lean`). J5 restated as `WTopInv` with the skip pointers' books.
+`check.sh` and `writer.sh` on the merged tree: CONTRACT OK, WRITER OK.
+GATED 2aad54c9: a put of a one-segment key proved (putKv_put1, writerMeets_put1, runs_meetsTop_put1).
