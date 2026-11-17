@@ -154,3 +154,5 @@ small drain reclaim`; the gate `lean/contract/gate.sh 9a6692cf`.
 15:32 the statements and the checker; the clauses pass on the traces.
 15:45 merged main 9a6692cf (030-08's TREE, 030-09's trace checks).
 15:52 `RunOK`, T1 and T2 for the tree, proved.
+GATED 7acde0f3: `RunOK`, T1 (recovery, crash) and T2 (restarts) for the key tree from
+`MeetsBridge`; the tree's clauses pass on 195 traces; `gate.sh 9a6692cf` GATE OK.
