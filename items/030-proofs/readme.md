@@ -164,6 +164,22 @@ D5. The rest
 * Java against the model: tested only, by the trace checkers; it stays
   a test.
 
+Where the contract's checks run
+-------------------------------
+
+The tested half of D0 (030-04, section 3), kept running as the code
+changes (030-13):
+
+* `java/before-commit.sh`, the commit gate: Java's own check of the
+  contract (TransCheck) in the unit tests; no Lean.
+* `java/stress/level2.sh`, step 8b: `lean/contract/check.sh` (the contract,
+  with its fault tests) and `lean/contract/bridge-check.sh` (the bridge,
+  with its fault test) on the small and drain tree sets that step 8 writes.
+* `java/night.sh`: `java/stress/transcheck.sh` (TransCheck in the unit and
+  f-tests); level2.sh full; and `java/stress/contractconf.sh medium`, the
+  medium tree set with the tree model's check, the contract and the bridge.
+* By hand: `bridgecheck --model` and the large set.
+
 How the directions hang together
 --------------------------------
 
@@ -242,6 +258,14 @@ Files
   before step 4: the checker passes ERROR lines and does not check that a
   trace is a history; the clauses step 4 needs (TREE shown not implied,
   in Lean). Written 2026-11-17, 14:48 to 15:40. Status: done.
+* [030-07](07-bridge.md). The bridge from the contract to the abstract
+  model (step 4a): the klongs as entries, the clauses the model assumes
+  (`MeetsBridge`, `MeetsEvict`, and with 030-08's top `MeetsBridgeTop`),
+  each checked on the traces; `RunOK`, TREE and `EvictRunOK` proved for the
+  key tree, and by the old proofs recovery (T1), restart invariance (T2),
+  lazy reading, eviction with handles and reclaim's cut; the top's premise
+  proved from 030-08's top; D as state; what of bounded startup follows.
+  Started 2026-11-17, 15:09. Status: open.
 * [030-08](08-shape-top.md). The tree's shape and its top in the
   contract (step 4b): TREE as a clause, Java's top nodes and skip
   pointers with the readers' top search (TP24), the reads' theorems over
@@ -253,10 +277,57 @@ Files
   `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
   030-04, 3.5, Java's own check of the contract in its tests (TransCheck),
   the medium set checked (27 of 27). Status: done.
+* [030-11](11-night-review.md). An independent review of 030-07 to 030-09:
+  sound, with fixes. The top theorems say what the items claim, with no
+  hidden premise; the bridge's instance is `tracecheck`'s; one history of
+  four transactions meets every statement (`BridgeExample4`). Should fix:
+  the restart and eviction theorems take each change as given (the writer's
+  repeatability is 030-04, 3.5, item 9); three tested assumptions missing
+  from 3.5; reads after a crash not stated end to end. Fixed: the bridge
+  checker now requires a whole trace; `PolicyCutOK` proved for policies
+  that read no stream. Written 2026-11-17, 17:02 to 17:55. Status: done.
 * [030-12](12-contract-large.md). The contract check on the reclaim,
   medium and large sets of `treeconf.sh`, with `live=1`: more evidence
   that Java meets the writer's contract. Status: open.
+* [030-13](13-contract-in-levels.md). The contract's checks in the routine
+  tests: the contract and the bridge checks in `level2.sh` (small and drain
+  sets) and in `night.sh` (the medium set, `java/stress/contractconf.sh`);
+  where each check runs; the checkers four at a time (par.sh). Written
+  2026-11-17, 17:03 to 21:05. Status: done.
 
+* [030-10](10-writer-spike.md). A spike of 030-04's optional step 5, the
+  night of 17 November: does the model's writer meet the contract? The
+  refinement map from the writer's state to the contract's tree, checked on
+  the traces; the statement; how far a proof got and what the rest costs.
+  Status: open.
+* [030-14](14-reads-after-crash.md). Reads after a crash, a restart and
+  under eviction, end to end (030-11, finding 3): a reader of the model's
+  view at a time, with each key node's kind from its level (K-LEVEL, a new
+  clause checked by `bridgecheck`, after an independent review's
+  `FullLeafGap`), proved right for any history that meets `MeetsFull`, so
+  that after a crash, restarts, a lazy startup, eviction with handles and
+  safe cuts every get and scan at every available time gives the plain
+  map's value; Java's readers after a crash, with their search through the
+  skip pointers over the top that the stream holds; closed examples from
+  `BridgeExample4`; 030-04, 3.5, item 13. The night of 17 November.
+  Status: open.
+* [030-15](15-strict-checkers.md). Strict trace parsing, one verdict, and a
+  gate that pins the statements: every trace line by the grammar of format
+  3 or the trace fails (an independent review's faults); `contractVerdict`
+  with `contractVerdict_sound` (MeetsTop); `check.sh` runs both checkers;
+  `gate.sh` step 5 pins the trusted closure of the main theorems
+  (`statements.pin`). Status: open.
+* [030-16](16-writer-delete.md). The model's writer meets the contract for a
+  delete, beside 030-10's puts: the delete's full node (time and space split
+  from a delete), the bitmap in every form, a delete of a one-segment key whose
+  leaf keeps a live klong (`putKv_del1_keep`, the merges as a premise);
+  030-10's `BalancedAll` shown false for a dead klong (`writerMeets_false`).
+  The night of 17 November. Status: open.
+* [030-17](17-readers-eviction-cut.md). Java's readers under eviction and
+  after reclaim's safe cuts, end to end, with Java's search through the skip
+  pointers; what that search reads after a cut, when the top nodes before it
+  are gone; K-LEVEL in `contractcheck` too, with its verdict proved and a
+  fault. The night of 17 November. Status: open.
 
 Log
 ===

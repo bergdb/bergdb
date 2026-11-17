@@ -39,11 +39,27 @@ exporter's live=1), L1: each is Java's search and top search as the
 package's (`liveOk`).
 Prints one line per trace and CONTRACT OK or CONTRACT FAILED; a failure
 names the trace and the transaction.
+
+The verdict (bergdb 030-15): a trace passes only if `contractVerdict` of its
+lines is true (Contract/Verdict.lean): whole, readable, `startTopOk` and
+`historyTopOk` on its history, computed apart from the loop below, and each
+GET and SCAN line the package's. `contractVerdict_sound` proves that such a
+trace is a history that meets the contract with TREE and the top
+(`MeetsTop`). The loop's counts say which clause failed where; a trace also
+fails if a count is not zero, or if the loop and the verdict disagree.
+
+KIND, K-LEVEL (bergdb 030-17, as the bridge checker since 030-14): every key
+node of the start, and of D after each transaction, has the kind that its
+level gives with the TREE line's h (`startKindsB`, `kindsOk`). The verdict
+is `checkVerdict` (Contract/KindsCheck.lean): `contractVerdict` and K-LEVEL,
+`checkVerdict_sound` proves it gives `MeetsTop` and K-LEVEL for every tree.
 -/
 import Contract.Complete
 import Contract.Trace
 import Contract.CheckShape
 import Contract.TraceTop
+import Contract.Verdict
+import Contract.KindsCheck
 
 open Contract
 
@@ -64,6 +80,7 @@ structure Counts where
   lives0 : Nat := 0
   l2 : Nat := 0
   shape : Nat := 0
+  kd : Nat := 0
   shapeNames : List String := []
   first : Option String := none
 
@@ -78,6 +95,7 @@ def checkTrace (tr : Trace) : Counts := Id.run do
   let mut j := 0
   let mut topRoot : List (NodeId × NodeId) := []
   let mut tp : Top := []
+  let kind := traceKind tr
   for tx in tr.txs do
     if tx.i != j then c := { c.fail s!"TX {tx.i} read as transaction {j}" with c1 := c.c1 + 1 }
     let d := dirtyBefore ++ tx.gd
@@ -100,6 +118,7 @@ def checkTrace (tr : Trace) : Counts := Id.run do
       if !(invOk p s') then c := { c.fail "TX 0: C1, the start tree's invariants" with c1 := c.c1 + 1 }
       if !(contents s').isEmpty then c := { c.fail "TX 0: C2, the start tree is not empty" with c2 := c.c2 + 1 }
       if !(treeOkB s') then c := { c.fail "TX 0: C4, TREE" with c4 := c.c4 + 1 }
+      if !(startKindsB kind h') then c := { c.fail "TX 0: KIND" with kd := c.kd + 1 }
     else
       c := { c with txs := c.txs + 1, ops := c.ops + tx.ops.length }
       if !(invOk p s') then c := { c.fail s!"TX {i}: C1, the invariants" with c1 := c.c1 + 1 }
@@ -113,6 +132,7 @@ def checkTrace (tr : Trace) : Counts := Id.run do
       if !(treeOkB s') then c := { c.fail s!"TX {i}: C4, TREE" with c4 := c.c4 + 1 }
       if checkShapeTx p i h tx.ops d h' != (checkTx p i h tx.ops d h' && treeOkB s') then
         c := { c.fail s!"TX {i}: checkShapeTx differs from its parts" with c4 := c.c4 + 1 }
+      if !(kindsOk kind h'.tree d) then c := { c.fail s!"TX {i}: KIND" with kd := c.kd + 1 }
     for g in tx.gets do
       c := { c with gets := c.gets + 1 }
       if get (h'.tree.at g.t) g.key != g.v then
@@ -141,27 +161,34 @@ def main (args : List String) : IO UInt32 := do
   let mut total : Counts := {}
   for path in args do
     let lines ← IO.FS.lines path
+    -- A trace passes only if its verdict is true (bergdb 030-15; with K-LEVEL, 030-17).
+    let verdict := checkVerdict lines
+    let mut pass := verdict
     if let some e := completeFault lines then
       IO.println s!"{path}: not whole: {e}"
-      failed := failed + 1
+      pass := false
     match readTrace lines with
     | .error e =>
       IO.println s!"{path}: unreadable: {e}"
-      failed := failed + 1
+      pass := false
     | .ok tr =>
       let c := checkTrace tr
-      let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.l1 + c.c4 + c.c5 + c.l2
-      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN, {c.lives} LIVE; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, L1 {c.l1}, C4 {c.c4}, C5 {c.c5} ({c.skipts} SKIPT), L2 {c.l2} ({c.lives0} LIVE 0); shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
-      if bad != 0 || c.txs == 0 then failed := failed + 1
+      let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.l1 + c.c4 + c.c5 + c.l2 + c.kd
+      IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN, {c.lives} LIVE; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, L1 {c.l1}, C4 {c.c4}, C5 {c.c5} ({c.skipts} SKIPT), L2 {c.l2} ({c.lives0} LIVE 0), KIND {c.kd}; shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
+      if bad != 0 || c.txs == 0 then pass := false
+      if (bad == 0) != verdict && (completeFault lines).isNone then
+        IO.println s!"{path}: the verdict (checkVerdict) is {verdict}, the loop's counts say the other"
       total := { total with txs := total.txs + c.txs, ops := total.ops + c.ops,
                             gets := total.gets + c.gets, scans := total.scans + c.scans,
                             c1 := total.c1 + c.c1, c2 := total.c2 + c.c2, c3 := total.c3 + c.c3,
                             r1 := total.r1 + c.r1, lives := total.lives + c.lives,
                             l1 := total.l1 + c.l1, c4 := total.c4 + c.c4, c5 := total.c5 + c.c5,
                             skipts := total.skipts + c.skipts, lives0 := total.lives0 + c.lives0,
-                            l2 := total.l2 + c.l2, shape := total.shape + c.shape,
+                            l2 := total.l2 + c.l2, kd := total.kd + c.kd,
+                            shape := total.shape + c.shape,
                             shapeNames := (total.shapeNames ++ c.shapeNames).eraseDups }
-  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN, {total.lives} LIVE; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}, L1 {total.l1}, C4 {total.c4}, C5 {total.c5} ({total.skipts} SKIPT), L2 {total.l2} ({total.lives0} LIVE 0); shape faults {total.shape} {total.shapeNames}"
+    if !pass then failed := failed + 1
+  IO.println s!"total: {args.length} traces, {total.txs} transactions, {total.ops} operations, {total.gets} GET, {total.scans} SCAN, {total.lives} LIVE; failures: C1 {total.c1}, C2 {total.c2}, C3 {total.c3}, R1 {total.r1}, L1 {total.l1}, C4 {total.c4}, C5 {total.c5} ({total.skipts} SKIPT), L2 {total.l2} ({total.lives0} LIVE 0), KIND {total.kd}; shape faults {total.shape} {total.shapeNames}"
   if failed == 0 then
     IO.println "CONTRACT OK"
     return 0

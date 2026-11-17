@@ -231,6 +231,55 @@ describes, so a claim about Java's reads rests on four more, each tested
    sets, level 2 to level 4), and by Java's commit-time check, which runs
    in every unit test and f-test (030-09, section 3).
 
+The bridge to the abstract model (030-07) speaks of the model's stream and
+of the trees that the checkers build from a trace's lines, so a claim about
+recovery, restarts, eviction and reclaim's cut rests on three more, each
+tested (added by 030-11, finding 2):
+
+10. **Java's records and D are the model's** for the trace's changes:
+    `tracecheck` runs the model's step on every traced transaction and
+    compares the record written and D (level 2 to level 4).
+11. **A cut of reclaim is safe** (`CutOK`): `tracecheck` at every cut of
+    the reclaim traces; that BergDB's waits give one is not proved (006-26,
+    section 3.3).
+12. **A trace's lines are Java's change** (`LinesOf`, 030-08, section 5):
+    030-09's completeness checks, `tracecheck` (the ADD lines against the
+    records) and `treecheck` (the KN lines against the model's writer).
+
+The reads after a crash, restarts, eviction and the cut (030-14) speak of a
+reader of the model's view at a time (P@t), and Java's reads after a startup
+of a tree and a top that hold it, so a claim about Java's reads after a
+startup rests on one more, tested (added by 030-14):
+
+13. **Java's startup builds what the stream holds:** a tree that holds the
+    model's view (030-14, `HoldsView`: each key node that Java's startup or a
+    first touch reads has the entries that the model's startup gives back for
+    it, its klongs well formed, and the kind, segment leaf or inner node, it
+    was written with; each value its value), and the top that the stream
+    holds (`topOfP`: the top nodes' root and skip pointers). That Java's
+    search and reads are then right is proved (030-14). Tested by run B
+    (`conformance.sh`, probe: a restart after a transaction and its lookups
+    against the workload) and run E (`ereads=N`: lookups at random times
+    under eviction; `erestart=K`), level 2 to level 4; the bytes by item 5.
+    The kind's agreement with the level, which the reads after a crash use,
+    is a checked clause, K-LEVEL (`bridgecheck`, KIND), not an assumption.
+    **Extended by 030-17** to eviction, a lazy startup and reclaim's cut:
+    the same for the view that a read through the handles, a lazy read or a
+    startup from a cut stream gives back, and for the top it is enough that
+    Java's top holds, as written, the top nodes that its search reads
+    (`TopFrom f`: the super root, every top node made at or after f, and the
+    top node of time f, each with its root pointer and its skip pointers with
+    their cached times; f the lookup time, or after a cut the first
+    available time). A top node that Java evicted and loads again through its
+    handle, or reads from the stream after a cut, is the top node as written.
+    That the cut stream still holds those top nodes is proved
+    (`cut_keeps_top`), and so is that Java's search then reads no other.
+    Tested besides by run E with eviction (`conformance.sh evict`, level 4),
+    `ReclaimReaders` (readers at old lookup times on a cold cache after a
+    restart while reclaim cuts, level 3; with forced eviction, level 4), and
+    `conformance.sh reclaim` (probes after restarts from the cut stream,
+    level 3).
+
 ## 3.6 Later, optional
 
 - **The model's writer meets the contract.** Such a proof plugs in as one

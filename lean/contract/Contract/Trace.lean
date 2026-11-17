@@ -53,10 +53,16 @@ structure Trace where
   shape : ShapeParams := ⟨0, 0, 0⟩
   txs : Array TxLines := #[]
 
+/-- A token is a number: one or more decimal digits and nothing else (`toNat?`
+alone also takes `1_000`; bergdb 030-15). -/
+def isNum (s : String) : Bool := !s.isEmpty && s.all Char.isDigit
+
 def num (s : String) : Except String Nat :=
-  match s.toNat? with
-  | some n => .ok n
-  | none => .error s!"not a number: {s}"
+  if isNum s then
+    match s.toNat? with
+    | some n => .ok n
+    | none => .error s!"not a number: {s}"
+  else .error s!"not a number: {s}"
 
 /-- A key `n c1 ... cn` or `-` at the front of the tokens. -/
 def readKey : List String → Except String (Option Key × List String)
@@ -103,9 +109,24 @@ def readKvs : Nat → List String → Except String (List (Key × Nat))
       return (k, v) :: rest
     | _, _ => throw "a SCAN line's results"
 
+/-- The kinds of line of trace format 3 that `readLine` does not read: their
+grammar is checked by `lineFault` (Complete.lean; bergdb 030-15). -/
+def skippedKinds : List String :=
+  ["TRACE", "CONFIG", "DONE", "BASE", "TOUCH", "REC", "H", "F", "FA", "CUT", "PHYSCUT",
+   "PROBE", "FIRST", "SLOT", "HMEM", "HTABLE", "HANDLE", "HOBJ", "HPTR"]
+
+/-- One line. A line of a kind that the contract reads is read whole or the
+trace is unreadable (bergdb 030-15: until then a line of an unmatched form,
+such as `OP` alone or a SCAN in direction `BANANA`, was passed over or read
+in part); a line of another kind of format 3 is passed over here, and its
+grammar is `lineFault`'s. -/
 def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace × TxLines) := do
-  match (line.splitOn " ").filter (· ≠ "") with
-  | "TREE" :: m :: _ :: h :: _ :: rest =>
+  let toks := (line.splitOn " ").filter (· ≠ "")
+  if toks.head?.any (·.startsWith "#") then return (tr, cur)
+  match toks with
+  | "TREE" :: m :: g :: h :: k :: rest =>
+    if !(g :: k :: rest).all isNum || !([0, 2, 3, 4].contains rest.length) then
+      throw s!"a TREE line: {line}"
     let m ← num m
     let h ← num h
     let mb ← match rest with
@@ -116,13 +137,34 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
       | _ => pure 0
     return ({ tr with M := m, shape := ⟨h, mb, th⟩ }, cur)
   | ["TX", i] => return (tr, { i := (← num i) })
-  | ["END", _] => return ({ tr with txs := tr.txs.push cur }, {})
+  | ["END", j] =>
+    let _ ← num j
+    return ({ tr with txs := tr.txs.push cur }, {})
   | ["NEW", x, l, "I"] => return (tr, { cur with news := cur.news ++ [((← num x), (← num l))] })
-  | ["ADD", y, _, "V", h] => return (tr, { cur with vals := cur.vals ++ [((← num y), (← num h))] })
-  | ["ADD", "0", _, "T", z] => return (tr, { cur with tops := cur.tops ++ [(← num z)] })
-  | ["ADD", z, _, "R", y] =>
+  | ["NEW", x, l, "D"] =>
+    let _ ← num x
+    let _ ← num l
+    return (tr, cur)
+  | ["ADD", y, t, "V", h] =>
+    let _ ← num t
+    return (tr, { cur with vals := cur.vals ++ [((← num y), (← num h))] })
+  | ["ADD", "0", t, "T", z] =>
+    let _ ← num t
+    return (tr, { cur with tops := cur.tops ++ [(← num z)] })
+  | ["ADD", z, t, "R", y] =>
+    let _ ← num t
     return (tr, { cur with rootPtrs := cur.rootPtrs ++ [((← num z), (← num y))] })
+  | ["ADD", z, t, "S", j, y] =>
+    let _ ← num t
+    return (tr, { cur with skipLines := cur.skipLines ++ [((← num z), (← num j), (← num y))] })
+  | "ADD" :: x :: t :: "K" :: r =>
+    if !(x :: t :: r).all isNum || r.length != 2 then throw s!"an ADD K line: {line}"
+    return (tr, cur)
+  | "ADD" :: x :: t :: "D" :: n :: r =>
+    if !(x :: t :: r).all isNum || r.length != (← num n) then throw s!"an ADD D line: {line}"
+    return (tr, cur)
   | "KN" :: x :: l :: n :: rest =>
+    if l != "0" && l != "1" then throw s!"a KN line's kind: {line}"
     let ks ← readKlongs (← num n) rest
     return (tr, { cur with kns := cur.kns ++ [((← num x), l == "1", ks)] })
   | "OP" :: "P" :: rest =>
@@ -139,6 +181,7 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
   | "GD" :: rest => return (tr, { cur with gd := ← rest.mapM num })
   | "DIRTY" :: rest =>
     let xs ← rest.mapM num
+    if xs.length % 2 != 0 then throw s!"a DIRTY line: {line}"
     return (tr, { cur with dirty := (xs.zipIdx.filter (fun q => q.2 % 2 == 0)).map (·.1) })
   | "GET" :: t :: rest =>
     match ← readKey rest with
@@ -147,6 +190,8 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
       return (tr, { cur with gets := cur.gets ++ [⟨(← num t), k, some (← num v)⟩] })
     | _ => throw "a GET line"
   | "SCAN" :: t :: d :: a :: b :: n :: rest =>
+    if d != "F" && d != "B" then throw s!"a SCAN line's direction {d}"
+    if a != "0" && a != "1" || b != "0" && b != "1" then throw s!"a SCAN line's ends: {line}"
     let (start, r1) ← readKey rest
     let (endKey, r2) ← readKey r1
     match r2 with
@@ -156,12 +201,15 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
                              endKey := endKey, endInclusive := b == "1" }
       return (tr, { cur with scans := cur.scans ++ [⟨(← num t), req, (← num n), res⟩] })
     | [] => throw "a SCAN line"
-  | ["ADD", z, _, "S", j, y] =>
-    return (tr, { cur with skipLines := cur.skipLines ++ [((← num z), (← num j), (← num y))] })
-  | ["VER", x, _] => return (tr, { cur with ver := ← num x })
+  | ["VER", x, k] =>
+    if k != "I" && k != "D" then throw s!"a VER line: {line}"
+    return (tr, { cur with ver := ← num x })
   | ["SKIPT", j, t] =>
     return (tr, { cur with skipts := cur.skipts ++ [(cur.ver, (← num j), (← num t))] })
-  | _ => return (tr, cur)
+  | k :: _ =>
+    if skippedKinds.contains k then return (tr, cur)
+    throw s!"a line the reader cannot read: {line}"
+  | [] => return (tr, cur)
 
 /-- Reads a trace from its lines. -/
 def readTrace (lines : Array String) : Except String Trace := do

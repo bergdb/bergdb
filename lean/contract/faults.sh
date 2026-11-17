@@ -8,7 +8,13 @@
 # KN line for a node, an OP line of an unknown kind, a LIVE line of a key node or of
 # the root (the top search) that is not the package's; and from Java (TraceExport's
 # fault=I) a klong of an existing node changed in memory, which the exporter must
-# show as an ERROR line and as a KN line from its klong diff.
+# show as an ERROR line and as a KN line from its klong diff. Since bergdb 030-15,
+# a line that does not parse whole by the grammar of trace format 3 (027-02): the
+# faults of an independent review (030-15) in the good trace and in the hand-made
+# trace test/small.trace (a bare OP or GET line, a SCAN in the direction BANANA,
+# an OP line in TX 0, a GET with a wrong answer), and a number with an underscore,
+# two spaces between tokens, lines out of their order, a TX without its BASE line.
+# Since bergdb 030-17, K-LEVEL: the TREE line's h set to 0 (KIND alone fails).
 #
 # Usage: lean/contract/faults.sh
 # Needs: the checker (cd lean/contract && lake build contractcheck) and java/build
@@ -72,9 +78,50 @@ expect opx FAIL $DIR/opx.trace
 awk '/^TX 30$/{t=1} t && /^LIVE [1-9][0-9]* [0-9]* [0-9]/ && !d{$NF=999999; d=1} {print}' $G > $DIR/livekey.trace
 expect livekey FAIL $DIR/livekey.trace
 grep -q 'L1 [1-9]' $DIR/livekey.out || { echo "   livekey: WRONG, not L1"; FAILED=$((FAILED + 1)); }
-awk '/^TX 30$/{t=1} t && /^LIVE 0 [0-9]* [0-9]/ && !d{$NF=""; d=1} {print}' $G > $DIR/livetop.trace
+awk '/^TX 30$/{t=1} t && /^LIVE 0 [0-9]* [0-9]/ && !d{NF=NF-1; d=1} {print}' $G > $DIR/livetop.trace
 expect livetop FAIL $DIR/livetop.trace
 grep -q 'L1 [1-9]' $DIR/livetop.out || { echo "   livetop: WRONG, not L1"; FAILED=$((FAILED + 1)); }
+
+# bergdb 030-15: lines that do not parse whole by the grammar, in the good trace's TX 30.
+awk '/^TX 30$/{t=1} {print} t && /^OP / && !d{print "OP"; d=1}' $G > $DIR/bareop.trace
+expect bareop FAIL $DIR/bareop.trace
+awk '/^TX 30$/{t=1} {print} t && /^GET / && !d{print "GET"; d=1}' $G > $DIR/bareget.trace
+expect bareget FAIL $DIR/bareget.trace
+awk '/^TX 30$/{t=1} t && /^SCAN / && !d{$3="BANANA"; d=1} {print}' $G > $DIR/banana.trace
+expect banana FAIL $DIR/banana.trace
+awk '{print} /^TX 0$/{print "OP P 1 8 99"}' $G > $DIR/tx0op.trace
+expect tx0op FAIL $DIR/tx0op.trace
+awk '/^TX 30$/{t=1} t && /^GET / && !d{$NF=($NF=="-" ? 7 : "-"); d=1} {print}' $G > $DIR/wrongget.trace
+expect wrongget FAIL $DIR/wrongget.trace
+awk '/^TX 30$/{t=1} t && /^BASE [0-9][0-9]/ && !d{$2=substr($2,1,1) "_" substr($2,2); d=1} {print}' $G > $DIR/underscore.trace
+expect underscore FAIL $DIR/underscore.trace
+awk '/^TX 30$/{t=1} t && /^OP P / && !d{sub(/^OP P /, "OP  P "); d=1} {print}' $G > $DIR/twospaces.trace
+expect twospaces FAIL $DIR/twospaces.trace
+awk '/^TX 30$/{t=1} t && /^GD/ && !d{g=$0; d=1; next} {print} g!="" && /^DIRTY/{print g; g=""}' $G > $DIR/order.trace
+expect order FAIL $DIR/order.trace
+awk '/^TX 30$/{t=1} t && /^BASE / && !d{d=1; next} {print}' $G > $DIR/nobase.trace
+expect nobase FAIL $DIR/nobase.trace
+# bergdb 030-17: K-LEVEL, the kind of each key node from its level with the TREE
+# line's h: h set to 0 makes every key node a segment leaf by its level, so every
+# inner node fails KIND, and nothing else.
+awk '/^TREE / && !d{$4=0; d=1} {print}' $G > $DIR/kindh0.trace
+expect kindh0 FAIL $DIR/kindh0.trace
+grep -q 'KIND [1-9]' $DIR/kindh0.out || { echo "   kindh0: WRONG, not KIND"; FAILED=$((FAILED + 1)); }
+grep -q 'C1 0, C2 0, C3 0, R1 0, L1 0, C4 0, C5 0' $DIR/kindh0.out \
+    || { echo "   kindh0: WRONG, a clause other than KIND"; FAILED=$((FAILED + 1)); }
+# The review's own faults, in a hand-made trace of two transactions that passes.
+S=test/small.trace
+expect small PASS $S
+awk '{print} /^OP P/{print "OP"}' $S > $DIR/s-bareop.trace
+expect s-bareop FAIL $DIR/s-bareop.trace
+awk '{print} /^GET /{print "GET"}' $S > $DIR/s-bareget.trace
+expect s-bareget FAIL $DIR/s-bareget.trace
+sed 's/^SCAN 1 F /SCAN 1 BANANA /' $S > $DIR/s-banana.trace
+expect s-banana FAIL $DIR/s-banana.trace
+awk '{print} /^TX 0$/{print "OP P 1 8 99"}' $S > $DIR/s-tx0op.trace
+expect s-tx0op FAIL $DIR/s-tx0op.trace
+sed 's/^GET 1 2 56 64 5$/GET 1 2 56 64 999/' $S > $DIR/s-wrongget.trace
+expect s-wrongget FAIL $DIR/s-wrongget.trace
 
 # From Java: a klong of an existing node changed in memory at the last record, R(60).
 $JAVA -ea $PROPS -Dfault=60 -cp $CP bergdb.core.TraceExport 1 $DIR/java.trace > $DIR/java.txt 2>&1

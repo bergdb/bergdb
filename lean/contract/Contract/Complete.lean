@@ -11,6 +11,12 @@ trace is whole, line by line, before the contract is checked
   sections 2 and 4), and no line is an `ERROR` line (the exporter's own
   report of a change it could not express, such as klongs of an existing node
   changed or removed);
+* (bergdb 030-15) every line parses whole by the grammar of format 3
+  (`lineFault`): exactly the tokens of its kind, each of its form, numbers
+  of decimal digits only, one space between tokens; the lines of a
+  transaction in the order of 027-02, section 2 (`placeLine`), `TX i`,
+  i > 0, starting with `BASE`, and `TX 0`, the start, with no operation,
+  read, touch or reclaim line;
 * the transactions are numbered 0, 1, 2, ... with no gap; each `TX i` ends
   with `END i`, the lines of a transaction stand between the two, and the
   last line is `DONE n`, n the last transaction (a cut trace fails);
@@ -73,18 +79,163 @@ structure LineState where
   rptrs : List NodeId := []
   gd : Nat := 0
   dirty : Nat := 0
+  /-- The place (`rankOf`) of the last line of the transaction being read,
+  and in a version: 0 before its first VER line, then 1 after a VER line, 2
+  after an H line, 3 after a SKIPT line, 4 after an F line (bergdb 030-15). -/
+  rank : Nat := 0
+  verPart : Nat := 0
 
 /-- n klongs of a KN line take exactly the tokens `toks`. -/
 def klongToksOk : Nat → List String → Bool
   | 0, [] => true
   | 0, _ :: _ => false
-  | n + 1, "T" :: t :: r => t.toNat?.isSome && klongToksOk n r
-  | n + 1, "K" :: c :: y :: r => c.toNat?.isSome && y.toNat?.isSome && klongToksOk n r
-  | n + 1, "B" :: b :: r => b.toNat?.isSome && klongToksOk n r
+  | n + 1, "T" :: t :: r => isNum t && klongToksOk n r
+  | n + 1, "K" :: c :: y :: r => isNum c && isNum y && klongToksOk n r
+  | n + 1, "B" :: b :: r => isNum b && klongToksOk n r
   | _ + 1, _ => false
 
-/-- All tokens are numbers. -/
-def allNums (toks : List String) : Bool := toks.all (fun t => t.toNat?.isSome)
+/-- All tokens are numbers (digits only: `isNum`, Trace.lean). -/
+def allNums (toks : List String) : Bool := toks.all isNum
+
+/-! ## The grammar of a line (bergdb 030-15)
+
+Every line of a trace must parse whole by the grammar of trace format 3
+(bergdb 027-02, sections 1, 2 and 4): its kind, then exactly the tokens
+that kind has, each of its form (a number is decimal digits only; `-` only
+where the format allows none). `lineFault` gives what is wrong with a line,
+or none. Until 030-15 only the kinds were checked here and `readLine` passed
+over a line of an unmatched form: a bare `OP` or `GET` line, or a SCAN in
+the direction `BANANA` (read as backward), passed both checkers. -/
+
+/-- A number or `-`. -/
+def isNumOrNone (s : String) : Bool := s == "-" || isNum s
+
+/-- The tokens after a key `n c1 ... cn` at the front, if there is one. -/
+def keyRest : List String → Option (List String)
+  | n :: r =>
+    if isNum n then
+      let k := n.toNat?.getD 0
+      if k ≤ r.length && (r.take k).all isNum then some (r.drop k) else none
+    else none
+  | [] => none
+
+/-- The tokens after a key or `-` at the front, if there is one. -/
+def keyOrNoneRest : List String → Option (List String)
+  | "-" :: r => some r
+  | toks => keyRest toks
+
+/-- n keys, each with its value, take exactly the tokens. -/
+def kvsOk : Nat → List String → Bool
+  | 0, toks => toks.isEmpty
+  | n + 1, toks =>
+    match keyRest toks with
+    | some (v :: r) => isNum v && kvsOk n r
+    | _ => false
+
+/-- An entry (bergdb 027-02, section 1): `K c y`, `D n c1 ... cn`, `R y`,
+`S j z`, `T z` or `V h`. -/
+def entryOk : List String → Bool
+  | ["K", c, y] => isNum c && isNum y
+  | "D" :: n :: cs => isNum n && cs.length == n.toNat?.getD 0 && allNums cs
+  | ["R", y] => isNum y
+  | ["S", j, z] => isNum j && isNum z
+  | ["T", z] => isNum z
+  | ["V", h] => isNum h
+  | _ => false
+
+/-- What is wrong with the tokens of a line of a kind of trace format 3, or
+none (the first token is the kind; `TRACE` and `ERROR` are `lineStep`'s). -/
+def lineFault (toks : List String) : Option String :=
+  let ok : Bool := match toks with
+    | "CONFIG" :: _ => true
+    | "TREE" :: r => allNums r && [4, 6, 7, 8].contains r.length
+    | ["TX", i] => isNum i
+    | ["END", i] => isNum i
+    | ["DONE", n] => isNum n
+    | ["BASE", b] => isNum b
+    | "OP" :: "P" :: r => match keyRest r with
+      | some [v] => isNum v
+      | _ => false
+    | "OP" :: "D" :: r => keyRest r == some []
+    | "OP" :: "N" :: r => keyRest r == some []
+    | ["NEW", x, l, k] => isNum x && isNum l && (k == "I" || k == "D")
+    | "ADD" :: x :: t :: e => isNum x && isNum t && entryOk e
+    | "KN" :: x :: l :: n :: r =>
+      isNum x && (l == "0" || l == "1") && isNum n && klongToksOk (n.toNat?.getD 0) r
+    | "GET" :: t :: r => isNum t && match keyRest r with
+      | some [v] => isNumOrNone v
+      | _ => false
+    | "SCAN" :: t :: d :: a :: b :: n :: r =>
+      isNum t && (d == "F" || d == "B") && (a == "0" || a == "1") && (b == "0" || b == "1") &&
+        isNum n && match (keyOrNoneRest r).bind keyOrNoneRest with
+        | some (k :: kvs) => isNum k && kvsOk (k.toNat?.getD 0) kvs
+        | _ => false
+    | "TOUCH" :: xs => allNums xs
+    | ["REC", i, sp, top, src] =>
+      isNum i && isNumOrNone sp && isNumOrNone top && (src == "field" || src == "derived")
+    | ["REC", i, sp, top, src, z] =>
+      isNum i && isNumOrNone sp && isNum top && (src == "field" || src == "derived") && isNum z
+    | ["VER", x, k] => isNum x && (k == "I" || k == "D")
+    | "H" :: t :: e => isNum t && entryOk e
+    | ["F", y, r] => isNum y && isNum r
+    | ["SKIPT", j, t] => isNum j && isNum t
+    | "GD" :: xs => allNums xs
+    | "DIRTY" :: xs => allNums xs && xs.length % 2 == 0
+    | ["FA", t] => isNum t
+    | ["CUT", c, t] => isNum c && isNum t
+    | ["PHYSCUT", c] => isNum c
+    | "LIVE" :: x :: t :: ys => isNum x && isNum t && allNums ys
+    | "PROBE" :: i :: k :: _ => isNum i && (k == "ok" || k == "fail")
+    | ["FIRST", x, n, r, k, c] =>
+      isNum x && isNumOrNone n && isNumOrNone r &&
+        (k == "canonical" || k == "version" || k == "snapshot") && (c == "0" || c == "1")
+    | ["SLOT", x, y, r, k] =>
+      isNum x && isNum y && isNumOrNone r &&
+        (k == "canon" || k == "mem" || k == "stream" || k == "dead")
+    | ["HMEM", k, c] => isNum k && isNum c
+    | ["HTABLE", y, h] => isNum y && isNum h
+    | ["HANDLE", h, y, st, a, w] =>
+      isNum h && isNum y && (st == "live" || st == "loading" || st == "dead") &&
+        isNumOrNone a && isNumOrNone w
+    | ["HOBJ", a, y, k, r, e, x] =>
+      isNum a && isNum y && (k == "canon" || k == "snap") && isNumOrNone r && isNum e && isNum x
+    | ["HPTR", a, y, r, h] => isNum a && isNum y && isNumOrNone r && isNumOrNone h
+    | _ => false
+  if ok then none else some s!"not of the grammar of trace format 3: {" ".intercalate toks}"
+
+/-- The place of a kind of line in a transaction (bergdb 027-02, section 2,
+"Within TX i, the order is"; section 4): the lines of a transaction come in
+this order. A version's lines (`VER`, with its `H`, `SKIPT` and `F` lines)
+share one place. -/
+def rankOf : String → Nat
+  | "BASE" => 1
+  | "OP" => 2
+  | "NEW" => 3
+  | "ADD" => 4
+  | "KN" => 5
+  | "GET" => 6
+  | "SCAN" => 7
+  | "TOUCH" => 8
+  | "REC" => 9
+  | "VER" | "H" | "SKIPT" | "F" => 10
+  | "GD" => 11
+  | "DIRTY" => 12
+  | "FA" | "CUT" | "PHYSCUT" => 13
+  | "LIVE" => 14
+  | "PROBE" => 15
+  | "FIRST" => 16
+  | "SLOT" => 17
+  | "HMEM" | "HTABLE" | "HANDLE" | "HOBJ" | "HPTR" => 18
+  | _ => 0
+
+/-- The kinds of line that stand at most once in a transaction. -/
+def onceKinds : List String := ["BASE", "TOUCH", "REC"]
+
+/-- The kinds of line that `TX 0`, the start, does not have: it makes the
+primordial nodes, runs no operation and reads nothing (bergdb 027-02,
+section 4: BASE, OP, GET and SCAN lines are of `TX i`, i > 0; a touch and
+reclaim's lines are of a step). -/
+def notStartKinds : List String := ["BASE", "OP", "GET", "SCAN", "TOUCH", "FA", "CUT", "PHYSCUT"]
 
 /-- The kind of node x if it is made, before or in the transaction being
 read. An index node of a NEW line of this transaction is the root if it is
@@ -119,7 +270,7 @@ def endTx (st : LineState) (i : Nat) : Except String LineState := do
   for z in st.rptrs do
     if !st.tops.contains z then throw s!"TX {i}: a root pointer of {z}, no top node made"
   return { st with tx := none, next := i + 1, nodes := nodes, news := [], kns := [], vals := [],
-                   tops := [], rptrs := [], gd := 0, dirty := 0 }
+                   tops := [], rptrs := [], gd := 0, dirty := 0, rank := 0, verPart := 0 }
 
 /-- An ADD line `ADD x t e` of transaction i. -/
 def addLine (st : LineState) (i : Nat) (toks : List String) : Except String LineState := do
@@ -157,6 +308,30 @@ def addLine (st : LineState) (i : Nat) (toks : List String) : Except String Line
     | _, k => throw s!"an ADD line for node {x} ({repr k}) that is not of its kind: {e}"
   | _ => throw "an ADD line"
 
+/-- A line of kind k in transaction i stands in its place (bergdb 030-15):
+the kinds in the order of `rankOf`, `BASE`, `TOUCH` and `REC` at most once,
+an `H`, `SKIPT` or `F` line in a version after its `VER` line, in that
+order; `TX i`, i > 0, starts with its `BASE` line, and `TX 0` has none of
+the lines of an operation, a read or a step (`notStartKinds`). -/
+def placeLine (st : LineState) (i : Nat) (k : String) : Except String LineState := do
+  if i == 0 && notStartKinds.contains k then throw s!"a line of kind {k} in TX 0, the start"
+  if i != 0 && st.rank == 0 && k != "BASE" then throw s!"TX {i} does not start with BASE"
+  let r := rankOf k
+  if r == 0 then throw s!"a line of kind {k} inside TX {i}"
+  if r < st.rank || (r == st.rank && onceKinds.contains k) then
+    throw s!"a line of kind {k} out of its place in TX {i} (027-02, section 2)"
+  let part ← match k with
+    | "VER" => pure 1
+    | "H" => if 1 ≤ st.verPart && st.verPart ≤ 2 then pure 2 else throw s!"an H line not after VER or H"
+    | "SKIPT" =>
+      if 1 ≤ st.verPart && st.verPart ≤ 3 then pure 3 else throw s!"a SKIPT line not in a version"
+    | "F" => if 1 ≤ st.verPart then pure 4 else throw s!"an F line not in a version"
+    | _ => pure 0
+  return { st with rank := r, verPart := part }
+
+/-- The kinds of line whose last token is free text. -/
+def textKinds : List String := ["CONFIG", "PROBE"]
+
 /-- One line, at line number `ln`. -/
 def lineStep (st : LineState) (ln : Nat) (line : String) : Except String LineState := do
   let toks := (line.splitOn " ").filter (· ≠ "")
@@ -170,6 +345,9 @@ def lineStep (st : LineState) (ln : Nat) (line : String) : Except String LineSta
       return { st with first := false }
     if t == "ERROR" then throw s!"line {ln}: the exporter's {line}"
     if !lineKinds.contains t then throw s!"line {ln}: a line of an unknown kind: {line}"
+    if !textKinds.contains t && (line.splitOn " ").length != toks.length then
+      throw s!"line {ln}: tokens not separated by one space: {line}"
+    if let some e := lineFault toks then throw s!"line {ln}: {e}"
     match st.tx with
     | none =>
       match toks with
@@ -191,6 +369,10 @@ def lineStep (st : LineState) (ln : Nat) (line : String) : Except String LineSta
         throw s!"line {ln}: a {k} line outside a transaction"
       | [] => return st
     | some i =>
+      let st ← if t == "END" then pure st else
+        match placeLine st i t with
+        | .ok st' => pure st'
+        | .error e => throw s!"line {ln}: {e}"
       match toks with
       | ["END", j] =>
         let j ← num j
