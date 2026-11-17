@@ -1511,3 +1511,24 @@ full segment leaf). Proved: 1,065 of the 1,134 full-parent merges (94%).
 the 69 (R4's general case: the copy is the hole and q's cascade moves it; the next round's
 descent must find it through the changed levels, R1 through the cascade), a space split
 below a full inner parent (0), p made and split in space (0). No stop rule fired.
+
+2026-11-17, 02:44 to 02:55. Step 3's rest, the merge tails' shared prelude folded (the
+coordinator's step 1, scaled to what fits), prover l4f. Rule: the full continuation lemma
+(the prelude up to `mergeParent` with the state's facts handed on) was judged too big for
+the night (about 80 named facts in its continuation, the tails' do-block shapes to match;
+about 2 hours), so the prelude's pure parts became three lemmas in LiveMergeRoom.lean, each
+tail taking them by one `obtain` with the same names: `mergeTail_treeFacts` (l's and r's
+links from p, the nodes distinct and below the next id, the sibling filled),
+`mergeTail_newFacts` (the merged klongs sorted, counted, naming children of l or r; a new
+node of them filled), `mergeTail_frameFacts` (after x's heights are read: the overlay above
+the next id empty, p not taken, the cleanup's list, p's other links), and
+`mergeTail_twoFacts` (a merge into two: g2's klong, both new nodes filled, their klongs).
+Tails changed (proofs only, statements unchanged): `writerWP_mergeTail_liveRoomB`,
+`_liveFullTime`, `_liveFullTime2G`, `_liveMade`, `_liveSplitX`, `_liveFullRoot`. About 680
+lines fewer (with the no-hole tails' fold of 02:22, `writerWP_mergeTail_liveSplitX`, the
+merge tails are about 1,000 lines shorter than at 02:00). Left for a successor: the
+monadic part of the prelude (`ghOf`, the new nodes' `newKey` and `setMadeFor`, about 40
+lines a tail) and the merged tree's facts after `mergeParent` (about 75 lines, the same in
+the one-node branches of `_liveSplitX`, `_liveFullRoot` and, but for 7 lines,
+`_liveFullTime`): a lemma over the merged tree V as a function (`wNode` of the state given
+by its agreement with N but at the new nodes) would fold the second.
