@@ -5,3 +5,4 @@ import Contract.Check
 import Contract.Shape
 import Contract.Trace
 import Contract.Theorems
+import Contract.Example

@@ -7,6 +7,12 @@ import Contract.Proof.Good
 
 namespace Contract
 
+theorem ite_pos' {α : Type} {c : Prop} [Decidable c] (h : c) (a b : α) :
+    (if c then a else b) = a := by simp [h]
+
+theorem ite_neg' {α : Type} {c : Prop} [Decidable c] (h : ¬ c) (a b : α) :
+    (if c then a else b) = b := by simp [h]
+
 variable {s : Tree}
 
 /-- A get from a sound node finds exactly what the node holds. -/
@@ -42,7 +48,7 @@ theorem Good.getGo_iff {x : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s x l
     | cons c rest =>
       simp only [getGo, hobj]
       by_cases hl : n.leaf = true
-      · rw [if_pos hl]
+      · rw [ite_pos' hl]
         rw [searchEq_spec n.ks hwf c]
         cases hlk : (live n.ks).lookup c with
         | none =>
@@ -118,7 +124,7 @@ theorem Good.getGo_iff {x : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s x l
                 · simp at h3
                 · rw [hl] at h1; simp at h1
       · have hl' : n.leaf = false := by simpa using hl
-        rw [if_neg hl]
+        rw [ite_neg' hl]
         rw [searchLte_spec]
         cases hs : ((live n.ks).filter (fun cy => !(Pos.at c).below cy.1)).getLast? with
         | none =>
