@@ -186,6 +186,8 @@ def checkWriterTrace (p : MParams) (tr : Trace) (old : SIS.Check.Trace)
       let ops := x.ops.toList.map (·.1)
       if ops.map opOf != tx.ops then
         c := { c.fail s!"TX {i}: the readers' operations differ" with errs := c.errs + 1 }
+      if !ops.all (fun op => keyWf op.key) then
+        c := { c.fail s!"TX {i}: a key that Keys.toSegments does not make" with errs := c.errs + 1 }
       match x.base with
       | none => c := { c.fail s!"TX {i}: no BASE line" with errs := c.errs + 1 }
       | some base =>

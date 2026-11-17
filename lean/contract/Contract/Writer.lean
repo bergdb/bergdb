@@ -123,7 +123,8 @@ tp to the writer:
 `Books`, the writer's own rules that it relies on at the start of the
 transaction at time i with first id `base`, beside the contract's invariants:
 
-* every time of a klong of s, and of a space root, is before i;
+* every key node of s starts with a time klong, and every time of a klong
+  of s, and of a space root, is before i;
 * every node of s and every top node has an id below `base`: the ids that the
   transaction makes are new;
 * the space root of s is the root pointer of the last top node. -/
@@ -145,6 +146,7 @@ def timesBefore (i : Time) (ks : List Klong) : Bool :=
 /-- The writer's books at the start of the transaction at time i with the
 first id `base`. -/
 structure Books (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
+  first : ∀ x n, s.obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest
   times : ∀ x n, s.obj x = some (.key n) → timesBefore i n.ks = true
   rootTimes : ∀ r ∈ s.roots, r.1 < i
   ids : ∀ x, base ≤ x → s.obj x = none ∧ tp.node x = none
@@ -167,10 +169,12 @@ the tree at time i is the tree, and s at time i - 1 is s.
 * J3. The frame, from s, with D the overlay.
 * J4. TREE.
 * J5. The top's clauses, and the space roots are the top's.
-* BalancedOK, of the writer's own rules: a key node is a segment leaf exactly
-  at height 0 of its segment tree, and an inner node's children are one level
-  below it. (The other four rules of Shape.lean, the fill among them, are not
-  here: see 3.3.)
+* BalancedOK, of the writer's own rules, for every key node of the tree,
+  reached or not, and every key klong of it, live or dead (`BalancedAll`): a
+  key node has a level above 0 and is a segment leaf exactly at height 0 of
+  its segment tree, and a key klong of an inner node names a key node one
+  level below it. (The other four rules of Shape.lean, the fill among them,
+  are not here: see 3.3.)
 * The writer's books within a transaction (`MidBooks`), B1 to B12:
   * B1. A key node of the overlay that is kept (not taken back) is a node of s
     exactly if its first time is not i: the nodes made are those of first
@@ -185,18 +189,20 @@ the tree at time i is the tree, and s at time i - 1 is s.
     so has the next id.
   * B7. A key node of s in the overlay that is not reached has its klongs of
     s (a node replaced has lost its klongs of the transaction).
-  * B8. A node made and kept is reached (or is the top node).
+  * B8. A key node made and kept is reached (or is the top node).
   * B9. A node taken back was made by the transaction.
   * B10. A node of the overlay is a node of s or was made by the transaction.
   * B11. No key node was made outside the bounds G and H of the levels.
   * B12. A node made with a node it replaces is of that node's segment, at
     its height or above.
+  * B13. A key node kept starts with a time klong.
 
 ### 3.2 The statement
 
-`OpStep`, one operation: from a state with `Mid`, an operation that the writer
-accepts (`putKv` gives no error), and that leaves no key node outside G and
-H, ends in a state with `Mid`, the operation done.
+`OpStep`, one operation: from a state with `Mid`, an operation on a key as
+`Keys.toSegments` makes it (`keyWf`) that the writer accepts (`putKv` gives
+no error), and that leaves no key node outside G and H, ends in a state with
+`Mid`, the operation done.
 
 `WriterMeets`, one transaction: from a tree s and a top tp that meet the
 contract's invariants, TREE and BalancedOK, with the books of a start
@@ -230,8 +236,12 @@ def cpOf (p : MParams) : Params := { M := p.M }
 /-- The parameters of the writer's own rules, from the model's. -/
 def shapeOf (p : MParams) : ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
 
-/-- BalancedOK of the writer's own rules (Shape.lean). -/
-def Balanced (p : MParams) (s : Tree) : Prop := "BalancedOK" ∉ shapeFaults (shapeOf p) s
+/-- BalancedOK of the writer's own rules (Shape.lean), for every key node and
+every key klong. -/
+def BalancedAll (p : MParams) (s : Tree) : Prop :=
+  ∀ x n, s.obj x = some (.key n) → 0 < n.level ∧ n.leaf = (p.heightOf n.level == 0) ∧
+    (n.leaf = false → ∀ c y, Klong.key c y ∈ n.ks → ∃ m, s.obj y = some (.key m) ∧
+      m.level + 1 = n.level)
 
 /-- The writer's books within the transaction at time i, B1 to B12. -/
 structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) : Prop where
@@ -249,13 +259,15 @@ structure MidBooks (p : MParams) (i : Time) (base : NodeId) (s : Tree) (w : MW) 
     base ≤ w.next ∧ (w.newTop = true → w.top.id < w.next)
   old : ∀ x n n0, w.nodes.lookup x = some n → w.taken.contains x = false →
     s.obj x = some (.key n0) → x ∉ reach (treeOf i s w) → n.ks.map kOf = n0.ks
-  reached : ∀ m ∈ w.made, w.taken.contains m.id = false → m.id ≠ w.top.id →
-    m.id ∈ reach (treeOf i s w)
+  reached : ∀ m ∈ w.made, m.isData = false → w.taken.contains m.id = false →
+    m.id ≠ w.top.id → m.id ∈ reach (treeOf i s w)
   taken : ∀ x, w.taken.contains x = true → x ∈ w.made.map (·.id)
   overlay : ∀ x n, w.nodes.lookup x = some n → (s.obj x).isSome = true ∨ x ∈ w.made.map (·.id)
   within : w.outside = []
   madeSeg : ∀ m o g h n, (m, o) ∈ w.madeFor → w.gh.lookup m = some (g, h) →
     s.obj o = some (.key n) → g = p.segOf n.level ∧ p.heightOf n.level ≤ h
+  timeFirst : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false →
+    ∃ t rest, n.ks = SIS.Tree.Klong.time t :: rest
 
 /-- What holds between two operations of the transaction at time i from the
 tree s with the top tp, after the operations `done`: J1 to J5, BalancedOK and
@@ -268,7 +280,7 @@ structure Mid (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (do
   tree : TreeOk (treeOf i s w)
   top : TopStep i tp (topOf i tp w)
   roots : (treeOf i s w).roots = rootsOf (topOf i tp w)
-  balanced : Balanced p (treeOf i s w)
+  balanced : BalancedAll p (treeOf i s w)
   books : MidBooks p i base s w
 
 /-- One operation: the writer's `putKv` from the state w, accepted, with no
@@ -276,16 +288,18 @@ key node outside G and H after it, keeps `Mid`. -/
 def OpStep (p : MParams) (op : MOp) : Prop :=
   ∀ (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v : View BVal) (z : NodeId)
     (done : List Op) (w w' : MW) (b : Bool),
-    Shows p v z s tp → Books i base s tp → Mid p i base s tp done w →
+    Shows p v z s tp → Books i base s tp → Mid p i base s tp done w → keyWf op.key = true →
     SIS.Tree.putKv op { p := p, i := i, view := v } w = .ok (b, w') → w'.outside = [] →
     Mid p i base s tp (done ++ [opOf op]) w'
 
-/-- The writer accepts the operations one by one, from the state w to the
-state w', with no key node outside G and H after any of them. -/
+/-- The writer accepts the operations one by one, each on a key as
+`Keys.toSegments` makes it, from the state w to the state w', with no key
+node outside G and H after any of them. -/
 inductive OpsRun (c : SIS.Tree.Ctx) : MW → List MOp → MW → Prop where
   | nil (w : MW) : OpsRun c w [] w
   | cons (w w1 w' : MW) (op : MOp) (ops : List MOp) (b : Bool) :
-      SIS.Tree.putKv op c w = .ok (b, w1) → w1.outside = [] → OpsRun c w1 ops w' →
+      keyWf op.key = true → SIS.Tree.putKv op c w = .ok (b, w1) → w1.outside = [] →
+      OpsRun c w1 ops w' →
       OpsRun c w (op :: ops) w'
 
 /-- The tree s with the top tp before the transaction at time i with first id
@@ -293,7 +307,7 @@ inductive OpsRun (c : SIS.Tree.Ctx) : MW → List MOp → MW → Prop where
 structure Before (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
   inv : invOk (cpOf p) s = true
   tree : TreeOk s
-  balanced : Balanced p s
+  balanced : BalancedAll p s
   books : Books i base s tp
 
 /-- One transaction: the model's writer meets the writer's contract. -/
@@ -306,7 +320,8 @@ def WriterMeets (p : MParams) (ops : List MOp) : Prop :=
       TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
       (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
       invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
-      Balanced p (treeOf i s w) ∧
+      BalancedAll p (treeOf i s w) ∧
+      (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧
       (∀ x, w.next ≤ x → (treeOf i s w).obj x = none ∧ (topOf i tp w).node x = none)

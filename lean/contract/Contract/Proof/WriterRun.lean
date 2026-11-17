@@ -118,6 +118,25 @@ theorem Mid.times {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
       · cases hx
       · exact Nat.le_of_lt (timesBefore_iff.mp (hb.times x n hx) t ht)
 
+/-- Every key node of the map of a state with `Mid` starts with a time klong. -/
+theorem Mid.first {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
+    {done : List Op} {w : MW} (hm : Mid p i base s tp done w) (hb : Books i base s tp) :
+    ∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest := by
+  intro x n hx
+  simp only [treeOf] at hx
+  split at hx
+  · cases hx
+  · next htk =>
+    split at hx
+    · next m hl =>
+      simp only [Option.some.injEq, Obj.key.injEq] at hx
+      subst hx
+      obtain ⟨t, rest, he⟩ := hm.books.timeFirst x m hl (by simpa using htk)
+      exact ⟨t, rest.map kOf, by simp [he, kOf]⟩
+    · split at hx
+      · cases hx
+      · exact hb.first x n hx
+
 theorem Mid.rootTimes {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {done : List Op} {w : MW} (_hm : Mid p i base s tp done w) (hb : Books i base s tp) :
     ∀ r ∈ (treeOf i s w).roots, r.1 ≤ i := by
@@ -170,9 +189,9 @@ theorem mid_run {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   intro ops w w' hrun
   induction hrun with
   | nil w => intro _ done hm; simpa using hm
-  | cons w w1 w' op ops b h1 h2 _ ih =>
+  | cons w w1 w' op ops b hk h1 h2 _ ih =>
     intro hop done hm
-    have hm1 := hop op (by simp) i base s tp v z done w w1 b hs hb hm h1 h2
+    have hm1 := hop op (by simp) i base s tp v z done w w1 b hs hb hm hk h1 h2
     have := ih (fun o ho => hop o (by simp [ho])) (done ++ [opOf op]) hm1
     simpa using this
 
@@ -194,7 +213,7 @@ theorem writerMeets_of_opStep (p : MParams) (ops : List MOp) (hop : ∀ op ∈ o
     · intro r hr
       exact Nat.le_sub_one_of_lt (hb.rootTimes r hr)
   refine ⟨⟨?_, hm.frame⟩, by rw [hat]; exact hm.tree, hm.top, hm.roots, hm.inv, hm.tree,
-    hm.balanced, ?_, ?_, hm.ids hb⟩
+    hm.balanced, hm.first hb, ?_, ?_, hm.ids hb⟩
   · simp only [contractOk, hat, hat0, hm.inv, hm.contents, Bool.true_and, beq_self_eq_true]
   · intro x n hx
     rw [timesBefore_iff]
@@ -207,7 +226,8 @@ theorem writerMeets_of_opStep (p : MParams) (ops : List MOp) (hop : ∀ op ∈ o
 structure RunInv (p : MParams) (txs : List (List Op)) (s : Tree) (tp : Top) : Prop where
   inv : invOk (cpOf p) s = true
   tree : TreeOk s
-  balanced : Balanced p s
+  balanced : BalancedAll p s
+  first : ∀ x n, s.obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest
   times : ∀ x n, s.obj x = some (.key n) → timesBefore (txs.length + 1) n.ks = true
   rootTimes : ∀ r ∈ s.roots, r.1 < txs.length + 1
   roots : s.roots = rootsOf tp
@@ -229,15 +249,17 @@ theorem runs_meetsTop {p : MParams} (hW : ∀ ops, WriterMeets p ops) :
         exact Nat.le_of_lt_succ (hb.books.rootTimes r hr)
     refine ⟨MeetsTop.start s tp ⟨by rw [hat]; exact hb.inv, by rw [hat]; exact hc⟩
       (by rw [hat]; exact hb.tree) ht hb.books.roots, ?_⟩
-    exact ⟨hb.inv, hb.tree, hb.balanced, hb.books.times, hb.books.rootTimes, hb.books.roots⟩
+    exact ⟨hb.inv, hb.tree, hb.balanced, hb.books.first, hb.books.times, hb.books.rootTimes,
+      hb.books.roots⟩
   | step txs s tp ops base v z t w _ hs ht hids hrun ih =>
     obtain ⟨hmeets, hinv⟩ := ih
     have hbf : Before p (txs.length + 1) base s tp :=
-      ⟨hinv.inv, hinv.tree, hinv.balanced, ⟨hinv.times, hinv.rootTimes, hids, hinv.roots⟩⟩
-    obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, _⟩ :=
+      ⟨hinv.inv, hinv.tree, hinv.balanced,
+        ⟨hinv.first, hinv.times, hinv.rootTimes, hids, hinv.roots⟩⟩
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7, hf, h8, h9, _⟩ :=
       hW ops (txs.length + 1) base s tp v z t w hbf hs ht hrun
     refine ⟨MeetsTop.step txs s tp (ops.map opOf) (dirtyOf w) _ _ hmeets h1 h2 h3 h4, ?_⟩
-    refine ⟨h5, h6, h7, ?_, ?_, h4⟩
+    refine ⟨h5, h6, h7, hf, ?_, ?_, h4⟩
     · simpa using h8
     · simpa using h9
 
