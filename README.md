@@ -14,9 +14,15 @@ time.
   time to open a database does not grow with its size.
 * **History.** A read can be made at any time that is still kept, and
   sees the database as it was then, its indexes included.
-* **Larger than memory.** Eviction keeps the database within a memory
-  budget, and reclaim cuts the front of the stream when a finite
-  retention allows it.
+* **Code only.** Java code is all that is needed, for the advanced
+  features too: a transaction is a Java method, an index is made by a
+  call, and a query is a loop over Java objects. No query language and
+  no schema files.
+* **Features.** Atomic transactions, written in Java code only. Scans
+  of the keys of a directory and of an index, forward and backward.
+  Secondary indexes on the fields of stored objects, and compound ones,
+  on up to 8 fields. Historic queries with every feature of the queries
+  at the current time.
 * **Small.** One jar with no dependencies beyond the JDK. No server, few
   settings.
 
@@ -84,8 +90,81 @@ public class Hello {
     java -cp java/build/bergdb-release.jar:. Hello
 
 `create` makes a new database in a new or empty directory; `open` opens
-an existing one. More examples are in `java/src-dev/bergdb/demo/`
-(`GetStarted1` to `GetStarted5`).
+an existing one.
+
+Stored Java objects, a transaction, an index and a query of the past,
+in `Accounts.java`:
+
+```java
+import bergdb.pub.*;
+
+public class Accounts {
+    public static class Account {                    // a plain Java class
+        public String owner;
+        public long balance;
+        public Account() {}
+        public Account(String o, long b) { owner = o; balance = b; }
+    }
+
+    public static void main(String[] args) {
+        try (Database db = Factory.database().memory().start()) {
+            Connection c = db.connection();
+            db.indexBuilder("by-balance").dir("/acc/").type("long").field("balance")
+                    .start().join();                 // a secondary index
+            c.put("/acc/1001", new Account("Ann", 100));
+            c.put("/acc/1002", new Account("Bob", 20));
+            c.put("/acc/1003", new Account("Cecilia", 60));
+            Time before = c.currentTime();
+
+            c.rw(env -> {                            // a transaction: Ann pays Bob 30
+                Account from = env.get("/acc/1001", Account.class);
+                Account to = env.get("/acc/1002", Account.class);
+                from.balance -= 30;
+                to.balance += 30;
+                env.put("/acc/1001", from);
+                env.put("/acc/1002", to);
+            });
+
+            for (Account a : c.usePrimary(Account.class).dir("/acc/").objects()) {
+                System.out.println(a.owner + " " + a.balance);   // in key order
+            }
+            for (Account a : c.useIndex("by-balance", Account.class)
+                    .from(50, true).backward().objects()) {      // largest first
+                System.out.println("50 or more: " + a.owner + " " + a.balance);
+            }
+            c.setLookupTime(before);                 // the same query, in the past
+            for (Account a : c.useIndex("by-balance", Account.class)
+                    .from(50, true).backward().objects()) {
+                System.out.println("50 or more, before: " + a.owner + " " + a.balance);
+            }
+        }
+    }
+}
+```
+
+Compiled and run as `Hello`, it prints:
+
+    Ann 70
+    Bob 50
+    Cecilia 60
+    50 or more: Ann 70
+    50 or more: Cecilia 60
+    50 or more: Bob 50
+    50 or more, before: Ann 100
+    50 or more, before: Cecilia 60
+
+`Account` is an ordinary class with public fields and a public
+no-argument constructor: a put stores the object, and a get or a scan
+gives it back as an `Account`. `rw` runs its action as one atomic
+transaction: both puts are made, or neither, and if another transaction
+changes what the action has read, the action runs again. The index is
+kept as the data changes, in the same transactions. `memory()` gives a
+database in memory, gone when it closes; `create`, as above, keeps one
+in a directory.
+
+More examples are in `java/src-dev/bergdb/demo/` (`GetStarted1` to
+`GetStarted5`), and the Javadoc's page of the package `bergdb.pub` goes
+through the calls one by one.
 
 The API is the packages `bergdb.pub` and `bergdb.pub.util`. The Core's
 `bergdb.core.Db` is a lower-level API of byte-array keys and values, less
@@ -159,9 +238,9 @@ Repository
 
 BergDB was first developed from 2012 to 2017, with releases from 2013 to
 2015. The work went on in October 2026 from the 2017 source: it fixed the
-bugs that had stopped it, made a model of the algorithm, and added
-reclaim and eviction. Much of the 2026 code, tests and documentation
-was written by Frans Lundberg together with AI assistants.
+bugs that had stopped it and added reclaim and eviction. The 2026 code,
+tests and documentation was written by Frans Lundberg together with AI
+assistants.
 
 
 Contributing and security
