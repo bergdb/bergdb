@@ -2,8 +2,8 @@
 # The night run (since 2026-10-20, bergdb 006-03): the checks that
 # before-commit.sh leaves out, on a clean copy of the committed code. Not a
 # gate; read its report when it ends. No fixed time (since 2026-11-06,
-# bergdb 013-02, section 2): the day's coordinator starts it as a step of
-# its plan when the machine has room for it, or Frans by hand, from the
+# bergdb 013-02, section 2): it is started by hand, or by the day's
+# coordinator session (013-02) when the machine has room for it, from the
 # main tree:
 #     nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
 # caffeinate -i keeps the Mac awake. Run it at normal priority: throttled,
@@ -160,7 +160,8 @@ else
 fi
 cat $REPORT
 
-# One line in news.md, Frans's morning news (AGENTS.md, "News"; tools/news.sh).
+# One line in news.md, a local file of background work's results that Git does not
+# track (AGENTS.md, "News"; tools/news.sh).
 if [ -f "$REPO/tools/news.sh" ]; then
     if [ -z "$FAILED" ]; then st=OK; else st=FAILED; fi
     sh "$REPO/tools/news.sh" "$st" night.sh \

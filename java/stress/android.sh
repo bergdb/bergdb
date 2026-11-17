@@ -31,13 +31,17 @@
 # Prints ANDROID OK (N tests, M skipped) or ANDROID FAILED and the failures. Output in
 # build/android/: build.txt, d8.txt, emulator.log, unit.txt, demos.txt.
 #
-# Environment: ANDROID_SDK (default /Users/f/fl/bench/2026-11-09/android/sdk);
+# Environment: ANDROID_SDK, the SDK's directory (required; ANDROID_HOME if it is not set);
 # ANDROID_USER_HOME (default user/ beside the SDK), whose avd/ holds the AVD; ANDROID_AVD
 # (default bergdb34); API (default 34, the floor of objects); PORT (default 5580); JAVA_HOME.
 
 cd "$(dirname "$0")/.."
 HERE=$(pwd)
-SDK=${ANDROID_SDK:-/Users/f/fl/bench/2026-11-09/android/sdk}
+SDK=${ANDROID_SDK:-$ANDROID_HOME}
+if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+    echo "ANDROID FAILED: set ANDROID_SDK to the Android SDK's directory (now: '$SDK'); bergdb 006-18-03, section 3, says how to install it"
+    exit 1
+fi
 export ANDROID_HOME="$SDK" ANDROID_SDK_ROOT="$SDK"
 export ANDROID_USER_HOME="${ANDROID_USER_HOME:-$(dirname "$SDK")/user}"
 export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-$ANDROID_USER_HOME/avd}"

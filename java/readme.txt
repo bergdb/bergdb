@@ -35,8 +35,35 @@ To test
 
     java -ea -cp build/bergdb.jar bergdb.dev.Unit
 
-The scripts that build and test, before-commit.sh first, are listed in the
-repository's README.md, under "Build and test".
+The scripts that build and test, from the repository's root. Each says more
+in its header. Set JAVA_HOME, or JAVA, JAVAC, JAR and JDEPS, if the JDK tools
+are not on the path. level2.sh to level4.sh and the proofs need Lean (elan).
+
+    java/build.sh                  # builds build/bergdb.jar, bergdb-release.jar and the stress tests
+    java/before-commit.sh          # the check before a commit: unit and f-tests, demos (about 2 minutes)
+    java/unit.sh                   # runs the unit tests
+    java/f.sh                      # runs the f-tests
+    java/perf.sh                   # runs the perf-tests
+    java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
+    java/javadoc-pub.sh            # the Pub API's Javadoc, in build/javadoc-pub/
+    java/night.sh                  # the night run: the checks below, on a clone of HEAD (about 100 minutes)
+    java/night.sh large            # the same and the large conformance set (about 6 hours)
+    java/night.sh tests            # only the night tests (about 4.5 minutes)
+    java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
+    java/stress/level1.sh          # full replay          (about 80 s)
+    java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
+    java/stress/level3.sh          # reclaim              (about 8 minutes)
+    java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
+    java/stress/harness-soak.sh    # the Pub layer's randomized harnesses
+    java/stress/fuzz.sh            # fuzzing of the readers of bytes
+    java/stress/kill-restart.sh    # the Pub layer under kills of its JVM (1,000 kills: about 26 minutes)
+    java/stress/android.sh         # the unit tests and demos on an Android emulator (ANDROID_SDK)
+    cd lean && lake build          # checks all proofs
+
+before-commit.sh must print BEFORE COMMIT OK before a change to the Java code
+is committed; it is the only requirement. The level scripts print LEVEL n OK;
+they are deeper checks, not commit gates. night.sh is not a gate either; its
+report is in build/night/.
 
 
 Files

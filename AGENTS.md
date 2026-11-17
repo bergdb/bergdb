@@ -1,7 +1,9 @@
 # bergdb repository instructions
 
 BergDB is an append-only database for Java with a Lean model of its
-algorithm. [README.md](README.md) describes the repo. Its algorithms are
+algorithm. [README.md](README.md) describes BergDB for its users and the
+repository's parts; [java/readme.txt](java/readme.txt) the build and the
+test scripts; [lean/README.md](lean/README.md) the model. Its algorithms are
 item 027, [items/027-algorithms](items/027-algorithms/readme.md); until 027
 is written, start reading at 027-01's [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md),
 a snapshot of the former `docs/` of 2026-11-12.
@@ -70,5 +72,6 @@ a snapshot of the former `docs/` of 2026-11-12.
 ## General
 
 - Preserve unrelated worktree changes.
-- Frans's private notes are kept outside this repository; `frans/` is
-  ignored by Git (since 2026-11-16).
+- Frans's private notes are kept outside this repository and are not
+  public; `frans/` at the root is ignored by Git. Their IDs (F1-007,
+  F1-008) appear in older items and comments (items/readme.md).

@@ -104,6 +104,10 @@ Items and the current state
 * Work on BergDB before this index (2026-10-16), including the Level 2
   alignment, is in item 011, in [docs/log.md](../docs/log.md), and in the f1
   repo's F1-007 and F1-008.
+* IDs of the form F1-xxx (F1-007, F1-008 and their subitems) name the
+  author's private notes, which are not public. The items, code comments
+  and log entries that cite them keep the citations as a record of where
+  the work came from.
 
 
 Index
