@@ -129,3 +129,5 @@ open Contract
 #print axioms putKv_put1
 #print axioms writerMeets_put1
 #print axioms runs_meetsTop_put1
+#print axioms traceTopOk_meetsTop
+#print axioms contractVerdict_sound

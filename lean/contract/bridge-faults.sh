@@ -8,9 +8,15 @@
 # the link); a touched node left out of the TOUCH line (TOUCH); the primordial
 # top node's root pointer to another node (the start); and, since bergdb 030-11,
 # a trace that is not whole: an ERROR line, no DONE line, a trace cut after a
-# transaction (`completeFault`); and, since bergdb 030-14, the kinds of the key
+# transaction (`completeFault`); since bergdb 030-14, the kinds of the key
 # nodes that do not follow their levels (KIND, K-LEVEL: the TREE line's h set
-# to 0, so that every level is a segment leaf's).
+# to 0, so that every level is a segment leaf's); and since bergdb 030-15 a line
+# that does not parse whole by the grammar of trace format 3 (027-02): the faults
+# of an independent review (030-15) in the good trace and in the hand-made trace
+# test/small.trace (a bare OP or GET line, a SCAN in the direction BANANA, an OP
+# line in TX 0, a key entry that is not its klong's), and lines out of their
+# order. A GET with a wrong answer passes this checker: the reads are the
+# contract checker's (check.sh runs both).
 #
 # Usage: lean/contract/bridge-faults.sh
 # Needs: the checker (cd lean/contract && lake build bridgecheck) and the traces
@@ -72,6 +78,20 @@ fault error-line $G '/^TX 0$/ && !d { print "ERROR a change the lines cannot exp
 fault no-done $G '!/^DONE / { print }'
 # Cut after TX 9: TX 10 and the rest left out.
 fault cut $G '/^TX 10$/ { c = 1 } !c { print }'
+# bergdb 030-15: lines that do not parse whole by the grammar, in TX 5.
+fault bare-op $G '{ print } /^TX 5$/ { t = 1 } t && !d && /^OP / { print "OP"; d = 1 }'
+fault bare-get $G '{ print } /^TX 5$/ { t = 1 } t && !d && /^GET / { print "GET"; d = 1 }'
+fault banana $G '/^TX 5$/ { t = 1 } t && !d && /^SCAN / { $3 = "BANANA"; d = 1 } { print }'
+fault tx0-op $G '{ print } /^TX 0$/ { print "OP P 1 8 99" }'
+fault order $G '/^TX 5$/ { t = 1 } t && !d && /^GD/ { g = $0; d = 1; next } { print } g != "" && /^DIRTY/ { print g; g = "" }'
+# The review's own faults, in a hand-made trace of two transactions that passes.
+S=test/small.trace
+expect small PASS $S
+fault s-bare-op $S '{ print } /^OP P/ { print "OP" }'
+fault s-bare-get $S '{ print } /^GET / { print "GET" }'
+fault s-banana $S '/^SCAN 1 F / { $3 = "BANANA" } { print }'
+fault s-tx0-op $S '{ print } /^TX 0$/ { print "OP P 1 8 99" }'
+fault s-wrong-entry $S '/^ADD 3 1 K 56 4$/ { $5 = 64 } { print }'
 
 rm -rf $DIR
 if [ $FAILED -eq 0 ]; then

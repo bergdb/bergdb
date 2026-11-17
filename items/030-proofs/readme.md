@@ -287,6 +287,12 @@ Files
   skip pointers over the top that the stream holds; closed examples from
   `BridgeExample4`; 030-04, 3.5, item 13. The night of 17 November.
   Status: open.
+* [030-15](15-strict-checkers.md). Strict trace parsing, one verdict, and a
+  gate that pins the statements: every trace line by the grammar of format
+  3 or the trace fails (an independent review's faults); `contractVerdict`
+  with `contractVerdict_sound` (MeetsTop); `check.sh` runs both checkers;
+  `gate.sh` step 5 pins the trusted closure of the main theorems
+  (`statements.pin`). Status: open.
 
 Log
 ===

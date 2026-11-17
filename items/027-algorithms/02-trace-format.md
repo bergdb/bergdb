@@ -307,8 +307,19 @@ transactions numbered 0, 1, 2, ... each from `TX i` to `END i`, and the last
 line `DONE n`; in each transaction a `NEW` line only for a node not made
 before, every `ADD` line at time i, a `KN` line for every key node made, an
 `ADD x i V h` line for every value made, an `ADD z i R y` line for every top
-node made, one `GD` and one `DIRTY` line (Contract/Complete.lean). Its `LIVE`
-lines, with `live=1`, are checked against the package's search and the space
+node made, one `GD` and one `DIRTY` line (Contract/Complete.lean). Since
+bergdb 030-15 every line must also parse whole by the grammar of this
+section, section 1 and section 2 (`lineFault`): exactly the tokens of its
+kind, each of its form, a number of decimal digits only, one space between
+tokens (but in `CONFIG` and `PROBE` text); the lines of a transaction in
+the order given in section 2 (`BASE` and `OP` first, then `NEW`, `ADD`,
+`KN`, `GET`, `SCAN`, `TOUCH`, `REC`, the versions, `GD`, `DIRTY`, `FA`,
+`CUT` and `PHYSCUT`, `LIVE`, `PROBE`, `FIRST`, `SLOT`, the handles' lines);
+`TX i`, i > 0, starting with `BASE`; `TX 0` without `BASE`, `OP`, `GET`,
+`SCAN`, `TOUCH`, `FA`, `CUT` or `PHYSCUT`; the `TREE` line with 4, 6, 7 or
+8 numbers. The bridge checker (`lake exe bridgecheck`) reads a trace only
+if it is whole in the same way. The contract checker's
+`LIVE` lines, with `live=1`, are checked against the package's search and the space
 root at each time.
 
 A transaction with a TOUCH line (a step of reclaim; section 2) touches the
