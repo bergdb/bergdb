@@ -29,3 +29,16 @@ open Contract
 #print axioms MeetsBridge.meets
 #print axioms madeCheck_sound
 #print axioms Contract.BridgeExample.meets
+#print axioms MeetsBridge.meetsShape
+#print axioms bridge_treeRunOK
+#print axioms bridge_evictRunOK
+#print axioms bridge_lazy_read
+#print axioms bridge_lazy_restart
+#print axioms bridge_handles_records
+#print axioms bridge_handles_read
+#print axioms bridge_handles_evict
+#print axioms bridge_handles_pos
+#print axioms bridge_cut_recover
+#print axioms bridge_cut_restart
+#print axioms bridge_cut_handles
+#print axioms Contract.BridgeExample.meetsEvict

@@ -231,54 +231,68 @@ theorem BInv.mem_reach_model (hi : BInv h j) {x : NodeId} (hx : x ∈ reach (h.t
   rw [hroot] at hx
   exact hi.reach_walk _ y hry x hx
 
-/-- What the model reaches: the root, the top node of the link, or a node
-that the tree reaches. -/
+/-- What the model reaches, with the link's nodes named: the root, the top
+node z, or a node that the tree reaches. -/
+theorem BInv.reach3 (hi : BInv h j) {n0 nz : Node BVal} {z y : NodeId} {n : KNode}
+    (h0 : (h.P j).get? SIS.root = some n0) (hl0 : h.spec.live (n0.hist.upTo j) = [z])
+    (hz : (h.P j).get? z = some nz) (hly : h.spec.live (nz.hist.upTo j) = [y])
+    (hroot : (h.tree j).root = some y) (hy : (h.tree j).obj y = some (.key n)) {x : NodeId}
+    (hx : Reach h.spec (h.P j) j x) : x = SIS.root ∨ x = z ∨ x ∈ reach (h.tree j) := by
+  induction hx with
+  | root _ _ => exact Or.inl rfl
+  | @child x y' N M hrx hN hy' hM hlt ih =>
+    rcases ih with rfl | rfl | hin
+    · rw [h0] at hN
+      injection hN with hN
+      subst hN
+      rw [hl0] at hy'
+      exact Or.inr (Or.inl (List.mem_singleton.mp hy'))
+    · rw [hz] at hN
+      injection hN with hN
+      subst hN
+      rw [hly] at hy'
+      right; right
+      rw [List.mem_singleton.mp hy']
+      unfold reach
+      rw [hroot]
+      exact mem_reachAt_self _ _ _
+    · right; right
+      have hfuel : lvl (.key n) < (h.tree j).fuel y := by
+        simp [Tree.fuel, hy, lvl]
+      have hin' := hin
+      unfold reach at hin' ⊢
+      rw [hroot] at hin' ⊢
+      have hsome := reachAt_obj hi.lev _ y (by rw [hy]; rfl) x hin'
+      obtain ⟨o, ho⟩ := Option.isSome_iff_exists.mp hsome
+      cases o with
+      | val v => exact absurd hy' (hi.val_live ho hN j y')
+      | key nx =>
+        obtain ⟨hP, hlive⟩ := hi.key_live ho
+        rw [hP] at hN
+        injection hN with hN
+        subst hN
+        obtain ⟨c, hc⟩ := (hlive y').mp hy'
+        exact reachAt_closed hi.lev _ y _ hy hfuel x nx c y' hin' ho hc
+
+/-- What the model reaches: the root, a node that is no node of the tree (the
+top node of the link), or a node that the tree reaches. -/
 theorem BInv.model_reach_cases (hi : BInv h j) {x : NodeId}
     (hx : SIS.reachable h.spec (h.P j) j x = true) :
     x = SIS.root ∨ (h.tree j).obj x = none ∨ x ∈ reach (h.tree j) := by
   rw [SIS.reachable_iff] at hx
   obtain ⟨n0, z, nz, y, n, h0, hl0, hz, hlz, hly, hroot, hy, hny, hs0, hsz⟩ := hi.link
-  have key : ∀ x, Reach h.spec (h.P j) j x → x = SIS.root ∨ x = z ∨ x ∈ reach (h.tree j) := by
-    intro x hx
-    induction hx with
-    | root _ _ => exact Or.inl rfl
-    | @child x y' N M hrx hN hy' hM hlt ih =>
-      rcases ih with rfl | rfl | hin
-      · rw [h0] at hN
-        injection hN with hN
-        subst hN
-        rw [hl0] at hy'
-        exact Or.inr (Or.inl (List.mem_singleton.mp hy'))
-      · rw [hz] at hN
-        injection hN with hN
-        subst hN
-        rw [hly] at hy'
-        right; right
-        rw [List.mem_singleton.mp hy']
-        unfold reach
-        rw [hroot]
-        exact mem_reachAt_self _ _ _
-      · right; right
-        have hfuel : lvl (.key n) < (h.tree j).fuel y := by
-          simp [Tree.fuel, hy, lvl]
-        have hin' := hin
-        unfold reach at hin' ⊢
-        rw [hroot] at hin' ⊢
-        have hsome := reachAt_obj hi.lev _ y (by rw [hy]; rfl) x hin'
-        obtain ⟨o, ho⟩ := Option.isSome_iff_exists.mp hsome
-        cases o with
-        | val v => exact absurd hy' (hi.val_live ho hN j y')
-        | key nx =>
-          obtain ⟨hP, hlive⟩ := hi.key_live ho
-          rw [hP] at hN
-          injection hN with hN
-          subst hN
-          obtain ⟨c, hc⟩ := (hlive y').mp hy'
-          exact reachAt_closed hi.lev _ y _ hy hfuel x nx c y' hin' ho hc
-  rcases key x hx with h1 | h1 | h1
+  rcases hi.reach3 h0 hl0 hz hly hroot hy hx with h1 | h1 | h1
   · exact Or.inl h1
   · exact Or.inr (Or.inl (by rw [h1]; exact hsz))
   · exact Or.inr (Or.inr h1)
+
+/-- Every node that the tree reaches is a node of the tree. -/
+theorem BInv.reach_obj (hi : BInv h j) {x : NodeId} (hx : x ∈ reach (h.tree j)) :
+    ((h.tree j).obj x).isSome = true := by
+  obtain ⟨n0, z, nz, y, n, h0, hl0, hz, hlz, hly, hroot, hy, hny, hs0, hsz⟩ := hi.link
+  unfold reach at hx
+  rw [hroot] at hx
+  exact reachAt_obj hi.lev _ y (by rw [hy]; rfl) x hx
 
 end Model
 

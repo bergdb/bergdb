@@ -21,5 +21,6 @@ import Contract.Proof.BridgeMap
 import Contract.Proof.BridgeInv
 import Contract.Proof.BridgeReach
 import Contract.Proof.BridgeStep
+import Contract.Proof.BridgeTree
 import Contract.BridgeTheorems
 import Contract.BridgeExample

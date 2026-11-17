@@ -5,7 +5,8 @@ one transaction that puts one key) with the model's changes beside it: the
 primordial structure (the root, node 0; key node 1; top node 3), and the
 put's change (value node 2 made, its entry, and a key entry for node 1). It
 meets the contract and the bridge's clauses (`meets`), so the theorems of
-BridgeTheorems.lean speak about it: they are not vacuous.
+BridgeTheorems.lean speak about it: they are not vacuous. It meets what
+eviction needs besides (`meetsEvict`).
 -/
 import Contract.BridgeTheorems
 import Contract.Example
@@ -165,6 +166,62 @@ theorem meets : MeetsBridge Example.p h where
       omega
     subst hj0
     exact ⟨Example.contract, bridge, made, topOK, touchOK⟩
+
+theorem mem_P0 {x : NodeId} {n : Node BVal} (hx : (h.P 0).get? x = some n) :
+    (x = 0 ∧ n = { level := 9, isData := false, hist := [⟨0, .top 3⟩] }) ∨
+    (x = 1 ∧ n = { level := 1, isData := false, hist := [] }) ∨
+    (x = 3 ∧ n = { level := 8, isData := false, hist := [⟨0, .rootKey 1⟩] }) := by
+  have := SIS.mem_of_get? hx
+  rw [show h.P 0 = h.p0 from rfl, startFacts.p0] at this
+  simpa using this
+
+/-- The history meets what eviction needs besides: TREE, A6' and A-COPY. -/
+theorem meetsEvict : MeetsEvict h where
+  tree := by
+    intro j hj
+    have hj1 : j ≤ 1 := hj
+    interval_cases j
+    · show TreeOk (Example.s0.at 0)
+      decide
+    · show TreeOk (Example.s1.at 1)
+      decide
+  adopt := by
+    intro j hj
+    have hj1 : j ≤ 1 := hj
+    interval_cases j
+    · intro x n _ hn y hy hny
+      exfalso
+      rcases mem_P0 hn with ⟨_, rfl⟩ | ⟨_, rfl⟩ | ⟨_, rfl⟩
+      · exact hny (show y ∈ [3] from hy)
+      · have : y ∈ ([] : List Nat) := hy
+        simp at this
+      · exact hny (show y ∈ [1] from hy)
+    · intro x n _ hn y hy hny
+      exfalso
+      rw [show h.P 1 = P1 from rfl] at hn
+      rcases mem_P1 hn with ⟨_, rfl⟩ | ⟨_, rfl⟩ | ⟨_, rfl⟩ | ⟨_, rfl⟩
+      · exact hny (show y ∈ [3] from hy)
+      · exact hny (show y ∈ [2] from hy)
+      · exact hny (show y ∈ [1] from hy)
+      · have : y ∈ ([] : List Nat) := hy
+        simp at this
+  copy := by
+    intro j hj
+    have hj0 : j = 0 := by
+      have : j < 1 := hj
+      omega
+    subst hj0
+    intro a ha y hy hnew
+    exfalso
+    have ha' : a ∈ c1.adds := ha
+    simp only [c1, List.mem_cons, List.not_mem_nil, or_false] at ha'
+    rcases ha' with rfl | rfl
+    · have : y ∈ [2] := hy
+      simp only [List.mem_singleton] at this
+      subst this
+      exact hnew (show 2 ∈ [2] by simp)
+    · have : y ∈ ([] : List Nat) := hy
+      simp at this
 
 /-- What the theorems say of it, for BergDB's algorithm with any take: after
 a crash at the end, startup from the stream gives a structure that holds the
