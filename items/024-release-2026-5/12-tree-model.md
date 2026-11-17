@@ -806,6 +806,10 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   p's cached segment and height (l4a's `writerWP_handleFullWith_time_up_last_gh`, the root's
   split keeping the cache, `writerWP_appendKlongs_rootTimeGh`); `_R1`: the descent at
   (g, h + 1) on the state after it finds the copy (`descendToHeight_topSeg_leafRoot`).
+  04:01 (prover l4g, `LiveTimeRoomChildHole.lean`): the same for the 15 where q splits in time
+  below an inner q0 with room: `writerWP_handleFull_timeRoomChildHole` and `_R1` (with the
+  reads of the split's start as the round's above q0; `descendToHeight_redirectSeg2`), by the
+  cache-keeping forms `writerWP_handleFullWith_time_upN_gh`, `writerWP_appendKlongs_timeRoomGh`.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
