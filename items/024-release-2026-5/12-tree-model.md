@@ -484,6 +484,16 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   premise `UpCascCallRuns`: at the upward loop's end a full segment-leaf stop node's bitmap
   ends at the call's facts); where the stop node has room, l4d's argument over the new walk;
   `invGetScanOK_merges_noL4U` is `invGetScanOK_merges_noL4` with that premise for `hCasc`. 23:35 (prover l4a, step 3's first part): the merges' loop with
+
+  same with l4c's narrower `MergeTailFullRest4OK` (`MergeTailRuns4`). 02:08 (l4b): R3Calls is
+  believed false at unreached states (no fact at `afterDelete`'s call carries made-for
+  entries; R3 holds at the runs by key order; 030-01's log, 01:56), so noL4 and its
+  successors are believed vacuous until R3 is restated with a made-for fact carried to the
+  call (a stratum-wide invariant, days). `invGetScanOK_merges_noL4c` (`LiveAssembly2.lean`):
+  l4c's `MergeTailFullRest6OK` (`MergeTailRuns6`), and R4 narrowed to its hole: the leaf's
+  time split with its copy filled (`ChildOK` at the copy) is proved through the cascade
+  (`writerWP_handleFull_timeChain_live`, `liveDel_fullTimeChainF`); left `DelFullTimeHoleM`
+  (the copy below an inner parent with fewer than m live klongs). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
