@@ -160,3 +160,8 @@ open Contract
 #print axioms putKv_del1_keep_off
 #print axioms Contract.WriterBalancedFalse.writerMeets_false
 #print axioms Contract.WriterBalancedFalse.opStep_false
+#print axioms Sound.collapse
+#print axioms collapseRoot_spec
+#print axioms Sound.mergeOne
+#print axioms Sound.mergeTwo
+#print axioms mergeParent_spec

@@ -29,8 +29,13 @@ open SIS.Check (BVal)
 the overlay: the path is a path of the tree, in the space root's segment tree;
 the books; n is well formed and fits a node; the state w has the map's root,
 the frame, the top and BalancedOK; V has x's kind, `last` is V's last version
-(a time klong of i, then V's live klongs in order) of x's kind; and the state
-with x set to V meets `PInv` with x over its size and holds the keys C. -/
+(a time klong of i, then V's live klongs in order) of x's kind; and the map of
+the state with x set to V is sound from the space root with x over its size
+(`Sound`, M + 3 klongs), holds the keys C and meets BalancedOK; V starts with a
+time klong and has none after i. (Restated at 20:30 from `PInv` of that state:
+V need not extend x's node of before the transaction, so that a merge's parent,
+which may need four klongs more than a full node, can be given by its last
+version.) -/
 structure CasPreD (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (w : MW)
     (depth : Nat) (x : NodeId) (n V last : MNode) (C : List (Key × Nat)) : Prop where
   look : w.nodes.lookup x = some n
@@ -47,7 +52,10 @@ structure CasPreD (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   vleaf : V.leaf = n.leaf
   lastLeaf : last.leaf = n.leaf
   lastKs : ksOf last = Klong.time i :: (live (ksOf V)).map (fun cy => Klong.key cy.1 cy.2)
-  hyp : PInv p i base s tp (some x) C (w.withNode x V)
+  vsound : Sound p.M (some x) (treeOf i s (w.withNode x V)) w.top.rootKey C
+  vbal : BalancedAll p (treeOf i s (w.withNode x V))
+  vfirst : ∃ t rest, V.ks = SIS.Tree.Klong.time t :: rest
+  vtimes : TimesLe V i
 
 /-- After the step: if no key node is outside G and H, the state meets `PInv`
 with no node over its size, holds the keys C, and `CascadePost` (from the state

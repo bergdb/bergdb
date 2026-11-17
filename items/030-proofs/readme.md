@@ -296,6 +296,12 @@ Files
   with `contractVerdict_sound` (MeetsTop); `check.sh` runs both checkers;
   `gate.sh` step 5 pins the trusted closure of the main theorems
   (`statements.pin`). Status: open.
+* [030-16](16-writer-delete.md). The model's writer meets the contract for a
+  delete, beside 030-10's puts: the delete's full node (time and space split
+  from a delete), the bitmap in every form, a delete of a one-segment key whose
+  leaf keeps a live klong (`putKv_del1_keep`, the merges as a premise);
+  030-10's `BalancedAll` shown false for a dead klong (`writerMeets_false`).
+  The night of 17 November. Status: open.
 
 Log
 ===

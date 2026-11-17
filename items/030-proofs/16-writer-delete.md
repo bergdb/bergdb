@@ -1,0 +1,136 @@
+# 030-16. The model's writer meets the contract: the delete
+
+Created 2026-11-17 by Frans Lundberg. Status: open.
+
+Beside 030-10 (the puts), the night of 17 November: a proof that a delete
+of the model's writer (`lean/SIS/Tree/Exec.lean`, `deleteUpward` and below)
+keeps `Mid` (030-10's `OpStep` for a delete), so that a transaction with
+deletes meets the writer's contract. Written by an agent of coord-1117, "I"
+below, on the branch `030-16-writer-delete`. Frans, 17:39: correctness is
+the focus.
+
+
+# 1. The result
+
+(Kept current; the last update is in the State note.)
+
+- **A statement found false, shown in Lean** (section 3, F1):
+  030-10's `WriterMeets` (and so `OpStep` for a delete) is false: its
+  `BalancedAll` asks every key klong of an inner node, live or dead, to name
+  a node one level below, and the writer leaves a dead klong that names a
+  node two levels down. `writerMeets_false`: one transaction of 14 puts and 4
+  deletes at node size 6 (`Contract/WriterBalancedFalse.lean`, evaluated in
+  the kernel). Readers do not care (a dead klong is never followed), and
+  the writer's own rule as Shape.lean tests it (live klongs only) holds. Not
+  yet restated (section 3, D3).
+- **Proved, a delete of a one-segment key whose segment leaf keeps a live
+  klong, or is the space root** (`putKv_del1_keep`), for any parameters with
+  `ParamsOK`, option 2 (theta) on or off, given that the merges after it keep
+  the invariant (`AfterOk`); with the merges off that holds
+  (`putKv_del1_keep_off`). The bitmap in every form
+  (`appendDeleteKlong_spec`: the transaction's own bitmap in place or a new
+  one, each with or without a compaction, and a full node), the full node's
+  time split and space split from a delete, with the recursion up the path
+  (`handleFullD_time`, `handleFullD_space`). The delete keeps `MidP`, as the
+  put does. This removes the first delete's premises (room for a bitmap,
+  theta 0, no merge) but the merges.
+- **Not yet:** the merges (`mergeUp`, `merge`, `mergeParent`), root
+  collapse, the upward unlink of an emptied leaf (the climb, the take-back,
+  LE-b), keys of more segments. Plan in section 4.
+
+
+# 2. What is proved
+
+In `lean/contract/Contract/Proof/`, on the standard three axioms; the gate
+passes.
+
+- `WriterDelDefs.lean`: `CasPreD`, `CasPostD` (the put's `CasPre` and
+  `CasPost` for a node that a delete changed: x would be V, maybe over its
+  size, and the writer gives V's last version), `DelVirt` (what a caller of
+  the bitmap gives: the state with x set to any V with x's live klongs but
+  those of the compare value meets `PInv`).
+- `WriterDelTime.lean` (710 lines), `WriterDelSpace.lean` (1,720):
+  `handleFullD_time`, `handleFullD_space`, copied from 030-10's
+  `WriterTimeSplit.lean` and `WriterSpaceSplit.lean` and adapted; the
+  parent's step is the put's `appendKlongs_spec`.
+- `WriterDelBitmap.lean` (240): `appendDeleteKlong_spec`, and `wdb_spec`
+  for any compare value whose bits are not all in the last bitmap (a
+  well-formed bitmap need not be sorted, so `appendDeleteKlong`'s noop test,
+  a list compare, may fail for a compare value with no live klong).
+- `WriterDelKeep.lean` (720): `AfterOk`, `afterOk_off`, `putKv_del1_keep`,
+  `putKv_del1_keep_off`; `WdkGrow` (a step of the writer never takes a node
+  out of `outside`), with small tactics, for every step `afterDelete` calls.
+- `Contract/WriterBalancedFalse.lean` (330): `writerMeets_false`,
+  `opStep_false`.
+
+How it went: I wrote the statements; four provers (Opus, xhigh), one file
+each, 19:20 to 19:50. They changed no statement.
+
+
+# 3. Decisions and findings
+
+- **D1. New files only; 030-10's statements unchanged.** The delete's split
+  is a copy of the put's with V for the node with the klongs added
+  (`CasPreD`), not a change of `CasPre`: 030-10 works on those files the
+  same night. (030-10 has since made `CasPreH`, the time split for any
+  caller; the two may be joined later.)
+- **D2. The merges are a premise (`AfterOk`)** of the delete whose leaf
+  keeps a live klong, so that the leaf's change is proved for every
+  parameter now and the merges plug in when proved.
+- **F1. `BalancedAll` is false at reached states.** Found by evaluating the
+  writer (a probe over runs of puts and deletes, node size 6, G = 0, H = 2),
+  then shown in Lean (`writerMeets_false`). The mechanism: a root made by a
+  split in the transaction records the old root, one level lower, as the node
+  it replaces (`madeFor`); a later in-place split of that root makes a node
+  that inherits the record; when the deletes empty that node, the upward
+  unlink takes it back (`takeBack`) and points the stop node's klong to the
+  recorded node, two levels below the stop node; the stop node's bitmap then
+  deletes that klong. A dead klong; Shape.lean's BalancedOK (live klongs,
+  tested on Java's traces) holds. The traces have no such transaction
+  (030-10's `writercheck` checks `BalancedAll` after every operation).
+- **D3. The restatement, proposed, not made yet:** `BalancedAll` with "a
+  live key klong of an inner node names a key node one level below, and
+  every key klong names a key node of a lower level". The lower level is what
+  a take-back of a root needs (no node below the root names it). It changes
+  030-10's `Mid`, `PInv`, `Before` and `WriterMeets`, and about 25 places of
+  030-10's put proofs that read a dead klong's level; 030-10 is working in
+  those files tonight, so I leave the change until its wave ends (the
+  coordinator's call); the delete's proofs so far conclude the stronger form
+  where it holds.
+
+
+# 4. The plan for the rest
+
+- The merges: a tree rule `Sound.merge` (two siblings' live klongs in one
+  or two new nodes, the parent's klongs set), `mergeParent` (its forms; a
+  full parent by `handleFullD`), `merge`, the loop `mergeUp`; then
+  `AfterOk` with the merges on.
+- Root collapse for a key of one segment (depth 0: `replaceRoot`,
+  `takeBackRoot`, then the loop).
+- The upward unlink: the climb, the take-back or unlink of the nodes below
+  the stop node, the stop node's bitmap or LE-b (`emptyKeyNext`); a tree rule
+  for the stop node losing the klong of a subtree that holds the one key.
+- The take-back needs the link book (030-10's B14: a klong that names a node
+  the transaction made is a klong of the transaction, in a node that names
+  it live), kept by every step, the put's too, and `SNamed s`.
+
+
+# State
+
+2026-11-17, 20:10. Section 1. Branch `030-16-writer-delete` in the clone
+`/Users/f/fl/bench/2026-11-17/night/s4j/clone`, on main 3df76ed5; gate
+`lean/contract/gate.sh 3df76ed5`. The provers' briefs:
+`/Users/f/fl/bench/2026-11-17/night/s4j/brief-*.md`; the probe that found F1:
+`/Users/f/fl/bench/2026-11-17/night/s4j/scratch/BalProbe.lean` (run with
+`lake env lean` in `lean/contract`).
+
+
+# Log
+
+2026-11-17, 19:06. Started from the brief of coord-1117; merged 030-10's
+gated first delete (24ed4a2f).
+2026-11-17, 19:20 to 19:50. The statements (WriterDelDefs, the four files);
+the probe found F1; four provers proved the files.
+2026-11-17, 20:00. Main 3df76ed5 merged; my commits squashed onto it (the
+gate's pins ask the pin file in the commit that changes a pinned file).
+GATED 9028c307: the delete's full node, the bitmap in every form, a delete whose leaf keeps a live klong or is the space root (putKv_del1_keep); WriterMeets's BalancedAll shown false (writerMeets_false).

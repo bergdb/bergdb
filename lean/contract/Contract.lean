@@ -86,3 +86,6 @@ import Contract.Proof.WriterSpaceSplitO
 import Contract.Proof.WriterPutAll
 import Contract.Proof.WriterDelKeep
 import Contract.WriterBalancedFalse
+import Contract.Proof.TreeRulesMerge
+import Contract.Proof.WriterCollapse
+import Contract.Proof.WriterMergeParent
