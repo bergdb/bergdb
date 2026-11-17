@@ -1367,3 +1367,16 @@ the stop node's split (after the bitmap's note): a split in time (the copy, or t
 node made by the transaction, is the hole), a made stop node's split in space in place,
 and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
 coordinator's word, 02:10: none more carrying `R3Calls`).
+
+2026-11-17, 02:10 to 02:18. R4 narrowed further, prover l4b (LiveDelHoleMade.lean):
+the leaf's time split whose copy is a hole, below a parent q that the transaction
+made, not the space root, full or compacting with the copy's klong, whose own
+last version is within a split's bound: q splits in time in place
+(`writerWP_handleFullWith_timeInPlace_termGh`), its node its last version with
+its klong of the leaf naming the copy, so the copy stays the hole under q
+(`writerWP_handleFull_timeMadeParent_liveGh`, by `liveEdgesH_redirect`) and R1
+holds as for a parent with room (`holeAtW_copyG`: `holeAtW_copy` for any new
+parent node whose searches are q's but its klong naming the copy;
+`KNode.searchLte_redirect`). `liveDel_fullTimeMadeParent`. Left of R4:
+`DelFullTimeHole2M` (the hole's parent the space root, not made by the
+transaction, or splitting in space). `invGetScanOK_merges_noL4d`.
