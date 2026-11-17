@@ -728,6 +728,17 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   where q0's search now names a new leaf q' (q's copy or half) whose klong names p's copy,
   the descent one height up ends at the copy. Left: the writer's two splits (p's, then q's
   with the copy's klong put) with the copy the hole.
+  03:25 (prover l4g, `LiveRedirectTopSeg.lean`): `descendToHeight_topSeg` (no premises):
+  the same where every node above q is inner (q the space root, or q's parent is), for any
+  new first-segment tree (a new space root by `split.time2` or `split.space3`): T's descent
+  from its space root at p's compare value ending at a leaf that names the copy suffices.
+  On the runs (`/Users/f/fl/bench/2026-11-16/night/l4g/runs/`, l4f's classifier with each
+  cascade's splits and q's parent's kind) the 69 are: q's parent inner with room, q split in
+  time (15) or space (15), `redirectSeg2`; q made, in place (6 + 1), `redirectSeg`; q the
+  space root split in time (25) or space (1), and q's parent the space root split in time
+  after q's in-place space split (6), `topSeg`. So R1 at the state level covers all 69; left:
+  the writer's cascade with the copy the hole (`writerWP_appendKlongs_chainGLX` with E the
+  copy, a segment root named by segment leaves only, gives the live counts after it).
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

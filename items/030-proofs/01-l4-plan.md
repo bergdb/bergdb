@@ -1638,3 +1638,23 @@ h + 1, the descent at (g, h + 1) ends at y. By `lteP_redirect` at q0 (q' a leaf,
 level suffices in the segment's tree) and the segment search's last step at q'. Not
 covered: q a segment root too (q0 a segment leaf) and q the space root (a new root).
 Left for the 69: the writer's two splits with the copy the hole.
+
+2026-11-17, 03:19 to 03:25. R1 for the 69 at the root, prover l4g
+(`LiveRedirectTopSeg.lean`, about 230 lines). Which cascades the 69 are: l4f's classifier
+with each cascade's list of splits and the kind of q's parent
+(`/Users/f/fl/bench/2026-11-16/night/l4g/runs/merge-casc-kinds.lean.txt`, `out.txt`; 2 min
+26 s, 0 failures). Every one is p's time split (`split.time1`) and then: q, not made, split
+in time (`split.time1`, 15) or in space (`split.space1`, 15) below an inner parent with room
+(03:19's `descendToHeight_redirectSeg2`); q made, split in time in place (6 below an inner
+parent, 1 as the space root; 02:22's `descendToHeight_redirectSeg`); q the space root, not
+made, split in time (`split.time2`, 25: its copy the new space root) or in space
+(`split.space3`, 1: the halves under a new root); q made, split in space in place below
+the space root, which splits in time (6). For the last three, `descendToHeight_topSeg` (no
+premises): where every node above q is inner, the key's search before p is the space root's
+segment's descent, so on any T whose descent from its space root at p's compare value ends
+at a leaf naming p's copy y (of height h + 1), the descent one height up finds y; nothing of
+T need agree with S. With `_leafRoot` (T's root that leaf) and `_innerRoot` (T's root inner,
+its search naming the leaf). So R1 at the state level covers all 69. Left for them: the
+writer's cascade with the copy the hole: the live counts after it by l4b's
+`writerWP_appendKlongs_chainGLX` with E the copy (a segment root, named by segment leaves
+only), and the nodes' shapes that these lemmas take.
