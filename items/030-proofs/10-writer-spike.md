@@ -590,3 +590,22 @@ put side, after that: `SNamed` given back (in work).
 start tree only (`runs_meetsTop_puts`). `gate.sh dc642af1` (main's head as
 merged): GATE OK (159 theorems).
 GATED 00c5075d: SNamed given back after a put; a transaction of puts that runOpsFrom accepts meets the contract (writerMeets_exec_put); the example with keys of two segments.
+2026-11-17, 20:35 to 20:50. `BalancedAll` restated as 030-16 proposed (a
+live klong one level below, every klong lower), tested on the traces
+(WRITER OK), and the put's files half adapted, when two provers found
+that this form asks more of the put than the old one read: a node cut
+back and a split node in its parent's "if" state must keep their live
+klongs one level below, which needs the rule of the tree before the
+transaction and of the state itself.
+**The coordinator's decision, 20:46** (030-16 proposed, the coordinator
+decides): `BalancedAll` is restated in Shape.lean's BalancedOK form: about
+the key nodes REACHED from the space root and their LIVE klongs only, not
+about every node of the map and not about dead klongs. The reasons, in the
+coordinator's words: it is the rule Java's traces are tested by; the
+every-node form is false at reached states after a take-back (030-16's
+`writerMeets_false`) and needs a link book over all nodes that fails at a
+split's intermediate states; with the reached-only form 030-16's
+reached-only book `LinkLive` suffices. I switch to it (`Balanced`,
+Contract/Writer.lean): no proof of the put needs the stronger form; the
+two gaps above go away with it, since a node cut back and a split node in
+its parent's "if" state are not reached.
