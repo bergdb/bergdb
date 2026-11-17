@@ -166,6 +166,7 @@ import SIS.Tree.LiveRootChildHole
 import SIS.Tree.LiveTimeRoomChildHole
 import SIS.Tree.LiveInPlaceChildHole
 import SIS.Tree.LiveSpaceRoomChildHole
+import SIS.Tree.LiveInPlaceSpaceChildHole
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace

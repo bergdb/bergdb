@@ -1837,3 +1837,14 @@ k1 names the half on k1's side, which names p's copy; with the round's descent a
 reads of the split's start as S's above q0, the descent at (g, h + 1) after the split finds
 the copy (`descendToHeight_redirectSeg2`). The split step's R1: 61 of the 69; left the 8 at
 the space root through a space split (1 + 6) or q made in place at the root (1).
+
+2026-11-17, 04:06 to 04:08. The split step's R1 for the 6 through q's in-place space split
+under the space root's time split, prover l4g (`LiveInPlaceSpaceChildHole.lean`, about 350
+lines, about 200 of them l4b's in-place space split and 03:54's lemma again with the cache).
+`writerWP_handleFull_inPlaceSpaceChildHole` and `_R1`: p (depth 2, inner, not made) split in
+time below q (depth 1, made, without room, over the split's bound), which splits in space in
+place below the space root q0 (not made, no room for the second half's klong), which splits
+in time: the new root's search at k1 names the half on k1's side, which names p's copy; the
+descent at (g, h + 1) after the split finds the copy (`descendToHeight_topSeg_innerRoot`).
+The split step's R1: 67 of the 69; left two at the space root (its own space split, and q
+made in place there).
