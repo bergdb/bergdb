@@ -215,7 +215,8 @@ theorem writerWP_mergeTail_liveRootSplitRound (c : Ctx) (base : View BVal)
   obtain ⟨hpnew, hd1, hone⟩ := hN
   refine writerWP_mergeTail_liveSplitRoundX c base hvc hm hMP key g h v v1 v3 d F w0 k0 KO X K Nn x p
     pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hx hpath hplk hpleaf hxlk leftSome l ln il r rn ir cL cR w3
-    hr3 h3p hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB ?_ hone
+    hr3 h3p hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB ?_
+    (fun hm2 last hl => Or.inl (hone hm2 last hl))
   subst hd1
   refine splitStepOKX_root c base hMP p pn _ _ w3 x ?_ hpnew
   obtain ⟨hX, _, _, _, h0⟩ := hP3

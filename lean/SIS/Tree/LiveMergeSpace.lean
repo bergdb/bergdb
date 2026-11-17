@@ -518,13 +518,13 @@ its last version and no hole (bergdb 030-01, step 3's rest): whatever `handleFul
 does there (in time or in space, below a parent or at the space root, with its
 cascade), the live counts hold after, the nodes reached after were reached in V or
 are new, not p, and the taken set is kept. `Lst` says which last versions come
-(the merge's `mergeFullLast`), C what a compaction implies (the parent's room);
+(the merge's `mergeFullLast`), C when it compacts (the parent's room);
 the start state w stands to the merge's start w3 as in `SplitStepOKW`, and V
 reads as w3's tree on w3's reached nodes but p. -/
 def SplitStepOKX (c : Ctx) (base : View BVal) (dd : Nat) (p : NodeId) (pn : KNode)
     (Lst : KNode → Prop) (C : Prop) (w3 : W) (x : NodeId) : Prop :=
   ∀ (w : W) (last : KNode) (compact : Bool) (pairs : List (Nat × NodeId)),
-    w.nodes.lookup p = some pn → p < w.next → Lst last → (compact = true → C) →
+    w.nodes.lookup p = some pn → p < w.next → Lst last → (compact = true ↔ C) →
     last.leaf = pn.leaf → last.ks = newKlongs c.i pairs → CvSorted pairs →
     TreeOK (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey →
     (∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false) →
@@ -561,7 +561,7 @@ theorem splitStepOKX_of_W (c : Ctx) (base : View BVal) (hMP : MergeParamsOK c.p)
     hnext htop hTw hRw hnone hlinkw hagree
   obtain ⟨hnC, hsp⟩ := hspace last hLst
   cases compact with
-  | true => exact absurd (hcomp rfl) hnC
+  | true => exact absurd (hcomp.mp rfl) hnC
   | false =>
   obtain ⟨hfH1, hsH1, hfH, hsH⟩ := halves_mergeLast c hMP pn last pairs hleafl hks hsrt hsp
   have hqRV : TReach (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey q := by
@@ -580,8 +580,8 @@ theorem splitStepOKX_of_W (c : Ctx) (base : View BVal) (hMP : MergeParamsOK c.p)
 set_option maxHeartbeats 16000000 in
 /-- The merge's tail where its parent p, not made by the transaction, goes `full`
 and its split leaves no hole (bergdb 030-01, step 3's rest): a merge into one node
-whose parent splits in space (p's last version filled though it lost a klong), or
-a merge into two (no hole before). The split itself, at depth d - 1, is a premise
+whose parent's last version is filled though it lost a klong (m live klongs or
+more, as after a space split), or a merge into two (no hole before). The split itself, at depth d - 1, is a premise
 (`SplitStepOKX`) from the live counts of the tree with p's node its last version;
 the cleanup changes only p, l and r, which are no longer reached. -/
 theorem writerWP_mergeTail_liveSplitX (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
@@ -613,7 +613,8 @@ theorem writerWP_mergeTail_liveSplitX (c : Ctx) (base : View BVal) (hvc : ViewCo
       (fun last => mergeFullLast pn c.i cL nx cR (mergeM2 c xn ln rn cR nx) = some last)
       (pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR nx) ≤ c.p.M) w3 x)
     (hone : mergeM2 c xn ln rn cR nx = none → ∀ last,
-      mergeFullLast pn c.i cL nx cR none = some last → c.p.splitAbove < last.size)
+      mergeFullLast pn c.i cL nx cR none = some last → c.p.splitAbove < last.size ∨
+        c.p.mergeBelow ≤ ((⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i).length)
     (hLive : LiveEdgesH c.p N c.i root Hl) (hHl : ∀ y, Hl y → y = x) :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun _ w' => LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey) := by
@@ -922,14 +923,15 @@ theorem writerWP_mergeTail_liveSplitX (c : Ctx) (base : View BVal) (hvc : ViewCo
             · cases hu1
       obtain ⟨pairs, hks, hsrt⟩ := mergeFullLast_sorted pn c.i cL m1 cR none last hlast
         (fun _ _ h => by cases h)
-      have hsp := hone' last hlast
       have hsa := hMP.2.2.1
-      have hlenV : c.p.splitAbove ≤ ((⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i).length := by
-        have hxe : (⟨pn.leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairs⟩ := by rw [hks]
-        rw [KNode.liveAt_of_times _ c.i (by rw [hlasteq]; exact hlastT), hxe,
-          KNode.live_newKlongs_sorted _ _ _ hsrt]
-        have : last.size = pairs.length + 1 := by simp [KNode.size, hks, newKlongs]
-        omega
+      have hlenV : c.p.mergeBelow ≤ ((⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i).length := by
+        rcases hone' last hlast with hsp | hfl
+        · have hxe : (⟨pn.leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairs⟩ := by rw [hks]
+          rw [KNode.liveAt_of_times _ c.i (by rw [hlasteq]; exact hlastT), hxe,
+            KNode.live_newKlongs_sorted _ _ _ hsrt]
+          have : last.size = pairs.length + 1 := by simp [KNode.size, hks, newKlongs]
+          omega
+        · exact hfl
       rw [← hlasteq] at hTV hLV hlinksV hVreach
       have hVp' : updN (wNode c.p base w6) p ⟨pn.leaf, last.ks⟩ p = some ⟨pn.leaf, last.ks⟩ :=
         updN_self _ _ _
@@ -945,7 +947,8 @@ theorem writerWP_mergeTail_liveSplitX (c : Ctx) (base : View BVal) (hvc : ViewCo
       have hw6m1' : wNode c.p base w6 m1 = some ⟨!!xn.leaf, newKlongs c.i first⟩ := by
         simp only [wNode, h6taken, hm1T, Bool.false_eq_true, ↓reduceIte, hw6m1]
       refine writerWP_mono (hsplit ({ w6 with trail := s7 :: w6.trail } : W) last compact pairs hw6p
-        (by show p < w6.next; omega) hlast (fun h => by rw [hcomp] at h; exact of_decide_eq_true h)
+        (by show p < w6.next; omega) hlast
+        (by rw [hcomp]; exact decide_eq_true_iff)
         hleafl hks hsrt
         (by show TreeOK _ c.i w6.top.rootKey; rw [h6top']; exact hTV)
         (by
@@ -1269,7 +1272,8 @@ theorem writerWP_mergeTail_liveSplitX (c : Ctx) (base : View BVal) (hvc : ViewCo
       have hw8m2' : wNode c.p base w8 (m1 + 2) = some ⟨!!xn.leaf, newKlongs c.i ks2⟩ := by
         simp only [wNode, h8taken, hm2T, Bool.false_eq_true, ↓reduceIte, hw8m2]
       refine writerWP_mono (hsplit ({ w8 with trail := s9 :: w8.trail } : W) last compact pairs hw8p
-        (by show p < w8.next; omega) hlast (fun h => by rw [hcomp] at h; exact of_decide_eq_true h)
+        (by show p < w8.next; omega) hlast
+        (by rw [hcomp]; exact decide_eq_true_iff)
         hleafl hks hsrt
         (by show TreeOK _ c.i w8.top.rootKey; rw [h8top']; exact hTV)
         (by
@@ -1405,7 +1409,7 @@ theorem writerWP_mergeTail_liveSpaceW (c : Ctx) (base : View BVal) (hvc : ViewCo
     (splitStepOKX_of_W c base hMP d' p q pn qn k1 w3 x _ _ hsplit (fun last hl => hspace last hl)
       (by rw [hN3, h3top]; exact hT) (by rw [hN3, h3top]; exact hqP) (by rw [hN3, h3top]; exact hpP)
       h3q hqT hqx (by rw [h3next]; exact hqnx) h3pq h3pk)
-    (fun hm2 last hl => (hspace last (by rw [hm2]; exact hl)).2) hLive hHl
+    (fun hm2 last hl => Or.inl (hspace last (by rw [hm2]; exact hl)).2) hLive hHl
 
 /-- The merge's tail with its parent split in space as `SplitStepOK` asks (an
 instance of `writerWP_mergeTail_liveSpaceW`). -/
@@ -1573,7 +1577,8 @@ theorem writerWP_mergeTail_liveSplitRoundX (c : Ctx) (base : View BVal)
       (fun last => mergeFullLast pn c.i cL v3.next cR (mergeM2 c xn ln rn cR v3.next) = some last)
       (pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR v3.next) ≤ c.p.M) w3 x)
     (hone : mergeM2 c xn ln rn cR v3.next = none → ∀ last,
-      mergeFullLast pn c.i cL v3.next cR none = some last → c.p.splitAbove < last.size) :
+      mergeFullLast pn c.i cL v3.next cR none = some last → c.p.splitAbove < last.size ∨
+        c.p.mergeBelow ≤ ((⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i).length) :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
         (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey)) := by
@@ -1791,7 +1796,7 @@ theorem writerWP_mergeTail_liveSpaceRoundW (c : Ctx) (base : View BVal)
       (by rw [hr3.2.2.1]; rw [hqX]; exact (hS2 d' (by omega)).2) hqx
       (by rw [hr3.2.2.2.2]; exact hI.ids.1 q (by rw [hq3lk]; rfl))
       (by rw [hpath3]; exact hq3) (by rw [hpath3]; exact hk3'))
-    (fun hm2 last hl => (hspace last (by rw [hm2]; exact hl)).2)
+    (fun hm2 last hl => Or.inl (hspace last (by rw [hm2]; exact hl)).2)
 
 set_option maxHeartbeats 16000000 in
 /-- `MergeTailFullRest2OK`'s case `MergeFullSpaceG` (below an inner parent or a

@@ -1448,8 +1448,9 @@ stop node (l4e's). Refuted: `UpHtWalk` (l4d's `upHtWalk_false`; 00:18's premise 
 tail now takes any split of p as a premise, `SplitStepOKX` (`handleFull` at p's depth
 d - 1, the compaction flag free, from the live counts of the merged tree V with p's node
 its last version; the start's frame as in `SplitStepOKW`, and V read as the start's tree
-on its reached nodes but p): `writerWP_mergeTail_liveSplitX` (any depth) and its round
-`writerWP_mergeTail_liveSplitRoundX`; the space tail and round of the earlier parts are
+on its reached nodes but p): `writerWP_mergeTail_liveSplitX` (any depth; into one node
+p's last version must be filled, m live klongs or more, as after a space split) and its
+round `writerWP_mergeTail_liveSplitRoundX`; the space tail and round of the earlier parts are
 instances (`splitStepOKX_of_W` derives q's facts and the halves' from the last version's
 sorted klongs), statements unchanged. At the space root the premise is l4b's root split
 on V (`writerWP_handleFull_rootV_live`: in time a new root with the last version, in
