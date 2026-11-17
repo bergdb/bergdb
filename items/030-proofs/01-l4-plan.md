@@ -1446,3 +1446,15 @@ parents' room: at the state with its bitmap the stop node meets `ChildOK` under 
 `UpCascSplitRest4OK`, the copy under the fill below an inner parent (the hole at the copy,
 with or without the cascade: R1 at the copy with the key's descent cut there, and R4) and a
 made space root; `upCascCallRuns_of_rest4` at the runs.
+
+2026-11-17, 02:33 to 02:36. Step 6, a made space root as the full stop node, prover l4e
+(`LiveUpCascRootMade.lean`, about 330 lines, most of them the root swap's prelude).
+`writerWP_upCasc_rootMade_H`: a full space root that the transaction made splits in place:
+in time, the root becomes a leaf with its last version (`liveEdges_root_shrink` from the
+state with its bitmap, where the root is the only hole and asks no count), or in space
+(l4b's `writerWP_handleFull_rootSpaceMade_live`); no hole either way; the heights as at the
+root not made (the swap). `upCascSplitRest4OK_of_rest5`: left `UpCascSplitRest5OK` alone, the
+copy of a stop node below the root, not made, split in time, under the fill below an inner
+parent (the hole at the copy: R1 at the copy with the key's descent cut there, and with a
+parent without room the cascade above it, 030-01's R4); `upCascCallRuns_of_rest5` at the
+runs.
