@@ -36,7 +36,7 @@ structure CasPreH (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     w.path[e']? = some (c', u) → False
   books : PutBooks p i base s w
   frame : Frame i s (dirtyOf w) (treeOf i s w)
-  balanced : BalancedAll p (treeOf i s w)
+  balanced : Balanced p (treeOf i s w)
   wf : klongsWf (ksOf n) = true
   size : n.size ≤ p.M
   hleaf : hyp.leaf = n.leaf

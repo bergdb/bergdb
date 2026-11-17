@@ -28,10 +28,11 @@ of the merge). Not `WmgFresh` after: root collapse after a merge does not give i
 (`collapseRoot_spec` keeps `PInv` and `WcrLink` only). -/
 def AfterOkW (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v : View BVal)
     (cv : Nat) : Prop :=
-  ∀ (g : Nat) (w : MW) (C : List (Key × Nat)), PInv p i base s tp none C w → WcrLink i s w →
-    WmgFresh i s w →
+  ∀ (g : Nat) (w : MW) (C : List (Key × Nat)), PInv p i base s tp none C w → OldReach i s w →
+    WcrLink i s w → WmgFresh i s w →
     WP (SIS.Tree.afterDelete [cv] g 0) { p := p, i := i, view := v } w
-      (fun _ w' => w'.outside = [] → PInv p i base s tp none C w' ∧ WcrLink i s w')
+      (fun _ w' => w'.outside = [] → PInv p i base s tp none C w' ∧ WcrLink i s w' ∧
+        OldReach i s w')
 
 /-- The statement of `merge_spec` (WriterMerge.lean, prover C), as a premise, so that the
 merges' loop does not wait for its proof: the merge of node x at depth d of the key access
@@ -39,11 +40,19 @@ path, not the root, keeps `PInv`, the link book and the fresh ids. -/
 def MergeOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     (v : View BVal) : Prop :=
   ∀ (d : Nat) (x : NodeId) (w : MW) (C : List (Key × Nat)),
-    PInv p i base s tp none C w → WcrLink i s w → WmgFresh i s w →
+    PInv p i base s tp none C w → OldReach i s w → WcrLink i s w → WmgFresh i s w →
     PathOk i s w d → PathInner w d → (∃ c0, w.path[d]? = some (c0, x)) → d ≠ 0 →
     WP (SIS.Tree.merge x d) { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w')
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w')
+
+/-- The merge's step from what is left of the merge (`WmgRestOk`, WriterMerge.lean): the
+reduction `merge_spec_of_rest` is the premise `MergeOk` of the merges' loop. -/
+theorem mergeOk_of_rest {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
+    {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
+    (hrest : WmgRestOk p i base s tp v) : MergeOk p i base s tp v :=
+  fun _ _ _ _ hI ho hK hF hpath hin hon hd =>
+    merge_spec_of_rest hs hb hrest hI ho hK hF hpath hin hon hd
 
 /-! ## 1. The merges' descent to a height -/
 
@@ -62,6 +71,8 @@ structure WmuInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     w.path[d + 1]? = some (some c, y) ∧ (treeOf i s w).obj u = some (.key nu) ∧
     (c, y) ∈ live nu.ks
   good : ∃ lo hi, Good (treeOf i s w) x lo hi
+  reached : x ∈ reach (treeOf i s w)
+  old : OldReach i s w
 
 /-- After the descent from the state w: the map, the super root and the next id as in w;
 `PInv`; the path is a path of the tree, of inner nodes above its last node. -/
@@ -75,13 +86,14 @@ def WmuPost (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
 theorem wmu_ghOf {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} {C : List (Key × Nat)} {w : MW}
     (hs : Shows p v z s tp) (hb : Books i base s tp) (hI : PInv p i base s tp none C w)
-    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m)) :
+    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m))
+    (hxr : x ∈ reach (treeOf i s w)) (ho : OldReach i s w) :
     ∃ n w1 g h, SIS.Tree.ghOf x { p := p, i := i, view := v } w = .ok ((g, h), w1) ∧
       w1.nodes.lookup x = some n ∧ ksOf n = m.ks ∧ n.leaf = m.leaf ∧
       treeOf i s w1 = treeOf i s w ∧ PInv p i base s tp none C w1 ∧ w1.path = w.path ∧
       w1.top = w.top ∧ w1.next = w.next ∧
       ∀ y n0, w.nodes.lookup y = some n0 → w1.nodes.lookup y = some n0 := by
-  obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ := getNode_spec hs hb hI hx
+  obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ := getNode_spec hs hb hI hx hxr ho
   have htx : w1.taken.contains x = false := wput_taken (o := .key m) (by rw [hT1]; exact hx)
   obtain ⟨g, h, hgh, -, -, -, -⟩ := hI1.books.levels x n hlk1 htx
   have hfield : w1.path = w.path ∧ w1.top = w.top ∧ w1.next = w.next ∧
@@ -119,7 +131,7 @@ theorem wmu_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     obtain ⟨lo, hi, hGx⟩ := hD.good
     obtain ⟨m, hxm⟩ := wput_good_obj hGx
     obtain ⟨n, w1, g, hh, hgh, hlk1, hks, hl1, hT1, hI1, hp1, htop1, hnx1, hext1⟩ :=
-      wmu_ghOf hs hb hD.inv hxm
+      wmu_ghOf hs hb hD.inv hxm hD.reached hD.old
     refine wput_ok hgh ?_
     have htx : w1.taken.contains x = false := wput_taken (o := .key m) (by rw [hT1]; exact hxm)
     have htk : ∀ u n0, w.nodes.lookup u = some n0 → w.taken.contains u = false →
@@ -185,8 +197,18 @@ theorem wmu_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
           · rw [← hl1, hnl] at hl'
             cases hl'
           · exact ⟨lo', hi', by rw [hT2]; exact hg'⟩
+        have hyr : fd.y ∈ reach (treeOf i s w2) := by
+          rw [hT2]
+          have h1 := hD.reached
+          rw [reach_of_root hD.inv.root] at h1 ⊢
+          exact ts_reach_kid hD.inv.sound.good h1 hxm hm
+        have ho2 : OldReach i s w2 := by
+          unfold OldReach
+          rw [hT2]
+          exact hD.old
         have hD2 : WmuInv p i base s tp C w2 (depth + 1) fd.y := by
-          refine ⟨hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩, ?_, ?_, ?_, hGy⟩
+          refine ⟨hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, ?_, ⟨_, hpb⟩, ?_, ?_, ?_, hGy, hyr,
+            ho2⟩
           · show (w1.path ++ [(some fd.c, fd.y)]).length = depth + 1 + 1
             rw [List.length_append, hlen1]
             rfl
@@ -212,7 +234,8 @@ theorem wmu_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
 depth it gives is that of the path's last node. -/
 theorem wmu_descendToHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} {C : List (Key × Nat)} (hs : Shows p v z s tp)
-    (hb : Books i base s tp) (cv h : Nat) {w : MW} (hI : PInv p i base s tp none C w) :
+    (hb : Books i base s tp) (cv h : Nat) {w : MW} (hI : PInv p i base s tp none C w)
+    (ho : OldReach i s w) :
     WP (SIS.Tree.descendToHeight [cv] 0 h) { p := p, i := i, view := v } w
       (fun d w' => treeOf i s w' = treeOf i s w ∧ w'.top = w.top ∧ w'.next = w.next ∧
         PInv p i base s tp none C w' ∧ PathOk i s w' d ∧ PathInner w' d) := by
@@ -224,7 +247,10 @@ theorem wmu_descendToHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} 
   have hD : WmuInv p i base s tp C { w with path := [(none, w.top.rootKey)] } 0 w.top.rootKey :=
     ⟨hI.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, rfl, ⟨none, rfl⟩, rfl,
       fun d hd => absurd hd (Nat.not_lt_zero d), fun d hd => absurd hd (Nat.not_lt_zero d),
-      ⟨0, none, hI.sound.good⟩⟩
+      ⟨0, none, hI.sound.good⟩, by
+        show w.top.rootKey ∈ reach (treeOf i s w)
+        rw [reach_of_root hI.root]
+        exact tc_self _ _ _, ho⟩
   refine (wmu_descend (h := h) hs hb _ _ 0 _ hD).mono ?_
   rintro _ w' ⟨hT, htop, hnx, hI', hP, hin⟩
   refine wput_ok (pathSize_eq _ _) ?_
@@ -255,23 +281,28 @@ theorem mergeUp_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     (hmerge : MergeOk p i base s tp v) (cv : Nat) :
     ∀ (f h : Nat) (merged : Bool) (w : MW) (C : List (Key × Nat)),
-      PInv p i base s tp none C w → WcrLink i s w → WmgFresh i s w →
+      PInv p i base s tp none C w → OldReach i s w → WcrLink i s w → WmgFresh i s w →
       WP (SIS.Tree.mergeUp [cv] 0 f h merged) { p := p, i := i, view := v } w
         (fun _ w' => w'.outside = [] →
-          PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+          PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧
+            OldReach i s w') := by
   intro f
   induction f with
   | zero =>
-    intro h merged w C _ _ _
+    intro h merged w C _ _ _ _
     rw [SIS.Tree.mergeUp.eq_1]
     exact wp_throw _ _ _ _
   | succ f ih =>
-    intro h merged w C hI hK hF
+    intro h merged w C hI ho hK hF
     rw [SIS.Tree.mergeUp.eq_2]
     refine wput_read ?_
     rw [wp_bind]
-    refine (wmu_descendToHeight hs hb cv h hI).mono ?_
+    refine (wmu_descendToHeight hs hb cv h hI ho).mono ?_
     rintro d w1 ⟨hT1, htop1, hnx1, hI1, hP1, hin1⟩
+    have ho1 : OldReach i s w1 := by
+      unfold OldReach
+      rw [hT1]
+      exact ho
     have hK1 : WcrLink i s w1 := wcr_books_congr hT1 (by rw [htop1]) hK
     have hF1 : WmgFresh i s w1 := by
       intro u nu c y hu hk
@@ -280,7 +311,7 @@ theorem mergeUp_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
       exact hF u nu c y hu hk
     refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun hd0 => ?_)
     · rw [wp_pure]
-      exact fun _ => ⟨hI1, hK1, hF1⟩
+      exact fun _ => ⟨hI1, hK1, hF1, ho1⟩
     · have hd : d ≠ 0 := by simpa using hd0
       obtain ⟨c0, x, nx, hx1, hlkx, -⟩ := hP1.nodes d (Nat.le_refl d)
       obtain ⟨c1, q, nq, hq1, hlkq, -⟩ := hP1.nodes (d - 1) (by omega)
@@ -289,20 +320,20 @@ theorem mergeUp_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
       refine wput_ok (getNode_hit _ hlkq) ?_
       refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
       · rw [wp_pure]
-        exact fun _ => ⟨hI1, hK1, hF1⟩
+        exact fun _ => ⟨hI1, hK1, hF1, ho1⟩
       refine wput_ok (getNode_hit _ hlkx) ?_
       refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
       · rw [wp_pure]
-        exact fun _ => ⟨hI1, hK1, hF1⟩
+        exact fun _ => ⟨hI1, hK1, hF1, ho1⟩
       rw [wp_bind]
-      refine (hmerge d x w1 C hI1 hK1 hF1 hP1 hin1 ⟨c0, hx1⟩ hd).mono ?_
+      refine (hmerge d x w1 C hI1 ho1 hK1 hF1 hP1 hin1 ⟨c0, hx1⟩ hd).mono ?_
       intro r w2 h2
       refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
       · rw [wp_pure]
         exact h2
       · by_cases ho : w2.outside = []
-        · obtain ⟨hI2, hK2, hF2⟩ := h2 ho
-          exact ih (h + 1) true w2 C hI2 hK2 hF2
+        · obtain ⟨hI2, hK2, hF2, ho2⟩ := h2 ho
+          exact ih (h + 1) true w2 C hI2 ho2 hK2 hF2
         · exact ((wdk_grow_mergeUp [cv] 0 f (h + 1) true).out _ w2).mono
             (fun _ _ h3 h3o => absurd (h3 h3o) ho)
 
@@ -315,7 +346,7 @@ theorem afterOkW_on {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     (hsn : SNamed s) (hmerge : MergeOk p i base s tp v) (cv : Nat) :
     AfterOkW p i base s tp v cv := by
-  intro g w C hI hK hF
+  intro g w C hI hO hK hF
   unfold SIS.Tree.afterDelete
   refine wput_read ?_
   by_cases hmg : p.merges = true
@@ -323,22 +354,22 @@ theorem afterOkW_on {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     rw [wp_bind]
     by_cases hg : g = 0
     · subst hg
-      refine (mergeUp_spec hs hb hmerge cv p.fuel 0 false w C hI hK hF).mono ?_
+      refine (mergeUp_spec hs hb hmerge cv p.fuel 0 false w C hI hO hK hF).mono ?_
       intro b w1 h1
       refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
       · by_cases ho : w1.outside = []
-        · obtain ⟨hI1, hK1, -⟩ := h1 ho
-          exact collapseRoot_spec hs hb hsn cv p.fuel w1 C hI1 hK1
+        · obtain ⟨hI1, hK1, -, hO1⟩ := h1 ho
+          exact collapseRoot_spec hs hb hsn cv p.fuel w1 C hI1 hO1 hK1
         · exact ((wdk_grow_collapseRoot [cv] 0 p.fuel).out _ w1).mono
             (fun _ _ h3 h3o => absurd (h3 h3o) ho)
       · rw [wp_pure]
-        exact fun ho => ⟨(h1 ho).1, (h1 ho).2.1⟩
+        exact fun ho => ⟨(h1 ho).1, (h1 ho).2.1, (h1 ho).2.2.2⟩
     · rw [show p.fuel = ((p.G + 1) * (p.H + 2) + 1) + 1 from rfl, SIS.Tree.mergeUp.eq_2]
       refine wput_read ?_
       rw [wp_bind]
       exact wmu_dth_err hg _
   · simp only [hmg, Bool.false_eq_true, ↓reduceIte]
     rw [wp_pure]
-    exact fun _ => ⟨hI, hK⟩
+    exact fun _ => ⟨hI, hK, hO⟩
 
 end Contract

@@ -158,13 +158,13 @@ open Contract
 #print axioms afterOk_off
 #print axioms putKv_del1_keep
 #print axioms putKv_del1_keep_off
-#print axioms Contract.WriterBalancedFalse.writerMeets_false
-#print axioms Contract.WriterBalancedFalse.opStep_false
 #print axioms Sound.collapse
 #print axioms collapseRoot_spec
 #print axioms Sound.mergeOne
 #print axioms Sound.mergeTwo
 #print axioms mergeParent_spec
+#print axioms Contract.WriterBalancedFalse.balancedAllOld_false
+#print axioms Contract.WriterBalancedFalse.balanced_last
 #print axioms Contract.WriterExample2.meets
 #print axioms opsRun_of_runOps
 #print axioms writerMeets_exec_put
@@ -196,5 +196,6 @@ open Contract
 #print axioms crash_java_tree_whole
 #print axioms Contract.RecoverCutExample.crash_whole_get16
 #print axioms merge_spec_of_rest
+#print axioms mergeOk_of_rest
 #print axioms mergeUp_spec
 #print axioms afterOkW_on

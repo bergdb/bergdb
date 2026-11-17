@@ -47,7 +47,7 @@ def MergeVirt (p : MParams) (i : Time) (s : Tree) (w : MW) (q : NodeId) (nq : MN
       (∃ c', Klong.key c' y ∈ ksOf nq) ∨ y = m1 ∨ ∃ g, m2 = some (y, g)) →
     (∃ t rest, V.ks = SIS.Tree.Klong.time t :: rest) → TimesLe V i →
     Sound p.M (some q) (treeOf i s (w.withNode q V)) w.top.rootKey C ∧
-      BalancedAll p (treeOf i s (w.withNode q V))
+      Balanced p (treeOf i s (w.withNode q V))
 
 /-- Klong j of node n is the live klong of compare value c, naming y: the
 last key klong of c, not deleted by the last bitmap. -/
@@ -329,7 +329,7 @@ theorem wmp_hf {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf nq) = true) (hsize : nq.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hil : LiveAt nq il cL l) (hir : LiveAt nq ir cR r) (hlr : cL < cR)
     (hV : MergeVirt p i s w q nq cL cR m1 m2 C)
     {V : MNode} (hVl : V.leaf = nq.leaf)
@@ -405,7 +405,7 @@ theorem wmp_full_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf nq) = true) (hsize : nq.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hil : LiveAt nq il cL l) (hir : LiveAt nq ir cR r) (hlr : cL < cR)
     (hV : MergeVirt p i s w q nq cL cR m1 m2 C)
     (hadj : ∀ c y, (c, y) ∈ live (ksOf nq) → c ≤ cL ∨ cR ≤ c)
@@ -989,7 +989,7 @@ theorem mergeParent_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf nq) = true) (hsize : nq.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hil : LiveAt nq il cL l) (hir : LiveAt nq ir cR r) (hlr : cL < cR)
     (hadj : ∀ c y, (c, y) ∈ live (ksOf nq) → c ≤ cL ∨ cR ≤ c)
     (hg : ∀ y g, m2 = some (y, g) → cL < g ∧

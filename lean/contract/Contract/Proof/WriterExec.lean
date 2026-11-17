@@ -115,7 +115,7 @@ theorem writerMeets_exec_put {p : MParams} (hp : ParamsOK p) {i : Time} {base : 
       TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
       (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
       invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
-      BalancedAll p (treeOf i s w) ∧
+      Balanced p (treeOf i s w) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧

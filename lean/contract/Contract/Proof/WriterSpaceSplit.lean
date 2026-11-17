@@ -233,7 +233,6 @@ with nodes without klongs allowed (those in E), and the top. -/
 structure SsOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     (E : NodeId → Prop) (w : MW) : Prop where
   frame : Frame i s (dirtyOf w) (treeOf i s w)
-  bal : BalancedAll p (treeOf i s w)
   books : PutBooksE p i base s w
   top : WTopInv i s tp w.top w.newTop
   empty : ∀ y m, w.nodes.lookup y = some m → w.taken.contains y = false → m.ks = [] → E y
@@ -248,8 +247,6 @@ theorem ssOk_newKey {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
     {g h : Nat} {leaf : Bool} {ks : List MKlong} (hg : g ≤ p.G) (hh : h ≤ p.H)
     (hl : leaf = (h == 0)) (hks : ks = [] ∨ ∃ rest, ks = .time i :: rest)
     (htimes : ∀ t, SIS.Tree.Klong.time t ∈ ks → t ≤ i)
-    (hbal : leaf = false → ∀ c y, SIS.Tree.Klong.key c y ∈ ks →
-      ∃ m', (treeOf i s w).obj y = some (.key m') ∧ m'.level + 1 = p.keyLevel g h)
     (hE : ∀ z, (z = w.next ∧ ks = []) ∨ E z → E' z) :
     SsOk p i base s tp E' (w.afterNewKey p g h leaf ks) ∧
       ∀ z, (treeOf i s (w.afterNewKey p g h leaf ks)).obj z =
@@ -257,7 +254,6 @@ theorem ssOk_newKey {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
         else (treeOf i s w).obj z := by
   obtain ⟨-, hs, hn, -, ht, hm⟩ := treeOf_freshE hb hO.books (Nat.le_refl _)
   refine ⟨⟨frame_afterNewKey p g h leaf ks hO.frame hs hn ht hm,
-    balancedAll_afterNewKey g h leaf ks hO.bal hs hn ht hm hh hl hbal,
     putBooksE_afterNewKey hb hO.books hg hh hl hks htimes, hO.top, ?_⟩, fun z => ?_⟩
   · intro y m hy hty he
     rcases prim_lookup_afterNewKey hn hy with ⟨rfl, rfl⟩ | ⟨_, hy⟩
@@ -274,14 +270,11 @@ theorem ssOk_withNode {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     (htimes : ∀ t, SIS.Tree.Klong.time t ∈ m'.ks → t ≤ i)
     (hext : ∀ n0, s.obj x = some (.key n0) →
       ksOf m' = n0.ks ∨ ∃ more, ksOf m' = n0.ks ++ Klong.time i :: more)
-    (hbal : m'.leaf = false → ∀ c y, SIS.Tree.Klong.key c y ∈ m'.ks →
-      ∃ m'', (treeOf i s w).obj y = some (.key m'') ∧ m''.level + 1 = wLevel s w x)
     (hne : m'.ks ≠ []) (hE : ∀ z, z ≠ x → E z → E' z) :
     SsOk p i base s tp E' (w.withNode x m') ∧
       ∀ z, (treeOf i s (w.withNode x m')).obj z =
         if z = x then some (.key ⟨wLevel s w x, m'.leaf, ksOf m'⟩) else (treeOf i s w).obj z := by
   refine ⟨⟨frame_withNode hO.frame hx ht hleaf hext,
-    balancedAll_withNode hO.bal hx ht hleaf hbal,
     putBooksE_withNode hO.books hx ht hleaf hfst htimes, hO.top, ?_⟩, fun z => ?_⟩
   · intro y m0 hy hty he
     rcases prim_lookup_withNode hy with ⟨rfl, rfl⟩ | ⟨hyx, hy⟩
@@ -332,7 +325,7 @@ theorem ss_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
       · simp only [Tree.set, hz, ite_false]
         rw [hAz z hz]
     · rfl
-  refine ⟨⟨?_, ?_, h.books.toE, hI.top, ?_⟩, hAx, hAz⟩
+  refine ⟨⟨?_, h.books.toE, hI.top, ?_⟩, hAx, hAz⟩
   · rw [hW]
     have hD := dirtyOf_withNode (n' := addAll i n ins) h.look
     refine hI.frame.set (fun y hy => by rw [hD] at hy; exact hy) (mem_dirtyOf_of_lookup h.look)
@@ -346,12 +339,6 @@ theorem ss_start {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
       obtain ⟨he1, he2, he3⟩ := he
       refine ⟨he1, he2, (ss_ext_of_addAll (prim_timesBefore (hb.times x n0 ho0))
         (hb.first x n0 ho0) (ss_timesLe (h.books.times x n h.look)) he3).2⟩
-  · rw [hW]
-    refine hI.balanced.set (fun m0 hm0 => ⟨_, rfl, ?_⟩) (fun m hm => ?_)
-    · rw [hAx] at hm0; cases hm0; rfl
-    · cases hm
-      obtain ⟨h1, h2, h3⟩ := hI.balanced x _ hAx
-      exact ⟨h1, h2, fun hl c y hy => h3 hl c y ((addAll_key_mem ins n).mpr (Or.inl hy))⟩
   · intro y m hy hty he
     obtain ⟨t, rest, hr⟩ := h.books.timeFirst y m hy hty
     rw [hr] at he
@@ -455,57 +442,10 @@ theorem ss_path {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {
       (∀ e c u, e ≤ d → w.path[e]? = some (c, u) → u ≠ x) := by
   obtain ⟨-, hAx, hAz⟩ := ss_start hb h htx
   have hI := h.hyp
-  -- the levels along the path
-  have hlev : ∀ k, k ≤ d + 1 → ∀ c u, w.path[d + 1 - k]? = some (c, u) →
-      ∃ m, (treeOf i s (w.withNode x (addAll i n ins))).obj u = some (.key m) ∧
-        m.level = wLevel s w x + k := by
-    intro k
-    induction k with
-    | zero =>
-      intro _ c u hu
-      rw [Nat.sub_zero, hon] at hu
-      cases hu
-      exact ⟨_, hAx, rfl⟩
-    | succ k ih =>
-      intro hk c u hu
-      obtain ⟨c0', u', c', y, nu, h1, h2, h3, h4⟩ := h.path.links (d - k) (by omega)
-      rw [show d + 1 - (k + 1) = d - k by omega, h1] at hu
-      cases hu
-      obtain ⟨my, hmy1, hmy2⟩ := ih (by omega) _ _
-        (by rw [show d + 1 - k = d - k + 1 by omega]; exact h2)
-      obtain ⟨_, u2, nu', h5, h6, h7⟩ := h.path.nodes (d - k) (by omega)
-      rw [h1] at h5
-      cases h5
-      have hinner := h.inner (d - k) c u nu' (by omega) h1 h6
-      rw [treeOf_obj_overlay i s h6 h7] at h3
-      cases h3
-      by_cases hux : u = x
-      · subst hux
-        rw [h.look] at h6
-        cases h6
-        obtain ⟨-, -, hb3⟩ := hI.balanced u _ hAx
-        obtain ⟨m', hm1, hm2⟩ := hb3 hinner c' y
-          ((addAll_key_mem ins n).mpr (Or.inl (ss_live_mem h4)))
-        rw [hmy1] at hm1
-        cases hm1
-        simp only at hm2
-        omega
-      · refine ⟨_, by rw [hAz u hux, treeOf_obj_overlay i s h6 h7], ?_⟩
-        obtain ⟨-, -, hb3⟩ := hI.balanced u _ (by rw [hAz u hux, treeOf_obj_overlay i s h6 h7])
-        obtain ⟨m', hm1, hm2⟩ := hb3 hinner c' y (ss_live_mem h4)
-        rw [hmy1] at hm1
-        cases hm1
-        simp only at hm2 ⊢
-        omega
   have hnx : ∀ e c u, e ≤ d → w.path[e]? = some (c, u) → u ≠ x := by
     intro e c u he hu hux
-    subst hux
-    obtain ⟨m, hm1, hm2⟩ := hlev (d + 1 - e) (by omega) c u
-      (by rw [show d + 1 - (d + 1 - e) = e by omega]; exact hu)
-    rw [hAx] at hm1
-    cases hm1
-    simp only at hm2
-    omega
+    rw [hux] at hu
+    exact h.nodup e (d + 1) c c0 x (by omega) le_rfl hu hon
   -- the nodes on the path are reached in A
   have hreach : ∀ e, e ≤ d + 1 → ∀ c u, w.path[e]? = some (c, u) →
       u ∈ reachAt (treeOf i s (w.withNode x (addAll i n ins)))
@@ -537,12 +477,17 @@ theorem ss_path {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {
   cases h3
   have hqx := hnx d c0' q le_rfl h1
   have hinner := h.inner d c0' q nq (by omega) h1 h6
-  refine ⟨k1, c0', q, nq, h1, hon, h6, h7, hqx, hinner, h4, hreach d (by omega) _ _ h1, ?_, hnx⟩
-  obtain ⟨-, -, hb3⟩ := hI.balanced q _ (by rw [hAz q hqx, treeOf_obj_overlay i s h6 h7])
-  obtain ⟨m', hm1, hm2⟩ := hb3 hinner k1 x (ss_live_mem h4)
+  have hqr := hreach d (by omega) _ _ h1
+  have hAq : (treeOf i s (w.withNode x (addAll i n ins))).obj q =
+      some (.key ⟨wLevel s w q, nq.leaf, ksOf nq⟩) := by
+    rw [hAz q hqx, treeOf_obj_overlay i s h6 h7]
+  have hqR : q ∈ reach (treeOf i s (w.withNode x (addAll i n ins))) := by
+    rw [reach_of_root hI.root]; exact hqr
+  obtain ⟨-, -, hb3⟩ := hI.balanced q hqR _ hAq
+  obtain ⟨m', hm1, hm2⟩ := hb3 hinner k1 x h4
   rw [hAx] at hm1
   cases hm1
-  exact hm2
+  exact ⟨k1, c0', q, nq, h1, hon, h6, h7, hqx, hinner, h4, hqr, hm2, hnx⟩
 
 /-! ## 8. Helpers for the cases -/
 
@@ -556,7 +501,7 @@ theorem SsOk.congr {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top
   simp only at h1 h2 h3 h4 h5 h6 h7 h8 h9
   subst h1 h2 h3 h4 h5 h6 h7 h8 h9
   obtain ⟨b1, b2, b3, b4, b5, b6, b7, b8, b9⟩ := hO.books
-  exact ⟨hO.frame, hO.bal, ⟨b1, b2, b3, b4, b5, b6, b7, b8, b9⟩, hO.top, hO.empty⟩
+  exact ⟨hO.frame, ⟨b1, b2, b3, b4, b5, b6, b7, b8, b9⟩, hO.top, hO.empty⟩
 
 theorem ss_nodeOk_names {b : Nat} {T : Tree} {m : KNode} (h : nodeOk ⟨b⟩ T m = true) {c : Nat}
     {y : NodeId} (hm : Klong.key c y ∈ m.ks) : (T.obj y).isSome = true := by
@@ -597,32 +542,22 @@ theorem ss_nodeIs_root {B : Tree} {r a b : NodeId} {lev : Nat} {sc : Nat} {M : N
   · exact ha
   · exact hb
 
-/-- A node that a key klong of x with the klongs added names, x an inner
-node: a key node one level below x, not x, and of the state before. -/
-theorem ss_named {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
-    {x : NodeId} {ins : List (Nat × NodeId)} {w : MW} {n : MNode} {C : List (Key × Nat)}
-    (hb : Books i base s tp) (h : CasPre p i base s tp w depth x n ins C)
-    (htx : w.taken.contains x = false) (hl : n.leaf = false) {y : NodeId}
-    (hy : ∃ c', Klong.key c' y ∈ ksOf (addAll i n ins)) :
-    ∃ m', (treeOf i s w).obj y = some (.key m') ∧ m'.level + 1 = wLevel s w x ∧ y ≠ x ∧
-      y < w.next := by
-  obtain ⟨-, hAx, hAz⟩ := ss_start hb h htx
-  obtain ⟨c', hc'⟩ := hy
-  obtain ⟨-, -, hb3⟩ := h.hyp.balanced x _ hAx
-  obtain ⟨m', hm1, hm2⟩ := hb3 hl c' y hc'
-  have hyx : y ≠ x := by
-    intro e
-    subst e
-    rw [hAx] at hm1
-    cases hm1
-    simp only at hm2
-    omega
-  rw [hAz y hyx] at hm1
-  refine ⟨m', hm1, hm2, hyx, ?_⟩
-  rcases Nat.lt_or_ge y w.next with hlt | hge
-  · exact hlt
-  · rw [(treeOf_fresh hb h.books hge).1] at hm1
-    cases hm1
+/-- The live klongs of the halves are live klongs of x with the klongs
+added. -/
+theorem ss_halves_live {i : Time} {n : MNode} {ins : List (Nat × NodeId)} {f s2 : MNode}
+    {sc : Nat} {L1 rest : List (Nat × NodeId)} {y0 : NodeId}
+    (hsplit : live (ksOf (addAll i n ins)) = L1 ++ (sc, y0) :: rest) (hlf : live (ksOf f) = L1)
+    (hls : live (ksOf s2) = (if n.leaf then sc else 0, y0) :: rest) :
+    (∀ c y, (c, y) ∈ live (ksOf f) → ∃ c', (c', y) ∈ live (ksOf (addAll i n ins))) ∧
+    (∀ c y, (c, y) ∈ live (ksOf s2) → ∃ c', (c', y) ∈ live (ksOf (addAll i n ins))) := by
+  refine ⟨fun c y hy => ⟨c, by rw [hsplit]; rw [hlf] at hy; exact List.mem_append_left _ hy⟩,
+    fun c y hy => ?_⟩
+  rw [hls] at hy
+  rcases List.mem_cons.mp hy with e | e
+  · simp only [Prod.mk.injEq] at e
+    rw [e.2]
+    exact ⟨sc, by rw [hsplit]; simp⟩
+  · exact ⟨c, by rw [hsplit]; simp [e]⟩
 
 /-- A node that a key klong of x with the klongs added names exists in the
 "if" state's map, if x is reached there. -/
@@ -651,14 +586,15 @@ with the map's tree sound from r. -/
 theorem ss_pinv_superRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {C : List (Key × Nat)} {E : NodeId → Prop} {w : MW} (hb : Books i base s tp)
     (hO : SsOk p i base s tp E w) (hE : ∀ y, ¬ E y) (r : NodeId)
-    (hS : Sound p.M none (treeOf i s (MW.afterSuperRoot w p i r)) r C) :
+    (hS : Sound p.M none (treeOf i s (MW.afterSuperRoot w p i r)) r C)
+    (hB : Balanced p (treeOf i s (MW.afterSuperRoot w p i r))) :
     PInv p i base s tp none C (MW.afterSuperRoot w p i r) ∧
       (treeOf i s (MW.afterSuperRoot w p i r)).obj = (treeOf i s w).obj ∧
       (MW.afterSuperRoot w p i r).top.rootKey = r := by
   obtain ⟨hobjF, hrootF, hdirtyF⟩ := treeOf_afterSuperRoot i s p r hO.books.ids.1
   have hrk := (afterSuperRoot_fields w p i r).1
   refine ⟨⟨by rw [hrk]; exact hrootF, by rw [hrk]; exact hS, ?_,
-    topInv_afterSuperRoot r hO.top hb hO.books.ids.2.2.2.1, ?_,
+    topInv_afterSuperRoot r hO.top hb hO.books.ids.2.2.2.1, hB,
     putBooks_afterSuperRoot r (hO.toBooks hE)⟩, hobjF, hrk⟩
   · obtain ⟨f1, f2, -⟩ := hO.frame
     refine ⟨fun y o hy => ?_, fun y m hy hsy => ?_,
@@ -668,9 +604,78 @@ theorem ss_pinv_superRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     · rw [hdirtyF]
       rw [hobjF] at hy
       exact f2 y m hy hsy
-  · unfold BalancedAll
-    rw [hobjF]
-    exact hO.bal
+
+/-- BalancedOK of the map B after a tree rule from the map A: B reaches what
+A reaches and the nodes of N; off N the two agree; key nodes keep their
+levels; the nodes of N meet the rule in B. -/
+theorem ss_bal_of {p : MParams} {A B : Tree} {N : List NodeId} {r r' : NodeId}
+    (hA : Balanced p A) (hrA : A.root = some r) (hrB : B.root = some r')
+    (hRB : ∀ z ∈ reachAt B (B.fuel r') r', z ∈ reachAt A (A.fuel r) r ∨ z ∈ N)
+    (hold : ∀ z, z ∉ N → B.obj z = A.obj z)
+    (hlev : ∀ y m, A.obj y = some (.key m) → ∃ m', B.obj y = some (.key m') ∧
+      m'.level = m.level)
+    (hnew : ∀ z ∈ N, z ∈ reachAt B (B.fuel r') r' → ∀ m, B.obj z = some (.key m) →
+      0 < m.level ∧ m.leaf = (p.heightOf m.level == 0) ∧
+      (m.leaf = false → ∀ c y, (c, y) ∈ live m.ks → ∃ m', B.obj y = some (.key m') ∧
+        m'.level + 1 = m.level)) : Balanced p B := by
+  refine Balanced.of_reach hA (fun z hz => ?_) (fun z _ hz => hold z hz) hlev
+    (fun z hz hzR m hm => hnew z hz (by rw [reach_of_root hrB] at hzR; exact hzR) m hm)
+  rw [reach_of_root hrB] at hz
+  rcases hRB z hz with h1 | h1
+  · left
+    rw [reach_of_root hrA]
+    exact h1
+  · exact Or.inr h1
+
+/-- The levels of the key nodes of A in B, from B = A off N and the levels of
+the nodes of N. -/
+theorem ss_lev_of {A B : Tree} {N : List NodeId} (hold : ∀ z, z ∉ N → B.obj z = A.obj z)
+    (hN : ∀ z ∈ N, ∀ m, A.obj z = some (.key m) → ∃ m', B.obj z = some (.key m') ∧
+      m'.level = m.level) :
+    ∀ y m, A.obj y = some (.key m) → ∃ m', B.obj y = some (.key m') ∧ m'.level = m.level := by
+  intro y m hy
+  by_cases hyN : y ∈ N
+  · exact hN y hyN m hy
+  · exact ⟨m, by rw [hold y hyN, hy], rfl⟩
+
+/-- A node of N in B with the level and the kind of a node u reached in A and
+live klongs that name what live klongs of u name: it meets the rule. -/
+theorem ss_rule_node {p : MParams} {A B : Tree} {u : NodeId} {nu m : KNode}
+    (hA : Balanced p A) (huR : u ∈ reach A) (hAu : A.obj u = some (.key nu))
+    (hlev : ∀ y m, A.obj y = some (.key m) → ∃ m', B.obj y = some (.key m') ∧
+      m'.level = m.level)
+    (hml : m.leaf = nu.leaf) (hmlev : m.level = nu.level)
+    (hlive : ∀ c y, (c, y) ∈ live m.ks → (∃ c', (c', y) ∈ live nu.ks) ∨
+      ∃ m', B.obj y = some (.key m') ∧ m'.level + 1 = m.level) :
+    0 < m.level ∧ m.leaf = (p.heightOf m.level == 0) ∧
+      (m.leaf = false → ∀ c y, (c, y) ∈ live m.ks → ∃ m', B.obj y = some (.key m') ∧
+        m'.level + 1 = m.level) := by
+  obtain ⟨h0, h1, h2⟩ := hA u huR nu hAu
+  refine ⟨by rw [hmlev]; exact h0, by rw [hml, hmlev]; exact h1, fun hl c y hy => ?_⟩
+  rcases hlive c y hy with ⟨c', hc'⟩ | hB
+  · obtain ⟨m1, hm1, hm2⟩ := h2 (by rw [← hml]; exact hl) c' y hc'
+    obtain ⟨m', hm3, hm4⟩ := hlev y m1 hm1
+    exact ⟨m', hm3, by rw [hm4, hmlev]; exact hm2⟩
+  · exact hB
+
+/-- A new root over two nodes on the level below it meets the rule. -/
+theorem ss_rule_root {p : MParams} {B : Tree} {a b : NodeId} {sc lev : Nat} {i : Time}
+    (hpos : 0 < lev) (hh : p.heightOf lev ≠ 0)
+    (ha : ∃ m', B.obj a = some (.key m') ∧ m'.level + 1 = lev)
+    (hb : ∃ m', B.obj b = some (.key m') ∧ m'.level + 1 = lev) :
+    0 < lev ∧ false = (p.heightOf lev == 0) ∧
+      (false = false → ∀ c y,
+        (c, y) ∈ live (([.time i, .key 0 a, .key sc b] : List MKlong).map kOf) →
+        ∃ m', B.obj y = some (.key m') ∧ m'.level + 1 = lev) := by
+  refine ⟨hpos, by simp [hh], fun _ c y hy => ?_⟩
+  have := ss_live_mem hy
+  simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil, or_false] at this
+  rcases this with e | e | e
+  · simp [kOf] at e
+  · simp only [kOf, Klong.key.injEq] at e
+    rw [e.2]; exact ha
+  · simp only [kOf, Klong.key.injEq] at e
+    rw [e.2]; exact hb
 
 /-! ## 9. At the space root, x made by the transaction -/
 
@@ -761,7 +766,7 @@ theorem ss_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree}
     rw [e1]
     exact ssOk_newKey hb (hO.congr (w' := ssSp w) rfl rfl rfl rfl rfl rfl rfl rfl rfl) hgG hhH
       hleafh (Or.inl rfl)
-      (by simp) (by simp) (by
+      (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact hz
@@ -791,11 +796,8 @@ theorem ss_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree}
     rw [e3, ← hwx]
     refine ssOk_withNode hO2 (by rw [hN2, hlk1 x (Nat.ne_of_lt hxlt)]; exact hlook)
       (by rw [hk2]; exact htx) hfl
-      (Or.inl hfst) htf (fun n0 hn0 => by rw [hsx] at hn0; cases hn0) ?_
+      (Or.inl hfst) htf (fun n0 hn0 => by rw [hsx] at hn0; cases hn0)
       (by rw [hf1]; simp) (fun z _ hz => hz)
-    intro hl c y hy
-    obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hfl]; exact hl) (hkf c y hy)
-    exact ⟨m', by rw [hold y hyx hylt]; exact hm1, by rw [hwx]; exact hm2⟩
   have hN3 : ∀ y, y ≠ x → w3.nodes.lookup y = w2.nodes.lookup y := by
     intro y hy
     rw [e3]
@@ -810,13 +812,8 @@ theorem ss_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree}
       (by rw [hN3 _ (Nat.ne_of_gt hxlt), hN2]; exact hlk1n)
       (by rw [show w3.taken = w2.taken by rw [e3]; rfl, hk2]; exact ht0) hsl
       (Or.inr ⟨rfl, rs, hs1⟩) hts
-      (fun n0 hn0 => by rw [hs0] at hn0; cases hn0) ?_ (by rw [hs1]; simp)
+      (fun n0 hn0 => by rw [hs0] at hn0; cases hn0) (by rw [hs1]; simp)
       (fun z hz hz' => hz hz')
-    intro hl c y hy
-    obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hsl]; exact hl) (hks c y hy)
-    refine ⟨m', ?_, by rw [hwn, ← hlev]; exact hm2⟩
-    rw [hO3.2 y, ss_ite_neg hyx, hold y hyx hylt]
-    exact hm1
   have hn4 : w4.next = w.next + 2 := by rw [e4, e3, e2]; exact hn1
   have hO5 : SsOk p i base s tp (fun _ => False) w5 ∧
       ∀ z, (treeOf i s w5).obj z = if z = w.next + 2 then
@@ -826,23 +823,7 @@ theorem ss_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree}
     rw [e5, ← hn4]
     refine ssOk_newKey hb (hO4.1.congr (w' := ssNote w4 "split.space3.inplace") rfl rfl rfl rfl
       rfl rfl rfl rfl rfl) hgG hH1 (by simp)
-      (Or.inr ⟨_, rfl⟩) (by simp) ?_ (by simp)
-    intro _ c y hy
-    simp only [List.mem_cons, SIS.Tree.Klong.key.injEq, List.not_mem_nil, or_false,
-      reduceCtorEq, false_or] at hy
-    rcases hy with ⟨-, e⟩ | ⟨-, e⟩
-    · rw [e]
-      refine ⟨⟨wLevel s w x, f.leaf, ksOf f⟩, ?_, ?_⟩
-      · show (treeOf i s w4).obj x = _
-        rw [hO4.2 x, ss_ite_neg (Nat.ne_of_lt hxlt), hO3.2 x, ss_ite_pos rfl]
-      · simp only
-        rw [keyLevel_succ, hlev]
-    · rw [e]
-      refine ⟨⟨p.keyLevel g hh, s2.leaf, ksOf s2⟩, ?_, ?_⟩
-      · show (treeOf i s w4).obj w.next = _
-        rw [hO4.2 w.next, ss_ite_pos rfl]
-      · simp only
-        rw [keyLevel_succ]
+      (Or.inr ⟨_, rfl⟩) (by simp) (by simp)
   have hO6 : SsOk p i base s tp (fun _ => False) w6 := by
     rw [e6]
     exact hO5.1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl
@@ -904,7 +885,49 @@ theorem ss_root_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tree}
     (Nat.ne_of_lt hxlt) hA2 ⟨(ss_ne_of_lt_add hxlt).symm, (ss_ne_add (by decide)).symm⟩ hNf hNs
     hNr (by rw [hBx]; rfl)
     (fun z h1 _ h3 h4 => by rw [hBo z h4 h3 h1, hAz z h1])
-  obtain ⟨hPI, -, hrkF⟩ := ss_pinv_superRoot hb hO6 (fun _ h => h) (w.next + 2) hSB
+  -- BalancedOK of the map after the step
+  have hxR : x ∈ reach (treeOf i s (w.withNode x (addAll i n ins))) := by
+    rw [reach_of_root hI.root]
+    show x ∈ reachAt _ ((treeOf i s (w.withNode x (addAll i n ins))).fuel w.top.rootKey)
+      w.top.rootKey
+    rw [← hxr]; exact tc_self _ _ _
+  have hold : ∀ z, z ∉ [x, w.next, w.next + 2] →
+      (treeOf i s (MW.afterSuperRoot w6 p i (w.next + 2))).obj z =
+        (treeOf i s (w.withNode x (addAll i n ins))).obj z := by
+    intro z hz
+    simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hz
+    rw [hBo z hz.2.2 hz.2.1 hz.1, hAz z hz.1]
+  have hlevB := ss_lev_of hold (by
+    intro z hz m hm
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+    rcases hz with rfl | rfl | rfl
+    · rw [hAx] at hm; cases hm; exact ⟨_, hBx, rfl⟩
+    · rw [hA0] at hm; cases hm
+    · rw [hA2] at hm; cases hm)
+  have hHL := ss_halves_live hsplit hlf hls
+  have hBal : Balanced p (treeOf i s (MW.afterSuperRoot w6 p i (w.next + 2))) := by
+    refine ss_bal_of hI.balanced hI.root
+      (treeOf_afterSuperRoot i s p (w.next + 2) hO6.books.ids.1).2.1 (fun z hz => ?_) hold hlevB
+      (fun z hz _ m hm => ?_)
+    · rcases hRB z hz with h1 | h1 | h1 | h1
+      · left
+        have hW0r : (w.withNode x (addAll i n ins)).top.rootKey = x := hxr.symm
+        rw [hW0r]; exact h1
+      · right; simp [h1]
+      · right; simp [h1]
+      · right; simp [h1]
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+      rcases hz with rfl | rfl | rfl
+      · rw [hBx] at hm; cases hm
+        exact ss_rule_node hI.balanced hxR hAx hlevB hfl rfl
+          (fun c y hy => Or.inl (hHL.1 c y hy))
+      · rw [hBs] at hm; cases hm
+        exact ss_rule_node hI.balanced hxR hAx hlevB hsl hlev.symm
+          (fun c y hy => Or.inl (hHL.2 c y hy))
+      · rw [hBr] at hm; cases hm
+        refine ss_rule_root (keyLevel_pos p g (hh + 1)) (by rw [heightOf_keyLevel p hH1]; simp)
+          ⟨_, hBx, by rw [hlev, keyLevel_succ]⟩ ⟨_, hBs, by rw [keyLevel_succ]⟩
+  obtain ⟨hPI, -, hrkF⟩ := ss_pinv_superRoot hb hO6 (fun _ h => h) (w.next + 2) hSB hBal
   refine ⟨hPI, ⟨?_, ?_, ?_, ?_⟩⟩
   · rw [(afterSuperRoot_fields w6 p i (w.next + 2)).2.2.2.2.2.2.2.1, e6, e5, e4, e3, e2, e1]
     rfl
@@ -984,7 +1007,7 @@ theorem ssOk_superRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       (MW.afterSuperRoot w p i r).top.rootKey = r := by
   obtain ⟨hobjF, hrootF, hdirtyF⟩ := treeOf_afterSuperRoot i s p r hO.books.ids.1
   obtain ⟨hrk, -, hnodes, -, htaken, -⟩ := afterSuperRoot_fields w p i r
-  refine ⟨⟨?_, ?_, (putBooks_afterSuperRoot r (hO.toBooks (fun _ h => h))).toE,
+  refine ⟨⟨?_, (putBooks_afterSuperRoot r (hO.toBooks (fun _ h => h))).toE,
     topInv_afterSuperRoot r hO.top hb hO.books.ids.2.2.2.1, ?_⟩, hobjF, hrootF, hrk⟩
   · obtain ⟨f1, f2, -⟩ := hO.frame
     refine ⟨fun y o hy => ?_, fun y m hy hsy => ?_,
@@ -994,9 +1017,6 @@ theorem ssOk_superRoot {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
     · rw [hdirtyF]
       rw [hobjF] at hy
       exact f2 y m hy hsy
-  · unfold BalancedAll
-    rw [hobjF]
-    exact hO.bal
   · intro y m hy hty he
     rw [hnodes] at hy
     rw [htaken] at hty
@@ -1007,8 +1027,9 @@ with klongs and its map sound from its root. -/
 theorem ss_pinv {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {C : List (Key × Nat)} {w : MW} (hO : SsOk p i base s tp (fun _ => False) w)
     (hr : (treeOf i s w).root = some w.top.rootKey)
-    (hS : Sound p.M none (treeOf i s w) w.top.rootKey C) : PInv p i base s tp none C w :=
-  ⟨hr, hS, hO.frame, hO.top, hO.bal, hO.toBooks (fun _ h => h)⟩
+    (hS : Sound p.M none (treeOf i s w) w.top.rootKey C) (hB : Balanced p (treeOf i s w)) :
+    PInv p i base s tp none C w :=
+  ⟨hr, hS, hO.frame, hO.top, hB, hO.toBooks (fun _ h => h)⟩
 
 /-- x cut back to before the transaction: its klongs of s. -/
 theorem ss_toPrev {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} {depth : Nat}
@@ -1137,7 +1158,7 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
         else (treeOf i s w).obj z := by
     rw [e1]
     exact ssOk_newKey hb (hO.congr (w' := ssSp w) rfl rfl rfl rfl rfl rfl rfl rfl rfl) hgG hhH
-      hleafh (Or.inl rfl) (by simp) (by simp) (by
+      hleafh (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact hz
@@ -1149,7 +1170,7 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
       ∀ z, (treeOf i s w2).obj z = if z = w.next + 2 then
         some (.key ⟨p.keyLevel g hh, n.leaf, []⟩) else (treeOf i s w1).obj z := by
     rw [e2, ← hn1]
-    exact ssOk_newKey hb hO1.1 hgG hhH hleafh (Or.inl rfl) (by simp) (by simp) (by
+    exact ssOk_newKey hb hO1.1 hgG hhH hleafh (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact Or.inl hz
@@ -1166,7 +1187,7 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
         some (.key ⟨p.keyLevel g (hh + 1), false, []⟩) else (treeOf i s w3).obj z := by
     rw [e4, ← hn3]
     exact ssOk_newKey hb (hO3.congr (w' := ssNote w3 "split.space3") rfl rfl rfl rfl rfl rfl rfl rfl
-      rfl) hgG hH1 (by simp) (Or.inl rfl) (by simp) (by simp) (by
+      rfl) hgG hH1 (by simp) (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact Or.inl hz
@@ -1218,11 +1239,7 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     refine ssOk_withNode hO5 (m := ⟨n.leaf, []⟩)
       (by rw [hN5 _ (ss_ne_add (by decide)) (ss_ne_add (by decide)), hlk1n])
       (by rw [hk5]; exact ht0) hfl (Or.inr ⟨rfl, rf, hf1⟩) htf
-      (fun n0 hn0' => by rw [hs0] at hn0'; cases hn0') ?_ (by rw [hf1]; simp) ?_
-    · intro hl c y hy
-      obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hfl]; exact hl)
-        (hkf c y hy)
-      exact ⟨m', by rw [hold5 y hylt]; exact hm1, by rw [hwl0, ← hlev]; exact hm2⟩
+      (fun n0 hn0' => by rw [hs0] at hn0'; cases hn0') (by rw [hf1]; simp) ?_
     · intro z hz hz'
       rcases hz' with hz' | hz' | hz'
       · exact Or.inl hz'
@@ -1244,19 +1261,13 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
       (by
         rw [e6]; show w5.taken.contains _ = false
         rw [hk5, show w.taken = w1.taken by rw [e1]; rfl]; exact ht2) hsl
-      (Or.inr ⟨rfl, rs, hs1⟩) hts (fun n0 hn0' => by rw [hs2] at hn0'; cases hn0') ?_
+      (Or.inr ⟨rfl, rs, hs1⟩) hts (fun n0 hn0' => by rw [hs2] at hn0'; cases hn0')
       (by rw [hs1]; simp) ?_
     · rw [e6, ss_lookup_withNode hne20, show w5.nodes = w4.nodes by rw [e5]; rfl, e4,
         ss_lookup_newKey (w := ssNote w3 "split.space3")
           (by show _ ≠ w3.next; rw [hn3]; exact hne42.symm),
         show (ssNote w3 "split.space3").nodes = w2.nodes by rw [e3]; rfl, e2, ← hn1]
       exact prim_lookup_append_self _ _ (by rw [hn1]; exact hlk1)
-    · intro hl c y hy
-      obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hsl]; exact hl)
-        (hks c y hy)
-      refine ⟨m', ?_, by rw [hwl6, ← hlev]; exact hm2⟩
-      rw [hO6.2, ss_ite_neg (Nat.ne_of_lt hylt), hold5 y hylt]
-      exact hm1
     · intro z hz hz'
       rcases hz' with hz' | hz'
       · exact hz'
@@ -1272,22 +1283,12 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
       (by
         rw [e7, e6]; show w5.taken.contains _ = false
         rw [hk5, show w.taken = w3.taken by rw [e3, e2, e1]; rfl]; exact ht4) rfl
-      (Or.inr ⟨rfl, _, rfl⟩) (by simp) (fun n0 hn0' => by rw [hs4] at hn0'; cases hn0') ?_
+      (Or.inr ⟨rfl, _, rfl⟩) (by simp) (fun n0 hn0' => by rw [hs4] at hn0'; cases hn0')
       (by simp) (fun _ hz h => hz h)
     · rw [e7, ss_lookup_withNode hne42, e6, ss_lookup_withNode hne40,
         show w5.nodes = w4.nodes by rw [e5]; rfl, e4, ← hn3]
       exact prim_lookup_append_self (l := (ssNote w3 "split.space3").nodes) _
         (by show w3.nodes.lookup w3.next = none; rw [hn3]; exact hn4')
-    · intro _ c y hy
-      simp only [List.mem_cons, SIS.Tree.Klong.key.injEq, List.not_mem_nil, or_false,
-        reduceCtorEq, false_or] at hy
-      rcases hy with ⟨-, e⟩ | ⟨-, e⟩
-      · rw [e]
-        refine ⟨⟨p.keyLevel g hh, f.leaf, ksOf f⟩, ?_, by rw [hwl7, keyLevel_succ]⟩
-        rw [hO7.2, ss_ite_neg hne20.symm, hO6.2, ss_ite_pos rfl]
-      · rw [e]
-        refine ⟨⟨p.keyLevel g hh, s2.leaf, ksOf s2⟩, ?_, by rw [hwl7, keyLevel_succ]⟩
-        rw [hO7.2, ss_ite_pos rfl]
   obtain ⟨hO9, hobj9, hroot9, hrk9⟩ := ssOk_superRoot hb hO8.1 (w.next + 4)
   have htx9 : (MW.afterSuperRoot w8 p i (w.next + 4)).taken.contains x = false := by
     rw [(afterSuperRoot_fields w8 p i (w.next + 4)).2.2.2.2.1, e8, e7, e6]
@@ -1299,9 +1300,6 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
       rw [hr', hr0]; rfl))
     (fun t ht => h.books.times x n hlook t (ss_mem_toPrev ht))
     (fun n0 hn0' => Or.inl (ss_toPrev hb h htx hn0'))
-    (fun hl c y hy => by
-      obtain ⟨-, -, hb3⟩ := hO9.bal x _ (treeOf_obj_overlay i s hlk9 htx9)
-      exact hb3 hl c y (ss_key_ksOf (ss_mem_toPrev hy)))
     (by obtain ⟨rest', hr'⟩ := ss_toPrev_head hr0 ht0i; rw [hr']; simp) (fun _ _ h => h)
   -- the map after the step
   have hxn : x ≠ w.next := Nat.ne_of_lt hxlt
@@ -1371,16 +1369,72 @@ theorem ss_root_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     rw [hlev, ← keyLevel_succ]
     exact ss_nodeIs_root hsc0 (by have := hp.size; omega) hBr (by rw [hBf]; rfl)
       (by rw [hBs]; rfl)
-  obtain ⟨hSB, -, hRB⟩ := Sound.spaceSplitRoot hS hAx hsplit hL1 (Or.inr hA0) hA2 hne20.symm hA4
+  obtain ⟨hSB, hxB, hRB⟩ := Sound.spaceSplitRoot hS hAx hsplit hL1 (Or.inr hA0) hA2 hne20.symm hA4
     ⟨hne40, hne42⟩ hNf hNs hNr hBx
     (fun z h0 h1 h2 h4 => by rw [hBo z h0 h1 h2 h4, hAz z h0])
+  -- BalancedOK of the map after the step
+  have hxR : x ∈ reach (treeOf i s (w.withNode x (addAll i n ins))) := by
+    rw [reach_of_root hI.root]
+    show x ∈ reachAt _ ((treeOf i s (w.withNode x (addAll i n ins))).fuel w.top.rootKey)
+      w.top.rootKey
+    rw [← hxr]; exact tc_self _ _ _
+  have h8' : w8.next = w.next + 6 := by
+    rw [e8, e7, e6, e5, e4]
+    show w3.next + 2 = _
+    rw [hn3]
+  have hwx9 : wLevel s (MW.afterSuperRoot w8 p i (w.next + 4)) x = wLevel s w x := by
+    rw [wLevel_afterSuperRoot s p i _ (Nat.ne_of_lt (Nat.lt_of_lt_of_le hxlt
+      (by rw [h8']; exact Nat.le_add_right _ _))),
+      show wLevel s w8 = wLevel s w5 by rw [e8, e7, e6]; rfl, hw4n x hxn4, e2,
+      prim_wLevel_afterNewKey (w := w1) (by rw [hn1]; exact hxn2), e1]
+    exact prim_wLevel_afterNewKey hxn
+  have hold : ∀ z, z ∉ [x, w.next, w.next + 2, w.next + 4] →
+      (treeOf i s ((MW.afterSuperRoot w8 p i (w.next + 4)).withNode x (n.toPrev (i - 1)))).obj z =
+        (treeOf i s (w.withNode x (addAll i n ins))).obj z := by
+    intro z hz
+    simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hz
+    rw [hBo z hz.1 hz.2.1 hz.2.2.1 hz.2.2.2, hAz z hz.1]
+  have hlevB := ss_lev_of hold (by
+    intro z hz m hm
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+    rcases hz with rfl | rfl | rfl | rfl
+    · rw [hAx] at hm; cases hm
+      exact ⟨_, by rw [hO10.2, ss_ite_pos rfl], hwx9⟩
+    · rw [hA0] at hm; cases hm
+    · rw [hA2] at hm; cases hm
+    · rw [hA4] at hm; cases hm)
+  have hHL := ss_halves_live hsplit hlf hls
+  have hBal : Balanced p (treeOf i s ((MW.afterSuperRoot w8 p i (w.next + 4)).withNode x
+      (n.toPrev (i - 1)))) := by
+    refine ss_bal_of hI.balanced hI.root (r' := w.next + 4)
+      (by rw [treeOf_withNode i s _ htx9]; exact hroot9) (fun z hz => ?_) hold hlevB
+      (fun z hz hzR m hm => ?_)
+    · rcases hRB z hz with h1 | h1 | h1 | h1
+      · left
+        have hW0r : (w.withNode x (addAll i n ins)).top.rootKey = x := hxr.symm
+        rw [hW0r]; exact h1
+      · right; simp [h1]
+      · right; simp [h1]
+      · right; simp [h1]
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+      rcases hz with rfl | rfl | rfl | rfl
+      · exact absurd hzR (hxB hxn.symm)
+      · rw [hBf] at hm; cases hm
+        exact ss_rule_node hI.balanced hxR hAx hlevB hfl hlev.symm
+          (fun c y hy => Or.inl (hHL.1 c y hy))
+      · rw [hBs] at hm; cases hm
+        exact ss_rule_node hI.balanced hxR hAx hlevB hsl hlev.symm
+          (fun c y hy => Or.inl (hHL.2 c y hy))
+      · rw [hBr] at hm; cases hm
+        refine ss_rule_root (keyLevel_pos p g (hh + 1)) (by rw [heightOf_keyLevel p hH1]; simp)
+          ⟨_, hBf, by rw [keyLevel_succ]⟩ ⟨_, hBs, by rw [keyLevel_succ]⟩
   have hrk10 : ((MW.afterSuperRoot w8 p i (w.next + 4)).withNode x
       (n.toPrev (i - 1))).top.rootKey = w.next + 4 := hrk9
   have hroot10 : (treeOf i s ((MW.afterSuperRoot w8 p i (w.next + 4)).withNode x
       (n.toPrev (i - 1)))).root = some (w.next + 4) := by
     rw [treeOf_withNode i s _ htx9]
     exact hroot9
-  refine ⟨ss_pinv hO10.1 (by rw [hrk10]; exact hroot10) (by rw [hrk10]; exact hSB),
+  refine ⟨ss_pinv hO10.1 (by rw [hrk10]; exact hroot10) (by rw [hrk10]; exact hSB) hBal,
     ⟨?_, ?_, ?_, ?_⟩⟩
   · show (MW.afterSuperRoot w8 p i (w.next + 4)).path = w.path
     rw [(afterSuperRoot_fields w8 p i (w.next + 4)).2.2.2.2.2.2.2.1, e8, e7, e6, e5, e4, e3, e2, e1]
@@ -1592,16 +1646,6 @@ theorem ss_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     (fun t ht => addAll_timesLe (ss_timesLe (hOU.books.times q nq hlkq)) insU t (ss_time_ksOf ht))
     (fun n0 hs0 => addAll_ext (prim_timesBefore (hb.times q n0 hs0))
       (frame_overlay_ext hOU.frame hlkq hkq hs0).2.2 insU)
-    (by
-      intro hl c y hy
-      rcases (addAll_key_mem insU nq).mp (ss_key_ksOf hy) with h1 | h1
-      · obtain ⟨-, -, hb3⟩ := hOU.bal q _ (treeOf_obj_overlay i s hlkq hkq)
-        exact hb3 (by rw [addAll_leaf] at hl; exact hl) c y h1
-      · rcases hmemU c y h1 with e | e
-        · rw [e]
-          exact ⟨_, hfU, by rw [hwq]; exact hlq⟩
-        · rw [e]
-          exact ⟨_, hsU, by rw [hwq]; exact hlq⟩)
     (by rw [hrq']; simp) (fun _ _ h => h)
   -- the parent's "if" state's map B
   have hBq : (treeOf i s (wU.withNode q (addAll i nq insU))).obj q =
@@ -1671,8 +1715,8 @@ theorem ss_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
   have hrkq : (wU.withNode q (addAll i nq insU)).top.rootKey = w.top.rootKey := by
     show wU.top.rootKey = _
     rw [htopU]
-  refine ⟨⟨hlkq, ⟨cq, by rw [hpU]; exact hq1⟩, ?_, ?_, hOU.toBooks (fun _ h => h), hnqwf, hnqs,
-    hlenU, ?_, ?_⟩, ?_, ?_, ?_⟩
+  refine ⟨⟨hlkq, ⟨cq, by rw [hpU]; exact hq1⟩, ?_, ?_, ?_, hOU.toBooks (fun _ h => h), hnqwf,
+    hnqs, hlenU, ?_, ?_⟩, ?_, ?_, ?_⟩
   · -- the path
     refine ⟨by rw [hpU, htopU]; exact h.path.root, fun e he => ?_, fun e he => ?_⟩
     · obtain ⟨c, u, n', h1, h2, h3⟩ := h.path.nodes e (by omega)
@@ -1691,6 +1735,10 @@ theorem ss_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       have hus : u ≠ second := Nat.ne_of_lt (Nat.lt_of_lt_of_le hult hsecond)
       exact ⟨c0, u, c, y, nu, by rw [hpU]; exact h1, by rw [hpU]; exact h2,
         by rw [hobjU u huf hus]; exact h3, h4⟩
+  · -- no node twice on the path
+    intro e e' c c' u he he' h1 h2
+    rw [hpU] at h1 h2
+    exact h.nodup e e' c c' u he (by omega) h1 h2
   · -- the path is inner
     intro e c u nu he h1 h2
     rw [hpU] at h1
@@ -1717,13 +1765,95 @@ theorem ss_parent_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
           omega
         · exact hscpost _ hm
   · -- the parent's "if" state
-    refine ⟨?_, by rw [hrkq]; exact hSB, hOq.1.frame, hOq.1.top, hOq.1.bal,
+    have hrootQ : (treeOf i s (wU.withNode q (addAll i nq insU))).root = some w.top.rootKey := by
+      rw [treeOf_withNode i s _ hkq]
+      have e1 : (treeOf i s wU).root = (treeOf i s (w.withNode x (addAll i n ins))).root := by
+        simp only [Tree.root, treeOf, hntU, htopU]
+        rfl
+      exact e1.trans hI.root
+    have hxR : x ∈ reach (treeOf i s (w.withNode x (addAll i n ins))) := by
+      rw [reach_of_root hI.root]; exact hxreach
+    have hqR : q ∈ reach (treeOf i s (w.withNode x (addAll i n ins))) := by
+      rw [reach_of_root hI.root]; exact hqr
+    have hHL := ss_halves_live hsplit hlf hls
+    have hxs : x ≠ second := Nat.ne_of_lt (Nat.lt_of_lt_of_le hxlt hsecond)
+    have hBf' : (treeOf i s (wU.withNode q (addAll i nq insU))).obj first =
+        some (.key ⟨wLevel s w x, f.leaf, ksOf f⟩) := by rw [hBo _ hqf.symm, hfU]
+    have hBs' : (treeOf i s (wU.withNode q (addAll i nq insU))).obj second =
+        some (.key ⟨wLevel s w x, s2.leaf, ksOf s2⟩) := by rw [hBo _ hqs.symm, hsU]
+    have hBx' : ∃ m', (treeOf i s (wU.withNode q (addAll i nq insU))).obj x = some (.key m') ∧
+        m'.level = wLevel s w x := by
+      rw [hBo x hqx.symm]
+      by_cases hxf : x = first
+      · have e := hfU
+        rw [← hxf] at e
+        rw [e]; exact ⟨_, rfl, rfl⟩
+      · rw [hobjU x hxf hxs, treeOf_obj_overlay i s hlook htx]; exact ⟨_, rfl, rfl⟩
+    have hold : ∀ z, z ∉ [x, first, second, q] →
+        (treeOf i s (wU.withNode q (addAll i nq insU))).obj z =
+          (treeOf i s (w.withNode x (addAll i n ins))).obj z := by
+      intro z hz
+      simp only [List.mem_cons, List.not_mem_nil, or_false, not_or] at hz
+      exact hsame z hz.1 hz.2.1 hz.2.2.1 hz.2.2.2
+    have hlevB := ss_lev_of hold (by
+      intro z hz m hm
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+      have hxcase : ∀ m, (treeOf i s (w.withNode x (addAll i n ins))).obj x = some (.key m) →
+          ∃ m', (treeOf i s (wU.withNode q (addAll i nq insU))).obj x = some (.key m') ∧
+            m'.level = m.level := by
+        intro m hm
+        rw [hAx] at hm
+        cases hm
+        exact hBx'
+      rcases hz with e | e | e | e
+      · rw [e] at hm ⊢; exact hxcase m hm
+      · rcases hfirst with ef | ef
+        · rw [e, ef] at hm ⊢; exact hxcase m hm
+        · rw [e, (treeOf_fresh hb hI.books ef).1] at hm; cases hm
+      · rw [e, (treeOf_fresh hb hI.books hsecond).1] at hm; cases hm
+      · rw [e] at hm ⊢
+        rw [hAq] at hm
+        cases hm
+        exact ⟨_, hBq, rfl⟩)
+    have hBal : Balanced p (treeOf i s (wU.withNode q (addAll i nq insU))) := by
+      refine ss_bal_of hI.balanced hI.root hrootQ (fun z hz => ?_) hold hlevB
+        (fun z hz hzR m hm => ?_)
+      · rcases hRB z hz with h1 | h1 | h1
+        · exact Or.inl h1
+        · right; simp [h1]
+        · right; simp [h1]
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+        have hfr : ∀ m, (treeOf i s (wU.withNode q (addAll i nq insU))).obj first =
+            some (.key m) → 0 < m.level ∧ m.leaf = (p.heightOf m.level == 0) ∧
+            (m.leaf = false → ∀ c y, (c, y) ∈ live m.ks →
+              ∃ m', (treeOf i s (wU.withNode q (addAll i nq insU))).obj y = some (.key m') ∧
+                m'.level + 1 = m.level) := by
+          intro m hm
+          rw [hBf'] at hm
+          cases hm
+          exact ss_rule_node hI.balanced hxR hAx hlevB hfl rfl
+            (fun c y hy => Or.inl (hHL.1 c y hy))
+        rcases hz with e | e | e | e
+        · rw [e] at hzR hm
+          by_cases hxf : x = first
+          · rw [hxf] at hm; exact hfr m hm
+          · exact absurd hzR (hxB (Ne.symm hxf))
+        · rw [e] at hm; exact hfr m hm
+        · rw [e, hBs'] at hm
+          cases hm
+          exact ss_rule_node hI.balanced hxR hAx hlevB hsl rfl
+            (fun c y hy => Or.inl (hHL.2 c y hy))
+        · rw [e, hBq] at hm
+          cases hm
+          refine ss_rule_node hI.balanced hqR hAq hlevB rfl rfl (fun c y hy => ?_)
+          rw [addAll_live hnqwf] at hy
+          rcases mem_foldl_insertCv_src insU _ hy with h1 | h1
+          · exact Or.inl ⟨c, h1⟩
+          · rcases hmemU c y h1 with e' | e'
+            · rw [e']; exact Or.inr ⟨_, hBf', hlq⟩
+            · rw [e']; exact Or.inr ⟨_, hBs', hlq⟩
+    exact ⟨by rw [hrkq]; exact hrootQ, by rw [hrkq]; exact hSB, hOq.1.frame, hOq.1.top, hBal,
       hOq.1.toBooks (fun _ h => h)⟩
-    rw [hrkq, treeOf_withNode i s _ hkq]
-    have e1 : (treeOf i s wU).root = (treeOf i s (w.withNode x (addAll i n ins))).root := by
-      simp only [Tree.root, treeOf, hntU, htopU]
-      rfl
-    exact e1.trans hI.root
   · intro hfx
     unfold reachOf
     rw [hrkq]
@@ -1797,7 +1927,7 @@ theorem ss_parent_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tre
         else (treeOf i s w).obj z := by
     rw [e1]
     exact ssOk_newKey hb (hO.congr (w' := ssSp w) rfl rfl rfl rfl rfl rfl rfl rfl rfl) hgG hhH
-      hleafh (Or.inl rfl) (by simp) (by simp) (by
+      hleafh (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact hz
@@ -1827,11 +1957,8 @@ theorem ss_parent_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tre
     rw [e3, ← hwx]
     refine ssOk_withNode hO2 (by rw [hN2, hlk1 x (Nat.ne_of_lt hxlt)]; exact hlook)
       (by rw [hk2]; exact htx) hfl
-      (Or.inl hfst) htf (fun n0 hn0 => by rw [hsx] at hn0; cases hn0) ?_
+      (Or.inl hfst) htf (fun n0 hn0 => by rw [hsx] at hn0; cases hn0)
       (by rw [hf1]; simp) (fun z _ hz => hz)
-    intro hl c y hy
-    obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hfl]; exact hl) (hkf c y hy)
-    exact ⟨m', by rw [hold y hyx hylt]; exact hm1, by rw [hwx]; exact hm2⟩
   have hN3 : ∀ y, y ≠ x → w3.nodes.lookup y = w2.nodes.lookup y := by
     intro y hy
     rw [e3]
@@ -1846,13 +1973,8 @@ theorem ss_parent_inPlace_post {p : MParams} {i : Time} {base : NodeId} {s : Tre
       (by rw [hN3 _ (Nat.ne_of_gt hxlt), hN2]; exact hlk1n)
       (by rw [show w3.taken = w2.taken by rw [e3]; rfl, hk2]; exact ht0) hsl
       (Or.inr ⟨rfl, rs, hs1⟩) hts
-      (fun n0 hn0 => by rw [hs0] at hn0; cases hn0) ?_ (by rw [hs1]; simp)
+      (fun n0 hn0 => by rw [hs0] at hn0; cases hn0) (by rw [hs1]; simp)
       (fun z hz hz' => hz hz')
-    intro hl c y hy
-    obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hsl]; exact hl) (hks c y hy)
-    refine ⟨m', ?_, by rw [hwn, ← hlev]; exact hm2⟩
-    rw [hO3.2 y, ss_ite_neg hyx, hold y hyx hylt]
-    exact hm1
   have hO5 : SsOk p i base s tp (fun _ => False) w5 := by
     rw [e5]
     exact hO4.1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl
@@ -1993,7 +2115,7 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
         else (treeOf i s w).obj z := by
     rw [e1]
     exact ssOk_newKey hb (hO.congr (w' := ssSp w) rfl rfl rfl rfl rfl rfl rfl rfl rfl) hgG hhH
-      hleafh (Or.inl rfl) (by simp) (by simp) (by
+      hleafh (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact hz
@@ -2005,7 +2127,7 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       ∀ z, (treeOf i s w2).obj z = if z = w.next + 2 then
         some (.key ⟨p.keyLevel g hh, n.leaf, []⟩) else (treeOf i s w1).obj z := by
     rw [e2, ← hn1]
-    exact ssOk_newKey hb hO1.1 hgG hhH hleafh (Or.inl rfl) (by simp) (by simp) (by
+    exact ssOk_newKey hb hO1.1 hgG hhH hleafh (Or.inl rfl) (by simp) (by
         intro z hz
         rcases hz with ⟨hz, -⟩ | hz
         · exact Or.inl hz
@@ -2044,11 +2166,7 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       (by rw [hN4, e2, ss_lookup_newKey (w := w1) (by rw [hn1]; exact hne20.symm), e1]
           exact prim_lookup_append_self _ _ hn0)
       (by rw [hk4]; exact ht0) hfl (Or.inr ⟨rfl, rf, hf1⟩) htf
-      (fun n0 hn0' => by rw [hs0] at hn0'; cases hn0') ?_ (by rw [hf1]; simp) ?_
-    · intro hl c y hy
-      obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hfl]; exact hl)
-        (hkf c y hy)
-      exact ⟨m', by rw [hold4 y hylt]; exact hm1, by rw [hwl0, ← hlev]; exact hm2⟩
+      (fun n0 hn0' => by rw [hs0] at hn0'; cases hn0') (by rw [hf1]; simp) ?_
     · intro z hz hz'
       rcases hz' with hz' | hz'
       · exact hz'
@@ -2062,16 +2180,10 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       (by
         rw [e5]; show w4.taken.contains _ = false
         rw [hk4, show w.taken = w1.taken by rw [e1]; rfl]; exact ht2) hsl
-      (Or.inr ⟨rfl, rs, hs1⟩) hts (fun n0 hn0' => by rw [hs2] at hn0'; cases hn0') ?_
+      (Or.inr ⟨rfl, rs, hs1⟩) hts (fun n0 hn0' => by rw [hs2] at hn0'; cases hn0')
       (by rw [hs1]; simp) (fun _ hz h => hz h)
     · rw [e5, ss_lookup_withNode hne20, hN4, e2, ← hn1]
       exact prim_lookup_append_self _ _ (by rw [hn1]; exact hn2')
-    · intro hl c y hy
-      obtain ⟨m', hm1, hm2, hyx, hylt⟩ := ss_named hb h htx (by rw [← hsl]; exact hl)
-        (hks c y hy)
-      refine ⟨m', ?_, by rw [hwl5, ← hlev]; exact hm2⟩
-      rw [hO5.2, ss_ite_neg (Nat.ne_of_lt hylt), hold4 y hylt]
-      exact hm1
   have hpU : w6.path = w.path := by rw [e6, e5, e4, e3, e2, e1]; rfl
   have hn6 : w6.next = w.next + 4 := by rw [e6, e5, e4, e3, e2]; show w1.next + 2 = _; rw [hn1]
   have hlk6 : ∀ y, y ≠ x → y < w.next → w6.nodes.lookup y = w.nodes.lookup y := by
@@ -2125,7 +2237,7 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       exact absurd (Nat.lt_of_lt_of_le hxlt (Nat.le_trans (Nat.le_add_right _ 4) h1))
         (Nat.lt_irrefl _)
   have hO' : SsOk p i base s tp (fun _ => False) w' :=
-    ⟨hPI.frame, hPI.balanced, hPI.books.toE, hPI.top, fun y m hy ht he => by
+    ⟨hPI.frame, hPI.books.toE, hPI.top, fun y m hy ht he => by
       obtain ⟨t, r, hr⟩ := hPI.books.timeFirst y m hy ht
       rw [hr] at he
       cases he⟩
@@ -2135,9 +2247,6 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       rw [hr', hr0]; rfl))
     (fun t ht => h.books.times x n hlook t (ss_mem_toPrev ht))
     (fun n0 hn0' => Or.inl (ss_toPrev hb h htx hn0'))
-    (fun hl c y hy => by
-      obtain ⟨-, -, hb3⟩ := hO'.bal x _ (treeOf_obj_overlay i s hlkx htx')
-      exact hb3 hl c y (ss_key_ksOf (ss_mem_toPrev hy)))
     (by obtain ⟨rest', hr'⟩ := ss_toPrev_head hr0 ht0i; rw [hr']; simp) (fun _ _ h => h)
   have ha : ∀ z ∈ reachOf i s w', (treeOf i s (w'.withNode x (n.toPrev (i - 1)))).obj z =
       (treeOf i s w').obj z := by
@@ -2164,7 +2273,25 @@ theorem ss_parent_new_post {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
       some (w'.withNode x (n.toPrev (i - 1))).top.rootKey := by
     rw [treeOf_withNode i s _ htx']
     exact hPI.root
-  refine ⟨hlkx, ss_pinv hO''.1 hroot hSB, ⟨hCP.path.trans hpU, ?_, ?_, ?_⟩⟩
+  have hBal3 : Balanced p (treeOf i s (w'.withNode x (n.toPrev (i - 1)))) := by
+    have hrB : (treeOf i s (w'.withNode x (n.toPrev (i - 1)))).root = some w'.top.rootKey := by
+      rw [treeOf_withNode i s _ htx']; exact hPI.root
+    refine Balanced.of_reach (N := [x]) hPI.balanced (fun z hz => ?_) (fun z _ hz => ?_)
+      (levels_kept_withNode i s _ hlkx htx') (fun z hz hzR => ?_)
+    · left
+      rw [reach_of_root hrB] at hz
+      rw [reach_of_root hPI.root]
+      have hz' : z ∈ reachOf i s (w'.withNode x (n.toPrev (i - 1))) := hz
+      rw [hreach'] at hz'
+      exact hz'
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+      rw [hO''.2, ss_ite_neg hz]
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hz
+      rw [hz, reach_of_root hrB] at hzR
+      have hz' : x ∈ reachOf i s (w'.withNode x (n.toPrev (i - 1))) := hzR
+      rw [hreach'] at hz'
+      exact absurd hz' hxnr
+  refine ⟨hlkx, ss_pinv hO''.1 hroot hSB hBal3, ⟨hCP.path.trans hpU, ?_, ?_, ?_⟩⟩
   · intro y ny hy hnot
     have hyx : y ≠ x := fun e => hnot (d + 1) (some k1) le_rfl (by rw [e]; exact hon')
     have hylt : y < w.next := h.books.ids.1 y ny hy
@@ -2252,3 +2379,4 @@ theorem handleFull_space {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
     · exact ss_parent_new hp hb h (hup d rfl) hcase hin
 
 end Contract
+

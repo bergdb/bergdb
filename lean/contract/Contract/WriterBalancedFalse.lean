@@ -1,8 +1,15 @@
 /-
 The contract package (bergdb 030-16): 030-10's statement `WriterMeets`
-(Writer.lean) is false for a transaction with deletes. Its `BalancedAll`
-speaks of every key klong of a key node, live or dead, and the model's writer
-leaves a dead klong that names a node two levels down.
+(Writer.lean), in its first form, was false for a transaction with deletes.
+Its balance rule, then `BalancedAll`, spoke of every key node of the map and
+every key klong of an inner node, live or dead, as naming a key node one level
+below, and the model's writer leaves a dead klong that names a node two levels
+down. After this finding 030-10 restated the rule: `Balanced` (the
+coordinator's decision of 2026-11-17), Shape.lean's BalancedOK, about the key
+nodes reached from the space root and their live klongs. The theorem is kept
+for the old form (`BalancedAllOld`, `balancedAllOld_false`): the writer accepts
+the run, and the map of its last state does not meet the old form. The same
+last state meets `Balanced` (`balanced_last`).
 
 The run: node size 6, G = 0, H = 2 (merges and theta off, h = 3: `ParamsOK`);
 the start tree of WriterExample.lean (key node 1, a segment leaf with the time
@@ -78,7 +85,7 @@ theorem before0 : Before p 1 3 s0 tp0 where
   inv := by decide
   tree := by decide
   balanced := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨-, rfl⟩ := wbf_s0_key hx
     exact ⟨by decide, by decide, fun h => absurd h (by decide)⟩
   books := {
@@ -101,10 +108,20 @@ theorem before0 : Before p 1 3 s0 tp0 where
 
 theorem shows0 : Shows p v0 2 s0 tp0 where
   key := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨rfl, rfl⟩ := wbf_s0_key hx
     exact ⟨_, rfl, rfl, rfl, by decide, by decide, rfl⟩
   top := ⟨t0, zn0, top0, rfl, rfl, rfl, rfl, rfl, rfl⟩
+
+/-! ## The old form of the balance rule -/
+
+/-- The balance rule as 030-10 first stated it (`BalancedAll`), word for word:
+every key klong of an inner node, live or dead, names a key node one level
+below. -/
+def BalancedAllOld (p : MParams) (s : Tree) : Prop :=
+  ∀ x n, s.obj x = some (.key n) → 0 < n.level ∧ n.leaf = (p.heightOf n.level == 0) ∧
+    (n.leaf = false → ∀ c y, Klong.key c y ∈ n.ks → ∃ m, s.obj y = some (.key m) ∧
+      m.level + 1 = n.level)
 
 /-! ## The transaction -/
 
@@ -152,8 +169,9 @@ theorem wbf_runOps_run (c : SIS.Tree.Ctx) :
       · exact absurd h (by simp)
     · exact absurd h (by simp)
 
-/-- A key klong (c, y) of key node x of the tree T that BalancedOK refuses: x
-is an inner node and y is no key node one level below it. -/
+/-- A key klong (c, y) of key node x of the tree T that the old form of the
+balance rule refuses: x is an inner node and y is no key node one level below
+it. -/
 def wbf_unbal (T : Tree) (x : NodeId) (c : Nat) (y : NodeId) : Bool :=
   match T.obj x with
   | some (.key n) =>
@@ -164,7 +182,7 @@ def wbf_unbal (T : Tree) (x : NodeId) (c : Nat) (y : NodeId) : Bool :=
   | _ => false
 
 theorem wbf_unbal_not {T : Tree} {x : NodeId} {c : Nat} {y : NodeId}
-    (hb : BalancedAll p T) (hu : wbf_unbal T x c y = true) : False := by
+    (hb : BalancedAllOld p T) (hu : wbf_unbal T x c y = true) : False := by
   unfold wbf_unbal at hu
   split at hu
   · rename_i n hx
@@ -177,7 +195,7 @@ theorem wbf_unbal_not {T : Tree} {x : NodeId} {c : Nat} {y : NodeId}
   · exact absurd hu (by simp)
 
 /-- The run, evaluated: the writer accepts the operations, and its last state
-has a key klong that BalancedOK refuses: (200, 1) of node 39. -/
+has a key klong that the old form refuses: the dead klong (200, 1) of node 39. -/
 def wbf_check : Bool :=
   match wbf_runOps ctx w0 ops with
   | some w => wbf_unbal (treeOf 1 s0 w) 39 200 1
@@ -268,6 +286,7 @@ def wbf_copyAll (root : Name) : MetaM Unit := do
   let copyName (n : Name) : Name := `Contract.WriterBalancedFalse.wbf_copy ++ n
   let eqName (n : Name) : Name := `Contract.WriterBalancedFalse.wbf_copyEq ++ n
   for n in names do
+    if (← getEnv).contains (copyName n) then continue
     let .defnInfo d ← getConstInfo n | throwError "not a definition: {n}"
     unless d.levelParams.isEmpty do throwError "universe parameters: {n}"
     let value ← withLocalDeclD `sort msTy fun s => do
@@ -305,22 +324,90 @@ theorem wbf_check_true : wbf_check = true :=
     ((congrArg wbf_copy.Contract.WriterBalancedFalse.wbf_check wbf_ms_eq).trans
       (by decide +kernel))
 
+/-! ## The last state meets `Balanced`
+
+The same run, evaluated again: every node reached from the space root of the
+map of the last state meets `Balanced`'s rule (`wbf_balB`). -/
+
+/-- `Balanced`'s rule (Writer.lean) at node x of the tree T, computed: a key
+node has a level above 0, is a segment leaf exactly at height 0, and if inner,
+each live klong names a key node one level below. -/
+def wbf_balB (T : Tree) (x : NodeId) : Bool :=
+  match T.obj x with
+  | some (.key n) =>
+    decide (0 < n.level) && (n.leaf == (p.heightOf n.level == 0)) &&
+      (n.leaf || (live n.ks).all (fun cy => match T.obj cy.2 with
+          | some (.key m) => m.level + 1 == n.level
+          | _ => false))
+  | _ => true
+
+/-- The run, evaluated: the writer accepts the operations, and every node
+reached in the map of its last state meets the rule. -/
+def wbf_check2 : Bool :=
+  match wbf_runOps ctx w0 ops with
+  | some w => (reach (treeOf 1 s0 w)).all (wbf_balB (treeOf 1 s0 w))
+  | none => false
+
+run_meta wbf_copyAll ``wbf_check2
+
+theorem wbf_check2_true : wbf_check2 = true :=
+  wbf_copyEq.Contract.WriterBalancedFalse.wbf_check2.trans
+    ((congrArg wbf_copy.Contract.WriterBalancedFalse.wbf_check2 wbf_ms_eq).trans
+      (by decide +kernel))
+
+theorem wbf_balB_sound {T : Tree} {x : NodeId} {n : KNode} (h : wbf_balB T x = true)
+    (hx : T.obj x = some (.key n)) :
+    0 < n.level ∧ n.leaf = (p.heightOf n.level == 0) ∧
+      (n.leaf = false → ∀ c y, (c, y) ∈ live n.ks → ∃ m, T.obj y = some (.key m) ∧
+        m.level + 1 = n.level) := by
+  unfold wbf_balB at h
+  rw [hx] at h
+  simp only [Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq, Bool.or_eq_true,
+    List.all_eq_true] at h
+  obtain ⟨⟨h0, h1⟩, h2⟩ := h
+  refine ⟨h0, h1, fun hl c y hm => ?_⟩
+  rcases h2 with h2 | hlv
+  · rw [hl] at h2
+    cases h2
+  have hy := hlv (c, y) hm
+  simp only at hy
+  split at hy
+  · next m hm' => exact ⟨m, hm', by simpa using hy⟩
+  · cases hy
+
 /-! ## The statements -/
 
-/-- 030-10's statement is false for these operations. -/
-theorem writerMeets_false : ¬ WriterMeets p ops := by
-  intro h
+/-- The finding, for the old form of the balance rule: from the start tree with
+its top, which meet `Before` and are shown to the writer by its view, the
+writer accepts the operations (`OpsRun`), and the map of its last state does
+not meet `BalancedAllOld`. So 030-10's statement in its first form was false. -/
+theorem balancedAllOld_false :
+    Before p 1 3 s0 tp0 ∧ Shows p v0 2 s0 tp0 ∧ SIS.Tree.topOf p v0 2 = .ok t0 ∧
+      ∃ w, OpsRun ctx w0 ops w ∧ ¬ BalancedAllOld p (treeOf 1 s0 w) := by
+  refine ⟨before0, shows0, top0, ?_⟩
   have hc := wbf_check_true
   unfold wbf_check at hc
   split at hc
   · rename_i w hw
-    have hr := wbf_runOps_run ctx w0 ops w hw
-    exact wbf_unbal_not (h 1 3 s0 tp0 v0 2 t0 w before0 shows0 top0 hr).2.2.2.2.2.2.1 hc
+    exact ⟨w, wbf_runOps_run ctx w0 ops w hw, fun hb => wbf_unbal_not hb hc⟩
   · exact absurd hc (by simp)
 
-/-- So one of the operations does not keep `Mid`: `OpStep` is false for a
-delete. -/
-theorem opStep_false : ¬ ∀ op ∈ ops, OpStep p op :=
-  fun h => writerMeets_false (writerMeets_of_opStep p ops h)
+/-- The rule holds where the old form fails: the map of the last state of the
+run meets `Balanced` (Writer.lean), and not `BalancedAllOld`. -/
+theorem balanced_last :
+    ∃ w, OpsRun ctx w0 ops w ∧ ¬ BalancedAllOld p (treeOf 1 s0 w) ∧
+      Balanced p (treeOf 1 s0 w) := by
+  have hc := wbf_check_true
+  have hc2 := wbf_check2_true
+  unfold wbf_check at hc
+  unfold wbf_check2 at hc2
+  split at hc
+  · rename_i w hw
+    rw [hw] at hc2
+    simp only [List.all_eq_true] at hc2
+    refine ⟨w, wbf_runOps_run ctx w0 ops w hw, fun hb => wbf_unbal_not hb hc, ?_⟩
+    intro x hx n hn
+    exact wbf_balB_sound (hc2 x hx) hn
+  · exact absurd hc (by simp)
 
 end Contract.WriterBalancedFalse

@@ -81,6 +81,55 @@ theorem wdb_lv_set {n : MNode} {t' : Time} (ht : hasTransDel n t' = true) (t : T
     simp [SIS.Tree.KNode.lastBitmap, SIS.Tree.lastBitmapOf, h2, List.foldl_append]
   exact wdb_lvgd_of t u hks h2 (by simp) (by simp) hu rfl
 
+/-- A node set to one with no live klong but the old node's, on its level,
+reaches no node that was not reached before. -/
+theorem wdb_reach_sub {T : Tree} {x : NodeId} {m m' : KNode} (hx : T.obj x = some (.key m))
+    (hsub : ∀ a ∈ live m'.ks, a ∈ live m.ks) :
+    ∀ (f : Nat) (r z : NodeId), z ∈ reachAt (T.set x (.key m')) f r → z ∈ reachAt T f r
+  | 0, r, z, h => by
+    simp only [reachAt, List.mem_singleton] at h ⊢
+    exact h
+  | f + 1, r, z, h => by
+    rcases tc_mem_succ.mp h with rfl | ⟨n, hn, cy, hcy, hz⟩
+    · exact tc_self _ _ _
+    · have ih := wdb_reach_sub hx hsub f cy.2 z hz
+      by_cases e : r = x
+      · subst e
+        rw [prim_set_obj_self] at hn
+        cases hn
+        exact tc_kid hx (hsub cy hcy) ih
+      · rw [prim_set_obj_ne _ _ e] at hn
+        exact tc_kid hn hcy ih
+
+/-- `OldReach` of the state with node x of the overlay set to a node with no
+live klong but x's: it reaches no node that the state did not. -/
+theorem wdb_old_withNode {i : Time} {s : Tree} {w : MW} {x : NodeId} {n V : MNode}
+    (ho : OldReach i s w) (hlk : w.nodes.lookup x = some n) (ht : w.taken.contains x = false)
+    (hroot : (treeOf i s w).root = some w.top.rootKey)
+    (hsub : ∀ a ∈ live (ksOf V), a ∈ live (ksOf n)) : OldReach i s (w.withNode x V) := by
+  intro z hz hsz
+  have hAx := treeOf_obj_overlay i s hlk ht
+  have hTW := treeOf_withNode i s V ht
+  have hrootW : (treeOf i s (w.withNode x V)).root = some w.top.rootKey := hroot
+  rw [reach_of_root hrootW, hTW] at hz
+  have hf : ((treeOf i s w).set x (.key ⟨wLevel s w x, V.leaf, ksOf V⟩)).fuel w.top.rootKey =
+      (treeOf i s w).fuel w.top.rootKey := by
+    unfold Tree.fuel
+    by_cases e : w.top.rootKey = x
+    · rw [e, prim_set_obj_self, hAx]
+    · rw [prim_set_obj_ne _ _ e]
+  rw [hf] at hz
+  refine ho z ?_ hsz
+  rw [reach_of_root hroot]
+  exact wdb_reach_sub hAx hsub _ _ _ hz
+
+/-- The live klongs but cv's are among the live klongs. -/
+theorem wdb_drop_sub {V n : MNode} {cv : Nat} (h : live (ksOf V) = dropCv cv (live (ksOf n))) :
+    ∀ a ∈ live (ksOf V), a ∈ live (ksOf n) := by
+  intro a ha
+  rw [h] at ha
+  exact List.mem_of_mem_filter ha
+
 /-! ## 2. The bitmap -/
 
 /-- Before `handleFull` of the bitmap, from the state after its `note`: the
@@ -92,7 +141,7 @@ theorem wdb_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hVI : PInv p i base s tp (some x) C (w.withNode x V)) (hVl : V.leaf = n.leaf)
     (t : String) :
     CasPreD p i base s tp { w with trail := t :: w.trail } depth x n V (V.lastVersion i) C := by
@@ -118,12 +167,13 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w)) (ho : OldReach i s w)
     (hnoop : (delUnion n cv == n.lastBitmap) = false)
     (hV : DelVirt p i base s tp w x n cv C) :
     WP (SIS.Tree.appendDeleteKlong x depth cv) { p := p, i := i, view := v } w
       (fun r w' => r = false ∧ (w'.outside = [] →
-        PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next)) := by
+        PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧
+          OldReach i s w')) := by
   have ht : w.taken.contains x = false := by
     obtain ⟨c0, hc0⟩ := hon
     exact (hpath.lookup (Nat.le_refl _) hc0).choose_spec.2
@@ -137,25 +187,28 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     List.length_filter_le _ _
   -- the post of the four steps that change the node
   have hput : ∀ (V : MNode) (t : String), PInv p i base s tp (some x) C (w.withNode x V) →
-      V.size ≤ p.M → WP (do SIS.Tree.note t; SIS.Tree.putNode x V; pure false)
+      OldReach i s (w.withNode x V) → V.size ≤ p.M →
+      WP (do SIS.Tree.note t; SIS.Tree.putNode x V; pure false)
         { p := p, i := i, view := v } w
         (fun r w' => r = false ∧ (w'.outside = [] →
-          PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next)) := by
-    intro V t hVI hVs
+          PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧
+          OldReach i s w')) := by
+    intro V t hVI hVo hVs
     refine wput_ok (note_eq _ _ _) (wput_ok (putNode_eq _ _ _ _) ?_)
     rw [wp_pure]
     exact ⟨rfl, fun _ => ⟨wput_pinv_fit (hVI.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl)
-      (lookup_upsert_self _ _ _) hVs, rfl, Nat.le_refl _⟩⟩
+      (lookup_upsert_self _ _ _) hVs, rfl, Nat.le_refl _, wput_old_congr hVo rfl⟩⟩
   have hfull : ∀ (V : MNode) (t : String) (compact : Bool),
-      PInv p i base s tp (some x) C (w.withNode x V) → V.leaf = n.leaf →
-      ((compact = true ∧ (live (ksOf V)).length + 1 ≤ p.M) ∨
+      PInv p i base s tp (some x) C (w.withNode x V) → OldReach i s (w.withNode x V) →
+      V.leaf = n.leaf → ((compact = true ∧ (live (ksOf V)).length + 1 ≤ p.M) ∨
         (compact = false ∧ (V.lastVersion i).size ≤ p.splitAbove) ∨
         (compact = false ∧ p.splitAbove < (V.lastVersion i).size)) →
       WP (do SIS.Tree.note t; SIS.Tree.handleFull depth x (V.lastVersion i) compact; pure false)
         { p := p, i := i, view := v } w
         (fun r w' => r = false ∧ (w'.outside = [] →
-          PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next)) := by
-    intro V t compact hVI hVl hcase
+          PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧
+          OldReach i s w')) := by
+    intro V t compact hVI hVo hVl hcase
     refine wput_ok (note_eq _ _ _) ?_
     rw [wp_bind]
     have hpre := wdb_pre hlk hon hpath hin hbooks hwf hsize hroot hframe htop hbal hVI hVl t
@@ -163,12 +216,18 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
         CasPostD p i base s tp { w with trail := t :: w.trail } depth x V C u w' →
         WP (pure false) { p := p, i := i, view := v } w'
           (fun r w' => r = false ∧ (w'.outside = [] →
-            PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next)) := by
+            PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧
+          OldReach i s w')) := by
       intro u w' h
       rw [wp_pure]
       refine ⟨rfl, fun ho => ?_⟩
       obtain ⟨h1, h2⟩ := h ho
-      exact ⟨h1, h2.path, h2.next⟩
+      refine ⟨h1, h2.path, h2.next, fun z hz hsz => ?_⟩
+      rw [reach_of_root h1.root] at hz
+      rcases h2.reach z hz with h3 | h3
+      · exact hVo z (by rw [reach_of_root hVI.root]; exact h3) hsz
+      · rw [(hb.ids z (Nat.le_trans hbooks.ids.2.2.2.1 h3)).1] at hsz
+        cases hsz
     rcases hcase with hc | ⟨rfl, hc⟩ | ⟨rfl, hc⟩
     · exact (handleFullD_time hp hb hpre (Or.inl hc)).mono hpost
     · exact (handleFullD_time hp hb hpre (Or.inr ⟨rfl, hc⟩)).mono hpost
@@ -196,12 +255,13 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
         (by obtain ⟨rest', hr1⟩ := setDel_first htd' hr0 (delUnion n cv); rw [hr1, hr0]; rfl)
         (setDel_timesLe hT0 _)
         (fun n0 hs0 => Or.inr (setDel_ext (hext n0 hs0).1 htd' (hext n0 hs0).2 _))
+      have hVo := wdb_old_withNode ho hlk ht hroot (wdb_drop_sub (setDel_live hwf htd' cv))
       rw [wdb_lv_set htd' i (delUnion n cv)]
       refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
-      · refine hfull _ _ true hVI (setDel_leaf _ _) (Or.inl ⟨rfl, ?_⟩)
+      · refine hfull _ _ true hVI hVo (setDel_leaf _ _) (Or.inl ⟨rfl, ?_⟩)
         rw [setDel_live hwf htd' cv]
         omega
-      · exact hput _ _ hVI (by rw [setDel_size]; exact hsize)
+      · exact hput _ _ hVI hVo (by rw [setDel_size]; exact hsize)
     · rw [wdb_lv_add n i i (delUnion n cv)]
       have hsz := add_size n i (.del (delUnion n cv))
       have hVI := hV _ (add_leaf _ _ _) (addDel_live hwf cv) (addDel_wf hwf cv) hsz
@@ -212,15 +272,16 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
           rfl)
         (add_timesLe hT0 _ (fun t' e => by cases e))
         (fun n0 hs0 => add_ext (hext n0 hs0).1 (hext n0 hs0).2 _)
+      have hVo := wdb_old_withNode ho hlk ht hroot (wdb_drop_sub (addDel_live (t := i) hwf cv))
       refine wp_ite _ _ _ _ _ _ (fun hroom => ?_) (fun _ => ?_)
       · refine wp_ite _ _ _ _ _ _ (fun _ => ?_) (fun _ => ?_)
-        · refine hfull _ _ true hVI (add_leaf _ _ _) (Or.inl ⟨rfl, ?_⟩)
+        · refine hfull _ _ true hVI hVo (add_leaf _ _ _) (Or.inl ⟨rfl, ?_⟩)
           rw [addDel_live hwf cv]
           omega
-        · exact hput _ _ hVI (by omega)
+        · exact hput _ _ hVI hVo (by omega)
       · by_cases hh : ((n.add i (.del (delUnion n cv))).lastVersion i).size ≤ p.splitAbove
-        · exact hfull _ _ false hVI (add_leaf _ _ _) (Or.inr (Or.inl ⟨rfl, hh⟩))
-        · exact hfull _ _ false hVI (add_leaf _ _ _) (Or.inr (Or.inr ⟨rfl, by omega⟩))
+        · exact hfull _ _ false hVI hVo (add_leaf _ _ _) (Or.inr (Or.inl ⟨rfl, hh⟩))
+        · exact hfull _ _ false hVI hVo (add_leaf _ _ _) (Or.inr (Or.inr ⟨rfl, by omega⟩))
 
 theorem appendDeleteKlong_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} (hp : ParamsOK p) (hb : Books i base s tp) {depth : Nat} {x : NodeId}
@@ -230,13 +291,14 @@ theorem appendDeleteKlong_spec {p : MParams} {i : Time} {base : NodeId} {s : Tre
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w)) (ho : OldReach i s w)
     (hcv : ∃ y, (cv, y) ∈ live (ksOf n))
     (hV : DelVirt p i base s tp w x n cv C) :
     WP (SIS.Tree.appendDeleteKlong x depth cv) { p := p, i := i, view := v } w
       (fun r w' => r = false ∧ (w'.outside = [] →
-        PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next)) := by
-  refine wdb_spec hp hb hlk hon hpath hin hbooks hwf hsize hroot hframe htop hbal ?_ hV
+        PInv p i base s tp none C w' ∧ w'.path = w.path ∧ w.next ≤ w'.next ∧
+          OldReach i s w')) := by
+  refine wdb_spec hp hb hlk hon hpath hin hbooks hwf hsize hroot hframe htop hbal ho ?_ hV
   cases h : (delUnion n cv == n.lastBitmap)
   · rfl
   · exfalso

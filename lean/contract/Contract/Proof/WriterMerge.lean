@@ -550,13 +550,14 @@ theorem wmg_cv {n : MNode} {j c : Nat} {y : NodeId} (h : n.ks[j]? = some (.key c
   simp [SIS.Tree.KNode.cv?, h]
 
 /-- `sibling`: the node that klong j of q names, read; a node of the other kind than
-`inner` says. -/
+`inner` says. (The klong is live: BalancedOK speaks of live klongs.) -/
 theorem wmg_sibling {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
-    {u : MW} {C : List (Key × Nat)} (hI : PInv p i base s tp none C u) {q : NodeId}
+    {u : MW} {C : List (Key × Nat)} (hI : PInv p i base s tp none C u) (ho : OldReach i s u)
+    {q : NodeId}
     {pn : MNode} (hlq : u.nodes.lookup q = some pn) (htq : u.taken.contains q = false)
     (hq : q ∈ reachOf i s u) (hql : pn.leaf = false) {j c : Nat} {y : NodeId}
-    (hj : pn.ks[j]? = some (.key c y)) (inner : Bool) :
+    (hj : pn.ks[j]? = some (.key c y)) (hlv : (c, y) ∈ live (ksOf pn)) (inner : Bool) :
     WP (SIS.Tree.sibling q pn j inner) { p := p, i := i, view := v } u
       (fun r u' => r.1 = y ∧ u'.nodes.lookup y = some r.2 ∧ r.2.leaf = !inner ∧
         treeOf i s u' = treeOf i s u ∧ PInv p i base s tp none C u' ∧ u'.path = u.path ∧
@@ -564,12 +565,15 @@ theorem wmg_sibling {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : To
         (∀ z n, u.nodes.lookup z = some n → u'.nodes.lookup z = some n) ∧
         (∀ d, PathOk i s u d → PathOk i s u' d)) := by
   have hAq := treeOf_obj_overlay i s hlq htq
-  have hky : Klong.key c y ∈ ksOf pn := List.mem_of_getElem? (wmg_ks_model.mpr hj)
-  obtain ⟨m, hm, -⟩ := (hI.balanced q _ hAq).2.2 hql c y hky
+  have hqr : q ∈ reach (treeOf i s u) := by rw [reach_of_root hI.root]; exact hq
+  obtain ⟨m, hm, -⟩ := (hI.balanced q hqr _ hAq).2.2 hql c y hlv
+  have hyr : y ∈ reach (treeOf i s u) := by
+    rw [reach_of_root hI.root]
+    exact ts_reach_kid hI.sound.good hq hAq hlv
   unfold SIS.Tree.sibling
   refine wput_read ?_
   rw [wmg_ptr hj]
-  obtain ⟨n, w', hget, -, hleaf, hlk, hT, hI', hw', hP⟩ := getNode_spec hs hb hI hm
+  obtain ⟨n, w', hget, -, hleaf, hlk, hT, hI', hw', hP⟩ := getNode_spec hs hb hI hm hyr ho
   refine wput_ok hget ?_
   refine wp_ite _ _ _ _ _ _ (fun _ => wp_throw _ _ _ _) (fun hne => ?_)
   rw [wp_pure]
@@ -1062,9 +1066,30 @@ theorem wmg_unlink {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top
       by_cases hzo : z = o
       · rw [hzo, hBo]; rfl
       · rw [hsame z hzo]; exact hz
-    · refine balancedAll_withNode hI.balanced hlo hto (toPrev_leaf _ _) (fun hl c y hk => ?_)
-      obtain ⟨-, -, h3⟩ := hI.balanced o _ hAo
-      exact h3 hl c y (ts_key_mem_ksOf (ts_mem_toPrev hk))
+    · -- BalancedOK, by the nodes reached: o is not reached, and they are as before
+      have hrB : (treeOf i s (u.withNode o (on.toPrev (i - 1)))).root = some u.top.rootKey :=
+        hI.root
+      refine Balanced.of_reach (N := [o]) hI.balanced (fun z hz => ?_) (fun z _ hz => ?_)
+        (fun y m hm => ?_) (fun z hz hzB m hm => ?_)
+      · left
+        rw [reach_of_root hrB] at hz
+        rw [reach_of_root hI.root]
+        have h1 : z ∈ reachOf i s (u.withNode o (on.toPrev (i - 1))) := hz
+        rw [hR] at h1
+        exact h1
+      · exact hsame z (by simpa using hz)
+      · by_cases hyo : y = o
+        · rw [hyo, hAo] at hm
+          cases hm
+          exact ⟨⟨wLevel s u o, on.leaf, n0.ks⟩, by rw [hyo]; exact hBo, rfl⟩
+        · exact ⟨m, by rw [hsame y hyo]; exact hm, rfl⟩
+      · simp only [List.mem_singleton] at hz
+        exfalso
+        apply hoR
+        rw [reach_of_root hrB] at hzB
+        have h1 : z ∈ reachOf i s (u.withNode o (on.toPrev (i - 1))) := hzB
+        rw [hR, hz] at h1
+        exact h1
     · rw [MW.withNode, lookup_upsert_ne _ _ hz]
       exact h
   · next hlt =>
@@ -1156,13 +1181,19 @@ theorem wmg_drop {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
       rw [hCne z hzo] at hz
       exact f2 z m hz hsz
     · exact f3
-  · intro z nz hz
-    have hzo : z ≠ o := by intro e; rw [e, hCo] at hz; cases hz
+  · -- BalancedOK, by the nodes reached: as before, and o is not reached
+    intro z hzr nz hz
+    have hrN : (treeOf i s { u with taken := o :: u.taken }).root = some u.top.rootKey := hI.root
+    rw [reach_of_root hrN] at hzr
+    have hzR : z ∈ reachOf i s u := by
+      rw [← hR]
+      exact hzr
+    have hzo : z ≠ o := fun e => hoR (e ▸ hzR)
     rw [hCne z hzo] at hz
-    obtain ⟨h1, h2, h3⟩ := hI.balanced z nz hz
+    obtain ⟨h1, h2, h3⟩ := hI.balanced z (by rw [reach_of_root hI.root]; exact hzR) nz hz
     refine ⟨h1, h2, fun hl c y hk => ?_⟩
     obtain ⟨m, hm, hlev⟩ := h3 hl c y hk
-    have hyo : y ≠ o := fun e => hnone z nz c hz (e ▸ hk)
+    have hyo : y ≠ o := fun e => hnone z nz c hz (e ▸ prim_live_mem_key hk)
     exact ⟨m, by rw [hCne y hyo]; exact hm, hlev⟩
   · intro m hm mn hBm hsm w0 nw c hBw hk hwm hwX
     rw [hR] at hm
@@ -1182,7 +1213,7 @@ theorem wmg_drop {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top} 
 theorem wmg_swap_state {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hsn : SNamed s) {u : MW} {C : List (Key × Nat)} (hI : PInv p i base s tp none C u)
     {X : List NodeId} (hX : WcrLinkX X i s u) {o q m1 : NodeId} {nq : MNode}
-    (hlq : u.nodes.lookup q = some nq) (htq : u.taken.contains q = false) (hql : nq.leaf = false)
+    (hlq : u.nodes.lookup q = some nq) (htq : u.taken.contains q = false) (_hql : nq.leaf = false)
     (hso : s.obj o = none) (hm1o : m1 ≠ o)
     (hnamers : ∀ u0 nu c, (treeOf i s u).obj u0 = some (.key nu) → Klong.key c o ∈ nu.ks → u0 = q)
     (hlive : ∀ c, (c, o) ∉ live (ksOf nq))
@@ -1251,9 +1282,6 @@ theorem wmg_swap_state {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       rw [hks]; exact wmg_swap_shape _ _ _
     have hwf' : klongsWf (ksOf nq') = true := by rw [wmg_shape_wf hsh]; exact hwf
     have hlv : live (ksOf nq') = live (ksOf nq) := wmg_swap_live hwf hlive
-    -- BalancedOK of q's klong to o: o one level below q
-    obtain ⟨-, -, hbq⟩ := hI.balanced q _ hAq
-    obtain ⟨no, hno, hnolev⟩ := hbq hql c0 o hc0
     have hR : reachOf i s (u.withNode q nq') = reachOf i s u := by
       unfold reachOf
       exact ts_reach_live hAq hBq (by simpa using hlv) rfl hsame _
@@ -1293,22 +1321,31 @@ theorem wmg_swap_state {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       · subst hmq; exact ⟨_, hAq⟩
       · rw [hsame m hmq] at hm; exact ⟨mn, hm⟩
     refine ⟨⟨hI.root, ?_, ?_, hI.top, ?_, ?_⟩, ?_, hsame, hR, hnone, hlv, hwfimp⟩
-    · refine Sound.inPlace (wmg_sound_some hI.sound q) hAq
-        ⟨_, hBq, rfl, rfl, by simpa using hlv, ?_⟩ hsame
-      simp only [nodeOk, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
-      refine ⟨⟨by rw [ksOf_length, hsz']; exact hsz, hwf'⟩, fun k hk => ?_⟩
-      cases k with
-      | key c y =>
-        show ((treeOf i s (u.withNode q nq')).obj y).isSome = true
-        by_cases hyq : y = q
-        · rw [hyq, hBq]; rfl
-        · rw [hsame y hyq]
-          rcases hkm c y hk with ⟨h1, -⟩ | ⟨rfl, -⟩
-          · obtain ⟨m', hm', -⟩ := hbq hql c y h1
-            rw [hm']; rfl
-          · rw [hm1]; rfl
-      | time _ => rfl
-      | del _ => rfl
+    · by_cases hqR : q ∈ reachOf i s u
+      · -- q reached: its klongs name nodes (`Sound`)
+        have hok := hI.sound.nodes q hqR _ hAq
+        simp only [reduceCtorEq, ite_false, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
+          List.all_eq_true] at hok
+        refine Sound.inPlace (wmg_sound_some hI.sound q) hAq
+          ⟨_, hBq, rfl, rfl, by simpa using hlv, ?_⟩ hsame
+        simp only [nodeOk, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
+        refine ⟨⟨by rw [ksOf_length, hsz']; exact hsz, hwf'⟩, fun k hk => ?_⟩
+        cases k with
+        | key c y =>
+          show ((treeOf i s (u.withNode q nq')).obj y).isSome = true
+          by_cases hyq : y = q
+          · rw [hyq, hBq]; rfl
+          · rw [hsame y hyq]
+            rcases hkm c y hk with ⟨h1, -⟩ | ⟨rfl, -⟩
+            · exact hok.2 _ h1
+            · rw [hm1]; rfl
+        | time _ => rfl
+        | del _ => rfl
+      · -- q not reached: the nodes reached are as before
+        refine hI.sound.agree (fun z hz => hsame z (fun e => hqR (e ▸ hz))) (fun z hz => ?_)
+        by_cases hzq : z = q
+        · rw [hzq, hBq]; rfl
+        · rw [hsame z hzq]; exact hz
     · refine frame_withNode hI.frame hlq htq rfl (fun n0 hs0 => ?_)
       obtain ⟨-, -, he⟩ := frame_overlay_ext hI.frame hlq htq hs0
       have hn0 : ∀ c, Klong.key c o ∉ n0.ks := by
@@ -1322,10 +1359,38 @@ theorem wmg_swap_state {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
       · refine Or.inr ⟨more.map (wmgSwapK o m1), ?_⟩
         rw [he, List.map_append, hmapid _ hn0]
         rfl
-    · refine balancedAll_withNode hI.balanced hlq htq rfl (fun _ c y hk => ?_)
-      rcases hkm c y (ts_key_mem_ksOf hk) with ⟨h1, -⟩ | ⟨rfl, -⟩
-      · exact hbq hql c y h1
-      · exact ⟨nm1, hm1, by rw [hm1lev no hno]; exact hnolev⟩
+    · -- BalancedOK, by the nodes reached: q's live klongs are as before
+      have hrB : (treeOf i s (u.withNode q nq')).root = some u.top.rootKey := hI.root
+      have hlevq : ∀ y m, (treeOf i s u).obj y = some (.key m) →
+          ∃ m', (treeOf i s (u.withNode q nq')).obj y = some (.key m') ∧ m'.level = m.level := by
+        intro y m hm
+        by_cases hyq : y = q
+        · rw [hyq, hAq] at hm
+          cases hm
+          exact ⟨⟨wLevel s u q, nq.leaf, ksOf nq'⟩, by rw [hyq]; exact hBq, rfl⟩
+        · exact ⟨m, by rw [hsame y hyq]; exact hm, rfl⟩
+      refine Balanced.of_reach (N := [q]) hI.balanced (fun z hz => ?_) (fun z _ hz => ?_)
+        hlevq (fun z hz hzB m hm => ?_)
+      · left
+        rw [reach_of_root hrB] at hz
+        rw [reach_of_root hI.root]
+        have h1 : z ∈ reachOf i s (u.withNode q nq') := hz
+        rw [hR] at h1
+        exact h1
+      · exact hsame z (by simpa using hz)
+      · simp only [List.mem_singleton] at hz
+        rw [hz] at hzB hm
+        rw [hBq] at hm
+        cases hm
+        rw [reach_of_root hrB] at hzB
+        have h1 : q ∈ reachOf i s (u.withNode q nq') := hzB
+        rw [hR] at h1
+        obtain ⟨b1, b2, b3⟩ := hI.balanced q (by rw [reach_of_root hI.root]; exact h1) _ hAq
+        refine ⟨b1, b2, fun hl c y hk => ?_⟩
+        have hk' : (c, y) ∈ live (ksOf nq) := by rw [← hlv]; exact hk
+        obtain ⟨m', hm', hl'⟩ := b3 hl c y hk'
+        obtain ⟨m'', hm'', he⟩ := hlevq y m' hm'
+        exact ⟨m'', hm'', by rw [he]; exact hl'⟩
     · refine putBooks_withNode hI.books hlq htq rfl ?_ (fun t ht => ?_)
       · show (nq.ks.map (wmgSwap o m1)).head? = nq.ks.head?
         rw [hr0]
@@ -2199,7 +2264,8 @@ def WmgRestOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v 
     Prop :=
   ∀ (w : MW) (C : List (Key × Nat)) (d : Nat) (q x : NodeId) (c0 : Option Nat) (cx : Nat)
     (pn xn : MNode) (l r : NodeId) (ln rn : MNode) (il ir cL cR : Nat) (isLeft : Bool),
-    PInv p i base s tp none C w → WcrLink i s w → WmgFresh i s w → d ≠ 0 →
+    PInv p i base s tp none C w → OldReach i s w → WcrLink i s w → WmgFresh i s w →
+    d ≠ 0 →
     PathOk i s w d → PathInner w d → w.path[d - 1]? = some (c0, q) →
     w.path[d]? = some (some cx, x) → w.nodes.lookup q = some pn →
     w.nodes.lookup x = some xn → w.nodes.lookup l = some ln → w.nodes.lookup r = some rn →
@@ -2209,26 +2275,29 @@ def WmgRestOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v 
     WP (wmg_rest { p := p, i := i, view := v } q x pn xn d isLeft l ln il r rn ir)
       { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w')
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w')
 
 theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     (hrest : WmgRestOk p i base s tp v) {w : MW} {C : List (Key × Nat)}
-    (hI : PInv p i base s tp none C w) (hK : WcrLink i s w) (hF : WmgFresh i s w) {d : Nat}
-    (hd : d ≠ 0)
+    (hI : PInv p i base s tp none C w) (ho : OldReach i s w) (hK : WcrLink i s w)
+    (hF : WmgFresh i s w) {d : Nat} (hd : d ≠ 0)
     (hpath : PathOk i s w d) (hin : PathInner w d) {q x : NodeId} {c0 : Option Nat} {cx : Nat}
     (hq : w.path[d - 1]? = some (c0, q)) (hx : w.path[d]? = some (some cx, x))
     {pn xn : MNode} (hlq : w.nodes.lookup q = some pn) (hlx : w.nodes.lookup x = some xn) :
     WP (wmg_pick { p := p, i := i, view := v } q x pn xn d cx) { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
   have htq : w.taken.contains q = false := (hpath.lookup (by omega) hq).choose_spec.2
   have htx : w.taken.contains x = false := (hpath.lookup (Nat.le_refl _) hx).choose_spec.2
   have hAq := treeOf_obj_overlay i s hlq htq
   have hql : pn.leaf = false := hin (d - 1) c0 q pn (by omega) hq hlq
   have hqR : q ∈ reachOf i s w :=
-    ts_path_reach (A := treeOf i s w) hI.sound.good hI.balanced hpath hin hx (fun _ _ => rfl)
-      (d - 1) (by omega) c0 q hq
+    ts_path_reach (A := treeOf i s w) (x := w.next) hI.sound.good hpath
+      (fun d' c hd' he => by
+        obtain ⟨m, hm, -⟩ := hpath.lookup (Nat.le_of_lt hd') he
+        exact Nat.lt_irrefl _ (hI.books.ids.1 _ m hm))
+      (fun _ _ => rfl) (d - 1) (by omega) c0 q hq
   have hok := hI.sound.nodes q hqR _ hAq
   simp only [reduceCtorEq, ite_false, nodeOk, Bool.and_eq_true, decide_eq_true_eq] at hok
   have hwf : klongsWf (ksOf pn) = true := hok.1.2
@@ -2276,7 +2345,7 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
             __x.2.2.2.1 __x.2.2.2.2.1 __x.2.2.2.2.2)
           { p := p, i := i, view := v } u
           (fun _ w' => w'.outside = [] →
-            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
       intro u ia ca hIu hTu htopu hpu hPu hlku hnu ⟨h1, ⟨y, hy⟩, h2, h3, h4⟩
       have htqu : u.taken.contains q = false := by
         rw [← htq]
@@ -2285,13 +2354,22 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
         unfold reachOf
         rw [hTu, htopu]
         exact hqR
+      have hou : OldReach i s u := by
+        unfold OldReach at ho ⊢
+        rw [hTu]
+        exact ho
       rw [wp_bind]
-      refine (wmg_sibling hs hb hIu (hlku q pn hlq) htqu hqRu hql hy _).mono ?_
+      refine (wmg_sibling hs hb hIu hou (hlku q pn hlq) htqu hqRu hql hy
+        (linkIndex_some hwf (wmp_linkIndex (wmg_liveAt_of hwf hy h2 h4))).2.1 _).mono ?_
       rintro ⟨rs, rsn⟩ u1 ⟨hrs, hl1, hleaf1, hT1, hI1, hp1, htop1, -, hn1, hext1, hP1⟩
       simp only at hrs hl1 hleaf1
       subst hrs
       refine wput_ok rfl ?_
-      refine hrest u1 C d q x c0 cx pn xn x rs xn rsn ix ia cx ca false hI1
+      have hou1 : OldReach i s u1 := by
+        unfold OldReach at hou ⊢
+        rw [hT1]
+        exact hou
+      refine hrest u1 C d q x c0 cx pn xn x rs xn rsn ix ia cx ca false hI1 hou1
         (hK' u1 (hT1.trans hTu) (htop1.trans htopu)) (hF' u1 (hT1.trans hTu) (hn1.trans hnu))
         hd (hP1 d (hPu d hpath)) (wmg_pathInner_ext hpath hin (hp1.trans hpu)
           (fun z n h => hext1 z n (hlku z n h)))
@@ -2320,15 +2398,21 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       obtain ⟨g1, ⟨yb, hyb⟩, g2, g3, g4⟩ := hidx.ib ib cb rfl
       dsimp only
       rw [wp_bind]
-      refine (wmg_sibling hs hb hI hlq htq hqR hql hyb _).mono ?_
+      refine (wmg_sibling hs hb hI ho hlq htq hqR hql hyb
+        (linkIndex_some hwf (wmp_linkIndex (wmg_liveAt_of hwf hyb g2 g4))).2.1 _).mono ?_
       rintro ⟨ls, lsn⟩ u1 ⟨hls, hl1, hleaf1, hT1, hI1, hp1, htop1, -, hn1, hext1, hP1⟩
       simp only at hls hl1 hleaf1
       subst hls
+      have hou1 : OldReach i s u1 := by
+        unfold OldReach at ho ⊢
+        rw [hT1]
+        exact ho
       have hleft : WP (wmg_rest { p := p, i := i, view := v } q x pn xn d true ls lsn ib x xn ix)
           { p := p, i := i, view := v } u1
           (fun _ w' => w'.outside = [] →
-            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
-        refine hrest u1 C d q x c0 cx pn xn ls x lsn xn ib ix cb cx true hI1 (hK' u1 hT1 htop1)
+            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
+        refine hrest u1 C d q x c0 cx pn xn ls x lsn xn ib ix cb cx true hI1 hou1
+          (hK' u1 hT1 htop1)
           (hF' u1 hT1 hn1) hd (hP1 d hpath)
           (wmg_pathInner_ext hpath hin hp1 hext1)
           (by rw [hp1]; exact hq) (by rw [hp1]; exact hx) (hext1 q pn hlq) (hext1 x xn hlx)
@@ -2358,12 +2442,13 @@ theorem merge_spec_of_rest {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
     (hrest : WmgRestOk p i base s tp v)
     {d : Nat} {x : NodeId} {w : MW} {C : List (Key × Nat)}
-    (hI : PInv p i base s tp none C w) (hK : WcrLink i s w) (hF : WmgFresh i s w)
+    (hI : PInv p i base s tp none C w) (ho : OldReach i s w) (hK : WcrLink i s w)
+    (hF : WmgFresh i s w)
     (hpath : PathOk i s w d) (hin : PathInner w d) (hon : ∃ c0, w.path[d]? = some (c0, x))
     (hd : d ≠ 0) :
     WP (SIS.Tree.merge x d) { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
   obtain ⟨c0', q, cc, y, nq, e1, e2, -, -⟩ := hpath.links (d - 1) (by omega)
   rw [show d - 1 + 1 = d by omega] at e2
   obtain ⟨c0, hx⟩ := hon
@@ -2377,6 +2462,6 @@ theorem merge_spec_of_rest {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
   refine wput_ok (getNode_hit _ hlq) ?_
   refine wput_ok (getNode_hit _ hlx) ?_
   refine wput_ok (klongAt_eq _ hx) ?_
-  exact wmg_pick_spec hs hb hrest hI hK hF hd hpath hin e1 hx hlq hlx
+  exact wmg_pick_spec hs hb hrest hI ho hK hF hd hpath hin e1 hx hlq hlx
 
 end Contract
