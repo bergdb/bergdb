@@ -678,6 +678,22 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   general case), a space split below a full inner parent (0), and p made and split in
   space (0). `writerWP_afterDelete_liveTR8`: premises `MergeTailFullRest8OK`,
   `MergeParamsOK` and R3.
+  02:40 (prover l4f, `LiveMergeTimeChain.lean`, about 460 lines, about 250 of them l4b's
+  time-split cascade again): `MergeTailFullRest8OK` reduced to `MergeTailFullRest9OK`, its
+  case `MergeFullTimeChain` proved: p, not made, split in time below q (d ≥ 2), whatever q's
+  room (the cascade), with no hole after: a merge into two nodes, or into one whose last
+  version holds m live klongs or more. The split is the no-hole tail's premise; l4b's
+  `writerWP_handleFull_timeChain_live` on the merged tree is its instance
+  (`writerWP_handleFull_timeChainV_live`, `splitStepOKX_timeChain`). On the runs (l4c's
+  classifier with the hole after a merge into one node,
+  `/Users/f/fl/bench/2026-11-16/night/l4f/runs/`), of the 196 time-split cascades 79 are
+  into two nodes and 48 into one with the copy filled, all now proved; the proved cases
+  cover 1,065 of the 1,134 full-parent merges (94%). Left in `MergeTailFullRest9OK`: the
+  time split's cascade into one node with the copy thin (69 on the runs, all a segment root
+  below a full segment leaf, the copy with one live klong: R4's general case, the hole
+  below the chain), a space split below a full inner parent (0), and p made and split in
+  space (0). `writerWP_afterDelete_liveTR9`: premises `MergeTailFullRest9OK`,
+  `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
