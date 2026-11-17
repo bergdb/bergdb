@@ -11,8 +11,9 @@ eviction with handles and reclaim's cut by the old proofs) and 030-09 (the
 trace's completeness, `historyOk_meets`, Java's `TransCheck`). Written by a
 review agent of coord-1117 ("I" below), on the branch `030-11-review` from
 `main` 903a228a, from the coordinator's brief of six questions. No existing
-statement is changed. Added: one example, one lemma with a corollary, and a
-fix of the bridge checker (sections 3, 4 and 5).
+statement is changed. Added: one example, one lemma with a corollary, a
+fix of the bridge checker (sections 3, 4 and 5), and the words of findings
+1, 2 and 5 in 030-04, 030-07 and two Lean headers.
 
 
 # 1. The result
@@ -39,15 +40,17 @@ The findings, most serious first:
    the same changes, startup gives back the structure and D so that the
    same records follow. That Java's writer makes the same change after a
    restart or with objects evicted is 030-04, 3.5, item 9 (tested), not a
-   part of T2. 030-07, section 1 does not say so. Fix: one sentence there
-   and in the headers of `BridgeTheorems.lean` and `BridgeFull.lean`.
+   part of T2. 030-07, section 1 did not say so. Fixed in words: a
+   sentence there and in the headers of `BridgeTheorems.lean` and
+   `BridgeFull.lean`.
 2. **Should fix: 030-04, 3.5 lacks three tested assumptions that the
    bridge's claims rest on** (section 2.2): (10) Java's records and D are
    the model's for the trace's changes (`tracecheck`); (11) a cut of
    reclaim is safe (`CutOK`); (12) a trace's lines are Java's change
-   (`LinesOf`, 030-08). A fourth, `PolicyCutOK`, is now proved for every
-   policy that reads no stream, as `tracecheck` takes Java's
-   (`policyCutOK_of_blind`, `full_cut_blind`, new), so it leaves the list.
+   (`LinesOf`, 030-08). Added to 3.5 as items 10 to 12. A fourth,
+   `PolicyCutOK`, is now proved for every policy that reads no stream, as
+   `tracecheck` takes Java's (`policyCutOK_of_blind`, `full_cut_blind`,
+   new), so it is not on the list.
 3. **Should, next: reads after a crash, a restart or under eviction are not
    stated end to end** (section 4.2). The reads' theorems speak of the
    contract's tree (klongs), the bridge's of the model's structure
@@ -67,7 +70,8 @@ The findings, most serious first:
    TB reads the top nodes' and the root's levels from the model's
    structure (`levelIn (h.P j)`, `BridgeTop.lean`:70-71), so from the NEW
    lines; `BridgeFull.lean`:6 says "No clause is in the abstract model's
-   words". Harmless (a level is a witness; 030-07's State, item 3).
+   words". Harmless (a level is a witness; 030-07's State, item 3); the
+   header now says so.
 6. **Note: two checkers, two halves.** `bridgecheck`'s verdict is one
    computed value proved to give `MeetsFull`, hence `MeetsTop`;
    `contractcheck`'s is its loop, by reading (030-08, section 5, item 3),
@@ -436,7 +440,12 @@ correctness).
    Reason: the common rules (new files; shared files in small hunks).
 4. **No statement is changed.** The findings are wording, a missing list
    entry, and a missing theorem; none showed a statement false.
-5. **m-d8 and m-d30 of the medium set are not run through the bridge
+5. **The words of findings 1, 2 and 5 are fixed here:** a bullet in 030-07,
+   section 1, items 10 to 12 in 030-04, 3.5 (030-09 added items 6 to 9 the
+   same way), and the headers of `BridgeTheorems.lean` and
+   `BridgeFull.lean` (comments only). Reason: each is a few lines, plainly
+   right, and a claim read without them says more than the proofs.
+6. **m-d8 and m-d30 of the medium set are not run through the bridge
    checker.** Reason: 0.5 to 1.2 GB a trace, read as one string by the old
    reader, on a machine at a load of 20 to 30; the 9 smaller traces and
    the large set cover the same code paths of the clauses.
@@ -469,12 +478,16 @@ correctness).
 The review is written; the Log has the last gated commit. Open, for whoever
 takes them:
 
-1. Findings 1 and 2: the sentences in 030-07, section 1 and the headers;
-   items 10 to 12 in 030-04, 3.5 (030-04 is the coordinator's to edit).
-2. Finding 3: the statement of section 4.2, a new file of the bridge.
-3. Finding 7: sets instead of lists in `adoptOk`, `copyOk` and `touchOk`'s
+1. Finding 3: the statement of section 4.2, a new file of the bridge.
+2. Finding 7: sets instead of lists in `adoptOk`, `copyOk` and `touchOk`'s
    checks (the statements may stay; a computed form proved equal), before
    the bridge checker joins `level2.sh`.
+3. Finding 8: 030-06's finding 8, the gate pinning the package's statement
+   files.
+
+Findings 1, 2 and 5 are fixed in words (030-07, section 1; 030-04, 3.5,
+items 10 to 12; the headers of `BridgeTheorems.lean` and
+`BridgeFull.lean`); finding 4 in the checker.
 
 To check: `cd lean/contract && lake build`; `lean/contract/gate.sh
 903a228a`; the traces as 030-07's State says; `bridge-check.sh small drain

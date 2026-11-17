@@ -50,6 +50,13 @@ What is proved: these theorems, with no premise but `MeetsBridge`. What is
 not: that Java's writer meets `MeetsBridge` (tested per transaction on the
 traces, BridgeCheck.lean; the clauses in the model's words by `tracecheck`),
 and that Java's records are the model's (tested by `tracecheck`).
+
+The change is given (bergdb 030-11, finding 1): the instance takes each
+transaction's change from the history (`bspec`'s `exec` reads nothing, so
+`bridge_execRootOK` is `rfl`). The restart, lazy and handle theorems prove
+that startup and eviction keep the structure and D such that the same
+changes write the same records; that Java's writer makes the same change
+after a restart or with eviction is 030-04, 3.5, item 9, tested.
 -/
 import SIS.Theorems
 import SIS.PhysTheorems

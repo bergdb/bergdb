@@ -70,6 +70,12 @@ Kept current; the Log has the times.
 - **Not proved, and stays tested:** that Java's writer meets the clauses
   (the checks above); that Java's records are the model's (`tracecheck`, on
   the same instance of the model, section 2, decision 2); the cut's safety.
+- **Given the change** (030-11, finding 1). The model's instance takes each
+  transaction's change from the history; it does not compute it from what
+  the transaction reads. So T2, lazy reading and the handles prove that
+  startup and eviction keep the structure and D such that the same changes
+  write the same records. That Java's writer makes the same change after a
+  restart or with objects evicted is 030-04, 3.5, item 9: tested.
 - **Open:** bounded startup's premises (section 6); the State note.
 
 Proved means a Lean theorem with no premise but the ones named. A history
