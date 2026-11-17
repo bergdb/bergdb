@@ -88,3 +88,4 @@ import Contract.Proof.WriterDelKeep
 import Contract.WriterBalancedFalse
 import Contract.WriterExample2
 import Contract.Proof.WriterExec
+import Contract.Proof.WriterPutNamed
