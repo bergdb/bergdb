@@ -526,3 +526,8 @@ uses the binary.
 transactions; l-big62 1,032 s).
 17:50 l-few and l-5000: BRIDGE OK; the large set done, 17,000
 transactions.
+GATED 882b064b: the review done: sound, with fixes; findings 1, 2 and 5
+fixed in words, 4 in the checker; `BridgeExample4` (every statement at
+once), `policyCutOK_of_blind`, `full_cut_blind`; the bridge's clauses on
+the medium and large sets (15 traces, 20,360 transactions); `gate.sh
+903a228a` GATE OK (72 theorems).
