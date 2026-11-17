@@ -101,3 +101,4 @@ pulled main (bridgecheck, K-LEVEL, contractconf.sh); built main's
 checkers in a worktree; rechecking the reclaim, medium and large traces
 without LIVE lines with both.
 GATED a33be2f4: the reclaim set (live=1) 15 of 15 and the large set (live=1) 6 of 6 CONTRACT OK, 25,735 transactions; gate base 6db019b3.
+GATED b22c6cce: the medium set not live 27 of 27, live 24 of 27 (m-d62 running), large 10 seeds not live 60 of 60; gate base d7966251.
