@@ -11,7 +11,9 @@
 # test, bridge-faults.sh, if the small and the reclaim set are there: faults made
 # in a trace must fail it. About 2 minutes for the three sets. The clauses in
 # the model's words too: .lake/build/bin/bridgecheck --model TRACE... (about 8
-# minutes for the three sets).
+# minutes for the three sets). A trace passes the contract package's checks only if
+# it passes this checker and the contract checker: lean/contract/check.sh runs both
+# (bergdb 030-15); this script is the bridge checker alone.
 cd "$(dirname "$0")"
 CHECK=.lake/build/bin/bridgecheck
 [ -x "$CHECK" ] || { echo "BRIDGE FAILED: no checker; run lake build in lean/contract/"; exit 1; }

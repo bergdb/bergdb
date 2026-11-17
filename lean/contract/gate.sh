@@ -9,6 +9,13 @@
 #      must print BEFORE COMMIT OK, which this script does not run) and the trace
 #      format, items/027-algorithms/02-trace-format.md (bergdb 030-09: the exporter
 #      and its format change with the checker).
+#   5. (bergdb 030-15) the statements are pinned: every file of the trusted closure
+#      of the main theorems (Statements.lean prints them) is in statements.pin, and
+#      every file in statements.pin has the hash written there (pin.sh writes the
+#      file; it lists which files and why). With BASE: no commit since BASE that
+#      changed a pinned file without changing statements.pin (a commit is checked if
+#      its parent has statements.pin), so that a change of a statement is always
+#      visible in review; and the pinned files changed since BASE are listed.
 # Usage: lean/contract/gate.sh [BASE]. Prints GATE OK or GATE FAILED.
 cd "$(dirname "$0")"
 FAILED=0
@@ -31,5 +38,40 @@ if [ -n "$1" ]; then
     DIRTY=$(git status --porcelain | grep -v -E " ($ALLOWED)")
     if [ -n "$OUT$DIRTY" ]; then echo "4. changed outside:"; echo "$OUT$DIRTY"; FAILED=1; else echo "4. no file changed outside lean/contract/, items/030-proofs/, java/ and 027-02 since $1"
         git diff --name-only "$1" HEAD | grep -q '^java/' && echo "   java/ changed: java/before-commit.sh must print BEFORE COMMIT OK"; fi
+fi
+PIN=lean/contract/statements.pin
+CLOSURE=$(lake env lean Statements.lean 2>&1)
+STMT=$(echo "$CLOSURE" | grep '^lean/')
+if [ -z "$STMT" ] || echo "$CLOSURE" | grep -q 'error'; then
+    echo "5. Statements.lean failed:"; echo "$CLOSURE" | head -5; FAILED=1
+else
+    ROOT=$(cd ../.. && pwd)
+    UNPINNED=$(for f in $STMT; do grep -q "  $f\$" $ROOT/$PIN || echo "$f"; done)
+    CHANGED=$(cd $ROOT && shasum -a 256 -c $PIN 2>&1 | grep -v ': OK$')
+    LATE=""
+    if [ -n "$1" ]; then
+        PINNED=$(sed 's/^[0-9a-f]*  //' $ROOT/$PIN)
+        for c in $(git rev-list --no-merges "$1"..HEAD); do
+            git cat-file -e "$c^:$PIN" 2> /dev/null || continue
+            FILES=$(git diff-tree --no-commit-id --name-only -r "$c")
+            echo "$FILES" | grep -q -x "$PIN" && continue
+            HIT=$(echo "$FILES" | grep -x -F "$PINNED")
+            [ -n "$HIT" ] && LATE="$LATE $(git log -1 --format=%h "$c"):$(echo $HIT | tr ' ' ',')"
+        done
+    fi
+    if [ -n "$UNPINNED$CHANGED$LATE" ]; then
+        echo "5. the statements' pins:"
+        [ -n "$UNPINNED" ] && echo "   not in $PIN (run pin.sh):" && echo "$UNPINNED" | sed 's/^/     /'
+        [ -n "$CHANGED" ] && echo "   changed, not as pinned (run pin.sh, commit the pin file with the change):" \
+            && echo "$CHANGED" | sed 's/^/     /'
+        [ -n "$LATE" ] && echo "   commits that changed pinned files without $PIN:$LATE"
+        FAILED=1
+    else
+        echo "5. the statements pinned: $(echo "$STMT" | wc -l | tr -d ' ') files of the main theorems' closure, $(wc -l < $ROOT/$PIN | tr -d ' ') pinned"
+        if [ -n "$1" ]; then
+            MOVED=$(git diff --name-only "$1" HEAD | grep -x -F "$(sed 's/^[0-9a-f]*  //' $ROOT/$PIN)")
+            [ -n "$MOVED" ] && echo "   pinned files changed since $1 (review them):" && echo "$MOVED" | sed 's/^/     /'
+        fi
+    fi
 fi
 if [ $FAILED -eq 0 ]; then echo "GATE OK"; else echo "GATE FAILED"; exit 1; fi

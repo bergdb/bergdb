@@ -81,3 +81,5 @@ open Contract
 #print axioms policyCutOK_of_blind
 #print axioms full_cut_blind
 #print axioms Contract.BridgeExample4.entries_forget
+#print axioms traceTopOk_meetsTop
+#print axioms contractVerdict_sound
