@@ -128,6 +128,7 @@ import SIS.Tree.LiveMergeRoot
 import SIS.Tree.LiveMergeChain
 import SIS.Tree.LiveMergeRootSplit
 import SIS.Tree.LiveMergeTimeChain
+import SIS.Tree.LiveMergeAssembly
 import SIS.Tree.LiveHoleLeaf
 import SIS.Tree.LiveDelLeaf
 import SIS.Tree.LiveUpWalk
@@ -147,6 +148,7 @@ import SIS.Tree.LiveUpCascTime
 import SIS.Tree.LiveUpCascRootMade
 import SIS.Tree.LiveUpCascCopy
 import SIS.Tree.LiveUpCascCopy2
+import SIS.Tree.LiveRedirect2
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace

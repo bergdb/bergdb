@@ -1552,6 +1552,7 @@ transaction, or splitting in space, or the space root (the parent's own split an
 cascade above with the copy the hole, as l4b's `DelFullTimeHole2M` for the leaf);
 `upCascCallRuns_of_rest7` at the runs.
 
+<<<<<<< HEAD
 2026-11-17, 02:56 to 03:02. Step 6, which full stop nodes occur on runs, prover l4e.
 Step 0's checker with each upward delete whose stop node (a segment leaf) is full
 classified as the reductions of `UpCascCallOK` take it
@@ -1564,3 +1565,44 @@ not made, in space 12 without a cascade and 13 with (02:15); in time with the co
 8 (02:50); below a made parent split in place 0 (02:55); `UpCascSplitRest7OK`'s case (the
 copy's parent not made, splitting in space, or the space root) 0. So every full stop node
 on the runs is in a proved case; the premise left never ran (as R3's C4 branch).
+=======
+2026-11-17, 02:44 to 02:55. Step 3's rest, the merge tails' shared prelude folded (the
+coordinator's step 1, scaled to what fits), prover l4f. Rule: the full continuation lemma
+(the prelude up to `mergeParent` with the state's facts handed on) was judged too big for
+the night (about 80 named facts in its continuation, the tails' do-block shapes to match;
+about 2 hours), so the prelude's pure parts became three lemmas in LiveMergeRoom.lean, each
+tail taking them by one `obtain` with the same names: `mergeTail_treeFacts` (l's and r's
+links from p, the nodes distinct and below the next id, the sibling filled),
+`mergeTail_newFacts` (the merged klongs sorted, counted, naming children of l or r; a new
+node of them filled), `mergeTail_frameFacts` (after x's heights are read: the overlay above
+the next id empty, p not taken, the cleanup's list, p's other links), and
+`mergeTail_twoFacts` (a merge into two: g2's klong, both new nodes filled, their klongs).
+Tails changed (proofs only, statements unchanged): `writerWP_mergeTail_liveRoomB`,
+`_liveFullTime`, `_liveFullTime2G`, `_liveMade`, `_liveSplitX`, `_liveFullRoot`. About 680
+lines fewer (with the no-hole tails' fold of 02:22, `writerWP_mergeTail_liveSplitX`, the
+merge tails are about 1,000 lines shorter than at 02:00). Left for a successor: the
+monadic part of the prelude (`ghOf`, the new nodes' `newKey` and `setMadeFor`, about 40
+lines a tail) and the merged tree's facts after `mergeParent` (about 75 lines, the same in
+the one-node branches of `_liveSplitX`, `_liveFullRoot` and, but for 7 lines,
+`_liveFullTime`): a lemma over the merged tree V as a function (`wNode` of the state given
+by its agreement with N but at the new nodes) would fold the second.
+
+2026-11-17, 02:57. Step 7 with the merge's tail narrowed, prover l4f
+(`LiveMergeAssembly.lean`): `MergeTailRuns9` (`MergeTailFullRest9OK` at the runs'
+contexts), `mergeTailRuns6_of_9`, and `invGetScanOK_merges_noL4f`: TP7, TP10 and TP11
+for Java's parameters, premises `hp`, `hth`, `MergeTailRuns9`, `R3Calls` (believed false
+at unreached states, so the theorem is believed vacuous until R3 is restated),
+`DelCaseLive DelFullTimeHole2M` and `DelCaseLive DelEmptyCascM`: l4b's
+`invGetScanOK_merges_noL4d` with `MergeTailRuns9` for `MergeTailRuns6`.
+>>>>>>> 087214aa375df99ff02100e0fb823cc9c51694d9
+
+2026-11-17, 03:04 to 03:09. R4's two changed levels, first piece, prover l4e
+(`LiveRedirect2.lean`, about 80 lines). `lteP_redirect2`: `lteP_redirect` one level
+higher: on a descent through q0 and its child to a leaf a, where at the new reads q0's
+search names a new inner node q' whose search names a leaf y, and the reads agree on the
+descent's nodes before q0, the new descent ends at y. It is the descent's core for R1 when
+the hole's parent splits too (its copy or a half between q0 and the hole): l4b's
+`DelFullTimeHole2M` and l4e's `UpCascSplitRest7OK`. Not yet used: what is left for each is
+R1 at the state level (a `holeAtW_stopCopy` with this lemma for `lteP_redirect`) and the
+writer's two splits with the hole below (the parent's split with the copy's klong put,
+`handleFullWith` with `ins`), as a successor's step.

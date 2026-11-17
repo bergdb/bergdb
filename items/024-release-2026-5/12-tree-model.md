@@ -709,6 +709,11 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   below the chain), a space split below a full inner parent (0), and p made and split in
   space (0). `writerWP_afterDelete_liveTR9`: premises `MergeTailFullRest9OK`,
   `MergeParamsOK` and R3.
+  02:55 (prover l4f): the six merge tails' shared prelude folded into four fact lemmas
+  (LiveMergeRoom.lean, `mergeTail_treeFacts` and three more; about 680 lines fewer).
+  02:57: at the top, `invGetScanOK_merges_noL4f` (`LiveMergeAssembly.lean`): l4b's
+  `invGetScanOK_merges_noL4d` with `MergeTailRuns9` (`MergeTailFullRest9OK` at the runs)
+  for `MergeTailRuns6`.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
