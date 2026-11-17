@@ -4,6 +4,8 @@ import Contract.Statement
 import Contract.Check
 import Contract.Shape
 import Contract.Trace
+import Contract.Complete
+import Contract.History
 import Contract.Theorems
 import Contract.Example
 import Contract.Example3
