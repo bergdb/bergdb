@@ -1080,3 +1080,20 @@ for the books and the kinds) passes the frame that `takeJ2_deleteUpward_upTMBKDS
 already gives its continuation. R2's heights are done for the upward delete with
 room; the full stop node (the cascade) is left with step 6.
 
+2026-11-17, 01:23 to 01:31. Step 3's rest, fourth part, prover l4c
+(`LiveMergeSpace.lean`, about 1,200 lines; about 700 of them the full tails' preludes and
+l4b's space split again). `MergeTailFullRest2OK` reduced to `MergeTailFullRest3OK`, its
+case `MergeFullSpaceRoom` proved: the merge's parent p, not made by the transaction, goes
+`full` and splits in space, below its inner parent q with room for the halves' klongs and
+no compaction. A space split leaves no hole: p's last version has more than `splitAbove`
+klongs, so p was filled after the merge though it lost a klong (`liveEdges_of_oneHole`;
+into two nodes there is no hole before, `liveEdges_mergeTwo`), and its halves are `HalfOK`
+(`halves_mergeLast`, from `halves_facts_nil` and `halves_live_fill`); l4b's split lemma
+carries over to the merged tree (`writerWP_handleFull_spaceRoomV_live`), and the cleanup
+changes only p, l and r, which are no longer reached. No descent is needed after
+(`writerWP_mergeTail_liveSpace`, `writerWP_mergeTail_liveSpaceRound`).
+`writerWP_afterDelete_liveTR3`: premises `MergeTailFullRest3OK`, `MergeParamsOK`, R3.
+Left: p not made and the space root (d = 1) or a segment root (q a segment leaf; a time
+split needs R1 at the root; a space split needs l4b's segment-root split on the merged
+tree), q full or compacting (the cascade, R4), and p made and split in space (in place,
+l4b's `writerWP_handleFull_spaceInPlaceRoom_live` on the merged tree). No stop rule fired.
