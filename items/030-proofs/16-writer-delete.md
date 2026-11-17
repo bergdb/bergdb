@@ -34,9 +34,24 @@ the focus.
   (`handleFullD_time`, `handleFullD_space`). The delete keeps `MidP`, as the
   put does. This removes the first delete's premises (room for a bitmap,
   theta 0, no merge) but the merges.
-- **Not yet:** the merges (`mergeUp`, `merge`, `mergeParent`), root
-  collapse, the upward unlink of an emptied leaf (the climb, the take-back,
-  LE-b), keys of more segments. Plan in section 4.
+- **Proved, the merges' parts** (20:00 to 20:40): the merge as a tree rule
+  (`Sound.mergeOne`, `Sound.mergeTwo`: two adjacent siblings' live klongs in
+  one or two new nodes, the parent's klongs set; the same keys); a merge's
+  parent in every form (`mergeParent_spec`: the bitmap of the right child's
+  klong, the pointers set in place or by new klongs, a full parent by a time
+  or space split); root collapse at the space root (`Sound.collapse`,
+  `collapseRoot_spec`: a root of before cut back, a root the transaction made
+  taken back). In work: the merge itself (`merge_spec`) and the loop
+  (`mergeUp_spec`, `afterOkW_on`).
+- **The take-back needs a link book, and it must speak of every node** (F2,
+  section 3): `WcrLink` (a node reached that the transaction made is named by
+  one node of the map at most, by none if it is the space root) with `SNamed
+  s` (030-10's: a klong of before names a node of before). Root collapse and
+  the merge take it as a premise and give it back. That every other step of
+  the writer keeps it (the put's, the bitmap's, the splits') is not proved:
+  the one open piece between the merges and a whole delete with the merges on.
+- **Not yet:** the upward unlink of an emptied leaf (the climb, the
+  take-back, LE-b), keys of more segments.
 
 
 # 2. What is proved
@@ -88,15 +103,44 @@ each, 19:20 to 19:50. They changed no statement.
   deletes that klong. A dead klong; Shape.lean's BalancedOK (live klongs,
   tested on Java's traces) holds. The traces have no such transaction
   (030-10's `writercheck` checks `BalancedAll` after every operation).
-- **D3. The restatement, proposed, not made yet:** `BalancedAll` with "a
-  live key klong of an inner node names a key node one level below, and
-  every key klong names a key node of a lower level". The lower level is what
-  a take-back of a root needs (no node below the root names it). It changes
-  030-10's `Mid`, `PInv`, `Before` and `WriterMeets`, and about 25 places of
-  030-10's put proofs that read a dead klong's level; 030-10 is working in
-  those files tonight, so I leave the change until its wave ends (the
-  coordinator's call); the delete's proofs so far conclude the stronger form
-  where it holds.
+- **D3. The restatement, proposed, not made:** `BalancedAll` as Shape.lean's
+  BalancedOK, the rule Java's traces are tested by: for the key nodes
+  reached, a live key klong of an inner node names a key node one level
+  below. It changes 030-10's `Mid`, `PInv`, `Before` and `WriterMeets` and
+  about 25 places of 030-10's put proofs (they read every klong of a node's
+  level). For 030-10, whose puts are done, or the coordinator: with it the
+  link book could be the cheaper `LinkLive` (F2).
+
+
+- **F2. The take-back's link book speaks of every node, not only those
+  reached.** Found by the provers: `Sound.mergeOne` is false without a
+  premise on other nodes' klongs that name the merged nodes (E: a dead klong
+  in another reached node; checked by `#eval`); `collapseRoot_spec` is false
+  with only a book on nodes reached (H: a node not reached, one level above
+  a root the transaction made, with a klong to it; then `BalancedAll`, which
+  speaks of every node, fails after the take-back). My first book,
+  `LinkLive` (a klong of a reached inner node that names a node of the
+  transaction names one that node names live), was therefore too weak for
+  `Mid` as it stands; two provers had proved it kept by the put's and the
+  delete's time and space splits (in restated forms: the "if" state's book,
+  not w's; A and B found the statements false as I gave them, by
+  counterexamples), 3,500 lines, parked in
+  `/Users/f/fl/bench/2026-11-17/night/s4j/linklive/`, not landed. With
+  `BalancedAll` restated to the nodes reached (D3), `LinkLive` would do and
+  those proofs come back.
+- **D4. `WcrLink` and `SNamed s` are the link book of the delete** (H's,
+  close to 030-10's B14 `link`), premises of the take-back's steps and given
+  back by them.
+- **D5. `CasPreD` restated (20:30):** the state with x set to V is asked to
+  be sound with BalancedOK (`vsound`, `vbal`), not to meet all of `PInv`: a
+  merge's parent may need four klongs more than a full node, beyond
+  `Sound`'s M + 3, so its virtual node is its last version, which does not
+  extend its node of before (the frame).
+- **Statements the provers changed** (each with its reason in the file's
+  header): `Sound.mergeOne`/`Two` got `hnames` (F2), `mergeTwo` lost an
+  unused `hnl`; `mergeParent_spec` lost two unused hypotheses;
+  `collapseRoot_spec` got `WcrLink` and `SNamed s` (F2) and lost
+  `ParamsOK`.
 
 
 # 4. The plan for the rest
@@ -134,3 +178,7 @@ the probe found F1; four provers proved the files.
 2026-11-17, 20:00. Main 3df76ed5 merged; my commits squashed onto it (the
 gate's pins ask the pin file in the commit that changes a pinned file).
 GATED 9028c307: the delete's full node, the bitmap in every form, a delete whose leaf keeps a live klong or is the space root (putKv_del1_keep); WriterMeets's BalancedAll shown false (writerMeets_false).
+GATED 7ef7ed2d: the merge as a tree rule (Sound.mergeOne, mergeTwo), a merge's parent (mergeParent_spec), root collapse at the space root (Sound.collapse, collapseRoot_spec, with WcrLink and SNamed); CasPreD restated.
+2026-11-17, 20:45. Main dc642af1 merged (my commits squashed onto it, for
+the pins). Two provers on `merge_spec` and the loop (`mergeUp_spec`,
+`afterOkW_on`); the week at 48 %.
