@@ -1,184 +1,185 @@
 BergDB
 ======
 
-BergDB is an in-process, append-only database for Java: a multiversion
-ordered map from (key, time) to value, kept in one append-only stream. Its
-central idea is the **self-indexed stream**: the stream is the only durable
-storage, index nodes are written lazily into it, and startup reads only the
-tail of the stream, so startup time does not grow with the size of the
-database.
+BergDB is an embedded, append-only key-value database for Java. It runs
+inside your Java process, keeps every transaction in one append-only
+stream of files, and lets you read the database as it was at an earlier
+time.
 
-This repository holds three things that belong together, and the work on
-them:
+* **One stream.** The stream is the only durable storage: no write-ahead
+  log and no separate index files. Data, index and history are all
+  records in the stream.
+* **Self-indexed.** Index nodes are written into the stream lazily, as
+  the writes go on. A start reads only the tail of the stream, so the
+  time to open a database does not grow with its size.
+* **History.** A read can be made at any time that is still kept, and
+  sees the database as it was then, its indexes included.
+* **Larger than memory.** Eviction keeps the database within a memory
+  budget, and reclaim cuts the front of the stream when a finite
+  retention allows it.
+* **Small.** One jar with no dependencies beyond the JDK. No server, few
+  settings.
 
-* The current state in words is item 027, the algorithms of BergDB
-  ([items/027-algorithms](items/027-algorithms/readme.md)), a skeleton so
-  far; until it is written, read 027-01, the former `docs/` as of
-  2026-11-12, a snapshot: the feature levels, what works and where the
-  evidence is (start with its [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md)), the model of
-  self-indexed streams. The trace format is 027-02 and the stream format
-  027-03, both kept current. `docs/` holds the development log,
-  [docs/log.md](docs/log.md).
-* `lean/`. The abstract model in Lean 4 and machine-checked proofs of
-  recovery (T1) and restart invariance (T2). See [lean/README.md](lean/README.md).
-* `java/`. The Java implementation, its build script and the regression and
-  stress tests.
-* `items/`. Work items: plans, experiments, progress logs and reports, kept
-  apart from the current state. See [items/readme.md](items/readme.md).
-* `releases/`. The releases: each one's jar, source, release notes and
-  baseline measurements. The latest is
-  [2026.5](releases/2026.5/readme.md), internal, of 2026-11-13. What the
-  next release's notes must say is collected in
-  [releases/next.md](releases/next.md).
-
-BergDB was developed 2012 to 2017. This repository continues from the 2017 source; the work since October 2026 fixed the bugs that stopped it, formalized the algorithm, and added reclaim and eviction.
+The Core is a key-value store of byte arrays. The Pub API on top of it
+stores strings, byte arrays and objects under path-like keys, with
+secondary indexes.
 
 
+Status: a preview
+-----------------
 
-Build and test
---------------
+**BergDB is a preview. Do not use it in production.**
 
-Needs a JDK 17 or later (the code is compiled with `--release 17`, since
-2026-10-25, bergdb 009; before, `--release 8`; release 2026.5 was tested
-on JDK 27 and 17, on macOS and Linux) and, for the proofs
-and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
-BergDB's jar also runs on Android: the Core from API level 33, objects
-from 34; checked on an emulator, not yet on a phone (bergdb 006-18-03).
+* There is no promise about the stream format or the API until a stable
+  release. A database made by one release may not open in the next:
+  release 2026.5 refuses the databases of 2026.4 and earlier. There is no
+  upgrade tool; read the data with the old release and put it with the
+  new one.
+* The latest release is 2026.5, of 2026-11-13, tag `release-2026.5`. Its
+  notes, [releases/2026.5/readme.md](releases/2026.5/readme.md), say what
+  it is, how it was tested and what is known not to work. The `main`
+  branch moves ahead of it.
+* It is tested on JDK 17 and 27, on macOS and Linux, and on an Android
+  emulator (the Core from API level 33, objects from 34), not on a phone.
 
-    
-    java/build.sh                  # builds java/build/bergdb.jar, bergdb-release.jar and the stress tests
-    java/before-commit.sh          # the check before a commit: unit and f-tests, demos (about 2 minutes)
-    java/unit.sh                   # runs the unit tests
-    java/f.sh                      # runs the f-tests
-    java/perf.sh                   # runs the perf-tests
-    java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
-    java/night.sh                  # the night run: all of the below (about 95 minutes)
-    java/night.sh large            # the same and the large conformance set (about 6 hours)
-    java/night.sh tests            # only the night-tests (about 4.5 minutes)
-    java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
-    java/stress/level1.sh          # full replay          (about 80 s)
-    java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
-    java/stress/level3.sh          # reclaim              (about 8 minutes)
-    java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
-    java/stress/harness-soak.sh    # the Pub layer's randomized harnesses (night: -r 2, about 4 minutes)
-    java/stress/fuzz.sh            # fuzzing of 2026.4's readers of bytes (8 minutes; night: 12)
-    java/stress/kill-restart.sh    # the Pub layer under kills of its JVM (1,000 kills: about 26 minutes)
-    java/stress/android.sh         # the unit tests and demos on an Android emulator, before a release (about 2 minutes)
-    cd lean && lake build          # checks all proofs
-
-`java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
-the Java code is committed; it is the only requirement. Each level script
-prints `LEVEL n OK` when it passes; they are deeper checks of their levels,
-run after larger changes, not commit gates. Some tasks need more testing,
-depending on the job; work on performance, for example, runs the
-performance tests. `java/night.sh`, the night run, is not a gate either:
-on a clean clone of the committed code, the check before a commit, the Core
-Layer built alone (`core-build.sh`), the four level scripts, the night tests
-(the long-running tests of 2013 to 2015), two rounds of the harnesses'
-soak, 12 minutes of fuzzing, 1,000 kills and restarts of the Pub layer
-and the medium conformance set;
-it is started when the machine has room for it, at no fixed time, and its
-report is in `java/build/night/`. `java/night.sh large` adds the large
-conformance set; it is started by hand. Set `JAVA_HOME`, or `JAVA`,
-`JAVAC`, `JAR` and `JDEPS`, if the JDK tools are not on the path.
-
-`java/build/bergdb-release.jar` is the jar for users, which a release
-ships: the classes of `java/src` only, without the tests and tools of
-`java/src-dev`; `bergdb.jar` holds both, for the tests and the scripts.
-The API is the packages `bergdb.pub` and `bergdb.pub.util` and the Core's
-`Db`; the rest of the release jar is not API, whatever is public in it
-(bergdb item 020-10, section 7). The stored object, `DbObject`, and its
-value classes are in `bergdb.pub`. The published Javadoc
-(`java/javadoc-pub.sh`) holds `bergdb.pub` and `bergdb.pub.util`; the
-documentation of the Core API, `Db` and the classes that its Javadoc
-names, is their Javadoc in the source, from `java/src/bergdb/core/Db.java`
-on, which the release's source zip holds. See `java/readme.txt`.
+Each release's jar and Javadoc are on the repository's GitHub Releases
+page, under the release's tag; `releases/VERSION/` holds its notes and
+checksums. Or build the jar from source, as below.
 
 
-
-Status
+Try it
 ------
 
-| Level | Features | Status |
-|---|---|---|
-| 0 | Multiversion map in memory | Passes the tests run |
-| 1 | + restart by replaying the whole stream | Passes the tests run |
-| 2 | + bounded startup (self-indexed stream) | Passes the tests run, under load and with crashes |
-| 3 | + reclaim: cut the front of the stream | Passes the tests run, a two-hour disk soak and the power-loss ordering checks; aligned with the proved Lean model of reclaim |
-| 4 | + eviction: data larger than memory | Passes the tests run, on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own (bergdb item 009); a database six times its memory budget runs on disk; aligned with the proved Lean model of eviction, with handles |
+You need a JDK 17 or later and a Unix shell (macOS or Linux).
 
-Evidence and limits are in 027-01's [levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md), including the
-FileStream durability report,
-[011-07](items/011-docs-archive/07-level3-durability.md). The Lean proofs
-concern the abstract model, which since bergdb item 001 includes reclaim and
-eviction; Java's runs are checked against it, not proved, and concurrency and
-resource bounds are not in it. Whether the concept is novel is open; see
-the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
+    java/build.sh               # builds the jar for users, java/build/bergdb-release.jar
+    java/before-commit.sh       # unit tests, f-tests and demos (2 minutes; needs python3, perl)
+    java/javadoc-pub.sh         # the Pub API's Javadoc, in java/build/javadoc-pub/
 
-BergDB has no replication since 2026-11-04: a database writes one stream,
-and copies are left to the OS and the file system, a mirrored disk for the
-loss of a disk and a copy of the stream's files for a backup
-([005-11](items/005-todo/11-replication.md); Frans: "A with C2 now"); ways
-to implement it later are a long-term topic,
-[017-03](items/017-long-term/03-replication/readme.md).
+A first program:
 
-Objects and user indexes, the Pub API's part beside `String` and `byte[]`
-values, were experimental in 2026.3
-([018-01](items/018-release-2026-3/01-plan.md), D6) and are redone for
-2026.4 ([item 020](items/020-release-2026-4/readme.md)): objects in
-BergDB's own stored format, format 2, with no null; Data Objects (public
-classes with public fields) put exactly and read best effort; user indexes
-of one directory and up to 8 typed levels, kept by every write and checked
-at every scan; and the primary scan of a directory. Their promises and the
-harnesses that check them are in 027-01's
-[levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md), section 11.
+```java
+import bergdb.pub.Connection;
+import bergdb.pub.Database;
+import bergdb.pub.Factory;
+import bergdb.pub.Time;
 
-A known limit. The bound on the startup section (T3) is proved for
-BergDB's own startup pos policy since 2026-10-28, in the Lean model of its
-take ([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section
-without its last record stays below twice the startup distance, and after a
-decrease of it comes down with every commit until it is below twice the new
-one. That is not all of bounded startup: the records at the ends of the
-section (T4) and a cold start's reads through references into older records
-are not bounded by a proof, and the model leaves out the record limit. It
-leaves out the stream's meta blocks too, but they make no difference to the
-take: when it runs, the stream's length is where the new record begins
-([005-68](items/005-todo/68-fix-take-stream-length.md)). Before the
-take's deadline ([007-03](items/007-bounds/03-plan.md), step 3), the
-startup section reached 2.6 times the startup distance at 50 MB in a test
-([005-38](items/005-todo/38-writes-at-scale.md)).
+public class Hello {
+    public static void main(String[] args) throws Exception {
+        try (Database db = Factory.database().create("hello-db").start()) {
+            Connection c = db.connection();
+            Time first = c.put("/fruit/apple", "red").getTime();
+            c.put("/fruit/apple", "green");
+            System.out.println(c.get("/fruit/apple", String.class));   // green
 
-Pauses (2026-10-28). In the runs of bergdb item 009, no get or commit
-waits more than about 20 ms for BergDB's own work: eviction works in
-bounded steps (009), and no read waits for the stream's writer, its forces
-or reclaim's cuts ([005-46](items/005-todo/46-stream-file-lock.md)). More
-busy readers than the cores less the collector's workers wait for a core,
-the operating system's scheduling, not BergDB's work: on F53, 8 readers
-from the OS's cache had gets of up to 89 ms, 7 readers 0.4 gets over
-10 ms in a million ([015-86](items/015-todo/86-gets-with-8-readers.md)).
-The collector's pauses
-come on top: use ZGC, or Shenandoah in its default mode, without
-generations; with G1 they reach hundreds of milliseconds under eviction. A
-slow disk shows through too, in reads that miss the caches and in a writer
-that fills the write buffer. Details in 027-01's levels.md, section 7.
+            c.setLookupTime(first);                                    // read the past
+            System.out.println(c.get("/fruit/apple", String.class));   // red
+            c.sync();                                                  // wait until durable
+        }
+    }
+}
+```
+
+    javac -cp java/build/bergdb-release.jar Hello.java
+    java -cp java/build/bergdb-release.jar:. Hello
+
+`create` makes a new database in a new or empty directory; `open` opens
+an existing one. More examples are in `java/src-dev/bergdb/demo/`
+(`GetStarted1` to `GetStarted5`).
+
+The API is the packages `bergdb.pub` and `bergdb.pub.util`. The Core's
+`bergdb.core.Db` is a lower-level API of byte-array keys and values, less
+stable and less safe. Anything else that is public in the jar is not
+API. [java/readme.txt](java/readme.txt) says more about the build, and
+[java/build.sh](java/build.sh) and the other scripts say what they do in
+their headers.
+
+What a running database needs:
+
+* `stop()` or `close()` for every database that is started.
+* The ZGC collector (`-XX:+UseZGC`), or Shenandoah without generations,
+  for short pauses. With G1, eviction brings pauses of hundreds of
+  milliseconds.
+* Storage that returns the bytes as they were written. BergDB's checks
+  for damaged bytes are a best effort.
+* `-XX:+ExitOnOutOfMemoryError`: an `Error`, such as `OutOfMemoryError`,
+  fails the database, and the process should end.
 
 
-Notes
------
+Known issues and limits
+-----------------------
 
-* Much of the 2026 documentation, the tests and the Lean development were
-  written by Frans Lundberg together with AI assistants (Claude, Codex); the
-  documents say which.
-* Commit ids in the documents (`49aa48d`, `ebe5f77`, ...) name commits in
-  Frans's earlier repositories, where the history up to this repository's
-  first commit is kept. Frans: see F1-007, repo f1.
-* The original 2012 to 2017 design notes and the git history of the 2017
-  source are not part of this repository. The four documents that the theory
-  builds on are in 027-01's
-  [sources/](items/027-algorithms/01-docs-2026-11-12/sources/).
+The full list is in the release notes,
+[releases/2026.5/readme.md](releases/2026.5/readme.md), "Known issues and
+limits". The ones a user meets first:
+
+* **The format changes between releases** (above).
+* **Limits.** A key is at most 111 bytes, a value at most 8 MiB, a
+  transaction at most 500 operations and 32 MiB. A call over a limit
+  throws and writes nothing.
+* **No replication, no encryption.** For a backup, copy the stream's
+  files; against the loss of a disk, use a mirrored disk.
+* **The startup distance.** The default, 50 MB, suits up to about 10M
+  keys; beyond that, use 200 to 1000 MB. At a fixed startup distance, the
+  stream bytes written for each put grow with the number of keys.
+* **Reclaim keeps more than the live data.** With a finite retention,
+  the stream holds the kept history and, beyond it, up to about 6 times
+  the live data.
+* **Each database allocates a 10 MB write buffer at its start**, whatever
+  its size.
 
 
-License
--------
+How it works
+------------
 
-Apache License 2.0, see `LICENSE` and `NOTICE`.
+The design is described in item 027, the algorithms of BergDB
+([items/027-algorithms](items/027-algorithms/readme.md)). It is still
+being written. Until it is, read 027-01, a snapshot of 2026-11-12: the
+feature levels, what works and the evidence
+([levels.md](items/027-algorithms/01-docs-2026-11-12/levels.md)), and the
+model of self-indexed streams
+([sis-model.md](items/027-algorithms/01-docs-2026-11-12/sis-model.md)).
+The stream format is 027-03 and the trace format 027-02, both kept
+current. The principles that BergDB is built by are 010-01
+([items/010-principles](items/010-principles/readme.md)).
+
+The work itself is recorded in `items/`: plans, experiments, measurements
+and reports ([items/readme.md](items/readme.md)). Documents and code
+comments cite them by number, such as `027-01` or `010-01, P5`.
+
+
+Repository
+----------
+
+* `java/`: the implementation, its build scripts and its tests.
+* `lean/`: a model of the algorithm, used in testing; work in progress.
+* `items/`: the work items, the design documents among them.
+* `releases/`: each release's notes and checksums.
+* `docs/log.md`: the development log.
+
+BergDB was first developed from 2012 to 2017, with releases from 2013 to
+2015. The work went on in October 2026 from the 2017 source: it fixed the
+bugs that had stopped it, made a model of the algorithm, and added
+reclaim and eviction. Much of the 2026 code, tests and documentation
+was written by Frans Lundberg together with AI assistants.
+
+
+Contributing and security
+-------------------------
+
+Bug reports and ideas are welcome; [CONTRIBUTING.md](CONTRIBUTING.md)
+says what is accepted. To report a vulnerability, see
+[SECURITY.md](SECURITY.md); do not open a public issue for it.
+
+
+Copyright and licence
+---------------------
+
+Copyright 2013-2026 Frans Lundberg.
+
+Licensed under the Apache License, Version 2.0: see [LICENSE](LICENSE)
+and [NOTICE](NOTICE).
+
+TO CHECK (Frans): the name. "BergDB" is Frans Lundberg's name for this
+software. The licence gives no right to use it, except to say where the
+code comes from (Apache License 2.0, section 6).
