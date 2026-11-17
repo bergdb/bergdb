@@ -40,12 +40,36 @@ night of 17 November.
   axioms; no premise but the parameters (`ParamsOK`: node size 6 or more,
   2 ≤ h, h + 2 ≤ M; Java's meet it) and the view's (`Shows`). 11,600
   lines with the map, the statement and the checker.
-- **Reduced, not proved:** a put of a key of more segments (the descent
-  through segment leaves, a segment root's split, a new segment leaf) and
-  every delete. For any operation the step from operations to a
-  transaction and a history is proved (`writerMeets_of_opStep`,
-  `runs_meetsTop_of_opStep`): what is left is `OpStep` for those
-  operations.
+- **Not vacuous:** `Contract/WriterExample.lean` runs the model's writer
+  from the primordial tree with Java's parameters at node size 8, two
+  transactions of one put each; the run meets every premise, so
+  `runs_meetsTop_put1` gives `MeetsTop` for it, and `jget_right` then the
+  reads (`WriterExample.meets`, `meets2`).
+- **Proved, the first delete** (item 4, section 4): a delete of a
+  one-segment key whose segment leaf has room for a bitmap and keeps a
+  live klong, and after which no merge is due (the merges off, or the leaf
+  the space root, or at least m live klongs left): `putKv_del1_leaf`,
+  `putKv_del1_leaf_merges`. Also the delete of a key that is not there.
+  The delete keeps what the put keeps (`MidP`).
+- **Proved, keys of more segments** (item 3): a put whose segment trees
+  exist (`putKv_put_routed`: the descent through the segment leaves, a
+  segment root's split with its new root, also in place), and a put that
+  makes new segment leaves where the segment leaf above has room
+  (`putKv_put_newseg`); a transaction of puts of these kinds meets the
+  contract (`writerMeets_puts`). These ask one premise more of the tree
+  before the transaction: every klong of it names a node of it (`SNamed`),
+  tested at every traced transaction; the theorem does not yet give it
+  back for the next transaction (section 6).
+- **In work when this was written:** the last put, a new segment leaf
+  above which the segment leaf is full (the leaf is split while the new
+  leaf has no klong yet), and then the put with no premise on the key but
+  its form (State note).
+- **Reduced, not proved:** every other delete (a full leaf, the upward
+  unlink with the take-back, LE-b, a merge, root collapse); since 19:12 a
+  second prover, 030-16, has the delete. For any operation the step from
+  operations to a transaction and a history is proved
+  (`writerMeets_of_opStep`, `runs_meetsTop_of_opStep`): what is left is
+  `OpStep` for those operations, and the delete's books through the put.
 - **The main answer** (item 5, section 5): the old route's hard cases do
   not come back. `l4`, R3, R4 and ValOld are all about the fill and the
   rule of two live klongs in an inner root. The old theorem needed them
@@ -217,6 +241,23 @@ The files, in the order they build:
 - `WriterPut.lean` (690): `appendKlongs_spec` (the recursion), the
   descent, `putKv_put1`, `writerMeets_put1`, `runs_meetsTop_put1`.
 
+- `NodeAlg3.lean`, `TreeRulesDel.lean`, `WriterDel.lean` (610, 160, 590):
+  the first delete: the bitmap's node algebra (a new bitmap klong, or the
+  bits in the transaction's own bitmap; W2 to W4 kept), `Sound.del`, and
+  `deleteUpward` with `appendDeleteKlong` and the merges' descent that
+  finds nothing to merge.
+- `Contract/WriterExample.lean` (270): the example run.
+- Keys of more segments: `WriterCascadeDefsG.lean` (the recursion's
+  statement with a segment leaf as a parent), `TreeRulesSeg.lean`
+  (`Sound.spaceSplitSeg`, 350), `NodeAlg4.lean` (a klong pointed in place,
+  390), `WriterTimeSplitG.lean`, `WriterSpaceSplitG.lean` (590, 2,180),
+  `WriterPutG.lean` (750: `putKv_put_routed`), `TreeRulesChain.lean`
+  (`Sound.putSeg`, 300), `WriterPutSeg.lean` (1,100: `putKv_put_newseg`,
+  `writerMeets_puts`).
+- For the delete of a full leaf (030-16's): `WriterCascadeDefsH.lean`,
+  `WriterTimeSplitH.lean` (780: `handleFullWith`'s time split for any
+  caller), `NodeAlg5.lean` (110).
+
 How it went: I wrote the definitions and each file's statements; ten
 runs of provers (Opus, xhigh) proved one file each, in three waves; they
 corrected six of my statements (a missing "q is a key node", three unused
@@ -359,6 +400,38 @@ operations. I did not check that on traces (the checker looks between
 operations).
 
 
+# 6. What is not closed
+
+For a claim "the model's writer meets the contract for puts", these are
+the premises that are not proved or not given back, each tested:
+
+- **`SNamed`** (keys of more segments only): every klong of the tree
+  before the transaction names a node of it. Used where a segment leaf's
+  klong is pointed to a new segment root in place. The put's theorems do
+  not give it for the tree after the transaction, so a history of such
+  transactions needs it at each one. To close it: a book of `Mid` (every
+  klong of a node kept names a node kept), through every rule, about as
+  BalancedOK is; the take-back needs the same book (B4). `writercheck`
+  tests it at every traced start.
+- **The view** (`Shows`): at each transaction the writer's view shows the
+  tree and the top (section 3, D4), with the super root's skip pointers
+  at the bits of its ordinal. Given at each step of `Runs`; that the
+  model's own change gives such a view again is the model's round trip
+  between klongs and entries. Tested (S; the tree checker's C-T2).
+- **The bounds G and H** (D3): each accepted operation leaves no key node
+  outside them (`OpsRun`). Tested (B11). Two of the proofs' gaps were of
+  this kind.
+- **The parameters** (`ParamsOK`): M ≥ 6, 2 ≤ h, h + 2 ≤ M. Java's sizes
+  meet them; nothing checks it in the model or in Java.
+- **The delete's books** (B3, B4, B7, B8, B12, B14): the puts are proved
+  to keep `MidP`, which is `Mid` without them. A transaction of puts and
+  deletes needs the puts to keep them too.
+- **The books are tested as computed over the heap's nodes** (D5), the
+  statements speak of every node.
+- **The statement is "what the writer accepts is right".** That the
+  writer accepts every transaction on a tree in shape is not stated.
+
+
 # State
 
 2026-11-17, 18:30. Items 1 and 2 done; item 3 done for keys of one
@@ -416,3 +489,34 @@ and the put (`WriterTimeSplit.lean`, `WriterSpaceSplit.lean`,
 `WriterPut.lean`). J5 restated as `WTopInv` with the skip pointers' books.
 `check.sh` and `writer.sh` on the merged tree: CONTRACT OK, WRITER OK.
 GATED 2aad54c9: a put of a one-segment key proved (putKv_put1, writerMeets_put1, runs_meetsTop_put1).
+2026-11-17, 18:25 to 18:50. A fourth wave: the first delete (`NodeAlg3.lean`,
+`TreeRulesDel.lean`, `WriterDel.lean`) and the example run
+(`WriterExample.lean`); main d3d98a4e merged (the coordinator, 18:40: the
+put is landed; Frans, 17:39: correctness first, then keys of more
+segments, then the delete). The gate passes against main's head 556cc927
+(against d3d98a4e the one file outside is main's own line in 006-30);
+`check.sh` and `writer.sh`: CONTRACT OK, WRITER OK.
+GATED 24ed4a2f: the first delete (putKv_del1_leaf, putKv_del1_leaf_merges), Sound.del, the example run (WriterExample.meets, meets2).
+2026-11-17, 18:55. A fifth wave started: a put of a key of more segments
+whose segment trees exist (`WriterCascadeDefsG.lean`, `TreeRulesSeg.lean`,
+`NodeAlg4.lean`, `WriterTimeSplitG.lean`, `WriterSpaceSplitG.lean`,
+`WriterPutG.lean`). It needs `SNamed s` (every klong of the tree before
+names a node of it), a premise that the writer's theorem does not yet give
+back for the next transaction; `writercheck` tests it at every start.
+2026-11-17, 19:00 to 19:15. The fifth wave's findings, each a hole in my
+statement that a prover met in the proof: without `PathInner` nothing says
+that a node is on the path once (`CasPreG.nodup`, from the falling levels
+of the descent); a new segment root outside the bounds is made before the
+parent's step, so that step must be known not to empty `W.outside`
+(`hupo`, `handleFullWith_outside`). Main 6fd5fdeb merged (030-15's pinned
+statements; `pin.sh` run). The coordinator, 19:12: a second prover,
+030-16, takes the delete in `Contract/Proof/WriterDel*.lean`; I keep the
+puts. For 030-16, on this branch: `WriterDel.lean` (the first delete),
+`NodeAlg3.lean` and `NodeAlg5.lean` (the bitmap, `lastVersionGivenDel`),
+`TreeRulesDel.lean` (`Sound.del`), and `WriterCascadeDefsH.lean` with
+`WriterTimeSplitH.lean`: `handleFullWith`'s time split for any caller
+(`CasPreH`: a delete's `handleFull` with its own last version), proved;
+the space split in that form is not made.
+2026-11-17, 19:15. The last put, in work: a new segment leaf above which
+the segment leaf is full (`WriterCascadeDefsO.lean`: soundness read on the
+map with the new leaves set as they will be right after the recursion).

@@ -136,3 +136,15 @@ open Contract
 #print axioms putKv_del1_leaf_merges
 #print axioms Contract.WriterExample.meets
 #print axioms Contract.WriterExample.meets2
+#print axioms Sound.spaceSplitSeg
+#print axioms Sound.putSeg
+#print axioms handleFull_time_g
+#print axioms handleFull_space_g
+#print axioms appendKlongs_spec_g
+#print axioms putKv_put_routed
+#print axioms writerMeets_routed
+#print axioms handleFull_time_h
+#print axioms putKv_put_newseg
+#print axioms writerMeets_puts
+#print axioms handleFull_time_o
+#print axioms handleFull_space_o
