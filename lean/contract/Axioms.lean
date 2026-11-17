@@ -152,3 +152,4 @@ open Contract
 #print axioms putKv_put
 #print axioms writerMeets_put
 #print axioms runs_meetsTop_put
+#print axioms Contract.WriterExample2.meets
