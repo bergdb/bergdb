@@ -265,18 +265,6 @@ it sees the root only through its live children (`ExecRootOK`). -/
 theorem bridge_execRootOK (h : BHist) : SIS.ExecRootOK h.spec :=
   fun _ _ _ _ _ _ _ _ _ => rfl
 
-theorem blive_tops : ∀ (hst : History BVal), (∀ e ∈ hst, ∃ z, e.val = BVal.top z) →
-    hst.foldl SIS.Check.bstep ([], none, none) =
-      ([], none, hst.getLast?.bind (fun e => (bptrs e.val).head?)) := by
-  intro hst
-  induction hst using List.reverseRecOn with
-  | nil => intro _; rfl
-  | append_singleton l e ih =>
-    intro hall
-    rw [List.foldl_append, ih (fun e' he' => hall e' (List.mem_append_left _ he'))]
-    obtain ⟨z, hz⟩ := hall e (List.mem_append_right _ List.mem_cons_self)
-    simp [SIS.Check.bstep, hz, bptrs]
-
 /-- The root's live children are those of its last entry (`VirtLiveOK`): a
 fact of `blive`. -/
 theorem bridge_virtLiveOK (h : BHist) : SIS.VirtLiveOK h.spec := by

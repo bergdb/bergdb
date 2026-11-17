@@ -62,3 +62,6 @@ open Contract
 #print axioms bridge_liveHeight
 #print axioms Contract.BridgeExample.w4_not_enough
 #print axioms bridgeHistoryOk_meets
+#print axioms MeetsBridgeTop.meetsBridge
+#print axioms Contract.BridgeExample3.meetsTop
+#print axioms Contract.BridgeExample3.meetsBridge

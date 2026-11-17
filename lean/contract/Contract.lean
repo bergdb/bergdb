@@ -23,6 +23,7 @@ import Contract.Rebuild
 import Contract.Bridge
 import Contract.BridgeModel
 import Contract.BridgeHeap
+import Contract.BridgeTop
 import Contract.Proof.BridgeModel
 import Contract.Proof.BridgeMap
 import Contract.Proof.BridgeInv
@@ -31,6 +32,8 @@ import Contract.Proof.BridgeStep
 import Contract.Proof.BridgeTree
 import Contract.Proof.BridgeDirty
 import Contract.Proof.BridgeHistory
+import Contract.Proof.BridgeTop
 import Contract.BridgeTheorems
 import Contract.BridgeExample
+import Contract.BridgeExample3
 import Contract.BridgeBound

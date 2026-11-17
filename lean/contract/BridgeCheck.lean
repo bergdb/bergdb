@@ -18,17 +18,26 @@ order), the clauses in the model's words (Contract/BridgeModel.lean):
 * TOUCH, the touch rules (`touchB`, which gives `TouchOK`);
 * TREE, the contract's TREE after the transaction (`treeOkB`, bergdb 030-08);
 * A6', after the transaction and at the start (`adoptB`);
-* COPY, A-COPY in its sufficient form (`copyB`).
+* COPY, A-COPY in its sufficient form (`copyB`);
+* TB, the top in the contract's words (BridgeTop.lean), with the top that the
+  trace's lines give (`applyTop`, bergdb 030-08): 030-08's step of the top
+  (`topStepB`), the tree's space roots are the top's, and clause TB
+  (`topChangeOk`); for TX 0 `topStartOk`. These give `TopOK`
+  (`MeetsBridgeTop.meetsBridge`).
 
-D is as in the contract checker: D after the record before and the nodes
-that got dirty. Prints one line per trace and BRIDGE OK or BRIDGE FAILED; a
+Then the verdict on the whole trace as one value (`bridgeHistoryOk`, with the
+writer's contract for every transaction), which gives a history that meets
+`MeetsBridge` and `MeetsEvict` (`bridgeHistoryOk_meets`). D is as in the
+contract checker: D after the record before and the nodes that got dirty. Prints one line per trace and BRIDGE OK or BRIDGE FAILED; a
 failure names the trace and the transaction. With `--tree` as the first
 argument the clauses on the model's structure are left out (they take
 longer).
 -/
 import Contract.BridgeHeap
 import Contract.BridgeModel
+import Contract.BridgeTop
 import Contract.Trace
+import Contract.TraceTop
 
 open Contract
 
@@ -49,6 +58,7 @@ structure BCounts where
   tree : Nat := 0
   a6 : Nat := 0
   copy : Nat := 0
+  tb : Nat := 0
   first : Option String := none
 
 def BCounts.fail (c : BCounts) (msg : String) : BCounts :=
@@ -60,23 +70,30 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
   let sp := SIS.Check.bspec chs p0 true
   let topLevel := sp.topLevel
   let mut P := p0
+  let mut tp : Top := []
   let mut h : Heap := {}
+  let mut h0 : Heap := {}
+  let mut steps : Array TStep := #[]
   let mut c : BCounts := {}
   let mut dirtyBefore : List NodeId := []
   let mut pos := 0
   for tx in tr.txs do
     let d := dirtyBefore ++ tx.gd
     let h' := applyTx h tx
+    let tp' := applyTop tp tx
     let i := tx.i
     let ch := chs.getD pos { new := [], adds := [] }
     if (old.recs.getD pos default).idx != i then
       c := { c.fail s!"TX {i}: the two readers differ" with s := c.s + 1 }
     if i == 0 then
+      h0 := h'
       if !(startCheck ch h') then c := { c.fail "TX 0: the start" with s := c.s + 1 }
       if model then
         if !(treeOkB (h'.tree.at 0)) then c := { c.fail "TX 0: TREE" with tree := c.tree + 1 }
         if !(adoptB sp p0 0) then c := { c.fail "TX 0: A6'" with a6 := c.a6 + 1 }
+        if !(topStartOk ch tp' h'.tree) then c := { c.fail "TX 0: TB, the start's top" with tb := c.tb + 1 }
     else
+      steps := steps.push { ops := tx.ops, D := d, heap := h', c := ch }
       c := { c with txs := c.txs + 1, news := c.news + ch.new.length,
                     adds := c.adds + ch.adds.length, touch := c.touch + ch.touch.length }
       let s := h.tree
@@ -97,6 +114,8 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
         if !(treeOkB (s'.at i)) then c := { c.fail s!"TX {i}: TREE" with tree := c.tree + 1 }
         if !(adoptB sp P' i) then c := { c.fail s!"TX {i}: A6'" with a6 := c.a6 + 1 }
         if !(copyB sp P P' i ch) then c := { c.fail s!"TX {i}: COPY" with copy := c.copy + 1 }
+        if !(topStepB i tp tp' && s'.roots == rootsOf tp' && topChangeOk topLevel P s' tp tp' ch) then
+          c := { c.fail s!"TX {i}: TB, the top in the contract's words" with tb := c.tb + 1 }
         -- The clauses as one value each (`checkBridgeTx_sound`, `checkEvictTx_sound`).
         if checkBridgeTx sp P i h d h' ch != (bridgeOk topLevel i s s' d ch && madeCheck h h' ch &&
             topOkB sp P P' i s s' ch && touchB sp P i ch) ||
@@ -104,8 +123,15 @@ def checkBridgeTrace (model : Bool) (tr : Trace) (old : SIS.Check.Trace) : BCoun
           c := { c.fail s!"TX {i}: a check differs from its parts" with s := c.s + 1 }
         P := P'
     h := h'
+    tp := tp'
     dirtyBefore := tx.dirty
     pos := pos + 1
+  -- The verdict on the whole trace, which gives `MeetsBridge` and `MeetsEvict`
+  -- (`bridgeHistoryOk_meets`): it holds if no clause above failed.
+  if model then
+    let bad := c.s + c.n + c.k + c.l + c.a2 + c.a3 + c.a5 + c.top + c.tch + c.tree + c.a6 + c.copy + c.tb
+    if bad == 0 && !(bridgeHistoryOk { M := tr.M } h0 (chs.getD 0 { new := [], adds := [] }) steps.toList) then
+      c := { c.fail "the verdict on the whole trace (bridgeHistoryOk) fails" with s := c.s + 1 }
   return c
 
 def main (args : List String) : IO UInt32 := do
@@ -122,8 +148,8 @@ def main (args : List String) : IO UInt32 := do
       failed := failed + 1
     | .ok tr =>
       let c := checkBridgeTrace model tr old
-      let bad := c.s + c.n + c.k + c.l + c.a2 + c.a3 + c.a5 + c.top + c.tch + c.tree + c.a6 + c.copy
-      IO.println s!"{path}: {c.txs} transactions, {c.news} nodes made, {c.adds} entries, {c.touch} touched; failures: start {c.s}, N {c.n}, K {c.k}, L {c.l}, A2 {c.a2}, A3 {c.a3}, A5 {c.a5}, TOP {c.top}, TOUCH {c.tch}, TREE {c.tree}, A6' {c.a6}, COPY {c.copy}{match c.first with | some m => "; first: " ++ m | none => ""}"
+      let bad := c.s + c.n + c.k + c.l + c.a2 + c.a3 + c.a5 + c.top + c.tch + c.tree + c.a6 + c.copy + c.tb
+      IO.println s!"{path}: {c.txs} transactions, {c.news} nodes made, {c.adds} entries, {c.touch} touched; failures: start {c.s}, N {c.n}, K {c.k}, L {c.l}, A2 {c.a2}, A3 {c.a3}, A5 {c.a5}, TOP {c.top}, TOUCH {c.tch}, TREE {c.tree}, A6' {c.a6}, COPY {c.copy}, TB {c.tb}{match c.first with | some m => "; first: " ++ m | none => ""}"
       if bad != 0 || c.txs == 0 || !old.bad.isEmpty then failed := failed + 1
       total := { total with txs := total.txs + c.txs, news := total.news + c.news,
                             adds := total.adds + c.adds, touch := total.touch + c.touch,
@@ -131,8 +157,9 @@ def main (args : List String) : IO UInt32 := do
                             l := total.l + c.l, a2 := total.a2 + c.a2, a3 := total.a3 + c.a3,
                             a5 := total.a5 + c.a5, top := total.top + c.top,
                             tch := total.tch + c.tch, tree := total.tree + c.tree,
-                            a6 := total.a6 + c.a6, copy := total.copy + c.copy }
-  IO.println s!"total: {paths.length} traces, {total.txs} transactions, {total.news} nodes made, {total.adds} entries, {total.touch} touched; failures: start {total.s}, N {total.n}, K {total.k}, L {total.l}, A2 {total.a2}, A3 {total.a3}, A5 {total.a5}, TOP {total.top}, TOUCH {total.tch}, TREE {total.tree}, A6' {total.a6}, COPY {total.copy}{if model then "" else " (the model's clauses left out)"}"
+                            a6 := total.a6 + c.a6, copy := total.copy + c.copy,
+                            tb := total.tb + c.tb }
+  IO.println s!"total: {paths.length} traces, {total.txs} transactions, {total.news} nodes made, {total.adds} entries, {total.touch} touched; failures: start {total.s}, N {total.n}, K {total.k}, L {total.l}, A2 {total.a2}, A3 {total.a3}, A5 {total.a5}, TOP {total.top}, TOUCH {total.tch}, TREE {total.tree}, A6' {total.a6}, COPY {total.copy}, TB {total.tb}{if model then "" else " (the model's clauses left out)"}"
   if failed == 0 then
     IO.println "BRIDGE OK"
     return 0

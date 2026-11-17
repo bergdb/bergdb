@@ -22,6 +22,19 @@ theorem blive_top (t z : Nat) : blive [(⟨t, .top z⟩ : Entry BVal)] = [z] := 
 theorem blive_rootKey (t y : Nat) : blive [(⟨t, .rootKey y⟩ : Entry BVal)] = [y] := by
   simp [blive]; rfl
 
+/-- The state of `blive`'s fold after a history of entries for top nodes. -/
+theorem blive_tops : ∀ (hst : History BVal), (∀ e ∈ hst, ∃ z, e.val = BVal.top z) →
+    hst.foldl SIS.Check.bstep ([], none, none) =
+      ([], none, hst.getLast?.bind (fun e => (bptrs e.val).head?)) := by
+  intro hst
+  induction hst using List.reverseRecOn with
+  | nil => intro _; rfl
+  | append_singleton l e ih =>
+    intro hall
+    rw [List.foldl_append, ih (fun e' he' => hall e' (List.mem_append_left _ he'))]
+    obtain ⟨z, hz⟩ := hall e (List.mem_append_right _ List.mem_cons_self)
+    simp [SIS.Check.bstep, hz, bptrs]
+
 /-- The model's primordial structure. -/
 theorem p0_eq {h : BHist} {r z lr lz l0 : Nat} (hr : r ≠ 0) (hz : z ≠ 0) (hzr : z ≠ r)
     (hnew : h.c0.new = [⟨0, l0, false⟩, ⟨r, lr, false⟩, ⟨z, lz, false⟩])
