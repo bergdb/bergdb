@@ -96,3 +96,8 @@ open Contract
 #print axioms putKv_put1
 #print axioms writerMeets_put1
 #print axioms runs_meetsTop_put1
+#print axioms Sound.del
+#print axioms putKv_del1_leaf
+#print axioms putKv_del1_leaf_merges
+#print axioms Contract.WriterExample.meets
+#print axioms Contract.WriterExample.meets2

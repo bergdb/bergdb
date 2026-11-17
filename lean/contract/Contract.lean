@@ -51,3 +51,7 @@ import Contract.Proof.WriterTop
 import Contract.Proof.TreeRules
 import Contract.Proof.WriterCascadeDefs
 import Contract.Proof.WriterPut
+import Contract.Proof.NodeAlg3
+import Contract.Proof.TreeRulesDel
+import Contract.Proof.WriterDel
+import Contract.WriterExample
