@@ -12,7 +12,6 @@ Result.
 
 * Solid algorithms. 
   - Well tested. Unit tests (nanotests), f-tests, AI user applications.
-  - Lean model, good coverage, mostly proved.
 
 * Cost proportional to value. 
   - No big writes. No unproportional write size.
@@ -97,8 +96,8 @@ Identity
 What it is
 ----------
 
-An in-process, append-only database for Java, with a Lean model of its
-algorithm ([README.md](../../README.md)). Every transaction is kept in
+An in-process, append-only database for Java
+([README.md](../../README.md)). Every transaction is kept in
 one append-only stream, and the database answers historic queries: a
 read at any available time sees the database as it was at that time,
 with every query that the latest time offers, the secondary indexes
@@ -106,8 +105,9 @@ included. A start is bounded, whatever the size of the database; reclaim
 cuts the front of the stream when a finite retention allows it; and the
 data may be larger than memory.
 
-* Startup, reclaim and eviction (with handles, 009-05) are aligned with
-  the proved Lean model. Since 2026.5 the model also has the key tree
+* Startup, reclaim and eviction (with handles, 009-05) are checked
+  against a model of the algorithm (`lean/`, work in progress, for
+  developers). Since 2026.5 the model also has the key tree
   (024-12): Java's index after each transaction is checked against it by
   traces, merges and theta included, on every gate and on the release
   commit too (Verification).
