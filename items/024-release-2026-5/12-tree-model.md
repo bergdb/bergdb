@@ -589,6 +589,20 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (0). `writerWP_afterDelete_liveTR6`: premises `MergeTailFullRest6OK`, `MergeParamsOK` and R3.
   02:00: prover l4c stopped by 030-01's size rule (about 6,500 lines, about 3,000 of them
   near-copies of the merge tail's prelude); what is left and how: 030-01's log, 02:00.
+  02:18 (prover l4f, `LiveMergeChain.lean`, about 450 lines; `LiveMergeSpace.lean`'s space
+  tail and round generalized, the old lemmas their instances): `MergeTailFullRest6OK`
+  reduced to `MergeTailFullRest7OK`, its case `MergeFullSpaceSegChain` proved: p, not made,
+  a segment root split in space below its segment leaf q, whatever q's room (the cascade;
+  60 on the runs, and the 67 with room again). The split goes to the space tail as
+  `SplitStepOKW` (`SplitStepOK` with the merge start's frame: the path, the nodes below its
+  next id, its tree and links); l4b's segment-root cascade on the merged tree
+  (`writerWP_handleFull_segSpaceChainV_live`) is its instance (`splitStepOKW_segChain`); the
+  cascade may split the space root, so the top after is free. On the runs the proved cases
+  now cover 897 of the 1,134 full-parent merges (79%). Left in `MergeTailFullRest7OK`: the
+  space root split in time with a merge into two nodes (29) or in space (12), a time split's
+  cascade (196: the hole below the chain, R4's general case), a space split below a full
+  inner parent (0), and p made and split in space (0). `writerWP_afterDelete_liveTR7`:
+  premises `MergeTailFullRest7OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

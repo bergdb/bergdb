@@ -1260,3 +1260,29 @@ the halves, no hole); and p made and split in space, in place (0). Before more c
 the five tails' common prelude into one continuation lemma (about 1,000 lines fewer), and
 give the round lemmas one shared derivation of the tail's facts.
 
+2026-11-17, 02:04 to 02:18. Step 3's rest, eighth part, prover l4f (`LiveMergeChain.lean`,
+about 450 lines, about 280 of them l4b's segment-root cascade again; `LiveMergeSpace.lean`
+generalized, about 180 lines added). Order: the coordinator's step 1 (fold the five tails'
+prelude into one continuation lemma) was put after this part, by rule: the cascade's space
+split needs no new tail (the space tail takes the split as a premise), so the fold would
+not shorten it; the fold serves the next new tails (the space root's two cases).
+`MergeTailFullRest6OK` reduced to `MergeTailFullRest7OK`, its case `MergeFullSpaceSegChain`
+proved: p, not made, a segment root split in space below its segment leaf q, whatever q's
+room (60 on the runs with a cascade, 67 without). The split's premise is now
+`SplitStepOKW`: `SplitStepOK` with the merge start's frame (the same path, taken set and
+top; the nodes below its next id but x alike; nothing at or above the next id; a tree whose
+reach includes the start's; each link one of the start's or below its next id), and the
+top after free (a cascade may split the space root). The space tail
+(`writerWP_mergeTail_liveSpaceW`) and its round (`writerWP_mergeTail_liveSpaceRoundW`, the
+split given for q's facts) take it; `writerWP_mergeTail_liveSpaceG` and
+`writerWP_mergeTail_liveSpaceRoundG` are their instances (`splitStepOKW_of`), statements
+unchanged. The instance for the cascade (`splitStepOKW_segChain`): l4b's
+`writerWP_handleFull_segSpaceChain_live` on the merged tree V (p's node its last version;
+`writerWP_handleFull_segSpaceChainV_live`, with the reach after, for the cleanup), its chain
+premises from the path at the merge's start (`rangeG_of_rangeOrder`, `lenG_of_splitAbove`,
+`pathOK_dist`) and its links from `PutInvG`. `writerWP_afterDelete_liveTR7`: premises
+`MergeTailFullRest7OK`, `MergeParamsOK`, R3. Proved cases on the runs: 897 of 1,134 (79%).
+Left: the space root split in time into two nodes (29) or in space (12), the time split's
+cascade (196, R4), a space split below a full inner parent (0; the inner cousin
+`writerWP_handleFull_spaceChain_live` would carry over the same way), and p made and split
+in space (0). No stop rule fired.
