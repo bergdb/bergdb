@@ -1544,3 +1544,11 @@ lines a tail) and the merged tree's facts after `mergeParent` (about 75 lines, t
 the one-node branches of `_liveSplitX`, `_liveFullRoot` and, but for 7 lines,
 `_liveFullTime`): a lemma over the merged tree V as a function (`wNode` of the state given
 by its agreement with N but at the new nodes) would fold the second.
+
+2026-11-17, 02:57. Step 7 with the merge's tail narrowed, prover l4f
+(`LiveMergeAssembly.lean`): `MergeTailRuns9` (`MergeTailFullRest9OK` at the runs'
+contexts), `mergeTailRuns6_of_9`, and `invGetScanOK_merges_noL4f`: TP7, TP10 and TP11
+for Java's parameters, premises `hp`, `hth`, `MergeTailRuns9`, `R3Calls` (believed false
+at unreached states, so the theorem is believed vacuous until R3 is restated),
+`DelCaseLive DelFullTimeHole2M` and `DelCaseLive DelEmptyCascM`: l4b's
+`invGetScanOK_merges_noL4d` with `MergeTailRuns9` for `MergeTailRuns6`.
