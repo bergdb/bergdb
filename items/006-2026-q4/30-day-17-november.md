@@ -67,3 +67,5 @@ Frans's words:
 * 11:42 W5, the public release (029): Frans's answers on the release checklist (11:40) and on the licence of the history ("Historically, the 2013 era using AGPL, this should stay. Everything 2026 should be Apache license."). Agents pre (the commits before the switch, clone /Users/f/fl/bench/2026-11-17/pre/clone) and pbuild (the public build's rules and a test run), Opus at high.
 * 11:46 Frans 11:45: 12 and 13 as recommended (private reporting only, a week, crash on a crafted file = ordinary bug; the name paragraph in). Sent to pre.
 * 11:48 W5: the pre-switch commits landed (ff to 5d529611, BEFORE COMMIT OK 62 s): drafts merged, 013-03 rewritten, bergdb.org, release binaries to GitHub Releases (026's readme, next.md), AGENTS.md, android.sh, night.sh, F1 note, local paths.
+* 11:51 W6, the website bergdb.org (Frans, 11:47 and 11:50): agent site, Fable at high, a local draft in /Users/f/fl/bench/2026-11-17/site/bergdb.github.io; published after the switch.
+* 11:55 W6: the site's draft done (local commit 039c947 in /Users/f/fl/bench/2026-11-17/site/bergdb.github.io): one page, a 404 page, CNAME, README; no scripts, no external resources.
