@@ -1760,3 +1760,15 @@ half on k1's side (`searchLte_twoRoot`), a leaf whose search of k1 names y
 (`halves_leaf_searchEq_ins`): the premises of `descendToHeight_topSeg_innerRoot` but y's
 node and height. Writer shapes for R1: 63 of the 69; left the 6 where q, made, splits in
 space in place below the space root, which then splits in time.
+
+2026-11-17, 03:51 to 03:54. The writer's side of the last 6 of the 69, prover l4g
+(`LiveInPlaceSpaceHole.lean`, about 200 lines). `writerWP_appendKlongs_inPlaceSpaceRootHole`:
+p's copy y put by k1 into q at depth 1, a leaf the transaction made, without room and over
+the split's bound, below the space root q0 (inner, not made): q splits in space in place
+(l4b's `writerWP_handleFullWith_spaceInPlace_up`: q keeps the first half, the second at the
+next id), q0 gets the second's klong without room (or compacting) and splits in time
+(03:30's `writerWP_appendKlongs_rootTime`); the new space root, q0's last version with that
+klong, searches k1 to q (below the divider) or the second half (`searchLte_lookup_addNew`:
+a node whose live klongs are n's and a new one above the klong n's search found), a leaf
+whose search of k1 names y. The premises of `descendToHeight_topSeg_innerRoot` but y's node
+and height. Writer shapes for R1 now cover all 69 thin-copy cascades on the runs.
