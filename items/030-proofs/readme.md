@@ -245,7 +245,8 @@ Files
 * [030-08](08-shape-top.md). The tree's shape and its top in the
   contract (step 4b): TREE as a clause, Java's top nodes and skip
   pointers with the readers' top search (TP24), the reads' theorems over
-  the tree with its top. Started 2026-11-17, 15:09. Status: open.
+  the tree with its top; the step from trace lines to Java's tree reduced
+  to one named premise. Written 2026-11-17, 15:09 to 15:50. Status: done.
 * [030-09](09-trace-java-check.md). Step 4c, the night of 17 November: the
   trace's completeness (ERROR and unknown lines fail, TX 0, 1, 2, ... and
   DONE, every change in NEW, ADD and KN lines; KN from a klong diff;
