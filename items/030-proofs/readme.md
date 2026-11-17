@@ -178,6 +178,13 @@ Files
   guard in the model's writer), so proved below that bound by default;
   10 steps, 9,000 to 22,000 lines, tests first. Written 2026-11-16, 22:04
   to 22:31. Status: open.
+* [030-03](03-r3-made-for-plan.md). The plan for R3, `l4`'s made-root
+  branch: `R3Calls` false as stated by reading; MFI (a made-for link
+  invariant, stratum-wide like MFB, and ValOld, a narrowed premise at the
+  runs) used at the delete's start, SegOld carried to the call and
+  through the merges' loop; no statement change; 6 steps, 3,200 to 7,200
+  lines, one night for three provers; what else is left of `l4` (R4).
+  Written 2026-11-17, 02:36 to 03:15. Status: open.
 
 
 Log
