@@ -90,3 +90,9 @@ open Contract
 #print axioms Sound.timeSplit
 #print axioms Sound.spaceSplit
 #print axioms Sound.spaceSplitRoot
+#print axioms handleFull_time
+#print axioms handleFull_space
+#print axioms appendKlongs_spec
+#print axioms putKv_put1
+#print axioms writerMeets_put1
+#print axioms runs_meetsTop_put1

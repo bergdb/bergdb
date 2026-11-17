@@ -50,3 +50,4 @@ import Contract.Proof.WriterPrim
 import Contract.Proof.WriterTop
 import Contract.Proof.TreeRules
 import Contract.Proof.WriterCascadeDefs
+import Contract.Proof.WriterPut
