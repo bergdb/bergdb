@@ -2264,7 +2264,8 @@ def WmgRestOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v 
     Prop :=
   ∀ (w : MW) (C : List (Key × Nat)) (d : Nat) (q x : NodeId) (c0 : Option Nat) (cx : Nat)
     (pn xn : MNode) (l r : NodeId) (ln rn : MNode) (il ir cL cR : Nat) (isLeft : Bool),
-    PInv p i base s tp none C w → WcrLink i s w → WmgFresh i s w → d ≠ 0 →
+    PInv p i base s tp none C w → OldReach i s w → WcrLink i s w → WmgFresh i s w →
+    d ≠ 0 →
     PathOk i s w d → PathInner w d → w.path[d - 1]? = some (c0, q) →
     w.path[d]? = some (some cx, x) → w.nodes.lookup q = some pn →
     w.nodes.lookup x = some xn → w.nodes.lookup l = some ln → w.nodes.lookup r = some rn →
@@ -2274,7 +2275,7 @@ def WmgRestOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (v 
     WP (wmg_rest { p := p, i := i, view := v } q x pn xn d isLeft l ln il r rn ir)
       { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w')
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w')
 
 theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
@@ -2286,7 +2287,7 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     {pn xn : MNode} (hlq : w.nodes.lookup q = some pn) (hlx : w.nodes.lookup x = some xn) :
     WP (wmg_pick { p := p, i := i, view := v } q x pn xn d cx) { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
   have htq : w.taken.contains q = false := (hpath.lookup (by omega) hq).choose_spec.2
   have htx : w.taken.contains x = false := (hpath.lookup (Nat.le_refl _) hx).choose_spec.2
   have hAq := treeOf_obj_overlay i s hlq htq
@@ -2344,7 +2345,7 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
             __x.2.2.2.1 __x.2.2.2.2.1 __x.2.2.2.2.2)
           { p := p, i := i, view := v } u
           (fun _ w' => w'.outside = [] →
-            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
       intro u ia ca hIu hTu htopu hpu hPu hlku hnu ⟨h1, ⟨y, hy⟩, h2, h3, h4⟩
       have htqu : u.taken.contains q = false := by
         rw [← htq]
@@ -2364,7 +2365,11 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       simp only at hrs hl1 hleaf1
       subst hrs
       refine wput_ok rfl ?_
-      refine hrest u1 C d q x c0 cx pn xn x rs xn rsn ix ia cx ca false hI1
+      have hou1 : OldReach i s u1 := by
+        unfold OldReach at hou ⊢
+        rw [hT1]
+        exact hou
+      refine hrest u1 C d q x c0 cx pn xn x rs xn rsn ix ia cx ca false hI1 hou1
         (hK' u1 (hT1.trans hTu) (htop1.trans htopu)) (hF' u1 (hT1.trans hTu) (hn1.trans hnu))
         hd (hP1 d (hPu d hpath)) (wmg_pathInner_ext hpath hin (hp1.trans hpu)
           (fun z n h => hext1 z n (hlku z n h)))
@@ -2398,11 +2403,16 @@ theorem wmg_pick_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
       rintro ⟨ls, lsn⟩ u1 ⟨hls, hl1, hleaf1, hT1, hI1, hp1, htop1, -, hn1, hext1, hP1⟩
       simp only at hls hl1 hleaf1
       subst hls
+      have hou1 : OldReach i s u1 := by
+        unfold OldReach at ho ⊢
+        rw [hT1]
+        exact ho
       have hleft : WP (wmg_rest { p := p, i := i, view := v } q x pn xn d true ls lsn ib x xn ix)
           { p := p, i := i, view := v } u1
           (fun _ w' => w'.outside = [] →
-            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
-        refine hrest u1 C d q x c0 cx pn xn ls x lsn xn ib ix cb cx true hI1 (hK' u1 hT1 htop1)
+            PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
+        refine hrest u1 C d q x c0 cx pn xn ls x lsn xn ib ix cb cx true hI1 hou1
+          (hK' u1 hT1 htop1)
           (hF' u1 hT1 hn1) hd (hP1 d hpath)
           (wmg_pathInner_ext hpath hin hp1 hext1)
           (by rw [hp1]; exact hq) (by rw [hp1]; exact hx) (hext1 q pn hlq) (hext1 x xn hlx)
@@ -2438,7 +2448,7 @@ theorem merge_spec_of_rest {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
     (hd : d ≠ 0) :
     WP (SIS.Tree.merge x d) { p := p, i := i, view := v } w
       (fun _ w' => w'.outside = [] →
-        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w') := by
+        PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w') := by
   obtain ⟨c0', q, cc, y, nq, e1, e2, -, -⟩ := hpath.links (d - 1) (by omega)
   rw [show d - 1 + 1 = d by omega] at e2
   obtain ⟨c0, hx⟩ := hon

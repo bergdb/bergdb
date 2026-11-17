@@ -46,6 +46,14 @@ def MergeOk (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
       (fun _ w' => w'.outside = [] →
         PInv p i base s tp none C w' ∧ WcrLink i s w' ∧ WmgFresh i s w' ∧ OldReach i s w')
 
+/-- The merge's step from what is left of the merge (`WmgRestOk`, WriterMerge.lean): the
+reduction `merge_spec_of_rest` is the premise `MergeOk` of the merges' loop. -/
+theorem mergeOk_of_rest {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
+    {v : View BVal} {z : NodeId} (hs : Shows p v z s tp) (hb : Books i base s tp)
+    (hrest : WmgRestOk p i base s tp v) : MergeOk p i base s tp v :=
+  fun _ _ _ _ hI ho hK hF hpath hin hon hd =>
+    merge_spec_of_rest hs hb hrest hI ho hK hF hpath hin hon hd
+
 /-! ## 1. The merges' descent to a height -/
 
 /-- Before `descendHeight cv h f x` from node x at `depth` of the key access path: `PInv`;
