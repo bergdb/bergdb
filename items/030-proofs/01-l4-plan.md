@@ -1045,6 +1045,7 @@ at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
 true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1118,3 +1119,17 @@ through `writerWP_appendKlongs_chainGL`: `liveDel_fullSpaceMadeChain_live`
 segment root's (no cascade), every space split of the full leaf is proved, given
 l4a's loop. Left of step 5: the time split's cascade (R4), and a compacting split
 of a last version above h.
+
+
+
+2026-11-17, 01:39 to 01:41. Step 5, the compacting split, prover l4b
+(LiveDelFullDead.lean): a full leaf whose bitmap compacts ("bitmap.dead",
+"bitmap.inplace.dead") splits in time whatever its last version's size; the split
+is in space only on "bitmap.full" (`writerWP_appendDeleteKlong_full_ofP`, the path
+given to the continuation; `compact_time_of_path`). `DelFullTimeGM` widens
+`DelFullTimeM`'s size bound by the compacting path, and the time cases carry over
+unchanged otherwise: `liveDel_fullMadeG_live` (made, in place) and
+`liveDel_fullTimeRoomG_live` (not made, below a parent with room). The full leaf's
+cases are now all proved but one, given l4a's loop: the leaf not made, split in
+time, its parent without room for the copy's klong (the cascade with the copy the
+hole below the chain, R4).

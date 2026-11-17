@@ -458,9 +458,13 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   split in place below an inner parent (`DelFullSpaceMadeChainM`) and the segment root's
   below its segment leaf (`DelFullSegSpaceChainM`), `LiveDelSpaceChain2.lean`:
   `liveDel_fullSpaceMadeChain_live`, `liveDel_fullSegSpaceChain_live`. So every space split
-  of the full leaf is proved (with `MergeLiveOK`, `CollapseLiveOK`). Left of step 5: the time
-  split's cascade (the copy the hole below the chain, R4) and a compacting split
-  ("bitmap.dead") of a last version above h below a parent or at a made root. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  of the full leaf is proved (with `MergeLiveOK`, `CollapseLiveOK`). 01:41 (l4b): a compacting
+  split ("bitmap.dead") is in time whatever the last version's size: `DelFullTimeGM` takes the
+  split's kind from the bitmap's path (`writerWP_appendDeleteKlong_full_ofP`,
+  `compact_time_of_path`), `LiveDelFullDead.lean`: `liveDel_fullMadeG_live` (made, in place)
+  and `liveDel_fullTimeRoomG_live` (not made, the copy the hole, parent with room) widen
+  00:27's and 00:40's. Left of step 5: only the time split's cascade (the leaf not made, its
+  parent without room for the copy's klong: the copy the hole below the chain, R4). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
