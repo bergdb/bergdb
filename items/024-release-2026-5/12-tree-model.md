@@ -459,10 +459,24 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`writerWP_handleFull_spaceChain_live`, `LiveDelSpaceChain.lean`; the chain's premises
   from `PathOK` and `RangeOrder` as the tree's proof takes them): the leaf not made by the
   transaction below an inner parent (`DelFullSpaceChainM`): `liveDel_fullSpaceChain`,
-  `liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (the copy the hole
-  below the chain, R4), the made leaf's and the segment root's space split with a full
-  parent, and a compacting split ("bitmap.dead") of a last version above h below a parent or
-  at a made root. 23:35 (prover l4a, step 3's first part): the merges' loop with
+  `liveDel_fullSpaceChain_live`. 01:37 (l4b): the same cascade for the made leaf's space
+  split in place below an inner parent (`DelFullSpaceMadeChainM`) and the segment root's
+  below its segment leaf (`DelFullSegSpaceChainM`), `LiveDelSpaceChain2.lean`:
+  `liveDel_fullSpaceMadeChain_live`, `liveDel_fullSegSpaceChain_live`. So every space split
+  of the full leaf is proved (with `MergeLiveOK`, `CollapseLiveOK`). 01:41 (l4b): a compacting
+  split ("bitmap.dead") is in time whatever the last version's size: `DelFullTimeGM` takes the
+  split's kind from the bitmap's path (`writerWP_appendDeleteKlong_full_ofP`,
+  `compact_time_of_path`), `LiveDelFullDead.lean`: `liveDel_fullMadeG_live` (made, in place)
+  and `liveDel_fullTimeRoomG_live` (not made, the copy the hole, parent with room) widen
+  00:27's and 00:40's. Left of step 5: only the time split's cascade (the leaf not made, its
+  parent without room for the copy's klong: the copy the hole below the chain, R4). 01:50
+  (l4b): step 7, the assembly: `invGetScanOK_merges_noL4` (`LiveAssembly.lean`), TP7, TP10
+  and TP11 for Java's parameters without `l4`, premises `hp`, `hth` and `l4`'s open narrow
+  pieces at the induction's runs: `MergeTailRuns` (l4c's `MergeTailFullRest3OK`), `R3Calls`
+  (R3 at `afterDelete`'s calls), `DelCaseLive … DelFullTimeCascM` (R4) and `DelCaseLive …
+  DelEmptyCascM` (the stop node without room, l4e's). `liveDelSL_of_pieces` gives `l4L`:
+  `SJ0` from the induction's facts, then the cases (`delMerge_cover`, `delEmptyM_split`,
+  `delEmptyOther_split`, `delFullM_cover`). 23:35 (prover l4a, step 3's first part): the merges' loop with
   the hole (`LiveLoop.lean`): `writerWP_afterDelete_live`, from `DelInvJAE`, the books,
   `HtInv` and `LiveHoleW key g 0` at a call of `afterDelete`, ends with `LiveEdges`, given
   two obligations: `MergeLiveOK` (a merge of a round keeps the hole one height up, or into
@@ -544,6 +558,25 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeTailFullRest3OK`: p not made and the space root (d = 1) or a segment root, q full or
   compacting (the cascade, R4), and p made and split in space (in place).
   `writerWP_afterDelete_liveTR3`: premises `MergeTailFullRest3OK`, `MergeParamsOK` and R3.
+  01:45 (prover l4c): `MergeTailFullRest3OK` reduced to `MergeTailFullRest4OK`, its case
+  `MergeFullTimeRoomG` proved: p, not made, a segment root (q a segment leaf) split in time
+  below q with room, one node or two (`descendToHeight_redirectSeg`: the next round's
+  segment search finds p's copy through q's long klong; `writerWP_mergeTail_liveFullTime2G`).
+  On step 0's runs this is the most frequent full-parent case (454 of 1,134; counts in
+  030-01's log). Left in `MergeTailFullRest4OK`: p not made and the space root (d = 1), a
+  segment root that splits in space, q full or compacting (the cascade, R4), and p made and
+  split in space. `writerWP_afterDelete_liveTR4`: premises `MergeTailFullRest4OK`,
+  `MergeParamsOK` and R3.
+  01:50 (prover l4c): `MergeTailFullRest4OK` reduced to `MergeTailFullRest5OK`, its case
+  `MergeFullSpaceG` proved: p, not made, a segment root split in space below its segment
+  leaf with room (l4b's `writerWP_handleFull_segSpaceRoom_live` on the merged tree,
+  `writerWP_handleFull_segSpaceRoomV_live`); the space tail now takes the split as a premise
+  (`SplitStepOK`, `writerWP_mergeTail_liveSpaceG`), with the inner parent's and the segment
+  leaf's splits its instances. Left in `MergeTailFullRest5OK`: p not made and the space root
+  (d = 1; 93 on the runs), q full or compacting (the cascade, R4; 256 on the runs, 60 of
+  them a segment root's space split, which l4b's cascade lemmas may serve on the merged
+  tree), and p made and split in space (0 on the runs). `writerWP_afterDelete_liveTR5`:
+  premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next

@@ -8,6 +8,8 @@ next round's descent finds the copy (`descendToHeight_redirect`). The rest of
 `MergeTailFullOK` is a narrower premise, `MergeTailFullRestOK`.
 -/
 import SIS.Tree.LiveMergeTail
+import SIS.Tree.LiveUpHole
+import SIS.Tree.LiveHoleLeaf
 
 set_option autoImplicit false
 
@@ -968,10 +970,10 @@ theorem writerWP_mergeTail_liveFullTime (c : Ctx) (base : View BVal) (hvc : View
           h4gh y (by rcases hxlr with h | h <;> rw [h] <;> omega)]
 
 set_option maxHeartbeats 16000000 in
-/-- `writerWP_mergeTail_liveFullTime` for a merge into two nodes: no hole before
-the split (`liveEdges_mergeTwo`), and p's copy is filled as p was, so no hole
-after it. -/
-theorem writerWP_mergeTail_liveFullTime2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+/-- `writerWP_mergeTail_liveFullTime` for a merge into two nodes, q a segment leaf
+or inner: no hole before the split (`liveEdges_mergeTwo`), and p's copy is
+filled as p was (`childOK_grow`), so no hole after it. -/
+theorem writerWP_mergeTail_liveFullTime2G (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (x : NodeId) (d' : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
@@ -996,7 +998,7 @@ theorem writerWP_mergeTail_liveFullTime2 (c : Ctx) (base : View BVal) (hvc : Vie
       ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
     (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
     (q : NodeId) (qn : KNode) (k1 : Nat) (hqP : PathLen N c.i root q d') (hNq : N q = some qn)
-    (hk : (k1, p) ∈ qn.liveAt c.i) (hqleaf : qn.leaf = false) (h3q : w3.nodes.lookup q = some qn)
+    (hk : (k1, p) ∈ qn.liveAt c.i) (h3q : w3.nodes.lookup q = some qn)
     (h3pq : (w3.path[d']?).map (·.2) = some q) (h3pk : w3.path[d' + 1]? = some (some k1, p))
     (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
     (hqroom : qn.size + 2 ≤ c.p.M) (hqdead : ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false)
@@ -1574,10 +1576,8 @@ theorem writerWP_mergeTail_liveFullTime2 (c : Ctx) (base : View BVal) (hvc : Vie
       · by_cases huq : u = q
         · rw [huq, hN10q] at hun
           cases hun
-          refine ⟨hne, ⟨fun h => ?_, fun _ hmg => ?_⟩⟩
-          · rw [KNode.add_leaf, hqleaf] at h; cases h
-          · have := hpOK.2.2 hqleaf hmg
-            rw [hlasteq]; omega
+          refine childOK_grow c.p c.i qn _ pn _ hpOK (KNode.add_leaf _ _ _) rfl ?_
+          rw [hlasteq]; exact hlen10
         · exfalso
           rw [hN10 u huq hup huy] at hun
           exact hfreshV u cc huV ⟨un, hun, hcc⟩
@@ -1589,6 +1589,276 @@ theorem writerWP_mergeTail_liveFullTime2 (c : Ctx) (base : View BVal) (hvc : Vie
         · omega
         · omega
         · exact hfreshT (m1 + 4) (by omega) p cc hp ⟨pn, hpn, h⟩
+
+set_option linter.unusedVariables false in
+set_option maxHeartbeats 16000000 in
+/-- `writerWP_mergeTail_liveFullTime` for a merge into two nodes: no hole before
+the split (`liveEdges_mergeTwo`), and p's copy is filled as p was, so no hole
+after it. -/
+theorem writerWP_mergeTail_liveFullTime2 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (x : NodeId) (d' : Nat) (p : NodeId)
+    (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+    (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
+    (w3 : W) (Hl : NodeId → Prop) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
+    (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR)
+    (hclt : cL < cR) (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hxlr : x = l ∨ x = r) (hln : N l = some ln) (hrn : N r = some rn)
+    (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ c.i)
+    (hch : ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → N z = some zn →
+      ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root) (h3next : w3.next = nx)
+    (h3p : w3.nodes.lookup p = some pn) (h3src : ∀ z, (w3.nodes.lookup z).isSome = true → z < nx)
+    (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
+    (hfreshT : ∀ z, nx ≤ z → ∀ u c', TReach N c.i root u → ¬ TLink N c.i u c' z)
+    (hpleaf : pn.leaf = false) (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hlrange : ∀ cc z, (cc, z) ∈ ln.liveAt c.i → cc < cR)
+    (hllow : ∀ cc z, (cc, z) ∈ ln.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cL < cc) ∧ ((!xn.leaf) = false → cL ≤ cc))
+    (hrrange : ∀ cc z, (cc, z) ∈ rn.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
+    (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
+    (q : NodeId) (qn : KNode) (k1 : Nat) (hqP : PathLen N c.i root q d') (hNq : N q = some qn)
+    (hk : (k1, p) ∈ qn.liveAt c.i) (hqleaf : qn.leaf = false) (h3q : w3.nodes.lookup q = some qn)
+    (h3pq : (w3.path[d']?).map (·.2) = some q) (h3pk : w3.path[d' + 1]? = some (some k1, p))
+    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hqroom : qn.size + 2 ≤ c.p.M) (hqdead : ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false)
+    (hpnew : pn.firstTime ≠ some c.i) (htwo : (mergeM2 c xn ln rn cR nx).isSome = true)
+    (hnB : ¬ MergeParentRoom c pn il cL nx ir cR (mergeM2 c xn ln rn cR nx))
+    (htime : ∀ last, mergeFullLast pn c.i cL nx cR (mergeM2 c xn ln rn cR nx) = some last →
+      pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR nx) ≤ c.p.M ∨
+        last.size ≤ c.p.splitAbove)
+    (hLive : LiveEdgesH c.p N c.i root Hl) (hHl : ∀ y, Hl y → y = x) :
+    WriterWP (mergeTail c x (d' + 2) p pn xn leftSome l ln il r rn ir) c w3
+      (fun res w' => res = 2 ∧ LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey) :=
+  writerWP_mergeTail_liveFullTime2G c base hvc x d' p pn xn leftSome l ln il r rn ir cL cR N root nx w3 Hl hm hMP hT hp hpn hL hLL hR hRL hclt hadj hxlr hln hrn hpt hch hN3 h3top h3next h3p h3src hfree hfreshT hpleaf hll hrl hlrange hllow hrrange hrup q qn k1 hqP hNq hk h3q h3pq h3pk hqwf hqtm hqroom hqdead hpnew htwo hnB htime hLive hHl
+
+set_option maxHeartbeats 4000000 in
+/-- The merges' descent after a time split of a segment root p below its segment
+leaf q with room (R1): the descent at (g, h) from S found x at depth d below p, p
+below q, a segment leaf; on a state T that reads alike above q, where q, still a
+leaf, names y by its klong of the key's previous segment, y of height h + 1, the
+descent at (g, h + 1) ends at y, the segment root. -/
+theorem descendToHeight_redirectSeg (key : Key) (g h : Nat) (c : Ctx) (S S1 T : W) (d : Nat)
+    (hS : descendToHeight key g h c S = .ok (d, S1)) (hd : 2 ≤ d)
+    (p q y : NodeId) (pn qn qn' : KNode) (k1 : Nat)
+    (hpk : S1.path[d - 1]? = some (some k1, p)) (hpn : rdN c S p = some pn) (hpl : pn.leaf = false)
+    (hq : (S1.path[d - 2]?).map (·.2) = some q) (hqn : rdN c S q = some qn) (hql : qn.leaf = true)
+    (hroot : T.top.rootKey = S.top.rootKey)
+    (hagN : ∀ u ∈ (S1.path.map (·.2)).dropLast.dropLast.dropLast, rdN c T u = rdN c S u)
+    (hq' : rdN c T q = some qn') (hq'l : qn'.leaf = true)
+    (hfd' : ∃ fd', qn'.searchEq c.i k1 = some fd' ∧ fd'.y = y)
+    (hRy : ∃ yn, rdN c T y = some yn) (hGy : ∃ g', rdG c T y = some (g', h + 1)) :
+    WriterWP (descendToHeight key g (h + 1)) c T (fun d' T1 => (T1.path[d']?).map (·.2) = some y) := by
+  obtain ⟨root, P0, cv, ext, hdsr, hcv, hdh, hp1, hd1, -⟩ :=
+    writerWP_descendToHeight_rd key g h c S d S1 hS
+  intro d' T1 hT
+  obtain ⟨root', P0', cv', ext', hdsr', hcv', hdh', hp1', hd1', -⟩ :=
+    writerWP_descendToHeight_rd key g (h + 1) c T d' T1 hT
+  rw [hcv] at hcv'
+  cases hcv'
+  obtain ⟨hlast, hpre, hnil⟩ := dsrP_shape (rdN c S) c.i c.p.fuel key g _ root P0 hdsr
+  obtain ⟨B, hB⟩ := List.getLast?_eq_some_iff.mp hlast
+  have hL : S1.path.map (·.2) = B ++ (root :: ext.map (·.2)) := by
+    rw [hp1, List.map_append, hB]; simp
+  have hlenL : S1.path.length = B.length + 1 + ext.length := by
+    have := congrArg List.length hL
+    simp only [List.length_map, List.length_append, List.length_cons] at this
+    omega
+  have hlenP : P0.length = B.length + 1 := by
+    have := congrArg List.length hB
+    simp only [List.length_map, List.length_append, List.length_cons, List.length_nil] at this
+    omega
+  have hdL : d = B.length + ext.length := by
+    have h2 : (P0 ++ ext).length = B.length + 1 + ext.length := by rw [← hp1]; exact hlenL
+    rw [hd1]; omega
+  have hBleaf : ∀ z, B.getLast? = some z → ∃ n, rdN c S z = some n ∧ n.leaf = true := by
+    intro z hz
+    by_cases hg : key.take g = []
+    · have := hnil hg
+      rw [this] at hB
+      simp only [List.map_cons, List.map_nil] at hB
+      have hBn : B = [] := by
+        cases B with
+        | nil => rfl
+        | cons a l => simp at hB
+      rw [hBn] at hz; cases hz
+    · obtain ⟨yl, nl, hyl, hnl, hll⟩ := hpre hg
+      rw [hB, List.dropLast_concat, hz] at hyl
+      cases hyl
+      exact ⟨nl, hnl, hll⟩
+  have hp' : (S1.path[d - 1]?).map (·.2) = some p := by rw [hpk]; rfl
+  have hinner := dhP_inner (rdN c S) (rdG c S) c.i cv h c.p.fuel root ext hdh
+  -- the descent below the segment root is one step: p is the root, q the leaf above
+  have hext1 : ext.length = 1 := by
+    rcases Nat.lt_or_ge ext.length 1 with h0 | h1
+    · exfalso
+      have hz : (S1.path.map (·.2))[d - 1]? = some p := by rw [List.getElem?_map]; exact hp'
+      rw [hL, List.getElem?_append_left (by omega)] at hz
+      have hlastB : B.getLast? = B[B.length - 1]? := List.getLast?_eq_getElem?
+      have : d - 1 = B.length - 1 := by omega
+      rw [this, ← hlastB] at hz
+      obtain ⟨n, hn, hnl⟩ := hBleaf p hz
+      rw [hpn] at hn; cases hn; rw [hpl] at hnl; cases hnl
+    · rcases Nat.lt_or_ge ext.length 2 with h1' | h2
+      · omega
+      · exfalso
+        have hz : (S1.path.map (·.2))[d - 2]? = some q := by rw [List.getElem?_map]; exact hq
+        rw [hL, List.getElem?_append_right (by omega)] at hz
+        have hmem : q ∈ (root :: ext.map (·.2)).dropLast := by
+          rw [List.mem_iff_getElem?]
+          refine ⟨d - 2 - B.length, ?_⟩
+          rw [List.getElem?_dropLast]
+          have hlt : d - 2 - B.length < (root :: ext.map (·.2)).length - 1 := by simp; omega
+          simp only [hlt, ↓reduceIte]
+          exact hz
+        obtain ⟨n, hn, hnl⟩ := hinner q hmem
+        rw [hqn] at hn; cases hn; rw [hql] at hnl; cases hnl
+  have hrootp : root = p := by
+    have hz : (S1.path.map (·.2))[d - 1]? = some p := by rw [List.getElem?_map]; exact hp'
+    rw [hL, List.getElem?_append_right (by omega)] at hz
+    have : d - 1 - B.length = 0 := by omega
+    rw [this] at hz
+    simpa using hz
+  have hBq : B.getLast? = some q := by
+    have hz : (S1.path.map (·.2))[d - 2]? = some q := by rw [List.getElem?_map]; exact hq
+    rw [hL, List.getElem?_append_left (by omega)] at hz
+    rw [List.getLast?_eq_getElem?]
+    have : d - 2 = B.length - 1 := by omega
+    rw [← this]; exact hz
+  -- the nodes above q read alike
+  obtain ⟨e1, he1⟩ : ∃ e1, ext = [e1] := by
+    cases ext with
+    | nil => simp at hext1
+    | cons a l => cases l with
+      | nil => exact ⟨a, rfl⟩
+      | cons _ _ => simp at hext1
+  have hBne : B ≠ [] := by intro h0; rw [h0] at hBq; cases hBq
+  have hdl3 : (S1.path.map (·.2)).dropLast.dropLast.dropLast = B.dropLast := by
+    rw [hL, he1]
+    conv => lhs; rw [← List.dropLast_concat_getLast hBne]
+    simp
+  have hagB : ∀ u ∈ B.dropLast, rdN c T u = rdN c S u := by
+    intro u hu; exact hagN u (by rw [hdl3]; exact hu)
+  have hBlastq : B.getLast hBne = q := by
+    rw [List.getLast?_eq_some_getLast hBne] at hBq; exact Option.some.inj hBq
+  have hinB : ∀ u ∈ B, u ≠ q → u ∈ B.dropLast := by
+    intro u hu huq
+    rw [← List.dropLast_concat_getLast hBne, hBlastq] at hu
+    rcases List.mem_append.mp hu with h | h
+    · exact h
+    · simp at h; exact absurd h huq
+  -- the segment search's last step
+  have hkg : key.take g ≠ [] := by
+    intro hg
+    have := hnil hg
+    rw [this] at hB
+    simp only [List.map_cons, List.map_nil] at hB
+    have hBn : B = [] := by
+      cases B with
+      | nil => rfl
+      | cons a l => simp at hB
+    exact hBne hBn
+  obtain ⟨pre', k', hpre'⟩ : ∃ pre' k', key.take g = pre' ++ [k'] := by
+    rcases List.eq_nil_or_concat (key.take g) with h0 | ⟨pre', k', h'⟩
+    · exact absurd h0 hkg
+    · exact ⟨pre', k', by rw [h', List.concat_eq_append]⟩
+  unfold dsrP at hdsr hdsr'
+  rw [hpre', List.foldl_append] at hdsr hdsr'
+  simp only [List.foldl_cons, List.foldl_nil] at hdsr hdsr'
+  cases hf : pre'.foldl (dsrStep (rdN c S) c.i c.p.fuel) (some (S.top.rootKey, [(none, S.top.rootKey)])) with
+  | none => rw [hf] at hdsr; simp [dsrStep] at hdsr
+  | some acc =>
+    rw [hf] at hdsr
+    obtain ⟨r', P'⟩ := acc
+    obtain ⟨leaf', ext0, n', fd, hl', hRl', hfd, hacc⟩ := dsrStep_some _ c.i c.p.fuel r' P' k' _ hdsr
+    simp only [Prod.mk.injEq] at hacc
+    obtain ⟨hrfd, hP0eq⟩ := hacc
+    have hP'0 := (dsrFold_shape (rdN c S) c.i c.p.fuel pre' _ [(none, S.top.rootKey)] r' P' hf
+      (by simp)).1
+    obtain ⟨_, hlast'⟩ := lteP_leaf _ c.i k' c.p.fuel r' leaf' ext0 hl'
+    have hA := getLast_map_append P' ext0 r' leaf' hP'0 hlast'
+    -- B is the path up to leaf', so leaf' = q
+    have hBeq : B = (P' ++ ext0).map (·.2) := by
+      have h1 : P0.map (·.2) = (P' ++ ext0).map (·.2) ++ [fd.y] := by rw [hP0eq]; simp
+      rw [hB] at h1
+      exact (List.append_inj' h1 rfl).1
+    have hlq : leaf' = q := by
+      rw [← hBeq] at hA; rw [hA] at hBq; exact Option.some.inj hBq
+    have hfdc : fd.c = k1 := by
+      have h1 : S1.path[d - 1]? = some (some fd.c, fd.y) := by
+        rw [hp1, List.getElem?_append_left (by rw [hlenP]; omega), hP0eq,
+          List.getElem?_append_right (by
+            have := congrArg List.length hBeq
+            simp only [List.length_map] at this
+            omega)]
+        have := congrArg List.length hBeq
+        simp only [List.length_map] at this
+        have : d - 1 - (P' ++ ext0).length = 0 := by omega
+        rw [this]; rfl
+      rw [hpk] at h1
+      exact (Option.some.inj (Prod.mk.inj (Option.some.inj h1)).1).symm
+    have hk' : k' = k1 := by rw [← hfdc, KNode.searchEq_c n' c.i k' fd hfd]
+    subst hk'
+    -- at T: the fold over the earlier segments as at S
+    have hfT : pre'.foldl (dsrStep (rdN c T) c.i c.p.fuel) (some (S.top.rootKey, [(none, S.top.rootKey)])) =
+        some (r', P') := by
+      refine dsrFold_congr (rdN c S) (rdN c T) c.i c.p.fuel pre' _ _ r' P' hf ?_ ?_
+      · intro hne
+        obtain ⟨sfx', hsfx', hne'⟩ := dsrFold_prefix _ c.i c.p.fuel pre' _ _ r' P' hf
+        have hsne : sfx'.map (·.2) ++ ext0.map (·.2) ≠ [] := by
+          intro h0
+          have := congrArg List.length h0
+          simp only [List.length_append, List.length_map, List.length_nil] at this
+          exact hne' hne (List.eq_nil_of_length_eq_zero (by omega))
+        have hu : S.top.rootKey ∈ B.dropLast := by
+          have hBf : B = S.top.rootKey :: (sfx'.map (·.2) ++ ext0.map (·.2)) := by
+            rw [hBeq, List.map_append, hsfx']; simp
+          rw [hBf, List.dropLast_cons_of_ne_nil hsne]
+          exact List.mem_cons_self
+        exact hagB _ hu
+      · intro z hz
+        apply hagB
+        rw [hBeq, ← List.map_dropLast]
+        obtain ⟨e, he, rfl⟩ := List.mem_map.mp hz
+        refine List.mem_map.mpr ⟨e, ?_, rfl⟩
+        cases ext0 with
+        | nil => simpa using he
+        | cons a l =>
+          rw [List.dropLast_append_of_ne_nil (by simp)]
+          exact List.mem_append_left _ (List.dropLast_subset _ he)
+    have hlT : lteP (rdN c T) c.i k' c.p.fuel r' = some (q, ext0) := by
+      rw [← hlq]
+      refine lteP_congr_end (rdN c S) (rdN c T) c.i k' c.p.fuel r' leaf' ext0 hl' ?_
+        ⟨qn', by rw [hlq]; exact hq', hq'l⟩
+      intro z hz hzl
+      apply hagB
+      apply hinB z _ (by rw [← hlq]; exact hzl)
+      rw [hBeq, List.map_append]
+      rcases List.mem_cons.mp hz with rfl | hz
+      · exact List.mem_append_left _ (List.mem_of_getLast? hP'0)
+      · exact List.mem_append_right _ hz
+    obtain ⟨fd', hfd'1, hfd'y⟩ := hfd'
+    rw [hroot, hfT] at hdsr'
+    simp only [dsrStep, hlT, hq', hfd'1, Option.some.injEq, Prod.mk.injEq] at hdsr'
+    obtain ⟨hr', hP0'⟩ := hdsr'
+    have hr'' : root' = y := by rw [← hr', hfd'y]
+    subst hr''
+    -- the descent at y stops at once: y's height is h + 1
+    obtain ⟨yn, hyn⟩ := hRy
+    obtain ⟨gy, hgy⟩ := hGy
+    have hfuel : 0 < c.p.fuel := by
+      cases hfu : c.p.fuel with
+      | zero => rw [hfu] at hdh; simp [dhP] at hdh
+      | succ _ => omega
+    obtain ⟨f, hf'⟩ : ∃ f, c.p.fuel = f + 1 := ⟨c.p.fuel - 1, by omega⟩
+    rw [hf'] at hdh'
+    simp only [dhP, hyn, hgy, beq_self_eq_true, ↓reduceIte, Option.some.injEq] at hdh'
+    subst hdh'
+    rw [hd1', hp1', ← hP0']
+    simp [hfd'y]
+
 
 /-! ## At a round: the narrow case of `MergeTailFullOK` -/
 
@@ -1607,13 +1877,34 @@ def MergeFullTimeRoom (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : K
     v3.path[d - 1]? = some (some k1, p) ∧ v3.nodes.lookup q = some qn ∧ qn.leaf = false ∧
     qn.size + 2 ≤ c.p.M ∧ ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false
 
+
+/-- `MergeFullTimeRoom` with q a segment leaf too (p a segment root): the next
+round's segment search finds p's copy (`descendToHeight_redirectSeg`), or the
+merge makes two nodes and no descent is needed. -/
+def MergeFullTimeRoomG (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : KNode)
+    (il cL ir cR : Nat) : Prop :=
+  pn.firstTime ≠ some c.i ∧
+  (∀ last, mergeFullLast pn c.i cL v3.next cR (mergeM2 c xn ln rn cR v3.next) = some last →
+    pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR v3.next) ≤ c.p.M ∨
+      last.size ≤ c.p.splitAbove) ∧
+  2 ≤ d ∧ ∃ (q : NodeId) (qn : KNode) (k1 : Nat), (v3.path[d - 2]?).map (·.2) = some q ∧
+    v3.path[d - 1]? = some (some k1, p) ∧ v3.nodes.lookup q = some qn ∧
+    qn.size + 2 ≤ c.p.M ∧ ∀ y, deadOver c.p (qn.add c.i (.key k1 y)) = false
+
+theorem mergeFullTimeRoomG_of (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : KNode)
+    (il cL ir cR : Nat) (h : MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR) :
+    MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR := by
+  obtain ⟨h1, h2, h3, q, qn, k1, h4, h5, h6, _, h8, h9⟩ := h
+  exact ⟨h1, h2, h3, q, qn, k1, h4, h5, h6, h8, h9⟩
+
 set_option maxHeartbeats 16000000 in
-/-- `MergeTailFullOK` in its case `MergeFullTimeRoom`: at a round with
+/-- `MergeTailFullOK` in its case `MergeFullTimeRoomG` (the two-node merge below a
+segment leaf too): at a round with
 `MergeLiveOK`'s facts, the merge's tail keeps the hole's form one height up, the
 hole p's copy, which the next round's descent finds (`descendToHeight_redirect`:
 the descent reads alike above q, q's klong of the key's path names the copy,
 and the copy has p's height, one above x's). -/
-theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
+theorem writerWP_mergeTail_liveFullTimeRoundG (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
     {B : NodeId} {H : NodeId → Nat → Prop} (hvo : ViewHtOK H B c)
     (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
@@ -1639,11 +1930,11 @@ theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
     (hxlr : x = l ∨ x = r) (hln : wNode c.p base v3 l = some ln) (hrn : wNode c.p base v3 r = some rn)
     (hpre3 : v3.nodes <+: w3.nodes) (hpath3 : w3.path = v3.path)
     (hnB : ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next))
-    (hN : MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR) :
+    (hN : MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR) :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
         (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey)) := by
-  obtain ⟨hpnew, htime, hd2, q, qn, k1, hq3, hk3', hq3lk, hqleaf, hqroom, hqdead⟩ := hN
+  obtain ⟨hpnew, htime, hd2, q, qn, k1, hq3, hk3', hq3lk, hqroom, hqdead⟩ := hN
   obtain ⟨d', rfl⟩ : ∃ d', d = d' + 2 := ⟨d - 2, by omega⟩
   have hd2' : d' + 2 - 2 = d' := by omega
   have hd1' : d' + 2 - 1 = d' + 1 := by omega
@@ -1785,7 +2076,7 @@ theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
       exact h1.1 hxl (by omega)
   cases hm2c : mergeM2 c xn ln rn cR v3.next with
   | some yg =>
-    refine writerWP_mono (writerWP_mergeTail_liveFullTime2 c base hvc x d' p pn xn leftSome l ln il r rn
+    refine writerWP_mono (writerWP_mergeTail_liveFullTime2G c base hvc x d' p pn xn leftSome l ln il r rn
       ir cL cR (wNode c.p base v3) v3.top.rootKey v3.next w3 (HoleAtW key g h c v) hm hMP hI.tree hpR
       hpn hL hLL hR hRL hclt hadj hxlr hln hrn (hI.times p pn hpn)
       (fun cc z zn _ hzn => hI.times z zn hzn) hr3.1 (by rw [hr3.2.1]) hr3.2.2.2.2 h3p
@@ -1795,7 +2086,7 @@ theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
         · exact hI.ids.2.1 z h')
       (fun z hz => ⟨(hfree z hz).1, by rw [hr3.2.2.1]; exact (hfree z hz).2⟩) hfreshT hpleaf hll hrl
       hlrange hllow hrrange (fun k z hk hkc cc z' h' => hrr2 k z hk hkc cc z' h')
-      q qn k1 hqP hNq hkq hqleaf (lookup_of_prefix _ _ hpre3 _ _ hq3lk) (by rw [hpath3]; exact hq3)
+      q qn k1 hqP hNq hkq (lookup_of_prefix _ _ hpre3 _ _ hq3lk) (by rw [hpath3]; exact hq3)
       (by rw [hpath3]; exact hk3') (hI.wf q qn hNq) (hI.times q qn hNq) hqroom hqdead hpnew
       (by rw [hm2c]; rfl) hnB htime hLive hHl) ?_
     rintro res v4 ⟨hres, hLE⟩
@@ -1837,10 +2128,6 @@ theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
     have hpk1 : v1.path[d' + 2 - 1]? = some (some k1, p) := by rw [hd1', ← hp13]; exact hk3'
     have hpnv : rdN c v p = some pn := by rw [← hk03.1]; exact rdN_of_lookup c v3 p pn hplk
     have hqnv : rdN c v q = some qn := by rw [← hk03.1]; exact rdN_of_lookup c v3 q qn hq3lk
-    obtain ⟨cv, fd, hcv, hfdq, hfdc⟩ := descend_qsearch key g h c v v1 (d' + 2) hS (by omega) p q pn qn
-      k1 hpk1 hpnv hpleaf hq1 hqnv hqleaf
-    obtain ⟨fd', hfd', hfdy⟩ := searchLte_add_key qn c.i cv k1 (v3.next + 2) fd (hI.wf q qn hNq)
-      (hI.times q qn hNq) hfdq hfdc
     have hpc1 : PathCached v1 := writerWP_descendToHeight_path_cached key g h c v (d' + 2) v1 hS
     have hgr : GradedL (rdN c v) (rdG c v) (v1.path.map (·.2)) := by
       have := gradedL_of_ht hvo.heights hb1 hi1 hpf1 hpc1
@@ -1919,14 +2206,68 @@ theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
       refine ⟨g1, ?_⟩
       rw [rdG_of_lookup c v4 _ _ hy4, hgy4, ← rdG_of_lookup c w3 p pn h3p, hk3.2.1, hk03.2.1, hG1, hh]
     have hup : HoleAtW key g (h + 1) c v4 (v3.next + 2) := by
-      intro d'' T1 hT1
-      exact descendToHeight_redirect key g h c v v1 v4 (d' + 2) hS (by omega) p q (v3.next + 2) pn qn
-        (qn.add c.i (.key k1 (v3.next + 2))) cv fd' hcv hp1 hpnv hpleaf hq1 hqnv hqleaf
-        (by rw [htop4, hr3.2.1, htop3]) hagN hagG hgr (rdN_of_lookup c v4 q _ hq4)
-        (by rw [KNode.add_leaf]; exact hqleaf) hfd' hfdy ⟨yn, rdN_of_lookup c v4 _ _ hy4⟩ hGy d'' T1 hT1
+      cases hqlf : qn.leaf with
+      | false =>
+        obtain ⟨cv, fd, hcv, hfdq, hfdc⟩ := descend_qsearch key g h c v v1 (d' + 2) hS (by omega) p q pn
+          qn k1 hpk1 hpnv hpleaf hq1 hqnv hqlf
+        obtain ⟨fd', hfd', hfdy⟩ := searchLte_add_key qn c.i cv k1 (v3.next + 2) fd (hI.wf q qn hNq)
+          (hI.times q qn hNq) hfdq hfdc
+        intro d'' T1 hT1
+        exact descendToHeight_redirect key g h c v v1 v4 (d' + 2) hS (by omega) p q (v3.next + 2) pn qn
+          (qn.add c.i (.key k1 (v3.next + 2))) cv fd' hcv hp1 hpnv hpleaf hq1 hqnv hqlf
+          (by rw [htop4, hr3.2.1, htop3]) hagN hagG hgr (rdN_of_lookup c v4 q _ hq4)
+          (by rw [KNode.add_leaf]; exact hqlf) hfd' hfdy ⟨yn, rdN_of_lookup c v4 _ _ hy4⟩ hGy d'' T1 hT1
+      | true =>
+        have hse := KNode.add_key_searchEq qn c.i k1 (v3.next + 2) (hI.wf q qn hNq)
+          (hI.times q qn hNq) k1
+        simp only [beq_self_eq_true, ↓reduceIte] at hse
+        obtain ⟨fdq, hfdq, hfdqy⟩ := Option.map_eq_some_iff.mp hse
+        intro d'' T1 hT1
+        exact descendToHeight_redirectSeg key g h c v v1 v4 (d' + 2) hS (by omega) p q (v3.next + 2) pn
+          qn _ k1 hpk1 hpnv hpleaf hq1 hqnv hqlf (by rw [htop4, hr3.2.1, htop3]) hagN
+          (rdN_of_lookup c v4 q _ hq4) (by rw [KNode.add_leaf]; exact hqlf) ⟨fdq, hfdq, hfdqy⟩
+          ⟨yn, rdN_of_lookup c v4 _ _ hy4⟩ hGy d'' T1 hT1
     refine liveEdgesH_mono c.p _ c.i _ (fun y => y = v3.next + 2) _ (fun y hy => hy ▸ hup) ?_ hL4
     intro u un cc y yn' hu hun hcc hyn _ hyp
     exact ((hL4.2 u un cc y yn' hu hun hcc hyn).1 hyp).1
+
+set_option maxHeartbeats 16000000 in
+/-- `MergeTailFullOK` in its case `MergeFullTimeRoom`: at a round with
+`MergeLiveOK`'s facts, the merge's tail keeps the hole's form one height up, the
+hole p's copy, which the next round's descent finds (`descendToHeight_redirect`:
+the descent reads alike above q, q's klong of the key's path names the copy,
+and the copy has p's height, one above x's). -/
+theorem writerWP_mergeTail_liveFullTimeRound (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
+    {B : NodeId} {H : NodeId → Nat → Prop} (hvo : ViewHtOK H B c)
+    (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (x p : NodeId)
+    (pn xn : KNode)
+    (hS : descendToHeight key g h c v = .ok (d, v1)) (hd : 0 < d)
+    (hr13 : ReadsAs c.p base v1 v3) (hk13 : ObsKept c v1 v3) (hp13 : v3.path = v1.path)
+    (hLH : LiveHoleW key g h c base v)
+    (hJ3 : DelInvJ c base w0 k0 F KO B B v3) (hP3 : PathOK c v3 d X K Nn)
+    (hb1 : Book B c v1) (hi1 : HtInv H B c v1) (hpf1 : PathFreeTo v1 v1.path.length)
+    (hx : (v3.path[d]?).map (·.2) = some x) (hpath : (v3.path[d - 1]?).map (·.2) = some p)
+    (hplk : v3.nodes.lookup p = some pn) (hpleaf : pn.leaf = false)
+    (hxlk : v3.nodes.lookup x = some xn)
+    (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode)
+    (ir cL cR : Nat) (w3 : W) (hr3 : ReadsAs c.p base v3 w3)
+    (h3p : w3.nodes.lookup p = some pn) (hk3 : ObsKept c v3 w3)
+    (hsrc3 : ∀ z, (w3.nodes.lookup z).isSome = true → (v3.nodes.lookup z).isSome = true ∨
+      (c.view z).isSome = true)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR) (hclt : cL < cR)
+    (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hxlr : x = l ∨ x = r) (hln : wNode c.p base v3 l = some ln) (hrn : wNode c.p base v3 r = some rn)
+    (hpre3 : v3.nodes <+: w3.nodes) (hpath3 : w3.path = v3.path)
+    (hnB : ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next))
+    (hN : MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR) :
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
+        (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey)) :=
+  writerWP_mergeTail_liveFullTimeRoundG c base hvc hm hMP hvo key g h v v1 v3 d F w0 k0 KO X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hb1 hi1 hpf1 hx hpath hplk hpleaf hxlk leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB (mergeFullTimeRoomG_of c v3 d p pn xn ln rn il cL ir cR hN)
 
 /-! ## What is left of `MergeTailFullOK` -/
 

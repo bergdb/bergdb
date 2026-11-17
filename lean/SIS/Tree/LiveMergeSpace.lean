@@ -8,6 +8,7 @@ merge and no descent is needed. The rest is `MergeTailFullRest3OK`.
 -/
 import SIS.Tree.LiveMergeMade
 import SIS.Tree.LiveDelSpace
+import SIS.Tree.LiveDelSegSpace
 
 set_option autoImplicit false
 
@@ -208,6 +209,268 @@ theorem writerWP_handleFull_spaceRoomV_live (d' : Nat) (x q : NodeId) (n qn : KN
       exact ⟨h1, h2⟩
   exact key _ rfl rfl rfl
 
+set_option maxHeartbeats 4000000 in
+/-- l4b's `writerWP_handleFull_segSpaceRoom_live` (LiveDelSegSpace.lean) on the tree
+with x's node replaced by its last version (the merge's parent's), and the
+nodes reached after: x's halves, their new root, or nodes reached before, not x. -/
+theorem writerWP_handleFull_segSpaceRoomV_live (d' : Nat) (x q : NodeId) (n qn : KNode) (k1 : Nat)
+    (last : KNode) (c : Ctx) (base : View BVal) (w : W)
+    (hlk : w.nodes.lookup x = some n)
+    (hlq : w.nodes.lookup q = some qn) (hqt : w.taken.contains q = false) (hqx : q ≠ x)
+    (hxn : x < w.next) (hqn : q < w.next)
+    (hfirst : n.firstTime ≠ some c.i) (hql : qn.leaf = true)
+    (hsplit : c.p.splitAbove < last.size)
+    (hpq : (w.path[d']?).map (·.2) = some q) (hpk : w.path[d' + 1]? = some (some k1, x))
+    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hroom : qn.size + 2 ≤ c.p.M)
+    (hdead : deadOver c.p ([(k1, w.next + 2 + 2)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false)
+    (hk : (k1, x) ∈ qn.liveAt c.i)
+    (hT : TreeOK (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey)
+    (hqR : TReach (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey q)
+    (hfree : ∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false)
+    (hlinks : ∀ u c' z, TReach (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey u →
+      TLink (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i u c' z → z < w.next)
+    (hsc : 0 < (halves n.leaf c.i last []).2.2)
+    (hf : ∀ c' z, (c', z) ∈ (halves n.leaf c.i last []).1.liveAt c.i →
+      c' < (halves n.leaf c.i last []).2.2 ∧ (c', z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i)
+    (hs : ∀ c' z, (c', z) ∈ (halves n.leaf c.i last []).2.1.liveAt c.i →
+      ∃ c0, (halves n.leaf c.i last []).2.2 ≤ c0 ∧
+        c' = splitLocalCv n.leaf (halves n.leaf c.i last []).2.2 c0 ∧
+        (c0, z) ∈ (⟨n.leaf, last.ks⟩ : KNode).liveAt c.i)
+    (hfH : HalfOK c.p c.i (halves n.leaf c.i last []).1)
+    (hsH : HalfOK c.p c.i (halves n.leaf c.i last []).2.1)
+    (hL : LiveEdges c.p (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey) :
+    WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) x [] last false) c w
+      (fun _ w' => LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey ∧
+        (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+          (TReach (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z ∨ w.next ≤ z) ∧ z ≠ x) ∧
+        w'.top = w.top ∧ w'.taken = w.taken) := by
+  have hqy1 : q ≠ w.next := by omega
+  have hqy2 : q ≠ w.next + 2 := by omega
+  have hqy3 : q ≠ w.next + 2 + 2 := by omega
+  have hxy1 : x ≠ w.next := by omega
+  have hxy2 : x ≠ w.next + 2 := by omega
+  have hxy3 : x ≠ w.next + 2 + 2 := by omega
+  obtain ⟨hfl, hsl⟩ := halves_leaf_eq n.leaf c.i last []
+  apply writerWP_handleFullWith_segSpace_upL d' x q n qn last k1 [] c w hlk hlq hql hfirst hsplit hpq hpk
+  intro w1 h1n h1t h1top h1path h1next h1vals
+  generalize hout : halves n.leaf c.i last [] = out at hsc hf hs hfH hsH hfl hsl h1n
+  have hlq1 : w1.nodes.lookup q = some qn := by
+    rw [h1n]; simp only [hqy1, hqy2, hqy3, ↓reduceIte]; exact hlq
+  refine writerWP_mono (writerWP_appendKlongs_addKeys d' q qn _ c w1 hlq1 (by simp; omega) hdead) ?_
+  intro _ w2 hw2
+  have h2n : w2.nodes = upsert w1.nodes q ([(k1, w.next + 2 + 2)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) := by rw [hw2]
+  have h2t : w2.taken = w1.taken := by rw [hw2]
+  have h2top : w2.top = w1.top := by rw [hw2]
+  have hlx2 : w2.nodes.lookup x = some n := by
+    rw [h2n, lookup_upsert, if_neg (Ne.symm hqx), h1n]
+    simp only [hxy1, hxy2, hxy3, ↓reduceIte]; exact hlk
+  rw [writerWP_bind, writerWP_getNode_known x n c w2 hlx2]
+  simp only [putNode, writerWP_modify]
+  have key : ∀ w3 : W, w3.nodes = upsert w2.nodes x (n.toPrev (c.i - 1)) → w3.taken = w2.taken →
+      w3.top = w2.top → LiveEdges c.p (wNode c.p base w3) c.i w3.top.rootKey ∧
+        (∀ z, TReach (wNode c.p base w3) c.i w3.top.rootKey z →
+          (TReach (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey z ∨ w.next ≤ z) ∧ z ≠ x) ∧
+        w3.top = w.top ∧ w3.taken = w.taken := by
+    intro w3 h3n h3t0 h3top0
+    have h3t : w3.taken = w.taken := by rw [h3t0, h2t, h1t]
+    have h3top : w3.top = w.top := by rw [h3top0, h2top, h1top]
+    have hwn : ∀ z, w3.taken.contains z = w.taken.contains z := by intro z; rw [h3t]
+    have hlook : ∀ z, z ≠ x → z ≠ q → z ≠ w.next → z ≠ w.next + 2 → z ≠ w.next + 2 + 2 →
+        w3.nodes.lookup z = w.nodes.lookup z := by
+      intro z hzx hzq hz1 hz2 hz3
+      rw [h3n, lookup_upsert, if_neg hzx, h2n, lookup_upsert, if_neg hzq, h1n]
+      simp only [hz1, hz2, hz3, ↓reduceIte]
+    have hqn' : (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) q = some qn := by
+      rw [updN_ne _ _ _ _ hqx]
+      simp only [wNode, hqt, Bool.false_eq_true, ↓reduceIte, hlq]
+    have hxn' : (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) x = some ⟨n.leaf, last.ks⟩ := updN_self _ _ _
+    have hN2q : wNode c.p base w3 q = some ([(k1, w.next + 2 + 2)].foldl
+        (fun n (cv, y) => n.add c.i (.key cv y)) qn) := by
+      have hl : w3.nodes.lookup q = some ([(k1, w.next + 2 + 2)].foldl
+          (fun n (cv, y) => n.add c.i (.key cv y)) qn) := by
+        rw [h3n, lookup_upsert, if_neg hqx, h2n, lookup_upsert]; simp
+      have ht : w3.taken.contains q = false := by rw [hwn]; exact hqt
+      simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
+    have hN2F : wNode c.p base w3 w.next = some out.1 := by
+      have hl : w3.nodes.lookup w.next = some out.1 := by
+        rw [h3n, lookup_upsert, if_neg (Ne.symm hxy1), h2n, lookup_upsert, if_neg (Ne.symm hqy1), h1n]
+        simp
+      have ht : w3.taken.contains w.next = false := by rw [hwn]; exact (hfree _ (Nat.le_refl _)).2
+      simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
+    have hN2S : wNode c.p base w3 (w.next + 2) = some out.2.1 := by
+      have hl : w3.nodes.lookup (w.next + 2) = some out.2.1 := by
+        rw [h3n, lookup_upsert, if_neg (Ne.symm hxy2), h2n, lookup_upsert, if_neg (Ne.symm hqy2), h1n]
+        simp
+      have ht : w3.taken.contains (w.next + 2) = false := by rw [hwn]; exact (hfree _ (by omega)).2
+      simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
+    have hN2R : wNode c.p base w3 (w.next + 2 + 2) = some ⟨false, [.time c.i, .key 0 w.next,
+        .key out.2.2 (w.next + 2)]⟩ := by
+      have hl : w3.nodes.lookup (w.next + 2 + 2) = some ⟨false, [.time c.i, .key 0 w.next,
+          .key out.2.2 (w.next + 2)]⟩ := by
+        rw [h3n, lookup_upsert, if_neg (Ne.symm hxy3), h2n, lookup_upsert, if_neg (Ne.symm hqy3), h1n]
+        simp [show w.next + 2 + 2 ≠ w.next by omega]
+      have ht : w3.taken.contains (w.next + 2 + 2) = false := by rw [hwn]; exact (hfree _ (by omega)).2
+      simp only [wNode, ht, Bool.false_eq_true, ↓reduceIte, hl]
+    have hother : ∀ z, z ≠ x → z ≠ q → z ≠ w.next → z ≠ w.next + 2 → z ≠ w.next + 2 + 2 →
+        wNode c.p base w3 z = (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) z := by
+      intro z h1 h2 h3 h4 h5
+      rw [updN_ne _ _ _ _ h1]
+      simp only [wNode, h3t, hlook z h1 h2 h3 h4 h5]
+    have hat := KNode.add_times qn c.i (.key k1 (w.next + 2 + 2)) (fun s h => by cases h) hqtm
+    have hq2k : (k1, w.next + 2 + 2) ∈ ([(k1, w.next + 2 + 2)].foldl
+        (fun n (cv, y) => n.add c.i (.key cv y)) qn).liveAt c.i := by
+      simp only [List.foldl_cons, List.foldl_nil]
+      rw [KNode.liveAt_of_times _ c.i hat]
+      apply bk_mem_of_lookup
+      rw [KNode.add_key_live_lookup_of_wf qn c.i k1 k1 (w.next + 2 + 2) hqwf]
+      simp
+    have hq2 : ∀ c' z, (c', z) ∈ ([(k1, w.next + 2 + 2)].foldl
+        (fun n (cv, y) => n.add c.i (.key cv y)) qn).liveAt c.i →
+        (c' = k1 ∧ z = w.next + 2 + 2) ∨ (c' ≠ k1 ∧ (c', z) ∈ qn.liveAt c.i) := by
+      intro c' z h
+      simp only [List.foldl_cons, List.foldl_nil] at h
+      exact KNode.add_key_liveAt_mem _ c.i _ _ hqwf hqtm c' z h
+    have hnd : ([(0, w.next), (out.2.2, w.next + 2)].map Prod.fst).Nodup := by
+      simp only [List.map_cons, List.map_nil, List.nodup_cons, List.mem_cons,
+        List.not_mem_nil, or_false, List.nodup_nil, and_true, not_false_eq_true]
+      omega
+    have hrn : ∀ c' z, (c', z) ∈ (⟨false, [.time c.i, .key 0 w.next, .key out.2.2 (w.next + 2)]⟩ :
+        KNode).liveAt c.i → (c' = 0 ∧ z = w.next) ∨ (c' = out.2.2 ∧ z = w.next + 2) := by
+      intro c' z h
+      have h' := (mrg_newKlongs_liveAt_iff false c.i [(0, w.next), (out.2.2, w.next + 2)] hnd c'
+        z).mp h
+      simp only [List.mem_cons, Prod.mk.injEq, List.not_mem_nil, or_false] at h'
+      exact h'
+    have hq2l : ([(k1, w.next + 2 + 2)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) qn).leaf =
+        qn.leaf := by
+      simp only [List.foldl_cons, List.foldl_nil, KNode.add_leaf]
+    have hfreshV : ∀ z, (z = w.next ∨ z = w.next + 2 ∨ z = w.next + 2 + 2) →
+        updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩ z = none ∧
+          ∀ u c', TReach (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i w.top.rootKey u →
+            ¬ TLink (updN (wNode c.p base w) x ⟨n.leaf, last.ks⟩) c.i u c' z := by
+      intro z hz
+      have hzn : w.next ≤ z := by rcases hz with hz | hz | hz <;> omega
+      refine ⟨by rw [updN_ne _ _ _ _ (by omega)]; exact (hfree z hzn).1, fun u c' hu hl => ?_⟩
+      have := hlinks u c' z hu hl
+      omega
+    have hR := (treeOK_segSpaceStep _ (wNode c.p base w3)
+      c.i w.top.rootKey q x w.next (w.next + 2) (w.next + 2 + 2) qn ⟨n.leaf, last.ks⟩ out.1 out.2.1
+      ⟨false, [.time c.i, .key 0 w.next, .key out.2.2 (w.next + 2)]⟩
+      ([(k1, w.next + 2 + 2)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) qn)
+      k1 out.2.2 (splitLocalCv n.leaf out.2.2) hsc hT hqR hqn' hk hxn' hN2q hq2k hq2 hN2R hrn
+      hN2F hN2S hf hs hother hfreshV (by omega) (by omega) (by omega)).2
+    have hgen := liveEdgesX_segSpaceStep c.p (fun _ => False) _ (wNode c.p base w3)
+      c.i w.top.rootKey q x w.next (w.next + 2) (w.next + 2 + 2) qn ⟨n.leaf, last.ks⟩ out.1 out.2.1
+      ⟨false, [.time c.i, .key 0 w.next, .key out.2.2 (w.next + 2)]⟩
+      ([(k1, w.next + 2 + 2)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) qn)
+      k1 out.2.2 (splitLocalCv n.leaf out.2.2) hsc hT hqR hqn' hk hxn' hN2q hq2k hq2 hN2R hrn
+      hN2F hN2S hf hs hother
+      hfreshV
+      (by omega) (by omega) (by omega) (fun h => h) (fun h => h) (fun h => h) hfl hsl hfH hsH
+      (newRoot_liveAt_two c.i w.next (w.next + 2) out.2.2 hsc) (by rw [hq2l]; exact hql) hq2l
+      (addKeys_liveAt_length c.i [(k1, w.next + 2 + 2)] qn hqwf hqtm)
+      ((liveEdgesX_false_iff _ _ _ _).mpr hL)
+    refine ⟨?_, ?_, h3top, h3t⟩
+    · rw [h3top]
+      exact (liveEdgesX_false_iff _ _ _ _).mp hgen
+    · rw [h3top]
+      intro z hz
+      obtain ⟨h1, h2⟩ := hR z hz
+      refine ⟨?_, h2⟩
+      rcases h1 with h | h | h | h
+      · exact Or.inl h
+      · exact Or.inr (by omega)
+      · exact Or.inr (by omega)
+      · exact Or.inr (by omega)
+  exact key _ rfl rfl rfl
+
+/-- The divider of the merge's full parent's halves is positive. -/
+theorem halves_mergeLast_pos (c : Ctx) (hMP : MergeParamsOK c.p) (pn last : KNode)
+    (pairs : List (Nat × NodeId)) (hleaf : last.leaf = pn.leaf) (hks : last.ks = newKlongs c.i pairs)
+    (hs : CvSorted pairs) (hsp : c.p.splitAbove < last.size) :
+    0 < (halves pn.leaf c.i last []).2.2 := by
+  have hxe : (⟨pn.leaf, last.ks⟩ : KNode) = ⟨pn.leaf, newKlongs c.i pairs⟩ := by rw [hks]
+  have hlasteq : (⟨pn.leaf, newKlongs c.i pairs⟩ : KNode) = last := by
+    rw [← hks]
+    cases last with
+    | mk lf ks => simp only at hleaf; rw [hleaf]
+  have hlv : (⟨pn.leaf, last.ks⟩ : KNode).lastVersion c.i = last := by
+    rw [hxe, KNode.lastVersion_newKlongs_sorted _ _ _ hs, hlasteq]
+  have h2 : 2 ≤ (⟨pn.leaf, last.ks⟩ : KNode).live.length := by
+    rw [hxe, KNode.live_newKlongs_sorted _ _ _ hs]
+    have : last.size = pairs.length + 1 := by simp [KNode.size, hks, newKlongs]
+    have := hMP.2.2.1; have := hMP.1
+    omega
+  have ht : ∀ s, Klong.time s ∈ (⟨pn.leaf, last.ks⟩ : KNode).ks → s ≤ c.i := by
+    show ∀ s, Klong.time s ∈ last.ks → s ≤ c.i
+    rw [hks]; exact newKlongs_times c.i pairs
+  obtain ⟨r, hdiv, hsc, _⟩ := halves_facts_nil c.i (⟨pn.leaf, last.ks⟩ : KNode) h2 ht
+  rw [hlv] at hdiv
+  rw [hdiv]; exact hsc
+
+/-- The split of the merge's full parent p (in space, not in place) on the merged
+tree, as the merge's tail asks it: from the live counts of the tree with p's
+node replaced by its last version, they hold after, and the nodes reached after
+are new or were reached before, not p. -/
+def SplitStepOK (c : Ctx) (base : View BVal) (d' : Nat) (p q : NodeId) (pn qn : KNode) (k1 : Nat) :
+    Prop :=
+  ∀ (w : W) (last : KNode), w.nodes.lookup p = some pn → w.nodes.lookup q = some qn →
+    w.taken.contains q = false → p < w.next → q < w.next →
+    (w.path[d']?).map (·.2) = some q → w.path[d' + 1]? = some (some k1, p) →
+    c.p.splitAbove < last.size → 0 < (halves pn.leaf c.i last []).2.2 →
+    (∀ c' z, (c', z) ∈ (halves pn.leaf c.i last []).1.liveAt c.i →
+      c' < (halves pn.leaf c.i last []).2.2 ∧ (c', z) ∈ (⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i) →
+    (∀ c' z, (c', z) ∈ (halves pn.leaf c.i last []).2.1.liveAt c.i →
+      ∃ c0, (halves pn.leaf c.i last []).2.2 ≤ c0 ∧
+        c' = splitLocalCv pn.leaf (halves pn.leaf c.i last []).2.2 c0 ∧
+        (c0, z) ∈ (⟨pn.leaf, last.ks⟩ : KNode).liveAt c.i) →
+    HalfOK c.p c.i (halves pn.leaf c.i last []).1 → HalfOK c.p c.i (halves pn.leaf c.i last []).2.1 →
+    TreeOK (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey → TReach (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey q →
+    (∀ z, w.next ≤ z → wNode c.p base w z = none ∧ w.taken.contains z = false) →
+    (∀ u c' z, TReach (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey u → TLink (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i u c' z → z < w.next) →
+    LiveEdges c.p (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey →
+    WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) p [] last false) c w
+      (fun _ w' => LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey ∧
+        (∀ z, TReach (wNode c.p base w') c.i w'.top.rootKey z →
+          (TReach (updN (wNode c.p base w) p ⟨pn.leaf, last.ks⟩) c.i w.top.rootKey z ∨ w.next ≤ z) ∧ z ≠ p) ∧
+        w'.top = w.top ∧ w'.taken = w.taken)
+
+/-- `SplitStepOK` below an inner parent with room for the halves' klongs. -/
+theorem splitStepOK_spaceRoom (c : Ctx) (base : View BVal) (d' : Nat) (p q : NodeId) (pn qn : KNode)
+    (k1 : Nat) (hpnew : pn.firstTime ≠ some c.i) (hql : qn.leaf = false) (hqp : q ≠ p)
+    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hroom : qn.size + 3 ≤ c.p.M)
+    (hdead : ∀ y1 y2 sc, deadOver c.p ([(k1, y1), (sc, y2)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false)
+    (hk : (k1, p) ∈ qn.liveAt c.i) : SplitStepOK c base d' p q pn qn k1 := by
+  intro w last hlk hlq hqt hpn hqn hpq hpk hsp _ hf hs hfH hsH hT hqR hfree hlinks hL
+  refine writerWP_mono (writerWP_handleFull_spaceRoomV_live d' p q pn qn k1 last c base w hlk hlq hqt
+    hqp hpn hqn hpnew hql hsp hpq hpk hqwf hqtm hroom (hdead _ _ _) hk hT hqR
+    (hfree _ (Nat.le_refl _)).1 (hfree _ (by omega)).1 (hfree _ (Nat.le_refl _)).2
+    (hfree _ (by omega)).2 hlinks hf hs hfH hsH hL) ?_
+  rintro _ w' ⟨h1, h2, h3, h4⟩
+  refine ⟨h1, fun z hz => ⟨?_, (h2 z hz).2⟩, h3, h4⟩
+  rcases (h2 z hz).1 with h | h | h
+  · exact Or.inl h
+  · exact Or.inr (by omega)
+  · exact Or.inr (by omega)
+
+/-- `SplitStepOK` below a segment leaf with room for one klong: the halves under a
+new segment root (l4b's `writerWP_handleFull_segSpaceRoom_live` on the merged
+tree). -/
+theorem splitStepOK_segSpace (c : Ctx) (base : View BVal) (d' : Nat) (p q : NodeId) (pn qn : KNode)
+    (k1 : Nat) (hpnew : pn.firstTime ≠ some c.i) (hql : qn.leaf = true) (hqp : q ≠ p)
+    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hroom : qn.size + 2 ≤ c.p.M)
+    (hdead : ∀ y, deadOver c.p ([(k1, y)].foldl (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false)
+    (hk : (k1, p) ∈ qn.liveAt c.i) : SplitStepOK c base d' p q pn qn k1 :=
+  fun w last hlk hlq hqt hpn hqn hpq hpk hsp hsc hf hs hfH hsH hT hqR hfree hlinks hL =>
+    writerWP_handleFull_segSpaceRoomV_live d' p q pn qn k1 last c base w hlk hlq hqt hqp hpn hqn hpnew
+      hql hsp hpq hpk hqwf hqtm hroom (hdead _) hk hT hqR hfree hlinks hsc hf hs hfH hsH hL
+
 set_option maxHeartbeats 16000000 in
 /-- A merge whose parent p, not made by the transaction, goes `full` and splits
 in space (its last version has more than `splitAbove` klongs), below its inner
@@ -217,7 +480,7 @@ Into one node p's last version is filled though it lost a klong
 (`liveEdges_mergeTwo`); the split keeps the live counts
 (`writerWP_handleFull_spaceRoomV_live`); p, l and r are left behind, so the
 cleanup changes nothing reached. -/
-theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+theorem writerWP_mergeTail_liveSpaceG (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
     (x : NodeId) (d' : Nat) (p : NodeId)
     (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
     (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
@@ -242,13 +505,9 @@ theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoh
       ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
     (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
     (q : NodeId) (qn : KNode) (k1 : Nat) (hqP : PathLen N c.i root q d') (hNq : N q = some qn)
-    (hk : (k1, p) ∈ qn.liveAt c.i) (hqleaf : qn.leaf = false) (h3q : w3.nodes.lookup q = some qn)
+    (hk : (k1, p) ∈ qn.liveAt c.i) (h3q : w3.nodes.lookup q = some qn)
     (h3pq : (w3.path[d']?).map (·.2) = some q) (h3pk : w3.path[d' + 1]? = some (some k1, p))
-    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
-    (hqroom3 : qn.size + 3 ≤ c.p.M)
-    (hqdead2 : ∀ y1 y2 sc, deadOver c.p ([(k1, y1), (sc, y2)].foldl
-      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false)
-    (hpnew : pn.firstTime ≠ some c.i)
+    (hsplit : SplitStepOK c base d' p q pn qn k1)
     (hnB : ¬ MergeParentRoom c pn il cL nx ir cR (mergeM2 c xn ln rn cR nx))
     (hspace : ∀ last, mergeFullLast pn c.i cL nx cR (mergeM2 c xn ln rn cR nx) = some last →
       ¬ (pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR nx) ≤ c.p.M) ∧
@@ -611,31 +870,29 @@ theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoh
       unfold handleFull
       show WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) p [] last false)
         c ({ w6 with trail := s7 :: w6.trail } : W) _
-      refine writerWP_mono (writerWP_handleFull_spaceRoomV_live d' p q pn qn k1 last c base
-        ({ w6 with trail := s7 :: w6.trail } : W) hw6p
-        hw6q (by show w6.taken.contains q = false; rw [h6taken]; exact hqT) hqp
-        (by show p < w6.next; omega) (by show q < w6.next; omega) hpnew hqleaf hsp
+      refine writerWP_mono (hsplit ({ w6 with trail := s7 :: w6.trail } : W) last hw6p hw6q
+        (by show w6.taken.contains q = false; rw [h6taken]; exact hqT)
+        (by show p < w6.next; omega) (by show q < w6.next; omega)
         (by show (w6.path[d']?).map (·.2) = some q; rw [h6path]; exact h3pq)
-        (by show w6.path[d' + 1]? = some (some k1, p); rw [h6path]; exact h3pk)
-        hqwf hqtm hqroom3 (hqdead2 _ _ _) hk
+        (by show w6.path[d' + 1]? = some (some k1, p); rw [h6path]; exact h3pk) hsp
+        (halves_mergeLast_pos c hMP pn last pairs hleafl hks hsrt hsp) hfH1 hsH1 hfH hsH
         (by show TreeOK _ c.i w6.top.rootKey; rw [h6top']; exact hTV)
         (by show TReach _ c.i w6.top.rootKey q; rw [h6top']; exact hqRV)
-        (by show wNode c.p base w6 w6.next = none
-            rw [hnx6, hw6N (m1 + 2) (by omega)]; exact (hfree _ (by omega)).1)
-        (by show wNode c.p base w6 (w6.next + 2) = none
-            rw [hnx6, hw6N (m1 + 2 + 2) (by omega)]; exact (hfree _ (by omega)).1)
-        (by show w6.taken.contains w6.next = false; rw [hnx6, h6taken]; exact (hfree _ (by omega)).2)
-        (by show w6.taken.contains (w6.next + 2) = false
-            rw [hnx6, h6taken]; exact (hfree _ (by omega)).2)
+        (by
+          show ∀ z, w6.next ≤ z → wNode c.p base w6 z = none ∧ w6.taken.contains z = false
+          intro z hz
+          rw [hnx6] at hz
+          rw [hw6N (z) (by omega), h6taken]
+          exact ⟨(hfree _ (by omega)).1, (hfree _ (by omega)).2⟩)
         (by show ∀ u c' z, TReach _ c.i w6.top.rootKey u → TLink _ c.i u c' z → z < w6.next
             rw [h6top', hnx6]; exact hlinksV)
-        hfH1 hsH1 hfH hsH (by show LiveEdges c.p _ c.i w6.top.rootKey; rw [h6top']; exact hLE)) ?_
+        (by show LiveEdges c.p _ c.i w6.top.rootKey; rw [h6top']; exact hLE)) ?_
       rintro _ w8 ⟨hL8, hR8, h8top, h8t⟩
       change w8.top = w6.top at h8top
       change w8.taken = w6.taken at h8t
       change ∀ z, TReach (wNode c.p base w8) c.i w8.top.rootKey z →
         (TReach (updN (wNode c.p base w6) p ⟨pn.leaf, last.ks⟩) c.i w6.top.rootKey z ∨
-          z = w6.next ∨ z = w6.next + 2) ∧ z ≠ p at hR8
+          w6.next ≤ z) ∧ z ≠ p at hR8
       have h8pT : w8.taken.contains p = false := by rw [h8t, h6taken]; exact hpT
       refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w8 hne' h8pT) ?_
       rintro _ w9 ⟨h9top, _, _, _, h9w, _, _⟩
@@ -645,11 +902,10 @@ theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoh
       have hnot : ∀ z, TReach (wNode c.p base w8) c.i root z → z ≠ p ∧ z ≠ l ∧ z ≠ r := by
         intro z hz
         obtain ⟨h1, hzp⟩ := hR8 z hz
-        rcases h1 with hzV | hzy | hzy
+        rcases h1 with hzV | hzy
         · obtain ⟨_, hzl, hzr⟩ := hVreach z hzV
           exact ⟨hzp, hzl, hzr⟩
-        · rw [hzy]; exact ⟨by omega, by omega, by omega⟩
-        · rw [hzy]; exact ⟨by omega, by omega, by omega⟩
+        · exact ⟨by omega, by omega, by omega⟩
       rw [h9top, h8top']
       exact liveEdges_of_liveEdgesH c.p _ c.i root (fun _ => False)
         (liveEdgesH_congr_reach c.p (wNode c.p base w8) _ c.i root _
@@ -933,31 +1189,29 @@ theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoh
       unfold handleFull
       show WriterWP (handleFullWith (fun q more => appendKlongs d' q more) (d' + 1) p [] last false)
         c ({ w8 with trail := s9 :: w8.trail } : W) _
-      refine writerWP_mono (writerWP_handleFull_spaceRoomV_live d' p q pn qn k1 last c base
-        ({ w8 with trail := s9 :: w8.trail } : W) hw8p
-        hw8q (by show w8.taken.contains q = false; rw [h8taken]; exact hqT) hqp
-        (by show p < w8.next; omega) (by show q < w8.next; omega) hpnew hqleaf hsp
+      refine writerWP_mono (hsplit ({ w8 with trail := s9 :: w8.trail } : W) last hw8p hw8q
+        (by show w8.taken.contains q = false; rw [h8taken]; exact hqT)
+        (by show p < w8.next; omega) (by show q < w8.next; omega)
         (by show (w8.path[d']?).map (·.2) = some q; rw [h8path]; exact h3pq)
-        (by show w8.path[d' + 1]? = some (some k1, p); rw [h8path]; exact h3pk)
-        hqwf hqtm hqroom3 (hqdead2 _ _ _) hk
+        (by show w8.path[d' + 1]? = some (some k1, p); rw [h8path]; exact h3pk) hsp
+        (halves_mergeLast_pos c hMP pn last pairs hleafl hks hsrt hsp) hfH1 hsH1 hfH hsH
         (by show TreeOK _ c.i w8.top.rootKey; rw [h8top']; exact hTV)
         (by show TReach _ c.i w8.top.rootKey q; rw [h8top']; exact hqRV)
-        (by show wNode c.p base w8 w8.next = none
-            rw [hnx8, hw8N (m1 + 4) (by omega) (by omega)]; exact (hfree _ (by omega)).1)
-        (by show wNode c.p base w8 (w8.next + 2) = none
-            rw [hnx8, hw8N (m1 + 4 + 2) (by omega) (by omega)]; exact (hfree _ (by omega)).1)
-        (by show w8.taken.contains w8.next = false; rw [hnx8, h8taken]; exact (hfree _ (by omega)).2)
-        (by show w8.taken.contains (w8.next + 2) = false
-            rw [hnx8, h8taken]; exact (hfree _ (by omega)).2)
+        (by
+          show ∀ z, w8.next ≤ z → wNode c.p base w8 z = none ∧ w8.taken.contains z = false
+          intro z hz
+          rw [hnx8] at hz
+          rw [hw8N z (by omega) (by omega), h8taken]
+          exact ⟨(hfree _ (by omega)).1, (hfree _ (by omega)).2⟩)
         (by show ∀ u c' z, TReach _ c.i w8.top.rootKey u → TLink _ c.i u c' z → z < w8.next
             rw [h8top', hnx8]; exact hlinksV)
-        hfH1 hsH1 hfH hsH (by show LiveEdges c.p _ c.i w8.top.rootKey; rw [h8top']; exact hLE)) ?_
+        (by show LiveEdges c.p _ c.i w8.top.rootKey; rw [h8top']; exact hLE)) ?_
       rintro _ w10 ⟨hL10, hR10, h10top, h10t⟩
       change w10.top = w8.top at h10top
       change w10.taken = w8.taken at h10t
       change ∀ z, TReach (wNode c.p base w10) c.i w10.top.rootKey z →
         (TReach (updN (wNode c.p base w8) p ⟨pn.leaf, last.ks⟩) c.i w8.top.rootKey z ∨
-          z = w8.next ∨ z = w8.next + 2) ∧ z ≠ p at hR10
+          w8.next ≤ z) ∧ z ≠ p at hR10
       have h10pT : w10.taken.contains p = false := by rw [h10t, h8taken]; exact hpT
       refine writerWP_mono (writerWP_mergeCleanup_wNode p m1 c base hvc _ w10 hne' h10pT) ?_
       rintro _ w11 ⟨h11top, _, _, _, h11w, _, _⟩
@@ -967,17 +1221,66 @@ theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoh
       have hnot : ∀ z, TReach (wNode c.p base w10) c.i root z → z ≠ p ∧ z ≠ l ∧ z ≠ r := by
         intro z hz
         obtain ⟨h1, hzp⟩ := hR10 z hz
-        rcases h1 with hzV | hzy | hzy
+        rcases h1 with hzV | hzy
         · obtain ⟨_, hzl, hzr⟩ := hVreach z hzV
           exact ⟨hzp, hzl, hzr⟩
-        · rw [hzy]; exact ⟨by omega, by omega, by omega⟩
-        · rw [hzy]; exact ⟨by omega, by omega, by omega⟩
+        · exact ⟨by omega, by omega, by omega⟩
       rw [h11top, h10top']
       exact liveEdges_of_liveEdgesH c.p _ c.i root (fun _ => False)
         (liveEdgesH_congr_reach c.p (wNode c.p base w10) _ c.i root _
           (liveEdgesH_of_liveEdges c.p _ c.i root _ hL10)
           (fun z hz => by obtain ⟨hzp, hzl, hzr⟩ := hnot z hz; exact h11w z hzp (hcl' z hzl hzr)))
         (fun _ _ h => h.elim) (fun _ _ _ _ _ _ _ _ _ h => h.elim)
+
+set_option maxHeartbeats 16000000 in
+/-- A merge whose parent p, not made by the transaction, goes `full` and splits
+in space (its last version has more than `splitAbove` klongs), below its inner
+parent q with room for the halves' klongs and no compaction: no hole after.
+Into one node p's last version is filled though it lost a klong
+(`liveEdges_of_oneHole`); into two there is no hole before
+(`liveEdges_mergeTwo`); the split keeps the live counts
+(`writerWP_handleFull_spaceRoomV_live`); p, l and r are left behind, so the
+cleanup changes nothing reached. -/
+theorem writerWP_mergeTail_liveSpace (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (x : NodeId) (d' : Nat) (p : NodeId)
+    (pn xn : KNode) (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId)
+    (rn : KNode) (ir : Nat) (cL cR : Nat) (N : NodeId → Option KNode) (root : NodeId) (nx : Nat)
+    (w3 : W) (Hl : NodeId → Prop) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
+    (hT : TreeOK N c.i root) (hp : TReach N c.i root p) (hpn : N p = some pn)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR)
+    (hclt : cL < cR) (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hxlr : x = l ∨ x = r) (hln : N l = some ln) (hrn : N r = some rn)
+    (hpt : ∀ s, Klong.time s ∈ pn.ks → s ≤ c.i)
+    (hch : ∀ cc z zn, (cc, z) ∈ pn.liveAt c.i → N z = some zn →
+      ∀ s, Klong.time s ∈ zn.ks → s ≤ c.i)
+    (hN3 : wNode c.p base w3 = N) (h3top : w3.top.rootKey = root) (h3next : w3.next = nx)
+    (h3p : w3.nodes.lookup p = some pn) (h3src : ∀ z, (w3.nodes.lookup z).isSome = true → z < nx)
+    (hfree : ∀ z, nx ≤ z → N z = none ∧ w3.taken.contains z = false)
+    (hfreshT : ∀ z, nx ≤ z → ∀ u c', TReach N c.i root u → ¬ TLink N c.i u c' z)
+    (hpleaf : pn.leaf = false) (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hlrange : ∀ cc z, (cc, z) ∈ ln.liveAt c.i → cc < cR)
+    (hllow : ∀ cc z, (cc, z) ∈ ln.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cL < cc) ∧ ((!xn.leaf) = false → cL ≤ cc))
+    (hrrange : ∀ cc z, (cc, z) ∈ rn.liveAt c.i →
+      ((!xn.leaf) = true → cc = 0 ∨ cR < cc) ∧ ((!xn.leaf) = false → cR ≤ cc))
+    (hrup : ∀ k z, (k, z) ∈ pn.liveAt c.i → cR < k → ∀ cc z', (cc, z') ∈ rn.liveAt c.i → cc < k)
+    (q : NodeId) (qn : KNode) (k1 : Nat) (hqP : PathLen N c.i root q d') (hNq : N q = some qn)
+    (hk : (k1, p) ∈ qn.liveAt c.i) (hqleaf : qn.leaf = false) (h3q : w3.nodes.lookup q = some qn)
+    (h3pq : (w3.path[d']?).map (·.2) = some q) (h3pk : w3.path[d' + 1]? = some (some k1, p))
+    (hqwf : klongsWf qn.ks = true) (hqtm : ∀ s, Klong.time s ∈ qn.ks → s ≤ c.i)
+    (hqroom3 : qn.size + 3 ≤ c.p.M)
+    (hqdead2 : ∀ y1 y2 sc, deadOver c.p ([(k1, y1), (sc, y2)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false)
+    (hpnew : pn.firstTime ≠ some c.i)
+    (hnB : ¬ MergeParentRoom c pn il cL nx ir cR (mergeM2 c xn ln rn cR nx))
+    (hspace : ∀ last, mergeFullLast pn c.i cL nx cR (mergeM2 c xn ln rn cR nx) = some last →
+      ¬ (pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR nx) ≤ c.p.M) ∧
+        c.p.splitAbove < last.size)
+    (hLive : LiveEdgesH c.p N c.i root Hl) (hHl : ∀ y, Hl y → y = x) :
+    WriterWP (mergeTail c x (d' + 2) p pn xn leftSome l ln il r rn ir) c w3
+      (fun _ w' => LiveEdges c.p (wNode c.p base w') c.i w'.top.rootKey) :=
+  writerWP_mergeTail_liveSpaceG c base hvc x d' p pn xn leftSome l ln il r rn ir cL cR N root nx w3 Hl hm hMP hT hp hpn hL hLL hR hRL hclt hadj hxlr hln hrn hpt hch hN3 h3top h3next h3p h3src hfree hfreshT hpleaf hll hrl hlrange hllow hrrange hrup q qn k1 hqP hNq hk h3q h3pq h3pk (splitStepOK_spaceRoom c base d' p q pn qn k1 hpnew hqleaf (fun he => by subst he; exact absurd (PathLen.depth_unique hT _ _ _ hqP (PathLen.link hqP ⟨qn, hNq, hk⟩)) (by omega)) hqwf hqtm hqroom3 hqdead2 hk) hnB hspace hLive hHl
 
 /-! ## At a round: the parent's space split below a parent with room -/
 
@@ -996,10 +1299,34 @@ def MergeFullSpaceRoom (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : 
     qn.size + 3 ≤ c.p.M ∧ ∀ y1 y2 sc, deadOver c.p ([(k1, y1), (sc, y2)].foldl
       (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false
 
+
+/-- `MergeFullSpaceRoom` with q a segment leaf too (p a segment root) with room
+for one klong: then the halves go under a new segment root
+(`splitStepOK_segSpace`). -/
+def MergeFullSpaceG (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : KNode)
+    (il cL ir cR : Nat) : Prop :=
+  pn.firstTime ≠ some c.i ∧
+  (∀ last, mergeFullLast pn c.i cL v3.next cR (mergeM2 c xn ln rn cR v3.next) = some last →
+    ¬ (pn.size + mergeParentNeed c.i pn il ir cR (mergeM2 c xn ln rn cR v3.next) ≤ c.p.M) ∧
+      c.p.splitAbove < last.size) ∧
+  2 ≤ d ∧ ∃ (q : NodeId) (qn : KNode) (k1 : Nat), (v3.path[d - 2]?).map (·.2) = some q ∧
+    v3.path[d - 1]? = some (some k1, p) ∧ v3.nodes.lookup q = some qn ∧
+    ((qn.leaf = false ∧ qn.size + 3 ≤ c.p.M ∧ ∀ y1 y2 sc, deadOver c.p ([(k1, y1), (sc, y2)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false) ∨
+     (qn.leaf = true ∧ qn.size + 2 ≤ c.p.M ∧ ∀ y, deadOver c.p ([(k1, y)].foldl
+      (fun n (cv, y) => n.add c.i (.key cv y)) qn) = false))
+
+theorem mergeFullSpaceG_of (c : Ctx) (v3 : W) (d : Nat) (p : NodeId) (pn xn ln rn : KNode)
+    (il cL ir cR : Nat) (h : MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR) :
+    MergeFullSpaceG c v3 d p pn xn ln rn il cL ir cR := by
+  obtain ⟨h1, h2, h3, q, qn, k1, h4, h5, h6, h7, h8, h9⟩ := h
+  exact ⟨h1, h2, h3, q, qn, k1, h4, h5, h6, Or.inl ⟨h7, h8, h9⟩⟩
+
 set_option maxHeartbeats 16000000 in
-/-- `MergeTailFullRest2OK`'s case `MergeFullSpaceRoom`: at a round with
-`MergeLiveOK`'s facts, the merge's tail ends with the live counts, no hole. -/
-theorem writerWP_mergeTail_liveSpaceRound (c : Ctx) (base : View BVal)
+/-- `MergeTailFullRest2OK`'s case `MergeFullSpaceG` (below an inner parent or a
+segment leaf with room): at a round with `MergeLiveOK`'s facts, the merge's tail
+ends with the live counts, no hole. -/
+theorem writerWP_mergeTail_liveSpaceRoundG (c : Ctx) (base : View BVal)
     (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
     {B : NodeId}
     (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
@@ -1024,11 +1351,11 @@ theorem writerWP_mergeTail_liveSpaceRound (c : Ctx) (base : View BVal)
     (hxlr : x = l ∨ x = r) (hln : wNode c.p base v3 l = some ln) (hrn : wNode c.p base v3 r = some rn)
     (hpre3 : v3.nodes <+: w3.nodes) (hpath3 : w3.path = v3.path)
     (hnB : ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next))
-    (hN : MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR) :
+    (hN : MergeFullSpaceG c v3 d p pn xn ln rn il cL ir cR) :
     WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
       (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
         (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey)) := by
-  obtain ⟨hpnew, hspace, hd2, q, qn, k1, hq3, hk3', hq3lk, hqleaf, hqroom3, hqdead2⟩ := hN
+  obtain ⟨hpnew, hspace, hd2, q, qn, k1, hq3, hk3', hq3lk, hqcase⟩ := hN
   obtain ⟨d', rfl⟩ : ∃ d', d = d' + 2 := ⟨d - 2, by omega⟩
   have hd2' : d' + 2 - 2 = d' := by omega
   have hd1' : d' + 2 - 1 = d' + 1 := by omega
@@ -1168,7 +1495,13 @@ theorem writerWP_mergeTail_liveSpaceRound (c : Ctx) (base : View BVal)
     · intro hin
       have hxl : xn.leaf = true := by simpa using hin
       exact h1.1 hxl (by omega)
-  refine writerWP_mono (writerWP_mergeTail_liveSpace c base hvc x d' p pn xn leftSome l ln il r rn
+  have hsplit : SplitStepOK c base d' p q pn qn k1 := by
+    rcases hqcase with ⟨hql', hr3, hd2'⟩ | ⟨hql', hr2, hd1'⟩
+    · exact splitStepOK_spaceRoom c base d' p q pn qn k1 hpnew hql' hqp (hI.wf q qn hNq)
+        (hI.times q qn hNq) hr3 hd2' hkq
+    · exact splitStepOK_segSpace c base d' p q pn qn k1 hpnew hql' hqp (hI.wf q qn hNq)
+        (hI.times q qn hNq) hr2 hd1' hkq
+  refine writerWP_mono (writerWP_mergeTail_liveSpaceG c base hvc x d' p pn xn leftSome l ln il r rn
     ir cL cR (wNode c.p base v3) v3.top.rootKey v3.next w3 (HoleAtW key g h c v) hm hMP hI.tree hpR
     hpn hL hLL hR hRL hclt hadj hxlr hln hrn (hI.times p pn hpn)
     (fun cc z zn _ hzn => hI.times z zn hzn) hr3.1 (by rw [hr3.2.1]) hr3.2.2.2.2 h3p
@@ -1178,11 +1511,44 @@ theorem writerWP_mergeTail_liveSpaceRound (c : Ctx) (base : View BVal)
       · exact hI.ids.2.1 z h')
     (fun z hz => ⟨(hfree z hz).1, by rw [hr3.2.2.1]; exact (hfree z hz).2⟩) hfreshT hpleaf hll hrl
     hlrange hllow hrrange (fun k z hk hkc cc z' h' => hrr2 k z hk hkc cc z' h')
-    q qn k1 hqP hNq hkq hqleaf (lookup_of_prefix _ _ hpre3 _ _ hq3lk) (by rw [hpath3]; exact hq3)
-    (by rw [hpath3]; exact hk3') (hI.wf q qn hNq) (hI.times q qn hNq) hqroom3 hqdead2 hpnew
-    hnB hspace hLive hHl) ?_
+    q qn k1 hqP hNq hkq (lookup_of_prefix _ _ hpre3 _ _ hq3lk) (by rw [hpath3]; exact hq3)
+    (by rw [hpath3]; exact hk3') hsplit hnB hspace hLive hHl) ?_
   intro _ v4 hLE
   exact ⟨fun _ => liveEdgesH_of_liveEdges c.p _ c.i _ _ hLE, fun _ => hLE⟩
+
+set_option maxHeartbeats 16000000 in
+/-- `MergeTailFullRest2OK`'s case `MergeFullSpaceRoom`: at a round with
+`MergeLiveOK`'s facts, the merge's tail ends with the live counts, no hole. -/
+theorem writerWP_mergeTail_liveSpaceRound (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p)
+    {B : NodeId}
+    (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
+    (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (x p : NodeId)
+    (pn xn : KNode)
+    (hS : descendToHeight key g h c v = .ok (d, v1)) (hd : 0 < d)
+    (hr13 : ReadsAs c.p base v1 v3) (hk13 : ObsKept c v1 v3) (hp13 : v3.path = v1.path)
+    (hLH : LiveHoleW key g h c base v)
+    (hJ3 : DelInvJ c base w0 k0 F KO B B v3) (hP3 : PathOK c v3 d X K Nn)
+    (hx : (v3.path[d]?).map (·.2) = some x) (hpath : (v3.path[d - 1]?).map (·.2) = some p)
+    (hplk : v3.nodes.lookup p = some pn) (hpleaf : pn.leaf = false)
+    (hxlk : v3.nodes.lookup x = some xn)
+    (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode)
+    (ir cL cR : Nat) (w3 : W) (hr3 : ReadsAs c.p base v3 w3)
+    (h3p : w3.nodes.lookup p = some pn)
+    (hsrc3 : ∀ z, (w3.nodes.lookup z).isSome = true → (v3.nodes.lookup z).isSome = true ∨
+      (c.view z).isSome = true)
+    (hL : pn.ks[il]? = some (.key cL l)) (hLL : LastLive pn.ks pn.lastBitmap il cL)
+    (hR : pn.ks[ir]? = some (.key cR r)) (hRL : LastLive pn.ks pn.lastBitmap ir cR) (hclt : cL < cR)
+    (hadj : ∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc)
+    (hll : ln.leaf = xn.leaf) (hrl : rn.leaf = xn.leaf)
+    (hxlr : x = l ∨ x = r) (hln : wNode c.p base v3 l = some ln) (hrn : wNode c.p base v3 r = some rn)
+    (hpre3 : v3.nodes <+: w3.nodes) (hpath3 : w3.path = v3.path)
+    (hnB : ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next))
+    (hN : MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR) :
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
+        (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey)) :=
+  writerWP_mergeTail_liveSpaceRoundG c base hvc hm hMP key g h v v1 v3 d F w0 k0 KO X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hx hpath hplk hpleaf hxlk leftSome l ln il r rn ir cL cR w3 hr3 h3p hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB (mergeFullSpaceG_of c v3 d p pn xn ln rn il cL ir cR hN)
 
 /-! ## What is left of `MergeTailFullRest2OK` -/
 
@@ -1259,5 +1625,161 @@ theorem writerWP_afterDelete_liveTR3 (key : Key) (g : Nat) (c : Ctx) (base : Vie
       (fun _ v' => LiveEdges c.p (wNode c.p base v') c.i v'.top.rootKey) :=
   writerWP_afterDelete_liveTR2 key g c base hvc hm hMP KO B hv hk hICEk hsa2 hcap hpos hvo hkw top0 hB
     (mergeTailFullRest2OK_of_rest3 c base hvc hm hMP hF) v hJ hpb hhi hLH hR3
+
+/-! ## What is left of `MergeTailFullRest3OK` -/
+
+/-- `MergeTailFullRest3OK` but in its case `MergeFullTimeRoomG` (bergdb 030-01,
+step 3's rest): the merge's tail where its parent p goes `full`, and p, not made
+by the transaction, is the space root (d = 1), or is a segment root that splits
+in space, or q has no room for p's new klongs or would compact (the cascade); or
+p, made by the transaction, splits in space (in place). -/
+def MergeTailFullRest4OK (c : Ctx) (base : View BVal) (B : NodeId) (H : NodeId → Nat → Prop) :
+    Prop :=
+  ∀ (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
+    (top0 : Top) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (x p : NodeId)
+    (pn xn : KNode),
+    descendToHeight key g h c v = .ok (d, v1) → 0 < d →
+    ReadsAs c.p base v1 v3 → ObsKept c v1 v3 → v3.path = v1.path →
+    LiveHoleW key g h c base v →
+    DelInvJ c base w0 k0 F KO B B v3 → PutBook c B top0 v3 → PathOK c v3 d X K Nn →
+    Book B c v1 → HtInv H B c v1 → PathFreeTo v1 v1.path.length → HtInv H B c v3 →
+    (v3.path[d]?).map (·.2) = some x → (v3.path[d - 1]?).map (·.2) = some p →
+    v3.nodes.lookup p = some pn → pn.leaf = false → v3.nodes.lookup x = some xn →
+    xn.cnt < c.p.mergeBelow →
+    ∀ (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode)
+      (ir cL cR : Nat) (w3 : W), ReadsAs c.p base v3 w3 →
+    w3.nodes.lookup p = some pn → ObsKept c v3 w3 →
+    (∀ z, (w3.nodes.lookup z).isSome = true → (v3.nodes.lookup z).isSome = true ∨
+      (c.view z).isSome = true) →
+    pn.ks[il]? = some (.key cL l) → LastLive pn.ks pn.lastBitmap il cL →
+    pn.ks[ir]? = some (.key cR r) → LastLive pn.ks pn.lastBitmap ir cR → cL < cR →
+    (∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc) →
+    ln.leaf = xn.leaf → rn.leaf = xn.leaf →
+    (x = l ∨ x = r) → wNode c.p base v3 l = some ln → wNode c.p base v3 r = some rn →
+    v3.nodes <+: w3.nodes → w3.path = v3.path →
+    ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next) →
+    ¬ MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullMadeTime c v3 pn xn ln rn il cL ir cR →
+    ¬ MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR →
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
+        (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey))
+
+/-- `MergeTailFullRest3OK` from its rest: its case `MergeFullTimeRoomG` (p a
+segment root, its time split below its segment leaf with room) is proved
+(`writerWP_mergeTail_liveFullTimeRoundG`). -/
+theorem mergeTailFullRest3OK_of_rest4 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) {B : NodeId} {H : NodeId → Nat → Prop}
+    (hvo : ViewHtOK H B c) (hF : MergeTailFullRest4OK c base B H) :
+    MergeTailFullRest3OK c base B H := by
+  intro key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3 hb1
+    hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3
+    hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS
+  by_cases hN : MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR
+  · exact writerWP_mergeTail_liveFullTimeRoundG c base hvc hm hMP hvo key g h v v1 v3 d F w0 k0 KO
+      X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hb1 hi1 hpf1 hx hpath hplk hpleaf hxlk
+      leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn
+      hpre3 hpath3 hnB hN
+  · exact hF key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3
+      hb1 hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3
+      hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS hN
+
+/-- `afterDelete` with the hole (bergdb 030-01, steps 3 and 4): from the call's
+facts to `LiveEdges`, premises `MergeTailFullRest4OK`, `MergeParamsOK` and R3
+after the merges' loop. -/
+theorem writerWP_afterDelete_liveTR4 (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) (KO : KindOracle)
+    (B : NodeId) (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c)
+    (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
+    (hpos : 0 < c.i) {H : NodeId → Nat → Prop} (hvo : ViewHtOK H B c)
+    (hkw : ViewKlongsWf c.p c.view) (top0 : Top) (hB : PutBase c base B)
+    (hF : MergeTailFullRest4OK c base B H)
+    (v : W) (hJ : DelInvJAE c base KO B B v) (hpb : PutBook c B top0 v) (hhi : HtInv H B c v)
+    (hLH : LiveHoleW key g 0 c base v)
+    (hR3 : WriterWP (mergeUp key g c.p.fuel 0 false) c v
+      (fun merged v' => merged = true → R3At key g c v')) :
+    WriterWP (afterDelete key g 0) c v
+      (fun _ v' => LiveEdges c.p (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_afterDelete_liveTR3 key g c base hvc hm hMP KO B hv hk hICEk hsa2 hcap hpos hvo hkw top0 hB
+    (mergeTailFullRest3OK_of_rest4 c base hvc hm hMP hvo hF) v hJ hpb hhi hLH hR3
+
+/-! ## What is left of `MergeTailFullRest4OK` -/
+
+/-- `MergeTailFullRest4OK` but in its case `MergeFullSpaceG` (bergdb 030-01, step
+3's rest): the merge's tail where its parent p goes `full`, and p, not made by
+the transaction, is the space root (d = 1), or q has no room for p's new klongs
+or would compact (the cascade); or p, made by the transaction, splits in space
+(in place). -/
+def MergeTailFullRest5OK (c : Ctx) (base : View BVal) (B : NodeId) (H : NodeId → Nat → Prop) :
+    Prop :=
+  ∀ (key : Key) (g h : Nat) (v v1 v3 : W) (d F : Nat) (w0 : W) (k0 : Key) (KO : KindOracle)
+    (top0 : Top) (X : Nat → NodeId) (K : Nat → Nat) (Nn : Nat → KNode) (x p : NodeId)
+    (pn xn : KNode),
+    descendToHeight key g h c v = .ok (d, v1) → 0 < d →
+    ReadsAs c.p base v1 v3 → ObsKept c v1 v3 → v3.path = v1.path →
+    LiveHoleW key g h c base v →
+    DelInvJ c base w0 k0 F KO B B v3 → PutBook c B top0 v3 → PathOK c v3 d X K Nn →
+    Book B c v1 → HtInv H B c v1 → PathFreeTo v1 v1.path.length → HtInv H B c v3 →
+    (v3.path[d]?).map (·.2) = some x → (v3.path[d - 1]?).map (·.2) = some p →
+    v3.nodes.lookup p = some pn → pn.leaf = false → v3.nodes.lookup x = some xn →
+    xn.cnt < c.p.mergeBelow →
+    ∀ (leftSome : Bool) (l : NodeId) (ln : KNode) (il : Nat) (r : NodeId) (rn : KNode)
+      (ir cL cR : Nat) (w3 : W), ReadsAs c.p base v3 w3 →
+    w3.nodes.lookup p = some pn → ObsKept c v3 w3 →
+    (∀ z, (w3.nodes.lookup z).isSome = true → (v3.nodes.lookup z).isSome = true ∨
+      (c.view z).isSome = true) →
+    pn.ks[il]? = some (.key cL l) → LastLive pn.ks pn.lastBitmap il cL →
+    pn.ks[ir]? = some (.key cR r) → LastLive pn.ks pn.lastBitmap ir cR → cL < cR →
+    (∀ cc z, (cc, z) ∈ pn.liveAt c.i → cc ≤ cL ∨ cR ≤ cc) →
+    ln.leaf = xn.leaf → rn.leaf = xn.leaf →
+    (x = l ∨ x = r) → wNode c.p base v3 l = some ln → wNode c.p base v3 r = some rn →
+    v3.nodes <+: w3.nodes → w3.path = v3.path →
+    ¬ MergeParentRoom c pn il cL v3.next ir cR (mergeM2 c xn ln rn cR v3.next) →
+    ¬ MergeFullTimeRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullMadeTime c v3 pn xn ln rn il cL ir cR →
+    ¬ MergeFullSpaceRoom c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullTimeRoomG c v3 d p pn xn ln rn il cL ir cR →
+    ¬ MergeFullSpaceG c v3 d p pn xn ln rn il cL ir cR →
+    WriterWP (mergeTail c x d p pn xn leftSome l ln il r rn ir) c w3
+      (fun res v4 => (res = 1 → LiveHoleW key g (h + 1) c base v4) ∧
+        (res ≠ 1 → LiveEdges c.p (wNode c.p base v4) c.i v4.top.rootKey))
+
+/-- `MergeTailFullRest4OK` from its rest: its case `MergeFullSpaceG` (p a segment
+root split in space below its segment leaf with room) is proved
+(`writerWP_mergeTail_liveSpaceRoundG`). -/
+theorem mergeTailFullRest4OK_of_rest5 (c : Ctx) (base : View BVal) (hvc : ViewCoherent c base)
+    (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) {B : NodeId} {H : NodeId → Nat → Prop}
+    (hF : MergeTailFullRest5OK c base B H) : MergeTailFullRest4OK c base B H := by
+  intro key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3 hb1
+    hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3 hsrc3
+    hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS hNG
+  by_cases hN : MergeFullSpaceG c v3 d p pn xn ln rn il cL ir cR
+  · exact writerWP_mergeTail_liveSpaceRoundG c base hvc hm hMP key g h v v1 v3 d F w0 k0 KO
+      X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hP3 hx hpath hplk hpleaf hxlk
+      leftSome l ln il r rn ir cL cR w3 hr3 h3p hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn
+      hpre3 hpath3 hnB hN
+  · exact hF key g h v v1 v3 d F w0 k0 KO top0 X K Nn x p pn xn hS hd hr13 hk13 hp13 hLH hJ3 hpb3 hP3
+      hb1 hi1 hpf1 hi3 hx hpath hplk hpleaf hxlk hcnt leftSome l ln il r rn ir cL cR w3 hr3 h3p hk3
+      hsrc3 hL hLL hR hRL hclt hadj hll hrl hxlr hln hrn hpre3 hpath3 hnB hNT hNM hNS hNG hN
+
+/-- `afterDelete` with the hole (bergdb 030-01, steps 3 and 4): from the call's
+facts to `LiveEdges`, premises `MergeTailFullRest5OK`, `MergeParamsOK` and R3
+after the merges' loop. -/
+theorem writerWP_afterDelete_liveTR5 (key : Key) (g : Nat) (c : Ctx) (base : View BVal)
+    (hvc : ViewCoherent c base) (hm : c.p.merges = true) (hMP : MergeParamsOK c.p) (KO : KindOracle)
+    (B : NodeId) (hv : ViewIdsBelow B c.view) (hk : ViewKinds KO B c)
+    (hICEk : ICEFromKinds c base KO B) (hsa2 : 2 ≤ c.p.splitAbove) (hcap : 1 ≤ c.p.mergeMax)
+    (hpos : 0 < c.i) {H : NodeId → Nat → Prop} (hvo : ViewHtOK H B c)
+    (hkw : ViewKlongsWf c.p c.view) (top0 : Top) (hB : PutBase c base B)
+    (hF : MergeTailFullRest5OK c base B H)
+    (v : W) (hJ : DelInvJAE c base KO B B v) (hpb : PutBook c B top0 v) (hhi : HtInv H B c v)
+    (hLH : LiveHoleW key g 0 c base v)
+    (hR3 : WriterWP (mergeUp key g c.p.fuel 0 false) c v
+      (fun merged v' => merged = true → R3At key g c v')) :
+    WriterWP (afterDelete key g 0) c v
+      (fun _ v' => LiveEdges c.p (wNode c.p base v') c.i v'.top.rootKey) :=
+  writerWP_afterDelete_liveTR4 key g c base hvc hm hMP KO B hv hk hICEk hsa2 hcap hpos hvo hkw top0 hB
+    (mergeTailFullRest4OK_of_rest5 c base hvc hm hMP hF) v hJ hpb hhi hLH hR3
 
 end SIS.Tree
