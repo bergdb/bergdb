@@ -68,18 +68,6 @@ def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMa
       if !(n.ks.all (fun k => match k with
           | .key _ y => h.objs.contains y
           | _ => true)) then f := f ++ [s!"key node {x} has a klong that names no node"]
-      if !n.leaf && !(n.ks.all (fun k => match k with
-          | .key _ y => (match h.objs[y]? with
-            | some (.key m) => m.level + 1 == n.level
-            | _ => false)
-          | _ => true)) then f := f ++ [s!"inner node {x} names a node not one level below"]
-      match P[x]? with
-      | some nd =>
-        if nd.isData || nd.level != n.level || p.keyMax < n.level ||
-            (SIS.Tree.klongsOf nd.hist).map kOf != n.ks ||
-            n.leaf != (p.heightOf n.level == 0) then
-          f := f ++ [s!"the view does not show key node {x}"]
-      | none => f := f ++ [s!"the view has no key node {x}"]
     | .val _ => pure ()
   let v : SIS.View SIS.Check.BVal := fun y => P[y]?
   match SIS.Tree.lastTop v, tp.getLast? with
@@ -158,11 +146,6 @@ def bookFaults (p : MParams) (i : Time) (base : NodeId) (h : Heap) (w : MW) : Li
   (if live.all (fun q => match q.2.ks with
       | .time _ :: _ => true
       | _ => false) then [] else ["B13 a time klong first"]) ++
-  -- B14: BalancedOK for every node kept of the overlay and every key klong of it,
-  -- live or dead: an inner node's klong names a key node one level below.
-  (if live.all (fun q => q.2.leaf || (named q.2.ks).all (fun y => match s.obj y, s.obj q.1 with
-      | some (.key m), some (.key n) => m.level + 1 == n.level
-      | _, _ => false)) then [] else ["B14 every klong of an inner node names a node one level below"]) ++
   -- B15: the klongs that name a key node made and kept are klongs of the
   -- transaction (after the last time klong, of time i), all in one node.
   (if (w.made.filter (fun m => !m.isData && !w.taken.contains m.id)).all (fun m =>

@@ -88,7 +88,7 @@ theorem before0 : Before p 1 3 s0 tp0 where
   inv := by decide
   tree := by decide
   balanced := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨-, rfl⟩ := s0_key hx
     exact ⟨by decide, by decide, fun h => absurd h (by decide)⟩
   books := {

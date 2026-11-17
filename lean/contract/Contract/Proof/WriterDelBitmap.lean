@@ -92,7 +92,7 @@ theorem wdb_pre {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hVI : PInv p i base s tp (some x) C (w.withNode x V)) (hVl : V.leaf = n.leaf)
     (t : String) :
     CasPreD p i base s tp { w with trail := t :: w.trail } depth x n V (V.lastVersion i) C :=
@@ -113,7 +113,7 @@ theorem wdb_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hnoop : (delUnion n cv == n.lastBitmap) = false)
     (hV : DelVirt p i base s tp w x n cv C) :
     WP (SIS.Tree.appendDeleteKlong x depth cv) { p := p, i := i, view := v } w
@@ -225,7 +225,7 @@ theorem appendDeleteKlong_spec {p : MParams} {i : Time} {base : NodeId} {s : Tre
     (hbooks : PutBooks p i base s w) (hwf : klongsWf (ksOf n) = true) (hsize : n.size ≤ p.M)
     (hroot : (treeOf i s w).root = some w.top.rootKey)
     (hframe : Frame i s (dirtyOf w) (treeOf i s w)) (htop : WTopInv i s tp w.top w.newTop)
-    (hbal : BalancedAll p (treeOf i s w))
+    (hbal : Balanced p (treeOf i s w))
     (hcv : ∃ y, (cv, y) ∈ live (ksOf n))
     (hV : DelVirt p i base s tp w x n cv C) :
     WP (SIS.Tree.appendDeleteKlong x depth cv) { p := p, i := i, view := v } w

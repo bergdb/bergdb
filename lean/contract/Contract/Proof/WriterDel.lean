@@ -75,26 +75,48 @@ theorem wdel_fact {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   have hTW : treeOf i s (w.withNode leaf n') =
       (treeOf i s w).set leaf (.key ⟨wLevel s w leaf, n'.leaf, ksOf n'⟩) :=
     treeOf_withNode i s n' ht
-  refine ⟨hI.root, ?_, frame_withNode hI.frame hlk ht hleaf hext, hI.top, ?_,
+  have hBx : NodeIs (treeOf i s (w.withNode leaf n')) leaf (wLevel s w leaf) true
+      (dropCv cv (live (ksOf nl))) (bnd p.M none leaf) := by
+    refine ⟨⟨wLevel s w leaf, n'.leaf, ksOf n'⟩, ?_, rfl, by rw [hleaf]; exact hl, hlive,
+      ?_⟩
+    · rw [hTW]
+      simp [Tree.set]
+    · simp only [bnd, reduceCtorEq, ite_false, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
+        List.all_eq_true]
+      refine ⟨⟨by rw [ksOf_length]; exact hsz, hwf⟩, fun k hk => ?_⟩
+      cases k with
+      | key c y =>
+        rw [hTW]
+        exact wput_set_isSome (hptr _ (hkey c y hk))
+      | time t => rfl
+      | del b => rfl
+  have hsame : ∀ z, z ≠ leaf →
+      (treeOf i s (w.withNode leaf n')).obj z = (treeOf i s w).obj z := by
+    intro z hz
+    rw [hTW]
+    simp [Tree.set, hz]
+  obtain ⟨hSnd, hRch⟩ := Sound.del (ex' := none) hI.sound hr hAx hl hcv (Or.inl hkeep) hBx hsame
+  have hrootW : (treeOf i s (w.withNode leaf n')).root = some w.top.rootKey := hI.root
+  refine ⟨hI.root, hSnd, frame_withNode hI.frame hlk ht hleaf hext, hI.top, ?_,
     putBooks_withNode hI.books hlk ht hleaf hfst (timesLe_model htimes)⟩
-  · refine (Sound.del (ex' := none) hI.sound hr hAx hl hcv (Or.inl hkeep) ?_ ?_).1
-    · refine ⟨⟨wLevel s w leaf, n'.leaf, ksOf n'⟩, ?_, rfl, by rw [hleaf]; exact hl, hlive,
-        ?_⟩
-      · rw [hTW]
-        simp [Tree.set]
-      · simp only [bnd, reduceCtorEq, ite_false, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
-          List.all_eq_true]
-        refine ⟨⟨by rw [ksOf_length]; exact hsz, hwf⟩, fun k hk => ?_⟩
-        cases k with
-        | key c y =>
-          rw [hTW]
-          exact wput_set_isSome (hptr _ (hkey c y hk))
-        | time t => rfl
-        | del b => rfl
-    · intro z hz
-      rw [hTW]
-      simp [Tree.set, hz]
-  · refine balancedAll_withNode hI.balanced hlk ht hleaf (fun hl' => ?_)
+  -- BalancedOK, by the nodes reached: they are among those reached before
+  refine Balanced.of_reach (N := [leaf]) hI.balanced (fun z hz => ?_) (fun z _ hz => ?_)
+    (levels_kept_withNode i s n' hlk ht) (fun z hz _ m hm => ?_)
+  · rw [reach_of_root hrootW] at hz
+    left
+    rw [reach_of_root hI.root]
+    exact hRch z hz
+  · exact hsame z (by simpa using hz)
+  · simp only [List.mem_singleton] at hz
+    subst hz
+    rw [hTW] at hm
+    simp only [Tree.set, ite_true, Option.some.injEq, Obj.key.injEq] at hm
+    subst hm
+    have hLr : z ∈ reach (treeOf i s w) := by
+      rw [reach_of_root hI.root]
+      exact hreach
+    obtain ⟨h1, h2, -⟩ := hI.balanced z hLr _ hAx
+    refine ⟨h1, by rw [hleaf]; exact h2, fun hl' => ?_⟩
     rw [hleaf, hl] at hl'
     cases hl'
 
@@ -318,12 +340,13 @@ segment leaf. -/
 theorem wdel_ghOf {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} {C : List (Key × Nat)} {w : MW}
     (hs : Shows p v z s tp) (hb : Books i base s tp) (hI : PInv p i base s tp none C w)
-    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m)) :
+    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m))
+    (hxr : x ∈ reach (treeOf i s w)) :
     ∃ n w1 g h, SIS.Tree.ghOf x { p := p, i := i, view := v } w = .ok ((g, h), w1) ∧
       w1.nodes.lookup x = some n ∧ ksOf n = m.ks ∧ n.leaf = m.leaf ∧ n.leaf = (h == 0) ∧
       treeOf i s w1 = treeOf i s w ∧ PInv p i base s tp none C w1 ∧ w1.path = w.path ∧
       w1.top = w.top ∧ ∀ y n0, w.nodes.lookup y = some n0 → w1.nodes.lookup y = some n0 := by
-  obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ := getNode_spec hs hb hI hx
+  obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ := getNode_spec hs hb hI hx hxr
   have htx : w1.taken.contains x = false := wput_taken (o := .key m) (by rw [hT1]; exact hx)
   obtain ⟨g, h, hgh, -, -, -, hlh⟩ := hI1.books.levels x n hlk1 htx
   have hfield : w1.path = w.path ∧ w1.top = w.top ∧
@@ -359,6 +382,17 @@ theorem wdel_dh_succ (cv h f : Nat) (x : NodeId) :
         pathAdd (some fd.c) fd.y
         descendHeight cv h f fd.y) := rfl
 
+/-- Two routes, one after the other. -/
+theorem wdel_route_trans {A : Tree} {u q q' : NodeId} {k k' k'' : Key}
+    (h1 : Route A u k q k') (h2 : Route A q k' q' k'') : Route A u k q' k'' := by
+  revert h2
+  induction h1 with
+  | here => exact id
+  | inner u n c y cv rest q k' hobj hl hm hle hmax _ ih =>
+    exact fun h2 => Route.inner u n c y cv rest _ _ hobj hl hm hle hmax (ih h2)
+  | leaf u n c y rest q k' hobj hl hm hlong _ ih =>
+    exact fun h2 => Route.leaf u n c y rest _ _ hobj hl hm hlong (ih h2)
+
 /-- The descent of the merges (`descendHeight` to height 0) from node x, the
 last of the key access path, along the route of the key [cv] to the segment
 leaf `leaf`: it keeps the map and `PInv`, and extends the path to end at the
@@ -371,6 +405,7 @@ theorem wdel_descendHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
     ∀ (f : Nat) (u : MW) (x : NodeId), PInv p i base s tp none C u →
       (treeOf i s u).obj leaf = some (.key ml) →
       Route (treeOf i s u) x [cv] leaf [cv] →
+      Route (treeOf i s u) u.top.rootKey [cv] x [cv] →
       (∃ c0, u.path[u.path.length - 1]? = some (c0, x)) →
       WP (SIS.Tree.descendHeight cv 0 f x) { p := p, i := i, view := v } u
         (fun _ u' => PInv p i base s tp none C u' ∧ treeOf i s u' = treeOf i s u ∧
@@ -383,16 +418,19 @@ theorem wdel_descendHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
   intro f
   induction f with
   | zero =>
-    intro u x _ _ _ _
+    intro u x _ _ _ _ _
     exact wp_throw _ _ _ _
   | succ f ih =>
-    intro u x hI hlo hr hlast
+    intro u x hI hlo hr hrx hlast
     rw [wdel_dh_succ]
     refine wput_read ?_
+    have hxr : x ∈ reach (treeOf i s u) := by
+      rw [reach_of_root hI.root]
+      exact (hrx.tc_target hI.sound.good).2
     cases hr with
     | here =>
       obtain ⟨n, u1, g, h, hgh, -, -, hl1, hlh, hT1, hI1, hp1, htop1, hext1⟩ :=
-        wdel_ghOf hs hb hI hlo
+        wdel_ghOf hs hb hI hlo hxr
       refine wput_ok hgh ?_
       have h0 : h = 0 := by
         rw [hl1, hml] at hlh
@@ -404,7 +442,7 @@ theorem wdel_descendHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
         by rw [hp1]; exact hlast, fun h => absurd rfl h⟩, hext1⟩
     | inner _ n c y _ _ _ _ hobj hnl hc hle hmax hry =>
       obtain ⟨nx, u1, g, h, hgh, hlk1, hks, hl1, hlh, hT1, hI1, hp1, htop1, hext1⟩ :=
-        wdel_ghOf hs hb hI hobj
+        wdel_ghOf hs hb hI hobj hxr
       refine wput_ok hgh ?_
       have hh : h ≠ 0 := by
         intro e
@@ -425,7 +463,12 @@ theorem wdel_descendHeight {p : MParams} {i : Time} {base : NodeId} {s : Tree} {
             treeOf i s u := hT1
         refine (ih { u1 with path := u1.path ++ [(some fd.c, fd.y)] } fd.y
           (hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl) (by rw [hT2]; exact hlo)
-          (by rw [hT2, hyy]; exact hry) ⟨some fd.c, by simp⟩).mono ?_
+          (by rw [hT2, hyy]; exact hry) ?_ ⟨some fd.c, by simp⟩).mono ?_
+        · rw [hT2]
+          show Route _ u1.top.rootKey _ _ _
+          rw [htop1, hyy]
+          exact wdel_route_trans hrx
+            (Route.inner _ n c y _ [] y [cv] hobj hnl hc hle hmax (Route.here y [cv]))
         rintro _ u' ⟨hI', hT', htop', ⟨pre, hpre, -, hlast', hsec⟩, hext'⟩
         have hpre' : u'.path = u.path ++ [(some fd.c, fd.y)] ++ pre := by
           rw [hpre, ← hp1]
@@ -494,7 +537,7 @@ theorem wdel_afterDelete {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp
         have hAx := treeOf_obj_overlay i s hlk4 ht4
         refine (wdel_descendHeight hs hb hcv hl4 _ { w4 with path := [(none, w4.top.rootKey)] }
           w4.top.rootKey (hI4.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl) hAx hr4
-          ⟨none, rfl⟩).mono ?_
+          (Route.here _ _) ⟨none, rfl⟩).mono ?_
         rintro _ u' ⟨hI', -, -, ⟨pre, hpre, hx, ⟨c0, hlast⟩, hsec⟩, hext'⟩
         refine wput_ok (pathSize_eq _ _) ?_
         rw [wp_pure]

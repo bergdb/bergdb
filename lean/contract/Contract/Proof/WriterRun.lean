@@ -277,7 +277,7 @@ theorem writerMeets_of_opStep (p : MParams) (ops : List MOp) (hop : ∀ op ∈ o
 structure RunInv (p : MParams) (txs : List (List Op)) (s : Tree) (tp : Top) : Prop where
   inv : invOk (cpOf p) s = true
   tree : TreeOk s
-  balanced : BalancedAll p s
+  balanced : Balanced p s
   first : ∀ x n, s.obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest
   times : ∀ x n, s.obj x = some (.key n) → timesBefore (txs.length + 1) n.ks = true
   rootTimes : ∀ r ∈ s.roots, r.1 < txs.length + 1

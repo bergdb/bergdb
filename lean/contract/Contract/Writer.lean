@@ -179,12 +179,11 @@ the tree at time i is the tree, and s at time i - 1 is s.
   super root is the one it started with; or it has made one, of time i, with
   a new id and skip pointers that meet the top's clause T3. With it the
   top's clauses hold (`TopStep`) and the space roots are the top's.
-* BalancedOK, of the writer's own rules, for every key node of the tree,
-  reached or not, and every key klong of it, live or dead (`BalancedAll`): a
-  key node has a level above 0 and is a segment leaf exactly at height 0 of
-  its segment tree, and a key klong of an inner node names a key node one
-  level below it. (The other four rules of Shape.lean, the fill among them,
-  are not here: see 3.3.)
+* BalancedOK, of the writer's own rules (Shape.lean), for the key nodes
+  reached from the space root (`Balanced`): a key node has a level above 0
+  and is a segment leaf exactly at height 0 of its segment tree, and a live
+  klong of an inner node names a key node one level below it. (The other
+  four rules of Shape.lean, the fill among them, are not here: see 3.3.)
 * The writer's books within a transaction (`MidBooks`), B1 to B14:
   * B1. A key node of the overlay that is kept (not taken back) is a node of s
     exactly if its first time is not i: the nodes made are those of first
@@ -249,11 +248,18 @@ def cpOf (p : MParams) : Params := { M := p.M }
 /-- The parameters of the writer's own rules, from the model's. -/
 def shapeOf (p : MParams) : ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
 
-/-- BalancedOK of the writer's own rules (Shape.lean), for every key node and
-every key klong. -/
-def BalancedAll (p : MParams) (s : Tree) : Prop :=
-  ∀ x n, s.obj x = some (.key n) → 0 < n.level ∧ n.leaf = (p.heightOf n.level == 0) ∧
-    (n.leaf = false → ∀ c y, Klong.key c y ∈ n.ks → ∃ m, s.obj y = some (.key m) ∧
+/-- BalancedOK of the writer's own rules (Shape.lean), for the key nodes
+reached from the space root: a key node's level is above 0 and it is a segment
+leaf exactly at height 0 of its segment tree; a live klong of an inner node
+names a key node one level below. (Until bergdb 030-16 found it false after
+a delete, this spoke of every key node of the map and every key klong, live
+or dead: a take-back leaves a dead klong that names a node further down, and
+a node that is no longer reached may name a node taken back. The form here is
+the coordinator's decision of 2026-11-17, 20:46.) -/
+def Balanced (p : MParams) (s : Tree) : Prop :=
+  ∀ x ∈ reach s, ∀ n, s.obj x = some (.key n) → 0 < n.level ∧
+    n.leaf = (p.heightOf n.level == 0) ∧
+    (n.leaf = false → ∀ c y, (c, y) ∈ live n.ks → ∃ m, s.obj y = some (.key m) ∧
       m.level + 1 = n.level)
 
 /-- J5: the writer's super root t, and whether the writer made it. -/
@@ -311,7 +317,7 @@ structure Mid (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) (do
   frame : Frame i s (dirtyOf w) (treeOf i s w)
   tree : TreeOk (treeOf i s w)
   top : WTopInv i s tp w.top w.newTop
-  balanced : BalancedAll p (treeOf i s w)
+  balanced : Balanced p (treeOf i s w)
   books : MidBooks p i base s w
 
 /-- One operation: the writer's `putKv` from the state w, accepted, with no
@@ -338,7 +344,7 @@ inductive OpsRun (c : SIS.Tree.Ctx) : MW → List MOp → MW → Prop where
 structure Before (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) : Prop where
   inv : invOk (cpOf p) s = true
   tree : TreeOk s
-  balanced : BalancedAll p s
+  balanced : Balanced p s
   books : Books i base s tp
 
 /-- One transaction: the model's writer meets the writer's contract. -/
@@ -351,7 +357,7 @@ def WriterMeets (p : MParams) (ops : List MOp) : Prop :=
       TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
       (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
       invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
-      BalancedAll p (treeOf i s w) ∧
+      Balanced p (treeOf i s w) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧

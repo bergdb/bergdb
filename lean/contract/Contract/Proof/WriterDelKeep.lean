@@ -503,28 +503,50 @@ theorem wdk_fact {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
   have hTW : treeOf i s (w.withNode leaf n') =
       (treeOf i s w).set leaf (.key ⟨wLevel s w leaf, n'.leaf, ksOf n'⟩) :=
     treeOf_withNode i s n' ht
-  refine ⟨hI.root, ?_, frame_withNode hI.frame hlk ht hleaf hext, hI.top, ?_,
+  have hBx : NodeIs (treeOf i s (w.withNode leaf n')) leaf (wLevel s w leaf) true
+      (dropCv cv (live (ksOf nl))) (bnd p.M (some leaf) leaf) := by
+    refine ⟨⟨wLevel s w leaf, n'.leaf, ksOf n'⟩, ?_, rfl, by rw [hleaf]; exact hl, hlive,
+      ?_⟩
+    · rw [hTW]
+      simp [Tree.set]
+    · simp only [bnd, ite_true, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
+        List.all_eq_true]
+      refine ⟨⟨?_, hwf⟩, fun k hk => ?_⟩
+      · rw [ksOf_length] at hlen ⊢
+        omega
+      cases k with
+      | key c y =>
+        rw [hTW]
+        exact wput_set_isSome (hptr _ (hkey c y hk))
+      | time t => rfl
+      | del b => rfl
+  have hsame : ∀ z, z ≠ leaf →
+      (treeOf i s (w.withNode leaf n')).obj z = (treeOf i s w).obj z := by
+    intro z hz
+    rw [hTW]
+    simp [Tree.set, hz]
+  obtain ⟨hSnd, hRch⟩ := Sound.del (ex' := some leaf) hI.sound hr hAx hl hcv hkeep hBx hsame
+  have hrootW : (treeOf i s (w.withNode leaf n')).root = some w.top.rootKey := hI.root
+  refine ⟨hI.root, hSnd, frame_withNode hI.frame hlk ht hleaf hext, hI.top, ?_,
     putBooks_withNode hI.books hlk ht hleaf hfst (timesLe_model htimes)⟩
-  · refine (Sound.del (ex' := some leaf) hI.sound hr hAx hl hcv hkeep ?_ ?_).1
-    · refine ⟨⟨wLevel s w leaf, n'.leaf, ksOf n'⟩, ?_, rfl, by rw [hleaf]; exact hl, hlive,
-        ?_⟩
-      · rw [hTW]
-        simp [Tree.set]
-      · simp only [bnd, ite_true, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
-          List.all_eq_true]
-        refine ⟨⟨?_, hwf⟩, fun k hk => ?_⟩
-        · rw [ksOf_length] at hlen ⊢
-          omega
-        cases k with
-        | key c y =>
-          rw [hTW]
-          exact wput_set_isSome (hptr _ (hkey c y hk))
-        | time t => rfl
-        | del b => rfl
-    · intro z hz
-      rw [hTW]
-      simp [Tree.set, hz]
-  · refine balancedAll_withNode hI.balanced hlk ht hleaf (fun hl' => ?_)
+  -- BalancedOK, by the nodes reached: they are among those reached before
+  refine Balanced.of_reach (N := [leaf]) hI.balanced (fun z hz => ?_) (fun z _ hz => ?_)
+    (levels_kept_withNode i s n' hlk ht) (fun z hz _ m hm => ?_)
+  · rw [reach_of_root hrootW] at hz
+    left
+    rw [reach_of_root hI.root]
+    exact hRch z hz
+  · exact hsame z (by simpa using hz)
+  · simp only [List.mem_singleton] at hz
+    subst hz
+    rw [hTW] at hm
+    simp only [Tree.set, ite_true, Option.some.injEq, Obj.key.injEq] at hm
+    subst hm
+    have hLr : z ∈ reach (treeOf i s w) := by
+      rw [reach_of_root hI.root]
+      exact hreach
+    obtain ⟨h1, h2, -⟩ := hI.balanced z hLr _ hAx
+    refine ⟨h1, by rw [hleaf]; exact h2, fun hl' => ?_⟩
     rw [hleaf, hl] at hl'
     cases hl'
 

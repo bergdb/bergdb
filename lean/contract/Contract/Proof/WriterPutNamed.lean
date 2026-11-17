@@ -325,8 +325,15 @@ theorem wputn_newSuperRoot {i : Time} {s : Tree} (c : SIS.Tree.Ctx) {w : MW} (hI
 /-! ## 4. Klongs of the nodes written -/
 
 theorem wputn_mkey {n : MNode} {c : Nat} {y : NodeId} :
-    Klong.key c y ∈ ksOf n ↔ SIS.Tree.Klong.key c y ∈ n.ks :=
-  ⟨prim_key_mem_ksOf, fun h => List.mem_map_of_mem (f := kOf) h⟩
+    Klong.key c y ∈ ksOf n ↔ SIS.Tree.Klong.key c y ∈ n.ks := by
+  refine ⟨fun h => ?_, fun h => List.mem_map_of_mem (f := kOf) h⟩
+  obtain ⟨k, hk, he⟩ := List.mem_map.mp h
+  cases k with
+  | time t => cases he
+  | key c' y' =>
+    cases he
+    exact hk
+  | del b => cases he
 
 /-- The pointers of the halves of a space split: those of the last version,
 and those of the klongs added. -/
@@ -1063,7 +1070,7 @@ theorem wputn_chain {p : MParams} {i : Time} {s : Tree} {v : View BVal} (hp : Pa
 
 /-- On the way down from node x, not read yet: the put's `PInv`; the map is
 T0; x is sound; the path's nodes but the last are of the overlay, kept; the
-last is x. -/
+last is x; x is reached. -/
 structure DInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     (C : List (Key × Nat)) (T0 : Tree) (w : MW) (x : NodeId) : Prop where
   inv : PInv p i base s tp none C w
@@ -1072,6 +1079,7 @@ structure DInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   path : ∀ (e : Nat) (c : Option Nat) (u : NodeId), w.path[e]? = some (c, u) →
     e + 1 < w.path.length → (w.nodes.lookup u).isSome = true ∧ w.taken.contains u = false
   last : ∃ c0, w.path[w.path.length - 1]? = some (c0, x)
+  reached : x ∈ reach T0
 
 /-- At a segment leaf L of the overlay that ends the path, the walk's
 invariant holds. -/
@@ -1120,7 +1128,8 @@ theorem wputn_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     obtain ⟨lo, hi, hGx⟩ := hD.good
     obtain ⟨m, hxm⟩ := wput_good_obj hGx
     rw [← hD.map] at hxm
-    obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ := getNode_spec hs hb hD.inv hxm
+    obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, hw1, -⟩ :=
+      getNode_spec hs hb hD.inv hxm (by rw [hD.map]; exact hD.reached)
     refine wput_ok hget ?_
     have hfield : w1.path = w.path ∧ w1.taken = w.taken ∧
         ∀ u n0, w.nodes.lookup u = some n0 → w1.nodes.lookup u = some n0 := by
@@ -1145,8 +1154,8 @@ theorem wputn_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     split
     · next hl =>
       rw [wp_pure]
-      exact ⟨⟨hI1, hT1.trans hD.map, ⟨lo, hi, hGx⟩, hpath1, ⟨c0, by rw [hp1]; exact hc0⟩⟩,
-        n, hlk1, hl⟩
+      exact ⟨⟨hI1, hT1.trans hD.map, ⟨lo, hi, hGx⟩, hpath1, ⟨c0, by rw [hp1]; exact hc0⟩,
+        hD.reached⟩, n, hlk1, hl⟩
     · next hl =>
       split
       · exact wp_throw _ _ _ _
@@ -1161,10 +1170,14 @@ theorem wputn_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
         rw [hD.map] at hxm
         obtain ⟨m', lo', hi', -, -, -, hG'⟩ := hGx.child hxm hm (fun h => by
           rw [hml] at h; cases h)
+        have hyr : fd.y ∈ reach T0 := by
+          have h1 := wputg_reach_kid (T := treeOf i s w) hD.inv.sound.good hD.inv.root
+            (by rw [hD.map]; exact hD.reached) (by rw [hD.map]; exact hxm) hm
+          rwa [hD.map] at h1
         refine wput_ok (pathAdd_eq _ _ _ _) ?_
         refine ih { w1 with path := w1.path ++ [(some fd.c, fd.y)] } fd.y ⟨hI1.congr rfl rfl rfl
           rfl rfl rfl rfl rfl rfl, hT1.trans hD.map, ⟨lo', hi', hG'⟩, fun e c u hu he => ?_,
-          ⟨some fd.c, ?_⟩⟩
+          ⟨some fd.c, ?_⟩, hyr⟩
         · have hlen1 : w1.path.length = w.path.length := by rw [hp1]
           simp only [List.length_append, List.length_singleton] at he
           rw [List.getElem?_append_left (by omega)] at hu
@@ -1255,8 +1268,12 @@ theorem wputn_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
         by_contra hc
         rw [List.getElem?_eq_none (by omega)] at hc0
         cases hc0
+      have hyr : fd.y ∈ reach T0 := by
+        have h1 := wputg_reach_kid (T := treeOf i s w3) hD3.inv.sound.good hD3.inv.root
+          (by rw [hD3.map]; exact hD3.reached) (by rw [hD3.map]; exact hLm) hfm
+        rwa [hD3.map] at h1
       refine ih c2 _ fd.y hk2.2 ⟨hD3.inv.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, hD3.map,
-        ⟨lo', hi', hG'⟩, fun e c' u hu he => ?_, ⟨some fd.c, ?_⟩⟩
+        ⟨lo', hi', hG'⟩, fun e c' u hu he => ?_, ⟨some fd.c, ?_⟩, hyr⟩
       · simp only [List.length_append, List.length_singleton] at he
         rw [List.getElem?_append_left (by omega)] at hu
         exact hI3.path e c' u hu
@@ -1337,7 +1354,9 @@ theorem putKv_put_named {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp 
   | cons c rest =>
     exact wputn_putSegs (T0 := treeOf i s w) hp hs hb hn rest c _ _ hkey
       ⟨hm.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, rfl, ⟨0, none, hm.sound.good⟩,
-        fun e c u _ he => absurd he (by simp), ⟨none, rfl⟩⟩
+        fun e c u _ he => absurd he (by simp), ⟨none, rfl⟩, by
+          rw [reach_of_root hm.root]
+          exact tc_self _ _ _⟩
 
 /-! ## 8. A transaction of puts, and a run -/
 
@@ -1370,7 +1389,7 @@ def WriterMeetsPutNamed (p : MParams) (ops : List MOp) : Prop :=
       TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
       (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
       invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
-      BalancedAll p (treeOf i s w) ∧
+      Balanced p (treeOf i s w) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧

@@ -38,7 +38,7 @@ structure PInvO (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   sound : Sound p.M ex (ovSet fs (treeOf i s w)) w.top.rootKey C
   frame : Frame i s (dirtyOf w) (treeOf i s w)
   top : WTopInv i s tp w.top w.newTop
-  balanced : BalancedAll p (treeOf i s w)
+  balanced : Balanced p (ovSet fs (treeOf i s w))
   books : PutBooksE p i base s w
   empties : ∀ x n, w.nodes.lookup x = some n → w.taken.contains x = false → n.ks = [] →
     x ∈ fs.map (·.1)

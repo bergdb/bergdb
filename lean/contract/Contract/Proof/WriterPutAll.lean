@@ -517,6 +517,27 @@ theorem wputa_chainFs_head (p : MParams) (i : Time) (h : Nat) (y : NodeId) (g : 
   | nil => simp [wputa_chainFs_one]
   | cons c2 r => simp [wputa_chainFs_cons2]
 
+/-- The key nodes of the chain are segment leaves at height 0, above level 0. -/
+theorem wputa_chainFs_lev (p : MParams) (i : Time) (h : Nat) :
+    ∀ (rest : Key) (y : NodeId) (g nx : Nat) (z : NodeId) (m : KNode),
+      (z, Obj.key m) ∈ chainFs p i h y g rest nx →
+      0 < m.level ∧ m.leaf = true ∧ p.heightOf m.level = 0
+  | [], _, _, _, _, _, hm => by simp [chainFs] at hm
+  | [c], y, g, nx, z, m, hm => by
+    rw [wputa_chainFs_one] at hm
+    rcases List.mem_cons.mp hm with hm | hm
+    · cases hm
+      exact ⟨keyLevel_pos p g 0, rfl, heightOf_keyLevel p (Nat.zero_le _)⟩
+    · rcases List.mem_cons.mp hm with hm | hm
+      · cases hm
+      · cases hm
+  | c :: c2 :: rest, y, g, nx, z, m, hm => by
+    rw [wputa_chainFs_cons2] at hm
+    rcases List.mem_cons.mp hm with hm | hm
+    · cases hm
+      exact ⟨keyLevel_pos p g 0, rfl, heightOf_keyLevel p (Nat.zero_le _)⟩
+    · exact wputa_chainFs_lev p i h (c2 :: rest) nx (g + 1) (nx + 2) z m hm
+
 /-- A map that has the chain's objects has the chain (`NewChain`), if the
 levels fall within G and the chain's ids are no nodes of A. -/
 theorem wputa_chainFs_newChain {p : MParams} (hp : ParamsOK p) {i : Time} {h : Nat}
@@ -676,12 +697,9 @@ theorem wputa_chain_map {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp 
           have hkA := putBooksE_afterNewKey (w := wN) hb hWN.books hg1 (Nat.zero_le _) rfl
             (Or.inl rfl) (by simp)
           have hFA := frame_afterNewKey (w := wN) p (g + 1) 0 true [] hWN.frame hsv hnv htv hmv
-          have hBA := balancedAll_afterNewKey (w := wN) (g + 1) 0 true [] hWN.balanced hsv hnv
-            htv hmv (Nat.zero_le _) rfl (fun hl => by cases hl)
           refine ⟨⟨hW.root, frame_withNode hFA hlkA hty rfl (fun n0 hs0 => by
-            rw [hsy] at hs0; cases hs0), hW.top, balancedAll_withNode hBA hlkA hty rfl
-            (fun hl => by cases hl), putBooksE_withNode hkA hlkA hty rfl (Or.inr ⟨rfl, _, rfl⟩)
-            htimes⟩, htv, ?_, hg1⟩
+            rw [hsy] at hs0; cases hs0), hW.top, putBooksE_withNode hkA hlkA hty rfl
+            (Or.inr ⟨rfl, _, rfl⟩) htimes⟩, htv, ?_, hg1⟩
           intro x n hx htx he
           rcases prim_lookup_withNode hx with ⟨rfl, rfl⟩ | ⟨hxy, hx'⟩
           · cases he
@@ -785,7 +803,7 @@ abbrev wputaA (p : MParams) (w3 : MW) (g : Nat) : MW :=
   MW.afterNewKey { w3 with trail := "segment.new" :: w3.trail } p (g + 1) 0 true []
 
 /-- The "if" state's map is sound with the chain's objects set: `Sound.putSeg`
-with A the map after the descent. -/
+with A the map after the descent; and it is BalancedOK, by the nodes reached. -/
 theorem wputa_ifSound {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {C : List (Key × Nat)} (hp : ParamsOK p) (hb : Books i base s tp) {w3 : MW} {L : NodeId}
     {n : MNode} {g cv hval nx : Nat} {key rest : Key}
@@ -799,7 +817,9 @@ theorem wputa_ifSound {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     Sound p.M (some L)
       (ovSet (chainFs p i hval w3.next (g + 1) rest nx)
         (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next)))))
-      w3.top.rootKey (mapPut key hval C) := by
+      w3.top.rootKey (mapPut key hval C) ∧
+    Balanced p (ovSet (chainFs p i hval w3.next (g + 1) rest nx)
+      (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))) := by
   obtain ⟨-, hsv, hnv, -, htv, hmv⟩ := treeOf_fresh hb hI3.books (Nat.le_refl w3.next)
   have hLn : L < w3.next := hI3.books.ids.1 L n hlk3
   have hLv : L ≠ w3.next := Nat.ne_of_lt hLn
@@ -827,9 +847,72 @@ theorem wputa_ifSound {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
   simp only [reduceCtorEq, ite_false, nodeOk, Bool.and_eq_true, decide_eq_true_eq,
     List.all_eq_true] at hok
   obtain ⟨-, hptr⟩ := hok
-  refine (Sound.putSeg (ex' := some L) hI3.sound hr hLm hl3 hcv hno
+  have hsameF : ∀ z, z ≠ L → z ∉ (chainFs p i hval w3.next (g + 1) rest nx).map (·.1) →
+      (ovSet (chainFs p i hval w3.next (g + 1) rest nx)
+        (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))).obj z =
+      (treeOf i s w3).obj z := by
+    intro z hzL hzi
+    have hzn : z ≠ w3.next := fun e => hzi (e ▸ hhead)
+    rw [wputa_ovSet_not hzi, hTW, hTA]
+    simp [Tree.set, hzL, hzn]
+  have hSP := Sound.putSeg (ex' := some L) hI3.sound hr hLm hl3 hcv hno
     (wputa_chainFs_newChain hp rest w3.next (g + 1) nx hrne hkr hbd (by omega)
-      (fun z hz => ?_) (fun xo hxo => wputa_ovSet_mem hnd hxo)) ?_ ?_ ?_).1
+      (fun z hz => ?_) (fun xo hxo => wputa_ovSet_mem hnd hxo)) ?_ ?_ hsameF
+  · obtain ⟨hS, hRch⟩ := hSP
+    refine ⟨hS, ?_⟩
+    have hrootB : (ovSet (chainFs p i hval w3.next (g + 1) rest nx)
+        (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))).root =
+        some w3.top.rootKey := by
+      unfold Tree.root
+      rw [wputa_ovSet_roots, hTW, hTA]
+      exact hI3.root
+    have hBL : (ovSet (chainFs p i hval w3.next (g + 1) rest nx)
+        (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))).obj L =
+        some (.key ⟨wLevel s (wputaA p w3 g) L, (n.add i (.key cv w3.next)).leaf,
+          ksOf (n.add i (.key cv w3.next))⟩) := by
+      rw [wputa_ovSet_not hLf, hTW]
+      simp [Tree.set]
+    refine Balanced.of_reach (N := L :: (chainFs p i hval w3.next (g + 1) rest nx).map (·.1))
+      hI3.balanced (fun z hz => ?_) (fun z _ hz => ?_) (fun y m hm => ?_)
+      (fun z hz _ m hm => ?_)
+    · rw [reach_of_root hrootB] at hz
+      rcases hRch z hz with h1 | h1
+      · left
+        rw [reach_of_root hI3.root]
+        exact h1
+      · exact Or.inr (List.mem_cons_of_mem _ h1)
+    · simp only [List.mem_cons, not_or] at hz
+      exact hsameF z hz.1 hz.2
+    · by_cases hyi : y ∈ (chainFs p i hval w3.next (g + 1) rest nx).map (·.1)
+      · have hy3 : w3.next ≤ y := by
+          rcases hids y hyi with h1 | h1
+          · exact Nat.le_of_eq h1.symm
+          · omega
+        rw [(treeOf_fresh hb hI3.books hy3).1] at hm
+        cases hm
+      · by_cases hyL : y = L
+        · rw [hyL, hLm] at hm
+          cases hm
+          exact ⟨_, by rw [hyL]; exact hBL, hwlA⟩
+        · exact ⟨m, by rw [hsameF y hyL hyi]; exact hm, rfl⟩
+    · rcases List.mem_cons.mp hz with hz | hz
+      · rw [hz, hBL] at hm
+        cases hm
+        obtain ⟨h1, h2, -⟩ := hI3.balanced L (by rw [reach_of_root hI3.root]; exact hreach) _
+          hLm
+        refine ⟨by rw [hwlA]; exact h1, by rw [hwlA, add_leaf]; exact h2, fun hl' => ?_⟩
+        change (n.add i (.key cv w3.next)).leaf = false at hl'
+        rw [add_leaf, hl3] at hl'
+        cases hl'
+      · obtain ⟨⟨z', o⟩, ho, he⟩ := List.mem_map.mp hz
+        simp only at he
+        subst he
+        rw [wputa_ovSet_mem hnd ho] at hm
+        cases hm
+        obtain ⟨h1, h2, h3⟩ := wputa_chainFs_lev p i hval rest w3.next (g + 1) nx _ _ ho
+        refine ⟨h1, by simp [h2, h3], fun hl' => ?_⟩
+        rw [h2] at hl'
+        cases hl'
   · rcases hids z hz with rfl | h1
     · exact hsv ▸ (treeOf_fresh hb hI3.books (Nat.le_refl _)).1
     · exact (treeOf_fresh hb hI3.books (by omega)).1
@@ -860,24 +943,21 @@ theorem wputa_ifSound {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
             simp [Tree.set, Ne.symm hLv]
         | time t => rfl
         | del b => rfl
-  · intro z hzL hzi
-    have hzn : z ≠ w3.next := fun e => hzi (e ▸ hhead)
-    rw [wputa_ovSet_not hzi, hTW, hTA]
-    simp [Tree.set, hzL, hzn]
 
 /-- `CasPreO` at the segment leaf L for the klong of the new segment leaf,
-given the soundness of the "if" state with fs set. -/
+given the soundness and BalancedOK of the "if" state with fs set. -/
 theorem wputa_ifState {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {C : List (Key × Nat)} (hb : Books i base s tp) {w3 : MW} {L : NodeId} {n : MNode}
     {g cv : Nat} {D : Nat} {c0 : Option Nat} {fs : List (NodeId × Obj)} {C' : List (Key × Nat)}
     (hI3 : PInv p i base s tp none C w3) (hlk3 : w3.nodes.lookup L = some n)
-    (ht3 : w3.taken.contains L = false) (hl3 : n.leaf = true) (hg1 : g + 1 ≤ p.G)
+    (ht3 : w3.taken.contains L = false) (hg1 : g + 1 ≤ p.G)
     (hwf : klongsWf (ksOf n) = true) (hsz : n.size ≤ p.M)
     (hP3 : PathOk i s w3 D) (hlev3 : LevDown i s w3 D) (hc0 : w3.path[D]? = some (c0, L))
     (hfs : ∀ e ∈ fs.map (·.1), e = w3.next ∨ w3.next + 2 ≤ e)
     (hchild : w3.next ∈ fs.map (·.1))
     (hsound : Sound p.M (some L) (ovSet fs
-      (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))) w3.top.rootKey C') :
+      (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next))))) w3.top.rootKey C' ∧
+      Balanced p (ovSet fs (treeOf i s ((wputaA p w3 g).withNode L (n.add i (.key cv w3.next)))))) :
     CasPreO p i base s tp fs (wputaA p w3 g) D L n [(cv, w3.next)] C' := by
   obtain ⟨-, hsv, hnv, -, htv, hmv⟩ := treeOf_fresh hb hI3.books (Nat.le_refl w3.next)
   have hkN : PutBooks p i base s { w3 with trail := "segment.new" :: w3.trail } :=
@@ -886,8 +966,6 @@ theorem wputa_ifState {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     w3.trail }) hb hkN hg1 (Nat.zero_le _) rfl
   have hFA := frame_afterNewKey (w := { w3 with trail := "segment.new" :: w3.trail }) p (g + 1)
     0 true [] hI3.frame hsv hnv htv hmv
-  have hBA := balancedAll_afterNewKey (w := { w3 with trail := "segment.new" :: w3.trail })
-    (g + 1) 0 true [] hI3.balanced hsv hnv htv hmv (Nat.zero_le _) rfl (fun hl => by cases hl)
   have hPA : PathOk i s (wputaA p w3 g) D :=
     pathOk_afterNewKey (w := { w3 with trail := "segment.new" :: w3.trail }) p (g + 1) 0 true []
       (hP3.congr rfl rfl rfl rfl rfl) hsv hnv htv hmv
@@ -901,14 +979,10 @@ theorem wputa_ifState {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : 
     obtain ⟨m, hm', -⟩ := hP3.lookup hd hu
     have := hI3.books.ids.1 u m hm'
     rcases hfs u hm with h1 | h1 <;> omega
-  · refine ⟨hI3.root, hsound, ?_, hI3.top, ?_, ?_, ?_⟩
+  · refine ⟨hI3.root, hsound.1, ?_, hI3.top, hsound.2, ?_, ?_⟩
     · refine frame_withNode hFA hlkA ht3 hleaf' (fun n0 hs0 => ?_)
       obtain ⟨-, -, he⟩ := frame_overlay_ext hI3.frame hlk3 ht3 hs0
       exact add_ext (prim_timesBefore (hb.times L n0 hs0)) he _
-    · refine balancedAll_withNode hBA hlkA ht3 hleaf' (fun hl' => ?_)
-      change (n.add i (.key cv w3.next)).leaf = false at hl'
-      rw [hleaf', hl3] at hl'
-      cases hl'
     · exact putBooksE_withNode (n' := n.add i (.key cv w3.next)) hkA hlkA ht3 hleaf'
         (Or.inl (by rw [hr1, hr0]; rfl))
         (timesLe_model (add_timesLe (wput_timesLe hI3.books hlk3) _ (fun t' e => by cases e)))
@@ -955,7 +1029,8 @@ theorem wputa_newseg_full {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
   refine wput_read ?_
   rw [wp_bind]
   refine (wputs_descend hs hb _ w depth x hD).mono ?_
-  rintro L (w3 : MW) ⟨hT3, htop3, hI3, ⟨n, hlk3, hl3⟩, ⟨c0, hc0⟩, hP3, ⟨lo, hi, hGL⟩, hr3, hlev3⟩
+  rintro L (w3 : MW) ⟨hT3, htop3, hI3, ⟨n, hlk3, hl3⟩, ⟨c0, hc0⟩, hP3, ⟨lo, hi, hGL⟩, hr3, hlev3,
+    -⟩
   obtain ⟨-, -, ht3⟩ := hP3.lookup (Nat.le_refl _) hc0
   have hLm := treeOf_obj_overlay i s hlk3 ht3
   rcases wputs_route_leaf hr3 hLm hl3 with ⟨hL, -⟩ | ⟨y, -, -, hry⟩
@@ -1054,7 +1129,7 @@ theorem wputa_newseg_full {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
       have hsd := wputa_ifSound (hval := 0) (nx := w2.next) hp hb hI3 hlk3 ht3 hl3 hlv hg1 hwf
         hsz (wputa_route_tail hrT3 pre cv rest [0] hpre rfl) hk2.1 hno (by simp) (by decide)
         (by simp only [List.length_cons, List.length_nil]; omega) hnA
-      have hcd := wputa_ifState hb hI3 hlk3 ht3 hl3 hg1 hwf hsz hP3 hlev3 hc0 hd1 hd2 hsd
+      have hcd := wputa_ifState hb hI3 hlk3 ht3 hg1 hwf hsz hP3 hlev3 hc0 hd1 hd2 hsd
       obtain ⟨hPd, hCd⟩ := appendKlongs_spec_o (v := v) hp hb hn _ _ L [(cv, w3.next)] _ n _ hcd
         u w2 hA ho2 hd3
       have hlA : (wputaA p w3 g).nodes.lookup w3.next = some ⟨true, []⟩ :=
@@ -1084,7 +1159,7 @@ theorem wputa_newseg_full {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
       subst hg'1
       have hpre2 : ChainPre p i base s tp (treeOf i s w3) w2 w3.next (g + 1) := by
         refine ⟨hl2, hgh2, hPd.books.ids.1, fun z hz => ?_, fun _ => ⟨⟨hPd.root, hPd.frame,
-          hPd.top, hPd.balanced, hPd.books⟩, htk2, fun x m hx htx he => ?_, hg1⟩⟩
+          hPd.top, hPd.books⟩, htk2, fun x m hx htx he => ?_, hg1⟩⟩
         · rcases hz with rfl | hz
           · exact (treeOf_fresh hb hI3.books (Nat.le_refl _)).1
           · exact (treeOf_fresh hb hI3.books (by omega)).1
@@ -1105,12 +1180,14 @@ theorem wputa_newseg_full {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
       obtain ⟨hr1, hr2, hr3'⟩ := hfsA h rest hrne
       have hsr := wputa_ifSound (hval := h) (nx := w2.next) hp hb hI3 hlk3 ht3 hl3 hlv hg1 hwf
         hsz hrT3 hk2.1 hno hrne hk2.2 hbd hnA
-      have hcr := wputa_ifState hb hI3 hlk3 ht3 hl3 hg1 hwf hsz hP3 hlev3 hc0 hr1 hr2 hsr
+      have hcr := wputa_ifState hb hI3 hlk3 ht3 hg1 hwf hsz hP3 hlev3 hc0 hr1 hr2 hsr
       obtain ⟨hPr, -⟩ := appendKlongs_spec_o (v := v) hp hb hn _ _ L [(cv, w3.next)] _ n _ hcr
         u w2 hA ho2 hr3'
-      refine ⟨hWf.root, ?_, hWf.frame, hWf.top, hWf.balanced, hWf.books.toBooks hnoe⟩
-      rw [hmap, htopf]
-      exact hPr.sound
+      refine ⟨hWf.root, ?_, hWf.frame, hWf.top, ?_, hWf.books.toBooks hnoe⟩
+      · rw [hmap, htopf]
+        exact hPr.sound
+      · rw [hmap]
+        exact hPr.balanced
 
 /-- `putSegs` along the key's route to the full segment leaf `leaf` with
 cv :: rest left, from the root x of the tree of the segment c. -/
@@ -1189,7 +1266,10 @@ theorem putKv_put_newseg_full {p : MParams} {i : Time} {base : NodeId} {s : Tree
       ⟨hm.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, rfl, ⟨none, rfl⟩, rfl,
         fun d hd => absurd hd (Nat.not_lt_zero d), fun d hd => absurd hd (Nat.not_lt_zero d),
         ⟨0, none, hm.sound.good⟩, ⟨nl, hleafo, hnl⟩, hr, hr,
-        fun d hd => absurd hd (Nat.not_lt_zero d)⟩
+        fun d hd => absurd hd (Nat.not_lt_zero d), by
+          show w.top.rootKey ∈ reach (treeOf i s w)
+          rw [reach_of_root hm.root]
+          exact tc_self _ _ _⟩
 
 /-! ## 8. Any put: the run says which case holds -/
 
@@ -1217,7 +1297,7 @@ theorem wputa_wp_const {α : Type} {f : SIS.Tree.M α} {c : SIS.Tree.Ctx} {w : M
 
 /-- On the way down with the segments c :: rest of the key left, from node x:
 `PInv`; the map is T0; x is sound; a route of c :: rest from x is a route of
-the key from the space root r. -/
+the key from the space root r; x is reached. -/
 structure ClsInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
     (C : List (Key × Nat)) (T0 : Tree) (r : NodeId) (key : Key) (c : Nat) (rest : Key) (w : MW)
     (x : NodeId) : Prop where
@@ -1225,6 +1305,7 @@ structure ClsInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   map : treeOf i s w = T0
   good : ∃ lo hi, Good T0 x lo hi
   pre : ∀ q k', Route T0 x (c :: rest) q k' → Route T0 r key q k'
+  reached : x ∈ reach T0
 
 /-- The descent keeps `ClsInv` and ends at a segment leaf of the overlay. -/
 theorem wputa_cls_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
@@ -1247,13 +1328,14 @@ theorem wputa_cls_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
     obtain ⟨lo, hi, hGx⟩ := hD.good
     obtain ⟨m, hxm⟩ := wput_good_obj hGx
     rw [← hD.map] at hxm
-    obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, -, -⟩ := getNode_spec hs hb hD.inv hxm
+    obtain ⟨n, w1, hget, hks, hleaf, hlk1, hT1, hI1, -, -⟩ :=
+      getNode_spec hs hb hD.inv hxm (by rw [hD.map]; exact hD.reached)
     refine wput_ok hget ?_
     have hT1' : treeOf i s w1 = T0 := hT1.trans hD.map
     split
     · next hl =>
       rw [wp_pure]
-      exact ⟨⟨hI1, hT1', ⟨lo, hi, hGx⟩, hD.pre⟩, n, hlk1, hl⟩
+      exact ⟨⟨hI1, hT1', ⟨lo, hi, hGx⟩, hD.pre, hD.reached⟩, n, hlk1, hl⟩
     · next hl =>
       split
       · exact wp_throw _ _ _ _
@@ -1267,11 +1349,15 @@ theorem wputa_cls_descend {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
           · exact absurd e hl
         rw [hD.map] at hxm
         obtain ⟨m', lo', hi', -, -, -, hG'⟩ := hGx.child hxm hm (fun h => by rw [hml] at h; cases h)
+        have hyr : fd.y ∈ reach T0 := by
+          have h1 := wputg_reach_kid (T := treeOf i s w) hD.inv.sound.good hD.inv.root
+            (by rw [hD.map]; exact hD.reached) (by rw [hD.map]; exact hxm) hm
+          rwa [hD.map] at h1
         refine wput_ok (pathAdd_eq _ _ _ _) ?_
         refine (ih { w1 with path := w1.path ++ [(some fd.c, fd.y)] } fd.y
           ⟨hI1.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, hT1', ⟨lo', hi', hG'⟩,
           fun q k' hr => hD.pre q k' (Route.inner x m fd.c fd.y c rest q k' hxm hml hm hle hmax
-            hr)⟩).mono ?_
+            hr), hyr⟩).mono ?_
         exact fun L w' h => h
 
 /-- `putSegs` on the segments c :: rest left from x: in the run, the case of
@@ -1327,9 +1413,13 @@ theorem wputa_cls_putSegs {p : MParams} {i : Time} {base : NodeId} {s : Tree} {t
       refine wput_ok (pathAdd_eq _ _ _ _) ?_
       rw [wp_pure]
       dsimp only
+      have hyr : fd.y ∈ reach T0 := by
+        have h1 := wputg_reach_kid (T := treeOf i s w') hD'.inv.sound.good hD'.inv.root
+          (by rw [hD'.map]; exact hD'.reached) hLm hfm
+        rwa [hD'.map] at h1
       exact ih c2 _ fd.y hk2.2 ⟨hD'.inv.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl, hD'.map,
         ⟨lo', hi', hG'⟩, fun q k' hr => hD'.pre q k' (Route.leaf L _ c fd.y (c2 :: rest2) q k'
-          hLm0 hl hfm hk2.1 hr)⟩
+          hLm0 hl hfm hk2.1 hr), hyr⟩
     · next hfd =>
       have hno := searchEq_none hwf (wput_timesLe hD'.inv.books hlk) hfd
       have hroute := hD'.pre L (c :: c2 :: rest2) (Route.here L _)
@@ -1359,7 +1449,10 @@ theorem wputa_classify {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp :
   | nil => simp [keyWf] at hkey
   | cons c rest =>
     exact wputa_cls_putSegs hs hb rest c _ _ hkey ⟨hm.congr rfl rfl rfl rfl rfl rfl rfl rfl rfl,
-      rfl, ⟨0, none, hm.sound.good⟩, fun q k' hr => hr⟩
+      rfl, ⟨0, none, hm.sound.good⟩, fun q k' hr => hr, by
+        show w.top.rootKey ∈ reach (treeOf i s w)
+        rw [reach_of_root hm.root]
+        exact tc_self _ _ _⟩
 
 /-- Any put of a key as `Keys.toSegments` makes it keeps `MidP`: the run
 follows the key's segments; at each segment leaf the klong of the segment is
@@ -1390,7 +1483,7 @@ def WriterMeetsPut (p : MParams) (ops : List MOp) : Prop :=
       TreeOk ((treeOf i s w).at i) ∧ TopStep i tp (topOf i tp w) ∧
       (treeOf i s w).roots = rootsOf (topOf i tp w) ∧
       invOk (cpOf p) (treeOf i s w) = true ∧ TreeOk (treeOf i s w) ∧
-      BalancedAll p (treeOf i s w) ∧
+      Balanced p (treeOf i s w) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → ∃ t rest, n.ks = Klong.time t :: rest) ∧
       (∀ x n, (treeOf i s w).obj x = some (.key n) → timesBefore (i + 1) n.ks = true) ∧
       (∀ r ∈ (treeOf i s w).roots, r.1 < i + 1) ∧
