@@ -20,7 +20,7 @@ Where each check runs now:
   tests `faults.sh` and `faults-top.sh`) and
   `lean/contract/bridge-check.sh small drain` (`bridgecheck`, after its
   fault test `bridge-faults.sh` on a small and a reclaim trace). Quick: 2
-  seeds; full: 10 seeds, as step 8. About 3 minutes of the full run.
+  seeds; full: 10 seeds, as step 8. About 80 s of the full run.
 - **`java/night.sh`**: `transcheck.sh` (step 2b, 030-09); level2.sh full,
   so step 8b; and new, step 11b, `java/stress/contractconf.sh medium`:
   `treeconf.sh medium` writes 27 traces (no tree model check: section 2),
@@ -94,6 +94,9 @@ to 86).
   110 traces, 13,900 transactions; C1 to C5, R1, L1, L2 no failure, 2.7
   million LIVE lines. Bridge: the same traces, start, N, K, L, A2, A3, A5,
   TREE, TB, TOUCH, A6', COPY no failure.
+- `java/stress/level2.sh` (full) again at 827ac85f, the checks with
+  `par.sh`: LEVEL 2 OK, 17 minutes (20:36 to 20:53). Step 8b: build 3 s,
+  contract 32 s, bridge 42 s; the same totals as the first run.
 - `java/stress/contractconf.sh medium`, serial checks: CONTRACTCONF OK,
   93 minutes (export 112 s, contract 1,359 s, bridge 4,097 s). 27 traces,
   13,667 transactions, 736,718 operations, 610,036 nodes made, no failure.

@@ -5,9 +5,9 @@
 # run it after larger changes.
 #
 # Usage: java/stress/level2.sh [quick]
-#   full (default): about 12 minutes on 10 cores (an older measure); 55
-#   minutes on F53 on 2026-11-17 with other runs going (load 15 to 35), step 8b
-#   3 minutes of it (bergdb 030-13). quick: about 2 minutes (an older measure).
+#   full (default): 17 minutes on F53 (2026-11-17, other runs going), step 8b
+#   about 80 s of it (bergdb 030-13); 55 minutes under a heavier load. quick:
+#   about 2 minutes (an older measure).
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.
@@ -51,7 +51,7 @@
 #      Java's searches; first its fault tests, faults.sh and faults-top.sh),
 #      and lean/contract/bridge-check.sh on the same sets (bridgecheck: the
 #      bridge's clauses to the abstract model, bergdb 030-07; first its fault
-#      test, bridge-faults.sh, on a small and a reclaim trace). About 3 minutes.
+#      test, bridge-faults.sh, on a small and a reclaim trace). About 80 s.
 #      It builds the contract package (lean/contract/, a Lake project with
 #      Mathlib); if its .lake has no Mathlib, lake exe cache get fetches the
 #      Mathlib cache first (about 5 GB; minutes, with the network).
