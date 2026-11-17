@@ -63,6 +63,11 @@ def showsFaults (p : MParams) (i : Time) (base : NodeId) (P : SIS.Check.Tree.PMa
       | .time _ :: _ => pure ()
       | _ => f := f ++ [s!"key node {x} does not start with a time klong"]
       if n.level == 0 then f := f ++ [s!"key node {x} has level 0"]
+      -- SNamed (bergdb 030-10, the puts of keys of more segments): every key klong
+      -- names a node.
+      if !(n.ks.all (fun k => match k with
+          | .key _ y => h.objs.contains y
+          | _ => true)) then f := f ++ [s!"key node {x} has a klong that names no node"]
       if !n.leaf && !(n.ks.all (fun k => match k with
           | .key _ y => (match h.objs[y]? with
             | some (.key m) => m.level + 1 == n.level

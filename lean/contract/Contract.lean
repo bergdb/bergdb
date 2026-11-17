@@ -69,3 +69,17 @@ import Contract.Proof.NodeAlg3
 import Contract.Proof.TreeRulesDel
 import Contract.Proof.WriterDel
 import Contract.WriterExample
+import Contract.Proof.TreeRulesSeg
+import Contract.Proof.NodeAlg4
+import Contract.Proof.NodeAlg5
+import Contract.Proof.TreeRulesChain
+import Contract.Proof.WriterCascadeDefsG
+import Contract.Proof.WriterCascadeDefsH
+import Contract.Proof.WriterCascadeDefsO
+import Contract.Proof.WriterTimeSplitG
+import Contract.Proof.WriterSpaceSplitG
+import Contract.Proof.WriterPutG
+import Contract.Proof.WriterTimeSplitH
+import Contract.Proof.WriterPutSeg
+import Contract.Proof.WriterTimeSplitO
+import Contract.Proof.WriterSpaceSplitO
