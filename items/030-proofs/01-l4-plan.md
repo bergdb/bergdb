@@ -1017,6 +1017,21 @@ it keeps the first half, a new node the second, under a new inner root
 and a compacting split ("bitmap.dead") of a last version above h, below a parent
 or at a made root (a time split: the copy, or the leaf in place, is the hole).
 
+2026-11-17, 01:13 to 01:22. Step 3's rest, third part, prover l4c
+(`LiveMergeMade.lean`, about 1,000 lines; about 450 of them the room tail again, with the
+parent's change and the heights' cache's frame). `MergeTailFullRestOK` reduced to
+`MergeTailFullRest2OK`, its case `MergeFullMadeTime` proved: the merge's parent p, made by
+the transaction, goes `full` and splits in time, which is in place
+(`writerWP_handleFullWith_timeInPlace_nodesL`: p's node becomes its last version, nothing
+else changes). So the room proof's steps carry over with `mergeFullLast` for
+`mergeParentNode` (`writerWP_mergeTail_liveMade`, one node or two), and the next round's
+descent finds p (`writerWP_mergeTail_liveMadeRound`, `descendToHeight_up`, the path's
+reads and heights alike from the tail's frames, `writerWP_mergeCleanup_ghp` for p's).
+`writerWP_afterDelete_liveTR2`: premises `MergeTailFullRest2OK`, `MergeParamsOK`, R3.
+Left: p's space split (made, in place, or not), p not made and the space root (d = 1) or
+a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
+fired.
+
 2026-11-17, 01:21 to 01:26. Step 5, the space split's cascade, prover l4b. After
 a space split no hole is left (both halves `HalfOK`), so R4's hole below the
 chain does not arise: the parent's klongs to the halves go up through
@@ -1033,3 +1048,11 @@ reached (`liveEdges_updN_unreach`): `writerWP_handleFull_spaceChain_live`
 `liveDel_fullSpaceChain_live`. Left of step 5: the time split's cascade (R4), the
 made leaf's and the segment root's space split below a full parent (the same
 route), and a compacting split of a last version above h.
+
+2026-11-17, 01:28. Step 6, R2's heights, prover l4b: `UpHtWalk` (00:18's premise
+of `liveDel_upRoom` and `liveDel_upRoom_live`) is false for every context, oracle
+and B (prover l4d's `upHtWalk_false`, LiveUpHtFalse.lean: a take-back from an
+`HtJ0` state where another node names the node taken back keeps no heights). So
+`liveDel_upRoom_live` never applies as stated; its true form (`HtInv` at the stop
+node's call from the walk's start and the loop's frame) is l4d's. No step of l4b
+builds on `UpHtWalk`.

@@ -404,7 +404,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`liveDel_upRoom`, `LiveUpRoom.lean`) calls `afterDelete key g 0` at the stop node (a
   segment leaf) with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW`, given the heights through
   the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
-  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
+  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`; 01:28: `UpHtWalk`
+  is false for every context, oracle and B, prover l4d's `upHtWalk_false`, so this theorem never
+  applies as stated; l4d proves its true form, `HtInv` at the stop node's call). R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
@@ -513,6 +515,15 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   `MergeTailFullRestOK`: p made by the transaction, p's space split, p the space root or a
   segment root, and q full or compacting (the cascade, R4). `writerWP_afterDelete_liveTR`:
   premises `MergeTailFullRestOK`, `MergeParamsOK` and R3.
+  01:22 (prover l4c, `LiveMergeMade.lean`, about 1,000 lines, about 450 of them the room
+  tail again): `MergeTailFullRestOK` reduced to `MergeTailFullRest2OK`, its case
+  `MergeFullMadeTime` proved: p made by the transaction splits in time in place, so p's node
+  becomes its last version and nothing else changes; the room tail's steps carry over
+  (`writerWP_mergeTail_liveMade`), and the next round's descent finds p
+  (`writerWP_mergeTail_liveMadeRound`, `descendToHeight_up`, the heights' cache read alike
+  from the tail's frames). Left in `MergeTailFullRest2OK`: p's space split (made or not), p
+  not made and the space root or a segment root, and q full or compacting (the cascade, R4).
+  `writerWP_afterDelete_liveTR2`: premises `MergeTailFullRest2OK`, `MergeParamsOK` and R3.
 - The upward delete's stop node (putinv; `delStepsOKF3_of_open16`, `delStepsJ2OKF3_of_openR11`).
   Its cascade and its LE-b, with room or full, are proved, at the space root and below it, for
   the reading and the take-back, from the state after the upward loop; the links below the next
