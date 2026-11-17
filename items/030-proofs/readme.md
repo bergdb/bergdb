@@ -228,6 +228,13 @@ Files
   paused and frozen at the tag `proofs-2026-11-17`; the steps; the
   spike's brief. Waits for Frans: the spike's time. Written 2026-11-17,
   11:19 to 11:26. Status: open.
+* [030-05](05-contract-spike.md). The report of 030-04's spike: the
+  writer's contract settled (the invariants, the contents, the frame;
+  the fill rule not in it), `inv_right`, `get_right` and `scan_right`
+  proved from it in `lean/contract/` (4,900 lines, Mathlib, the standard
+  axioms only), the contract checked on the 180 traces of the level 2
+  sets with no failure; what is next for step 4. On the branch
+  `030-04-spike`. Written 2026-11-17, 11:31 to 12:58. Status: done.
 
 
 Log
