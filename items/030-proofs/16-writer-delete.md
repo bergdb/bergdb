@@ -34,15 +34,19 @@ the focus.
   (`handleFullD_time`, `handleFullD_space`). The delete keeps `MidP`, as the
   put does. This removes the first delete's premises (room for a bitmap,
   theta 0, no merge) but the merges.
-- **Proved, the merges' parts** (20:00 to 20:40): the merge as a tree rule
+- **Proved, the merges' parts:** the merge as a tree rule
   (`Sound.mergeOne`, `Sound.mergeTwo`: two adjacent siblings' live klongs in
   one or two new nodes, the parent's klongs set; the same keys); a merge's
   parent in every form (`mergeParent_spec`: the bitmap of the right child's
   klong, the pointers set in place or by new klongs, a full parent by a time
   or space split); root collapse at the space root (`Sound.collapse`,
   `collapseRoot_spec`: a root of before cut back, a root the transaction made
-  taken back). In work: the merge itself (`merge_spec`) and the loop
-  (`mergeUp_spec`, `afterOkW_on`).
+  taken back); the merges' loop and `afterDelete` with the merges on
+  (`mergeUp_spec`, `afterOkW_on`), given the merge's step (`MergeOk`); the
+  merge itself reduced to its middle part (`merge_spec_of_rest` from
+  `WmgRestOk`: proved are the sibling's choice, the reads, and the two merged
+  nodes left out with the take-back; open: the new nodes and the parent's
+  change from the tree rules, 2,400 lines so far).
 - **The take-back needs a link book, and it must speak of every node** (F2,
   section 3): `WcrLink` (a node reached that the transaction made is named by
   one node of the map at most, by none if it is the space root) with `SNamed
@@ -191,8 +195,9 @@ each, 19:20 to 19:50. They changed no statement.
 
 # State
 
-2026-11-17, 21:55. Section 1, with the merge (`merge_spec`) and the loop
-being finished by two provers until 22:20.
+2026-11-17, 22:05. Section 1. The last gated commit: 868af087 (on main
+d7966251). I stopped here for the week's budget (55 %, the stop at 60 %),
+with 030-10's restatement of `BalancedAll` to come first (F3).
 
 - Branch `030-16-writer-delete` in the clone
   `/Users/f/fl/bench/2026-11-17/night/s4j/clone`. Build: `cd lean/contract &&
@@ -241,3 +246,7 @@ parent's split as a premise (`WmgSplitLink`), the one piece not proved.
 The coordinator, 21:32: a second independent review's points on the delete
 (section 3, R1 to R6); 030-10 restates `BalancedAll` (reached nodes, live
 klongs), my D3.
+2026-11-17, 21:30 to 22:05. Prover C: the merge reduced to `WmgRestOk`
+(stopped for the week's budget; `merge_spec` left out); prover H: the loop
+restated on `MergeOk` and `WmgFresh`. Main d7966251 merged.
+GATED 868af087: the merges' loop (mergeUp_spec, afterOkW_on, given MergeOk), the merge reduced to WmgRestOk (merge_spec_of_rest), root collapse with WcrLink and SNamed only; the review's points in the item.
