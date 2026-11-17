@@ -1367,3 +1367,17 @@ the stop node's split (after the bitmap's note): a split in time (the copy, or t
 node made by the transaction, is the hole), a made stop node's split in space in place,
 and a made space root. `upCascCallRuns_of_rest` at the runs; no new top corollary (the
 coordinator's word, 02:10: none more carrying `R3Calls`).
+
+2026-11-17, 02:16 to 02:22. Step 6, the made stop node's split in time, prover l4e
+(`LiveUpCascMade.lean`, about 720 lines, about 330 of them the swap prelude again for the
+heights). `writerWP_upCasc_below_madeTime`: a full stop node below the space root that the
+transaction made, split in time in place (compacting or not), becomes its last version
+without the chain's klong, with the live klongs its bitmap would leave: the live counts hold
+but at the stop node (`liveEdgesH_up`), and the merges' descent at its pair finds it
+(`holeAtW_stop`, the key's path given as the walk's from its start: `linkedFrom_of_nodes`;
+the segments from the kinds after the split, `kd_handleFull`). `writerWP_upCasc_below_ht`:
+the heights after any split of a stop node below the root (the swap, `htInv_upFrame`,
+`ht_handleFull`). `upCascSplitRestOK_of_rest2`: `UpCascSplitRestOK` from
+`UpCascSplitRest2OK`, its cases left: a stop node not made split in time (the copy the
+hole, below a parent with room or with the cascade), a made stop node's split in space in
+place, and a made space root; at the runs `upCascCallRuns_of_rest2`.
