@@ -1176,3 +1176,17 @@ below the chain, R4's general case), and p made and split in space (0 on the run
 this part the proved cases cover 785 of the 1,134 full-parent merges on the runs (69%);
 left 349: the cascade 256, the space root 93. No stop rule fired.
 
+2026-11-17, 01:52 to 01:59. Step 3's rest, seventh part, prover l4c (`LiveMergeRoot.lean`,
+about 900 lines, about 450 of them the time tail's prelude again). `MergeTailFullRest5OK`
+reduced to `MergeTailFullRest6OK`, its case `MergeFullTimeRoot1` proved: a merge into one
+node whose parent p is the space root, not made, split in time (52 on the runs). The copy
+becomes the space root (`writerWP_handleFullWith_time_root_gh`, `newSuperRoot`,
+`writerWP_newSuperRoot_frameG`) and the hole (`liveEdgesH_newRoot`: the reached nodes are
+the copy and the ones reached before but p; `writerWP_handleFull_timeRoot_live`); the
+cleanup changes nothing reached; the next round's descent starts at the new space root
+and stops there (`descendToHeight_newRoot`: p, inner, at depth 0 is not above a segment
+leaf, so the key's segment is the first). `writerWP_afterDelete_liveTR6`: premises
+`MergeTailFullRest6OK`, `MergeParamsOK`, R3. On the runs the proved cases now cover 837 of
+the 1,134 full-parent merges (74%); left 297: the cascade 256, the space root split in
+time into two nodes 29 or in space 12. No stop rule fired.
+
