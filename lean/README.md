@@ -119,6 +119,8 @@ its parent full in the cases left (`MergeTailRuns`), R3 at the calls of
 (`DelFullTimeCascM`, the cascade with the copy the hole) and the upward delete
 whose stop node has no room (`DelEmptyCascM`); every other delete case is proved
 (`liveDelSL_of_pieces`, the full leaf's cases by `delFullM_cover`).
+`invGetScanOK_merges_noL4U` (SIS/Tree/LiveUpCascCall.lean) narrows the last to the
+full stop node's split at the upward loop's end (`UpCascCallRuns`).
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries
