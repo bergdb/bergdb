@@ -4,7 +4,14 @@ import Contract.Statement
 import Contract.Check
 import Contract.Shape
 import Contract.Trace
+import Contract.Complete
+import Contract.History
 import Contract.Theorems
 import Contract.Example
 import Contract.Example3
 import Contract.ExampleDag
+import Contract.Reach
+import Contract.ShapeStatement
+import Contract.CheckShape
+import Contract.TheoremsShape
+import Contract.ExampleShape
