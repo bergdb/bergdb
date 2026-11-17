@@ -111,7 +111,14 @@ invariant holds at the state after the leaf's change taken as its own reference.
 `invGetScanOK_merges_l4L` (SIS/Tree/LiveTop.lean; bergdb 030-01, step 1) has `l4`
 reduced the same way, to its open case at one delete whose start has the first
 stratum's facts (`LiveDelSL`): premises `hp`, `hth`, `htbL`, `l4L`, and
-`invGetScanOK_merges_tbL` is its corollary.
+`invGetScanOK_merges_tbL` is its corollary. `invGetScanOK_merges_noL4`
+(SIS/Tree/LiveAssembly.lean; bergdb 030-01, step 7) has no `l4`: premises `hp`,
+`hth` and `l4`'s open narrow pieces at the induction's runs, the merge's tail with
+its parent full in the cases left (`MergeTailRuns`), R3 at the calls of
+`afterDelete` (`R3Calls`), the full leaf split in time below a parent without room
+(`DelFullTimeCascM`, the cascade with the copy the hole) and the upward delete
+whose stop node has no room (`DelEmptyCascM`); every other delete case is proved
+(`liveDelSL_of_pieces`, the full leaf's cases by `delFullM_cover`).
 
 `hU` is false as stated, for every parameter set, and so were `hHL` and `hCoU`:
 they speak of every writer state that meets a local invariant, which carries

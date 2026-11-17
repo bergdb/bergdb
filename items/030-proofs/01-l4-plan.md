@@ -1129,3 +1129,22 @@ unchanged otherwise: `liveDel_fullMadeG_live` (made, in place) and
 cases are now all proved but one, given l4a's loop: the leaf not made, split in
 time, its parent without room for the copy's klong (the cascade with the copy the
 hole below the chain, R4).
+
+2026-11-17, 01:44 to 01:50. Step 7, the assembly, prover l4b (LiveAssembly.lean):
+`invGetScanOK_merges_noL4`, TP7, TP10 and TP11 for Java's parameters without
+`l4`, a corollary of `invGetScanOK_merges_l4L` with `htbL` proved
+(`takeBelowFuelDelSL_holds`) and `l4L` from `liveDelSL_of_pieces`. Its premises
+besides `hp` and `hth` are `l4`'s open narrow pieces, each at the induction's runs
+(`RunTreeQ p (LatestQD p)`): `MergeTailRuns` (l4c's `MergeTailFullRest3OK` at the
+runs' contexts), `R3Calls` (R3 at the calls of `afterDelete`, with the call's
+facts), and in the delete cases' form (`DelCaseLive`: from the first stratum's
+start to the call of `afterDelete` with the hole) the full leaf split in time below
+a parent without room (`DelFullTimeCascM`, R4) and the upward delete whose stop
+node has no room (`DelEmptyCascM`, prover l4e's). `liveDelSL_of_pieces`: `SJ0` from
+the induction's facts (as `jointHtJ_reached0L` builds it), `TakeJ2` is `J2At`, and
+the cases: the noop and the key with no leaf excluded by the open case,
+`delMerge_cover`, the emptied leaf by `delEmptyM_split` and `delEmptyOther_split`
+(l4d's `liveDel_upRoomH`, `liveDel_emptyRoot`, the premise), the bitmap with room
+(`liveDel_room`), the full leaf by `delFullM_cover` into nine cases, all proved but
+R4. `afterDelete` at every call by `writerWP_afterDelete_liveTR3`
+(`afterDelete_live_runs`). When a piece lands, its premise goes.
