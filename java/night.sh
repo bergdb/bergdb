@@ -10,7 +10,8 @@
 # as launchd's job was before ProcessType Interactive (2026-10-22) or a
 # background process is (nice, taskpolicy -b), the timing tests fail.
 #
-# Usage: java/night.sh          the night run, about 100 minutes on F53
+# Usage: java/night.sh          the night run, about 100 minutes on F53 before
+#                               bergdb 030-13, which adds about 30 to 35
 #        java/night.sh large    the same and the large conformance set,
 #                               about 6 hours; by hand
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
@@ -23,8 +24,9 @@
 # output is printed and kept in build/test/night.txt.
 #
 # The night run clones HEAD of this repository into build/night/RUN/repo (RUN
-# is the date and time; lean/.lake is copied in, so that lake builds only what
-# changed) and runs there, one after another, going on after a failure:
+# is the date and time; lean/.lake and lean/contract/.lake are copied in, so
+# that lake builds only what changed) and runs there, one after another, going
+# on after a failure:
 #   1. before-commit.sh: the unit and f-tests.
 #   2. stress/core-build.sh unit f: the Core Layer built alone, with an empty
 #      class path, a program that calls Db with only it, and its unit and
@@ -34,8 +36,9 @@
 #   3. stress/level1.sh to level4.sh, full: the random stress programs at
 #      scale (RestartStress, CrashTest, RestartInvariance, ReclaimStress,
 #      EvictionInvariance, LargerThanMemory, ...), conformance with the Lean
-#      model (the small, drain, reclaim and evict sets), and level1.sh's MEM
-#      and SS limits.
+#      model (the small, drain, reclaim and evict sets), the writer's contract
+#      and the bridge on the small and drain sets (level2.sh, bergdb 030-13),
+#      and level1.sh's MEM and SS limits.
 #   4. stress/count-gates.sh: count gates of aims 2 and 3 of release 2026.5
 #      at 1M keys (the largest record, the reachable key nodes against a
 #      twin's, the stream kept under reclaim, back to empty after a fill and
@@ -60,6 +63,14 @@
 #      checked against the journal of the children before; about 26 minutes
 #      (bergdb 020-15).
 #  11. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
+#  11b. stress/contractconf.sh medium: the medium tree set (treeconf.sh medium,
+#      27 traces of 120 to 800 transactions, node sizes 8 to 62, written with
+#      no tree check, which would take over an hour), then the writer's
+#      contract (lean/contract/check.sh) and the bridge
+#      (lean/contract/bridge-check.sh) on its traces, four at a time (bergdb
+#      030-13); 32 minutes on F53 under a heavy load (2026-11-17), most of it
+#      the bridge's six traces of m-d30 and m-d62.
+#      level2.sh's step 8b checks both on the small and drain sets.
 #  12. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
 #      l-big62 traces.
@@ -97,6 +108,12 @@ mkdir -p $RUN || exit 1
 git clone -q "$REPO" $SRC || { echo "NIGHT FAILED: clone" | tee $REPORT; exit 1; }
 if [ -d "$REPO/lean/.lake" ]; then
     cp -R "$REPO/lean/.lake" $SRC/lean/ 2>/dev/null
+fi
+# The contract package's .lake, with Mathlib (about 8 GB): cloned on APFS (cp -c,
+# about 30 s, no disk space), so that lake neither fetches Mathlib nor builds it.
+if [ -d "$REPO/lean/contract/.lake" ]; then
+    cp -cR "$REPO/lean/contract/.lake" $SRC/lean/contract/ 2>/dev/null \
+        || cp -R "$REPO/lean/contract/.lake" $SRC/lean/contract/ 2>/dev/null
 fi
 {
     echo "Night run $(basename $RUN) on $(hostname -s)"
@@ -144,6 +161,8 @@ step fuzz sh stress/fuzz.sh 12
 step unlinkfuzz sh stress/unlinkfuzz.sh
 step kill-restart sh stress/kill-restart.sh 1000
 step conformance-medium sh stress/conformance.sh medium
+# The writer's contract and the bridge on the medium tree set (bergdb 030-13).
+step contract-medium sh stress/contractconf.sh medium
 if [ $LARGE = 1 ]; then
     step conformance-large sh stress/conformance.sh large
 fi

@@ -164,6 +164,22 @@ D5. The rest
 * Java against the model: tested only, by the trace checkers; it stays
   a test.
 
+Where the contract's checks run
+-------------------------------
+
+The tested half of D0 (030-04, section 3), kept running as the code
+changes (030-13):
+
+* `java/before-commit.sh`, the commit gate: Java's own check of the
+  contract (TransCheck) in the unit tests; no Lean.
+* `java/stress/level2.sh`, step 8b: `lean/contract/check.sh` (the contract,
+  with its fault tests) and `lean/contract/bridge-check.sh` (the bridge,
+  with its fault test) on the small and drain tree sets that step 8 writes.
+* `java/night.sh`: `java/stress/transcheck.sh` (TransCheck in the unit and
+  f-tests); level2.sh full; and `java/stress/contractconf.sh medium`, the
+  medium tree set with the tree model's check, the contract and the bridge.
+* By hand: `bridgecheck --model` and the large set.
+
 How the directions hang together
 --------------------------------
 
@@ -273,6 +289,11 @@ Files
 * [030-12](12-contract-large.md). The contract check on the reclaim,
   medium and large sets of `treeconf.sh`, with `live=1`: more evidence
   that Java meets the writer's contract. Status: open.
+* [030-13](13-contract-in-levels.md). The contract's checks in the routine
+  tests: the contract and the bridge checks in `level2.sh` (small and drain
+  sets) and in `night.sh` (the medium set, `java/stress/contractconf.sh`);
+  where each check runs; the checkers four at a time (par.sh). Written
+  2026-11-17, 17:03 to 21:05. Status: done.
 
 * [030-10](10-writer-spike.md). A spike of 030-04's optional step 5, the
   night of 17 November: does the model's writer meet the contract? The
