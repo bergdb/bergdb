@@ -65,3 +65,12 @@ open Contract
 #print axioms MeetsBridgeTop.meetsBridge
 #print axioms Contract.BridgeExample3.meetsTop
 #print axioms Contract.BridgeExample3.meetsBridge
+#print axioms MeetsFull.meetsBridge
+#print axioms MeetsFull.meetsEvict
+#print axioms Contract.BridgeExample3.meetsFull
+#print axioms fullHistoryOk_meets
+#print axioms MeetsFull.meetsTop
+#print axioms full_recovery
+#print axioms full_restart
+#print axioms full_eviction
+#print axioms full_cut

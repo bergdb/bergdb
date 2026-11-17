@@ -252,7 +252,7 @@ variable {p : Params} {h : BHist} {j : Nat} {hj : j < h.txs.length}
 
 /-- An entry value that the change adds to a node of the tree is one of the
 node's new entry values. -/
-theorem StepFacts.add_mem (f : StepFacts p h j hj) {a : NodeId × BVal} (ha : a ∈ h.txs[j].c.adds)
+theorem TreeFacts.add_mem (f : TreeFacts p h j hj) {a : NodeId × BVal} (ha : a ∈ h.txs[j].c.adds)
     (hs : ((h.tree (j + 1)).obj a.1).isSome = true) :
     a.2 ∈ newVals (h.tree j) (h.tree (j + 1)) a.1 := by
   rw [← f.adds_all a.1 hs]

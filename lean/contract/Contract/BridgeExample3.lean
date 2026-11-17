@@ -7,9 +7,10 @@ bitmap), with the model's changes and the contract's top beside them. So the
 premises of the bridge's theorems are met by a history in which a top node is
 made, the root gets its entry, and a bitmap is a delete entry: `meetsBridge`
 gives `MeetsBridge` for it, with the top's clauses in the model's words
-(R1 to R4, the dead top nodes, the link) proved, not assumed.
+(R1 to R4, the dead top nodes, the link) proved, not assumed. It meets every
+clause in the contract's words (`meetsFull`), eviction's too.
 -/
-import Contract.Proof.BridgeTop
+import Contract.Proof.BridgeWords
 import Contract.BridgeTheorems
 import Contract.Example3
 
@@ -139,6 +140,50 @@ theorem meetsTop : MeetsBridgeTop p h top where
     | 2, _ =>
       exact ⟨contract3, bridge3, made3, Or.inl rfl, rfl, topChange3,
         touchOK _ _ _ rfl⟩
+
+theorem copy1 : copyOk 1 s0 s1 tp0 c1 = true := by decide
+theorem copy2 : copyOk 2 s1 s2 tp0 c2 = true := by decide
+theorem copy3 : copyOk 3 s2 s3 tp2 c3 = true := by decide
+
+theorem touch1 : touchOk (s0.at 0) tp0 [] = true := by decide
+theorem touch2 : touchOk (s1.at 1) tp0 [] = true := by decide
+theorem touch3 : touchOk (s2.at 2) tp2 [] = true := by decide
+
+/-- The history meets every clause in the contract's words: the touch (no
+transaction touches), TREE, A6' and A-COPY too. -/
+theorem meetsFull : MeetsFull p h top where
+  start := startB
+  startTop := by decide
+  step := by
+    intro j hj
+    have hj3 : j < 3 := hj
+    match j, hj with
+    | 0, _ =>
+      exact ⟨contract1, bridge1, made1, Or.inl rfl, rfl, topChange1, touch1, copy1⟩
+    | 1, _ =>
+      exact ⟨contract2, bridge2, made2, topStepB_sound 2 tp0 tp2 (by decide), rfl, topChange2,
+        touch2, copy2⟩
+    | 2, _ =>
+      exact ⟨contract3, bridge3, made3, Or.inl rfl, rfl, topChange3, touch3, copy3⟩
+  tree := by
+    intro j hj
+    have hj3 : j ≤ 3 := hj
+    interval_cases j
+    · show TreeOk (s0.at 0); decide
+    · show TreeOk (s1.at 1); decide
+    · show TreeOk (s2.at 2); decide
+    · show TreeOk (s3.at 3); decide
+  adopt := by
+    intro j hj
+    have hj3 : j ≤ 3 := hj
+    interval_cases j
+    · show adoptOk (s0.at 0) = true; decide
+    · show adoptOk (s1.at 1) = true; decide
+    · show adoptOk (s2.at 2) = true; decide
+    · show adoptOk (s3.at 3) = true; decide
+
+/-- So it meets what eviction needs in the model's words. -/
+theorem meetsEvict : MeetsEvict h := meetsFull.meetsEvict
 
 /-- So it meets `MeetsBridge`: the top's premise in the model's words holds
 for it, with a top node made and its skip pointer. -/

@@ -33,7 +33,9 @@ import Contract.Proof.BridgeTree
 import Contract.Proof.BridgeDirty
 import Contract.Proof.BridgeHistory
 import Contract.Proof.BridgeTop
+import Contract.Proof.BridgeWords
 import Contract.BridgeTheorems
 import Contract.BridgeExample
 import Contract.BridgeExample3
 import Contract.BridgeBound
+import Contract.BridgeFull

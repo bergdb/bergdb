@@ -181,4 +181,92 @@ theorem bridgeHistoryOk_meets (p : Params) (hc : bridgeHistoryOk p h0 c0 steps =
 
 end Hist
 
+/-! ## A whole trace, in the contract's words -/
+
+theorem topBefore_zero (tp : Top) (steps : List TStep) : topBefore tp steps 0 = tp := by
+  cases steps <;> rfl
+
+theorem topBefore_succ : ∀ (steps : List TStep) (tp : Top) (j : Nat) (hj : j < steps.length),
+    topBefore tp steps (j + 1) = steps[j].top
+  | [], _, _, hj => by simp at hj
+  | st :: rest, tp, 0, _ => by simp [topBefore, topBefore_zero]
+  | st :: rest, tp, j + 1, hj => by
+    simp only [topBefore, List.getElem_cons_succ]
+    exact topBefore_succ rest st.top j (by simpa using hj)
+
+/-- The checks of the j-th transaction, from the verdict on all of them. -/
+theorem fullStepsOk_nth (p : Params) (tl : Nat) : ∀ (steps : List TStep) (i : Nat)
+    (h : Heap) (tp : Top) (P : Struct BVal), fullStepsOk p tl i h tp P steps = true →
+    ∀ j (hj : j < steps.length),
+      fullTx p tl (structAt P i steps j) (i + j) (heapAt h steps j) (topBefore tp steps j) steps[j]
+        = true
+  | [], _, _, _, _, _, j, hj => by simp at hj
+  | st :: rest, i, h, tp, P, hc, 0, _ => by
+    simp only [fullStepsOk, Bool.and_eq_true] at hc
+    simp only [heapAt_zero, structAt_zero, topBefore_zero, Nat.add_zero, List.getElem_cons_zero]
+    exact hc.1
+  | st :: rest, i, h, tp, P, hc, j + 1, hj => by
+    simp only [fullStepsOk, Bool.and_eq_true] at hc
+    have := fullStepsOk_nth p tl rest (i + 1) st.heap st.top (P.apply i st.c) hc.2 j
+      (by simpa using hj)
+    have he : i + 1 + j = i + (j + 1) := by omega
+    rw [he] at this
+    exact this
+
+/-- What the bridge checker computes for a whole trace, in the contract's
+words, gives a history that meets every clause in the contract's words
+(`MeetsFull`): so it meets `MeetsBridge` and `MeetsEvict`
+(Proof/BridgeWords.lean), and the theorems of BridgeTheorems.lean hold for
+the tree and the top that the trace's lines give. -/
+theorem fullHistoryOk_meets (p : Params) (h0 : Heap) (c0 : Changes BVal) (tp0 : Top)
+    (steps : List TStep) (hc : fullHistoryOk p h0 c0 tp0 steps = true) :
+    MeetsFull p (histOf h0 c0 steps) (topBefore tp0 steps) := by
+  simp only [fullHistoryOk, Bool.and_eq_true] at hc
+  obtain ⟨⟨⟨⟨hstart, htop0⟩, htree0⟩, hadopt0⟩, hsteps⟩ := hc
+  have hlen := histOf_length h0 c0 steps
+  have nth := fullStepsOk_nth p _ steps 1 h0 tp0 (histOf h0 c0 steps).p0 hsteps
+  have step : ∀ j (hj : j < steps.length),
+      fullTx p (histOf h0 c0 steps).topLevel ((histOf h0 c0 steps).P j) (j + 1)
+        (heapAt h0 steps j) (topBefore tp0 steps j) steps[j] = true ∧
+      (histOf h0 c0 steps).tree j = (heapAt h0 steps j).tree ∧
+      (histOf h0 c0 steps).tree (j + 1) = steps[j].heap.tree ∧
+      topBefore tp0 steps (j + 1) = steps[j].top := by
+    intro j hj
+    have h1 := nth j hj
+    rw [Nat.add_comm 1 j, ← histOf_P h0 c0 steps j (Nat.le_of_lt hj)] at h1
+    refine ⟨h1, histOf_tree h0 c0 steps j (Nat.le_of_lt hj), ?_, topBefore_succ steps tp0 j hj⟩
+    rw [histOf_tree h0 c0 steps (j + 1) hj, heapAt_succ steps h0 j hj]
+  refine { start := startCheck_sound c0 h0 steps hstart, startTop := ?_, step := ?_, tree := ?_,
+           adopt := ?_ }
+  · rw [topBefore_zero]
+    exact htop0
+  · intro j hj
+    have hj' : j < steps.length := by rw [← hlen]; exact hj
+    obtain ⟨h1, ht, ht', htp'⟩ := step j hj'
+    have hops : (histOf h0 c0 steps).txs[j].ops = steps[j].ops := by simp [histOf]
+    have hD : (histOf h0 c0 steps).txs[j].D = steps[j].D := by simp [histOf]
+    rw [hops, hD, histOf_c h0 c0 steps j hj', ht, ht', htp']
+    simp only [fullTx, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at h1
+    obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨a1, a2⟩, a3⟩, a4⟩, a5⟩, a6⟩, a7⟩, a8⟩, _⟩, _⟩ := h1
+    exact ⟨checkTx_sound p _ _ _ _ _ a1, a2, madeCheck_sound _ _ _ a3, topStepB_sound _ _ _ a4,
+      a5, a6, a7, a8⟩
+  · intro j hj
+    cases j with
+    | zero => exact treeOkB_sound _ htree0
+    | succ j =>
+      have hj' : j < steps.length := by rw [← hlen]; exact hj
+      obtain ⟨h1, _, ht', _⟩ := step j hj'
+      simp only [fullTx, Bool.and_eq_true] at h1
+      rw [ht']
+      exact treeOkB_sound _ h1.1.2
+  · intro j hj
+    cases j with
+    | zero => exact hadopt0
+    | succ j =>
+      have hj' : j < steps.length := by rw [← hlen]; exact hj
+      obtain ⟨h1, _, ht', _⟩ := step j hj'
+      simp only [fullTx, Bool.and_eq_true] at h1
+      rw [ht']
+      exact h1.2
+
 end Contract

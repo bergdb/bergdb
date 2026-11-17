@@ -8,8 +8,9 @@ the abstract model's existing proofs (`lean/SIS`, 006-26, sections 2.1 and
 3.1 to 3.3). The old proofs are not redone; the contract is connected to
 them. Written by the bridge's agent of coord-1117 (the night of 17 to 18
 November, brief s4a), "I" below. The Lean is in `lean/contract/`: the
-statements in `Contract/Bridge.lean`, `Contract/BridgeTop.lean` and
-`Contract/BridgeTheorems.lean`.
+statements in `Contract/Bridge.lean` and `Contract/BridgeTop.lean` (the
+clauses), `Contract/BridgeTheorems.lean` and `Contract/BridgeFull.lean`
+(the theorems).
 
 
 # 1. The result
@@ -17,7 +18,9 @@ statements in `Contract/Bridge.lean`, `Contract/BridgeTop.lean` and
 Kept current; the Log has the times.
 
 - **Proved** (Lean theorems, the standard axioms only), for any history that
-  meets the writer's contract and the bridge's clauses (section 3):
+  meets the writer's contract and the bridge's clauses (`MeetsFull`, section
+  3; every clause is about Java's tree, its top and the transaction's change,
+  none in the abstract model's words):
   - the abstract model's assumptions hold for BergDB's key tree:
     `RunOK` (`bridge_runOK`; TP14 of the old line, 006-26, section 5.2), TREE
     after every transaction, and with A6' and A-COPY `EvictRunOK`
@@ -42,28 +45,32 @@ Kept current; the Log has the times.
     those of the run without cuts, with eviction too (`bridge_cut_recover`,
     `bridge_cut_restart`, `bridge_cut_handles`). "A safe cut" (`CutOK`) stays
     a premise: that BergDB's waits give one is tested (006-26, section 3.3).
-- **The top's premise is proved, not assumed.** With 030-08's top in the
-  contract (`TopStep`) and one more computed clause (TB), what the model
-  assumes of the root and the top nodes (R1 to R4, the dead top nodes) is a
-  theorem (`MeetsBridgeTop.meetsBridge`).
+- **What the model assumes of the top is proved, not assumed.** With
+  030-08's top in the contract (`TopStep`) and one more computed clause
+  (TB), R1 to R4 and the dead top nodes are a theorem
+  (`MeetsBridgeTop.meetsBridge`). So are the model's touch rules, A6' and
+  A-COPY, from the same clauses said of the tree (`MeetsFull.meetsBridge`,
+  `MeetsFull.meetsEvict`).
+- **Java's readers too.** A history that meets `MeetsFull` meets 030-08's
+  `MeetsTop` (`MeetsFull.meetsTop`), so the reads' theorems with Java's top
+  search hold for the same history.
 - **D is state** (030-06, finding 5): the frame holds with the model's D in
   place of the contract's free D (`frame_modelD`).
-- **Not vacuous.** `Contract/BridgeExample.lean`: the empty tree and one put
-  meet every clause, eviction's too. `Contract/BridgeExample3.lean`:
-  030-06's three transactions, with a top node made, its skip pointer and a
-  delete by a bitmap, meet the clauses with the contract's top.
+- **Not vacuous.** `Contract/BridgeExample3.lean`: 030-06's three
+  transactions, with a top node made, its skip pointer and a delete by a
+  bitmap, meet every clause (`meetsFull`). `Contract/BridgeExample.lean`:
+  the empty tree and one put meet the clauses in the model's words.
 - **Tested.** Every clause holds for every traced transaction of the level 2
   sets and the reclaim set: 195 traces, 29,735 transactions, 335,902 nodes
   made, 831,317 entries, 7,368 touched nodes; no failure
   (`lean/contract/bridge-check.sh small drain reclaim`). What the checker
-  computes for a whole trace is proved to give the clauses
-  (`bridgeHistoryOk_meets`). Faults made by hand in a trace fail it
+  computes for a whole trace is proved to give `MeetsFull`
+  (`fullHistoryOk_meets`). Faults made by hand in a trace fail it
   (`lean/contract/bridge-faults.sh`).
 - **Not proved, and stays tested:** that Java's writer meets the clauses
   (the checks above); that Java's records are the model's (`tracecheck`, on
   the same instance of the model, section 2, decision 2); the cut's safety.
-- **Open:** A6' and A-COPY are still in the model's words (section 3.3);
-  bounded startup's premises (section 6).
+- **Open:** bounded startup's premises (section 6); the State note.
 
 Proved means a Lean theorem with no premise but the ones named. A history
 "meets the clauses" by assumption; nothing here proves that a writer does.
@@ -100,9 +107,13 @@ Proved means a Lean theorem with no premise but the ones named. A history
    (on the tree, computed: N, K, F4, W, A4, A2, A3, A5). The top's were
    first one premise in the model's words (`TopOK`, as the brief said, until
    030-08 landed); since 16:15 they are 030-08's own (`TopStep`) and clause
-   TB, and `TopOK` is derived. The touch, A6' and A-COPY are in the model's
-   words, on the model's structure, each computed by a function that is
-   proved to give it.
+   TB, and `TopOK` is derived. The touch, A6' and A-COPY were first in the
+   model's words (`TouchOK`, `MeetsEvict`), each computed by a function
+   proved to give it; since 16:45 they are said of the tree and its top
+   (`touchOk`, `adoptOk`, `copyOk`) and the model's are derived. The
+   statements in the model's words stay, as the step between: `MeetsFull`
+   gives `MeetsBridgeTop`, which gives `MeetsBridge`; the theorems are
+   proved from `MeetsBridge` and `MeetsEvict`.
 5. **TREE is 030-08's clause** (`TreeOk`, no node reached twice), as the
    coordinator said at 15:45, and "reached" in A2, A3 and A5 is 030-08's
    `reach`: one definition of the walk for the contract. The model's TREE
@@ -110,11 +121,15 @@ Proved means a Lean theorem with no premise but the ones named. A history
 6. **W5 is added to the rules of a node's bitmaps** (restated; section 3.1).
    Shown in Lean before it was added: klongs that meet W1 to W4 and whose
    entries have other live children than the klongs (`w4_not_enough`).
-7. **A-COPY is checked in a sufficient form** (`copyB`): of the nodes of the
-   writer's paths it takes those that the change itself changes, touches or
-   leaves unreachable. Reason: the model's own definition walks the subtree
-   of every reachable node, which is too slow to run on a trace; the form is
-   proved to give A-COPY, and every traced transaction meets it.
+7. **A-COPY is a sufficient form** (`copyOk`, and `copyB` in the model's
+   words): of the nodes of the writer's paths it takes those that the
+   change itself changes, touches or leaves unreached, not their ancestors.
+   Reason: the model's own definition walks the subtree of every reachable
+   node, which is too slow to run on a trace; the form is proved to give
+   A-COPY, and every traced transaction meets it. One more case came from
+   030-06's example, which failed the first form: a transaction that makes
+   a top node may name the space root before it (the pointee of the super
+   root that it replaces).
 8. **R4 is checked by the trace checker's chain of skip pointers**
    (`r4Fast`, `lean/Check/R4.lean`, proved there). Reason: the model's
    `topClosure` walks every path between top nodes and is exponential in
@@ -175,24 +190,32 @@ beside the English.
   transaction; the link: at time i the root's one live child is a top node
   whose one live child is the space root of s').
 
-## 3.3 In the model's words, on the model's structure
+## 3.3 The touch, A6' and A-COPY
 
-- **The touch** (`TouchOK`): the model's three rules for the nodes that a
-  step of reclaim touches.
-- **A6'** (`adoptAt`): a pointer of a reachable node that is not live names
-  a data node, a node not reachable, or a node below it.
-- **A-COPY** (`CopyStep`): the pointer of a new entry names a node made, a
-  node of the writer's paths, or a pointee of one.
+Said of the tree and its top (`Contract/BridgeTop.lean`). "Below x" is the
+walk from x; the super root is the last top node.
 
-Each is computed over the lists of the structure (`touchB`, `adoptB`,
-`copyB`), and the computation is proved to give the clause. To say them in
-the contract's words is open; `reach3` and `mem_reach_model` (what the model
-reaches is what the tree reaches) are the lemmas for it.
+- **The touch** (`touchOk`), before the transaction: a touched node is the
+  super root or a key node that the tree reaches; if any node is touched,
+  the super root is; every key node reached with a touched node below it is
+  touched.
+- **A6'** (`adoptOk`), after the transaction: for every key node x reached
+  and every key klong of x, live or dead, its pointee is a live pointee of
+  x, or a value, or not reached, or below x.
+- **A-COPY** (`copyOk`): a key entry added, or the root pointer of a top
+  node made, names a node made, a node of the writer's paths (reached
+  before, and given an entry, touched or left unreached), the pointee of a
+  key klong of such a node, or the space root before when a top node is
+  made; a skip pointer of a top node made names the super root before it or
+  the pointee of one of its skip pointers.
+
+From these, proved: the model's `TouchOK`, `adoptAt` and `CopyStep`
+(`touch_of`, `adopt_of`, `copy_of`).
 
 
 # 4. What the proof is
 
-About 4,300 lines in `Contract/Proof/Bridge*.lean`:
+About 5,100 lines in `Contract/Proof/Bridge*.lean`:
 
 - `BridgeMap.lean`: the map keeps the live children
   (`mem_blive_entriesOf`): for well-formed klongs with W5, the model's live
@@ -207,10 +230,14 @@ About 4,300 lines in `Contract/Proof/Bridge*.lean`:
 - `BridgeTree.lean`: the model's TREE from 030-08's (`BInv.treeAt`).
 - `BridgeTop.lean`: the model's `TopOK` from 030-08's top and TB
   (`top_step`), the longest part, about 1,000 lines.
+- `BridgeWords.lean`: the model's touch rules, A6' and A-COPY from the
+  clauses said of the tree; below a node of the tree, the model reaches what
+  the walk reaches (`walk_reachFrom`, `reachFrom_walk`).
 - `BridgeDirty.lean`: D as state (`frame_modelD`).
-- `BridgeModel.lean`, `BridgeHistory.lean`: the computed clauses give the
-  clauses; the checker's verdict on a trace gives `MeetsBridge` and
-  `MeetsEvict`.
+- `BridgeModel.lean`, `BridgeHistory.lean`: the computed clauses in the
+  model's words give the clauses; the checker's verdict on a trace gives
+  `MeetsFull` (`fullHistoryOk_meets`), and in the model's words
+  `MeetsBridge` and `MeetsEvict` (`bridgeHistoryOk_meets`).
 
 The old proofs are used as they stand: the theorems of
 `lean/SIS/Theorems.lean`, `PhysTheorems.lean`, `HandleTheorems.lean`,
@@ -220,31 +247,34 @@ model's instance of the history.
 
 # 5. The check
 
-`lake exe bridgecheck TRACE...` (`BridgeCheck.lean`), run by
+`lake exe bridgecheck [--model] TRACE...` (`BridgeCheck.lean`), run by
 `lean/contract/bridge-check.sh [SET ...]`:
 
-- for every traced transaction alone, on Java's tree before and after it and
-  its NEW, ADD and TOUCH lines: N, K, F4 with W and A4 (reported as L), A2,
-  A3, A5; on the model's structure: TOP (`topOkB`), TOUCH, TREE, A6', COPY;
-  and TB with 030-08's top from the trace's lines;
-- for TX 0 the start;
-- then the verdict on the whole trace as one value (`bridgeHistoryOk`), the
-  one that the theorem `bridgeHistoryOk_meets` speaks of.
+- for every traced transaction alone, on Java's tree and top before and
+  after it and its NEW, ADD and TOUCH lines: N, K, F4 with W and A4
+  (reported as L), A2, A3, A5, TREE, TB with 030-08's step of the top,
+  TOUCH, A6', COPY; for TX 0 the start with its top;
+- then the verdict on the whole trace as one value (`fullHistoryOk`, with
+  the writer's contract for every transaction), the one that the theorem
+  `fullHistoryOk_meets` speaks of;
+- with `--model` also the clauses in the model's words on the model's
+  structure (`topOkB`, `touchB`, `adoptB`, `copyB`) and their verdict
+  (`bridgeHistoryOk`).
 
-The computed clauses are the definitions of `Bridge.lean` (`bridgeOk`), run
-on the checker's heap as they stand; `Made` and the clauses in the model's
-words are computed by functions proved to give them (`madeCheck_sound`,
-`topOkB_sound`, `touchB_sound`, `adoptB_sound`, `copyB_sound`).
-`bridge-faults.sh`: faults made by hand (an entry with another compare
-value, a delete entry with another one, a value without its NEW line, a key
-node on level 0, a skip pointer left out, another root pointer, a node left
-out of a TOUCH line, another primordial root pointer) each fail the
-checker.
+The computed clauses are the definitions of `Bridge.lean` and
+`BridgeTop.lean`, run on the checker's heap as they stand; `Made`, 030-08's
+`TopStep` and TREE are computed by functions proved to give them
+(`madeCheck_sound`, `topStepB_sound`, `treeOkB_sound`). The three sets take
+about three minutes, with `--model` about eleven. `bridge-faults.sh`: faults
+made by hand (an entry with another compare value, a delete entry with
+another one, a value without its NEW line, a key node on level 0, a skip
+pointer left out, another root pointer, a node left out of a TOUCH line,
+another primordial root pointer) each fail the checker.
 
 Gaps: how the checker builds Java's tree and top from a trace's lines is
-030-09's and 030-08's (`applyTx`, `applyTop`); TB is checked per transaction
-by its definitions, with no theorem yet from the checker's whole verdict to
-`MeetsBridgeTop`.
+030-09's and 030-08's (`applyTx`, `applyTop`). The model's levels of the top
+nodes come from the NEW lines (clause TB reads them from the model's
+structure).
 
 
 # 6. Bounded startup (030-04, step 4; the brief's item 5)
@@ -271,16 +301,20 @@ by its definitions, with no theorem yet from the checker's whole verdict to
 
 # State
 
-2026-11-17: see the Log's last lines for the last gated commit. Open, in
-the order I would take them:
+2026-11-17: see the Log's last lines for the last gated commit. The brief's
+work list is done (items 1 to 5). Open, in the order I would take them:
 
-1. A6' and A-COPY in the contract's words, proved to give the model's
-   (`adoptAt`, `CopyStep`), with `reach3` and `reachAt_closed`; then
-   `MeetsEvict` has no clause in the model's words. The touch likewise.
-2. A theorem from the checker's whole verdict to `MeetsBridgeTop` (as
-   `bridgeHistoryOk_meets` for `MeetsBridge`).
-3. The checker as a step of `level2.sh` (with 030-05's note on `check.sh`).
+1. The checker as a step of `level2.sh` (with 030-05's note on `check.sh`:
+   Lake fetches Mathlib to resolve the package).
+2. Java's own check (030-09's `TransCheck`) could take the bridge's clauses
+   that are local to the changed nodes: F4, W5, A4, TB.
+3. The top nodes' levels in the contract's top (030-08's `TopNode` has no
+   level; TB reads the model's), so that TB speaks of the tree and its top
+   alone.
 4. Bounded startup's open premises (section 6).
+5. The old proofs of the tree (`lean/SIS/Tree`) are not used by the bridge;
+   030-04's step 4 says to delete them when the new package covers what
+   they claimed. Not done here: it is the coordinator's and Frans's call.
 
 To build and check: `cd lean/contract && lake build`; the traces as 030-05's
 State note says (`java/build.sh`; `cd lean && lake build treecheck`;
@@ -311,3 +345,7 @@ traces by `bridgecheck` (195 traces, 29,735 transactions, no failure); `frame_mo
 trace (`bridgeHistoryOk_meets`), the checker's own test, `w4_not_enough`.
 16:30 the top's premise from 030-08's top and clause TB (`MeetsBridgeTop.meetsBridge`); the
 three-transaction example (`BridgeExample3`).
+16:46 the touch, A6' and A-COPY in the contract's words, the model's proved from them
+(`MeetsFull.meetsBridge`, `MeetsFull.meetsEvict`); the checker's verdict gives `MeetsFull`
+(`fullHistoryOk_meets`); Example3 meets `MeetsFull`; `MeetsFull.meetsTop`. The gate's base is
+863b69cb, main as merged (79678f4e and the coordinator's 006-30 line).

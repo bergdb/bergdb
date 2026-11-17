@@ -425,7 +425,7 @@ theorem top_step (hi : BInv h j) (ti : TopInv h top j)
     (htb : topChangeOk h.topLevel (h.P j) (h.tree (j + 1)) (top j) (top (j + 1)) h.txs[j].c
       = true) :
     TopOK h.spec (h.P j) (j + 1) (h.tree j) (h.tree (j + 1)) h.txs[j].c ∧
-    TopInv h top (j + 1) ∧ BInv h (j + 1) := by
+    TopInv h top (j + 1) ∧ BInv h (j + 1) ∧ TreeFacts p h j hj ∧ ∃ nt, NonTree h top j hj nt := by
   obtain ⟨b1, b2, b3, b4, b5, b6⟩ := bridgeOk_parts hb
   simp only [Nat.add_sub_cancel] at b6
   simp only [topChangeOk, Bool.and_eq_true] at htb
@@ -771,7 +771,8 @@ theorem top_step (hi : BInv h j) (ti : TopInv h top j)
     injection this
   have hspecTop : h.spec.topLevel = h.topLevel := rfl
   refine ⟨{ virt := ?_, fresh := fresh, current := ?_, dataFixed := ?_, levels := ?_,
-            newReachable := ?_, noRes := ?_, link := by rw [← hP']; exact link' }, ti', hi'⟩
+            newReachable := ?_, noRes := ?_, link := by rw [← hP']; exact link' }, ti', hi',
+          tf, nt, hnt⟩
   · -- VirtStep
     refine { newTop := ?_, topFixed := ?_, rootAdds := ?_, closure := ?_, dead := ?_ }
     · intro nn hnn hl
@@ -1030,7 +1031,7 @@ theorem MeetsBridgeTop.inv (hm : MeetsBridgeTop p h top) : ∀ j, j ≤ h.txs.le
   | j + 1, hj => by
     obtain ⟨hi, ti⟩ := hm.inv j (Nat.le_of_succ_le hj)
     obtain ⟨h1, h2, h3, h4, h5, h6, _⟩ := hm.step j hj
-    obtain ⟨_, ti', hi'⟩ := top_step (hj := hj) hi ti h1 h2 h3 h4 h5 h6
+    obtain ⟨_, ti', hi', _, _⟩ := top_step (hj := hj) hi ti h1 h2 h3 h4 h5 h6
     exact ⟨hi', ti'⟩
 
 /-- A history that meets the contract, the bridge's clauses about key nodes
@@ -1042,7 +1043,7 @@ theorem MeetsBridgeTop.meetsBridge (hm : MeetsBridgeTop p h top) : MeetsBridge p
     intro j hj
     obtain ⟨hi, ti⟩ := hm.inv j (Nat.le_of_lt hj)
     obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := hm.step j hj
-    obtain ⟨htop, _, _⟩ := top_step (hj := hj) hi ti h1 h2 h3 h4 h5 h6
+    obtain ⟨htop, _, _, _, _⟩ := top_step (hj := hj) hi ti h1 h2 h3 h4 h5 h6
     exact ⟨h1, h2, h3, htop, h7⟩
 
 end Hist

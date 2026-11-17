@@ -11,6 +11,7 @@ what eviction needs besides; Proof/BridgeModel.lean proves that they give
 the clauses (`checkBridgeTx_sound`, `checkEvictTx_sound`).
 -/
 import Contract.BridgeModel
+import Contract.BridgeTop
 import Contract.Check
 
 namespace Contract
@@ -64,12 +65,13 @@ def checkEvictTx (sp : Spec BVal Nat) (P : Struct BVal) (i : Nat) (h' : Heap)
 /-! ## A whole trace -/
 
 /-- A traced transaction: its operations, the dirty nodes when it ends, the
-heap after it, and its change. -/
+heap after it, its change, and the top after it (bergdb 030-08). -/
 structure TStep where
   ops : List Op
   D : List NodeId
   heap : Heap
   c : Changes BVal
+  top : Top := []
 
 /-- The history of a trace: the heap and the change of TX 0, and the traced
 transactions. -/
@@ -94,5 +96,44 @@ def bridgeHistoryOk (p : Params) (h0 : Heap) (c0 : Changes BVal) (steps : List T
   startCheck c0 h0 && treeOkB (h0.tree.at 0) &&
   adoptB (histOf h0 c0 steps).spec (histOf h0 c0 steps).p0 0 &&
   stepsOk p (histOf h0 c0 steps).spec 1 h0 (histOf h0 c0 steps).p0 steps
+
+/-! ## A whole trace, in the contract's words -/
+
+/-- Every clause for one traced transaction, each in the contract's words
+(`MeetsFull`, BridgeTop.lean), computed: at time i, from the heap h, the top
+tp and the model's structure P. -/
+def fullTx (p : Params) (topLevel : Nat) (P : Struct BVal) (i : Nat) (h : Heap) (tp : Top)
+    (st : TStep) : Bool :=
+  checkTx p i h st.ops st.D st.heap &&
+  bridgeOk topLevel i h.tree st.heap.tree st.D st.c && madeCheck h st.heap st.c &&
+  topStepB i tp st.top && st.heap.roots == rootsOf st.top &&
+  topChangeOk topLevel P st.heap.tree tp st.top st.c &&
+  touchOk (h.tree.at (i - 1)) tp st.c.touch && copyOk i h.tree st.heap.tree tp st.c &&
+  treeOkB (st.heap.tree.at i) && adoptOk (st.heap.tree.at i)
+
+/-- The checker's verdict on the transactions from time i on. -/
+def fullStepsOk (p : Params) (topLevel : Nat) :
+    Nat → Heap → Top → Struct BVal → List TStep → Bool
+  | _, _, _, _, [] => true
+  | i, h, tp, P, st :: rest =>
+    fullTx p topLevel P i h tp st &&
+    fullStepsOk p topLevel (i + 1) st.heap st.top (P.apply i st.c) rest
+
+/-- The top before the j-th of the transactions `steps` that start from the
+top tp. -/
+def topBefore (tp : Top) : List TStep → Nat → Top
+  | _, 0 => tp
+  | [], _ + 1 => tp
+  | st :: rest, j + 1 => topBefore st.top rest j
+
+/-- The checker's verdict on a whole trace, in the contract's words: the
+start with its top, TREE and A6' at the start, and every transaction, the
+j-th at time j. Proof/BridgeHistory.lean proves that it gives `MeetsFull`
+(`fullHistoryOk_meets`). -/
+def fullHistoryOk (p : Params) (h0 : Heap) (c0 : Changes BVal) (tp0 : Top)
+    (steps : List TStep) : Bool :=
+  startCheck c0 h0 && topStartOk c0 tp0 h0.tree && treeOkB (h0.tree.at 0) &&
+  adoptOk (h0.tree.at 0) &&
+  fullStepsOk p (histOf h0 c0 steps).topLevel 1 h0 tp0 (histOf h0 c0 steps).p0 steps
 
 end Contract
