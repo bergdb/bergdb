@@ -250,7 +250,8 @@ Files
   trace's completeness (ERROR and unknown lines fail, TX 0, 1, 2, ... and
   DONE, every change in NEW, ADD and KN lines; KN from a klong diff;
   `historyOk_meets`), LIVE lines checked, the assumptions reads rest on in
-  030-04, 3.5, and Java's commit-time check in its tests. Status: open.
+  030-04, 3.5, Java's own check of the contract in its tests (TransCheck),
+  the medium set checked (27 of 27). Status: done.
 
 
 Log
