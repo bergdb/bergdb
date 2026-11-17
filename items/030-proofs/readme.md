@@ -63,7 +63,7 @@ D1. The key tree, today's model (the main line)
   parameters and the merges on: after any run, the tree keeps its
   invariants and every get and scan, at the latest time and at every
   earlier one, returns what a plain map returns.
-* **State (2026-11-17, 04:25):** `htbL` is PROVED
+* **State (2026-11-17, 04:18):** `htbL` is PROVED
   (`takeBelowFuelDelSL_holds`, from `hp` only; 025-05, step 8). The best
   top theorem with no premise known false is `invGetScanOK_merges_noTb`
   (lean/SIS/Tree/HtbNoTb.lean): TP7, TP10 and TP11 for Java's parameters

@@ -1,7 +1,7 @@
 # 006-29 Day work, 16 November 2026
 
 Created 2026-11-16 by Frans Lundberg. Status: done (the outcome written
-2026-11-17, 04:25). The plan for the
+2026-11-17, 04:18). The plan for the
 coordinator's day of 2026-11-16 (coord-1116), a Monday: the progress and
 the outcome. The way of working is 013-02's (the coordinator).
 
@@ -155,7 +155,7 @@ evidence. Frans decides the direction.
 
 ## 6. Outcome
 
-Written 2026-11-17, 04:25, by coord-1116; nothing runs after 04:16.
+Written 2026-11-17, 04:18, by coord-1116; nothing runs after 04:16.
 
 **The day (16 November).** The study 006-28 (where the proofs'
 complexity is; MT, Frans's idea of maintenance transactions); 2026.6's
