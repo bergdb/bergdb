@@ -995,3 +995,17 @@ leaf's klong; the live counts hold after with no hole
 `liveDel_fullSegSpaceRoom_live`. Left of step 5: the parent full (the cascade),
 the made segment root's space split, the made space root's space split, and a
 compacting split of a last version above h below a parent.
+
+2026-11-17, 01:00 to 01:25. R2's heights, prover l4d: `UpHtWalk` is false for
+every context, oracle and B (`upHtWalk_false`, `not_exists_upHtWalk`,
+LiveUpHtFalse.lean), so `liveDel_upRoom` and `liveDel_upRoom_live` never apply
+as stated. Its take-back step asks Ju kept by `takeBack x q k` for every x, q
+and k, from every state that `HtJ0` gives Ju. A state of three nodes of the
+transaction, q and z inner nodes of height 1 that both name the empty leaf x
+(x made by a split), meets `HtJ0` for every context; `takeBack x q 0` succeeds
+and leaves z, not taken back, naming x, taken back, so `HtCache` fails at z.
+The checked copy's `checkFree` is what excludes that state (`ht_takeBackChk`);
+at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
+true form needs the heights at the stop node's call from the walk's start and
+the loop's frame, not an invariant of every step (next).
+

@@ -128,6 +128,7 @@ import SIS.Tree.LiveUpWalk
 import SIS.Tree.LiveUpLeaf
 import SIS.Tree.LiveUpHole
 import SIS.Tree.LiveUpRoom
+import SIS.Tree.LiveUpHtFalse
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace

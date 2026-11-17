@@ -404,7 +404,9 @@ likewise (`DelMergeDRestCase`). 9 at 03:35: the upward loop keeps the heights' c
   (`liveDel_upRoom`, `LiveUpRoom.lean`) calls `afterDelete key g 0` at the stop node (a
   segment leaf) with `DelInvJT`, `PutBook`, `HtInv` and `LiveHoleW`, given the heights through
   the upward steps (`UpHtWalk`, the open R2 heights); with l4a's loop it keeps the live counts
-  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). R1 at the stop
+  (`liveDel_upRoom_live`, premises `MergeLiveOK`, `CollapseLiveOK`, `UpHtWalk`). 01:25 (l4d):
+  `UpHtWalk` is false for every context (`upHtWalk_false`, `LiveUpHtFalse.lean`: a take-back
+  that leaves another node naming the node taken back), so these two never apply as stated. R1 at the stop
   node is proved (`holeAtW_stop`, `LiveUpHole.lean`: the descent's path is the walk's,
   `linkedFrom_unique`; the stop node ends one segment's search; the key's descent is cut there). 00:22
   (l4b): the space root emptied, full too: its last version without the key has no key
