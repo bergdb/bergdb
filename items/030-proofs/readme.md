@@ -331,7 +331,7 @@ Files
   (`checkVerdict_sound`, a fault); Java's reads with one premise for every
   time (`HoldsP`, the tree holds the structure whole); `bridge-faults.sh`
   fixed (it failed on main 3f1e2fea). The night of 17 November. Status:
-  open.
+  done.
 
 Log
 ===

@@ -1,6 +1,6 @@
 # 030-17. Java's readers under eviction and after a cut; K-LEVEL in contractcheck
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 The rest of 030-14 (its State note, items 1 to 3): Java's readers, with
 Java's search through the skip pointers, under eviction through the handles
@@ -72,7 +72,11 @@ Kept current; the Log has the times.
   m-r-del, m-fifo, m-d8, m-d30, m-d62, 3 seeds each; 13,667 transactions,
   736,718 operations): every trace passes `contractcheck`, KIND 0; and on
   the large set (6 traces: l-hot, l-mixed, l-long, l-big62, l-few, l-5000;
-  17,000 transactions): every trace passes, KIND 0.
+  17,000 transactions): every trace passes, KIND 0. `bridgecheck` (every
+  clause of `MeetsFull`, with KIND) on the whole medium set too, m-d8,
+  m-d30, m-d62 and m-fifo among them, which no one had bridge-checked: 27
+  traces, 13,667 transactions, 610,036 nodes made, 1,626,059 entries,
+  10,085 touched, BRIDGE OK, no clause failed.
 - **One premise for every time** (brief item 3, 030-14's State note item
   3): Java's tree after a startup need only hold the model's structure
   **whole** (`HoldsP`: every node but the root and the top nodes, a key node
@@ -252,7 +256,7 @@ the tree after each transaction meet `KindsAll` with the TREE line's h).
 
 # State
 
-2026-11-17, 21:45. The brief's work list is done: items 1 to 3 proved and
+2026-11-17, 22:20. The brief's work list is done: items 1 to 3 proved and
 gated, merged with `main` d7966251 (the Log has the commits; the last gated
 one is 1e87043b). Branch `030-17-top-eviction-cut` in
 `/Users/f/fl/bench/2026-11-17/night/s4k/clone`. Java unchanged.
@@ -266,8 +270,6 @@ Open, for whoever takes them:
 2. The whole-node form (`HoldsP`) for the lazy startup, whose read returns
    a list of nodes rather than a structure; and for the cut, a form said of
    the nodes that a reader from the first available time on reaches.
-3. The bridge checker's KIND on the medium set's m-d8, m-d30, m-d62 and
-   m-fifo (here `contractcheck`'s KIND passed on all 27 medium traces).
 
 To check: `cd lean/contract && lake build`; `lean/contract/gate.sh
 d7966251`; traces: `java/build.sh`, then `TREECHECK=none
@@ -335,3 +337,6 @@ of 40). The large set started the same way.
 `contractcheck` on it (par.sh, 4 parts, 8 minutes): 6 traces, 17,000
 transactions, all pass, KIND 0. `bridgecheck` on the whole medium set
 running (par.sh, 3 parts).
+22:17 `bridgecheck` on the whole medium set (par.sh, 3 parts, 36 minutes at
+a load of 20 to 45): 27 traces, 13,667 transactions, BRIDGE OK, every clause
+and KIND 0. The work list is done; Status: done.
