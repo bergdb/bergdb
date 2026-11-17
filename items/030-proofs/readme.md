@@ -323,6 +323,11 @@ Files
   leaf keeps a live klong (`putKv_del1_keep`, the merges as a premise);
   030-10's `BalancedAll` shown false for a dead klong (`writerMeets_false`).
   The night of 17 November. Status: open.
+* [030-17](17-readers-eviction-cut.md). Java's readers under eviction and
+  after reclaim's safe cuts, end to end, with Java's search through the skip
+  pointers; what that search reads after a cut, when the top nodes before it
+  are gone; K-LEVEL in `contractcheck` too, with its verdict proved and a
+  fault. The night of 17 November. Status: open.
 
 Log
 ===

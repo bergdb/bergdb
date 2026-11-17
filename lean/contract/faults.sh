@@ -14,6 +14,7 @@
 # trace test/small.trace (a bare OP or GET line, a SCAN in the direction BANANA,
 # an OP line in TX 0, a GET with a wrong answer), and a number with an underscore,
 # two spaces between tokens, lines out of their order, a TX without its BASE line.
+# Since bergdb 030-17, K-LEVEL: the TREE line's h set to 0 (KIND alone fails).
 #
 # Usage: lean/contract/faults.sh
 # Needs: the checker (cd lean/contract && lake build contractcheck) and java/build
@@ -100,6 +101,14 @@ awk '/^TX 30$/{t=1} t && /^GD/ && !d{g=$0; d=1; next} {print} g!="" && /^DIRTY/{
 expect order FAIL $DIR/order.trace
 awk '/^TX 30$/{t=1} t && /^BASE / && !d{d=1; next} {print}' $G > $DIR/nobase.trace
 expect nobase FAIL $DIR/nobase.trace
+# bergdb 030-17: K-LEVEL, the kind of each key node from its level with the TREE
+# line's h: h set to 0 makes every key node a segment leaf by its level, so every
+# inner node fails KIND, and nothing else.
+awk '/^TREE / && !d{$4=0; d=1} {print}' $G > $DIR/kindh0.trace
+expect kindh0 FAIL $DIR/kindh0.trace
+grep -q 'KIND [1-9]' $DIR/kindh0.out || { echo "   kindh0: WRONG, not KIND"; FAILED=$((FAILED + 1)); }
+grep -q 'C1 0, C2 0, C3 0, R1 0, L1 0, C4 0, C5 0' $DIR/kindh0.out \
+    || { echo "   kindh0: WRONG, a clause other than KIND"; FAILED=$((FAILED + 1)); }
 # The review's own faults, in a hand-made trace of two transactions that passes.
 S=test/small.trace
 expect small PASS $S
