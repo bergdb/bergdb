@@ -81,3 +81,17 @@ open Contract
 #print axioms policyCutOK_of_blind
 #print axioms full_cut_blind
 #print axioms Contract.BridgeExample4.entries_forget
+#print axioms live_klongsOfE
+#print axioms MeetsBridge.view_reads
+#print axioms view_reads
+#print axioms crash_reads
+#print axioms restart_reads
+#print axioms evict_reads
+#print axioms handles_reads
+#print axioms lazy_reads
+#print axioms cut_reads
+#print axioms cut_reads_blind
+#print axioms Contract.RecoverExample.crash_get16
+#print axioms Contract.RecoverExample.crash_scan2
+#print axioms Contract.RecoverExample.restart_scan4
+#print axioms Contract.RecoverExample.evict_scan2

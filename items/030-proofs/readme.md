@@ -276,6 +276,14 @@ Files
   refinement map from the writer's state to the contract's tree, checked on
   the traces; the statement; how far a proof got and what the rest costs.
   Status: open.
+* [030-14](14-reads-after-crash.md). Reads after a crash, a restart and
+  under eviction, end to end (030-11, finding 3): a reader of the model's
+  view at a time, proved right for any history that meets `MeetsFull`, so
+  that after a crash, restarts, a lazy startup, eviction with handles and
+  safe cuts every get and scan at every available time gives the plain
+  map's value; the map keeps the live klongs (`live_klongsOfE`); a closed
+  example from `BridgeExample4`; 030-04, 3.5, item 13. The night of 17
+  November. Status: open.
 
 Log
 ===
