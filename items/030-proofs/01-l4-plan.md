@@ -996,6 +996,42 @@ leaf's klong; the live counts hold after with no hole
 the made segment root's space split, the made space root's space split, and a
 compacting split of a last version above h below a parent.
 
+2026-11-17, 01:15 to 01:18. Step 5, the made segment root's space split, prover
+l4b: the leaf made by the transaction, a segment root, "bitmap.full", its last
+version without the key above h (`DelFullSegSpaceMadeM`,
+LiveDelSegSpaceMade.lean): it keeps the first half, a new node the second, under
+a new segment root that the segment leaf's klong names instead, in place (no
+room asked); the live counts hold after with no hole
+(`writerWP_handleFull_segSpaceMade_live`, by `liveEdgesX_segSpaceInPlaceStep`):
+`liveDel_fullSegSpaceMade` and, with l4a's loop, `liveDel_fullSegSpaceMade_live`.
+Left of step 5: the parent full (the cascade), the made space root's space split,
+and a compacting split of a last version above h below a parent.
+
+2026-11-17, 01:18 to 01:20. Step 5, the made space root's space split, prover
+l4b: the leaf at the space root made by the transaction, "bitmap.full", its last
+version without the key above h (`DelFullRootSpaceMadeM`, LiveDelRootMade.lean):
+it keeps the first half, a new node the second, under a new inner root
+(`writerWP_handleFull_rootSpaceMade_live`, by `liveEdgesX_rootSpaceInPlaceStep`):
+`liveDel_fullRootSpaceMade` and, with l4a's loop,
+`liveDel_fullRootSpaceMade_live`. Left of step 5: the parent full (the cascade),
+and a compacting split ("bitmap.dead") of a last version above h, below a parent
+or at a made root (a time split: the copy, or the leaf in place, is the hole).
+
+2026-11-17, 01:13 to 01:22. Step 3's rest, third part, prover l4c
+(`LiveMergeMade.lean`, about 1,000 lines; about 450 of them the room tail again, with the
+parent's change and the heights' cache's frame). `MergeTailFullRestOK` reduced to
+`MergeTailFullRest2OK`, its case `MergeFullMadeTime` proved: the merge's parent p, made by
+the transaction, goes `full` and splits in time, which is in place
+(`writerWP_handleFullWith_timeInPlace_nodesL`: p's node becomes its last version, nothing
+else changes). So the room proof's steps carry over with `mergeFullLast` for
+`mergeParentNode` (`writerWP_mergeTail_liveMade`, one node or two), and the next round's
+descent finds p (`writerWP_mergeTail_liveMadeRound`, `descendToHeight_up`, the path's
+reads and heights alike from the tail's frames, `writerWP_mergeCleanup_ghp` for p's).
+`writerWP_afterDelete_liveTR2`: premises `MergeTailFullRest2OK`, `MergeParamsOK`, R3.
+Left: p's space split (made, in place, or not), p not made and the space root (d = 1) or
+a segment root (R1 at the root), and q full or compacting (the cascade, R4). No stop rule
+fired.
+
 2026-11-17, 01:00 to 01:25. R2's heights, prover l4d: `UpHtWalk` is false for
 every context, oracle and B (`upHtWalk_false`, `not_exists_upHtWalk`,
 LiveUpHtFalse.lean), so `liveDel_upRoom` and `liveDel_upRoom_live` never apply
