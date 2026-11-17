@@ -27,8 +27,9 @@ pointer, a delete, an overwrite and a touch, meets every statement at once
 model is the trace checker's own (`bspec`, with BergDB's still-dirty test
 and marking, as `tracecheck` runs it), and its theorems carry over with no
 premise in the abstract model's words. I found no clause that Java fails:
-the bridge's clauses pass on 030-07's 195 traces again and on 9 traces of
-the medium set that no one had run them on.
+the bridge's clauses pass on 030-07's 195 traces again, and on 13 traces
+of the medium and large sets that no one had run them on (10,360
+transactions, node sizes 8 to 62).
 
 The findings, most serious first:
 
@@ -77,11 +78,13 @@ The findings, most serious first:
    `contractcheck`'s is its loop, by reading (030-08, section 5, item 3),
    but only it checks the GET, SCAN, LIVE and SKIPT lines. Neither runs in
    `level2.sh` yet (030-07's State, item 1). Run both.
-7. **Note: the bridge checker is slow on large traces** (section 4.1):
-   A-COPY, A6' and the touch test membership in lists of every node
-   reached, about quadratic in the tree a transaction. The medium traces
-   took 118 s; one trace of the large set (5,000 transactions) took more
-   than 10 minutes where `contractcheck` takes 72 s.
+7. **Note: the bridge checker is slow on large traces** (section 4.1): A5,
+   A-COPY, A6' and the touch test membership in lists of the nodes reached
+   (`noResOk`, `copyOk`, `adoptOk`, `touchOk`), about quadratic in the
+   tree, for every transaction, and the verdict computes it all again. The
+   medium traces took 118 s; l-5000-1 of the large set (5,000
+   transactions) had not ended after 13 minutes of CPU, where
+   `contractcheck` takes 72 s.
 8. **Note: what the trust rests on** (section 6). Beyond the package, the
    bridge's statements rest on the abstract model's definitions in `lean/`
    (about 3,600 lines), and its proofs on 51,000 lines of the old package;
@@ -249,9 +252,9 @@ Not vacuous.
   and with it top node 7 with its skip pointer to top node 5; a delete by
   a bitmap) is proved and in `Axioms.lean`. With `MeetsFull.meetsTop` and
   `MeetsTop.shape` it meets `MeetsTop` and `MeetsShape` too.
-- One more, `Contract/BridgeExample4.lean` (new, about 20 s to build): the same
-  three, then at time 4 a put of the key [16] that is there, with a touch
-  of reclaim's kind. Leaf 6 gets a second key klong of compare value 16
+- One more, `Contract/BridgeExample4.lean` (new, about 20 s to build):
+  the same three, then at time 4 a put of the key [16] that is there, with
+  a touch of reclaim's kind. Leaf 6 gets a second key klong of compare value 16
   (the first is then dead and names the old value, which A6' allows);
   value node 8 is made; the touch is `7 4 6`, the super root and the
   put's path. No example before met the touch rules with a touched node.
@@ -287,8 +290,10 @@ the other agents wrote them (format 3, the exporter of `main`):
   and 1.2 GB a trace with their LIVE lines; the old reader that the bridge
   checker also runs reads a trace as one string), with the machine at a
   load of 20 to 30.
-- The large set, 030-12's `live=0` traces (6 traces, 17,000
-  transactions): see the Log; started 17:07.
+- The large set, 030-12's `live=0` traces, one trace a run: l-hot, l-mixed,
+  l-long (keys of several segments) and l-big62 (node size 62): BRIDGE OK,
+  4 traces, 7,000 transactions, 42,503 nodes made, 102,661 entries; 10, 62,
+  290 and 1,032 s. l-few and l-5000 (5,000 transactions each): see the Log.
 - `check.sh small drain reclaim` (with `faults.sh` and `faults-top.sh`
   first): CONTRACT OK, 195 traces, 29,735 transactions, 2,729,666 LIVE
   lines, 75,568 SKIPT lines, no failure; 168 s.
@@ -508,3 +513,12 @@ background; the medium ones BRIDGE OK in 118 s.
 17:18 `gate.sh 903a228a`: GATE OK (72 theorems). Commit 222d9bdf.
 17:21 `java/build.sh` in the clone; `check.sh small drain reclaim` CONTRACT
 OK (168 s).
+GATED f63f8ab6: the review written (sound, with fixes; findings 1 to 8),
+`BridgeExample4`, `policyCutOK_of_blind`, `full_cut_blind`, `bridgecheck`
+requires a whole trace; `gate.sh 903a228a` GATE OK (72 theorems).
+17:24 Findings 1, 2 and 5 fixed in words (030-07, 030-04 3.5 items 10 to
+12, two Lean headers); GATE OK. Commit accdf158. The large set's first run
+stopped after 13 minutes of CPU on l-5000-1 (finding 7); run again one
+trace a run, smaller ones first.
+17:48 The large set's l-hot, l-mixed, l-long and l-big62: BRIDGE OK (7,000
+transactions; l-big62 1,032 s).
