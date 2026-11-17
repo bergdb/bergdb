@@ -184,3 +184,9 @@ main 9a6692cf merged in (030-09's completeness and LIVE lines).
 2026-11-17, 15:24. TREE as a clause: `MeetsShape`, `tree_right`, C4 on
 the small and drain sets (180 traces, no failure).
 GATED 1a1a441b: TREE as a clause of the contract (`MeetsShape`, `tree_right`), C4 on the traces.
+2026-11-17, 15:30 to 15:45. Pulled main 9a6692cf (030-09); the top in the
+contract: `Top.lean`, `MeetsTop`, TP24 (`findTop_right`, `top_right`),
+`jget_right`, `jscan_right`, `skip_closure`, `skip_dead`,
+`historyTopOk_meetsTop`; C5 and L2 in the checker; `faults-top.sh`. The
+small and drain sets: CONTRACT OK, no C4, C5 or L2 failure.
+GATED 0444f826: the top in the contract (MeetsTop), TP24 proved, the reads restated over Java's top search (jget_right, jscan_right), C5 and L2 on the traces.
