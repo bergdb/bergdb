@@ -1380,3 +1380,23 @@ parent node whose searches are q's but its klong naming the copy;
 `KNode.searchLte_redirect`). `liveDel_fullTimeMadeParent`. Left of R4:
 `DelFullTimeHole2M` (the hole's parent the space root, not made by the
 transaction, or splitting in space). `invGetScanOK_merges_noL4d`.
+
+2026-11-17, 02:22. Prover l4b stops (steps 5, 6 and 7). Proved, each
+with l4a's or l4c's loop for `afterDelete`: the bitmap with room (`liveDel_room`);
+the full leaf's cases (`delFullM_cover`): the made leaf in time in place
+(`liveDel_fullMadeG`), not made in time below a parent with room
+(`liveDel_fullTimeRoomG`), every space split with any parent through the cascade
+(`liveDel_fullSpaceChain`, `liveDel_fullSegSpaceChain`, `liveDel_fullSpaceMadeChain`,
+`liveDel_fullSegSpaceMade`), the space root's splits (`liveDel_fullRoot`,
+`liveDel_fullRootSpaceMade`), the time split through the cascade with the copy
+filled (`liveDel_fullTimeChainF`) and below a made parent split in time in place
+(`liveDel_fullTimeMadeParent`); the emptied space root (`liveDel_emptyRoot`, no
+premise); R1 at the leaf, the copy and the stop node. Step 7: `liveDelSL_of_pieces`
+and the top theorems `invGetScanOK_merges_noL4` to `noL4d` (LiveAssembly.lean,
+LiveAssembly2.lean, LiveDelHoleMade.lean). Open: R3 (`R3Calls`, believed false at
+unreached states: the noL4 family is believed vacuous until a made-for fact is
+carried to `afterDelete`'s call, 01:56 and 02:01 above); what is left of R4
+(`DelFullTimeHole2M`: the hole's parent the space root, not made, or splitting in
+space: R1 through two changed levels or a hole below the cascade); step 6's full
+stop node (l4e's). Refuted: `UpHtWalk` (l4d's `upHtWalk_false`; 00:18's premise of
+`liveDel_upRoom_live`, replaced by l4d's `liveDel_upRoom_liveH`).
