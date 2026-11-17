@@ -566,3 +566,22 @@ GATED c9015c05: keys of more segments: putKv_put_routed, putKv_put_newseg, write
 `writerMeets_put`, `runs_meetsTop_put`. `gate.sh 84e7b8e3`: GATE OK (145
 theorems). The checkers are as at c9015c05.
 GATED 3c0208d7: the puts proved whole: putKv_put (any key), writerMeets_put, runs_meetsTop_put.
+2026-11-17, 20:00 to 20:25. `WriterExample2.lean` (keys of two segments);
+`WriterExec.lean`: a transaction of puts that the model's `runOpsFrom`
+accepts is an `OpsRun` (`opsRun_of_runOps`) and meets the contract
+(`writerMeets_exec_put`). Main e7c873ee merged (the coordinator, 20:20).
+2026-11-17, 20:25. **What 030-10 takes next, on the put side** (for the
+coordinator and 030-16): the restatement of `BalancedAll`. 030-16 showed
+my statement false in Lean (030-16, F1, `writerMeets_false`): a take-back
+leaves a dead klong that names a node two levels down, so "every key
+klong of an inner node, live or dead, names a node one level below" does
+not hold after a delete. I restate it as 030-16 proposes (its D3): a live
+klong of an inner node names a key node one level below; every key klong
+of it names a key node of a lower level. I change `Contract/Writer.lean`
+(`BalancedAll`; `Mid`, `Before`, `WriterMeets` through it), the checker,
+and every proof file of main e7c873ee that builds or reads it: the put's
+files, and 030-16's landed delete files (`WriterDel*.lean`) as far as the
+new form asks; 030-16's `WriterBalancedFalse.lean` keeps its theorem
+about the old form under a name of its own. 030-16 should not restate
+`BalancedAll` itself, and gets the new form by pulling main. Also on the
+put side, after that: `SNamed` given back (in work).
