@@ -131,6 +131,8 @@ import SIS.Tree.LiveUpLeaf
 import SIS.Tree.LiveUpHole
 import SIS.Tree.LiveUpRoom
 import SIS.Tree.LiveUpHtFalse
+import SIS.Tree.LiveUpHt
+import SIS.Tree.LiveUpRoomH
 import SIS.Tree.LiveDelFull
 import SIS.Tree.LiveDelFullCopy
 import SIS.Tree.LiveDelSpace
@@ -140,3 +142,4 @@ import SIS.Tree.LiveDelSegSpace
 import SIS.Tree.LiveDelSegSpaceMade
 import SIS.Tree.LiveDelRootMade
 import SIS.Tree.LiveDelSpaceChain
+import SIS.Tree.LiveDelSpaceChain2
