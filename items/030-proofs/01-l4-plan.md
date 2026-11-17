@@ -1009,3 +1009,21 @@ at the runs, the loop's take-backs pass it (`step_takeBack`, `HoldInv`). The
 true form needs the heights at the stop node's call from the walk's start and
 the loop's frame, not an invariant of every step (next).
 
+2026-11-17, 01:25 to 01:30. R2's heights, true form, prover l4d: the upward
+delete with room keeps the live counts with no heights premise
+(`liveDel_upRoom_liveH`, LiveUpRoomH.lean; premises `MergeLiveOK` and
+`CollapseLiveOK`), and `liveDel_upRoomH` calls `afterDelete` with `HtInv` from
+no premise. The heights at the stop node's call come from `HtInv` at the upward
+walk's start w3 through the loop's frame (`htInv_upFrame`, LiveUpHt.lean, about
+230 lines): between w3 and the call only the chain and the stop node change; a
+chain node the transaction made is taken back, and its one holder is its tree
+parent (`liveHolder_unique`, from `TakeJ2` at w3), the next chain node or the
+stop node, whose klong to it is gone; another chain node is unlinked to its
+version before the transaction, which names only nodes below B (`OldBelowN`),
+never taken back; the stop node's version before the transaction is unchanged
+(`bitmapOf_prefix`, `retFormS_prefix`). The walks were not touched: the copy of
+`writerWP_del_upRoomLive` (`writerWP_del_upRoomLiveH`, about 330 lines, one B
+for the books and the kinds) passes the frame that `takeJ2_deleteUpward_upTMBKDS`
+already gives its continuation. R2's heights are done for the upward delete with
+room; the full stop node (the cascade) is left with step 6.
+
