@@ -36,10 +36,10 @@ The decisions, as recorded here:
 
 ## 2. The ground rules
 
-* Usage tight: at most two agents at a time, Opus 5.5. The agents stop at
-  the STOP file `/Users/f/fl/bench/2026-11-18/STOP`, touched by a usage
-  watch at week 65 % (yesterday's cap was 60 %; Frans's "start it" taken
-  as leave for these two tasks; he may change it).
+* Usage: the week's stop at 80 % (Frans, 08:56: "Use 80 % as today's
+  stop. For now, at least."); up to three agents, Opus 5.5. The agents
+  stop at the STOP file `/Users/f/fl/bench/2026-11-18/STOP`, touched by a
+  usage watch at week 80 % (65 % from 08:44 to 08:56).
 * Agents work in their own clones and commit there; the coordinator lands
   their gated commits on main and pushes.
 
@@ -53,6 +53,15 @@ The decisions, as recorded here:
   Frans's word of 2026-11-17 for proof work): a bitmap beyond 64 bits read
   as empty; failed PROBE lines and missing GET/SCAN lines pass the
   checkers; 030-09's "4.3 million" is 3.96 million.
+* **W4, 026-21: a combined first study of step times and net change**
+  (026-20; agent st, Opus high): the model's writer in three variants (net
+  change, step times, both) beside today's, on the trace sets and two new
+  workloads; step times' risk 2 first. Frans, 08:49: "Either we start
+  investigating Net Change. Or we investigate Step Times. Not sure which
+  to start with, or a first study of both, before we decide the direction
+  of the implementation." 08:56: "OK, run the one combined study as
+  proposed. Note that simplification is the overall goal, getting rid of
+  take-back completely is one way to reach it. It is not a goal itself."
 * **W3, D3 in 013-02** (the coordinator): only the day's coordinator
   pushes `main`.
 
@@ -66,6 +75,11 @@ The decisions, as recorded here:
 * 08:44 Agents rm (030-18, Opus high) and cx (030-19, Opus xhigh)
   started, each in its own clone under /Users/f/fl/bench/2026-11-18/.
 * 08:45 D3 written into 013-02, section 6.
+* 08:50 026-20 written down from coord-1117's write-up (f8865cb8).
+* 08:56 The stop at 80 %; agent st (026-21) started 08:57.
+* 09:02 030-19 done (agent cx): Codex review 3's three points fixed, 16
+  fault tests, no statement changed; LANDED e0a723b6, GATE OK (195
+  theorems, the standard axioms only, 135 files pinned).
 
 
 ## 5. Outcome
