@@ -288,7 +288,9 @@ Files
   that read no stream. Written 2026-11-17, 17:02 to 17:55. Status: done.
 * [030-12](12-contract-large.md). The contract check on the reclaim,
   medium and large sets of `treeconf.sh`, with `live=1`: more evidence
-  that Java meets the writer's contract. Status: open.
+  that Java meets the writer's contract: 222 traces, 532,402
+  transactions, both checkers, no failure; the medium and large sets
+  with LIVE lines too (220 and 203 million). Status: done.
 * [030-13](13-contract-in-levels.md). The contract's checks in the routine
   tests: the contract and the bridge checks in `level2.sh` (small and drain
   sets) and in `night.sh` (the medium set, `java/stress/contractconf.sh`);
