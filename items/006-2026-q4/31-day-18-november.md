@@ -88,6 +88,11 @@ The decisions, as recorded here:
 * 10:20 Frans on 030-18's two points: "1 and 2 as recommended": the
   statements kept without their proofs are dropped (agent rm, resumed
   10:21); lean/BergDB (the user indexes' proofs, 020-29) is kept.
+* 10:39 030-18's follow-up (agent rm): the statements kept without their
+  proofs dropped (two theorems' statements in HandleReclaimTheorems.lean,
+  four Props in Tree/Props.lean; pins rewritten, no main theorem of
+  lean/contract changed); lake build, gate.sh steps 1 to 3 and 5, LEVEL 2
+  OK; LANDED as a merge after 756b4afd, whose message ran ahead of it.
 
 
 ## 5. Outcome
