@@ -1239,10 +1239,22 @@ public class Db implements AutoCloseable {
             // The creation's KV of the startup distance, the builder's (bergdb 028-15): the
             // writer's first transaction, before any other. A start that throws here has
             // written the primordial record, or nothing, and the next start writes it.
+            final long creationEnd;
             synchronized (writeLock) {
                 putStartupDistanceKv(startupDistance, true);
                 aux.transactionCount = 0;       // 0 after a start (getTransactionCount())
                 aux.kvCount = 0;
+                creationEnd = x.endOfLastTrans;
+            }
+            if (createdTxtDir != null) {
+                // Durable before the start returns, as the primordial record is
+                // (handleEmptyStream, rule D1; bergdb 028-17): the creation is both records.
+                // Until 028-17 this record waited in the write buffer, and a crash after the
+                // start returned, before the buffer's first write or a sync, left the
+                // primordial record alone, beside created.txt; the next start then put the KV
+                // with its own time, after the times of the transactions the crash lost, and
+                // with its own builder's setting instead of the creator's.
+                syncCreation(creationEnd);
             }
         }
         
@@ -1545,27 +1557,29 @@ public class Db implements AutoCloseable {
             determineDatabaseId();            
             writePrimordialTransaction();
             if (createdTxtDir != null) {
-                syncCreation();
+                syncCreation(CREATION_LENGTH);
                 writeCreatedTxt(Util.today(), databaseId);
             }
         }
     }
     
     /**
-     * Waits until the creation is durable, by rule D1 (bergdb 015-01), without being
-     * interrupted: a start ignores an interrupt until it is done, and keeps the thread's
-     * flag (bergdb 005-46; PubInterruptTester). StorageManager.sync ends on an interrupt and
-     * sets the flag again; here the flag is cleared and the wait goes on, and the flag is set
-     * again at the end.
+     * Waits until the creation is durable up to 'length' (the bytes before it), by rule D1
+     * (bergdb 015-01): the primordial record (handleEmptyStream, CREATION_LENGTH), and then
+     * the creating start's record of the startup distance (startInner; bergdb 028-15,
+     * 028-17). Without being interrupted: a start ignores an interrupt until it is done,
+     * and keeps the thread's flag (bergdb 005-46; PubInterruptTester). StorageManager.sync
+     * ends on an interrupt and sets the flag again; here the flag is cleared and the wait
+     * goes on, and the flag is set again at the end.
      * 
      * @throws StreamIoException  If the storage has failed: the start fails.
      */
-    private void syncCreation() {
+    private void syncCreation(long length) {
         boolean interrupted = false;
         try {
             while (true) {
                 try {
-                    storageManager.sync(CREATION_LENGTH);
+                    storageManager.sync(length);
                     return;
                 } catch (InterruptedIOException e) {
                     Thread.interrupted();

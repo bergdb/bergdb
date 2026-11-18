@@ -450,6 +450,58 @@ public class DbTesterStream {
         f.delete();
     }
     
+    /**
+     * The creation is durable when start() returns, with created.txt (bergdb 028-17): both
+     * its records, the primordial one and the creating start's record of the startup
+     * distance (bergdb 028-15). The files are copied while the database runs, after a
+     * transaction that no sync made durable, as a kill of the process leaves them, and a
+     * start on the copy finds the creator's startup distance, and a time before the lost
+     * transaction's. Until 028-17 the second record waited in the write buffer: the copy
+     * held the primordial record alone, and its start put the KV with its own builder's
+     * setting at its own time, after the lost transaction's (night.sh's kill-restart.sh,
+     * 2026-11-18).
+     */
+    @Nano
+    private static void testCreationDurableWhenStartReturns(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        File copy = env.createTempDir();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).createdTxt(dir)
+                .startupDistance(5000000).start();
+        Db again = null;
+        try {
+            clock.setTime(1000);
+            db.execute(db.trans().put("k", "k-value"));     // no sync
+            File[] files = dir.listFiles();
+            Assert.assertTrue("files", files != null);
+            for (File f : files) {
+                if (f.getName().endsWith(".bergdb") || f.getName().equals("created.txt")) {
+                    java.nio.file.Files.copy(f.toPath(), new File(copy, f.getName()).toPath());
+                }
+            }
+            CoreTestClock clock2 = new CoreTestClock();
+            clock2.setTime(2000);
+            again = Db.builder().testSetup(new FileStream(copy)).clock(clock2).createdTxt(copy)
+                    .startupDistance(2000000).start();
+            Assert.assertEquals("the creator's startup distance", 5000000,
+                    again.getStartupDistance());
+            if (DbUtil.get(again, Long.MAX_VALUE, "k") == null) {
+                long t = again.lookupTime(Long.MAX_VALUE);
+                Assert.assertTrue("the start's time, " + t + ", before the lost transaction's",
+                        t < 1000);
+            }
+        } finally {
+            db.close();
+            if (again != null) {
+                again.close();
+            }
+        }
+    }
+    
     @Nano
     private static void testCreatedTxt(TestEnvironment env) throws IOException {
         if (Util.runsAndroid()) {

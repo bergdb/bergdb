@@ -1033,7 +1033,14 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
    records, the primordial one (with the first meta block, the creation
    of `Db.CREATION_LENGTH`, 272 bytes) and this one; a crash between them,
    or inside the second, leaves a stream that the next start completes
-   the same way, with that start's builder's setting.
+   the same way, with that start's builder's setting. With `created.txt`
+   (the Pub API) the start syncs this record before it returns, as the
+   primordial one (`Db.syncCreation`; 028-17), so that only a crash
+   inside the creating start leaves the primordial record alone; until
+   028-17 the record waited in the write buffer, and a crash after the
+   start returned, before any write of the buffer, left it alone too: the
+   next start then put the KV at its own time, after the times of the
+   transactions the crash lost, and with its own builder's setting.
 
 A descent or scan that comes back to a node it passed is an SFE
 (`OpData.descentFrom`, `dag/OpData.java`:62, Brent's cycle check;

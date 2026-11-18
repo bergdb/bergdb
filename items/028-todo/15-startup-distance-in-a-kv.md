@@ -139,6 +139,10 @@ each small:
    transaction has a time one unit later; positions after the creation
    192 bytes later), and a crash between them is completed by the next
    start with its own builder's setting (nothing depended on sd then).
+   Not only between them, 028-17 found: the second record waited in the
+   write buffer, so a crash after the start returned, before the buffer's
+   first write, left the primordial record alone too; since 028-17 the
+   start syncs it when the creation is synced (`created.txt`).
 2. *The value's bytes*: 4 bytes, `i32` little-endian, as the meta field
    was; strict: other lengths and values outside 10 to 10^9 refused.
 3. *The creating start's transaction is internal* (as reclaim's settings

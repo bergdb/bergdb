@@ -102,6 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | open, gated on its branch |
+| [028-17](17-creation-kv-not-synced.md) | Fix | A crash after a new database's start left the primordial record alone | none | in progress |
 
 
 Closed
@@ -153,3 +154,6 @@ nothing, by an agent of coord-1116.
 
 2026-11-18. 028-15 made and gated on the branch `028-15-sd-kv` (option A,
 Frans, 10:50), by an agent of coord-1118.
+
+2026-11-18. 028-17 registered and taken: night.sh's kill-restart failure
+(run 2026-11-18-1239), by an agent of coord-1118.

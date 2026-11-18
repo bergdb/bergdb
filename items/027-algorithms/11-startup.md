@@ -243,7 +243,8 @@ its settings and table, and makes a cut that a crash left pending
 (015-68, 019-47). A stream of the primordial record alone (a creation,
 or a crash before the creating start's next record) gets that record
 now: an internal transaction that puts the builder's sd at the KV, the
-writer's first (027-03, section 14.2). The
+writer's first (027-03, section 14.2), synced before the start returns
+when the creation is (`created.txt`; 028-17). The
 start returns s as stored, sd, ts, the records read and R(k)'s last
 position (`StartInfo`). A start that throws closes the storage before
 the exception leaves (005-32).
