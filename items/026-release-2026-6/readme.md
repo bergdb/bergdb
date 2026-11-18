@@ -239,6 +239,17 @@ Files
   recommended; at node size 30 it costs nothing on random work and a few
   per cent on index updates, and up to 1.4 times the bytes on sorted
   loads in large transactions; Frans decides.
+
+* 22-mt-contract-check.md. 026-22, a short check of MT (026-17) against
+  the contract of `lean/contract` (coord-1118's brief, 2026-11-18, 11:53;
+  90 minutes): MT's in-between states run with the contract checked at
+  every step, which read theorem needs a live key below every index
+  node, the entries' take-back left (`toPrev`), what of the writer proof
+  at the tag carries over, and the stream format. Done 2026-11-18: the
+  in-between states fail the contract only by NonEmptyOK (empty leaves),
+  which the scan's proof needs; every group's end meets it; the evidence
+  in 22-mt-contract-check/, the branch `026-22-mt-contract`.
+
 * 23-second-opinion.md. 026-23, a second opinion on a simpler writer for
   a complete proof (Frans, 2026-11-18): four proposals of an agent that
   had not read 026-17 to 026-22 (PE, plan then emit; GS, ghosts and
@@ -313,3 +324,6 @@ combined study (Frans, 08:56), by an agent of coord-1118.
 agent of coord-1118 (Frans, 11:51).
 
 2026-11-18. 026-23 done: the comparison and a count on Java's traces.
+
+2026-11-18. 026-22 registered and done: MT against the contract, a short
+check by an agent of coord-1118 (11:53 to 12:40).

@@ -1,0 +1,250 @@
+1a2,25
+> bergdb 026-22: MT (026-17, maintenance transactions) checked against the
+> contract of lean/contract at every boundary: mode `mt` added to 026-21's
+> program (`steptimes`, copied here as `mtcheck`, its other modes unchanged).
+> 
+>   mt     MT's writer (Study/Mt.lean, 026-17's Mt.lean unchanged): the user
+>          transaction (`Mt.putKv`: a delete is a bitmap in the leaf, no merge,
+>          no upward delete, no root collapse) is step 0 of T; then the driver
+>          (026-17's R5: for each deleted key in key order, `Mt.fixStep` until
+>          its path needs none), each fix step that changes something a step
+>          of its own, T * S + k. The contract (C1 to C5) is checked at every
+>          step, the user step and each fix step. Extra counts of mode mt:
+>          `c1loose` the steps where C1 fails but holds without NonEmptyOK (the
+>          contract's invariants with an empty key node allowed below a
+>          root: `invLoose`); `midsteps` the boundaries checked inside a group
+>          (after the user step and after each fix step); there the gets of
+>          the group's keys by the contract's reader (`mid.get`, a failure)
+>          and a full scan by the contract's reader (`midscan.short`: the
+>          contract's `scan`, whose fuel rests on NonEmptyOK, a count) and by
+>          the same reader with A1's fuel (`mid.scanA1`, a failure). The
+>          writer's own rules: `shapemid` counts every step of a group, its
+>          last too; `shapeend` the tree at the group's end.
+> 
+> The rest of this header is 026-21's.
+> 
+66a91
+> import Study.Mt
+112c137
+<   | today | split | b0 | b | bs | bp | d
+---
+>   | today | split | b0 | b | bs | bp | d | mt
+136a162
+>   | .mt => "mt"
+140c166
+<   | "bs" => some .bs | "bp" => some .bp | "d" => some .d | _ => none
+---
+>   | "bs" => some .bs | "bp" => some .bp | "d" => some .d | "mt" => some .mt | _ => none
+164a191,219
+> 
+> /-! ## The contract's invariants without NonEmptyOK (026-22)
+> 
+> `Contract.walk` and `Contract.invOk` (Contract/Statement.lean, section 2) with
+> one change: a key node below a root may have no live klong (`kidOk`'s
+> `!(live m.ks).isEmpty` left out). C1 fails and this holds: the only fault is
+> an empty key node, which MT's user transaction leaves. -/
+> 
+> def kidOkL (leafOnly : Bool) (s : Contract.Tree) (n : Contract.KNode) (lo : Nat) (hi : Option Nat)
+>     (sub : NodeId → Nat → Option Nat → Bool) (c : Nat) (y : NodeId)
+>     (rest : List (Nat × NodeId)) : Bool :=
+>   Contract.belowHi c hi &&
+>   (if n.leaf then
+>     decide (lo ≤ c) &&
+>     (if Contract.isLong c then
+>       match s.obj y with
+>       | some (.key m) =>
+>         decide (m.level < n.level) && (!leafOnly || m.leaf || !(Contract.live m.ks).isEmpty) && sub y 0 none
+>       | _ => false
+>     else
+>       match s.obj y with
+>       | some (.val _) => true
+>       | _ => false)
+>   else
+>     match s.obj y with
+>     | some (.key m) =>
+>       decide (m.level < n.level) && (!leafOnly || m.leaf || !(Contract.live m.ks).isEmpty) &&
+>         sub y (max lo c) (Contract.nextHi rest hi)
+>     | _ => false)
+165a221,243
+> def kidsOkL (leafOnly : Bool) (s : Contract.Tree) (n : Contract.KNode) (lo : Nat) (hi : Option Nat)
+>     (sub : NodeId → Nat → Option Nat → Bool) : List (Nat × NodeId) → Bool
+>   | [] => true
+>   | (c, y) :: rest => kidOkL leafOnly s n lo hi sub c y rest && kidsOkL leafOnly s n lo hi sub rest
+> 
+> def walkL (leafOnly : Bool) (p : Contract.Params) (s : Contract.Tree) : Nat → NodeId → Nat → Option Nat → Bool
+>   | 0, _, _, _ => false
+>   | f + 1, x, lo, hi =>
+>     match s.obj x with
+>     | some (.key n) =>
+>       Contract.nodeOk p s n &&
+>         kidsOkL leafOnly s n lo hi (fun y lo' hi' => walkL leafOnly p s f y lo' hi') (Contract.live n.ks)
+>     | _ => false
+> 
+> def invLoose (p : Contract.Params) (s : Contract.Tree) (leafOnly : Bool := false) : Bool :=
+>   match s.root with
+>   | some r =>
+>     match s.obj r with
+>     | some (.key n) =>
+>       (!leafOnly || n.leaf || !(Contract.live n.ks).isEmpty) && walkL leafOnly p s (n.level + 1) r 0 none
+>     | _ => false
+>   | none => false
+> 
+224a303,312
+>   c1Loose : Nat := 0
+>   c1Leaf : Nat := 0
+>   c1User : Nat := 0
+>   c1Fix : Nat := 0
+>   midSteps : Nat := 0
+>   midScanShort : Nat := 0
+>   midScans : Nat := 0
+>   fixSteps : Nat := 0
+>   fixCalls : Nat := 0
+>   groupsFixed : Nat := 0
+239a328,330
+>   /-- mode mt: the full scans inside a group at every `midScan`-th boundary
+>   checked (--midscan=K, default 1); the gets at every one -/
+>   midScan : Nat := 1
+352,353c443,450
+<     if !Contract.invOk cp (h'.tree.at s) then stt := stt.fail "C1.inv" s!"step {s}"
+<     else stt := stt.fail "C2.contents" s!"step {s}"
+---
+>     if !Contract.invOk cp (h'.tree.at s) then
+>       stt := stt.fail "C1.inv" s!"step {s}"
+>       if st.k == 0 then stt := { stt with c1User := stt.c1User + 1 }
+>       else stt := { stt with c1Fix := stt.c1Fix + 1 }
+>       if invLoose cp (h'.tree.at s) then stt := { stt with c1Loose := stt.c1Loose + 1 }
+>       if invLoose cp (h'.tree.at s) true then stt := { stt with c1Leaf := stt.c1Leaf + 1 }
+>     if Contract.contents (h'.tree.at s) != Contract.applyOps ops (Contract.contents (h'.tree.at (s - 1))) then
+>       stt := stt.fail "C2.contents" s!"step {s}"
+567a665,742
+> /-! ## MT (026-22) -/
+> 
+> /-- The reads at a boundary inside a group (with --contract), on the
+> contract's tree at the step's time: the gets of the group's keys and a full
+> scan by the contract's reader, against the reference after the user
+> transaction (`ref`); the scan once with the contract's fuel (`scan`, a count
+> when short) and once with A1's (`scanGo` with `2 * fuel + 2 + 2 * nodes`, a
+> failure when wrong). -/
+> def midCheck (cfg : Cfg) (st : St) (ops : List Tree.Op) (ref : Ref) : St := Id.run do
+>   let s := st.s
+>   let tr := st.heap.tree.at s
+>   let mut stt := { st.stats with midSteps := st.stats.midSteps + 1 }
+>   for op in ops do
+>     if Contract.get tr op.key != ref.get? op.key then
+>       stt := stt.fail "mid.get" s!"step {s}: get of {op.key}"
+>   if st.stats.midSteps % cfg.midScan != 0 then return { st with stats := stt }
+>   stt := { stt with midScans := stt.midScans + 1 }
+>   let want := ref.toList
+>   if Contract.scan tr {} 1000000000 != want then
+>     stt := { stt with midScanShort := stt.midScanShort + 1 }
+>   match tr.root with
+>   | none => stt := stt.fail "mid.scanA1" s!"step {s}: no root"
+>   | some r =>
+>     let nf := 2 * tr.fuel r + 2 + 2 * st.heap.objs.size
+>     if Contract.scanGo tr {} nf 1000000000 (Contract.chainSetup tr {} (tr.fuel r) r) != want then
+>       stt := stt.fail "mid.scanA1" s!"step {s}"
+>   return { st with stats := stt }
+> 
+> /-- MT's group at T (mode mt): the user transaction at step 0, then the fix
+> steps (026-17's R5, `Mt.fixAll` with the driver's loop written here so that
+> each fix step is committed and checked as a step of its own). `ref` is the
+> reference after the user transaction. -/
+> def runMt (cfg : Cfg) (st : St) (ops : List Tree.Op) (ref : Ref) :
+>     Except String (List Bool × St) := do
+>   let p := cfg.p
+>   if !p.merges then throw "Bug: MT is defined for the merges on (Params.merges)"
+>   let mut st := st
+>   let mut noops : List Bool := []
+>   for op in ops do
+>     let (noop, st') ← act cfg st (do
+>       let r ← Mt.putKv op
+>       Mt.boundsNow
+>       pure r) true (some op)
+>     st := st'
+>     noops := noops ++ [noop]
+>   let keys := Mt.deletedKeys ops noops
+>   st ← commit cfg st false
+>   if cfg.contract && !keys.isEmpty then st := midCheck cfg st ops ref
+>   let mut fuel := Mt.groupFuel p keys
+>   let mut fixed := 0
+>   for key in keys do
+>     for _ in List.range (fuel + 1) do
+>       let w ← startW p st.P st.next
+>       let s1 := st.s + 1
+>       st := { st with stats := { st.stats with fixCalls := st.stats.fixCalls + 1 } }
+>       let (r, w1) ← runAct p st.P s1 w (do
+>         let r ← Mt.fixStep key
+>         Mt.boundsNow
+>         pure r)
+>       if !r then break
+>       if fuel == 0 then throw s!"MT: the fixing does not end: key {key} at {s1}"
+>       fuel := fuel - 1
+>       fixed := fixed + 1
+>       if st.k + 1 ≥ S then throw "bounds: a transaction of more steps than 2^14"
+>       st := { st with s := s1, k := st.k + 1, w := w1, acts := 1, stepOps := #[] }
+>       st ← commit cfg st false
+>       st := { st with stats := { st.stats with fixSteps := st.stats.fixSteps + 1 } }
+>       if cfg.contract then st := midCheck cfg st ops ref
+>   if fixed > 0 then
+>     st := { st with stats := { st.stats with groupsFixed := st.stats.groupsFixed + 1 } }
+>   if cfg.contract then
+>     if !Contract.invOk { M := p.M } (st.heap.tree.at st.s) then
+>       st := { st with stats := st.stats.fail "C1.end" s!"step {st.s}" }
+>     let q : Contract.ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
+>     for f in (Contract.shapeFaults q (st.heap.tree.at st.s)).eraseDups do
+>       st := { st with stats := { st.stats with shapeEnd := bump st.stats.shapeEnd f } }
+>   return (noops, st)
+> 
+592,597c767,769
+<   for op in ops do
+<     if cfg.mode == .d && !seenPut && st.acts > 0 && isPut op then
+<       st ← commit cfg st false
+<       st ← newStep cfg st
+<     if isPut op then seenPut := true
+<     let (noop, st') ← runOp cfg st op
+---
+>   if cfg.mode == .mt then
+>     let (noops', st') ← runMt cfg st ops (ops0.foldl refOp st.ref)
+>     noops := noops'
+599,600c771,780
+<     noops := noops ++ [noop]
+<   st ← commit cfg st true
+---
+>   else
+>     for op in ops do
+>       if cfg.mode == .d && !seenPut && st.acts > 0 && isPut op then
+>         st ← commit cfg st false
+>         st ← newStep cfg st
+>       if isPut op then seenPut := true
+>       let (noop, st') ← runOp cfg st op
+>       st := st'
+>       noops := noops ++ [noop]
+>     st ← commit cfg st true
+672c852,854
+<   s!"jreads={stt.jreads} csteps={stt.cSteps} shapeend={showMap stt.shapeEnd} " ++
+---
+>   s!"jreads={stt.jreads} csteps={stt.cSteps} c1loose={stt.c1Loose} c1leaf={stt.c1Leaf} c1user={stt.c1User} c1fix={stt.c1Fix} midsteps={stt.midSteps} midscans={stt.midScans} " ++
+>   s!"midscanshort={stt.midScanShort} fixsteps={stt.fixSteps} fixcalls={stt.fixCalls} " ++
+>   s!"groupsfixed={stt.groupsFixed} shapeend={showMap stt.shapeEnd} " ++
+681c863
+< def runTrace (mode : Mode) (contract : Bool) (hplus : Nat) (file : String) : IO Bool := do
+---
+> def runTrace (mode : Mode) (contract : Bool) (hplus : Nat) (midScan : Nat) (file : String) : IO Bool := do
+691c873
+<     let cfg : Cfg := { mode := mode, p := p, contract := contract }
+---
+>     let cfg : Cfg := { mode := mode, p := p, contract := contract, midScan := max midScan 1 }
+746c928
+<       IO.println "Usage: steptimes today|split|b0|b|bs|bp|d [--contract] [--hplus=K] TRACE..."
+---
+>       IO.println "Usage: mtcheck today|split|b0|b|bs|bp|d|mt [--contract] [--hplus=K] TRACE..."
+750a933
+>       let midScan := rest.foldl (fun k o => if o.startsWith "--midscan=" then ((o.drop 10).toNat?).getD k else k) 1
+754c937
+<         let r ← runTrace mode contract hplus f
+---
+>         let r ← runTrace mode contract hplus midScan f
+759c942
+<     IO.println "Usage: steptimes today|split|b0|b|bs|bp|d [--contract] [--hplus=K] TRACE..."
+---
+>     IO.println "Usage: mtcheck today|split|b0|b|bs|bp|d|mt [--contract] [--hplus=K] TRACE..."

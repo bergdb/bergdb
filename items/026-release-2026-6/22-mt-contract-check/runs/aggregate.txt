@@ -1,0 +1,48 @@
+level2-small: traces=70 txs=7100 ops=40260 dels=4872 steps=8948 csteps=8948 c1loose=1392 c1leaf=1392 c1user=350 c1fix=1042 midsteps=2521 midscans=2521 midscanshort=0 fixsteps=1848 fixcalls=4536 groupsfixed=485 gets=40260 jreads=35500 scans=900 taken=0
+  fails: C1.inv:1392
+  wouldbump: V1.change:5800,V1.top:18,V2.version:2602
+  shapeend: 
+  shapemid: FillOK:1179,RootsOK:196
+  traces with a failure, by check: C1.inv:22
+level2-drain: traces=110 txs=13900 ops=251431 dels=130184 steps=67112 csteps=67112 c1loose=44287 c1leaf=44287 c1user=4440 c1fix=39847 midsteps=63246 midscans=63246 midscanshort=17573 fixsteps=53212 fixcalls=125393 groupsfixed=6760 gets=251431 jreads=69500 scans=1760 taken=0
+  fails: C1.inv:44287
+  wouldbump: V1.change:46747,V1.top:16,V2.version:15129
+  shapeend: 
+  shapemid: FillOK:28434,RootsOK:1028
+  traces with a failure, by check: C1.inv:65
+reclaim: traces=15 txs=8735 ops=27209 dels=4780 steps=9724 csteps=9724 c1loose=292 c1leaf=292 c1user=261 c1fix=31 midsteps=3269 midscans=3269 midscanshort=0 fixsteps=989 fixcalls=4053 groupsfixed=744 gets=27209 jreads=43675 scans=1046 taken=0
+  fails: C1.inv:292
+  wouldbump: V1.change:741,V2.version:673
+  shapeend: 
+  shapemid: FillOK:698,RootsOK:13
+  traces with a failure, by check: C1.inv:4
+own: traces=6 txs=7740 ops=185364 dels=33980 steps=9198 csteps=9198 c1loose=0 c1leaf=0 c1user=0 c1fix=0 midsteps=6273 midscans=0 midscanshort=0 fixsteps=1458 fixcalls=35438 groupsfixed=710 gets=185364 jreads=0 scans=934 taken=0
+  fails: 
+  wouldbump: V1.change:60996,V1.top:1,V2.version:3422
+  shapeend: 
+  shapemid: FillOK:1458
+  traces with a failure, by check: 
+medium: traces=27 txs=13667 ops=736718 dels=381708 steps=162838 csteps=162838 c1loose=141864 c1leaf=141864 c1user=7040 c1fix=134824 midsteps=158562 midscans=7939 midscanshort=1346 fixsteps=149171 fixcalls=350697 groupsfixed=8200 gets=736718 jreads=68335 scans=1662 taken=0
+  fails: C1.inv:141864
+  wouldbump: V1.change:83684,V1.top:3,V2.version:9776
+  shapeend: 
+  shapemid: FillOK:36132,RootsOK:41
+  traces with a failure, by check: C1.inv:21
+large-seed1: traces=6 txs=17000 ops=55003 dels=9243 steps=19598 csteps=19598 c1loose=752 c1leaf=752 c1user=621 c1fix=131 midsteps=7321 midscans=369 midscanshort=0 fixsteps=2598 fixcalls=8399 groupsfixed=1695 gets=55003 jreads=85000 scans=2046 taken=0
+  fails: C1.inv:752
+  wouldbump: V1.change:4627,V2.version:595
+  shapeend: 
+  shapemid: FillOK:1704,RootsOK:158
+  traces with a failure, by check: C1.inv:3
+large-rest: traces=54 txs=153000 ops=496121 dels=82565 steps=175790 csteps=175790 c1loose=6590 c1leaf=6590 c1user=5392 c1fix=1198 midsteps=64941 midscans=3269 midscanshort=0 fixsteps=22790 fixcalls=74033 groupsfixed=15005 gets=496121 jreads=765000 scans=18414 taken=0
+  fails: C1.inv:6590
+  wouldbump: V1.change:42687,V2.version:5322
+  shapeend: 
+  shapemid: FillOK:15022,RootsOK:1348
+  traces with a failure, by check: C1.inv:27
+ALL: traces=288 txs=221142 ops=1792106 dels=647332 steps=453208 csteps=453208 c1loose=195177 c1leaf=195177 c1user=18104 c1fix=177073 midsteps=306133 midscans=80613 midscanshort=18919 fixsteps=232066 fixcalls=602549 groupsfixed=33599 gets=1792106 jreads=1067010 scans=26762 taken=0
+  fails: C1.inv:195177
+  wouldbump: V1.change:245282,V1.top:38,V2.version:37519
+  shapeend: 
+  shapemid: FillOK:84627,RootsOK:2784
+  traces with a failure, by check: C1.inv:142
