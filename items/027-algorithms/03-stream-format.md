@@ -133,7 +133,7 @@ version number. From the bottom up:
 |---|---|---|---|
 | The files of a directory         | `stream/FileStream`                      | 4       | none     |
 | Encryption (not in 2026.4's API) | `stream/SalsaStream`                     | 16      | none     |
-| The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 154 |
+| The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 155 |
 | The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 6 |
 | The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 2, 2, 4  |
 | The tree a record means          | `dag/Dag`, `dag/KeyNode`, `DbStarter`    | 11, 14  | record 6 |
@@ -145,7 +145,7 @@ The five numbers in the stream (012-02, section 1, with 2026.4's values):
 
 | Number             | Value | Where in the bytes       | Defined by                       |
 |---|---|---|---|
-| Meta block version | 154 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`, :51 |
+| Meta block version | 155 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`     |
 | Record format      | 6   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
 | Top node format    | 2   | node byte 5              | `StoredTopNode.toLongs`, :203    |
 | Key node format    | 2   | node byte 5              | `StoredKeyNode.toLongs`, :55     |
@@ -287,11 +287,11 @@ bytes long (`RecoverableStream.META_BLOCK_SIZE`, :59;
 | Off | Size | Type  | Field         | Value and range                                |
 |---|---|---|---|---|
 | 0   | 4  | bytes | magic         | `62 65 72 67`, "berg" (`MetaBlock.MAGIC`, :36) |
-| 4   | 4  | `i32` | version       | 154                                            |
+| 4   | 4  | `i32` | version       | 155 (154 until 2026.5; 028-15)                 |
 | 8   | 8  | `i64` | time          | the creation's time, in every block            |
 | 16  | 8  | `i64` | lastTrans     | the last record appended before it, or −1      |
 | 24  | 16 | bytes | database id   | 16 bytes, random (`DatabaseId`)                |
-| 40  | 4  | `i32` | startup dist. | the setting in force, sd, in bytes             |
+| 40  | 4  | zero  | reserved      | zero, not read (the startup distance until 155)|
 | 44  | 2  | `u16` | max node size | 30 (026-08); 8, 14 or 62 only in tests         |
 | 46  | 81 | zero  | reserved      | zero                                           |
 | 127 | 1  | `u8`  | last byte     | 10: the block is valid                         |
@@ -323,10 +323,16 @@ a write: 7 B / 30 by integer division, at least 2, so 2, 3, 7 and 14 at
 8, 14, 30 and 62 (`Dag.theta`, the Lean model's `Params.thetaFor`;
 024-23; the floor 2, not 1, by 024-19, Q4).
 
-**Written by.** `MetaBlock.initBlock` (:73): magic, version, last byte,
-lastTrans −1. `Db.writePrimordialTransaction` (`Db.java`:1344): id,
-startup distance, node size, time. `NodeStream.appendNodes`: lastTrans
-after each record. `Db.setStartupDistance` (:541): the startup distance.
+**The startup distance** (sd) was bytes 40 to 43 until version 155: since
+028-15 (Frans, 2026-11-18, 10:50, "SF4 (a), 028-15 A"; 026-12, SF7 (a))
+it is the Core's KV `/#i/-startup-distance` (section 15), and the four
+bytes are reserved: written zero, not read. Version 155 marks the change,
+so that release 2026.5, which read sd there, refuses such a stream before
+it writes, and 2026.6 refuses 2026.5's (section 21).
+
+**Written by.** `MetaBlock.initBlock`: magic, version, last byte,
+lastTrans −1. `Db.writePrimordialTransaction`: id, node size, time.
+`NodeStream.appendNodes`: lastTrans after each record.
 `RecoverableStream.append` writes the in-memory block, as it is, when the
 record bytes reach a multiple of D (012-02, section 4.2). At a start,
 recovery copies the last valid block whole, reserved bytes included
@@ -334,32 +340,39 @@ recovery copies the last valid block whole, reserved bytes included
 
 **Checked on reading.**
 
-* `RecoverableStream.readMetaBlock` (:707), for every block it reads,
+* `RecoverableStream.readMetaBlock`, for every block it reads,
   valid or not: the magic (`BadMagicBytes`, an SFE); the version as an
-  `i32` (:724; bytes 6 and 7 checked since 019-01), not 154 a
-  `VersioningStreamException`. It writes nothing before these checks
-  (005-40).
+  `i32` (bytes 6 and 7 checked since 019-01), not 155 a
+  `VersioningStreamException` (`versionRefused`): 154 with a message that
+  names release 2026.5 and says to make the database again (read with
+  2026.5, put with 2026.6); a larger number as a newer BergDB's. It writes
+  nothing before these checks (005-40).
 * `MetaBlock.checkFormat` (:116), for a valid block: lastTrans below 0 and
   not −1, and a time below 0, are SFEs.
 * `RecoverableStream.checkLastTransSpos` (:170, 019-34): lastTrans must
   be −1, or at least max(128, the first position) and below the block's
   own position; an SFE before recovery writes.
-* `Db.refuseOtherNodeSize` (`Db.java`:1312), on the last valid block:
-  0 is a `VersioningStreamException` (a database before 2026-10-27);
-  a size above 62 is an SFE (since 024-27); another size than the
-  start's is an SFE. All before any write.
+* `Db.refuseOtherNodeSize`, on the last valid block: 0 or a size above
+  62 is an SFE, a damaged block (0 was a `VersioningStreamException`, a
+  database before 2026-10-27, until 028-15: every block of version 155
+  has the size); another size than the start's is an SFE. All before any
+  write.
 
-**Tests.** UT: `MetaBlock` (4), `RecoverableStream` (37, among them
-`crashInMetaBlockHeader`, `testReadMetaBlock1`), `DbTesterRestart`
-(`testMetaBlockLastTransPosRefused`, `testOtherNodeSizeRefused`,
-`testNoNodeSizeRefused`, `testVersionHighBytesRefused`). CST's META
-workload. C: `meta.c`, `rstream.c`, `t_rstream.c`.
+**Tests.** UT: `MetaBlock` (4, `startupDistanceBytesZero`),
+`RecoverableStream` (38, among them `crashInMetaBlockHeader`,
+`testReadMetaBlock1`, `testReadMetaBlockVersion154Refused`),
+`DbTesterRestart` (`testMetaBlockLastTransPosRefused`,
+`testOtherNodeSizeRefused`, `testNoNodeSizeRefused`,
+`testVersionHighBytesRefused`, `testStartupDistanceKvKept`: bytes 40 to
+43 zero in every block). CST's META workload. C: `meta.c`, `rstream.c`,
+`t_rstream.c` (version 154, the C clone follows a release).
 
-**Unused and reserved.** Bytes 46 to 126, written zero, not checked, and
-copied whole into the next blocks: the place where 005-50 added the node
-size without a new version (`MetaBlock.CURRENT_VERSION`'s comment, :40 to
-:50). A rule of extension already: an older reader ignores and passes on
-a field added there.
+**Unused and reserved.** Bytes 40 to 43 and 46 to 126, written zero, not
+checked, and copied whole into the next blocks: the place where 005-50
+added the node size without a new version (`MetaBlock.CURRENT_VERSION`'s
+comment). A rule of extension already: an older reader ignores and passes
+on a field added there. Bytes 40 to 43 are zero in every stream of
+version 155.
 
 **Gaps.**
 
@@ -369,10 +382,9 @@ a field added there.
 * G8. A last byte other than 10 makes the block invalid, silently
   (`MetaBlock.isValid`, :252): 255 values mean "invalid", and only 0 is
   ever written (by recovery's fill, section 7).
-* G9. The startup distance is not range-checked on reading (012-02, doubt
-  D9; the C clone's take guards sd < 1); the builder refuses below 10 and
-  `setStartupDistance` clamps to 400,000 to 10^9. The time is checked
-  only to be 0 or more; the database id not at all.
+* G9. The time is checked only to be 0 or more; the database id not at
+  all. (Until 028-15 the startup distance too was not range-checked on
+  reading, 012-02's doubt D9; its KV is: 10 to 10^9, section 15.)
 * G19. The maximum node size is given by the start and compared with the
   block's, not taken from it: 30 at every start but a test's (026-08;
   a test's `DbBuilder.maxNodeSize8()` to `maxNodeSize62()`). A reader of
@@ -971,7 +983,7 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 1. The checks before any write: an incomplete creation, the meta
    version, the node size (sections 6 and 7).
 2. Recovery (section 7).
-3. The startup position (`Db.readStartupPosAndDistance`;
+3. The startup position (`Db.readStartupPos`;
    `getStartupPosFromLastTransaction`, :1000): from the record that the
    last valid meta block names (128 if none) to the end, every committed
    record parsed (so its format checked), its startupPos checked
@@ -1008,8 +1020,20 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
    * `checkStreamPointers` (:734): after Rule R and the cut back to the
      startup time, no key klong's ref in the newest versions is −1 or a
      vpos.
-6. Reclaim's table, current row and settings (`Reclaim.initFromDb`,
-   :762; section 15).
+6. The startup distance, from its KV (`Db.readStartupDistanceKv`;
+   section 15; 028-15), before the writer's first transaction: only the
+   writer uses it. A stream of the primordial record alone has no KV yet,
+   and the start keeps the builder's setting; any other stream without
+   the KV is refused as damaged (an SFE).
+7. Reclaim's table, current row and settings (`Reclaim.initFromDb`;
+   section 15).
+8. A stream of the primordial record alone: the start's first
+   transaction, internal, puts the builder's startup distance at its KV
+   (`Db.putStartupDistanceKv`; 028-15). So the creating start writes two
+   records, the primordial one (with the first meta block, the creation
+   of `Db.CREATION_LENGTH`, 272 bytes) and this one; a crash between them,
+   or inside the second, leaves a stream that the next start completes
+   the same way, with that start's builder's setting.
 
 A descent or scan that comes back to a node it passed is an SFE
 (`OpData.descentFrom`, `dag/OpData.java`:62, Brent's cycle check;
@@ -1020,8 +1044,9 @@ invariants they rely on (INV-1: each node at most once in D;
 docs/sis-model.md, section 8); what s may be (any record at or before
 the last, or only one that the take wrote, 015-73); the bound of the
 startup section (T3, 007-08), which is a writer's promise, not a
-reader's check; what a start appends (nothing but the creation and
-recovery's fill; 012-02, section 8.14).
+reader's check; what a start appends (nothing but the creation, the
+creating start's record of the startup distance, and recovery's fill;
+012-02, section 8.14).
 
 **Tests.** UT: `DbStarter`, `TransSeq` (17), `DbTesterRestart`
 (`testCorruptStartupPosRefused`). Level 2's scripts and the Lean
@@ -1058,15 +1083,31 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 
 | Key                          | Written by                       | Value                   |
 |---|---|---|
-| `/#i/-dummy`                 | `Db.setStartupDistance`, :569    | 200,000 zero bytes      |
+| `/#i/-startup-distance`      | the creating start; `Db.setStartupDistance` | 4 bytes, `i32` |
 | `/#i/dreclaim/-table.txt`    | `Reclaim.storeTable`, :901       | the table's rows        |
 | `/#i/dreclaim/-current.txt`  | every step, `Reclaim.step`, :653 | the current row         |
 | `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`, :258      | two lines               |
 | `/#i/dreclaim/-fill.txt`     | `Reclaim.maintain` (024-32)      | zero bytes, then delete |
 
-* **`/#i/-dummy`** (`DbConstants.DUMMY_KEY`, :26): a value of
-  `RecoverableStream.META_BLOCK_DISTANCE` zero bytes, so that a meta block
-  with the new startup distance is written; never read.
+* **`/#i/-startup-distance`** (`DbConstants.SD_KEY`; 028-15; bkey
+  01 25 6b 01 and the bytes of "-startup-distance"): the startup
+  distance in force, sd, in stream bytes, 4 bytes, an `i32`
+  little-endian, from 10 to 10^9 (`DbBuilder.MAX_STARTUP_DISTANCE`).
+  Put by the creating start's first transaction (an internal one, with
+  the builder's setting; section 14.2) and by `Db.setStartupDistance` (a
+  transaction of its own, the clamped value, 400,000 to 10^9); every
+  database has it from its creation on, live, and reclaim copies it
+  forward as any live KV. Read at the end of a start
+  (`Db.readStartupDistanceKv`): other bytes are refused with
+  `InternalDataException` ("Bad value of /#i/-startup-distance"), and the
+  start fails; no KV in a stream with more than the primordial record is
+  an SFE. A crash inside the setter's record starts with the old setting,
+  one after its end with the new (until 028-15, with the setting in the
+  meta block that the record held, either; 028-08). Until 028-15 sd was
+  the meta block's (bytes 40 to 43), and `Db.setStartupDistance` put
+  `/#i/-dummy`, 200,000 zero bytes never read, to get a meta block with
+  the new value written; no release since 2026.6 writes or reads that
+  key.
 * **`/#i/dreclaim/-fill.txt`** (`Reclaim.MAINTAIN_FILL_KEY_NAME`; since
   024-32, after this section's reference, so no line number):
   `maintain()`'s filler (027-13, section 1.10, M5), a value of max(1,
@@ -1084,22 +1125,21 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   `false`; lastKey `null` or the segments as signed decimals separated by
   spaces; endKey (since 026-05: P8, the last key live at tStart, which
   bounds the steps' scans) `none` if no key was live then, or the
-  segments as lastKey has them. A row stored before 026-05 has no endKey
-  line, and is read with no bound; any other value is refused
-  (`InternalDataException`, "Bad value of endKey"). endKey came with
-  026-05 without Q9, which Q8 (section 20) asked for first: a reader
-  without it (2026.5 and before) ignores the line and drops it at its
-  next store.
+  segments as lastKey has them; any other value, and no endKey line, is
+  refused (`InternalDataException`, "Bad value of endKey", "Missing
+  'endKey'"). A row stored before 026-05, by 2026.5 or earlier, had no
+  endKey line and was read with no bound, until 028-15: such a row is in
+  a stream of meta version 154, which a start refuses first. endKey came
+  with 026-05 without Q9, which Q8 (section 20) asked for first.
 * **The table** (`serialize`, :1356): the rows, each followed by
   `----next----\n`; parsed by `split` (:1376), and a table with no row is
   refused.
 * **Reading a row** (`deserialize`, :1202; `StringMap.parse`,
   `common/StringMap.java`:33): lenient. Lines trimmed; lines without `=`
   skipped; names in any order; unknown names ignored; pStart, tStart,
-  tEnd, kvCount, lastKey and done required; cut (false unless `true`),
-  rewritten (0), pEnd (pStart), pSafe (-1) and pCut (pStart) have
-  defaults; no endKey line means no bound (026-05), unlike the text
-  `none`, no key live.
+  tEnd, kvCount, lastKey, done and (since 028-15) endKey required; cut
+  (false unless `true`), rewritten (0), pEnd (pStart), pSafe (-1) and
+  pCut (pStart) have defaults.
 * **The settings** (`serializeSettings`, :300; `parseSettings`, :314;
   015-87): exactly `retain=<long>\nfraction=<int>\n`; retain at least
   `Clock.UNITS_PER_SEC` (`Long.MAX_VALUE` is forever, the default without
@@ -1109,14 +1149,17 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   (`initFromDb`, :762 to :769). Strict on purpose: "the settings of a later
   version, which this one must neither run without nor drop".
 * **The reserved spaces** (020-22, section 4.1; key-encoding.md, :133 to
-  :150): the Core's `/#i/dreclaim/` and `/#i/-dummy`; the Pub layer's
+  :150): the Core's `/#i/dreclaim/` and `/#i/-startup-distance`
+  (`/#i/-dummy` until 028-15); the Pub layer's
   `/#i/didef/`, `/#i/dient/`, `/#i/didel/` and `/#i/div/` (section 17);
   2026.3's `/#i/dii/` (a start refuses it) and `/#i/di/` (never read); the
   rest of `/#i/` and all of `/#` outside it reserved, used by nobody.
-* The startup distance is not a KV: it is the meta block's (OT4).
-* The creation writes no KV: its record is an empty root key node and
-  the first top node (`Db.writePrimordialTransaction`, :1344; 012-02,
-  section 8.2, with its 264 bytes at format 5; 272 since 024-25).
+* The startup distance is a KV since 028-15 (OT4; until then the meta
+  block's).
+* The creation's primordial record holds no KV: an empty root key node
+  and the first top node (`Db.writePrimordialTransaction`; 012-02,
+  section 8.2, with its 264 bytes at format 5; 272 since 024-25). The
+  creating start's next record puts the startup distance (section 14.2).
 
 **Tests.** UT: `DbTesterRestart` (554 to 867,
 `testMalformedSettingsRefusedAtStart`, :817), `StringMap`. C:
@@ -1137,11 +1180,13 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   ignored, and dropped at the next store. The table's text has no version.
 * G17. The Core accepts a user's puts under `/#` (024-01, CA3; C-U2-8),
   but since 024-37 not at its own keys: a caller's put or delete at
-  `/#i/-dummy`, `/#i/dreclaim/` or a key under it is refused
+  `/#i/-startup-distance` (`/#i/-dummy` until 028-15), `/#i/dreclaim/`
+  or a key under it is refused
   (`Trans.coreKey`), so a caller can no longer put a bad settings value
   that stops the next start.
-* The dummy's 200,000 bytes are a cost of keeping the startup distance in
-  the meta block (Q4).
+* Every database has a KV of BergDB's, the startup distance's, from its
+  creation on: a Core API scan of the whole key space returns it (Db,
+  "Keys and the layers above"; 028-15).
 
 
 ## 16. Encryption
@@ -1264,7 +1309,7 @@ where the result depends on Java rather than on the bytes.
 | G6  | a first klong that is not a time klong       | 11      | `KeyNode.addToEnd`        |
 | G7  | non-zero reserved bytes and padding          | 6 to 12 | the parsers' skips        |
 | G8  | a meta last byte other than 0 and 10         | 6       | `MetaBlock.isValid`       |
-| G9  | any startup distance; any database id        | 6       | `MetaBlock.checkFormat`   |
+| G9  | any database id (sd checked since 028-15)    | 6       | `MetaBlock.checkFormat`   |
 | G10 | top node skip times; −2 as a set pointer     | 10      | `StoredTopNode.parse`     |
 | G11 | value node: extra bytes, its stored offset   | 12      | `StoredValueNode.parse`   |
 | G12 | no header checksum; node order; startupPos   | 8, 14   | `StoredTrans.Parser`      |
@@ -1315,7 +1360,7 @@ which bytes stay free, so it cannot wait.
 | Q1  | CL2: strict shape, merges (MG) or RB           | rerun of deletes     | versioned          |
 | Q2  | CL4: dead klongs in live nodes, compaction     | rerun, key nodes     | versioned          |
 | Q3  | PF2: a compact key node; delta writes          | key node, node types | versioned          |
-| Q4  | OT4: the startup distance in a KV              | meta 40 to 43, keys  | before the freeze  |
+| Q4  | OT4: the startup distance in a KV              | meta 40 to 43, keys  | done, 028-15       |
 | Q5  | CA1: the builder's last operation wins         | a record's KVs       | later, writer only |
 | Q6  | PA5: objects and what a key holds              | Pub keys, `/#i/`     | reserve now        |
 | Q7  | OT1 (c): a clean stop's mark; the length       | a KV or the framing  | later, as a KV     |
@@ -1358,7 +1403,9 @@ which bytes stay free, so it cannot wait.
   stored otherwise). Additive in a way (a KV that wins, the field kept),
   but that leaves two places and the 200,000-byte dummy KV
   (`/#i/-dummy`, section 15) that forces a meta block. Before the freeze,
-  to have one place.
+  to have one place. Done in 028-15 (Frans, 2026-11-18, 10:50, "SF4 (a),
+  028-15 A"): the KV, bytes 40 to 43 reserved zero, the dummy gone, meta
+  version 155, older streams refused.
 * **Q5, CA1** (5.1). The last operation wins, put or delete. A writer's
   rule: no reader changes, since the rerun takes the stored nodes in
   order; other bytes for some Core transactions (SD, C). Any time. Whether
@@ -1437,34 +1484,44 @@ found here:
 
 ## 21. Versioning and compatibility
 
-**Status: what exists is filled; the options are written; nothing is
-decided.**
+**Status: what exists is filled; the options are written. 2026.6
+refuses 2026.5's databases and older (028-15, option A: meta version
+155). Whether 2026.6's format is a stable one is open: Frans chose 026-12's
+SF4 (a) on 2026-11-18 at 10:50 and set the stable format aside for 2026.6
+at 11:51 ("Let's forget about stable format for the stream. I decide to
+not focus on this for this release.").**
 
 ### 21.1. What is versioned today
 
 | Number or mark       | Covers                             | Refused by, and when           |
 |---|---|---|
-| meta version 154     | the framing                        | `readMetaBlock`; before writes |
-| meta node size ≠ 0   | databases since 2026-10-27         | `refuseOtherNodeSize`; before  |
+| meta version 155     | the framing; sd's place (028-15)   | `readMetaBlock`; before writes |
+| meta node size ≠ 0   | a block not damaged (028-15)       | `refuseOtherNodeSize`; before  |
 | record format 7      | header, nodes, the rerun's meaning | `Parser.parse`; after recovery |
 | node formats 3, 3, 5 | each node's layout                 | each parser, at a parse        |
 | object header 0x82   | the Pub layer's objects (020-07)   | `ObjectFormat`, at a read      |
 | index def. version=1 | an index definition (020-10)       | `IndexManager.start`           |
 
-* The refusals are `VersioningStreamException`s, an SFE. The record's
-  message tells an older format from a newer one (`formatRefused`, :236):
-  "format 5 was written by release 2026.3 and earlier ..., format 2 until
-  2026-10-15".
+* The refusals are `VersioningStreamException`s, an SFE. The meta
+  block's message names release 2026.5 for version 154, and tells a
+  newer version (`RecoverableStream.versionRefused`; 028-15). The record's
+  message tells an older format from a newer one (`formatRefused`); it
+  named the releases of formats 6, 5 and 2 until 028-15, since when a
+  database of 2026.5 or earlier is refused by its meta block first.
 * A start parses every record from the one the last valid meta block
   names to the end, and the startup section, so a stream of another
   record format is refused at its start; a record outside those is
   checked when it is read, and a read that meets another format fails the
   database.
-* History: record format 2 until 2026-10-15, 5 until 2026-11-10, 6 since;
-  meta 154 since 2015; the node size since 2026-10-27. Each change has
-  refused all older databases ("new databases only", F1-008-11's Q5).
-  2026.4 refuses 2026.1 to 2026.3 (023-02, F9 (a)); 2026.5 need not open
-  2026.4's (Frans, 2026-11-10, 19:49).
+* History: record format 2 until 2026-10-15, 5 until 2026-11-10, 6 until
+  2026-11-11, 7 since; meta 154 from 2015 to 2026-11-18, 155 since
+  (028-15); the node size since 2026-10-27. Each change has refused all
+  older databases ("new databases only", F1-008-11's Q5). 2026.4 refuses
+  2026.1 to 2026.3 (023-02, F9 (a)); 2026.5 need not open 2026.4's
+  (Frans, 2026-11-10, 19:49); 2026.6 refuses 2026.5's and older, by the
+  meta version (028-15, option A; Frans, 2026-11-18, 10:50). The record
+  format would be raised with the compact nodes (026-12, SF8), if they
+  come in 2026.6.
 * Not versioned: the file layout, the internal keys' texts (the settings
   are strict and refuse a later form; the rows are lenient and drop it),
   the Pub layer's keys and value encodings.
@@ -1583,3 +1640,12 @@ corpus in 21.3). By agent ns30 of coord-1113, on the branch
 step's row, not its touch's; a missing endKey line told apart from
 `none`, and the row's defaults; endKey's landing without Q9 (Q8); G17
 since 024-37. Section 19's G17 row and section 20's Q8 not changed.
+
+2026-11-18. 028-15 (Frans, 10:50, "SF4 (a), 028-15 A"): the startup
+distance an internal KV, `/#i/-startup-distance`, put by the creating
+start and by `Db.setStartupDistance`, read at the end of a start; the
+meta block's bytes 40 to 43 reserved zero, `/#i/-dummy` gone; meta
+version 155, 154 refused with a message that names 2026.5; a reclaim
+row without endKey and a meta block without the node size refused as
+damaged. Sections 3, 6, 14.2, 15, 19 (G9), 20 (Q4) and 21.1. By agent
+sdkv of coord-1118, on the branch `028-15-sd-kv`.

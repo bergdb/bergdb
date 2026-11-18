@@ -59,6 +59,13 @@ An entry value is one of (011-11, 2.4):
                                  after R(0); with reclaim, user transactions and
                                  reclaim's records)
 
+Since bergdb 028-15 the start that creates a database commits a record after
+the primordial one: an internal transaction that puts the startup distance's
+KV, `/#i/-startup-distance` (027-03, sections 14.2 and 15). The exporter's run
+A records it through the hooks as any record, R(1), with `kind=table` under
+reclaim; its first hook records R(0) before it changes the tree. So the first
+user transaction is R(2) of a trace, and a trace's T(1) puts the KV.
+
 Format 2 (`TRACE 2`, since 2026-10-16, bergdb item 001, WP L5; the checker
 still reads format 1) adds, from the item's plan (001-01, 8.2):
 
@@ -82,7 +89,8 @@ the user transactions, and reclaim's steps and table stores, each an ordinary
 `TX` block, with `kind=user`, `step` or `table` in its comment line. Since
 bergdb 015-87 the exporter's call of `setRetainDuration`, before the first
 user transaction, commits reclaim's settings (`/#i/dreclaim/-settings.txt`)
-in a record of their own, R(1), internal and marked `kind=table`; its calls
+in a record of their own, R(2) (R(1) until bergdb 028-15), internal and
+marked `kind=table`; its calls
 after a restart write nothing. Format 2 then also has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
