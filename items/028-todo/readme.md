@@ -101,7 +101,7 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
-| [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A or B | open |
+| [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | open, gated on its branch |
 
 
 Closed
@@ -149,3 +149,7 @@ get; the walk now takes only older top nodes, by an agent of coord-1116.
 
 2026-11-16. 028-16 done: a refused second start of one `Db` closes
 nothing, by an agent of coord-1116.
+
+
+2026-11-18. 028-15 made and gated on the branch `028-15-sd-kv` (option A,
+Frans, 10:50), by an agent of coord-1118.

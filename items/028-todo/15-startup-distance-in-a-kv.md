@@ -203,10 +203,33 @@ trace checkers do not name where sd is kept: unchanged.
 Gates
 -----
 
-(filled below)
+On the branch after `main` was merged again (`13a9d368`; main had brought
+items only, 026-21's study), 2026-11-18, 11:55 to 13:05, with another
+agent's runs beside them (not timing runs):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (77 s; 1733 unit tests, 89
+  f-tests, the demos).
+* `java/stress/level2.sh` full: LEVEL 2 OK (RestartStress, invariance,
+  CrashTest, BryanRepro, treeconf small/drain/reclaim, the contract and
+  the bridge with their fault tests, conformance and drain, TAKECHECK).
+* `java/stress/level3.sh` full: LEVEL 3 OK (also before the merge).
+* `java/stress/level1.sh` full: LEVEL 1 OK (Props' SS 1.53 for its first
+  case, at most 1.54).
+* `java/stress/level4.sh` full: LEVEL 4 OK (the exporter's run E, the
+  eviction schedules, LargerThanMemory).
+
+On the way: the unit tests first failed in 66 tests, every one from the
+new database's KV, its record and its time; fixed as listed above, none
+a fault of the change. TraceExport needed the creating start's record
+recorded (`level2.sh quick` failed in treeconf until then).
 
 
 State
 -----
 
-(filled below)
+2026-11-18, 13:10. Done and gated on the branch `028-15-sd-kv`
+(GATED `13a9d368`, then this item's commit), not merged to `main`, not
+pushed. For Frans to confirm: the agent's decisions 1 to 4 above (the
+creating start's record, the value's bytes, its transaction internal, the
+KV in every database). 026-12's SF4 is open again (Frans, 11:51); 028-15
+stands as option A.
