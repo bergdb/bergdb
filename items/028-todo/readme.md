@@ -102,7 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | open, gated on its branch |
-| [028-17](17-creation-kv-not-synced.md) | Fix | A crash after a new database's start left the primordial record alone | none | in progress |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-17](17-creation-kv-not-synced.md) | Fix | A crash after a new database's start left the primordial record alone | none | done | 2026-11-18 |
 | [028-16](16-second-start-closes-db.md) | Fix | A refused second start of one Db closes the database the first started | none | done | 2026-11-16 |
 | [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | done | 2026-11-16 |
 | [028-07](07-start-lock-across-sync.md) | Investigate | One start's sync blocks every start of the JVM | none | done | 2026-11-16 |
@@ -157,3 +157,8 @@ Frans, 10:50), by an agent of coord-1118.
 
 2026-11-18. 028-17 registered and taken: night.sh's kill-restart failure
 (run 2026-11-18-1239), by an agent of coord-1118.
+
+2026-11-18. 028-17 done: a new Pub database's creation was not durable
+when start() returned since 028-15; the creating start now syncs its
+record of the startup distance; gated on its branch, by an agent of
+coord-1118.

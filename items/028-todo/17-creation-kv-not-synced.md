@@ -1,7 +1,7 @@
 028-17. Fix: a crash after a new database's start left the primordial record alone
 =================================================================================
 
-Status: in progress. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-18 by Frans Lundberg.
 
 What: `java/night.sh` on `main` 1b1001ee (run 2026-11-18-1239), step 10,
@@ -125,7 +125,30 @@ The harness is unchanged.
 Gates
 -----
 
-To be run.
+At `9f91c5df` on the branch `028-17-kill-restart` (from `main` 990212fc,
+which had not moved by the end), 2026-11-18, 15:40 to 16:08, with
+night.sh running on `main` part of the time:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (80 s).
+* `java/stress/kill-restart.sh 1000 20261118` (the failing seed): KILL
+  RESTART OK, 1000 kills and 54 exits in 1658 s.
+* `kill-restart.sh 1000 20261117`: KILL RESTART OK, 1000 kills and 53
+  exits in 1621 s.
+* `kill-restart.sh 1000 20261119`: KILL RESTART OK, 1000 kills and 50
+  exits in 1742 s.
+* The probe above (200 kills aimed at "running", seed 20261118): KILL
+  RESTART OK, 100 databases (it failed in database 56 on `main`).
+* `java/stress/level1.sh` full: LEVEL 1 OK.
+* `java/stress/level2.sh` full: LEVEL 2 OK.
+
+
+State
+-----
+
+Done and gated on the branch `028-17-kill-restart`, not merged, not
+pushed. For Frans: none needed; the fix gives back what 028-15 took (a
+Pub database's creation durable when `start()` returns), at the cost
+of one more sync at a creation.
 
 
 Log
@@ -133,3 +156,8 @@ Log
 
 2026-11-18. Registered and taken by an agent of coord-1118 (in progress),
 in a clone on the branch `028-17-kill-restart`.
+
+2026-11-18. Done: the creating start syncs its record of the startup
+distance when the creation is synced; a unit test; BEFORE COMMIT OK,
+KILL RESTART OK with three seeds, LEVEL 1 and 2 OK; gated at 9f91c5df,
+by an agent of coord-1118 (Claude, Opus 5.5).
