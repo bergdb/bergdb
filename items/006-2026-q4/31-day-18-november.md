@@ -133,6 +133,22 @@ The decisions, as recorded here:
   never tried) first, then GS (MT with ghosts), CC (a commit check), FR
   (fewer kinds of things in a node); recommends PE, model first, two
   days, with refusal criteria. Landed (fast-forward).
+* 12:37 026-22 done (agent mt): MT's in-between states fail the contract
+  only through empty leaves (NonEmptyOK, which the scan's proof uses);
+  every group's end meets it; no node taken back; the puts and the
+  keeping leaf delete of the writer proof carry over; MT changes the
+  record's meaning. Landed 31f8f08d (the item; lean/mtcheck/ stays on the
+  branch).
+* 12:37 028-15 done (agent sd): the startup distance in the internal KV
+  `/#i/-startup-distance`, meta version 155, 2026.5's streams refused,
+  `/#i/-dummy` gone; BEFORE COMMIT OK, LEVEL 1 to 4 OK; LANDED 1b1001ee.
+  Four choices of the agent for Frans to confirm (028-15).
+* 12:39 Agent ns started: 026-08 ported onto main (Frans, 10:52).
+* 12:39 Frans on the suggestions of 12:32: "1 and 2 as recommended. 3.
+  Not sure, will decide later. They may go into 2026.6 still. But must be
+  done after algos settle." `night.sh` started on 1b1001ee (run
+  2026-11-18-1239); 026-01 (compact nodes) and the versioning rule wait
+  until the algorithms settle.
 
 
 ## 5. Outcome
