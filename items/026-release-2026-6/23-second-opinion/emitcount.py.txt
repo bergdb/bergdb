@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""026-23, a throwaway count: for every key node that Java changed or made in a
+traced transaction (the KN lines), the klongs Java added against the klongs
+that PE's emit would add for the same last live list (026-23, section 1.2).
+Usage: emitcount.py trace..."""
+import sys, collections
+
+def live(ks):
+    dead = 0
+    for k in ks:
+        if k[0] == 'B':
+            dead = k[1]
+    lv = {}
+    for i, k in enumerate(ks):
+        if k[0] == 'K' and not (dead >> i) & 1:
+            lv[k[1]] = k[2]
+    return lv
+
+def parse_kn(tok):
+    x = int(tok[1]); n = int(tok[3]); ks = []; j = 4
+    while j < len(tok):
+        t = tok[j]
+        if t == 'T': ks.append(('T', int(tok[j+1]))); j += 2
+        elif t == 'B': ks.append(('B', int(tok[j+1]))); j += 2
+        elif t == 'K': ks.append(('K', int(tok[j+1]), int(tok[j+2]))); j += 3
+        else: raise ValueError(t)
+    assert len(ks) == n
+    return x, ks
+
+S = collections.Counter()
+examples = []
+def run(path):
+    nodes = {}
+    ops = 0; tx = -1
+    with open(path) as f:
+        for line in f:
+            if line.startswith('TX '):
+                tx = int(line.split()[1]); ops = 0
+            elif line.startswith('OP P') or line.startswith('OP D'):
+                ops += 1
+            elif line.startswith('KN '):
+                x, ks = parse_kn(line.split())
+                if tx == 0:
+                    nodes[x] = ks; continue
+                c = 'ops0' if ops == 0 else ('ops1' if ops == 1 else 'opsN')
+                old = nodes.get(x)
+                lv = live(ks)
+                if old is None:
+                    java = len(ks); emit = 1 + len(lv); kind = 'new'
+                    nj, ne = java, emit
+                else:
+                    if ks[:len(old)] != old:
+                        S[c, 'nonprefix'] += 1; nodes[x] = ks; continue
+                    lo = live(old)
+                    removed = [cv for cv in lo if cv not in lv]
+                    changed = [cv for cv in lv if lo.get(cv) != lv[cv]]
+                    java = len(ks) - len(old)
+                    emit = 0 if not removed and not changed else 1 + (1 if removed else 0) + len(changed)
+                    kind = 'old'
+                    nj, ne = len(ks), len(old) + emit
+                S[c, kind, 'nodes'] += 1
+                S[c, kind, 'java'] += java
+                S[c, kind, 'emit'] += emit
+                S[c, kind, 'bytesJava'] += 32 + 16 * nj
+                S[c, kind, 'bytesEmit'] += 32 + 16 * ne
+                if emit < java: S[c, kind, 'emit<java'] += 1
+                if emit > java:
+                    S[c, kind, 'emit>java'] += 1
+                    if len(examples) < 8:
+                        examples.append((path.split('/')[-1], tx, x, kind, java, emit, old, ks))
+                nodes[x] = ks
+
+for p in sys.argv[1:]:
+    run(p)
+for c in ('ops1', 'opsN', 'ops0'):
+    for kind in ('old', 'new'):
+        g = lambda k: S[c, kind, k]
+        if g('nodes'):
+            print(f"{c} {kind}: nodes {g('nodes')}  klongs java {g('java')} emit {g('emit')}"
+                  f"  bytes java {g('bytesJava')} emit {g('bytesEmit')}"
+                  f" ratio {g('bytesEmit')/g('bytesJava'):.4f}"
+                  f"  emit<java {g('emit<java')} emit>java {g('emit>java')}")
+    if S[c, 'nonprefix']: print(c, 'nonprefix', S[c, 'nonprefix'])
+for e in examples:
+    print('EX', e[:6]); print('  old', e[6]); print('  new', e[7])

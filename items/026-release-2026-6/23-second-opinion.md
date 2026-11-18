@@ -1,6 +1,7 @@
 # 026-23. A simpler writer for a complete proof: a second opinion
 
-Created 2026-11-18 by Frans Lundberg. Status: open.
+Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-18): the
+proposals, the comparison and one count; Frans decides.
 
 Frans's question, 2026-11-18: how could BergDB's writer be made simpler,
 so that a complete proof of it becomes feasible, with similar performance
@@ -361,18 +362,149 @@ writer alike. Each touches the read proofs, so none is worth it alone.
 
 # 3. Afterwards: comparison with 026-17 to 026-22
 
-To be written after sections 1 and 2 are committed.
+Written after sections 1 and 2 were committed (18b520db); they are left
+as they were. Read then: 026-17 (the result), 026-18, 026-19 (the
+result), 026-20, 026-21 (the result and section 1), 006-28, sections 5.1
+and 7.1. 026-22 was not in the repository (main at b6535736).
+
+**The main point: PE is not 026-20's "net change", and it has never been
+tried.** 006-28's NW is "each node made once, level by level". 026-20's
+design 1 kept the name and only the first half: the last operation of
+each key, then applied one key at a time by today's writer. 026-21 found,
+rightly, that Java does that already and that it leaves the take-back
+between different keys. That finding is not about NW. PE (NW with a
+mechanism) has no take-back between different keys: no node exists
+before its parent's level is settled. 026-17 says "NW. No spike of it
+here"; I found no later one.
+
+- **026-17, MT's trial.** GS is MT with one change: a ghost where MT
+  leaves an empty leaf. MT's trial is the evidence that I guessed at, and
+  it corrects me twice. Bytes: 1.05 to 1.06 over all, 1.15 to 1.17 for
+  mass deletes, where I guessed 1.1 on deletes. And "nothing is unmade"
+  holds for nodes only: `toPrev` stays in the user transaction's split
+  (step T7), which I missed. MT's scan finding (25 empty leaves side by
+  side after a mass delete) is what my ghost was for; a ghost keeps "a
+  live klong in every node" true but the scan still crosses those
+  leaves. MT's writer is not smaller than today's (86 lines fewer), as I
+  wrote of GS. Mine is no better than MT.
+- **026-18, main transactions and subtransactions.** Better than GS
+  where they differ. Readers see only the times that end a group, so no
+  reader changes and my ghost is not needed; a start drops a group that
+  did not end, so the lost work list of 1.3 cannot happen. GS should be
+  read as MT under 026-18. PE needs none of it: one transaction, one
+  time, one record, as today.
+- **026-19, the proof trial.** Its verdict (MT not clearly simpler to
+  prove, stay) was reached under the old statement, with the fill in the
+  invariant: the holes and their frames (`FrameW`, `FrameUser`, about
+  6,000 lines each) and the open case (`MergeFullLive`) are all about
+  the fill. A day later the contract took the fill out of the statement
+  (030-05). So, by my reading, the trial's "no" does not carry over to MT
+  under the contract; that has not been tried. Its other lesson does
+  carry over, and it speaks for PE: the lines went to the full node's
+  cascade in each of its forms, which MT keeps and PE folds into one
+  function.
+- **026-20, the two designs.** Design 1: see the main point. Design 2,
+  step times, has PE's aim ("the writer never changes or drops a fresh
+  node") and reaches it by another road: it adds times until the rule
+  holds; PE adds no node until the rule holds. Step times keeps today's
+  code and prunes it; PE writes the write half again. Step times changes
+  the time klong (48 + 14 bits), the lookups (the end of T), the top
+  node (one a step), the time arithmetic; PE changes none of them. The
+  diagnosis is the same; my 1.1 had its start from my brief, which
+  carries 026-20's words.
+- **026-21, the study.** It measured what I only argued. Step times with
+  the delete in pieces: no take-back, the contract at every step, 1.12
+  times the bytes over the traces and 1.41 for sorted loads in large
+  transactions, "the splits in place, which step times forbid, are what
+  makes large sorted transactions cheap today". PE keeps that cheapness
+  by construction: a split in place is today's way to reach a node's
+  last list, and emit writes the last list (section 4 counts it). Where
+  step times is better than PE: it is measured; it is a smaller step
+  from today's Java; its proof is today's rules piece by piece. Where PE
+  is better: no cost in bytes, no change of the time klong, no "check
+  before each piece", which 026-21 names as a new thing that Java cannot
+  do as the model does; and it removes the forms of each rule, not only
+  the take-back (026-21: the model writer 13 % smaller, the deletes'
+  proof a third smaller; my guess for PE is a writer a third of today's
+  and a proof a quarter, with no trial behind it). Where PE is worse:
+  every writer proof of the tag is void but the node algebra, and Java's
+  risk is that of new code.
+- **006-28, section 7 (MT)** agrees with GS on the sources' idea; it says
+  "MT in place of NW, not before it; and a spike before either". MT got
+  its spike and its proof trial; NW got neither.
+- **CC and FR** have no counterpart in 026-17 to 026-21. But CC exists
+  in part, and I should have found it: `TransCheck` (030-09, 587 lines,
+  test-only, on in the unit tests and f-tests) is Java's local check of
+  the contract, and 030-04, section 3.4, already says "production only
+  after its cost is measured". What CC adds to it: the Lean proof that
+  the local check gives the contract (TransCheck's own list of what is
+  "not local, so not checked here" is that proof's work list), and the
+  switch. My 200 to 300 lines were too few.
+
+**What I would change in section 2 after reading.** Lines 1 to 3 stand.
+Line 4: the fallback is not GS but 026-21's (b), step times: it is
+measured, and it removes the splits in place too, which GS and MT keep;
+its price is 1.41 on sorted loads and the time klong. Before Frans takes
+(b), PE should get the two days that MT and step times each got: in
+026-21's harness (`lean/study/`, 288 traces, B-new and B-all), a third
+writer beside today's and the step writer. If PE passes, it gives what
+(b) gives without (b)'s costs; if it fails, (b) is the choice and
+nothing is lost but the two days.
+
+
+# 4. A count on Java's traces, made after section 3
+
+A throwaway count for 1.2's claim on bytes
+([23-second-opinion/emitcount.py.txt](23-second-opinion/emitcount.py.txt),
+Python, 85 lines). For every key node that Java made or changed in a
+traced transaction (the `KN` lines), it compares the klongs that Java
+added with the klongs that emit would add to reach the same last live
+list: for an old node a time klong, a bitmap if a compare value left, and
+a klong for each entry new or repointed; for a new node a time klong and
+its live klongs. Java's traces of 17 November: the small set (70
+traces), drain (110), reclaim (15), medium (27).
+
+- **Emit never adds more than Java:** 0 of 854,867 nodes.
+- **Old nodes in transactions of one operation:** 8,790 nodes; the same
+  klong count in all but 4, where emit has one fewer (a klong that the
+  same delete added and then deleted).
+- **Old nodes in transactions of many operations:** 441,256 nodes;
+  980,341 klongs added by Java, 977,869 by emit.
+- **New nodes:** 404,821 nodes; Java's hold 1,745,391 klongs, emit's
+  1,687,963 (3.3 % fewer). Java's new nodes are born with dead klongs: a
+  klong repointed by a later operation, a klong that a take-back
+  retargeted and a bitmap then deleted, and, in a put's split too, the
+  replaced klong beside its replacement.
+- **Bytes of the key nodes written** (32 + 16 n for each node changed):
+  emit's are 0.985 of Java's on the small set, 0.982 on drain, 0.994 on
+  reclaim, 0.997 on medium.
+
+What it shows: on the shapes that Java made, writing each node's last
+list once costs no more than Java's klongs for any node, and one
+operation gives Java's klongs. What it does not show: PE's own shapes
+(settle may cut and join other nodes than today's loop in a transaction
+of many operations); later effects (fewer dead klongs, later splits);
+value nodes and top nodes; sorted loads in large transactions beyond the
+small set's `bulk` family (0.98 there for new nodes; 026-21's own bulk
+traces hold operations only). And one thing to check before PE drops
+them: whether anything reads a new node's dead klongs (Rule A's test
+over dead pointers, reclaim's touch).
 
 
 # State
 
-2026-11-18. Sections 1 and 2 written and committed before 026-17 to
-026-22 were read; section 3 to come.
+2026-11-18. Done: sections 1 and 2 committed (18b520db) before 026-17 to
+026-22 were read; then section 3; then the count of section 4.
 
 - Branch `026-23-second-opinion`, in the agent's clone. No Java or Lean
-  was changed; no experiment was run.
+  was changed. One count was run (section 4), reading Java's traces of
+  17 November; no build, no timing run.
+- For Frans to decide: whether PE gets its two days in 026-21's harness
+  before the choice of (b).
 
 
 # Log
 
-2026-11-18. Created the item; sections 1 and 2 (an agent of coord-1118).
+2026-11-18. Created the item; sections 1 and 2 (an agent of coord-1118),
+committed before 026-17 to 026-22 were read. Then section 3, the
+comparison, and section 4, a count on Java's traces. Done.

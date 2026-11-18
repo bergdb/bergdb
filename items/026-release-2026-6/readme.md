@@ -243,7 +243,10 @@ Files
   a complete proof (Frans, 2026-11-18): four proposals of an agent that
   had not read 026-17 to 026-22 (PE, plan then emit; GS, ghosts and
   structure transactions; CC, the commit check; FR, fewer kinds of things
-  in a node), a recommendation, and a comparison with 026-17 to 026-22.
+  in a node), a recommendation, and a comparison with 026-17 to 026-21:
+  PE is 006-28's NW, which 026-20's "net change" is not, and it has had
+  no spike; a count on Java's traces in 23-second-opinion/ (writing each
+  node's last list once never adds more klongs than Java does). Done.
 
 
 Log
@@ -308,3 +311,5 @@ combined study (Frans, 08:56), by an agent of coord-1118.
 
 2026-11-18. 026-23 registered: a second opinion on a simpler writer, by an
 agent of coord-1118 (Frans, 11:51).
+
+2026-11-18. 026-23 done: the comparison and a count on Java's traces.
