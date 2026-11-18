@@ -80,6 +80,11 @@ The decisions, as recorded here:
 * 09:02 030-19 done (agent cx): Codex review 3's three points fixed, 16
   fault tests, no statement changed; LANDED e0a723b6, GATE OK (195
   theorems, the standard axioms only, 135 files pinned).
+* 10:09 030-18 done (agent rm): the writer proof off main (51 files,
+  lean/contract 58,347 to 18,640 lines, 195 to 126 theorems) and the old
+  proofs deleted (588 files; lean/ 337,483 to 84,556 lines; lean/SIS/Tree
+  210,119 to 3,507); GATE OK, LEVEL 2, 3 and 4 OK; LANDED 150a111a. Left
+  for Frans: two statements and four Props kept without their proofs (030-18).
 
 
 ## 5. Outcome
