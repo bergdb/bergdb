@@ -61,12 +61,11 @@ public class StoredTrans {
      * layout too. A change of RecoverableStream's framing (a record's size field or last
      * byte, the meta blocks) changes MetaBlock's version instead, which recovery checks
      * before it writes; the zero fill of a torn record, before its format is read, uses
-     * only the framing (2026-10-25, bergdb 005-40). Since release 2026.6 a change that an
-     * older release cannot read raises MetaBlock's version as well, so that the older
-     * release refuses the stream before it writes (bergdb 026-12, SF3): 155 since
-     * 2026-11-18, when the startup distance left the meta block (bergdb 028-15); a stream of
-     * version 154, of release 2026.5 or earlier, is refused by its meta block, before a
-     * record is read.</p>
+     * only the framing (2026-10-25, bergdb 005-40). MetaBlock's version is 155 since
+     * 2026-11-18, when the startup distance left the meta block (bergdb 028-15): a change
+     * that an older release cannot read, so that the older release refuses the stream before
+     * it writes (the rule proposed in bergdb 026-12, SF3); a stream of version 154, of
+     * release 2026.5 or earlier, is refused by its meta block, before a record is read.</p>
      */
     public final static byte RECORD_FORMAT = 7;
     

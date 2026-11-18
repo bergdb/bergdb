@@ -771,7 +771,7 @@ public class RecoverableStream {
     
     /**
      * The message of a VersioningStreamException for a meta block whose version is not
-     * MetaBlock.CURRENT_VERSION (bergdb 028-15; 026-12, SF4 (a)): it names the release that
+     * MetaBlock.CURRENT_VERSION (bergdb 028-15, option A): it names the release that
      * wrote an older one, and what a user does.
      */
     static String versionRefused(int version) {
@@ -779,10 +779,11 @@ public class RecoverableStream {
                 + MetaBlock.CURRENT_VERSION + ". ";
         if (version == MetaBlock.VERSION_154) {
             return s + "Version 154 is a database written by BergDB release 2026.5 or earlier, "
-                    + "which this release does not open: its format is older than the stable "
-                    + "format of release 2026.6 (bergdb 026-12, SF4). To keep its data, make "
-                    + "the database again: read it with release 2026.5 and put the data into a "
-                    + "new database with this release. The start has written nothing.";
+                    + "which this release does not open: its startup distance is in its meta "
+                    + "blocks, and this release keeps it elsewhere (bergdb 028-15). To keep its "
+                    + "data, make the database again: read it with release 2026.5 and put the "
+                    + "data into a new database with this release. The start has written "
+                    + "nothing.";
         }
         if (version > MetaBlock.CURRENT_VERSION) {
             return s + "A larger number is a database written by a newer version of BergDB. "
@@ -1741,7 +1742,7 @@ public class RecoverableStream {
         }
         
         /**
-         * Bergdb 028-15 (026-12, SF4 (a)): a meta block of version 154, as every release until
+         * Bergdb 028-15 (option A): a meta block of version 154, as every release until
          * 2026.5 wrote, is refused with a message that names release 2026.5 and what a user
          * does; a newer version with one that says so.
          */

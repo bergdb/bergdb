@@ -1102,7 +1102,7 @@ public class Db implements AutoCloseable {
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
      *          005-50); and with a VersioningStreamException, a database of release 2026.5 or
-     *          earlier, of the meta block's version 154 (bergdb 028-15; 026-12, SF4 (a)). The
+     *          earlier, of the meta block's version 154 (bergdb 028-15, option A). The
      *          start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
@@ -3094,7 +3094,8 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a user transaction with a KV at a key that the Core writes itself
-     * (Trans.coreKey(): "/#i/-dummy", "/#i/dreclaim/" and the keys under it), keys as written,
+     * (Trans.coreKey(): "/#i/-startup-distance", "/#i/dreclaim/" and the keys under it), keys
+     * as written,
      * unless the KV came from Trans.Builder's Core calls (Kv.coreWrite; bergdb 024-37; 010-04,
      * R5). The Builder's public calls refuse such a key already; this check is for the KVs
      * that they do not check, those of putLongKey() and deleteLongKey() and those set in

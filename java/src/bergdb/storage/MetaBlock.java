@@ -54,10 +54,10 @@ public class MetaBlock {
      * ignore, keeps the number, as maxNodeSize at offset 44 did (2026-10-27, bergdb 005-50):
      * an older version neither checks nor reads those bytes, and it copies a block it read
      * whole, so it starts such a stream as before and passes the field on. 155 since
-     * 2026-11-18 (bergdb 028-15; 026-12, SF3 and SF4 (a)): the startup distance left the
-     * block for an internal KV of the Core, which an older version does not read, and
-     * release 2026.6's format is the first stable one; 2026.6 refuses 154, which every
-     * release until 2026.5 wrote, and 2026.5 refuses 155, both before they write.
+     * 2026-11-18 (bergdb 028-15, option A): the startup distance left the block for an
+     * internal KV of the Core, which an older version does not read; 2026.6 refuses 154,
+     * which every release until 2026.5 wrote, and 2026.5 refuses 155, both before they
+     * write (the rule of bergdb 026-12, SF3).
      */
     static final int CURRENT_VERSION = VERSION_155;
     

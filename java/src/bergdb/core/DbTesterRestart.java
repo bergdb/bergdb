@@ -407,6 +407,35 @@ public class DbTesterRestart {
     }
     
     /**
+     * Bergdb 028-15 (option A; Frans, 2026-11-18, 10:50): a database of release 2026.5 or
+     * earlier, its meta blocks of version 154, is refused at the start with a
+     * VersioningStreamException whose message names release 2026.5 and says to make the
+     * database again, and the start writes nothing.
+     */
+    @Nano
+    public static void testVersion154Refused() throws IOException {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/k", new byte[300 * 1000]).build());     // two blocks
+        }
+        MemoryStream m = s.copy();
+        for (long pos = 0; pos + 128 <= m.getLength();
+                pos += RecoverableStream.META_BLOCK_DISTANCE) {
+            MemoryStream.TestAccess.write(m, new byte[] {(byte) 154, 0, 0, 0}, pos + 4);
+        }
+        byte[] before = bytesOf(m);
+        try (Db db = Db.builder().testSetup(m).clock(clock).start()) {
+            throw new AssertionError("started a database of version 154");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("release 2026.5")
+                    && e.getMessage().contains("make the database again"));
+        }
+        Assert.assertArrayEquals("the stream as it was", before, bytesOf(m));
+    }
+    
+    /**
      * Bergdb 028-15: the startup distance is a KV, read at the end of a start. A change by
      * setStartupDistance() is kept over restarts, whatever the builder of a restart says, and
      * the meta blocks' bytes 40 to 43, where it was until the meta block's version 155, are
