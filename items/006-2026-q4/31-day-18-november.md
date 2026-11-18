@@ -63,9 +63,9 @@ The decisions, as recorded here:
 * 08:42 Frans's decisions (section 1).
 * 08:44 Tag `writer-proof-2026-11-18` on 52459c9d, pushed. Usage watch
   (65 %) started.
-* 08:47 Agents rm (030-18, Opus high) and cx (030-19, Opus xhigh)
+* 08:44 Agents rm (030-18, Opus high) and cx (030-19, Opus xhigh)
   started, each in its own clone under /Users/f/fl/bench/2026-11-18/.
-* 08:48 D3 written into 013-02, section 6.
+* 08:45 D3 written into 013-02, section 6.
 
 
 ## 5. Outcome
