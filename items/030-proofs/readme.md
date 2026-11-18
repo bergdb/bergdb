@@ -344,6 +344,13 @@ Files
   time (`HoldsP`, the tree holds the structure whole); `bridge-faults.sh`
   fixed (it failed on main 3f1e2fea). The night of 17 November. Status:
   done.
+* [030-18](18-off-main.md). The writer proof (030-10, 030-16) taken off
+  `main` (at the tag `writer-proof-2026-11-18`; 51 Lean files of
+  `lean/contract/`) and the old proofs deleted (006-31, D1; at the tag
+  `proofs-2026-11-17`): `lean/` keeps the executable model, the checkers,
+  the test programs and the abstract model's proofs that the contract
+  package imports, 159 files and 65,852 lines of 747 and 279,136. Written
+  2026-11-18. Status: done.
 * [030-19](19-codex3-points.md). The three points of Codex review 3 fixed
   in the checkers (006-31, D5): a delete bitmap of 2^62 or more refused
   (Java's has 62 bits; `B 2^64` was read as empty), a PROBE line that fails
