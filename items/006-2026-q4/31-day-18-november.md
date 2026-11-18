@@ -66,6 +66,17 @@ The decisions, as recorded here:
   Opus high). Frans, 10:50: "SF4 (a), 028-15 A": 2026.6's format is the
   first stable one and refuses 2026.5's (026-12, SF4 (a)); a start refuses
   an older stream, no fallback (028-15, A).
+* **W6, 026-22: MT against the contract** (agent mt, Opus high, 90
+  minutes): do MT's in-between states meet the contract; does a read
+  theorem need a live key under every index node; MT's entry-level
+  take-back; what of the writer proof carries over; a format change?
+* **W7, 026-23: a second opinion** (agent fb, Fable high, 90 minutes):
+  open-ended proposals for a simpler, provable writer at similar
+  performance, written before reading the designs so far, then compared
+  with them. Frans, 11:33: "Would it make sense to ask Fable for an
+  opinion on possible directions to simplify the writer? [...] open-ended
+  proposals for simplifications are welcome. A Fable High agent for this.
+  Just a short question, not a full study."
 * **W3, D3 in 013-02** (the coordinator): only the day's coordinator
   pushes `main`.
 
@@ -107,6 +118,21 @@ The decisions, as recorded here:
 * 10:55 026-21 done (agent st, 08:57 to 10:55): (b), step times with the
   delete cut into pieces, recommended; landed 7552fab9 (the item and its
   evidence; lean/study/ stays on the branch `026-21-study`).
+* 11:23 to 11:46 Discussion with Frans on 026-21 and other ways to avoid
+  the take-back. Frans, 11:23: "The first thought while reading it is
+  that it is not worth it. The performance degradation from today
+  limited by significant. A potentially smaller proof; that is a benefit. But the
+  real gain would be to actually get a complete proof."
+* 11:51 Frans: "Let's forget about stable format for the stream. I
+  decide to not focus on this for this release. The focus for the
+  release are the algorithsm, simplifying them, proving them. If
+  possible." SF4 open again; 028-15 and its option A stand. Agents mt
+  (026-22) and fb (026-23) started 11:53, due 13:20.
+* 12:11 026-23 done (agent fb, 18 minutes): four proposals, PE (plan
+  then emit: each node decided once, in its parent's frame; 006-28's NW,
+  never tried) first, then GS (MT with ghosts), CC (a commit check), FR
+  (fewer kinds of things in a node); recommends PE, model first, two
+  days, with refusal criteria. Landed (fast-forward).
 
 
 ## 5. Outcome
