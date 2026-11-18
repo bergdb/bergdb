@@ -369,6 +369,12 @@ Files
   and a transaction without its GET and SCAN lines fail both checkers, with
   fault tests; 030-09's "4.3 million" is 3.96 million. No statement
   changed. Written 2026-11-18. Status: done.
+* [030-20](20-commit-check.md). CC, the commit check as the writer's
+  guarantee (026-23, section 1.4; Frans, 2026-11-18, 13:42): a proved
+  check at every commit refuses a transaction that breaks the contract,
+  so every record meets it whatever the writer does; what Java's
+  `TransCheck` does today, what it would take, and the cost, not yet
+  measured. Written 2026-11-18. Status: a note.
 
 Log
 ===

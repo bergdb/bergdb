@@ -173,6 +173,13 @@ The decisions, as recorded here:
   result to aim for. This is how far we would wish to go. If maintenable
   at a reasonable cost, this would be great. That is a valuable
   garantee." Written into 030's aim.
+* 13:12 The key `/#i/-sd` and CoreDemo's fix done (agent sd): BEFORE
+  COMMIT OK, CORE BUILD OK, LEVEL 1 and 2 OK; LANDED 026c322a. The key
+  takes two klongs (four before).
+* 13:42 Frans on CC (026-23, section 1.4): "I would like a note about
+  it. [...] Just wonder about the performance cost of that. Could be too
+  high, I am afraid." 030-20 written: what CC gives, what exists, what it
+  would take, the cost to measure.
 
 
 ## 5. Outcome
