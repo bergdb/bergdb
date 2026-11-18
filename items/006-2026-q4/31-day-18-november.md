@@ -216,6 +216,10 @@ The decisions, as recorded here:
   sync) hardly see it. Too costly to have always on as written; a check
   designed for speed is estimated, not measured, at 1.5 to 2 times.
   Landed 52396e84.
+* 21:37 Frans: "Document this work in a todo item. Start it now. One
+  startup transaction." (21:30: "Either we have a fully initialized
+  database or not.") 028-18 registered (5e278bdd); agent one started
+  21:39, until 06:15 at the latest.
 
 
 ## 4b. Unattended, 13:48 to 07:00
