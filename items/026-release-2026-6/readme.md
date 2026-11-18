@@ -239,6 +239,11 @@ Files
   recommended; at node size 30 it costs nothing on random work and a few
   per cent on index updates, and up to 1.4 times the bytes on sorted
   loads in large transactions; Frans decides.
+* 23-second-opinion.md. 026-23, a second opinion on a simpler writer for
+  a complete proof (Frans, 2026-11-18): four proposals of an agent that
+  had not read 026-17 to 026-22 (PE, plan then emit; GS, ghosts and
+  structure transactions; CC, the commit check; FR, fewer kinds of things
+  in a node), a recommendation, and a comparison with 026-17 to 026-22.
 
 
 Log
@@ -300,3 +305,6 @@ implementation.").
 combined study (Frans, 08:56), by an agent of coord-1118.
 
 2026-11-18. 026-21 done: the result for Frans (10:55).
+
+2026-11-18. 026-23 registered: a second opinion on a simpler writer, by an
+agent of coord-1118 (Frans, 11:51).
