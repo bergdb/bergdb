@@ -186,6 +186,14 @@ The decisions, as recorded here:
   would take, the cost to measure.
 * 13:48 Frans: "Sure, start it. Work unattended until 07:00. I may or
   may not check in before that." Agent cc (030-20's cost) started.
+* 14:33 026-24 done (agent pe, 12:50 to 14:33): go. PE in the model: no
+  fault of the contract or the writer's rules on 288 traces; bytes 0.96
+  to 0.99 of today's writer; the lemmas of emit and settle proved, 1,086
+  lines; a complete PE writer proof estimated at 6,500 to 9,500 lines.
+  One check of 026-23 fails by its letter: 6.8 % of one-operation
+  transactions differ from today's change (the order of a full node's
+  split). Landed aefde32e (the item; lean/pe/ and lean/peproof/ stay on
+  the branch). For Frans: PE as 2026.6's writer.
 
 
 ## 4b. Unattended, 13:48 to 07:00
