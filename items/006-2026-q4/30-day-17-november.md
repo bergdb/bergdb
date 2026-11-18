@@ -166,7 +166,10 @@ section 3.5:
 **Tested, not proved:** the contract and the bridge's clauses on 195 traces
 of the level 2 and reclaim sets (29,735 transactions), the medium set (27
 traces, 13,667 transactions) and the large set (60 traces, 170,000
-transactions, the contract checker); Java's own check of the contract in
+transactions, the contract checker); at 03:51, 030-12's last runs: 222 traces
+of the reclaim, medium and large sets (the large set's seeds 1 to 30), 532,402
+transactions, pass both of main's checkers, and the reclaim, medium and
+large sets pass with Java's search checked line by line (LIVE); Java's own check of the contract in
 its unit and functional tests (about 2 million transactions, no failure);
 the 13 assumptions of 3.5. The checks run in `level2.sh` and `night.sh`
 (030-13).
