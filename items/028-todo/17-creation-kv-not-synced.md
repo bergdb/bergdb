@@ -160,4 +160,4 @@ in a clone on the branch `028-17-kill-restart`.
 2026-11-18. Done: the creating start syncs its record of the startup
 distance when the creation is synced; a unit test; BEFORE COMMIT OK,
 KILL RESTART OK with three seeds, LEVEL 1 and 2 OK; gated at 9f91c5df,
-by an agent of coord-1118 (Claude, Opus 5.5).
+by an agent of coord-1118.

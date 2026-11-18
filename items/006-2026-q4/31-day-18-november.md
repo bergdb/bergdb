@@ -197,8 +197,19 @@ The decisions, as recorded here:
 * 15:28 `night.sh`: the kill-and-restart harness failed (seed 20261118,
   database 14: "a committed transaction lost, or one there that was not
   committed by then"); it passed on 2026-11-16. 028-15, landed today, is
-  a suspect. Agent kr (028-17) started 15:30: reproduce, bisect, cause,
+  a suspect. Agent kr (028-17) started 15:29: reproduce, bisect, cause,
   fix.
+* 16:07 028-17 done (agent kr): a real bug from 028-15, no synced
+  transaction lost: since 028-15 a new Pub database's creation was not
+  durable when start() returned (its second record, the startup
+  distance's, waited in the write buffer); a kill then let the next start
+  write that record at a later time, and the creator's startup distance
+  was lost. Fix: the creating start syncs that record too (one more sync
+  a creation); a unit test fails without it. BEFORE COMMIT OK, KILL
+  RESTART OK (three seeds), LEVEL 1 and 2 OK; LANDED 32e72560.
+* 16:08 `night.sh` ended: NIGHT FAILED: core-build, kill-restart (191
+  minutes); both fixed on main since (026c322a, 32e72560); every other
+  step OK.
 
 
 ## 4b. Unattended, 13:48 to 07:00
