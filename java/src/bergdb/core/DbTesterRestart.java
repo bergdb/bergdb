@@ -489,7 +489,7 @@ public class DbTesterRestart {
                 throw new AssertionError("started with " + Arrays.toString(value));
             } catch (InternalDataException e) {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains(
-                        "Bad value of /#i/-startup-distance"));
+                        "Bad value of /#i/-sd"));
             }
         }
         

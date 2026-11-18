@@ -23,7 +23,7 @@ release is made"; 029). The notes say so where they list the files.
 * **Databases of release 2026.5 and earlier are refused: make them again**
   (bergdb 028-15, option A; Frans, 2026-11-18, 10:50). The startup
   distance moved out of the meta blocks into a key-value pair of BergDB's
-  own, `/#i/-startup-distance`, and the meta block's version is 155 (154
+  own, `/#i/-sd`, and the meta block's version is 155 (154
   until now). A start of an older database throws a
   `VersioningStreamException` whose message names release 2026.5, and
   writes nothing. To keep the data, read it with release 2026.5 and put

@@ -325,7 +325,7 @@ a write: 7 B / 30 by integer division, at least 2, so 2, 3, 7 and 14 at
 
 **The startup distance** (sd) was bytes 40 to 43 until version 155: since
 028-15 (Frans, 2026-11-18, 10:50, "SF4 (a), 028-15 A"; 026-12, SF7 (a))
-it is the Core's KV `/#i/-startup-distance` (section 15), and the four
+it is the Core's KV `/#i/-sd` (section 15), and the four
 bytes are reserved: written zero, not read. Version 155 marks the change,
 so that release 2026.5, which read sd there, refuses such a stream before
 it writes, and 2026.6 refuses 2026.5's (section 21).
@@ -1083,14 +1083,16 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 
 | Key                          | Written by                       | Value                   |
 |---|---|---|
-| `/#i/-startup-distance`      | the creating start; `Db.setStartupDistance` | 4 bytes, `i32` |
+| `/#i/-sd`      | the creating start; `Db.setStartupDistance` | 4 bytes, `i32` |
 | `/#i/dreclaim/-table.txt`    | `Reclaim.storeTable`, :901       | the table's rows        |
 | `/#i/dreclaim/-current.txt`  | every step, `Reclaim.step`, :653 | the current row         |
 | `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`, :258      | two lines               |
 | `/#i/dreclaim/-fill.txt`     | `Reclaim.maintain` (024-32)      | zero bytes, then delete |
 
-* **`/#i/-startup-distance`** (`DbConstants.SD_KEY`; 028-15; bkey
-  01 25 6b 01 and the bytes of "-startup-distance"): the startup
+* **`/#i/-sd`** (`DbConstants.SD_KEY`; 028-15; bkey
+  01 25 6b 01 2f 75 66, 7 bytes, two segments; `/#i/-startup-distance`,
+  21 bytes and four segments, until Frans's rename of 2026-11-18, 12:45):
+  the startup
   distance in force, sd, in stream bytes, 4 bytes, an `i32`
   little-endian, from 10 to 10^9 (`DbBuilder.MAX_STARTUP_DISTANCE`).
   Put by the creating start's first transaction (an internal one, with
@@ -1099,7 +1101,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   database has it from its creation on, live, and reclaim copies it
   forward as any live KV. Read at the end of a start
   (`Db.readStartupDistanceKv`): other bytes are refused with
-  `InternalDataException` ("Bad value of /#i/-startup-distance"), and the
+  `InternalDataException` ("Bad value of /#i/-sd"), and the
   start fails; no KV in a stream with more than the primordial record is
   an SFE. A crash inside the setter's record starts with the old setting,
   one after its end with the new (until 028-15, with the setting in the
@@ -1149,7 +1151,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   (`initFromDb`, :762 to :769). Strict on purpose: "the settings of a later
   version, which this one must neither run without nor drop".
 * **The reserved spaces** (020-22, section 4.1; key-encoding.md, :133 to
-  :150): the Core's `/#i/dreclaim/` and `/#i/-startup-distance`
+  :150): the Core's `/#i/dreclaim/` and `/#i/-sd`
   (`/#i/-dummy` until 028-15); the Pub layer's
   `/#i/didef/`, `/#i/dient/`, `/#i/didel/` and `/#i/div/` (section 17);
   2026.3's `/#i/dii/` (a start refuses it) and `/#i/di/` (never read); the
@@ -1180,7 +1182,7 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   ignored, and dropped at the next store. The table's text has no version.
 * G17. The Core accepts a user's puts under `/#` (024-01, CA3; C-U2-8),
   but since 024-37 not at its own keys: a caller's put or delete at
-  `/#i/-startup-distance` (`/#i/-dummy` until 028-15), `/#i/dreclaim/`
+  `/#i/-sd` (`/#i/-dummy` until 028-15), `/#i/dreclaim/`
   or a key under it is refused
   (`Trans.coreKey`), so a caller can no longer put a bad settings value
   that stops the next start.
@@ -1642,7 +1644,7 @@ step's row, not its touch's; a missing endKey line told apart from
 since 024-37. Section 19's G17 row and section 20's Q8 not changed.
 
 2026-11-18. 028-15 (Frans, 10:50, "SF4 (a), 028-15 A"): the startup
-distance an internal KV, `/#i/-startup-distance`, put by the creating
+distance an internal KV, `/#i/-sd`, put by the creating
 start and by `Db.setStartupDistance`, read at the end of a start; the
 meta block's bytes 40 to 43 reserved zero, `/#i/-dummy` gone; meta
 version 155, 154 refused with a message that names 2026.5; a reclaim

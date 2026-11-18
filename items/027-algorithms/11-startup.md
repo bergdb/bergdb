@@ -33,7 +33,7 @@ recovery's fill.
 * **s**, the startup pos: R(k)'s startupPos, a record's position (0 is
   read as 128, the first record). **ts**, the startup time, R(s)'s time.
   **The startup section**: R(s), ..., R(k); T(s) is not rerun. **sd**:
-  the startup distance, the KV `/#i/-startup-distance` (since 028-15;
+  the startup distance, the KV `/#i/-sd` (since 028-15;
   until then the last valid meta block's).
 * **topPos**: R(k)'s position of the newest written top node. **gd(j)**:
   R(j)'s got-dirty pairs (id, position). **prevPos**: the position of

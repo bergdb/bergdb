@@ -1266,21 +1266,25 @@ public class CorruptStreamTester {
      * the same fields, its pointer 4 at 271 the value pointer that was pointer 6; the leaf in
      * seed 729025 (4968; seed 729003's stream has no key node written after its first record
      * now); the top node of time 210 (182560, 112); and the odd value pointer, the same
-     * klong's, now at the node's byte 352.
+     * klong's, now at the node's byte 352. With the key's shorter name, /#i/-sd (two
+     * segments, not four; Frans, 2026-11-18, 12:45), 176 bytes less at the creation: the last
+     * record with a key node (313944); the value node of time 500 (27088); the records of
+     * time 90 (3488) and 180 (7640); the leaf in seed 729001 (4968); the top node of time 210
+     * (181824).
      */
     @Nano
     public static void testFound019_32() {
         Object[][] rows = {
-            {META, 3348004L, 365624, 128, 39, 0x80},    // a klong of type 2, at the start
-            {TAKE, 3552484L, 27312, 704, 41, 0x80},     // a value node's key, at the start
-            {TAKE, 4184729L, 3664, 80, 13, 0x01},       // a key count, at the start
-            {TAKE, 4184729L, 3664, 80, 24, 0x01},       // a key node's id 0 to 1, at a read
-            {TAKE, 4184729L, 3664, 32, 24, 0x01},       // a top node's id 1 to 0, at a read
-            {ALL, 729025L, 4968, 80, 12, 0x01},         // a leaf's flag, at the start
+            {META, 3348004L, 313944, 128, 39, 0x80},    // a klong of type 2, at the start
+            {TAKE, 3552484L, 27088, 704, 41, 0x80},     // a value node's key, at the start
+            {TAKE, 4184729L, 3488, 80, 13, 0x01},       // a key count, at the start
+            {TAKE, 4184729L, 3488, 80, 24, 0x01},       // a key node's id 0 to 1, at a read
+            {TAKE, 4184729L, 3488, 32, 24, 0x01},       // a top node's id 1 to 0, at a read
+            {ALL, 729001L, 4968, 80, 12, 0x01},         // a leaf's flag, at the start
             {ALL, 729042L, 128, 80, 12, 0x01},          // the flag of a leaf without keys
-            {META, 3980311L, 182560, 112, 64, 0x80},    // a skip pointer to a key node
-            {TAKE, 4184729L, 3664, 80, 271, 0xff},      // a value pointer negative
-            {TAKE, 4184729L, 7816, 112, 352, 0xff},     // a value pointer odd, a read
+            {META, 3980311L, 181824, 112, 64, 0x80},    // a skip pointer to a key node
+            {TAKE, 4184729L, 3488, 80, 271, 0xff},      // a value pointer negative
+            {TAKE, 4184729L, 7640, 112, 352, 0xff},     // a value pointer odd, a read
         };
         Map<String, Original> originals = new TreeMap<String, Original>();
         for (Object[] row : rows) {
@@ -1313,15 +1317,17 @@ public class CorruptStreamTester {
      * assert (-ea) compared the whole klong, 2^56 + 460, with the rerun's time 500 (without
      * -ea it started and answered right: getTime() ignores the bit). Seed 20775 had found it
      * too (2026-11-10). Since the creating start's record of the startup distance (bergdb
-     * 028-15): the node at offset 736 of the record at 27280, its klong 0, the time 410.
+     * 028-15): the node at offset 736 of the record at 27280, its klong 0, the time 410;
+     * since the key's shorter name (/#i/-sd), the new node at offset 832 of the record at
+     * 25376.
      */
     @Nano
     public static void testFoundTimeKlongBits() {
         Original o = write(LONG, 3971451L);
-        Record rec = o.recordAt(27280);
+        Record rec = o.recordAt(25376);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 736) node = n;
+            if (n[0] == 832) node = n;
         }
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         nb[39] ^= (byte) 0x01;
@@ -1352,14 +1358,18 @@ public class CorruptStreamTester {
      * the startup distance (bergdb 028-15), in the section's first record, at 32640: the key
      * node id 5833 (offset 544, its pointer 1 at 120) to the top node of its record at 32672,
      * and to an older version of that top node (id 26591) at 30496; the top node id 3333
-     * (offset 128), its skip pointer 0 (its byte 48) to the key node at 31072.
+     * (offset 128), its skip pointer 0 (its byte 48) to the key node at 31072. Since the
+     * key's shorter name (/#i/-sd), in the last record, at 35664: the key node id 3187
+     * (offset 496, its pointer 1 at 184) to the top node of its record at 35696, and to an
+     * older version of it at 31720; the top node id 3189 (offset 32), its skip pointer 0 to
+     * the key node at 31864.
      */
     @Nano
     public static void testFound021_11() {
         long[][] rows = {
-            {32640, 544, 120, 32672},   // a key node's pointer 1 to the newest top node
-            {32640, 128, 48, 31072},    // a top node's skip pointer 0 to a key node
-            {32640, 544, 120, 30496},   // to an older top node version: 005-57's check (-ea)
+            {35664, 496, 184, 35696},   // a key node's pointer 1 to the newest top node
+            {35664, 32, 48, 31864},     // a top node's skip pointer 0 to a key node
+            {35664, 496, 184, 31720},   // to an older top node version: 005-57's check (-ea)
         };
         Original o = write(LONG, 1);
         for (long[] row : rows) {
@@ -1394,21 +1404,23 @@ public class CorruptStreamTester {
      * made in the node with its checksum made right. Since the creating start's record of the
      * startup distance (bergdb 028-15) seed 20767's stream has no node before the section that
      * the start reads; seed 20766's has again, at offset 656 of the record at 33600, whose
-     * last time klong is at its bytes 136 to 143.
+     * last time klong is at its bytes 136 to 143. Since the key's shorter name (/#i/-sd),
+     * seed 20770's node at offset 1840 of the record at 39832, its last time klong at its
+     * bytes 144 to 151.
      */
     @Nano
     public static void testFound021_12() {
-        Original o = write(LONG, 20766L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(33600);
+        Original o = write(LONG, 20770L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(39832);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 656) node = n;
+            if (n[0] == 1840) node = n;
         }
         List<Copy> copies = new ArrayList<Copy>();
         // A time klong's byte flipped by 0xff (019-33's flip): the times not increasing, at
         // the start's check (the node's byte 34), and its last time after the startup time,
         // at the check of a version before the section (its byte 138).
-        for (int at : new int[] {34, 138}) {
+        for (int at : new int[] {34, 146}) {
             byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
             nb[at] ^= (byte) 0xff;
             copies.add(nodeCopy(o, rec, node, nb, "xor 255 at its byte " + at));
@@ -1429,11 +1441,11 @@ public class CorruptStreamTester {
         // holds the object's identity hash ("K/44" in one run, "K/ab" in the next), and
         // printed the whole node over many lines.
         String[] texts = {
-            "Time not increasing, 420, 16712090, index=11",
-            "Key node 27977 at 34256, before the startup section, has the time 16712110, after "
-                    + "the startup time 450.",
-            "Bad spos of pointer 0 of key node 27977 at 34256: -1, at or before the startup "
-                    + "time 450.",
+            "Time not increasing, 460, 16712100, index=10",
+            "Key node 31213 at 41672, before the startup section, has the time 16712160, after "
+                    + "the startup time 490.",
+            "Bad spos of pointer 0 of key node 31213 at 41672: -1, at or before the startup "
+                    + "time 490.",
         };
         for (int i = 0; i < copies.size(); i++) {
             Assert.assertEquals(copies.get(i).what, texts[i], refusal(o, copies.get(i)));
@@ -1458,21 +1470,23 @@ public class CorruptStreamTester {
      * seed, the section's first, its prevPos (its byte 16) set to 14544, its pointer 1. Since
      * the creating start's record of the startup distance (bergdb 028-15) the start refuses
      * each such copy of seed 20828's; in seed 20807's, the key node at offset 496 of the
-     * record at 21400, the section's first record, its prevPos set to 14656, its pointer 1.
+     * record at 21400, the section's first record, its prevPos set to 14656, its pointer 1;
+     * since the key's shorter name (/#i/-sd), seed 20806's, the key node at offset 592 of the
+     * record at 32672, its prevPos set to 14704.
      */
     @Nano
     public static void testFoundDescentCycle() {
-        Original o = write(LONG, 20807L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(21400);
+        Original o = write(LONG, 20806L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(32672);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 496) node = n;
+            if (n[0] == 592) node = n;
         }
         Assert.assertEquals(bergdb.dag.Node.TYPE_KEY_NODE, rec.bytes[node[0] + 4]);
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
-        Assert.assertEquals(14656, Bytes.bytesToLongLE(nb, 32 + 8 * ((node[1] - 32) / 16) + 8));
-        Bytes.longToBytesLE(14656, nb, 16);
-        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 14656");
+        Assert.assertEquals(14704, Bytes.bytesToLongLE(nb, 32 + 8 * ((node[1] - 32) / 16) + 8));
+        Bytes.longToBytesLE(14704, nb, 16);
+        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 14704");
         Results results = new Results();
         checkAll(o, Arrays.asList(c), 1, 60, results);
         assertNoFailure(results);
@@ -1516,15 +1530,16 @@ public class CorruptStreamTester {
      * the walk takes only top nodes of a smaller ordinal (TopDs.skipTo()), and the get fails
      * the database. Since the creating start's record of the startup distance (bergdb
      * 028-15), the same seed's top node at offset 128 of the record at 30160, its skip
-     * pointer 0 set to the node's own position (no xor of a byte gives it there).
+     * pointer 0 set to the node's own position (no xor of a byte gives it there); since the
+     * key's shorter name (/#i/-sd), the top node at offset 96 of the record at 24080.
      */
     @Nano
     public static void testFoundTopCycle() {
         Original o = write(LONG, 20772L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(30160);
+        Record rec = o.recordAt(24080);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 128) node = n;
+            if (n[0] == 96) node = n;
         }
         Assert.assertEquals(bergdb.dag.Node.TYPE_TOP_NODE, rec.bytes[node[0] + 4]);
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
@@ -1553,15 +1568,16 @@ public class CorruptStreamTester {
      * refused for its size, not by checkLinkById; the test now checks the refusal's text.
      * Since the creating start's record of the startup distance (bergdb 028-15) the key node
      * at offset 80 of the record at 21992, in the section, the same node of the first
-     * segment (id 465, 273 before).
+     * segment (id 465, 273 before); since the key's shorter name (/#i/-sd), seed 20765's
+     * record at 25544, the node at offset 128, the same node (id 417).
      */
     @Nano
     public static void testFoundLinkByIdPrevPos() {
-        Original o = write(LONG, 20770L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(21992);
+        Original o = write(LONG, 20765L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(25544);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 80) node = n;
+            if (n[0] == 128) node = n;
         }
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         nb[16] ^= (byte) 0x01;
@@ -1571,8 +1587,8 @@ public class CorruptStreamTester {
             throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
                     : out.kind));
         }
-        Assert.assertEquals(c.what, "Pointer 2 of node 6313 names 16016, a version of node 465 "
-                + "(at 22072 in the startup section), but no version of the section names it as "
+        Assert.assertEquals(c.what, "Pointer 2 of node 11529 names 19288, a version of node 417 "
+                + "(at 25672 in the startup section), but no version of the section names it as "
                 + "its prevPos.", refusal(o, c));
     }
 

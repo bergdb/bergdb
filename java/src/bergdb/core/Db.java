@@ -228,7 +228,7 @@ import bergdb.stream.SalsaStream;
  * Of them, the keys that the Core writes itself are refused (below).</li>
  * </ul>
  * <p><b>The Core's own keys are refused</b> (bergdb 024-37; 010-04, R5: the Core API never
- * destroys the key-value store). The key "/#i/-startup-distance" (bergdb 028-15), and
+ * destroys the key-value store). The key "/#i/-sd" (bergdb 028-15), and
  * reclaim's directory "/#i/dreclaim/" with every key under it, are written by the Core
  * alone. A start reads them, and a value there that the Core did not write could make
  * a database that never starts again (until release 2026.5 seven bytes put at
@@ -241,7 +241,7 @@ import bergdb.stream.SalsaStream;
  * Db. A read of the Core's keys is allowed.</p>
  * <p>The Core writes BergDB's keys itself, also in a database that the Pub API never opens
  * (bergdb 020-24-09, U9-4). A new database has one: the startup distance, 4 bytes at
- * "/#i/-startup-distance", which the creation and each change by setStartupDistance() put,
+ * "/#i/-sd", which the creation and each change by setStartupDistance() put,
  * and which stays live, so that reclaim copies it forward as any live value (bergdb 028-15;
  * until then a value of 200 kB at "/#i/-dummy" at each change); setRetainDuration() and
  * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
@@ -627,7 +627,7 @@ public class Db implements AutoCloseable {
     /**
      * The startup distance in force, in bytes: after start(), the stream's, as the creation
      * (DbBuilder.startupDistance()) or the last setStartupDistance() set it, kept in the
-     * internal KV "/#i/-startup-distance" (bergdb 028-15).
+     * internal KV "/#i/-sd" (bergdb 028-15).
      */
     public int getStartupDistance() {
         synchronized (writeLock) {
@@ -650,7 +650,7 @@ public class Db implements AutoCloseable {
      * section comes down only as transactions are committed: in 007-06's runs, over stream
      * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
      * commits a small transaction that puts the new setting, 4 bytes, at the key
-     * "/#i/-startup-distance", where it stays live (Keys and the layers above): a start reads
+     * "/#i/-sd", where it stays live (Keys and the layers above): a start reads
      * it from there, at its end, as the setting decides the stream's bytes (010-P2; bergdb
      * 028-15; until then a meta block kept it, and this method put 200 kB at "/#i/-dummy" to
      * get one written). The value is clamped to 400,000 to 1,000,000,000 bytes
@@ -729,7 +729,7 @@ public class Db implements AutoCloseable {
                 return d;
             }
         }
-        throw new InternalDataException("Bad value of /#i/-startup-distance, "
+        throw new InternalDataException("Bad value of /#i/-sd, "
                 + StringUtil.toHex(value) + ": 4 bytes, an int, little-endian, from 10 to "
                 + DbBuilder.MAX_STARTUP_DISTANCE + " expected (bergdb 028-15).");
     }
@@ -1303,7 +1303,7 @@ public class Db implements AutoCloseable {
             startupDistance = parseStartupDistance(value);
         } else if (!primordialOnly) {
             throw new StreamFormatException("The database has no startup distance, the KV "
-                    + "/#i/-startup-distance that every database since release 2026.6 has from "
+                    + "/#i/-sd that every database since release 2026.6 has from "
                     + "its creation on (bergdb 028-15): the stream is damaged.");
         }
     }
@@ -3094,7 +3094,7 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a user transaction with a KV at a key that the Core writes itself
-     * (Trans.coreKey(): "/#i/-startup-distance", "/#i/dreclaim/" and the keys under it), keys
+     * (Trans.coreKey(): "/#i/-sd", "/#i/dreclaim/" and the keys under it), keys
      * as written,
      * unless the KV came from Trans.Builder's Core calls (Kv.coreWrite; bergdb 024-37; 010-04,
      * R5). The Builder's public calls refuse such a key already; this check is for the KVs
