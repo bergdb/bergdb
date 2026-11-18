@@ -62,6 +62,10 @@ The decisions, as recorded here:
   of the implementation." 08:56: "OK, run the one combined study as
   proposed. Note that simplification is the overall goal, getting rid of
   take-back completely is one way to reach it. It is not a goal itself."
+* **W5, 028-15: the startup distance into an internal KV** (agent sd,
+  Opus high). Frans, 10:50: "SF4 (a), 028-15 A": 2026.6's format is the
+  first stable one and refuses 2026.5's (026-12, SF4 (a)); a start refuses
+  an older stream, no fallback (028-15, A).
 * **W3, D3 in 013-02** (the coordinator): only the day's coordinator
   pushes `main`.
 
@@ -93,6 +97,16 @@ The decisions, as recorded here:
   four Props in Tree/Props.lean; pins rewritten, no main theorem of
   lean/contract changed); lake build, gate.sh steps 1 to 3 and 5, LEVEL 2
   OK; LANDED as a merge after 756b4afd, whose message ran ahead of it.
+* 10:25 Frans asked what else 2026.6 holds and whether the startup
+  distance had moved (it had not; 028-15 waited for SF4).
+* 10:50 Frans: "SF4 (a), 028-15 A". Agent sd (028-15) started 10:51.
+* 10:52 Frans on 026-08 (the node size fixed at 30), done on a branch of
+  2026-11-13, before the history was rewritten: "As recommended": Q1
+  (`maxNodeSize30()` out of the API) and Q2 (`TestNodeSize` public,
+  internal by its Javadoc) as applied; ported onto main after 028-15.
+* 10:55 026-21 done (agent st, 08:57 to 10:55): (b), step times with the
+  delete cut into pieces, recommended; landed 7552fab9 (the item and its
+  evidence; lean/study/ stays on the branch `026-21-study`).
 
 
 ## 5. Outcome
