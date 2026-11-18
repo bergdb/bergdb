@@ -1,0 +1,24 @@
+name = "study"
+version = "0.1.0"
+defaultTargets = ["steptimes"]
+
+[[require]]
+name = "sis"
+path = ".."
+
+[[lean_lib]]
+name = "Contract"
+globs = ["Contract.+"]
+
+[[lean_lib]]
+name = "Study"
+
+[[lean_exe]]
+name = "steptimes"
+root = "StepTimes"
+
+# The same program under a second name (StepTimes2.lean is a link to
+# StepTimes.lean), to build while runs of the first go on.
+[[lean_exe]]
+name = "steptimes2"
+root = "StepTimes2"

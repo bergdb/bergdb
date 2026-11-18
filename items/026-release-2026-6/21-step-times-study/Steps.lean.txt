@@ -1,0 +1,145 @@
+/-
+The study of two writer designs (bergdb 026-21; 026-20): the writer's
+operations cut into actions, for the step-times variant.
+
+Today's writer (lean/SIS/Tree/Exec.lean, unchanged) runs a delete as one
+call: the change at the leaf (or the upward unlink), then the merges up the
+key's path, then root collapse (`deleteUpward`, `afterDelete`, `mergeUp`,
+`collapseRoot`). Step times (026-20, design 2) bump the step only between
+pieces of work that each leave a finished tree. This file cuts the delete
+into such pieces, each a computation of today's writer monad `M`:
+
+* the core (`delCore`): `deleteUpward` up to the point where it calls the
+  merges or root collapse; it returns what is left to do (`Fix`);
+* one merge (`mergeAt`): one turn of `mergeUp`'s loop;
+* one root collapse (`collapseOnce`): one turn of `collapseRoot`'s loop.
+
+Each is a copy of today's code with the calls of the next piece taken out;
+every function it calls (`appendDeleteKlong`, `climb`, `takeBack`, `unlink`,
+`emptyKeyNext`, `merge`, `replaceRoot`, `takeBackRoot`, ...) is today's, from
+Exec.lean. A put stays one piece (`putKv`). Run back to back in one step,
+the pieces do what `putKv` does: the program checks it (`steptimes`'s mode
+`split`).
+-/
+import SIS.Tree.Exec
+
+namespace Study
+
+open SIS SIS.Check SIS.Tree
+
+/-- What a delete's core leaves to do: the merges from the node of segment g
+at height h on the key's path (if the merges are on), then root collapse of
+segment `seg`'s tree: after a merge (`always` false: `afterDelete`), or in any
+case (`always` true: the upward unlink that stopped at an inner node). -/
+structure Fix where
+  g : Nat
+  h : Nat
+  merges : Bool
+  always : Bool
+  seg : Nat
+  deriving Repr, Inhabited
+
+/-- `deleteUpward` without the merges and root collapse: the delete's change
+at the leaf, or the upward unlink with the delete or LE-b at the stop node.
+Returns whether it was a noop, and the fix left to do. -/
+def delCore (leaf : NodeId) (depth : Nat) (cv : Nat) : M (Bool × Option Fix) := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode leaf
+  let leafDel := n.lastBitmap
+  let leafUnion := bitsUnion leafDel (n.bitsOf cv)
+  if leafUnion == leafDel then return (true, none)
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    return (false, if c.p.merges then some ⟨g, h, true, false, g⟩ else none)
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    return (false, none)
+  note "up.climb"
+  let path := (← get).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  for j in List.range (depth - stop) do
+    let k := depth - j
+    let x ← pathNode k
+    let xn ← getNode x
+    if xn.firstTime == some tt then takeBack x (← pathNode (k - 1)) (← klongAt k)
+    else
+      note "up.unlink"
+      unlink x
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    let _ ← appendDeleteKlong s stop cs
+    return (false, if c.p.merges then some ⟨gs, hs, true, false, gs⟩ else none)
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {tt}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  return (false, some ⟨gs, hs, c.p.merges, true, segment⟩)
+
+/-- `setValue`'s delete, with the core only. The id that today's `setValue`
+takes for the delete's marker after `deleteUpward` is taken by the driver
+after the delete's last action, so that the ids are today's. -/
+def delValue (segRoot : NodeId) (cv : Nat) : M (Bool × Option Fix) := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  delCore leaf ((← pathSize) - 1) cv
+
+/-- `putSegs`' delete, with the core only. -/
+def delSegs : List Nat → NodeId → M (Bool × Option Fix)
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => delValue segRoot cv
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv false with
+    | none => pure (true, none)
+    | some next => delSegs rest next
+
+/-- A delete's first action: `putKv` of a delete, without the merges and root
+collapse. -/
+def delFirst (key : Key) : M (Bool × Option Fix) := do
+  pathClear
+  let root ← findRoot
+  delSegs key root
+
+/-- One turn of `mergeUp`'s loop at height h: none if the loop ends there
+(the node is a root, its parent a segment leaf, or it holds m live klongs or
+more), else the merge's result, 1 or 2. -/
+def mergeAt (key : Key) (g h : Nat) : M (Option Nat) := do
+  let c ← read
+  let d ← descendToHeight key g h
+  if d == 0 then return none
+  let x ← pathNode d
+  let q ← pathNode (d - 1)
+  if (← getNode q).leaf then return none
+  if (← getNode x).cnt ≥ c.p.mergeBelow then return none
+  let r ← merge x d
+  pure (some r)
+
+/-- One turn of `collapseRoot`'s loop: true if a root was collapsed (the loop
+goes on), false if it ends. -/
+def collapseOnce (key : Key) (segment : Nat) : M Bool := do
+  let c ← read
+  let root ← descendToSegmentRoot key segment
+  let n ← getNode root
+  if n.leaf then return false
+  let made := n.firstTime == some c.i
+  if made && (← replacedBy root).isNone then return false
+  match n.onlyLiveKlong with
+  | none => return false
+  | some only =>
+    if n.cv? only != some 0 then
+      throw s!"Bug: root collapse at {c.i}: the one live klong of root {root} is not the empty key"
+    let depth := (← pathSize) - 1
+    if made then takeBackRoot root depth only else replaceRoot root depth only
+    return true
+
+end Study
