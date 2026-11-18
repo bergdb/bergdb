@@ -1,7 +1,7 @@
 028-15. Change: the startup distance out of the meta block, into an internal KV
 ================================================================================
 
-Status: open (made on the branch `028-15-sd-kv`, to land). Kind: Change.
+Status: done (landed 1b1001ee; the key `/#i/-sd` 026c322a; 028-17, 028-18 follow). Kind: Change.
 Frans: A (2026-11-18, 10:50).
 Created 2026-11-16 by Frans Lundberg.
 
