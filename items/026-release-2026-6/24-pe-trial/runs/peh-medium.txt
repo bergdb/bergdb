@@ -1,0 +1,29 @@
+medium:m-big-1  pe: B-new 0.981 B-all 0.984 index 0.968 0.981 fill 2.62  peh: B-new 0.986 B-all 0.988 index 0.977 0.985 fill 2.62  today fill 2.62
+medium:m-big-2  pe: B-new 0.983 B-all 0.998 index 0.972 0.997 fill 2.55  peh: B-new 0.979 B-all 0.989 index 0.965 0.986 fill 2.54  today fill 2.54
+medium:m-big-3  pe: B-new 0.984 B-all 0.996 index 0.973 0.995 fill 2.45  peh: B-new 0.983 B-all 1.001 index 0.972 1.002 fill 2.44  today fill 2.44
+medium:m-d30-1  pe: B-new 0.986 B-all 0.999 index 0.976 0.999 fill 2.12  peh: B-new 0.987 B-all 0.997 index 0.977 0.996 fill 2.12  today fill 2.12
+medium:m-d30-2  pe: B-new 0.986 B-all 1.000 index 0.976 1.000 fill 2.12  peh: B-new 0.986 B-all 0.999 index 0.976 0.999 fill 2.12  today fill 2.12
+medium:m-d30-3  pe: B-new 0.982 B-all 0.998 index 0.969 0.997 fill 2.12  peh: B-new 0.984 B-all 1.000 index 0.973 1.000 fill 2.12  today fill 2.12
+medium:m-d62-1  pe: B-new 0.992 B-all 1.002 index 0.985 1.002 fill 2.08  peh: B-new 0.994 B-all 1.000 index 0.989 1.000 fill 2.09  today fill 2.08
+medium:m-d62-2  pe: B-new 0.987 B-all 0.997 index 0.977 0.997 fill 2.08  peh: B-new 0.991 B-all 1.001 index 0.983 1.001 fill 2.09  today fill 2.09
+medium:m-d62-3  pe: B-new 0.987 B-all 1.001 index 0.976 1.001 fill 2.08  peh: B-new 0.992 B-all 0.998 index 0.985 0.998 fill 2.08  today fill 2.08
+medium:m-d8-1  pe: B-new 0.930 B-all 0.965 index 0.901 0.958 fill 2.00  peh: B-new 0.930 B-all 0.965 index 0.901 0.958 fill 2.00  today fill 1.94
+medium:m-d8-2  pe: B-new 0.933 B-all 0.966 index 0.905 0.959 fill 2.00  peh: B-new 0.933 B-all 0.966 index 0.905 0.959 fill 2.00  today fill 1.94
+medium:m-d8-3  pe: B-new 0.933 B-all 0.966 index 0.905 0.960 fill 1.99  peh: B-new 0.933 B-all 0.966 index 0.905 0.960 fill 1.99  today fill 1.94
+medium:m-fifo-1  pe: B-new 0.971 B-all 0.983 index 0.928 0.963 fill 3.30  peh: B-new 0.967 B-all 0.981 index 0.920 0.958 fill 3.28  today fill 3.28
+medium:m-fifo-2  pe: B-new 0.968 B-all 0.984 index 0.921 0.964 fill 3.22  peh: B-new 0.967 B-all 0.981 index 0.920 0.958 fill 3.20  today fill 3.21
+medium:m-fifo-3  pe: B-new 0.966 B-all 0.980 index 0.917 0.957 fill 3.11  peh: B-new 0.967 B-all 0.981 index 0.920 0.958 fill 3.09  today fill 3.09
+medium:m-long-1  pe: B-new 1.001 B-all 1.005 index 1.001 1.006 fill 3.09  peh: B-new 1.001 B-all 1.005 index 1.001 1.006 fill 3.09  today fill 3.08
+medium:m-long-2  pe: B-new 1.007 B-all 1.005 index 1.012 1.006 fill 3.00  peh: B-new 1.007 B-all 1.005 index 1.012 1.006 fill 3.00  today fill 2.99
+medium:m-long-3  pe: B-new 0.994 B-all 1.007 index 0.989 1.008 fill 3.03  peh: B-new 0.994 B-all 1.007 index 0.989 1.008 fill 3.03  today fill 3.02
+medium:m-long3-1  pe: B-new 0.982 B-all 0.999 index 0.970 0.998 fill 1.79  peh: B-new 0.982 B-all 0.999 index 0.970 0.998 fill 1.79  today fill 1.79
+medium:m-long3-2  pe: B-new 0.981 B-all 0.995 index 0.968 0.994 fill 1.79  peh: B-new 0.981 B-all 0.995 index 0.968 0.994 fill 1.79  today fill 1.79
+medium:m-long3-3  pe: B-new 0.983 B-all 0.997 index 0.972 0.996 fill 1.80  peh: B-new 0.983 B-all 0.997 index 0.972 0.996 fill 1.80  today fill 1.79
+medium:m-mixed-1  pe: B-new 0.955 B-all 0.983 index 0.939 0.980 fill 3.04  peh: B-new 0.955 B-all 0.983 index 0.939 0.980 fill 3.04  today fill 2.79
+medium:m-mixed-2  pe: B-new 0.957 B-all 0.978 index 0.942 0.975 fill 3.09  peh: B-new 0.957 B-all 0.978 index 0.942 0.975 fill 3.09  today fill 2.79
+medium:m-mixed-3  pe: B-new 0.973 B-all 0.986 index 0.964 0.984 fill 3.13  peh: B-new 0.973 B-all 0.986 index 0.964 0.984 fill 3.13  today fill 2.79
+medium:m-r-del-1  pe: B-new 0.927 B-all 0.960 index 0.895 0.952 fill 2.79  peh: B-new 0.927 B-all 0.960 index 0.895 0.952 fill 2.79  today fill 2.54
+medium:m-r-del-2  pe: B-new 0.930 B-all 0.963 index 0.898 0.955 fill 2.80  peh: B-new 0.930 B-all 0.963 index 0.898 0.955 fill 2.80  today fill 2.52
+medium:m-r-del-3  pe: B-new 0.904 B-all 0.949 index 0.862 0.938 fill 2.80  peh: B-new 0.904 B-all 0.949 index 0.862 0.938 fill 2.80  today fill 2.56
+ALL pe: B-new 0.972 B-all 0.994 index 0.950 0.993 fill 2.20 (today 2.18)
+ALL peh: B-new 0.973 B-all 0.993 index 0.951 0.992 fill 2.20 (today 2.18)

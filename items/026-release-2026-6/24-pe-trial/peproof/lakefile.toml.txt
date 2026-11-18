@@ -1,0 +1,19 @@
+name = "peproof"
+version = "0.1.0"
+defaultTargets = ["PeProof"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.1"
+
+[[require]]
+name = "sis"
+path = ".."
+
+[[lean_lib]]
+name = "Contract"
+globs = ["Contract.Statement", "Contract.Check", "Contract.Read", "Contract.Tree", "Contract.Proof.Node", "Contract.Proof.Good", "Contract.Proof.Reach", "Contract.Proof.Chain", "Contract.Reach"]
+
+[[lean_lib]]
+name = "PeProof"

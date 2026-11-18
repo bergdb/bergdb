@@ -1,0 +1,382 @@
+/-
+bergdb 026-24, phase 3, the glue's first half: the contract's tree read as
+the abstract tree of PeProof/Abs.lean. A key node of the contract's tree s
+that is sound (`Good`, main's Contract/Proof/Good.lean: what the contract's
+walk finds) and shaped as PE's trees are (`Shaped`: of height h, each child
+one height down (BalancedOK), an inner node's first live klong the empty key
+(LeftmostOK), a leaf's segments short: keys of one segment) is, read as an
+abstract node (`view`), in order (`WFE`) and holds the same keys
+(`view_L`). So the premises of part 1 (`Plan.keys`, `Plan.wf`) are met by
+the contract's trees, and part 1's contents are the contract's.
+-/
+import PeProof.AbsRoot
+import Contract.Proof.Good
+
+namespace PeProof.Abs
+
+open PeProof Contract
+
+/-- Key node x of the contract's tree s, read as an abstract node of height
+h: its live klongs, each child read one height down; a leaf's (compare
+value, value). -/
+def view : (h : Nat) → Tree → NodeId → Node h
+  | 0, s, x => match s.obj x with
+    | some (.key n) => (live n.ks).map (fun cy => (cy.1, (s.val cy.2).getD 0))
+    | _ => []
+  | h + 1, s, x => match s.obj x with
+    | some (.key n) => ofKids ((live n.ks).map (fun cy => (cy.1, view h s cy.2)))
+    | _ => []
+
+/-- x is a key node of height h shaped as PE's trees are: a leaf at height 0
+with short segments only (keys of one segment); an inner node above, its
+first live klong the empty key, each child shaped one height down. -/
+def Shaped : (h : Nat) → Tree → NodeId → Prop
+  | 0, s, x => ∃ n, s.obj x = some (.key n) ∧ n.leaf = true ∧
+      ∀ c y, (c, y) ∈ live n.ks → isLong c = false
+  | h + 1, s, x => ∃ n, s.obj x = some (.key n) ∧ n.leaf = false ∧
+      (live n.ks).head?.map (·.1) = some 0 ∧ ∀ c y, (c, y) ∈ live n.ks → Shaped h s y
+
+theorem below_of_belowHi {c : Nat} {hi : Option Nat} (h : belowHi c hi = true) : Below c hi := by
+  cases hi with
+  | none => trivial
+  | some b => simpa [belowHi, Below] using h
+
+theorem nextHi_eq_nxt {β : Type} (f : NodeId → β) (post : List (Nat × NodeId)) (hi : Option Nat) :
+    nextHi post hi = nxt (post.map (fun cy => (cy.1, f cy.2))) hi := by
+  cases post with
+  | nil => rfl
+  | cons a r => rfl
+
+/-- Children given by the positions of a list, each with its range. -/
+theorem kidsWF_of_pos {β : Type} {W : Nat → Option Nat → β → Prop} {lo : Nat} {hi : Option Nat}
+    (f : NodeId → β) : ∀ (l : List (Nat × NodeId)),
+    (∀ c y pre post, l = pre ++ (c, y) :: post → W (max lo c) (nextHi post hi) (f y)) →
+    KidsWF W lo hi (l.map (fun cy => (cy.1, f cy.2)))
+  | [], _ => trivial
+  | (c, y) :: rest, h => by
+    refine ⟨?_, kidsWF_of_pos f rest (fun c' y' pre post hp => ?_)⟩
+    · have := h c y [] rest rfl
+      rw [nextHi_eq_nxt f] at this
+      exact this
+    · exact h c' y' ((c, y) :: pre) post (by rw [hp]; rfl)
+
+/-- **The contract's tree is an abstract tree in order**: a sound node shaped
+as PE's trees, read as an abstract node, is in order with its range, or
+empty; and nonempty if it has a live klong. -/
+theorem view_wf : ∀ (h : Nat) {s : Tree} {x : NodeId} {lo : Nat} {hi : Option Nat},
+    Good s x lo hi → Shaped h s x → WFE h lo hi (view h s x) ∧
+      (∀ n, s.obj x = some (.key n) → live n.ks ≠ [] → view h s x ≠ [])
+  | 0, s, x, lo, hi, hg, hsh => by
+    obtain ⟨n, hobj, hleaf, _⟩ := hsh
+    cases hg with
+    | mk _ _ _ n' hobj' hwf hhi hlo hval hkey hseg hkid =>
+      rw [hobj] at hobj'
+      obtain rfl : n = n' := by injection hobj' with h1; injection h1
+      have hv : view 0 s x = (live n.ks).map (fun cy => (cy.1, (s.val cy.2).getD 0)) := by
+        simp only [view, hobj]
+        rfl
+      refine ⟨?_, fun n0 h0 hne => ?_⟩
+      · by_cases he : live n.ks = []
+        · left; rw [hv, he]; rfl
+        · right
+          rw [hv]
+          refine ⟨fun h0 => he (List.map_eq_nil_iff.mp h0), ?_, ?_⟩
+          · exact List.Pairwise.map _ (fun a b h => h) (live_sorted n.ks)
+          · intro e he'
+            obtain ⟨⟨c, y⟩, hm, rfl⟩ := List.mem_map.mp he'
+            exact ⟨hlo hleaf c y hm, below_of_belowHi (hhi c y hm)⟩
+      · rw [hobj] at h0
+        obtain rfl : n = n0 := by injection h0 with h1; injection h1
+        rw [hv]; exact fun h0 => hne (List.map_eq_nil_iff.mp h0)
+  | h + 1, s, x, lo, hi, hg, hsh => by
+    obtain ⟨n, hobj, hleaf, hhead, hkids⟩ := hsh
+    cases hg with
+    | mk _ _ _ n' hobj' hwf hhi hlo hval hkey hseg hkid =>
+      rw [hobj] at hobj'
+      obtain rfl : n = n' := by injection hobj' with h1; injection h1
+      have hv : kids (view (h + 1) s x) = (live n.ks).map (fun cy => (cy.1, view h s cy.2)) := by
+        simp [view, hobj, kids, ofKids]
+      refine ⟨?_, fun n0 h0 hne => ?_⟩
+      · by_cases he : live n.ks = []
+        · left
+          have : kids (view (h + 1) s x) = [] := by rw [hv, he]; rfl
+          exact this
+        · right
+          refine ⟨?_, ?_, ?_, ?_⟩
+          · rw [hv]
+            cases hl : live n.ks with
+            | nil => exact absurd hl he
+            | cons a r => rw [hl] at hhead; simpa using hhead
+          · rw [hv]
+            exact List.Pairwise.map _ (fun a b h => h) (live_sorted n.ks)
+          · rw [hv]
+            intro e he'
+            obtain ⟨⟨c, y⟩, hm, rfl⟩ := List.mem_map.mp he'
+            exact below_of_belowHi (hhi c y hm)
+          · rw [hv]
+            refine kidsWF_of_pos (fun y => view h s y) (live n.ks) (fun c y pre' post he2 => ?_)
+            have hm : (c, y) ∈ live n.ks := by rw [he2]; simp
+            have hgy := hkid hleaf pre' c y post he2
+            obtain ⟨m, hm1, _, hm3⟩ := hkey c y hm (by simp [hleaf])
+            obtain ⟨w1, w2⟩ := view_wf h hgy (hkids c y hm)
+            rcases w1 with w1 | w1
+            · exact absurd w1 (w2 m hm1 hm3)
+            · exact w1
+      · rw [hobj] at h0
+        obtain rfl : n = n0 := by injection h0 with h1; injection h1
+        intro hv0
+        have : kids (view (h + 1) s x) = [] := by rw [hv0]; rfl
+        rw [hv] at this
+        simp at this
+        exact hne this
+
+/-- A key of one segment with its value, as the contract's map holds it. -/
+def kv1 (e : Nat × Nat) : Key × Nat := ([e.1], e.2)
+
+/-- **The contract's tree holds the abstract tree's keys**: what a sound
+node shaped as PE's trees holds (`L`, the contract's contents below it) is
+what its view holds, each compare value a key of one segment. -/
+theorem view_L : ∀ (h : Nat) {s : Tree} {x : NodeId} {lo : Nat} {hi : Option Nat},
+    Good s x lo hi → Shaped h s x → L s x = (content h (view h s x)).map kv1
+  | 0, s, x, lo, hi, hg, hsh => by
+    obtain ⟨n, hobj, hleaf, hshort⟩ := hsh
+    rw [hg.L_eq hobj]
+    cases hg with
+    | mk _ _ _ n' hobj' hwf hhi hlo hval hkey hseg hkid =>
+      rw [hobj] at hobj'
+      obtain rfl : n = n' := by injection hobj' with h1; injection h1
+      have hv : view 0 s x = (live n.ks).map (fun cy => (cy.1, (s.val cy.2).getD 0)) := by
+        simp only [view, hobj]
+        rfl
+      show _ = (view 0 s x).map kv1
+      rw [hv, List.map_map, List.flatMap_eq_foldl]
+      rw [← List.flatMap_eq_foldl]
+      rw [List.map_eq_flatMap]
+      apply List.flatMap_congr
+      rintro ⟨c, y⟩ hm
+      obtain ⟨v, hv'⟩ := hval hleaf c y hm (hshort c y hm)
+      simp [klongList, hleaf, hshort c y hm, hv', kv1, Tree.val]
+  | h + 1, s, x, lo, hi, hg, hsh => by
+    obtain ⟨n, hobj, hleaf, hhead, hkids⟩ := hsh
+    rw [hg.L_eq hobj]
+    cases hg with
+    | mk _ _ _ n' hobj' hwf hhi hlo hval hkey hseg hkid =>
+      rw [hobj] at hobj'
+      obtain rfl : n = n' := by injection hobj' with h1; injection h1
+      have hv : kids (view (h + 1) s x) = (live n.ks).map (fun cy => (cy.1, view h s cy.2)) := by
+        simp [view, hobj, kids, ofKids]
+      show _ = (kidsContent h (kids (view (h + 1) s x))).map kv1
+      rw [hv]
+      unfold kidsContent
+      rw [List.flatMap_map, List.map_flatMap]
+      apply List.flatMap_congr
+      rintro ⟨c, y⟩ hm
+      obtain ⟨pre, post, he⟩ := List.append_of_mem hm
+      have hgy := hkid hleaf pre c y post he
+      simp only [klongList, hleaf, Bool.false_eq_true, ite_false]
+      exact view_L h hgy (hkids c y hm)
+
+/-- An operation of one segment as the contract's. -/
+def Op.toC : Op → Contract.Op
+  | .put c v => .put [c] v
+  | .del c => .del [c]
+
+theorem keyLt_one (a b : Nat) : keyLt [a] [b] = decide (a < b) := by
+  simp [keyLt]
+
+theorem mapPut_kv1 (c v : Nat) : ∀ m : List (Nat × Nat),
+    mapPut [c] v (m.map kv1) = (mput c v m).map kv1
+  | [] => rfl
+  | (c', v') :: r => by
+    show mapPut [c] v (([c'], v') :: r.map kv1) = (mput c v ((c', v') :: r)).map kv1
+    unfold mapPut mput
+    by_cases h1 : c < c'
+    · rw [if_pos (by simp [keyLt, h1]), if_pos h1]; rfl
+    · by_cases h2 : c = c'
+      · subst h2
+        rw [if_neg (by simp [keyLt]), if_pos rfl, if_neg h1, if_pos rfl]; rfl
+      · rw [if_neg (by simp [keyLt]; omega), if_neg (by simp [h2]), if_neg h1, if_neg h2]
+        simp only [List.map_cons]
+        rw [mapPut_kv1 c v r]
+        rfl
+
+theorem mapDel_kv1 (c : Nat) (m : List (Nat × Nat)) :
+    mapDel [c] (m.map kv1) = (m.filter (fun e => e.1 != c)).map kv1 := by
+  unfold mapDel
+  rw [List.filter_map]
+  congr 1
+  apply List.filter_congr
+  intro e _
+  show ([e.1] != [c]) = (e.1 != c)
+  rw [Bool.eq_iff_iff, bne_iff_ne, bne_iff_ne]
+  simp
+
+/-- One step of the contract's plain map. -/
+def cstep (m : List (Key × Nat)) (op : Contract.Op) : List (Key × Nat) :=
+  match op with
+  | .put k v => mapPut k v m
+  | .del k => mapDel k m
+
+theorem capply_cons (op : Contract.Op) (ops : List Contract.Op) (m : List (Key × Nat)) :
+    Contract.applyOps (op :: ops) m = Contract.applyOps ops (cstep m op) := rfl
+
+/-- **The plain maps agree**: the operations of one segment applied to the
+abstract map, read as the contract's map, are the contract's operations
+applied to it. -/
+theorem applyOps_kv1 : ∀ (ops : List Op) (m : List (Nat × Nat)),
+    Contract.applyOps (ops.map Op.toC) (m.map kv1) = (applyOps ops m).map kv1
+  | [], _ => rfl
+  | o :: ops, m => by
+    rw [List.map_cons, capply_cons]
+    have h1 : cstep (m.map kv1) o.toC = (applyOp m o).map kv1 := by
+      cases o with
+      | put c v => exact mapPut_kv1 c v m
+      | del c => exact mapDel_kv1 c m
+    rw [h1]
+    exact applyOps_kv1 ops (applyOp m o)
+
+/-- A node in order holds its keys in its children's ranges (the premise of
+`Plan.keys`). -/
+theorem kidsWF_holds {h : Nat} (IH : ∀ lo hi (x : Node h), WF h lo hi x → Holds h lo hi x) :
+    ∀ (ks : List (Nat × Node h)) (lo lo0 : Nat) (hi : Option Nat), ks ≠ [] →
+      KidsWF (WF h) lo hi ks → (∀ c x, ks.head? = some (c, x) → max lo c = lo0) →
+      (∀ e ∈ ks.tail, lo < e.1) → (∀ e ∈ ks, Below e.1 hi) → HoldsKids (Holds h) lo0 hi ks
+  | [], _, _, _, hne, _, _, _, _ => absurd rfl hne
+  | [(c, x)], lo, lo0, hi, _, ⟨h1, _⟩, hh, _, _ => by
+    have := hh c x rfl
+    rw [this] at h1
+    exact IH _ _ x h1
+  | (c, x) :: (c', y) :: r, lo, lo0, hi, _, ⟨h1, h2⟩, hh, htail, hb => by
+    have e1 := hh c x rfl
+    rw [e1] at h1
+    have hc' : lo < c' := htail (c', y) (by simp)
+    have hr := WF_range h1
+    simp only [nxt, Below] at hr
+    refine ⟨by omega, hb (c', y) (by simp), IH _ _ x h1,
+      kidsWF_holds IH ((c', y) :: r) lo c' hi (by simp) h2
+        (fun c0 x0 h0 => by simp only [List.head?_cons, Option.some.injEq, Prod.mk.injEq] at h0; omega)
+        (fun e he => htail e (by simp at he ⊢; exact Or.inr he))
+        (fun e he => hb e (List.mem_cons_of_mem _ he))⟩
+
+theorem WF_holds : ∀ (h : Nat) {lo : Nat} {hi : Option Nat} {x : Node h}, WF h lo hi x → Holds h lo hi x
+  | 0, _, _, _, hw => ⟨hw.2.1, hw.2.2⟩
+  | h + 1, lo, hi, x, hw => by
+    have htail := WF_tail_above hw
+    obtain ⟨w1, _, w3, w4⟩ := hw
+    show HoldsKids (Holds h) lo hi (kids x)
+    refine kidsWF_holds (fun lo hi x hx => WF_holds h hx) (kids x) lo lo hi ?_ w4 ?_ htail w3
+    · intro he; rw [he] at w1; cases w1
+    · intro c x0 h0
+      rw [h0] at w1
+      simp only [Option.map_some, Option.some.injEq] at w1
+      simp [w1]
+
+/-- **Part 1 on the contract's tree** (one segment): for a sound node of the
+tree before, shaped as PE's trees, and operations in its range, PE's plan of
+its view holds the contract's contents below the node with the contract's
+operations applied, and is in order with the node's range, or empty. What is
+left for clause C2 and C1's order is that the tree after holds the plan
+(the glue's second half). -/
+theorem plan_contract (h : Nat) {s : Tree} {x : NodeId} {lo : Nat} {hi : Option Nat}
+    (hg : Good s x lo hi) (hsh : Shaped h s x) (ops : List Op)
+    (hops : ∀ op ∈ ops, lo ≤ op.cv ∧ Below op.cv hi) (A : Node h)
+    (hp : Plan h (view h s x) ops A) (hne : ∃ n, s.obj x = some (.key n) ∧ live n.ks ≠ []) :
+    (content h A).map kv1 = Contract.applyOps (ops.map Op.toC) (L s x) ∧ WFE h lo hi A := by
+  obtain ⟨w1, w2⟩ := view_wf h hg hsh
+  obtain ⟨n, hobj, hl⟩ := hne
+  have hw : WF h lo hi (view h s x) := by
+    rcases w1 with w1 | w1
+    · exact absurd w1 (w2 n hobj hl)
+    · exact w1
+  refine ⟨?_, Plan.wf h lo hi _ ops A hp (Or.inr hw) hops⟩
+  rw [view_L h hg hsh, applyOps_kv1, Plan.keys h lo hi _ ops A hp (WF_holds h hw) hops]
+
+/-! ## The converse: a tree whose view is in order is sound -/
+
+/-- The facts of the contract's invariants that the view forgets: well-formed
+klongs, a leaf's entries values, an inner node's children key nodes of
+lower levels, each sound one height down. -/
+def Sound : (h : Nat) → Tree → NodeId → Prop
+  | 0, s, x => ∃ n, s.obj x = some (.key n) ∧ klongsWf n.ks = true ∧
+      ∀ c y, (c, y) ∈ live n.ks → ∃ v, s.obj y = some (.val v)
+  | h + 1, s, x => ∃ n, s.obj x = some (.key n) ∧ klongsWf n.ks = true ∧
+      ∀ c y, (c, y) ∈ live n.ks → ∃ m, s.obj y = some (.key m) ∧ m.level < n.level ∧ Sound h s y
+
+/-- The child at a position of a list of children in order. -/
+theorem kidsWF_at {β : Type} {W : Nat → Option Nat → β → Prop} {lo : Nat} {hi : Option Nat}
+    (f : NodeId → β) : ∀ (pre : List (Nat × NodeId)) (c : Nat) (y : NodeId) (post : List (Nat × NodeId)),
+    KidsWF W lo hi ((pre ++ (c, y) :: post).map (fun cy => (cy.1, f cy.2))) →
+    W (max lo c) (nextHi post hi) (f y)
+  | [], c, y, post, h => by
+    have := h.1
+    rw [← nextHi_eq_nxt f] at this
+    exact this
+  | a :: pre, c, y, post, h => kidsWF_at f pre c y post h.2
+
+/-- **A tree whose view is in order is sound**: a node shaped as PE's trees,
+with the facts of `Sound`, whose view is in order with the range [lo, hi),
+is sound with that range (`Good`, what the contract's walk finds). With
+`view_L`, its contents are the view's. -/
+theorem good_of_view : ∀ (h : Nat) {s : Tree} {x : NodeId} {lo : Nat} {hi : Option Nat},
+    Shaped h s x → Sound h s x → WF h lo hi (view h s x) → Good s x lo hi
+  | 0, s, x, lo, hi, hsh, hso, hw => by
+    obtain ⟨n, hobj, hleaf, hshort⟩ := hsh
+    obtain ⟨n', hobj', hwf, hvals⟩ := hso
+    rw [hobj] at hobj'
+    obtain rfl : n = n' := by injection hobj' with h1; injection h1
+    have hv : view 0 s x = (live n.ks).map (fun cy => (cy.1, (s.val cy.2).getD 0)) := by
+      simp only [view, hobj]
+      rfl
+    rw [hv] at hw
+    obtain ⟨_, _, w3⟩ := hw
+    have hb : ∀ c y, (c, y) ∈ live n.ks → lo ≤ c ∧ Below c hi := by
+      intro c y hm
+      exact w3 (c, (s.val y).getD 0) (List.mem_map.mpr ⟨(c, y), hm, rfl⟩)
+    refine Good.mk x lo hi n hobj hwf (fun c y hm => ?_) (fun _ c y hm => (hb c y hm).1)
+      (fun _ c y hm _ => hvals c y hm) (fun c y hm hk => ?_) (fun _ c y hm hl => ?_)
+      (fun hl => absurd hl (by simp [hleaf]))
+    · have := (hb c y hm).2
+      cases hi with
+      | none => rfl
+      | some b => simpa [belowHi, Below] using this
+    · exact absurd (hk hleaf) (by simp [hshort c y hm])
+    · exact absurd hl (by simp [hshort c y hm])
+  | h + 1, s, x, lo, hi, hsh, hso, hw => by
+    obtain ⟨n, hobj, hleaf, _, hkids⟩ := hsh
+    obtain ⟨n', hobj', hwf, hkeys⟩ := hso
+    rw [hobj] at hobj'
+    obtain rfl : n = n' := by injection hobj' with h1; injection h1
+    have hv : kids (view (h + 1) s x) = (live n.ks).map (fun cy => (cy.1, view h s cy.2)) := by
+      simp [view, hobj, kids, ofKids]
+    obtain ⟨_, _, w3, w4⟩ := hw
+    rw [hv] at w3 w4
+    refine Good.mk x lo hi n hobj hwf (fun c y hm => ?_) (fun hl => absurd hl (by simp [hleaf]))
+      (fun hl => absurd hl (by simp [hleaf])) (fun c y hm _ => ?_)
+      (fun hl => absurd hl (by simp [hleaf])) (fun _ pre c y post he => ?_)
+    · have := w3 (c, view h s y) (List.mem_map.mpr ⟨(c, y), hm, rfl⟩)
+      cases hi with
+      | none => rfl
+      | some b => simpa [belowHi, Below] using this
+    · obtain ⟨m, hm1, hm2, _⟩ := hkeys c y hm
+      refine ⟨m, hm1, hm2, ?_⟩
+      obtain ⟨pre, post, he⟩ := List.append_of_mem hm
+      rw [he] at w4
+      have hwy := kidsWF_at (fun y => view h s y) pre c y post w4
+      have hne := WF_ne_nil h _ _ _ hwy
+      intro hl
+      apply hne
+      cases h with
+      | zero =>
+        show view 0 s y = []
+        simp only [view, hm1, hl, List.map_nil]
+      | succ h' =>
+        show view (h' + 1) s y = []
+        simp only [view, hm1, hl, List.map_nil]
+        rfl
+    · rw [he] at w4
+      have hm : (c, y) ∈ live n.ks := by rw [he]; simp
+      have hwy := kidsWF_at (fun y => view h s y) pre c y post w4
+      obtain ⟨m, _, _, hsy⟩ := hkeys c y hm
+      exact good_of_view h (hkids c y hm) hsy hwy
+
+end PeProof.Abs

@@ -1,0 +1,336 @@
+/-
+bergdb 026-24, phase 3: helpers taken unchanged from the tag
+`writer-proof-2026-11-18`, Contract/Proof/TreeCtx.lean (030-10), sections 1
+and 2 and `Good.widen`: a subtree depends only on the nodes reached in it;
+the invariants are `Good` at the space root and the rules of each node
+reached (`invOk_iff`). Only the namespace differs (`PeProof.Q2`). No line
+of it is counted as the spike's own.
+-/
+import Contract.Proof.Reach
+import Contract.Proof.Chain
+
+namespace PeProof.Q2
+
+open Contract
+
+variable {p : Params}
+
+/-- The tree with node x set to o. -/
+def Tree.set (s : Tree) (x : NodeId) (o : Obj) : Tree :=
+  { s with obj := fun y => if y = x then some o else s.obj y }
+
+/-! ## 1. A subtree depends only on the nodes reached -/
+
+theorem tc_self (s : Tree) (f : Nat) (x : NodeId) : x ∈ reachAt s f x := by
+  cases f <;> simp [reachAt]
+
+theorem tc_key {s : Tree} {x : NodeId} {n : KNode} (h : s.obj x = some (.key n)) (f : Nat) :
+    reachAt s (f + 1) x = x :: (live n.ks).flatMap (fun cy => reachAt s f cy.2) := by
+  simp [reachAt, h]
+
+theorem tc_nokey {s : Tree} {x : NodeId} (h : ∀ n, s.obj x ≠ some (.key n)) :
+    ∀ f, reachAt s f x = [x]
+  | 0 => rfl
+  | f + 1 => by
+    cases ho : s.obj x with
+    | none => simp [reachAt, ho]
+    | some o =>
+      cases o with
+      | val v => simp [reachAt, ho]
+      | key n => exact absurd ho (h n)
+
+theorem tc_val {s : Tree} {x : NodeId} {v : Nat} (h : s.obj x = some (.val v)) (f : Nat) :
+    reachAt s f x = [x] :=
+  tc_nokey (fun n => by simp [h]) f
+
+theorem tc_mem_succ {s : Tree} {f : Nat} {x w : NodeId} :
+    w ∈ reachAt s (f + 1) x ↔
+      w = x ∨ ∃ n, s.obj x = some (.key n) ∧ ∃ cy ∈ live n.ks, w ∈ reachAt s f cy.2 := by
+  cases ho : s.obj x with
+  | none => simp [reachAt, ho]
+  | some o =>
+    cases o with
+    | val v => simp [reachAt, ho]
+    | key n => simp [tc_key ho, List.mem_flatMap]
+
+theorem tc_kid {s : Tree} {x : NodeId} {n : KNode} (h : s.obj x = some (.key n)) {f : Nat}
+    {c : Nat} {y z : NodeId} (hm : (c, y) ∈ live n.ks) (hz : z ∈ reachAt s f y) :
+    z ∈ reachAt s (f + 1) x := by
+  rw [tc_key h]
+  exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨(c, y), hm, hz⟩)
+
+theorem tc_mono {s : Tree} {w : NodeId} : ∀ (f g : Nat) (x : NodeId), f ≤ g →
+    w ∈ reachAt s f x → w ∈ reachAt s g x
+  | 0, g, x, _, h => by
+    simp only [reachAt, List.mem_singleton] at h
+    rw [h]; exact tc_self s g x
+  | f + 1, g, x, hfg, h => by
+    obtain ⟨g', rfl⟩ : ∃ g', g = g' + 1 := ⟨g - 1, by omega⟩
+    rcases tc_mem_succ.mp h with rfl | ⟨n, ho, cy, hcy, hw⟩
+    · exact tc_self s _ _
+    · exact tc_kid ho hcy (tc_mono f g' cy.2 (by omega) hw)
+
+theorem tc_trans {s : Tree} {w : NodeId} (g : Nat) : ∀ (f : Nat) (x z : NodeId),
+    z ∈ reachAt s f x → w ∈ reachAt s g z → w ∈ reachAt s (f + g) x
+  | 0, x, z, hz, hw => by
+    simp only [reachAt, List.mem_singleton] at hz
+    rw [hz] at hw; simpa using hw
+  | f + 1, x, z, hz, hw => by
+    rcases tc_mem_succ.mp hz with rfl | ⟨n, ho, cy, hcy, hz⟩
+    · exact tc_mono g _ z (by omega) hw
+    · rw [show f + 1 + g = (f + g) + 1 by omega]
+      exact tc_kid ho hcy (tc_trans g f cy.2 z hz hw)
+
+theorem reachAt_agree {s s' : Tree} : ∀ (f : Nat) (y : NodeId),
+    (∀ z ∈ reachAt s f y, s'.obj z = s.obj z) → reachAt s' f y = reachAt s f y
+  | 0, _, _ => rfl
+  | f + 1, y, ha => by
+    have hy : s'.obj y = s.obj y := ha y (tc_self _ _ _)
+    cases ho : s.obj y with
+    | none => simp [reachAt, ho, hy]
+    | some o =>
+      cases o with
+      | val v => simp [reachAt, ho, hy]
+      | key n =>
+        rw [tc_key ho, tc_key (hy.trans ho)]
+        congr 1
+        apply List.flatMap_congr
+        rintro ⟨c, x⟩ hm
+        exact reachAt_agree f x (fun z hz => ha z (tc_kid ho hm hz))
+
+theorem tc_klongList {s s' : Tree} {leaf : Bool} {sub sub' : NodeId → List (Key × Nat)}
+    {c : Nat} {y : NodeId} (h1 : s'.obj y = s.obj y) (h2 : sub' y = sub y) :
+    klongList s' leaf sub' c y = klongList s leaf sub c y := by
+  unfold klongList
+  rw [h1, h2]
+
+theorem listAt_agree {s s' : Tree} : ∀ (f : Nat) (y : NodeId),
+    (∀ z ∈ reachAt s f y, s'.obj z = s.obj z) → listAt s' f y = listAt s f y
+  | 0, _, _ => rfl
+  | f + 1, y, ha => by
+    have hy : s'.obj y = s.obj y := ha y (tc_self _ _ _)
+    cases ho : s.obj y with
+    | none => simp [listAt, ho, hy]
+    | some o =>
+      cases o with
+      | val v => simp [listAt, ho, hy]
+      | key n =>
+        simp only [listAt, ho, hy]
+        apply List.flatMap_congr
+        rintro ⟨c, x⟩ hm
+        have hx : ∀ z ∈ reachAt s f x, s'.obj z = s.obj z := fun z hz => ha z (tc_kid ho hm hz)
+        exact tc_klongList (hx x (tc_self _ _ _)) (listAt_agree f x hx)
+
+/-- The nodes reached from a sound node do not depend on the fuel, if it is
+enough. -/
+theorem Good.reachAt_eq {s : Tree} {y : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s y lo hi) :
+    ∀ f, s.fuel y ≤ f → reachAt s f y = reachAt s (s.fuel y) y := by
+  induction h with
+  | mk x lo hi n hobj hwf hhi hlo hval hkey hseg hkid ihseg ihkid =>
+    intro f hf
+    have hfuel : s.fuel x = n.level + 1 := by simp [Tree.fuel, hobj]
+    obtain ⟨f', rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    rw [hfuel, tc_key hobj, tc_key hobj]
+    congr 1
+    apply List.flatMap_congr
+    rintro ⟨c, y⟩ hm
+    by_cases hk : n.leaf = true → isLong c = true
+    · obtain ⟨m, hm1, hm2, _⟩ := hkey c y hm hk
+      have hfy : s.fuel y = m.level + 1 := by simp [Tree.fuel, hm1]
+      cases hl : n.leaf with
+      | true =>
+        rw [ihseg hl c y hm (hk hl) f' (by omega), ihseg hl c y hm (hk hl) n.level (by omega)]
+      | false =>
+        obtain ⟨pre, post, he⟩ := List.append_of_mem hm
+        rw [ihkid hl pre c y post he f' (by omega), ihkid hl pre c y post he n.level (by omega)]
+    · simp only [Classical.not_imp, Bool.not_eq_true] at hk
+      obtain ⟨v, hv⟩ := hval hk.1 c y hm hk.2
+      rw [tc_val hv, tc_val hv]
+
+theorem Good.agree {s s' : Tree} {y : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s y lo hi)
+    (ha : ∀ z ∈ reachAt s (s.fuel y) y, s'.obj z = s.obj z) : Good s' y lo hi := by
+  revert ha
+  induction h with
+  | mk x lo hi n hobj hwf hhi hlo hval hkey hseg hkid ihseg ihkid =>
+    intro ha
+    have hfuel : s.fuel x = n.level + 1 := by simp [Tree.fuel, hobj]
+    rw [hfuel] at ha
+    have hkA : ∀ c y, (c, y) ∈ live n.ks → ∀ z ∈ reachAt s n.level y, s'.obj z = s.obj z :=
+      fun c y hm z hz => ha z (tc_kid hobj hm hz)
+    have hy : ∀ c y, (c, y) ∈ live n.ks → s'.obj y = s.obj y :=
+      fun c y hm => hkA c y hm y (tc_self _ _ _)
+    have hsub : ∀ c y lo' hi', (c, y) ∈ live n.ks → (n.leaf = true → isLong c = true) →
+        Good s y lo' hi' → ∀ z ∈ reachAt s (s.fuel y) y, s'.obj z = s.obj z := by
+      intro c y lo' hi' hm hk hg
+      obtain ⟨m, hm1, hm2, _⟩ := hkey c y hm hk
+      rw [← (Good.reachAt_eq hg) n.level (by simp [Tree.fuel, hm1]; omega)]
+      exact hkA c y hm
+    refine Good.mk x lo hi n ((ha x (tc_self _ _ _)).trans hobj) hwf hhi hlo ?_ ?_ ?_ ?_
+    · intro hl c y hm hs
+      rw [hy c y hm]
+      exact hval hl c y hm hs
+    · intro c y hm hk
+      rw [hy c y hm]
+      exact hkey c y hm hk
+    · intro hl c y hm hs
+      exact ihseg hl c y hm hs (hsub c y 0 none hm (fun _ => hs) (hseg hl c y hm hs))
+    · intro hl pre c y post he
+      have hm : (c, y) ∈ live n.ks := by rw [he]; simp
+      exact ihkid hl pre c y post he
+        (hsub c y _ _ hm (by simp [hl]) (hkid hl pre c y post he))
+
+theorem L_agree {s s' : Tree} {y : NodeId}
+    (ha : ∀ z ∈ reachAt s (s.fuel y) y, s'.obj z = s.obj z) : L s' y = L s y := by
+  have hy : s'.obj y = s.obj y := ha y (tc_self _ _ _)
+  have hf : s'.fuel y = s.fuel y := by simp [Tree.fuel, hy]
+  unfold L
+  rw [hf]
+  exact listAt_agree _ _ ha
+
+/-! ## 2. The invariants as `Good` and the rules of each node reached -/
+
+theorem tc_walk_nodeOk {s : Tree} : ∀ (f : Nat) (x : NodeId) (lo : Nat) (hi : Option Nat),
+    walk p s f x lo hi = true →
+      ∀ z ∈ reachAt s f x, ∀ m, s.obj z = some (.key m) → nodeOk p s m = true
+  | 0, _, _, _, h => by simp [walk] at h
+  | f + 1, x, lo, hi, h => by
+    unfold walk at h
+    cases ho : s.obj x with
+    | none => simp [ho] at h
+    | some o =>
+      rw [ho] at h
+      cases o with
+      | val v => simp at h
+      | key n =>
+        simp only [Bool.and_eq_true] at h
+        intro z hz m hm
+        rcases tc_mem_succ.mp hz with rfl | ⟨n', ho', ⟨c, y⟩, hcy, hz⟩
+        · rw [ho] at hm
+          cases hm
+          exact h.1
+        · rw [ho] at ho'
+          cases ho'
+          obtain ⟨pre, post, he⟩ := List.append_of_mem hcy
+          have hko := kidsOk_at _ pre c y post h.2 he
+          unfold kidOk at hko
+          cases hy : s.obj y with
+          | none =>
+            by_cases hl : n.leaf = true <;> by_cases hlong : isLong c = true <;>
+              simp [hl, hlong, hy] at hko
+          | some o =>
+            cases o with
+            | val v =>
+              rw [tc_val hy] at hz
+              rw [List.mem_singleton.mp hz, hy] at hm
+              cases hm
+            | key m' =>
+              have hw : ∃ lo' hi', walk p s f y lo' hi' = true := by
+                by_cases hl : n.leaf = true <;> by_cases hlong : isLong c = true <;>
+                  simp [hl, hlong, hy] at hko
+                · exact ⟨_, _, hko.2.2.2⟩
+                · exact ⟨_, _, hko.2.2⟩
+                · exact ⟨_, _, hko.2.2⟩
+              obtain ⟨lo', hi', hw⟩ := hw
+              exact tc_walk_nodeOk f y lo' hi' hw z hz m hm
+
+theorem Good.tc_walk {s : Tree} {x : NodeId} {lo : Nat} {hi : Option Nat} (h : Good s x lo hi) :
+    ∀ f, s.fuel x ≤ f →
+      (∀ z ∈ reachAt s f x, ∀ m, s.obj z = some (.key m) → nodeOk p s m = true) →
+      walk p s f x lo hi = true := by
+  induction h with
+  | mk x lo hi n hobj hwf hhi hlo hval hkey hseg hkid ihseg ihkid =>
+    intro f hf hn
+    have hfuel : s.fuel x = n.level + 1 := by simp [Tree.fuel, hobj]
+    obtain ⟨f', rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    unfold walk
+    rw [hobj]
+    simp only [Bool.and_eq_true]
+    refine ⟨hn x (tc_self _ _ _) n hobj, ?_⟩
+    have main : ∀ (post pre : List (Nat × NodeId)), live n.ks = pre ++ post →
+        kidsOk s n lo hi (fun y lo' hi' => walk p s f' y lo' hi') post = true := by
+      intro post
+      induction post with
+      | nil => intro _ _; rfl
+      | cons a post ih =>
+        obtain ⟨c, y⟩ := a
+        intro pre he
+        simp only [kidsOk, Bool.and_eq_true]
+        refine ⟨?_, ih (pre ++ [(c, y)]) (by simp [he])⟩
+        have hm : (c, y) ∈ live n.ks := by rw [he]; simp
+        have hny : ∀ z ∈ reachAt s f' y, ∀ m, s.obj z = some (.key m) → nodeOk p s m = true :=
+          fun z hz => hn z (tc_kid hobj hm hz)
+        unfold kidOk
+        simp only [hhi c y hm, Bool.true_and]
+        cases hl : n.leaf with
+        | false =>
+          obtain ⟨m, hm1, hm2, hm3⟩ := hkey c y hm (by simp [hl])
+          have hfy : s.fuel y = m.level + 1 := by simp [Tree.fuel, hm1]
+          have hw := ihkid hl pre c y post he f' (by omega) hny
+          simp [hm1, hm2, hm3, hw]
+        | true =>
+          simp only [hlo hl c y hm, decide_true, Bool.true_and, ite_true]
+          cases hlong : isLong c with
+          | false =>
+            obtain ⟨v, hv⟩ := hval hl c y hm hlong
+            simp [hv]
+          | true =>
+            obtain ⟨m, hm1, hm2, hm3⟩ := hkey c y hm (fun _ => hlong)
+            have hfy : s.fuel y = m.level + 1 := by simp [Tree.fuel, hm1]
+            have hw := ihseg hl c y hm hlong f' (by omega) hny
+            simp [hm1, hm2, hm3, hw]
+    exact main (live n.ks) [] rfl
+
+theorem invOk_iff {s : Tree} :
+    invOk p s = true ↔ ∃ r n, s.root = some r ∧ s.obj r = some (.key n) ∧
+      (n.leaf = true ∨ live n.ks ≠ []) ∧ Good s r 0 none ∧
+      ∀ z ∈ reach s, ∀ m, s.obj z = some (.key m) → nodeOk p s m = true := by
+  constructor
+  · intro h
+    unfold invOk at h
+    cases hr : s.root with
+    | none => simp [hr] at h
+    | some r =>
+      simp only [hr] at h
+      cases ho : s.obj r with
+      | none => simp [ho] at h
+      | some o =>
+        rw [ho] at h
+        cases o with
+        | val v => simp at h
+        | key n =>
+          simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true',
+            List.isEmpty_eq_false_iff] at h
+          refine ⟨r, n, rfl, ho, h.1, walk_good _ _ _ _ h.2, ?_⟩
+          intro z hz m hm
+          unfold reach at hz
+          rw [hr] at hz
+          simp only [Tree.fuel, ho] at hz
+          exact tc_walk_nodeOk _ _ _ _ h.2 z hz m hm
+  · rintro ⟨r, n, hr, ho, hne, hG, hn⟩
+    unfold invOk
+    simp only [hr, ho, Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true',
+      List.isEmpty_eq_false_iff]
+    refine ⟨hne, (Good.tc_walk hG) _ (by simp [Tree.fuel, ho]) ?_⟩
+    intro z hz m hm
+    refine hn z ?_ m hm
+    unfold reach
+    rw [hr]
+    simpa [Tree.fuel, ho] using hz
+
+/-! ## 3. Ranges; no node below itself -/
+
+theorem Good.widen {s : Tree} {y : NodeId} {lo lo' : Nat} {hi hi' : Option Nat}
+    (h : Good s y lo hi) (hlo : lo' ≤ lo) (hhi : ∀ c, belowHi c hi = true → belowHi c hi' = true) :
+    Good s y lo' hi' := by
+  induction h generalizing lo' hi' with
+  | mk x lo hi n hobj hwf hhi0 hlo0 hval hkey hseg hkid ihseg ihkid =>
+    refine Good.mk x lo' hi' n hobj hwf (fun c y hm => hhi c (hhi0 c y hm))
+      (fun hl c y hm => le_trans hlo (hlo0 hl c y hm)) hval hkey hseg ?_
+    intro hl pre c y post he
+    refine ihkid hl pre c y post he (max_le_max hlo le_rfl) ?_
+    intro d hd
+    cases post with
+    | nil => exact hhi d hd
+    | cons b rest => exact hd
+
+end PeProof.Q2

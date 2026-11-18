@@ -1,0 +1,8 @@
+own:bulk-10  pe: B-new 0.849 B-all 0.885 index 0.733 0.832 fill 12.90  peh: B-new 0.852 B-all 0.875 index 0.739 0.817 fill 10.03  today fill 12.57
+own:bulk-100  pe: B-new 0.966 B-all 0.966 index 0.909 0.918 fill 16.44  peh: B-new 0.975 B-all 0.974 index 0.935 0.937 fill 14.23  today fill 13.72
+own:bulk-500  pe: B-new 0.980 B-all 0.980 index 0.939 0.941 fill 16.53  peh: B-new 0.989 B-all 0.990 index 0.968 0.969 fill 14.41  today fill 13.93
+own:pub-1  pe: B-new 1.002 B-all 1.017 index 1.004 1.020 fill 13.67  peh: B-new 0.978 B-all 0.990 index 0.958 0.988 fill 12.13  today fill 12.56
+own:pub-10  pe: B-new 1.008 B-all 1.019 index 1.016 1.022 fill 13.18  peh: B-new 0.985 B-all 0.993 index 0.969 0.992 fill 11.81  today fill 12.18
+own:pub-100  pe: B-new 0.992 B-all 1.010 index 0.983 1.011 fill 13.00  peh: B-new 0.975 B-all 0.989 index 0.949 0.987 fill 11.79  today fill 12.08
+ALL pe: B-new 0.976 B-all 1.004 index 0.950 1.005 fill 13.47 (today 12.54)
+ALL peh: B-new 0.964 B-all 0.983 index 0.925 0.980 fill 11.51 (today 12.54)

@@ -1,0 +1,37 @@
+import PeProof
+/-! bergdb 026-24: the axioms of the spike's theorems (`lake env lean Axioms.lean`). -/
+open PeProof
+#print axioms emitKs_live
+#print axioms emitKs_wf
+#print axioms emitKs_ext
+#print axioms emitKs_extKs
+#print axioms emitKs_prefixAt
+#print axioms emitKs_ptrs
+#print axioms emitKs_length
+#print axioms newKs_live
+#print axioms newKs_wf
+#print axioms Step.flat_eq
+#print axioms Steps.flat_eq
+#print axioms Step.ranged
+#print axioms Steps.ranged
+#print axioms ranged_renameFirst
+#print axioms flat_sorted
+#print axioms cut_spec
+#print axioms PeProof.Abs.Sett.kidsContent
+#print axioms PeProof.Abs.Plan.keys
+#print axioms PeProof.Abs.applyOps_split
+#print axioms PeProof.Abs.Sett.inv
+#print axioms PeProof.Abs.Plan.wf
+#print axioms PeProof.Abs.Root.keys
+#print axioms PeProof.Abs.Root.wf
+#print axioms PeProof.Abs.view_wf
+#print axioms PeProof.Abs.view_L
+#print axioms PeProof.Abs.applyOps_kv1
+#print axioms PeProof.Abs.plan_contract
+#print axioms PeProof.Abs.good_of_view
+#print axioms PeProof.Abs.contractOk_of_view
+#print axioms PeProof.Abs.Realizes.holds
+#print axioms PeProof.Abs.frame_of_writes
+#print axioms PeProof.Abs.contract_of_writes
+#print axioms PeProof.Abs.view_agree
+#print axioms PeProof.Abs.at_agree

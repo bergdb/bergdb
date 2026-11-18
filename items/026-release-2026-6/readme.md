@@ -270,6 +270,18 @@ Files
   no spike; a count on Java's traces in 23-second-opinion/ (writing each
   node's last list once never adds more klongs than Java does). Done.
 
+* 24-pe-trial.md. 026-24, the PE trial (Frans, 2026-11-18, 12:47: "The PE
+  trial. Yes, do it as recommended."): 026-23's PE, plan then emit, in the
+  model: on paper (today's one-operation result is the last list but for a
+  full node's cut, count and layout, F1 to F4), on 026-21's 288 traces (no
+  fault of the contract or the shape at any transaction; bytes 0.96 to 0.99
+  of today's, no set above 1.004; go), and a proof spike in Lean (the
+  lemmas of emit and settle, 1,086 lines; beyond them, for keys of one
+  segment, the plan's keys and order and the whole contract reduced to what
+  emit writes; 3,288 lines of its own); a complete proof estimated at 6,500
+  to 9,500 lines. The evidence in 24-pe-trial/, the branch
+  `026-24-pe-trial`.
+
 
 Log
 ===
@@ -346,3 +358,8 @@ check by an agent of coord-1118 (11:53 to 12:40).
 
 2026-11-18. 026-08 done: Frans's answers (10:52, "As recommended"); its
 work on main since 2026-11-13, nothing to port (agent of coord-1118).
+
+2026-11-18. 026-24 registered: the PE trial, by an agent of coord-1118
+(Frans, 12:47).
+
+2026-11-18. 026-24 done: the PE trial's result for Frans (go).

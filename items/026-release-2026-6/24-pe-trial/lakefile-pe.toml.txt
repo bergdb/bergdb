@@ -1,0 +1,18 @@
+name = "pe"
+version = "0.1.0"
+defaultTargets = ["petrial"]
+
+[[require]]
+name = "sis"
+path = ".."
+
+[[lean_lib]]
+name = "Contract"
+globs = ["Contract.+"]
+
+[[lean_lib]]
+name = "Pe"
+
+[[lean_exe]]
+name = "petrial"
+root = "PeTrial"

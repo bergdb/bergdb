@@ -1,0 +1,103 @@
+/-
+bergdb 026-24, phase 3: clauses 1 and 2 of the contract for PE, reduced to
+what emit writes (keys of one segment). The old tree meets the invariants
+(clause 1 at i - 1) and is shaped as PE's trees; PE plans its view and
+settles the root; if the tree after, at time i, is shaped as PE's trees and
+sound (`Shaped`, `Sound`), its view is the plan, its nodes meet the rules of
+one node (`nodeOk`: size, W1 to W4, pointers) and its root has a live klong
+or is a leaf, then the transaction meets clauses 1 and 2 (`contractOk`):
+the invariants at i, and the contents the old ones with the operations
+applied. Not proved here: that emit's tree has those properties (the
+glue's second half), the frame (clause 3), the top.
+-/
+import PeProof.View
+import PeProof.Quarry2
+
+namespace PeProof.Abs
+
+open PeProof Contract
+
+theorem contents_eq_L {s : Tree} {r : NodeId} (hr : s.root = some r) : contents s = L s r := by
+  simp [contents, hr, L]
+
+/-- An empty sound leaf is sound for any range. -/
+theorem good_of_empty {s : Tree} {x : NodeId} {n : KNode} (hobj : s.obj x = some (.key n))
+    (hwf : klongsWf n.ks = true) (he : live n.ks = []) (lo : Nat) (hi : Option Nat) : Good s x lo hi :=
+  Good.mk x lo hi n hobj hwf (by simp [he]) (by simp [he]) (by simp [he]) (by simp [he])
+    (by simp [he]) (fun _ pre c y post h => by simp [he] at h)
+
+theorem view_nil_of_live {h : Nat} {s : Tree} {x : NodeId} {n : KNode} (hobj : s.obj x = some (.key n))
+    (he : live n.ks = []) : view h s x = [] := by
+  cases h with
+  | zero => simp [view, hobj, he]
+  | succ h' => simp only [view, hobj, he, List.map_nil]; rfl
+
+theorem live_nil_of_view {h : Nat} {s : Tree} {x : NodeId} {n : KNode} (hobj : s.obj x = some (.key n))
+    (he : view h s x = []) : live n.ks = [] := by
+  cases h with
+  | zero => simpa [view, hobj] using he
+  | succ h' =>
+    have : kids (view (h' + 1) s x) = [] := by rw [he]; rfl
+    simpa [view, hobj, kids, ofKids] using this
+
+/-- **Clauses 1 and 2 of the contract, reduced to what emit writes** (keys of
+one segment). -/
+theorem contractOk_of_view {p : Params} {i : Time} {s s' : Tree} {r r' : NodeId} {h h' : Nat}
+    {ops : List Op} {A1 : Node h} {A : Node h'}
+    (hold : invOk p (s.at (i - 1)) = true) (hr : (s.at (i - 1)).root = some r)
+    (hsh : Shaped h (s.at (i - 1)) r)
+    (hp : Plan h (view h (s.at (i - 1)) r) ops A1) (hroot : Root h A1 h' A)
+    (hr' : (s'.at i).root = some r') (hsh' : Shaped h' (s'.at i) r') (hso' : Sound h' (s'.at i) r')
+    (hv' : view h' (s'.at i) r' = A)
+    (hn' : ∀ z ∈ reach (s'.at i), ∀ m, (s'.at i).obj z = some (.key m) → nodeOk p (s'.at i) m = true)
+    (hne' : ∀ m, (s'.at i).obj r' = some (.key m) → m.leaf = true ∨ live m.ks ≠ []) :
+    contractOk p i s (ops.map Op.toC) s' = true := by
+  -- the old tree
+  obtain ⟨r0, n0, hr0, ho0, hne0, hG, _⟩ := Q2.invOk_iff.mp hold
+  rw [hr] at hr0
+  obtain rfl : r = r0 := Option.some.inj hr0
+  have hops : ∀ op ∈ ops, 0 ≤ op.cv ∧ Below op.cv none := fun _ _ => ⟨Nat.zero_le _, trivial⟩
+  obtain ⟨w1, w2⟩ := view_wf h hG hsh
+  -- the plan and the root keep the order and the keys
+  have hA1 := Plan.wf h 0 none _ ops A1 hp w1 hops
+  have hA := hroot.wf 0 hA1
+  rw [← hv'] at hA
+  -- the new root's node
+  have hobj' : ∃ m, (s'.at i).obj r' = some (.key m) ∧ klongsWf m.ks = true := by
+    cases h' with
+    | zero => obtain ⟨m, hm, hwf, _⟩ := hso'; exact ⟨m, hm, hwf⟩
+    | succ h'' => obtain ⟨m, hm, hwf, _⟩ := hso'; exact ⟨m, hm, hwf⟩
+  obtain ⟨m', hm', hwf'⟩ := hobj'
+  have hG' : Good (s'.at i) r' 0 none := by
+    rcases hA with hA | hA
+    · exact good_of_empty hm' hwf' (live_nil_of_view hm' hA) 0 none
+    · exact good_of_view h' hsh' hso' hA
+  unfold contractOk
+  rw [Bool.and_eq_true]
+  refine ⟨Q2.invOk_iff.mpr ⟨r', m', hr', hm', ?_, hG', hn'⟩, ?_⟩
+  · rcases hne' m' hm' with h1 | h1
+    · exact Or.inl h1
+    · exact Or.inr h1
+  · rw [beq_iff_eq, contents_eq_L hr', contents_eq_L hr, view_L h' hG' hsh', hv', hroot.keys]
+    -- the old contents with the operations applied
+    by_cases hl : live n0.ks = []
+    · -- an empty old root: a leaf (shaped), its view empty
+      have hv0 : view h (s.at (i - 1)) r = [] := view_nil_of_live ho0 hl
+      rw [view_L h hG hsh, hv0]
+      rw [hv0] at hp
+      cases h with
+      | zero =>
+        simp only [Plan] at hp
+        subst hp
+        rw [applyOps_kv1]
+        rfl
+      | succ h'' =>
+        obtain ⟨n1, ho1, hleaf1, _⟩ := hsh
+        rw [ho0] at ho1
+        obtain rfl : n0 = n1 := by injection ho1 with h1; injection h1
+        rcases hne0 with h1 | h1
+        · rw [h1] at hleaf1; cases hleaf1
+        · exact absurd hl h1
+    · exact (plan_contract h hG hsh ops hops A1 hp ⟨n0, ho0, hl⟩).1
+
+end PeProof.Abs

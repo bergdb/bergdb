@@ -1,0 +1,107 @@
+/-
+bergdb 026-24, phase 3, beyond the two lemmas: the root settled alone, on
+the abstract tree (PeProof/Abs.lean): an inner root with one child gives way
+to the child (root collapse), and a root of more than one part gets a new
+root above, whose one entry is then settled (cut) one level up. Both keep
+the keys and the order.
+-/
+import PeProof.AbsOrder
+
+namespace PeProof.Abs
+
+open PeProof
+
+/-- The root settled alone: done; an inner root with one child is the child;
+a new root above, its one entry settled; an empty inner root an empty leaf
+(the space root, `Pe.settleRoot`). -/
+inductive Root : (h : Nat) → Node h → (h' : Nat) → Node h' → Prop
+  | done (h : Nat) (x : Node h) : Root h x h x
+  | collapse (h : Nat) (c : Nat) (y : Node h) (h' : Nat) (x' : Node h') :
+      Root h y h' x' → Root (h + 1) (ofKids [(c, y)]) h' x'
+  | up (h : Nat) (x : Node h) (ks'' : List (Nat × Node h)) (h' : Nat) (x' : Node h') :
+      Sett h [(0, x)] ks'' → (∀ e ∈ ks'', e.2 ≠ []) → Root (h + 1) (ofKids (renameHead 0 ks'')) h' x' →
+      Root h x h' x'
+  /-- an empty space root becomes an empty segment leaf -/
+  | empty (h : Nat) : Root (h + 1) [] 0 []
+
+theorem content_ofKids (h : Nat) (ks : List (Nat × Node h)) :
+    content (h + 1) (ofKids ks) = kidsContent h ks := rfl
+
+/-- The root keeps the keys. -/
+theorem Root.keys {h : Nat} {x : Node h} {h' : Nat} {x' : Node h'} (hr : Root h x h' x') :
+    content h' x' = content h x := by
+  induction hr with
+  | done => rfl
+  | collapse h c y h' x' _ ih =>
+    rw [ih, content_ofKids]
+    simp [kidsContent]
+  | up h x ks'' h' x' hs _ _ ih =>
+    rw [ih, content_ofKids]
+    unfold kidsContent
+    rw [renameHead_flatMap 0 (fun x => content h x) ks'']
+    have := hs.kidsContent
+    unfold kidsContent at this
+    rw [this]
+    simp
+  | empty h => rfl
+
+/-- Settled children, none empty, the first given the empty key: a node in
+order, or empty. -/
+theorem wf_of_settled {h : Nat} {lo : Nat} {hi : Option Nat} (ks'' : List (Nat × Node h))
+    (hs : SInv h lo hi ks'') (hne : ∀ e ∈ ks'', e.2 ≠ []) :
+    WFE (h + 1) lo hi (ofKids (renameHead 0 ks'')) := by
+  obtain ⟨s1, s2, s3⟩ := hs
+  cases ks'' with
+  | nil => left; rfl
+  | cons k rest =>
+    obtain ⟨c0, x0⟩ := k
+    right
+    have hk' : kids (ofKids (renameHead 0 ((c0, x0) :: rest))) = (0, x0) :: rest := rfl
+    have hx0 : x0 ≠ [] := hne (c0, x0) List.mem_cons_self
+    have hrest : ∀ e ∈ rest, e.2 ≠ [] := fun e he => hne e (List.mem_cons_of_mem _ he)
+    rw [List.pairwise_cons] at s1
+    obtain ⟨s3a, s3b⟩ := s3
+    refine ⟨by rw [hk']; rfl, ?_, ?_, ?_⟩
+    · rw [hk', List.pairwise_cons]
+      refine ⟨fun b hb => ?_, s1.2⟩
+      have := s1.1 b hb
+      show 0 < b.1
+      simp only [CvLtA] at this; omega
+    · rw [hk']
+      intro e he
+      rcases List.mem_cons.mp he with rfl | he
+      · rcases Nat.eq_zero_or_pos c0 with h0 | h0
+        · rw [← h0]; exact s2 (c0, x0) List.mem_cons_self
+        · exact below_trans h0 (s2 (c0, x0) List.mem_cons_self)
+      · exact s2 e (List.mem_cons_of_mem _ he)
+    · rw [hk']
+      refine ⟨?_, kidsWF_of_WFE lo hi rest s3b hrest⟩
+      rcases s3a with h0 | h0
+      · exact absurd h0 hx0
+      · exact WF_mono h _ _ _ _ x0 h0 (by omega) (boundLe_refl _)
+
+/-- The root keeps the order (a root has no upper bound). -/
+theorem Root.wf {h : Nat} {x : Node h} {h' : Nat} {x' : Node h'} (hr : Root h x h' x') :
+    ∀ (lo : Nat), WFE h lo none x → WFE h' lo none x' := by
+  induction hr with
+  | done => exact fun _ hx => hx
+  | collapse h c y h' x' _ ih =>
+    intro lo hx
+    apply ih
+    rcases hx with hx | hx
+    · exact absurd hx (by simp [ofKids])
+    · obtain ⟨w1, _, _, w4⟩ := hx
+      have hc : c = 0 := by simpa [kids, ofKids] using w1
+      subst hc
+      obtain ⟨w4a, _⟩ := w4
+      right
+      simpa [nxt] using w4a
+  | up h x ks'' h' x' hs hne _ ih =>
+    intro lo hx
+    apply ih
+    have hinv : SInv h lo none [(0, x)] :=
+      ⟨by simp, fun _ _ => trivial, ⟨by simpa [nxt] using hx, trivial⟩⟩
+    exact wf_of_settled ks'' (hs.inv lo none hinv).1 hne
+  | empty h => exact fun _ _ => Or.inl rfl
+
+end PeProof.Abs

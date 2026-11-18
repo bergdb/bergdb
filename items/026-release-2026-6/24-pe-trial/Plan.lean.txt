@@ -1,0 +1,444 @@
+/-
+bergdb 026-24: PE, "plan, then emit" (026-23, section 1.2), as an executable
+model writer for the trial. Not part of the trusted model: today's writer is
+lean/SIS/Tree/Exec.lean, unchanged; this file uses its state (`W`), its monad
+(`M`) and its small steps (`getNode`, `newKey`, `newValue`, `newSuperRoot`),
+so that `changesOf` gives a transaction's changes as for today's writer.
+
+The mechanism, for a transaction's operations (one a key, in key order):
+
+* plan, one recursion over the tree, lists only. A key node touched by an
+  operation becomes a virtual node: its base (the node of P@(i-1), or none),
+  its entries (compare value and child: an untouched node or value, a new
+  value, or a virtual node below), and its final list F (the entries with
+  each child's parts, the head of an inner node's list the empty key).
+  - A segment leaf: its live list with the operations applied; operations
+    with more segments go to the next segment's tree (`planTree`).
+  - An inner node: the operations are divided among its children by its live
+    list; plan runs on each child that got some; then `rebalance`: an empty
+    child is dropped, a changed child with fewer than m entries is joined
+    with a neighbour (M1: the left one if it exists and the two hold at most
+    c, or there is no right one; else the right one; an untouched neighbour
+    is read now). The joined list of two inner nodes is rebalanced again one
+    level down, so that a child that was alone under its parent gets a
+    neighbour.
+  - A root is settled alone (`settleRoot`): nothing left, the tree is empty;
+    an inner root with one entry, its child is the root; a root of more than
+    one part, a new root above.
+  - The decision of each virtual node (`decideNode`) is made as it is planned,
+    from its base and F: `same` (F is the base's live list), `append` (the
+    base gets a time klong of i, a bitmap if a compare value left, and a key
+    klong for each entry new or repointed, if it has room and stays within
+    theta), or `parts k`: k new nodes, one if F has at most h entries (c
+    for a joined list) or the base is full by its dead klongs only, else
+    ceil(|F| / h) parts as even as possible (the larger last, as a space
+    split's halves; first for a joined list, as a merge's two nodes).
+* emit, after the whole plan: bottom-up, each virtual node once, by its
+  decision: nothing, klongs appended, or new nodes with fresh ids. Then the
+  space root, if it changed, gets a new top node.
+
+No node is made before the plan is complete; no node is written twice; no
+node made is dropped.
+-/
+import SIS.Tree.Exec
+
+namespace Pe
+
+open SIS SIS.Check SIS.Tree
+
+/-- A pointer of a planned list: a node or value by id, or a new node whose id
+emit gives. -/
+inductive Ptr where
+  | id (y : NodeId)
+  | new
+  deriving DecidableEq, Repr, Inhabited
+
+/-- What emit does with a virtual node. -/
+inductive Dec where
+  /-- nothing: F is the base's live list -/
+  | same
+  /-- the base gets n klongs appended -/
+  | append (n : Nat)
+  /-- k new nodes -/
+  | parts (k : Nat)
+  /-- two new nodes, cut at compare value sc (only with `Opt.todayCut`) -/
+  | cut (sc : Nat)
+  deriving DecidableEq, Repr, Inhabited
+
+/-- Options of the trial. `todayCut`: a base full by size is cut as today's
+rule O cuts it (026-24, section 1, F1 and F2): the count and the cut are of
+the entries of F whose compare value the base had, the list before the
+operation's new compare values; for the comparison of transactions of one
+operation only, not a design. -/
+structure Opt where
+  todayCut : Bool := false
+  /-- the most entries of a part when a list longer than h is cut (default h);
+  a variant of the trial, for the fill (026-24, section 2.6) -/
+  cap : Option Nat := none
+  deriving Inhabited
+
+
+/-- A planned subtree: an untouched node of P@(i-1), or a value (old or new);
+or a virtual node with its base, whether it is a segment leaf, its segment and
+height, whether it is a joined list, its entries, its final list F and its
+decision. -/
+inductive VN where
+  | old (y : NodeId)
+  | node (base : Option NodeId) (leaf : Bool) (g h : Nat) (join : Bool)
+      (es : List (Nat × VN)) (F : List (Nat × Ptr)) (dec : Dec)
+  deriving Inhabited
+
+instance {α : Type} : Inhabited (M α) := ⟨throw "Bug (pe): partial"⟩
+
+/-- The first entry of a list gets compare value c. -/
+def renameHeadG {α : Type} (c : Nat) : List (Nat × α) → List (Nat × α)
+  | (_, y) :: r => (c, y) :: r
+  | [] => []
+
+/-- The sizes of k parts of n entries, as even as possible: the larger ones
+first (`ceilFirst`, a merge's two nodes, `splitMerged`) or last (a space
+split's halves, `halves`). -/
+def partSizes (n k : Nat) (ceilFirst : Bool) : List Nat :=
+  let b := n / k
+  let e := n % k
+  (List.range k).map (fun j =>
+    if ceilFirst then (if j < e then b + 1 else b) else (if k - e ≤ j then b + 1 else b))
+
+/-- A list cut into pieces of the given sizes. -/
+def cutList {α : Type} (l : List α) : List Nat → List (List α)
+  | [] => []
+  | s :: r => l.take s :: cutList (l.drop s) r
+
+/-- The parts of a list of n entries made new: one if n is at most cap, else
+ceil(n / cap). -/
+def nParts (cap n : Nat) : Nat :=
+  let cap := max cap 1
+  if n ≤ cap then 1 else (n + cap - 1) / cap
+
+/-- The parts of a list of n entries that does not fit its base: one if n is
+at most h, else at least two, of at most `cap` (h by default) entries. -/
+def cutParts (o : Opt) (p : Params) (n : Nat) : Nat :=
+  if n ≤ p.splitAbove then 1 else max 2 (nParts (o.cap.getD p.splitAbove) n)
+
+/-- A pointer of no node, for a new node in a count. -/
+def sentinel : NodeId := 2 ^ 63
+
+def Ptr.idOr : Ptr → NodeId
+  | .id y => y
+  | .new => sentinel
+
+/-- The klongs that base n gets to reach the list F (emit's second case): a
+time klong of i; a bitmap if a compare value of n's live list is not in F,
+with the bits of the last bitmap and of every klong of those compare values
+(W3, W4); a key klong for each entry of F that is new or repointed, in
+compare order. -/
+def appendKs (i : Time) (n : KNode) (F : List (Nat × NodeId)) : List Klong :=
+  let lb := n.live
+  let removed := lb.filter (fun q => !(F.any (fun e => e.1 == q.1)))
+  let bits := removed.foldl (fun b q => bitsUnion b (n.bitsOf q.1)) n.lastBitmap
+  let added := F.filter (fun e => lb.lookup e.1 != some e.2)
+  [.time i] ++ (if removed.isEmpty then [] else [.del bits]) ++ added.map (fun e => .key e.1 e.2)
+
+/-- Emit's decision for a virtual node with base n (or none) and final list F. -/
+def decideNode (o : Opt) (p : Params) (i : Time) (base : Option KNode) (join : Bool)
+    (F : List (Nat × Ptr)) : Dec :=
+  let Fs := F.map (fun e => (e.1, e.2.idOr))
+  match base with
+  | some n =>
+    if n.live == Fs then .same
+    else
+      let ks := appendKs i n Fs
+      if n.size + ks.length ≤ p.M then
+        if deadOver p { n with ks := n.ks ++ ks } then
+          (if F.length + 1 ≤ p.M then .parts 1 else .parts (cutParts o p F.length))
+        else .append ks.length
+      else if o.todayCut then
+        let lb := n.live
+        let K := F.filter (fun e => lb.any (fun q => q.1 == e.1))
+        if p.splitAbove < 1 + K.length then
+          match K[K.length / 2]? with
+          | some (sc, _) => .cut sc
+          | none => .parts (cutParts o p F.length)
+        else if F.length + 1 ≤ p.M then .parts 1 else .parts (cutParts o p F.length)
+      else .parts (cutParts o p F.length)
+  | none => .parts (if join then nParts p.mergeMax F.length else cutParts o p F.length)
+
+/-- The entries a parent gets for a part list cut into k parts: the first
+keeps the parent's compare value cv, each other one its first compare value. -/
+def partEnts (cv : Nat) (F : List (Nat × Ptr)) (k : Nat) (join : Bool) : List (Nat × Ptr) :=
+  match cutList F (partSizes F.length k join) with
+  | [] => [(cv, .new)]
+  | _ :: rest => (cv, .new) :: rest.map (fun part => ((part.head?.map (·.1)).getD 0, .new))
+
+/-- The entries a parent gets for its child (cv, v). -/
+def VN.ents (cv : Nat) : VN → List (Nat × Ptr)
+  | .old y => [(cv, .id y)]
+  | .node base _ _ _ join _ F dec =>
+    match dec, base with
+    | .parts k, _ => partEnts cv F k join
+    | .cut sc, _ => [(cv, .new), (sc, .new)]
+    | _, some b => [(cv, .id b)]
+    | _, none => [(cv, .new)]
+
+def VN.F : VN → List (Nat × Ptr)
+  | .old y => [(0, .id y)]
+  | .node _ _ _ _ _ _ F _ => F
+
+/-- A virtual node that holds nothing. -/
+def VN.isEmpty : VN → Bool
+  | .old _ => false
+  | .node _ _ _ _ _ _ F _ => F.isEmpty
+
+/-- A virtual node that changed (its decision is not `same`). -/
+def VN.changed : VN → Bool
+  | .old _ => false
+  | .node _ _ _ _ _ _ _ dec => dec != .same
+
+/-- A virtual node from its entries: F and the decision. -/
+def mkNode (o : Opt) (base : Option NodeId) (leaf : Bool) (g h : Nat) (join : Bool)
+    (es : List (Nat × VN)) : M VN := do
+  let c ← read
+  let F0 := es.flatMap (fun e => e.2.ents e.1)
+  let F := if leaf then F0 else renameHeadG 0 F0
+  let bn ← match base with
+    | some b => do pure (some (← getNode b))
+    | none => pure none
+  let dec := decideNode o c.p c.i bn join F
+  note (match dec with
+    | .same => "pe.same"
+    | .append _ => "pe.append"
+    | .parts k => if base.isSome then s!"pe.replace{min k 3}" else s!"pe.new{min k 3}"
+    | .cut _ => "pe.replace2")
+  pure (.node base leaf g h join es F dec)
+
+/-- The operation's compare value at segment g. -/
+def cvAt (g : Nat) (op : Op) : Nat := (op.key[g]?).getD 0
+
+/-- The operation's key ends at segment g: its value is an entry of a segment
+leaf of segment g's tree. -/
+def endsAt (g : Nat) (op : Op) : Bool := op.key.length == g + 1
+
+/-- Sets the entry of compare value c in a list in compare order. -/
+def setEntry {α : Type} (es : List (Nat × α)) (c : Nat) (v : α) : List (Nat × α) :=
+  match es with
+  | [] => [(c, v)]
+  | (c', v') :: r =>
+    if c < c' then (c, v) :: (c', v') :: r
+    else if c == c' then (c, v) :: r
+    else (c', v') :: setEntry r c v
+
+/-- Removes the entry of compare value c. -/
+def removeEntry {α : Type} (es : List (Nat × α)) (c : Nat) : List (Nat × α) :=
+  es.filter (fun e => e.1 != c)
+
+def lookupEntry {α : Type} (es : List (Nat × α)) (c : Nat) : Option α :=
+  (es.find? (fun e => e.1 == c)).map (·.2)
+
+/-- The entries of an untouched node, each an untouched child. -/
+def openOld (y : NodeId) : M (List (Nat × VN)) := do
+  let n ← getNode y
+  pure (n.live.map (fun e => (e.1, VN.old e.2)))
+
+/-- The live count of an entry's child, for M1. -/
+def cntOf : VN → M Nat
+  | .old y => do pure (← getNode y).cnt
+  | .node _ _ _ _ _ _ F _ => pure F.length
+
+def VN.es : VN → M (List (Nat × VN))
+  | .old y => openOld y
+  | .node _ _ _ _ _ es _ _ => pure es
+
+mutual
+
+/-- plan(x, ops) for key node x of P@(i-1), of segment g at height h. -/
+partial def plan (o : Opt) (x : NodeId) (g h : Nat) (ops : List Op) : M VN := do
+  let n ← getNode x
+  if n.leaf then
+    let es ← applyLeaf o g (n.live.map (fun e => (e.1, VN.old e.2))) ops
+    mkNode o (some x) true g h false es
+  else
+    let lv := n.live
+    let mut es : List (Nat × VN) := []
+    for (e, j) in lv.zipIdx do
+      let lo := if j == 0 then 0 else e.1
+      let hi := (lv[j + 1]?).map (·.1)
+      let mine := ops.filter (fun op => decide (lo ≤ cvAt g op) && (match hi with
+        | some b => decide (cvAt g op < b)
+        | none => true))
+      if mine.isEmpty then es := es ++ [(e.1, VN.old e.2)]
+      else
+        let (_, hc) ← ghOf e.2
+        es := es ++ [(e.1, ← plan o e.2 g hc mine)]
+    let es2 ← rebalance o g (h - 1) es
+    mkNode o (some x) false g h false (renameHeadG 0 es2)
+
+/-- A segment leaf's entries with the operations applied: a put sets the
+entry of its last segment to a new value, a delete removes it; operations with
+more segments go, by compare value, to the tree of the next segment. -/
+partial def applyLeaf (o : Opt) (g : Nat) (es0 : List (Nat × VN)) (ops : List Op) : M (List (Nat × VN)) := do
+  let mut es := es0
+  let cvs := (ops.map (cvAt g)).eraseDups
+  for cv in cvs do
+    let grp := ops.filter (fun op => cvAt g op == cv)
+    for op in grp.filter (endsAt g) do
+      match op with
+      | .put _ hv =>
+        let y ← newValue hv
+        es := setEntry es cv (VN.old y)
+      | .del _ => es := removeEntry es cv
+    let subs := grp.filter (fun op => !endsAt g op)
+    if !subs.isEmpty then
+      let root := match lookupEntry es cv with
+        | some (.old y) => some y
+        | _ => none
+      match ← planTree o root (g + 1) subs with
+      | some v => es := setEntry es cv v
+      | none => es := removeEntry es cv
+  pure es
+
+/-- The tree of segment g with the operations, from its root (none: no tree
+yet): its new root, or none if it is empty. -/
+partial def planTree (o : Opt) (root : Option NodeId) (g : Nat) (ops : List Op) : M (Option VN) := do
+  let v ← match root with
+    | some r => do
+      let (_, h) ← ghOf r
+      plan o r g h ops
+    | none => do
+      let es ← applyLeaf o g [] ops
+      mkNode o none true g 0 false es
+  settleRoot o g v false
+
+/-- A root settled alone. For the space root (`space`), nothing left is an
+empty segment leaf, not no tree. -/
+partial def settleRoot (o : Opt) (g : Nat) (v : VN) (space : Bool) : M (Option VN) := do
+  match v with
+  | .old y =>
+    let n ← getNode y
+    match n.live with
+    | [(_, z)] =>
+      if n.leaf then pure (some v) else
+        note "pe.collapse"
+        settleRoot o g (.old z) space
+    | _ => pure (some v)
+  | .node base leaf _ h _ es F dec =>
+    if F.isEmpty then
+      if !space then
+        note "pe.emptytree"
+        return none
+      if leaf then return some v
+      note "pe.emptyspace"
+      return some (← mkNode o none true g 0 false [])
+    if !leaf && F.length == 1 then
+      match es with
+      | [(_, child)] =>
+        note "pe.collapse"
+        settleRoot o g child space
+      | _ => throw "Bug (pe): an inner root with one entry and more children"
+    else
+      let k := match dec with
+        | .parts k => k
+        | .cut _ => 2
+        | _ => 1
+      match dec with
+      | .parts _ | .cut _ =>
+        if 2 ≤ k then
+          note "pe.newroot"
+          let r ← mkNode o none false g (h + 1) false [(0, v)]
+          settleRoot o g r space
+        else pure (some v)
+      | _ =>
+        let _ := base
+        pure (some v)
+
+/-- The children of an inner node, at height h, rebalanced: an empty child is
+dropped; while a changed child holds fewer than m entries and has a
+neighbour, it is joined with one (M1). -/
+partial def rebalance (o : Opt) (g h : Nat) (es0 : List (Nat × VN)) : M (List (Nat × VN)) := do
+  let c ← read
+  let mut es := es0.filter (fun e => !e.2.isEmpty)
+  if !c.p.merges then return es
+  for _ in List.range (es.length + 1) do
+    if es.length < 2 then break
+    match (es.zipIdx.find? (fun (e, _) => e.2.changed && decide (e.2.F.length < c.p.mergeBelow))) with
+    | none => break
+    | some (x, ix) =>
+      let left := if ix == 0 then none else es[ix - 1]?
+      let right := es[ix + 1]?
+      let cx := x.2.F.length
+      let useLeft ← match left with
+        | some l => do
+          match right with
+          | none => pure true
+          | some _ => pure (decide ((← cntOf l.2) + cx ≤ c.p.mergeMax))
+        | none => pure false
+      let il := if useLeft then ix - 1 else ix
+      match es[il]?, es[il + 1]? with
+      | some l, some r =>
+        note (if useLeft then "pe.join.left" else "pe.join.right")
+        let esL ← l.2.es
+        let esR ← r.2.es
+        let inner := h != 0
+        let mut J := esL ++ (if inner then renameHeadG r.1 esR else esR)
+        if inner then J ← rebalance o g (h - 1) J
+        let v ← mkNode o none (!inner) g h true J
+        es := es.take il ++ [(l.1, v)] ++ es.drop (il + 2)
+      | _, _ => throw "Bug (pe): a join without two nodes"
+  pure es
+
+end
+
+/-- emit: the virtual nodes written, bottom-up, each once by its decision.
+Gives the entries the parent gets: one a part, the first with compare value
+0 (the parent keeps its own). -/
+partial def emit : VN → M (List (Nat × NodeId))
+  | .old y => pure [(0, y)]
+  | .node base leaf g h join es F dec => do
+    let c ← read
+    let mut acc : List (Nat × NodeId) := []
+    for (cv, ch) in es do
+      match ← emit ch with
+      | (_, y) :: rest => acc := acc ++ ((cv, y) :: rest)
+      | [] => throw "Bug (pe): emit gave no entry"
+    let ents := if leaf then acc else renameHead 0 acc
+    if ents.length != F.length || ents.map (·.1) != F.map (·.1) then
+      throw s!"Bug (pe): emit's list is not the plan's"
+    match dec, base with
+    | .same, some b =>
+      let n ← getNode b
+      if n.live != ents then throw s!"Bug (pe): node {b} planned unchanged, changed"
+      pure [(0, b)]
+    | .append k, some b =>
+      let n ← getNode b
+      let ks := appendKs c.i n ents
+      if ks.length != k then throw s!"Bug (pe): node {b}: {ks.length} klongs, planned {k}"
+      putNode b { n with ks := n.ks ++ ks }
+      pure [(0, b)]
+    | .parts k, _ =>
+      let ps := cutList ents (partSizes ents.length k join)
+      ps.mapM (fun part => do
+        let part' := if leaf then part else renameHead 0 part
+        let y ← newKey g h leaf (.time c.i :: part'.map (fun e => .key e.1 e.2))
+        pure ((part.head?.map (·.1)).getD 0, y))
+    | .cut sc, _ =>
+      let ps := [ents.filter (fun e => decide (e.1 < sc)), ents.filter (fun e => decide (sc ≤ e.1))]
+      ps.mapM (fun part => do
+        let part' := if leaf then part else renameHead 0 part
+        let y ← newKey g h leaf (.time c.i :: part'.map (fun e => .key e.1 e.2))
+        pure ((part.head?.map (·.1)).getD 0, y))
+    | _, none => throw "Bug (pe): no base to keep"
+
+/-- PE's transaction: plan from the space root, settle it, emit, and a new top
+node if the space root changed. The operations are the Dag's: one a key, in
+key order. -/
+def runTx (ops : List Op) (o : Opt := {}) : M Unit := do
+  let root := (← get).top.rootKey
+  let (_, h) ← ghOf root
+  let v ← plan o root 0 h ops
+  match ← settleRoot o 0 v true with
+  | none => throw "Bug (pe): no space root"
+  | some r =>
+    match ← emit r with
+    | [(_, y)] => if y != root then newSuperRoot y
+    | _ => throw "Bug (pe): the space root is not one node"
+
+end Pe

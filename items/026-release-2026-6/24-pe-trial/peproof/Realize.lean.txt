@@ -1,0 +1,228 @@
+/-
+bergdb 026-24, phase 3, the glue's second half, its inductive step: what it
+takes of the tree after a transaction to hold PE's plan. A planned node is
+held at x (`Realizes`) if x is kept (an old node whose subtree holds it
+already: its view, shape and soundness carried over), or x is a node that
+emit wrote: its live klongs are the planned entries with its children's ids
+(emit's lemma, `emitKs_live` and `newKs_live`, gives exactly this for a node
+written once), each child holding its planned child one height down, at a
+lower level. Then x is shaped as PE's trees, sound, and its view is the plan
+(`Realizes.holds`), which is what `contractOk_of_view` asks of the tree after.
+-/
+import PeProof.Chain
+import PeProof.Emit
+
+namespace PeProof.Abs
+
+open PeProof Contract
+
+/-- The tree s holds the planned node A of height h at node x. -/
+inductive Realizes (s : Tree) : (h : Nat) → NodeId → Node h → Prop
+  | kept (h : Nat) (x : NodeId) (A : Node h) :
+      Shaped h s x → Sound h s x → view h s x = A → Realizes s h x A
+  | leaf (x : NodeId) (n : KNode) (A : Node 0) :
+      s.obj x = some (.key n) → n.leaf = true → klongsWf n.ks = true →
+      (∀ c y, (c, y) ∈ live n.ks → isLong c = false ∧ ∃ v, s.obj y = some (.val v)) →
+      (live n.ks).map (fun cy => (cy.1, (s.val cy.2).getD 0)) = A → Realizes s 0 x A
+  | inner (h : Nat) (x : NodeId) (n : KNode) (A : Node (h + 1)) :
+      s.obj x = some (.key n) → n.leaf = false → klongsWf n.ks = true →
+      (live n.ks).head?.map (·.1) = some 0 →
+      (live n.ks).length = (kids A).length →
+      (∀ p ∈ (live n.ks).zip (kids A), p.1.1 = p.2.1) →
+      (∀ p ∈ (live n.ks).zip (kids A), ∃ m, s.obj p.1.2 = some (.key m) ∧ m.level < n.level) →
+      (∀ p ∈ (live n.ks).zip (kids A), Realizes s h p.1.2 p.2.2) →
+      Realizes s (h + 1) x A
+
+theorem zip_mem_left {α β : Type} : ∀ {l1 : List α} {l2 : List β}, l1.length = l2.length →
+    ∀ a ∈ l1, ∃ b, (a, b) ∈ l1.zip l2
+  | [], [], _, a, ha => by simp at ha
+  | a1 :: r1, b1 :: r2, hl, a, ha => by
+    rcases List.mem_cons.mp ha with rfl | ha
+    · exact ⟨b1, by simp⟩
+    · obtain ⟨b, hb⟩ := zip_mem_left (l1 := r1) (l2 := r2) (by simpa using hl) a ha
+      exact ⟨b, by simp [hb]⟩
+  | [], _ :: _, hl, _, _ => by simp at hl
+  | _ :: _, [], hl, _, _ => by simp at hl
+
+theorem map_eq_of_zip {α β γ : Type} (f : α → γ) (g : β → γ) : ∀ {l1 : List α} {l2 : List β},
+    l1.length = l2.length → (∀ p ∈ l1.zip l2, f p.1 = g p.2) → l1.map f = l2.map g
+  | [], [], _, _ => rfl
+  | a1 :: r1, b1 :: r2, hl, h => by
+    simp only [List.map_cons, List.cons.injEq]
+    exact ⟨h (a1, b1) (by simp), map_eq_of_zip f g (by simpa using hl)
+      (fun p hp => h p (by simp [hp]))⟩
+  | [], _ :: _, hl, _ => by simp at hl
+  | _ :: _, [], hl, _ => by simp at hl
+
+/-- **What the tree after holds**: a node that holds a planned node is
+shaped as PE's trees, sound, and its view is the plan. -/
+theorem Realizes.holds {s : Tree} {h : Nat} {x : NodeId} {A : Node h} (hr : Realizes s h x A) :
+    Shaped h s x ∧ Sound h s x ∧ view h s x = A := by
+  induction hr with
+  | kept h x A h1 h2 h3 => exact ⟨h1, h2, h3⟩
+  | leaf x n A hobj hleaf hwf hv hA =>
+    refine ⟨⟨n, hobj, hleaf, fun c y hm => (hv c y hm).1⟩, ⟨n, hobj, hwf, fun c y hm => (hv c y hm).2⟩, ?_⟩
+    simp only [view, hobj]
+    exact hA
+  | inner h x n A hobj hleaf hwf hhead hlen hcv hlev _ ih =>
+    have hmem : ∀ c y, (c, y) ∈ live n.ks → ∃ B, ((c, y), B) ∈ (live n.ks).zip (kids A) :=
+      fun c y hm => zip_mem_left hlen (c, y) hm
+    refine ⟨⟨n, hobj, hleaf, hhead, fun c y hm => ?_⟩, ⟨n, hobj, hwf, fun c y hm => ?_⟩, ?_⟩
+    · obtain ⟨B, hB⟩ := hmem c y hm
+      exact (ih _ hB).1
+    · obtain ⟨B, hB⟩ := hmem c y hm
+      obtain ⟨m, hm1, hm2⟩ := hlev _ hB
+      exact ⟨m, hm1, hm2, (ih _ hB).2.1⟩
+    · have hv : view (h + 1) s x = ofKids ((live n.ks).map (fun cy => (cy.1, view h s cy.2))) := by
+        simp only [view, hobj]
+      rw [hv]
+      have : (live n.ks).map (fun cy => (cy.1, view h s cy.2)) = (kids A).map id :=
+        map_eq_of_zip _ _ hlen (fun p hp => Prod.ext (hcv p hp) (ih p hp).2.2)
+      rw [this, List.map_id]
+      rfl
+
+/-- Clauses 1 and 2 of the contract, from a tree after that holds the plan
+(keys of one segment). -/
+theorem contractOk_of_realizes {p : Params} {i : Time} {s s' : Tree} {r r' : NodeId} {h h' : Nat}
+    {ops : List Op} {A1 : Node h} {A : Node h'}
+    (hold : invOk p (s.at (i - 1)) = true) (hr : (s.at (i - 1)).root = some r)
+    (hsh : Shaped h (s.at (i - 1)) r)
+    (hp : Plan h (view h (s.at (i - 1)) r) ops A1) (hroot : Root h A1 h' A)
+    (hr' : (s'.at i).root = some r') (hreal : Realizes (s'.at i) h' r' A)
+    (hn' : ∀ z ∈ reach (s'.at i), ∀ m, (s'.at i).obj z = some (.key m) → nodeOk p (s'.at i) m = true)
+    (hne' : ∀ m, (s'.at i).obj r' = some (.key m) → m.leaf = true ∨ live m.ks ≠ []) :
+    contractOk p i s (ops.map Op.toC) s' = true := by
+  obtain ⟨h1, h2, h3⟩ := hreal.holds
+  exact contractOk_of_view hold hr hsh hp hroot hr' h1 h2 h3 hn' hne'
+
+/-! ## Clause 3, the frame, from what emit writes -/
+
+/-- What a writer that writes each node once does to the tree: an old node
+is unchanged, or a key node of D that gets emit's klongs for some list F; a
+node that was not there is of D; the space roots get new ones of time i. -/
+structure Writes (s s' : Tree) (i : Time) (D : List NodeId) : Prop where
+  old : ∀ x o, s.obj x = some o → s'.obj x = some o ∨
+    ∃ n F, o = .key n ∧ x ∈ D ∧ s'.obj x = some (.key { n with ks := n.ks ++ emitKs i n.ks F })
+  new : ∀ x n, s'.obj x = some (.key n) → s.obj x = none → x ∈ D
+  roots : ∃ new, s'.roots = s.roots ++ new ∧ ∀ r ∈ new, r.1 = i
+
+/-- **Clause 3 of the contract, the frame**, for a writer that writes each
+node once by emit. -/
+theorem frame_of_writes {s s' : Tree} {i : Time} {D : List NodeId} (hw : Writes s s' i D) :
+    Frame i s D s' := by
+  refine ⟨fun x o hx => ?_, hw.new, hw.roots⟩
+  rcases hw.old x o hx with h1 | ⟨n, F, rfl, hD, h1⟩
+  · refine ⟨o, h1, ?_, fun _ => rfl⟩
+    cases o with
+    | val v => rfl
+    | key n => exact ⟨rfl, rfl, Or.inl rfl⟩
+  · refine ⟨_, h1, ⟨rfl, rfl, Or.inr ?_⟩, fun h => absurd hD h⟩
+    obtain ⟨more, hm⟩ := emitKs_ext i n.ks F
+    exact ⟨more, hm⟩
+
+/-- **PE's contract, clauses 1 to 3, for keys of one segment**, from what
+emit writes: the tree after holds the plan, its nodes meet the rules of one
+node, its root is a leaf or has a live klong, and each node is written once
+by emit. -/
+theorem contract_of_writes {p : Params} {i : Time} {s s' : Tree} {r r' : NodeId} {h h' : Nat}
+    {ops : List Op} {A1 : Node h} {A : Node h'} {D : List NodeId}
+    (hold : invOk p (s.at (i - 1)) = true) (hr : (s.at (i - 1)).root = some r)
+    (hsh : Shaped h (s.at (i - 1)) r)
+    (hp : Plan h (view h (s.at (i - 1)) r) ops A1) (hroot : Root h A1 h' A)
+    (hr' : (s'.at i).root = some r') (hreal : Realizes (s'.at i) h' r' A)
+    (hn' : ∀ z ∈ reach (s'.at i), ∀ m, (s'.at i).obj z = some (.key m) → nodeOk p (s'.at i) m = true)
+    (hne' : ∀ m, (s'.at i).obj r' = some (.key m) → m.leaf = true ∨ live m.ks ≠ [])
+    (hw : Writes s s' i D) :
+    Contract p i s (ops.map Op.toC) D s' :=
+  ⟨contractOk_of_realizes hold hr hsh hp hroot hr' hreal hn' hne', frame_of_writes hw⟩
+
+/-! ## A kept subtree -/
+
+/-- **A kept subtree holds what it held**: if the tree after agrees with the
+tree before on every node reached from y, y's view, shape and soundness are
+the same (with the time cut, the frame gives this for every node that emit
+neither appends to nor reaches: `Realizes.kept`). -/
+theorem view_agree {s s' : Tree} : ∀ (h : Nat) (y : NodeId),
+    (∀ z ∈ reachAt s (h + 1) y, s'.obj z = s.obj z) →
+    view h s' y = view h s y ∧ (Shaped h s y → Shaped h s' y) ∧ (Sound h s y → Sound h s' y)
+  | 0, y, ha => by
+    have hy : s'.obj y = s.obj y := ha y (Q2.tc_self _ _ _)
+    cases ho : s.obj y with
+    | none => simp [view, Shaped, Sound, ho, hy]
+    | some o =>
+      cases o with
+      | val v => simp [view, Shaped, Sound, ho, hy]
+      | key n =>
+        have hk : ∀ c y', (c, y') ∈ live n.ks → s'.obj y' = s.obj y' :=
+          fun c y' hm => ha y' (Q2.tc_kid ho hm (Q2.tc_self _ _ _))
+        refine ⟨?_, ?_, ?_⟩
+        · simp only [view, ho, hy]
+          apply List.map_congr_left
+          rintro ⟨c, y'⟩ hm
+          simp [Tree.val, hk c y' hm]
+        · rintro ⟨n', ho', h2, h3⟩
+          exact ⟨n', hy.trans ho', h2, h3⟩
+        · rintro ⟨n', ho', h2, h3⟩
+          rw [ho] at ho'
+          obtain rfl : n = n' := by injection ho' with h1; injection h1
+          exact ⟨n, hy.trans ho, h2, fun c y' hm => by rw [hk c y' hm]; exact h3 c y' hm⟩
+  | h + 1, y, ha => by
+    have hy : s'.obj y = s.obj y := ha y (Q2.tc_self _ _ _)
+    cases ho : s.obj y with
+    | none => simp [view, Shaped, Sound, ho, hy]
+    | some o =>
+      cases o with
+      | val v => simp [view, Shaped, Sound, ho, hy]
+      | key n =>
+        have hk : ∀ c y', (c, y') ∈ live n.ks → ∀ z ∈ reachAt s (h + 1) y', s'.obj z = s.obj z :=
+          fun c y' hm z hz => ha z (Q2.tc_kid ho hm hz)
+        refine ⟨?_, ?_, ?_⟩
+        · simp only [view, ho, hy]
+          congr 1
+          apply List.map_congr_left
+          rintro ⟨c, y'⟩ hm
+          rw [(view_agree h y' (hk c y' hm)).1]
+        · rintro ⟨n', ho', h2, h3, h4⟩
+          rw [ho] at ho'
+          obtain rfl : n = n' := by injection ho' with h1; injection h1
+          exact ⟨n, hy.trans ho, h2, h3, fun c y' hm => (view_agree h y' (hk c y' hm)).2.1 (h4 c y' hm)⟩
+        · rintro ⟨n', ho', h2, h3⟩
+          rw [ho] at ho'
+          obtain rfl : n = n' := by injection ho' with h1; injection h1
+          refine ⟨n, hy.trans ho, h2, fun c y' hm => ?_⟩
+          obtain ⟨m, hm1, hm2, hm3⟩ := h3 c y' hm
+          have hy' : s'.obj y' = s.obj y' := hk c y' hm y' (Q2.tc_self _ _ _)
+          exact ⟨m, hy'.trans hm1, hm2, (view_agree h y' (hk c y' hm)).2.2 hm3⟩
+
+theorem prefixAt_all {T : Time} : ∀ (ks : List Klong), (∀ t, Klong.time t ∈ ks → t ≤ T) →
+    prefixAt ks T = ks
+  | [], _ => rfl
+  | k :: r, h => by
+    have ih := prefixAt_all r (fun t' ht' => h t' (List.mem_cons_of_mem _ ht'))
+    unfold prefixAt at ih ⊢
+    rw [List.takeWhile_cons]
+    cases k with
+    | time t =>
+      have := h t List.mem_cons_self
+      simp only [decide_eq_true_eq, this, ite_true, ih]
+    | key c y => simp only [ite_true, ih]
+    | del b => simp only [ite_true, ih]
+
+/-- **The time cut of a kept node**: a node unchanged by the transaction, all
+of whose times are before i, is at i what it was at i - 1. -/
+theorem at_agree {s s' : Tree} {i : Time} {y : NodeId} (h : s'.obj y = s.obj y)
+    (ht : ∀ n, s.obj y = some (.key n) → ∀ t, Klong.time t ∈ n.ks → t ≤ i - 1) :
+    (s'.at i).obj y = (s.at (i - 1)).obj y := by
+  simp only [Tree.at, h]
+  cases ho : s.obj y with
+  | none => rfl
+  | some o =>
+    cases o with
+    | val v => rfl
+    | key n =>
+      have h1 := ht n ho
+      simp only [Option.map_some, Obj.at]
+      rw [prefixAt_all n.ks (fun t ht' => le_trans (h1 t ht') (Nat.sub_le i 1)),
+        prefixAt_all n.ks h1]
+
+end PeProof.Abs

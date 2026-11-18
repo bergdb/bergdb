@@ -1,0 +1,705 @@
+traces in both pe and today: 288; left out: 0
+== by set
+drain: traces 110/110 (incomplete 0/0), txs 13900, ops 251431, dels 130184, tx1 2153
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.892  B-all 0.955  index B-new 0.830  index B-all 0.941
+  key nodes made 0.823  key klongs 0.848  top nodes 0.771  versions 0.917
+  fill (live klongs a node, sampled) pe 2.99 today 2.77; end nodes 7744 / 8732; dead a node 0.435 / 0.443; height max 5 / 6
+  paired (today from PE's tree, 13900 txs): B-new 0.897  B-all 0.959  index B-new 0.836  index B-all 0.946  key nodes made 0.823  key klongs 0.854
+  cmp1: exact 2017 (put 1066, del 951), lists 76 (put 69, del 7), other.samenodes 13 (put 13, del 0), other.othernodes 47 (put 24, del 23)
+    lists: key klongs pe 405 today 433; B-all key bytes pe 16560 today 17008
+    other.samenodes: key klongs pe 126 today 130; B-all key bytes pe 5344 today 5408
+    other.othernodes: key klongs pe 370 today 481; B-all key bytes pe 15552 today 20048
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 2038 (put 1079, del 959), lists 115 (put 93, del 22), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 768 today 833; B-all key bytes pet 32528 today 33568
+  pe decisions {'pe.append': 107032, 'pe.collapse': 500, 'pe.emptytree': 30901, 'pe.join.left': 2320, 'pe.join.right': 4638, 'pe.new1': 39572, 'pe.new2': 1860, 'pe.new3': 21, 'pe.newroot': 943, 'pe.replace1': 40347, 'pe.replace2': 8850, 'pe.replace3': 3400, 'pe.same': 63176}
+large: traces 60/60 (incomplete 0/0), txs 170000, ops 551124, dels 91808, tx1 52655
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.973  B-all 0.995  index B-new 0.958  index B-all 0.994
+  key nodes made 0.929  key klongs 0.964  top nodes 0.958  versions 0.973
+  fill (live klongs a node, sampled) pe 2.85 today 2.81; end nodes 96143 / 97156; dead a node 0.709 / 0.728; height max 5 / 7
+  paired (today from PE's tree, 170000 txs): B-new 0.953  B-all 0.985  index B-new 0.927  index B-all 0.982  key nodes made 0.880  key klongs 0.937
+  cmp1: exact 49058 (put 42261, del 6797), lists 1151 (put 1056, del 95), other.samenodes 361 (put 359, del 2), other.othernodes 2085 (put 1830, del 255)
+    lists: key klongs pe 11848 today 12381; B-all key bytes pe 477936 today 486464
+    other.samenodes: key klongs pe 4334 today 4453; B-all key bytes pe 167888 today 169792
+    other.othernodes: key klongs pe 15962 today 21749; B-all key bytes pe 670752 today 868848
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 49367 (put 42511, del 6856), lists 3211 (put 2995, del 216), other.samenodes 10 (put 0, del 10), other.othernodes 67 (put 0, del 67)
+    lists: key klongs pet 31887 today 34475; B-all key bytes pet 1323936 today 1365344
+    other.samenodes: key klongs pet 102 today 112; B-all key bytes pet 3440 today 3600
+    other.othernodes: key klongs pet 566 today 736; B-all key bytes pet 22880 today 27056
+  pe decisions {'pe.append': 431444, 'pe.emptytree': 20793, 'pe.join.left': 3362, 'pe.join.right': 3414, 'pe.new1': 112960, 'pe.new2': 1168, 'pe.newroot': 340, 'pe.replace1': 96827, 'pe.replace2': 13303, 'pe.replace3': 930, 'pe.same': 613400}
+medium: traces 27/27 (incomplete 0/0), txs 13667, ops 736718, dels 381708, tx1 1247
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.972  B-all 0.994  index B-new 0.950  index B-all 0.993
+  key nodes made 0.952  key klongs 0.948  top nodes 0.915  versions 0.981
+  fill (live klongs a node, sampled) pe 2.20 today 2.18; end nodes 28655 / 29000; dead a node 0.668 / 0.675; height max 6 / 7
+  paired (today from PE's tree, 13667 txs): B-new 0.961  B-all 0.991  index B-new 0.931  index B-all 0.989  key nodes made 0.933  key klongs 0.928
+  cmp1: exact 1114 (put 910, del 204), lists 41 (put 38, del 3), other.samenodes 35 (put 34, del 1), other.othernodes 57 (put 42, del 15)
+    lists: key klongs pe 407 today 427; B-all key bytes pe 16336 today 16656
+    other.samenodes: key klongs pe 445 today 456; B-all key bytes pe 16656 today 16832
+    other.othernodes: key klongs pe 499 today 680; B-all key bytes pe 20544 today 27312
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 1135 (put 925, del 210), lists 108 (put 99, del 9), other.samenodes 0 (put 0, del 0), other.othernodes 4 (put 0, del 4)
+    lists: key klongs pet 1175 today 1255; B-all key bytes pet 47248 today 48528
+    other.othernodes: key klongs pet 41 today 69; B-all key bytes pet 1488 today 2288
+  pe decisions {'pe.append': 465543, 'pe.collapse': 4, 'pe.emptytree': 270460, 'pe.join.left': 4244, 'pe.join.right': 4940, 'pe.new1': 301424, 'pe.new2': 2379, 'pe.new3': 2, 'pe.newroot': 183, 'pe.replace1': 61015, 'pe.replace2': 11003, 'pe.replace3': 628, 'pe.same': 333881}
+own: traces 6/6 (incomplete 0/0), txs 7740, ops 185364, dels 33980, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.976  B-all 1.004  index B-new 0.950  index B-all 1.005
+  key nodes made 0.926  key klongs 0.968  top nodes 0.778  versions 0.981
+  fill (live klongs a node, sampled) pe 13.47 today 12.54; end nodes 6904 / 7665; dead a node 1.462 / 1.544; height max 3 / 4
+  paired (today from PE's tree, 7740 txs): B-new 0.983  B-all 0.997  index B-new 0.965  index B-all 0.997  key nodes made 0.945  key klongs 0.970
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 97138, 'pe.join.left': 512, 'pe.join.right': 728, 'pe.new1': 796, 'pe.new2': 471, 'pe.new3': 6, 'pe.newroot': 27, 'pe.replace1': 9365, 'pe.replace2': 3168, 'pe.replace3': 1120, 'pe.same': 77469}
+reclaim: traces 15/15 (incomplete 0/0), txs 8735, ops 27209, dels 4780, tx1 2764
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.989  B-all 0.996  index B-new 0.982  index B-all 0.995
+  key nodes made 0.934  key klongs 0.989  top nodes 1.707  versions 0.962
+  fill (live klongs a node, sampled) pe 3.18 today 2.93; end nodes 621 / 734; dead a node 1.078 / 1.136; height max 3 / 4
+  paired (today from PE's tree, 8735 txs): B-new 0.922  B-all 0.966  index B-new 0.880  index B-all 0.959  key nodes made 0.796  key klongs 0.899
+  cmp1: exact 2509 (put 2171, del 338), lists 54 (put 51, del 3), other.samenodes 26 (put 26, del 0), other.othernodes 175 (put 163, del 12)
+    lists: key klongs pe 476 today 495; B-all key bytes pe 19680 today 19984
+    other.samenodes: key klongs pe 283 today 290; B-all key bytes pe 11328 today 11440
+    other.othernodes: key klongs pe 1459 today 2012; B-all key bytes pe 58528 today 78240
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 2603 (put 2259, del 344), lists 158 (put 152, del 6), other.samenodes 0 (put 0, del 0), other.othernodes 3 (put 0, del 3)
+    lists: key klongs pet 1563 today 1699; B-all key bytes pet 64704 today 66880
+    other.othernodes: key klongs pet 25 today 35; B-all key bytes pet 1104 today 1312
+  pe decisions {'pe.append': 22298, 'pe.collapse': 1, 'pe.emptytree': 924, 'pe.join.left': 199, 'pe.join.right': 138, 'pe.new1': 1441, 'pe.new2': 50, 'pe.newroot': 44, 'pe.replace1': 8139, 'pe.replace2': 665, 'pe.same': 30614}
+small: traces 70/70 (incomplete 0/0), txs 7100, ops 40260, dels 4872, tx1 4035
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.942  B-all 0.958  index B-new 0.908  index B-all 0.947
+  key nodes made 0.866  key klongs 0.937  top nodes 0.986  versions 0.915
+  fill (live klongs a node, sampled) pe 2.92 today 2.53; end nodes 3891 / 4962; dead a node 0.619 / 0.681; height max 4 / 5
+  paired (today from PE's tree, 7100 txs): B-new 0.841  B-all 0.918  index B-new 0.765  index B-all 0.895  key nodes made 0.698  key klongs 0.789
+  cmp1: exact 3855 (put 3594, del 261), lists 60 (put 60, del 0), other.samenodes 37 (put 37, del 0), other.othernodes 83 (put 82, del 1)
+    lists: key klongs pe 493 today 528; B-all key bytes pe 20576 today 21136
+    other.samenodes: key klongs pe 399 today 422; B-all key bytes pe 15152 today 15520
+    other.othernodes: key klongs pe 613 today 853; B-all key bytes pe 25136 today 33472
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 3885 (put 3624, del 261), lists 149 (put 149, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 1334 today 1463; B-all key bytes pet 54736 today 56800
+    other.othernodes: key klongs pet 7 today 10; B-all key bytes pet 304 today 352
+  pe decisions {'pe.append': 25059, 'pe.collapse': 111, 'pe.emptytree': 1418, 'pe.join.left': 234, 'pe.join.right': 274, 'pe.new1': 2754, 'pe.new2': 95, 'pe.new3': 23, 'pe.newroot': 358, 'pe.replace1': 12340, 'pe.replace2': 2333, 'pe.replace3': 219, 'pe.same': 17120}
+== by node size
+M=14: traces 29/29 (incomplete 0/0), txs 7610, ops 125402, dels 59216, tx1 1489
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.958  B-all 0.990  index B-new 0.927  index B-all 0.988
+  key nodes made 0.921  key klongs 0.931  top nodes 1.041  versions 0.973
+  fill (live klongs a node, sampled) pe 2.09 today 2.07; end nodes 5056 / 5105; dead a node 0.630 / 0.650; height max 3 / 3
+  paired (today from PE's tree, 7610 txs): B-new 0.953  B-all 0.986  index B-new 0.919  index B-all 0.982  key nodes made 0.911  key klongs 0.922
+  cmp1: exact 1427 (put 1194, del 233), lists 30 (put 29, del 1), other.samenodes 11 (put 11, del 0), other.othernodes 21 (put 17, del 4)
+    lists: key klongs pe 309 today 317; B-all key bytes pe 11536 today 11664
+    other.samenodes: key klongs pe 126 today 126; B-all key bytes pe 4960 today 4960
+    other.othernodes: key klongs pe 274 today 336; B-all key bytes pe 8816 today 11216
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 1429 (put 1193, del 236), lists 59 (put 58, del 1), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 645 today 673; B-all key bytes pet 24512 today 24960
+    other.othernodes: key klongs pet 8 today 11; B-all key bytes pet 352 today 400
+  pe decisions {'pe.append': 79396, 'pe.collapse': 1, 'pe.emptytree': 22753, 'pe.join.left': 1213, 'pe.join.right': 803, 'pe.new1': 27864, 'pe.new2': 346, 'pe.new3': 1, 'pe.newroot': 121, 'pe.replace1': 17011, 'pe.replace2': 3183, 'pe.replace3': 38, 'pe.same': 82698}
+M=30: traces 48/48 (incomplete 0/0), txs 83800, ops 770407, dels 271315, tx1 14604
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.983  B-all 1.002  index B-new 0.968  index B-all 1.003
+  key nodes made 0.971  key klongs 0.967  top nodes 0.859  versions 0.992
+  fill (live klongs a node, sampled) pe 6.26 today 6.15; end nodes 29564 / 30414; dead a node 1.383 / 1.419; height max 3 / 4
+  paired (today from PE's tree, 83800 txs): B-new 0.983  B-all 0.997  index B-new 0.968  index B-all 0.997  key nodes made 0.968  key klongs 0.963
+  cmp1: exact 14206 (put 10785, del 3421), lists 265 (put 251, del 14), other.samenodes 56 (put 56, del 0), other.othernodes 77 (put 64, del 13)
+    lists: key klongs pe 5300 today 5383; B-all key bytes pe 188464 today 189792
+    other.samenodes: key klongs pe 1283 today 1283; B-all key bytes pe 43472 today 43472
+    other.othernodes: key klongs pe 1689 today 1836; B-all key bytes pe 56656 today 62800
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 14233 (put 10796, del 3437), lists 370 (put 360, del 10), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 7719 today 7860; B-all key bytes pet 274240 today 276496
+    other.othernodes: key klongs pet 36 today 40; B-all key bytes pet 928 today 1040
+  pe decisions {'pe.append': 473480, 'pe.collapse': 4, 'pe.emptytree': 121857, 'pe.join.left': 1575, 'pe.join.right': 3240, 'pe.new1': 143667, 'pe.new2': 1861, 'pe.new3': 7, 'pe.newroot': 381, 'pe.replace1': 43469, 'pe.replace2': 8875, 'pe.replace3': 1715, 'pe.same': 456189}
+M=62: traces 13/13 (incomplete 0/0), txs 11200, ops 391945, dels 139542, tx1 443
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.985  B-all 0.998  index B-new 0.974  index B-all 0.997
+  key nodes made 0.997  key klongs 0.958  top nodes 0.961  versions 1.000
+  fill (live klongs a node, sampled) pe 2.10 today 2.10; end nodes 90902 / 90907; dead a node 0.425 / 0.425; height max 2 / 2
+  paired (today from PE's tree, 11200 txs): B-new 0.986  B-all 1.000  index B-new 0.976  index B-all 1.000  key nodes made 0.994  key klongs 0.962
+  cmp1: exact 440 (put 400, del 40), lists 1 (put 1, del 0), other.samenodes 2 (put 2, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pe 45 today 45; B-all key bytes pe 1664 today 1664
+    other.samenodes: key klongs pe 99 today 99; B-all key bytes pe 2848 today 2848
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 440 (put 400, del 40), lists 3 (put 3, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 144 today 144; B-all key bytes pet 4512 today 4512
+  pe decisions {'pe.append': 254569, 'pe.emptytree': 119945, 'pe.join.left': 185, 'pe.join.right': 304, 'pe.new1': 207591, 'pe.new2': 189, 'pe.newroot': 26, 'pe.replace1': 5197, 'pe.replace2': 1952, 'pe.replace3': 937, 'pe.same': 111818}
+M=8: traces 198/198 (incomplete 0/0), txs 118532, ops 504352, dels 177259, tx1 46318
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.926  B-all 0.963  index B-new 0.893  index B-all 0.954
+  key nodes made 0.852  key klongs 0.908  top nodes 0.926  versions 0.926
+  fill (live klongs a node, sampled) pe 2.78 today 2.51; end nodes 18436 / 21823; dead a node 0.612 / 0.704; height max 6 / 7
+  paired (today from PE's tree, 118532 txs): B-new 0.888  B-all 0.940  index B-new 0.842  index B-all 0.926  key nodes made 0.792  key klongs 0.852
+  cmp1: exact 42480 (put 37623, del 4857), lists 1086 (put 993, del 93), other.samenodes 403 (put 400, del 3), other.othernodes 2349 (put 2060, del 289)
+    lists: key klongs pe 7975 today 8519; B-all key bytes pe 349424 today 358128
+    other.samenodes: key klongs pe 4079 today 4243; B-all key bytes pe 165088 today 167712
+    other.othernodes: key klongs pe 16940 today 23603; B-all key bytes pe 725040 today 953904
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 42926 (put 38009, del 4917), lists 3309 (put 3067, del 242), other.samenodes 10 (put 0, del 10), other.othernodes 73 (put 0, del 73)
+    lists: key klongs pet 28219 today 31048; B-all key bytes pet 1219888 today 1265152
+    other.samenodes: key klongs pet 102 today 112; B-all key bytes pet 3440 today 3600
+    other.othernodes: key klongs pet 595 today 799; B-all key bytes pet 24496 today 29568
+  pe decisions {'pe.append': 341069, 'pe.collapse': 611, 'pe.emptytree': 59941, 'pe.join.left': 7898, 'pe.join.right': 9785, 'pe.new1': 79825, 'pe.new2': 3627, 'pe.new3': 44, 'pe.newroot': 1367, 'pe.replace1': 162356, 'pe.replace2': 25312, 'pe.replace3': 3607, 'pe.same': 484955}
+== all
+all: traces 288/288 (incomplete 0/0), txs 221142, ops 1792106, dels 647332, tx1 62854
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.962  B-all 0.992  index B-new 0.936  index B-all 0.990
+  key nodes made 0.917  key klongs 0.944  top nodes 0.925  versions 0.968
+  fill (live klongs a node, sampled) pe 3.49 today 3.43; end nodes 143958 / 148249; dead a node 0.753 / 0.778; height max 6 / 7
+  paired (today from PE's tree, 221142 txs): B-new 0.947  B-all 0.985  index B-new 0.912  index B-all 0.982  key nodes made 0.883  key klongs 0.923
+  cmp1: exact 58553 (put 50002, del 8551), lists 1382 (put 1274, del 108), other.samenodes 472 (put 469, del 3), other.othernodes 2447 (put 2141, del 306)
+    lists: key klongs pe 13629 today 14264; B-all key bytes pe 551088 today 561248
+    other.samenodes: key klongs pe 5587 today 5751; B-all key bytes pe 216368 today 218992
+    other.othernodes: key klongs pe 18903 today 25775; B-all key bytes pe 790512 today 1027920
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 59028 (put 50398, del 8630), lists 3741 (put 3488, del 253), other.samenodes 10 (put 0, del 10), other.othernodes 75 (put 0, del 75)
+    lists: key klongs pet 36727 today 39725; B-all key bytes pet 1523152 today 1571120
+    other.samenodes: key klongs pet 102 today 112; B-all key bytes pet 3440 today 3600
+    other.othernodes: key klongs pet 639 today 850; B-all key bytes pet 25776 today 31008
+  pe decisions {'pe.append': 1148514, 'pe.collapse': 616, 'pe.emptytree': 324496, 'pe.join.left': 10871, 'pe.join.right': 14132, 'pe.new1': 458947, 'pe.new2': 6023, 'pe.new3': 52, 'pe.newroot': 1895, 'pe.replace1': 228033, 'pe.replace2': 39322, 'pe.replace3': 6297, 'pe.same': 1135660}
+== by workload
+drain:d-30: traces 10/10 (incomplete 0/0), txs 1200, ops 35298, dels 17747, tx1 20
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.955  B-all 0.992  index B-new 0.911  index B-all 0.991
+  key nodes made 0.899  key klongs 0.922  top nodes 0.845  versions 0.989
+  fill (live klongs a node, sampled) pe 12.02 today 12.07; end nodes 360 / 368; dead a node 2.517 / 2.659; height max 2 / 2
+  paired (today from PE's tree, 1200 txs): B-new 0.946  B-all 0.997  index B-new 0.894  index B-all 0.996  key nodes made 0.865  key klongs 0.908
+  cmp1: exact 19 (put 10, del 9), lists 1 (put 1, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pe 24 today 24; B-all key bytes pe 784 today 784
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 19 (put 10, del 9), lists 1 (put 1, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 24 today 24; B-all key bytes pet 784 today 784
+  pe decisions {'pe.append': 13991, 'pe.join.left': 80, 'pe.join.right': 130, 'pe.new1': 156, 'pe.new2': 74, 'pe.newroot': 20, 'pe.replace1': 1628, 'pe.replace2': 454, 'pe.replace3': 6, 'pe.same': 4678}
+drain:d-a6: traces 10/10 (incomplete 0/0), txs 600, ops 21775, dels 13071, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.881  B-all 0.947  index B-new 0.814  index B-all 0.931
+  key nodes made 0.806  key klongs 0.841  top nodes 0.804  versions 0.915
+  fill (live klongs a node, sampled) pe 2.33 today 2.23; end nodes 628 / 672; dead a node 0.540 / 0.593; height max 3 / 3
+  paired (today from PE's tree, 600 txs): B-new 0.856  B-all 0.935  index B-new 0.778  index B-all 0.915  key nodes made 0.764  key klongs 0.810
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 9541, 'pe.collapse': 46, 'pe.emptytree': 2943, 'pe.join.left': 360, 'pe.join.right': 331, 'pe.new1': 3860, 'pe.new2': 144, 'pe.newroot': 99, 'pe.replace1': 4286, 'pe.replace2': 854, 'pe.replace3': 19, 'pe.same': 6346}
+drain:d-b14: traces 10/10 (incomplete 0/0), txs 800, ops 60043, dels 32990, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.918  B-all 0.981  index B-new 0.852  index B-all 0.976
+  key nodes made 0.843  key klongs 0.880  top nodes 0.712  versions 0.961
+  fill (live klongs a node, sampled) pe 4.85 today 4.70; end nodes 705 / 727; dead a node 1.066 / 1.194; height max 3 / 3
+  paired (today from PE's tree, 800 txs): B-new 0.917  B-all 0.980  index B-new 0.850  index B-all 0.975  key nodes made 0.841  key klongs 0.871
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 22791, 'pe.join.left': 648, 'pe.join.right': 437, 'pe.new1': 921, 'pe.new2': 193, 'pe.new3': 1, 'pe.newroot': 30, 'pe.replace1': 6681, 'pe.replace2': 1486, 'pe.replace3': 36, 'pe.same': 8742}
+drain:d-batch: traces 10/10 (incomplete 0/0), txs 600, ops 21775, dels 13071, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.848  B-all 0.930  index B-new 0.774  index B-all 0.910
+  key nodes made 0.758  key klongs 0.809  top nodes 0.949  versions 0.888
+  fill (live klongs a node, sampled) pe 2.95 today 2.77; end nodes 421 / 463; dead a node 0.552 / 0.618; height max 3 / 4
+  paired (today from PE's tree, 600 txs): B-new 0.829  B-all 0.930  index B-new 0.750  index B-all 0.911  key nodes made 0.735  key klongs 0.789
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 7862, 'pe.join.left': 510, 'pe.join.right': 423, 'pe.new1': 739, 'pe.new2': 223, 'pe.new3': 1, 'pe.newroot': 30, 'pe.replace1': 4126, 'pe.replace2': 1112, 'pe.replace3': 22, 'pe.same': 4881}
+drain:d-bulk: traces 10/10 (incomplete 0/0), txs 1200, ops 9087, dels 3384, tx1 129
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.897  B-all 0.927  index B-new 0.844  index B-all 0.901
+  key nodes made 0.781  key klongs 0.884  top nodes 0.838  versions 0.852
+  fill (live klongs a node, sampled) pe 3.57 today 2.91; end nodes 1781 / 2399; dead a node 0.160 / 0.136; height max 5 / 6
+  paired (today from PE's tree, 1200 txs): B-new 0.905  B-all 0.930  index B-new 0.855  index B-all 0.906  key nodes made 0.789  key klongs 0.894
+  cmp1: exact 123 (put 32, del 91), lists 3 (put 3, del 0), other.samenodes 1 (put 1, del 0), other.othernodes 2 (put 0, del 2)
+    lists: key klongs pe 17 today 18; B-all key bytes pe 800 today 816
+    other.samenodes: key klongs pe 13 today 15; B-all key bytes pe 528 today 560
+    other.othernodes: key klongs pe 16 today 18; B-all key bytes pe 688 today 816
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 123 (put 32, del 91), lists 6 (put 4, del 2), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 48 today 51; B-all key bytes pet 2144 today 2192
+  pe decisions {'pe.append': 2066, 'pe.join.left': 51, 'pe.join.right': 45, 'pe.new1': 117, 'pe.new2': 19, 'pe.new3': 5, 'pe.newroot': 45, 'pe.replace1': 750, 'pe.replace2': 423, 'pe.replace3': 250, 'pe.same': 7615}
+drain:d-fifo: traces 10/10 (incomplete 0/0), txs 1500, ops 10104, dels 4983, tx1 5
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.858  B-all 0.938  index B-new 0.797  index B-all 0.913
+  key nodes made 0.824  key klongs 0.756  top nodes 0.842  versions 0.952
+  fill (live klongs a node, sampled) pe 3.22 today 3.34; end nodes 65 / 64; dead a node 0.162 / 0.249; height max 2 / 2
+  paired (today from PE's tree, 1500 txs): B-new 0.895  B-all 0.958  index B-new 0.847  index B-all 0.940  key nodes made 0.853  key klongs 0.804
+  cmp1: exact 4 (put 4, del 0), lists 0 (put 0, del 0), other.samenodes 1 (put 1, del 0), other.othernodes 0 (put 0, del 0)
+    other.samenodes: key klongs pe 8 today 8; B-all key bytes pe 352 today 352
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 5 (put 5, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 2487, 'pe.collapse': 305, 'pe.join.left': 11, 'pe.join.right': 793, 'pe.new1': 865, 'pe.new2': 257, 'pe.new3': 2, 'pe.newroot': 320, 'pe.replace1': 1893, 'pe.replace2': 889, 'pe.replace3': 477, 'pe.same': 517}
+drain:d-fifo2: traces 10/10 (incomplete 0/0), txs 2000, ops 60663, dels 29856, tx1 2
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.857  B-all 0.905  index B-new 0.782  index B-all 0.857
+  key nodes made 0.807  key klongs 0.772  top nodes 0.534  versions 0.863
+  fill (live klongs a node, sampled) pe 1.88 today 1.79; end nodes 1393 / 1524; dead a node 0.029 / 0.033; height max 3 / 4
+  paired (today from PE's tree, 2000 txs): B-new 0.895  B-all 0.936  index B-new 0.835  index B-all 0.902  key nodes made 0.844  key klongs 0.841
+  cmp1: exact 2 (put 2, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 2 (put 2, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 24913, 'pe.collapse': 1, 'pe.emptytree': 19856, 'pe.join.left': 30, 'pe.join.right': 1804, 'pe.new1': 21993, 'pe.new2': 716, 'pe.new3': 12, 'pe.newroot': 31, 'pe.replace1': 12221, 'pe.replace2': 1801, 'pe.replace3': 2578, 'pe.same': 1432}
+drain:d-hot: traces 10/10 (incomplete 0/0), txs 2000, ops 2510, dels 1069, tx1 1490
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.976  B-all 0.993  index B-new 0.966  index B-all 0.992
+  key nodes made 0.944  key klongs 0.973  top nodes 0.944  versions 1.000
+  fill (live klongs a node, sampled) pe 1.05 today 1.05; end nodes 10 / 10; dead a node 1.000 / 0.936; height max 0 / 0
+  paired (today from PE's tree, 2000 txs): B-new 0.980  B-all 0.997  index B-new 0.971  index B-all 0.996  key nodes made 0.947  key klongs 0.965
+  cmp1: exact 1457 (put 795, del 662), lists 33 (put 33, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pe 66 today 66; B-all key bytes pe 2640 today 2640
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 1457 (put 795, del 662), lists 33 (put 33, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 66 today 66; B-all key bytes pet 2640 today 2640
+  pe decisions {'pe.append': 1176, 'pe.replace1': 520, 'pe.same': 304}
+drain:d-long3: traces 10/10 (incomplete 0/0), txs 1500, ops 5174, dels 2061, tx1 240
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.966  B-all 0.976  index B-new 0.949  index B-all 0.970
+  key nodes made 0.914  key klongs 0.963  top nodes 1.120  versions 0.949
+  fill (live klongs a node, sampled) pe 1.81 today 1.77; end nodes 423 / 450; dead a node 0.481 / 0.537; height max 2 / 2
+  paired (today from PE's tree, 1500 txs): B-new 0.915  B-all 0.950  index B-new 0.874  index B-all 0.937  key nodes made 0.828  key klongs 0.885
+  cmp1: exact 196 (put 108, del 88), lists 12 (put 9, del 3), other.samenodes 6 (put 6, del 0), other.othernodes 26 (put 14, del 12)
+    lists: key klongs pe 83 today 90; B-all key bytes pe 3424 today 3536
+    other.samenodes: key klongs pe 49 today 49; B-all key bytes pe 2336 today 2336
+    other.othernodes: key klongs pe 197 today 254; B-all key bytes pe 8928 today 11328
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 210 (put 114, del 96), lists 30 (put 23, del 7), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 222 today 242; B-all key bytes pet 10336 today 10656
+  pe decisions {'pe.append': 4428, 'pe.collapse': 74, 'pe.emptytree': 1481, 'pe.join.left': 58, 'pe.join.right': 90, 'pe.new1': 2050, 'pe.new2': 10, 'pe.newroot': 109, 'pe.replace1': 1662, 'pe.replace2': 196, 'pe.same': 7149}
+drain:d-long3b: traces 10/10 (incomplete 0/0), txs 1000, ops 19828, dels 9891, tx1 27
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.930  B-all 0.962  index B-new 0.893  index B-all 0.952
+  key nodes made 0.884  key klongs 0.908  top nodes 0.729  versions 0.938
+  fill (live klongs a node, sampled) pe 1.84 today 1.80; end nodes 1768 / 1851; dead a node 0.409 / 0.442; height max 3 / 4
+  paired (today from PE's tree, 1000 txs): B-new 0.898  B-all 0.945  index B-new 0.848  index B-all 0.930  key nodes made 0.835  key klongs 0.864
+  cmp1: exact 24 (put 13, del 11), lists 2 (put 2, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 1, del 0)
+    lists: key klongs pe 12 today 12; B-all key bytes pe 608 today 608
+    other.othernodes: key klongs pe 14 today 16; B-all key bytes pe 560 today 640
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 24 (put 13, del 11), lists 3 (put 3, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 27 today 28; B-all key bytes pet 1232 today 1248
+  pe decisions {'pe.append': 14274, 'pe.collapse': 68, 'pe.emptytree': 6621, 'pe.join.left': 439, 'pe.join.right': 434, 'pe.new1': 8605, 'pe.new2': 173, 'pe.newroot': 226, 'pe.replace1': 4934, 'pe.replace2': 1249, 'pe.replace3': 10, 'pe.same': 17310}
+drain:d-random: traces 10/10 (incomplete 0/0), txs 1500, ops 5174, dels 2061, tx1 240
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.936  B-all 0.959  index B-new 0.911  index B-all 0.951
+  key nodes made 0.853  key klongs 0.913  top nodes 1.312  versions 0.918
+  fill (live klongs a node, sampled) pe 2.92 today 2.68; end nodes 190 / 204; dead a node 0.596 / 0.707; height max 3 / 3
+  paired (today from PE's tree, 1500 txs): B-new 0.874  B-all 0.933  index B-new 0.829  index B-all 0.920  key nodes made 0.762  key klongs 0.850
+  cmp1: exact 192 (put 102, del 90), lists 25 (put 21, del 4), other.samenodes 5 (put 5, del 0), other.othernodes 18 (put 9, del 9)
+    lists: key klongs pe 203 today 223; B-all key bytes pe 8304 today 8624
+    other.samenodes: key klongs pe 56 today 58; B-all key bytes pe 2128 today 2160
+    other.othernodes: key klongs pe 143 today 193; B-all key bytes pe 5376 today 7264
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 198 (put 108, del 90), lists 42 (put 29, del 13), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 381 today 422; B-all key bytes pet 15392 today 16048
+  pe decisions {'pe.append': 3503, 'pe.collapse': 6, 'pe.join.left': 133, 'pe.join.right': 151, 'pe.new1': 266, 'pe.new2': 51, 'pe.newroot': 33, 'pe.replace1': 1646, 'pe.replace2': 386, 'pe.replace3': 2, 'pe.same': 4202}
+large:l-5000: traces 10/10 (incomplete 0/0), txs 50000, ops 118422, dels 28694, tx1 11966
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.000  B-all 1.010  index B-new 0.999  index B-all 1.011
+  key nodes made 0.973  key klongs 1.003  top nodes 0.967  versions 0.996
+  fill (live klongs a node, sampled) pe 11.85 today 11.52; end nodes 744 / 768; dead a node 3.001 / 3.024; height max 2 / 2
+  paired (today from PE's tree, 50000 txs): B-new 0.991  B-all 0.998  index B-new 0.986  index B-all 0.998  key nodes made 0.945  key klongs 0.986
+  cmp1: exact 11661 (put 8797, del 2864), lists 212 (put 201, del 11), other.samenodes 26 (put 26, del 0), other.othernodes 67 (put 57, del 10)
+    lists: key klongs pe 4209 today 4282; B-all key bytes pe 149712 today 150880
+    other.samenodes: key klongs pe 578 today 578; B-all key bytes pe 20160 today 20160
+    other.othernodes: key klongs pe 1466 today 1596; B-all key bytes pe 49408 today 54800
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 11683 (put 8806, del 2877), lists 282 (put 275, del 7), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 5782 today 5907; B-all key bytes pet 208144 today 210144
+    other.othernodes: key klongs pet 36 today 40; B-all key bytes pet 928 today 1040
+  pe decisions {'pe.append': 104206, 'pe.emptytree': 5580, 'pe.join.left': 305, 'pe.join.right': 381, 'pe.new1': 6102, 'pe.new2': 184, 'pe.newroot': 20, 'pe.replace1': 11847, 'pe.replace2': 1216, 'pe.same': 135635}
+large:l-big62: traces 10/10 (incomplete 0/0), txs 10000, ops 154896, dels 9427, tx1 443
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.982  B-all 0.994  index B-new 0.970  index B-all 0.993
+  key nodes made 0.998  key klongs 0.945  top nodes 1.000  versions 0.999
+  fill (live klongs a node, sampled) pe 2.10 today 2.10; end nodes 80873 / 80880; dead a node 0.388 / 0.389; height max 2 / 2
+  paired (today from PE's tree, 10000 txs): B-new 0.996  B-all 1.000  index B-new 0.992  index B-all 1.000  key nodes made 1.000  key klongs 0.987
+  cmp1: exact 440 (put 400, del 40), lists 1 (put 1, del 0), other.samenodes 2 (put 2, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pe 45 today 45; B-all key bytes pe 1664 today 1664
+    other.samenodes: key klongs pe 99 today 99; B-all key bytes pe 2848 today 2848
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 440 (put 400, del 40), lists 3 (put 3, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 144 today 144; B-all key bytes pet 4512 today 4512
+  pe decisions {'pe.append': 89736, 'pe.emptytree': 6266, 'pe.join.left': 2, 'pe.join.right': 3, 'pe.new1': 84052, 'pe.new2': 2, 'pe.newroot': 20, 'pe.replace1': 888, 'pe.replace2': 1208, 'pe.replace3': 929, 'pe.same': 71520}
+large:l-few: traces 10/10 (incomplete 0/0), txs 50000, ops 120516, dels 24111, tx1 12994
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.929  B-all 0.966  index B-new 0.901  index B-all 0.959
+  key nodes made 0.830  key klongs 0.925  top nodes 0.897  versions 0.919
+  fill (live klongs a node, sampled) pe 2.90 today 2.54; end nodes 120 / 156; dead a node 0.767 / 0.828; height max 2 / 3
+  paired (today from PE's tree, 50000 txs): B-new 0.876  B-all 0.936  index B-new 0.830  index B-all 0.923  key nodes made 0.752  key klongs 0.847
+  cmp1: exact 10704 (put 8365, del 2339), lists 630 (put 563, del 67), other.samenodes 134 (put 132, del 2), other.othernodes 1526 (put 1382, del 144)
+    lists: key klongs pe 4463 today 4751; B-all key bytes pe 196656 today 201264
+    other.samenodes: key klongs pe 1234 today 1263; B-all key bytes pe 50064 today 50528
+    other.othernodes: key klongs pe 10126 today 14148; B-all key bytes pe 439840 today 572544
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 10909 (put 8557, del 2352), lists 2018 (put 1885, del 133), other.samenodes 9 (put 0, del 9), other.othernodes 58 (put 0, del 58)
+    lists: key klongs pet 16007 today 17672; B-all key bytes pet 696864 today 723504
+    other.samenodes: key klongs pet 88 today 95; B-all key bytes pet 2928 today 3040
+    other.othernodes: key klongs pet 434 today 572; B-all key bytes pet 18048 today 21216
+  pe decisions {'pe.append': 98703, 'pe.join.left': 2294, 'pe.join.right': 2249, 'pe.new1': 3858, 'pe.new2': 705, 'pe.newroot': 20, 'pe.replace1': 54641, 'pe.replace2': 3975, 'pe.same': 88755}
+large:l-hot: traces 10/10 (incomplete 0/0), txs 20000, ops 20000, dels 0, tx1 20000
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.000  B-all 1.000  index B-new 1.000  index B-all 1.000
+  key nodes made 1.000  key klongs 1.000  top nodes 1.000  versions 1.000
+  fill (live klongs a node, sampled) pe 1.00 today 1.00; end nodes 10 / 10; dead a node 1.000 / 1.000; height max 0 / 0
+  paired (today from PE's tree, 20000 txs): B-new 1.000  B-all 1.000  index B-new 1.000  index B-all 1.000  key nodes made 1.000  key klongs 1.000
+  cmp1: exact 20000 (put 20000, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 20000 (put 20000, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 13340, 'pe.replace1': 6660}
+large:l-long: traces 10/10 (incomplete 0/0), txs 20000, ops 90139, dels 18170, tx1 2421
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.998  B-all 1.003  index B-new 0.995  index B-all 1.004
+  key nodes made 0.990  key klongs 0.996  top nodes 0.909  versions 0.998
+  fill (live klongs a node, sampled) pe 3.18 today 3.17; end nodes 10253 / 10285; dead a node 1.224 / 1.237; height max 2 / 2
+  paired (today from PE's tree, 20000 txs): B-new 0.994  B-all 0.999  index B-new 0.989  index B-all 0.998  key nodes made 0.980  key klongs 0.989
+  cmp1: exact 2340 (put 1831, del 509), lists 48 (put 45, del 3), other.samenodes 24 (put 24, del 0), other.othernodes 9 (put 6, del 3)
+    lists: key klongs pe 969 today 979; B-all key bytes pe 35184 today 35344
+    other.samenodes: key klongs pe 552 today 552; B-all key bytes pe 18464 today 18464
+    other.othernodes: key klongs pe 205 today 220; B-all key bytes pe 6656 today 7328
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 2344 (put 1832, del 512), lists 77 (put 74, del 3), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 1666 today 1681; B-all key bytes pet 58032 today 58272
+  pe decisions {'pe.append': 83741, 'pe.emptytree': 6335, 'pe.join.left': 82, 'pe.join.right': 103, 'pe.new1': 15143, 'pe.new2': 63, 'pe.newroot': 230, 'pe.replace1': 4980, 'pe.replace2': 1679, 'pe.same': 166886}
+large:l-mixed: traces 10/10 (incomplete 0/0), txs 20000, ops 47151, dels 11406, tx1 4831
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.970  B-all 0.990  index B-new 0.959  index B-all 0.989
+  key nodes made 0.908  key klongs 0.976  top nodes 1.368  versions 0.958
+  fill (live klongs a node, sampled) pe 2.99 today 2.65; end nodes 4143 / 5057; dead a node 0.654 / 0.768; height max 5 / 7
+  paired (today from PE's tree, 20000 txs): B-new 0.900  B-all 0.942  index B-new 0.867  index B-all 0.932  key nodes made 0.793  key klongs 0.874
+  cmp1: exact 3913 (put 2868, del 1045), lists 260 (put 246, del 14), other.samenodes 175 (put 175, del 0), other.othernodes 483 (put 385, del 98)
+    lists: key klongs pe 2162 today 2324; B-all key bytes pe 94720 today 97312
+    other.samenodes: key klongs pe 1871 today 1961; B-all key bytes pe 76352 today 77792
+    other.othernodes: key klongs pe 4165 today 5785; B-all key bytes pe 174848 today 234176
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 3991 (put 2916, del 1075), lists 831 (put 758, del 73), other.samenodes 1 (put 0, del 1), other.othernodes 8 (put 0, del 8)
+    lists: key klongs pet 8288 today 9071; B-all key bytes pet 356384 today 368912
+    other.samenodes: key klongs pet 14 today 17; B-all key bytes pet 512 today 560
+    other.othernodes: key klongs pet 96 today 124; B-all key bytes pet 3904 today 4800
+  pe decisions {'pe.append': 41718, 'pe.emptytree': 2612, 'pe.join.left': 679, 'pe.join.right': 678, 'pe.new1': 3805, 'pe.new2': 214, 'pe.newroot': 50, 'pe.replace1': 17811, 'pe.replace2': 5225, 'pe.replace3': 1, 'pe.same': 150604}
+medium:m-big: traces 3/3 (incomplete 0/0), txs 360, ops 5999, dels 0, tx1 11
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.983  B-all 0.993  index B-new 0.971  index B-all 0.991
+  key nodes made 0.990  key klongs 0.955  top nodes 1.000  versions 0.995
+  fill (live klongs a node, sampled) pe 2.53 today 2.52; end nodes 3183 / 3193; dead a node 0.120 / 0.126; height max 2 / 2
+  paired (today from PE's tree, 360 txs): B-new 0.982  B-all 0.996  index B-new 0.971  index B-all 0.995  key nodes made 0.985  key klongs 0.960
+  cmp1: exact 9 (put 9, del 0), lists 2 (put 2, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pe 54 today 54; B-all key bytes pe 1408 today 1408
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 9 (put 9, del 0), lists 2 (put 2, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 54 today 54; B-all key bytes pet 1408 today 1408
+  pe decisions {'pe.append': 2345, 'pe.new1': 2826, 'pe.newroot': 6, 'pe.replace1': 79, 'pe.replace2': 167, 'pe.replace3': 51, 'pe.same': 920}
+medium:m-d30: traces 3/3 (incomplete 0/0), txs 1500, ops 177936, dels 97642, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.985  B-all 0.999  index B-new 0.974  index B-all 0.999
+  key nodes made 0.984  key klongs 0.968  top nodes 1.019  versions 0.996
+  fill (live klongs a node, sampled) pe 2.12 today 2.12; end nodes 5954 / 5962; dead a node 0.825 / 0.831; height max 3 / 3
+  paired (today from PE's tree, 1500 txs): B-new 0.978  B-all 0.998  index B-new 0.962  index B-all 0.997  key nodes made 0.976  key klongs 0.955
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 134915, 'pe.collapse': 1, 'pe.emptytree': 78029, 'pe.join.left': 588, 'pe.join.right': 879, 'pe.new1': 84316, 'pe.new2': 536, 'pe.newroot': 7, 'pe.replace1': 8095, 'pe.replace2': 1508, 'pe.replace3': 10, 'pe.same': 60813}
+medium:m-d62: traces 3/3 (incomplete 0/0), txs 1200, ops 237049, dels 130115, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.989  B-all 1.000  index B-new 0.979  index B-all 1.000
+  key nodes made 0.995  key klongs 0.970  top nodes 0.917  versions 1.000
+  fill (live klongs a node, sampled) pe 2.08 today 2.09; end nodes 10029 / 10027; dead a node 0.871 / 0.868; height max 2 / 2
+  paired (today from PE's tree, 1200 txs): B-new 0.976  B-all 1.000  index B-new 0.956  index B-all 1.001  key nodes made 0.986  key klongs 0.939
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 164833, 'pe.emptytree': 113679, 'pe.join.left': 183, 'pe.join.right': 301, 'pe.new1': 123539, 'pe.new2': 187, 'pe.newroot': 6, 'pe.replace1': 4309, 'pe.replace2': 744, 'pe.replace3': 8, 'pe.same': 40298}
+medium:m-d8: traces 3/3 (incomplete 0/0), txs 1500, ops 88729, dels 48751, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.932  B-all 0.966  index B-new 0.904  index B-all 0.959
+  key nodes made 0.880  key klongs 0.925  top nodes 1.384  versions 0.938
+  fill (live klongs a node, sampled) pe 2.00 today 1.94; end nodes 2736 / 2894; dead a node 0.513 / 0.533; height max 6 / 7
+  paired (today from PE's tree, 1500 txs): B-new 0.903  B-all 0.947  index B-new 0.864  index B-all 0.937  key nodes made 0.841  key klongs 0.887
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 67572, 'pe.emptytree': 24411, 'pe.join.left': 2472, 'pe.join.right': 1979, 'pe.new1': 29409, 'pe.new2': 834, 'pe.new3': 1, 'pe.newroot': 18, 'pe.replace1': 26051, 'pe.replace2': 4975, 'pe.replace3': 25, 'pe.same': 130019}
+medium:m-fifo: traces 3/3 (incomplete 0/0), txs 1500, ops 150438, dels 73744, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.968  B-all 0.982  index B-new 0.922  index B-all 0.961
+  key nodes made 0.971  key klongs 0.884  top nodes 0.703  versions 0.987
+  fill (live klongs a node, sampled) pe 3.21 today 3.19; end nodes 327 / 329; dead a node 0.017 / 0.022; height max 2 / 2
+  paired (today from PE's tree, 1500 txs): B-new 0.977  B-all 0.989  index B-new 0.942  index B-all 0.977  key nodes made 0.980  key klongs 0.908
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 31513, 'pe.collapse': 3, 'pe.emptytree': 31373, 'pe.join.left': 8, 'pe.join.right': 1019, 'pe.new1': 32175, 'pe.new2': 533, 'pe.new3': 1, 'pe.newroot': 6, 'pe.replace1': 7312, 'pe.replace2': 460, 'pe.replace3': 528, 'pe.same': 668}
+medium:m-long: traces 3/3 (incomplete 0/0), txs 1500, ops 6811, dels 1338, tx1 186
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.000  B-all 1.006  index B-new 1.001  index B-all 1.007
+  key nodes made 0.998  key klongs 1.003  top nodes 1.000  versions 1.002
+  fill (live klongs a node, sampled) pe 3.04 today 3.03; end nodes 1839 / 1844; dead a node 0.379 / 0.390; height max 2 / 2
+  paired (today from PE's tree, 1500 txs): B-new 0.994  B-all 0.999  index B-new 0.989  index B-all 0.999  key nodes made 0.988  key klongs 0.986
+  cmp1: exact 177 (put 138, del 39), lists 2 (put 2, del 0), other.samenodes 6 (put 6, del 0), other.othernodes 1 (put 1, del 0)
+    lists: key klongs pe 44 today 44; B-all key bytes pe 1376 today 1376
+    other.samenodes: key klongs pe 153 today 153; B-all key bytes pe 4848 today 4848
+    other.othernodes: key klongs pe 18 today 20; B-all key bytes pe 592 today 672
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 178 (put 139, del 39), lists 8 (put 8, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 193 today 194; B-all key bytes pet 5872 today 5888
+  pe decisions {'pe.append': 5631, 'pe.emptytree': 540, 'pe.new1': 2153, 'pe.newroot': 65, 'pe.replace1': 163, 'pe.replace2': 223, 'pe.same': 9120}
+medium:m-long3: traces 3/3 (incomplete 0/0), txs 1500, ops 44826, dels 22274, tx1 20
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.982  B-all 0.997  index B-new 0.970  index B-all 0.996
+  key nodes made 0.967  key klongs 0.970  top nodes 0.918  versions 0.986
+  fill (live klongs a node, sampled) pe 1.79 today 1.79; end nodes 3776 / 3782; dead a node 0.530 / 0.534; height max 3 / 3
+  paired (today from PE's tree, 1500 txs): B-new 0.978  B-all 0.991  index B-new 0.963  index B-all 0.989  key nodes made 0.958  key klongs 0.965
+  cmp1: exact 19 (put 10, del 9), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 1, del 0)
+    other.othernodes: key klongs pe 22 today 24; B-all key bytes pe 720 today 800
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 19 (put 10, del 9), lists 1 (put 1, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 23 today 24; B-all key bytes pet 784 today 800
+  pe decisions {'pe.append': 39962, 'pe.emptytree': 22204, 'pe.join.left': 429, 'pe.join.right': 287, 'pe.new1': 25872, 'pe.new2': 121, 'pe.newroot': 51, 'pe.replace1': 5686, 'pe.replace2': 1292, 'pe.replace3': 2, 'pe.same': 53990}
+medium:m-mixed: traces 3/3 (incomplete 0/0), txs 1500, ops 3520, dels 845, tx1 344
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.962  B-all 0.983  index B-new 0.948  index B-all 0.980
+  key nodes made 0.902  key klongs 0.953  top nodes 1.438  versions 0.952
+  fill (live klongs a node, sampled) pe 3.09 today 2.79; end nodes 525 / 636; dead a node 0.537 / 0.680; height max 4 / 5
+  paired (today from PE's tree, 1500 txs): B-new 0.908  B-all 0.946  index B-new 0.878  index B-all 0.937  key nodes made 0.815  key klongs 0.881
+  cmp1: exact 257 (put 190, del 67), lists 25 (put 22, del 3), other.samenodes 25 (put 24, del 1), other.othernodes 37 (put 30, del 7)
+    lists: key klongs pe 219 today 235; B-all key bytes pe 9456 today 9712
+    other.samenodes: key klongs pe 262 today 273; B-all key bytes pe 10448 today 10624
+    other.othernodes: key klongs pe 332 today 465; B-all key bytes pe 13584 today 18448
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 272 (put 202, del 70), lists 70 (put 64, del 6), other.samenodes 0 (put 0, del 0), other.othernodes 2 (put 0, del 2)
+    lists: key klongs pet 656 today 715; B-all key bytes pet 28096 today 29040
+    other.othernodes: key klongs pet 30 today 49; B-all key bytes pet 992 today 1504
+  pe decisions {'pe.append': 2912, 'pe.emptytree': 224, 'pe.join.left': 20, 'pe.join.right': 38, 'pe.new1': 280, 'pe.new2': 14, 'pe.newroot': 12, 'pe.replace1': 1050, 'pe.replace2': 552, 'pe.replace3': 1, 'pe.same': 7886}
+medium:m-r-del: traces 3/3 (incomplete 0/0), txs 3107, ops 21410, dels 6999, tx1 686
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.920  B-all 0.958  index B-new 0.885  index B-all 0.948
+  key nodes made 0.840  key klongs 0.909  top nodes 0.909  versions 0.919
+  fill (live klongs a node, sampled) pe 2.80 today 2.54; end nodes 286 / 333; dead a node 0.714 / 0.808; height max 4 / 5
+  paired (today from PE's tree, 3107 txs): B-new 0.876  B-all 0.935  index B-new 0.824  index B-all 0.922  key nodes made 0.772  key klongs 0.848
+  cmp1: exact 652 (put 563, del 89), lists 12 (put 12, del 0), other.samenodes 4 (put 4, del 0), other.othernodes 18 (put 10, del 8)
+    lists: key klongs pe 90 today 94; B-all key bytes pe 4096 today 4160
+    other.samenodes: key klongs pe 30 today 30; B-all key bytes pe 1360 today 1360
+    other.othernodes: key klongs pe 127 today 171; B-all key bytes pe 5648 today 7392
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 657 (put 565, del 92), lists 27 (put 24, del 3), other.samenodes 0 (put 0, del 0), other.othernodes 2 (put 0, del 2)
+    lists: key klongs pet 249 today 268; B-all key bytes pet 11088 today 11392
+    other.othernodes: key klongs pet 11 today 20; B-all key bytes pet 496 today 784
+  pe decisions {'pe.append': 15860, 'pe.join.left': 544, 'pe.join.right': 437, 'pe.new1': 854, 'pe.new2': 154, 'pe.newroot': 12, 'pe.replace1': 8270, 'pe.replace2': 1082, 'pe.replace3': 3, 'pe.same': 30167}
+own:bulk: traces 3/3 (incomplete 0/0), txs 2240, ops 60000, dels 0, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.920  B-all 0.929  index B-new 0.820  index B-all 0.866
+  key nodes made 0.822  key klongs 0.861  top nodes 0.773  versions 0.864
+  fill (live klongs a node, sampled) pe 13.32 today 12.74; end nodes 4267 / 4850; dead a node 0.010 / 0.010; height max 3 / 4
+  paired (today from PE's tree, 2240 txs): B-new 0.997  B-all 0.999  index B-new 0.992  index B-all 0.997  key nodes made 1.007  key klongs 0.993
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 2223, 'pe.new1': 8, 'pe.new2': 1, 'pe.newroot': 9, 'pe.replace1': 19, 'pe.replace2': 780, 'pe.replace3': 778, 'pe.same': 4789}
+own:pub: traces 3/3 (incomplete 0/0), txs 5500, ops 125364, dels 33980, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.999  B-all 1.014  index B-new 0.997  index B-all 1.016
+  key nodes made 0.968  key klongs 1.006  top nodes 0.800  versions 0.990
+  fill (live klongs a node, sampled) pe 13.53 today 12.46; end nodes 2637 / 2815; dead a node 2.118 / 2.210; height max 3 / 3
+  paired (today from PE's tree, 5500 txs): B-new 0.979  B-all 0.997  index B-new 0.957  index B-all 0.997  key nodes made 0.926  key klongs 0.963
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 94915, 'pe.join.left': 512, 'pe.join.right': 728, 'pe.new1': 788, 'pe.new2': 470, 'pe.new3': 6, 'pe.newroot': 18, 'pe.replace1': 9346, 'pe.replace2': 2388, 'pe.replace3': 342, 'pe.same': 72680}
+reclaim:r-big: traces 3/3 (incomplete 0/0), txs 2942, ops 14439, dels 2647, tx1 695
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.971  B-all 0.991  index B-new 0.951  index B-all 0.989
+  key nodes made 0.895  key klongs 0.956  top nodes 1.889  versions 0.953
+  fill (live klongs a node, sampled) pe 4.43 today 4.08; end nodes 139 / 156; dead a node 1.330 / 1.423; height max 3 / 3
+  paired (today from PE's tree, 2942 txs): B-new 0.953  B-all 0.982  index B-new 0.922  index B-all 0.979  key nodes made 0.865  key klongs 0.933
+  cmp1: exact 674 (put 600, del 74), lists 8 (put 8, del 0), other.samenodes 4 (put 4, del 0), other.othernodes 9 (put 6, del 3)
+    lists: key klongs pe 83 today 86; B-all key bytes pe 3312 today 3360
+    other.samenodes: key klongs pe 41 today 41; B-all key bytes pe 1760 today 1760
+    other.othernodes: key klongs pe 112 today 144; B-all key bytes pe 3520 today 4624
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 676 (put 601, del 75), lists 18 (put 17, del 1), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 206 today 215; B-all key bytes pet 8064 today 8208
+    other.othernodes: key klongs pet 8 today 11; B-all key bytes pet 352 today 400
+  pe decisions {'pe.append': 11251, 'pe.join.left': 102, 'pe.join.right': 52, 'pe.new1': 160, 'pe.new2': 16, 'pe.newroot': 7, 'pe.replace1': 3467, 'pe.replace2': 253, 'pe.same': 10937}
+reclaim:r-del: traces 3/3 (incomplete 0/0), txs 1713, ops 4212, dels 1032, tx1 537
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.966  B-all 0.981  index B-new 0.951  index B-all 0.977
+  key nodes made 0.889  key klongs 0.968  top nodes 1.397  versions 0.941
+  fill (live klongs a node, sampled) pe 2.72 today 2.46; end nodes 134 / 166; dead a node 0.759 / 0.824; height max 3 / 4
+  paired (today from PE's tree, 1713 txs): B-new 0.874  B-all 0.932  index B-new 0.827  index B-all 0.919  key nodes made 0.740  key klongs 0.846
+  cmp1: exact 474 (put 377, del 97), lists 18 (put 16, del 2), other.samenodes 6 (put 6, del 0), other.othernodes 39 (put 31, del 8)
+    lists: key klongs pe 133 today 139; B-all key bytes pe 5968 today 6064
+    other.samenodes: key klongs pe 67 today 68; B-all key bytes pe 2672 today 2688
+    other.othernodes: key klongs pe 358 today 483; B-all key bytes pe 14208 today 18848
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 485 (put 385, del 100), lists 50 (put 45, del 5), other.samenodes 0 (put 0, del 0), other.othernodes 2 (put 0, del 2)
+    lists: key klongs pet 476 today 525; B-all key bytes pet 20400 today 21184
+    other.othernodes: key klongs pet 17 today 24; B-all key bytes pet 752 today 912
+  pe decisions {'pe.append': 3459, 'pe.emptytree': 262, 'pe.join.left': 68, 'pe.join.right': 64, 'pe.new1': 396, 'pe.new2': 22, 'pe.newroot': 9, 'pe.replace1': 1756, 'pe.replace2': 217, 'pe.same': 6602}
+reclaim:r-idle: traces 3/3 (incomplete 0/0), txs 1295, ops 1588, dels 174, tx1 580
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.063  B-all 1.039  index B-new 1.088  index B-all 1.047
+  key nodes made 1.086  key klongs 1.170  top nodes 1.444  versions 1.019
+  fill (live klongs a node, sampled) pe 2.67 today 2.27; end nodes 95 / 131; dead a node 0.801 / 0.921; height max 3 / 4
+  paired (today from PE's tree, 1295 txs): B-new 0.869  B-all 0.922  index B-new 0.828  index B-all 0.908  key nodes made 0.689  key klongs 0.819
+  cmp1: exact 484 (put 416, del 68), lists 11 (put 11, del 0), other.samenodes 9 (put 9, del 0), other.othernodes 76 (put 76, del 0)
+    lists: key klongs pe 90 today 97; B-all key bytes pe 3968 today 4080
+    other.samenodes: key klongs pe 95 today 100; B-all key bytes pe 3664 today 3744
+    other.othernodes: key klongs pe 582 today 833; B-all key bytes pe 24720 today 33536
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 530 (put 462, del 68), lists 50 (put 50, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 480 today 531; B-all key bytes pet 20080 today 20896
+  pe decisions {'pe.append': 1324, 'pe.emptytree': 260, 'pe.new1': 284, 'pe.newroot': 9, 'pe.replace1': 723, 'pe.replace2': 68, 'pe.same': 3269}
+reclaim:r-long: traces 3/3 (incomplete 0/0), txs 1768, ops 4673, dels 927, tx1 604
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.985  B-all 0.994  index B-new 0.975  index B-all 0.993
+  key nodes made 0.960  key klongs 0.969  top nodes 1.023  versions 0.985
+  fill (live klongs a node, sampled) pe 2.29 today 2.27; end nodes 192 / 195; dead a node 1.146 / 1.161; height max 2 / 2
+  paired (today from PE's tree, 1768 txs): B-new 0.981  B-all 0.992  index B-new 0.969  index B-all 0.990  key nodes made 0.945  key klongs 0.967
+  cmp1: exact 578 (put 479, del 99), lists 14 (put 13, del 1), other.samenodes 4 (put 4, del 0), other.othernodes 8 (put 7, del 1)
+    lists: key klongs pe 147 today 149; B-all key bytes pe 5440 today 5472
+    other.samenodes: key klongs pe 51 today 51; B-all key bytes pe 2080 today 2080
+    other.othernodes: key klongs pe 103 today 124; B-all key bytes pe 3472 today 4384
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 579 (put 478, del 101), lists 25 (put 25, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 252 today 264; B-all key bytes pet 10000 today 10192
+  pe decisions {'pe.append': 4309, 'pe.collapse': 1, 'pe.emptytree': 402, 'pe.join.left': 29, 'pe.join.right': 22, 'pe.new1': 580, 'pe.new2': 12, 'pe.newroot': 13, 'pe.replace1': 1038, 'pe.replace2': 90, 'pe.same': 7752}
+reclaim:r-small: traces 3/3 (incomplete 0/0), txs 1017, ops 2297, dels 0, tx1 348
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.071  B-all 1.027  index B-new 1.109  index B-all 1.033
+  key nodes made 1.044  key klongs 1.170  top nodes 2.700  versions 0.969
+  fill (live klongs a node, sampled) pe 2.57 today 2.13; end nodes 61 / 86; dead a node 0.835 / 0.945; height max 2 / 3
+  paired (today from PE's tree, 1017 txs): B-new 0.826  B-all 0.913  index B-new 0.762  index B-all 0.896  key nodes made 0.651  key klongs 0.797
+  cmp1: exact 299 (put 299, del 0), lists 3 (put 3, del 0), other.samenodes 3 (put 3, del 0), other.othernodes 43 (put 43, del 0)
+    lists: key klongs pe 23 today 24; B-all key bytes pe 992 today 1008
+    other.samenodes: key klongs pe 29 today 30; B-all key bytes pe 1152 today 1168
+    other.othernodes: key klongs pe 304 today 428; B-all key bytes pe 12608 today 16848
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 333 (put 333, del 0), lists 15 (put 15, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 149 today 164; B-all key bytes pet 6160 today 6400
+  pe decisions {'pe.append': 1955, 'pe.new1': 21, 'pe.newroot': 6, 'pe.replace1': 1155, 'pe.replace2': 37, 'pe.same': 2054}
+small:a6: traces 10/10 (incomplete 0/0), txs 400, ops 14592, dels 3603, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.898  B-all 0.945  index B-new 0.837  index B-all 0.928
+  key nodes made 0.817  key klongs 0.872  top nodes 0.862  versions 0.905
+  fill (live klongs a node, sampled) pe 2.34 today 2.18; end nodes 1134 / 1290; dead a node 0.768 / 0.795; height max 3 / 4
+  paired (today from PE's tree, 400 txs): B-new 0.845  B-all 0.925  index B-new 0.759  index B-all 0.903  key nodes made 0.734  key klongs 0.800
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 9582, 'pe.collapse': 109, 'pe.emptytree': 742, 'pe.join.left': 213, 'pe.join.right': 245, 'pe.new1': 1756, 'pe.new2': 82, 'pe.new3': 9, 'pe.newroot': 217, 'pe.replace1': 4460, 'pe.replace2': 890, 'pe.replace3': 32, 'pe.same': 5783}
+small:big: traces 10/10 (incomplete 0/0), txs 400, ops 14534, dels 0, tx1 0
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.970  B-all 0.958  index B-new 0.951  index B-all 0.946
+  key nodes made 0.912  key klongs 1.001  top nodes 1.087  versions 0.908
+  fill (live klongs a node, sampled) pe 2.96 today 2.38; end nodes 1016 / 1453; dead a node 0.895 / 1.013; height max 4 / 5
+  paired (today from PE's tree, 400 txs): B-new 0.766  B-all 0.878  index B-new 0.663  index B-all 0.848  key nodes made 0.604  key klongs 0.727
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 0 (put 0, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 9462, 'pe.new1': 30, 'pe.new3': 10, 'pe.newroot': 40, 'pe.replace1': 5742, 'pe.replace2': 791, 'pe.replace3': 43, 'pe.same': 4913}
+small:bulk: traces 10/10 (incomplete 0/0), txs 600, ops 3832, dels 0, tx1 153
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.902  B-all 0.931  index B-new 0.848  index B-all 0.906
+  key nodes made 0.796  key klongs 0.889  top nodes 0.761  versions 0.864
+  fill (live klongs a node, sampled) pe 3.57 today 2.96; end nodes 1272 / 1679; dead a node 0.169 / 0.202; height max 4 / 5
+  paired (today from PE's tree, 600 txs): B-new 0.909  B-all 0.934  index B-new 0.859  index B-all 0.910  key nodes made 0.808  key klongs 0.895
+  cmp1: exact 103 (put 103, del 0), lists 19 (put 19, del 0), other.samenodes 19 (put 19, del 0), other.othernodes 12 (put 12, del 0)
+    lists: key klongs pe 158 today 172; B-all key bytes pe 6768 today 6992
+    other.samenodes: key klongs pe 228 today 245; B-all key bytes pe 8880 today 9152
+    other.othernodes: key klongs pe 111 today 164; B-all key bytes pe 4496 today 6352
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 107 (put 107, del 0), lists 46 (put 46, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 426 today 468; B-all key bytes pet 17984 today 18656
+  pe decisions {'pe.append': 1166, 'pe.new1': 36, 'pe.new3': 4, 'pe.newroot': 40, 'pe.replace1': 213, 'pe.replace2': 402, 'pe.replace3': 144, 'pe.same': 1952}
+small:hot: traces 10/10 (incomplete 0/0), txs 3000, ops 3000, dels 0, tx1 3000
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.000  B-all 1.000  index B-new 1.000  index B-all 1.000
+  key nodes made 1.000  key klongs 1.000  top nodes 1.000  versions 1.000
+  fill (live klongs a node, sampled) pe 1.00 today 1.00; end nodes 10 / 10; dead a node 1.062 / 1.062; height max 0 / 0
+  paired (today from PE's tree, 3000 txs): B-new 1.000  B-all 1.000  index B-new 1.000  index B-all 1.000  key nodes made 1.000  key klongs 1.000
+  cmp1: exact 3000 (put 3000, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 3000 (put 3000, del 0), lists 0 (put 0, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+  pe decisions {'pe.append': 2010, 'pe.replace1': 990}
+small:idle: traces 10/10 (incomplete 0/0), txs 1500, ops 1599, dels 467, tx1 579
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 1.009  B-all 1.005  index B-new 1.012  index B-all 1.006
+  key nodes made 0.970  key klongs 1.036  top nodes 1.278  versions 0.974
+  fill (live klongs a node, sampled) pe 3.02 today 2.59; end nodes 138 / 198; dead a node 0.728 / 0.932; height max 2 / 3
+  paired (today from PE's tree, 1500 txs): B-new 0.900  B-all 0.942  index B-new 0.871  index B-all 0.933  key nodes made 0.736  key klongs 0.849
+  cmp1: exact 483 (put 320, del 163), lists 26 (put 26, del 0), other.samenodes 12 (put 12, del 0), other.othernodes 58 (put 58, del 0)
+    lists: key klongs pe 210 today 225; B-all key bytes pe 8912 today 9152
+    other.samenodes: key klongs pe 113 today 119; B-all key bytes pe 4256 today 4352
+    other.othernodes: key klongs pe 396 today 553; B-all key bytes pe 16896 today 22128
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 510 (put 347, del 163), lists 69 (put 69, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 597 today 662; B-all key bytes pet 24912 today 25952
+  pe decisions {'pe.append': 985, 'pe.emptytree': 473, 'pe.new1': 493, 'pe.newroot': 20, 'pe.replace1': 435, 'pe.replace2': 108, 'pe.same': 2369}
+small:long: traces 10/10 (incomplete 0/0), txs 600, ops 1421, dels 378, tx1 170
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.986  B-all 0.991  index B-new 0.978  index B-all 0.988
+  key nodes made 0.970  key klongs 0.973  top nodes 1.000  versions 0.983
+  fill (live klongs a node, sampled) pe 2.43 today 2.43; end nodes 244 / 245; dead a node 0.899 / 0.928; height max 1 / 1
+  paired (today from PE's tree, 600 txs): B-new 0.967  B-all 0.989  index B-new 0.947  index B-all 0.986  key nodes made 0.927  key klongs 0.938
+  cmp1: exact 156 (put 105, del 51), lists 8 (put 8, del 0), other.samenodes 3 (put 3, del 0), other.othernodes 3 (put 3, del 0)
+    lists: key klongs pe 79 today 82; B-all key bytes pe 2784 today 2832
+    other.samenodes: key klongs pe 34 today 34; B-all key bytes pe 1120 today 1120
+    other.othernodes: key klongs pe 37 today 44; B-all key bytes pe 1104 today 1408
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 155 (put 104, del 51), lists 15 (put 15, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 0 (put 0, del 0)
+    lists: key klongs pet 164 today 170; B-all key bytes pet 5664 today 5760
+  pe decisions {'pe.append': 1083, 'pe.emptytree': 147, 'pe.join.left': 5, 'pe.join.right': 5, 'pe.new1': 331, 'pe.new2': 4, 'pe.newroot': 20, 'pe.replace1': 139, 'pe.replace2': 62, 'pe.same': 1277}
+small:mixed: traces 10/10 (incomplete 0/0), txs 600, ops 1282, dels 424, tx1 133
+  fails pe {} today {}
+  shape pe {} today {}
+  B-new 0.941  B-all 0.972  index B-new 0.918  index B-all 0.966
+  key nodes made 0.871  key klongs 0.921  top nodes 0.892  versions 0.946
+  fill (live klongs a node, sampled) pe 2.73 today 2.55; end nodes 77 / 87; dead a node 0.603 / 0.702; height max 2 / 2
+  paired (today from PE's tree, 600 txs): B-new 0.910  B-all 0.953  index B-new 0.876  index B-all 0.943  key nodes made 0.812  key klongs 0.873
+  cmp1: exact 113 (put 66, del 47), lists 7 (put 7, del 0), other.samenodes 3 (put 3, del 0), other.othernodes 10 (put 9, del 1)
+    lists: key klongs pe 46 today 49; B-all key bytes pe 2112 today 2160
+    other.samenodes: key klongs pe 24 today 24; B-all key bytes pe 896 today 896
+    other.othernodes: key klongs pe 69 today 92; B-all key bytes pe 2640 today 3584
+  pet (today's cut emulated) fails {} shape {}
+  cmp1 of pet: exact 113 (put 66, del 47), lists 19 (put 19, del 0), other.samenodes 0 (put 0, del 0), other.othernodes 1 (put 0, del 1)
+    lists: key klongs pet 147 today 163; B-all key bytes pet 6176 today 6432
+    other.othernodes: key klongs pet 7 today 10; B-all key bytes pet 304 today 352
+  pe decisions {'pe.append': 771, 'pe.collapse': 2, 'pe.emptytree': 56, 'pe.join.left': 16, 'pe.join.right': 24, 'pe.new1': 108, 'pe.new2': 9, 'pe.newroot': 21, 'pe.replace1': 361, 'pe.replace2': 80, 'pe.same': 826}

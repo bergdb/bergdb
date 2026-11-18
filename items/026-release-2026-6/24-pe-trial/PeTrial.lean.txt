@@ -1,0 +1,648 @@
+/-
+The PE trial (bergdb 026-24; the design in 026-23, section 1.2): PE's writer
+(Pe/Plan.lean) and today's writer (lean/SIS/Tree/Exec.lean, unchanged) run on
+the operations of Java's traces (027-02, format 3) and on 026-21's workloads,
+in the model, each from the empty tree on its own structure P. Adapted from
+026-21's `steptimes` (lean/study/StepTimes.lean on the branch 026-21-study):
+the same checks, counts and stand-in bytes; one step a transaction.
+
+Usage: petrial MODE [--contract] [--paired] [--hplus=K] TRACE...
+
+Modes:
+  today  today's writer (`putKv` for each operation), a transaction at time T.
+  pe     PE's writer (`Pe.runTx`), a transaction at time T. In every
+         transaction of one operation, today's writer is run beside it from
+         the same P, and the two changes are compared (`cmp1`, below).
+  peh    as pe, with a list longer than h cut into parts of at most M / 2
+         entries, not h (`Pe.Opt.cap`; 026-24, section 2.6): the fill.
+  pet    as pe, with a base full by size cut as today's rule O cuts it
+         (`Pe.Opt.todayCut`; 026-24, section 1, F1 and F2) in transactions of
+         one operation: for cmp1 only, to show that the differences of one
+         operation are F1 to F3.
+  With --paired (mode pe), today's writer is run from PE's P for every
+  transaction, and the bytes of its changes are summed too (`p*` counts):
+  a comparison with the same tree before each transaction.
+
+The checks, each failure counted by name (as 026-21's):
+  map       after each transaction, the get of each of its keys against the
+            reference (the program's map of the operations); each GET and
+            SCAN line of Java's trace; every 10th transaction and the last, a
+            full forward scan; at the run's end a full scan at every 50th
+            transaction against the reference of then.
+  contract  (with --contract) at every transaction, the contract of
+            lean/contract: `contractOk` (C1, the invariants; C2, the contents
+            with the operations), the frame (C3: `extOk` and D, over the nodes
+            the transaction changed, as no other node of P changes), TREE (C4,
+            `treeOkB`), the top (C5, `topStepB` and the roots' link). The
+            writer's own rules (`shapeFaults`: the fill, the leftmost rule,
+            two live klongs in an inner root, theta, the heights) are counted
+            by name (`shapeend`): for PE each is a fault of the trial.
+  cmp1      (mode pe) a transaction of one operation: today's changes and
+            PE's, from the same P, compared on the tree they give at T: the
+            key nodes reached that are new or got entries at T, new ids
+            renamed in the order of a walk. `exact`: the same entries;
+            `lists`: not the same entries, but the same live lists (the
+            layout of klongs differs); `other`: the lists differ. Each
+            `other` is printed (CMP1 lines, at most 20 a trace).
+  made      every key node made is named by a live klong of a key node the
+            transaction changed or made, or is the new space root
+            (`made.unnamed`): no node made is left out.
+  error     an error of the writer (`Bug:`, `corrupt:`, `bounds:`): the trace
+            stops there.
+
+Prints one line `RESULT key=value ...` a trace, then PETRIAL OK or PETRIAL
+FAILED.
+-/
+import Pe.Plan
+import Check.Tree
+import SIS.Tree.Read
+import SIS.Tree.Inv
+import Contract.CheckShape
+import Contract.Shape
+import Std.Data.HashMap
+import Std.Data.HashSet
+import Std.Data.TreeMap
+
+open SIS SIS.Check SIS.Tree
+
+namespace PeTrial
+
+abbrev Nodes := Std.HashMap NodeId (Node BVal)
+
+def keyCmp (a b : Key) : Ordering := if keyLt a b then .lt else if a == b then .eq else .gt
+
+abbrev Ref := Std.TreeMap Key Nat keyCmp
+
+def viewN (P : Nodes) : View BVal := fun x => P[x]?
+
+def toNodes (P : Struct BVal) : Nodes := P.foldl (fun m q => m.insert q.1 q.2) {}
+
+/-- `Struct.apply` on the hash map (as 026-17's `applyC`). -/
+def applyC (P : Nodes) (i : Time) (c : Changes BVal) : Except String Nodes := do
+  let mut P := P
+  for n in c.new do
+    if P.contains n.id then throw s!"IdsFresh: node {n.id}, made at {i}, exists"
+    P := P.insert n.id { level := n.level, isData := n.isData, hist := [] }
+  for (x, v) in c.adds do
+    match P[x]? with
+    | some nd => P := P.insert x { nd with hist := nd.hist ++ [⟨i, v⟩] }
+    | none => throw s!"PointersOK: an entry at {i} for node {x}, no node of P"
+  for (_, v) in c.adds do
+    for y in bptrs v do
+      if !P.contains y then throw s!"PointersOK: an entry at {i} names {y}, no node of P"
+  return P
+
+inductive Mode where
+  | today | pe | pet | peh
+  deriving BEq, Repr, Inhabited
+
+def Mode.name : Mode → String
+  | .today => "today" | .pe => "pe" | .pet => "pet" | .peh => "peh"
+
+def Mode.ofString : String → Option Mode
+  | "today" => some .today | "pe" => some .pe | "pet" => some .pet | "peh" => some .peh
+  | _ => none
+
+/-! ## The contract's view of P -/
+
+def kOf : Klong → Contract.Klong
+  | .time t => .time t
+  | .key c y => .key c y
+  | .del b => .del b
+
+def opOf : Tree.Op → Contract.Op
+  | .put k h => .put k h
+  | .del k => .del k
+
+def objOf (p : Params) (nd : Node BVal) : Option Contract.Obj :=
+  if nd.isData then
+    match nd.hist.findSome? (fun e => match e.val with
+      | .data h => some h
+      | _ => none) with
+    | some h => some (.val h)
+    | none => none
+  else if p.keyMax < nd.level then none
+  else some (.key { level := nd.level, leaf := p.heightOf nd.level == 0,
+                    ks := (klongsOf nd.hist).map kOf })
+
+/-! ## The counts -/
+
+def bump (m : Std.HashMap String Nat) (k : String) (n : Nat := 1) : Std.HashMap String Nat :=
+  m.insert k (m.getD k 0 + n)
+
+structure Stats where
+  txs : Nat := 0
+  ops : Nat := 0
+  noops : Nat := 0
+  dels : Nat := 0
+  dupkeys : Nat := 0
+  tx1 : Nat := 0
+  taken : Nat := 0
+  madeKey : Nat := 0
+  tops : Nat := 0
+  versions : Nat := 0
+  klongs : Nat := 0
+  reached : Std.HashMap String Nat := {}
+  bRec : Nat := 0
+  bVal : Nat := 0
+  bDel : Nat := 0
+  bTop : Nat := 0
+  bNew : Nat := 0
+  bAll : Nat := 0
+  changedT : Nat := 0
+  /-- paired: today's writer from the same P, every transaction -/
+  pTxs : Nat := 0
+  pRec : Nat := 0
+  pTop : Nat := 0
+  pNew : Nat := 0
+  pAll : Nat := 0
+  pMadeKey : Nat := 0
+  pKlongs : Nat := 0
+  /-- the comparison of transactions of one operation -/
+  cmp : Std.HashMap String Nat := {}
+  samples : Nat := 0
+  sNodes : Nat := 0
+  sKlongs : Nat := 0
+  sLive : Nat := 0
+  sDead : Nat := 0
+  sTimes : Nat := 0
+  height : Nat := 0
+  endNodes : Nat := 0
+  endKlongs : Nat := 0
+  endLive : Nat := 0
+  endDead : Nat := 0
+  endTimes : Nat := 0
+  gets : Nat := 0
+  scans : Nat := 0
+  jreads : Nat := 0
+  cSteps : Nat := 0
+  shapeEnd : Std.HashMap String Nat := {}
+  fails : Std.HashMap String Nat := {}
+  first : Array String := #[]
+  cmpLines : Array String := #[]
+
+def Stats.fail (st : Stats) (check msg : String) : Stats :=
+  { st with fails := bump st.fails check,
+            first := if st.first.size < 6 then st.first.push s!"{check}: {msg}" else st.first }
+
+/-! ## The run's state -/
+
+structure Cfg where
+  mode : Mode
+  p : Params
+  contract : Bool
+  paired : Bool
+
+structure St where
+  P : Nodes
+  next : NodeId := 1000
+  ref : Ref := ∅
+  snaps : Array (Nat × Ref) := #[]
+  heap : Contract.Heap := {}
+  tp : Contract.Top := []
+  stats : Stats := {}
+
+def startW (p : Params) (P : Nodes) (next : NodeId) : Except String W := do
+  let v := viewN P
+  match lastTop v with
+  | none => throw "corrupt: the root has no top node"
+  | some z =>
+    let top ← topOf p (rootless v) z
+    pure { next := next, top := top }
+
+def runAct {α : Type} (p : Params) (P : Nodes) (s : Time) (w : W) (a : M α) :
+    Except String (α × W) :=
+  (a.run { p := p, i := s, view := rootless (viewN P) }).run w
+
+def keyNodeBytes (nd : Node BVal) : Nat := 32 + 16 * (klongsOf nd.hist).length
+
+def topNodeOf (s : Time) (t : SIS.Tree.Top) (tp : Contract.Top) : Contract.TopNode :=
+  ⟨s, t.rootKey, t.skips.map (fun q => (q.1, q.2, ((tp.node q.2).map (·.time)).getD 0))⟩
+
+/-- The contract at the transaction's end (026-21's `checkContract`, one step a
+transaction). -/
+def checkContract (cfg : Cfg) (st : St) (s : Time) (ops : List Tree.Op) (c : Changes BVal) (w : W) :
+    St := Id.run do
+  let p := cfg.p
+  let mut stt := { st.stats with cSteps := st.stats.cSteps + 1 }
+  let D : Std.HashSet NodeId := Std.HashSet.ofList (w.nodes.map (·.1) ++ w.made.map (·.id))
+  let ids : Std.HashSet NodeId := Std.HashSet.ofList (c.new.map (·.id) ++ c.adds.map (·.1))
+  let mut objs := st.heap.objs
+  let mut frameOk := true
+  for x in ids.toList do
+    match st.P[x]? with
+    | none => pure ()
+    | some nd =>
+      match objOf p nd with
+      | none => pure ()
+      | some o' =>
+        match objs[x]? with
+        | some o =>
+          if !(Contract.extOk s o o' && (D.contains x || o' == o)) then frameOk := false
+        | none =>
+          match o' with
+          | .key _ => if !D.contains x then frameOk := false
+          | .val _ => pure ()
+        objs := objs.insert x o'
+  let mut roots := st.heap.roots
+  let mut tp := st.tp
+  if w.newTop then
+    roots := roots ++ [(s, w.top.rootKey)]
+    tp := tp ++ [(w.top.id, topNodeOf s w.top st.tp)]
+  let h' : Contract.Heap := { objs := objs, roots := roots }
+  let cp : Contract.Params := { M := p.M }
+  let cops := ops.map opOf
+  if !frameOk then stt := stt.fail "C3.frame" s!"T {s}"
+  if !Contract.contractOk cp s h'.tree cops h'.tree then
+    if !Contract.invOk cp (h'.tree.at s) then stt := stt.fail "C1.inv" s!"T {s}"
+    else stt := stt.fail "C2.contents" s!"T {s}"
+  if !Contract.treeOkB (h'.tree.at s) then stt := stt.fail "C4.tree" s!"T {s}"
+  if !(Contract.topStepB s st.tp tp && h'.roots == Contract.rootsOf tp) then
+    stt := stt.fail "C5.top" s!"T {s}"
+  let q : Contract.ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
+  for f in (Contract.shapeFaults q (h'.tree.at s)).eraseDups do
+    stt := { stt with shapeEnd := bump stt.shapeEnd f }
+    if cfg.mode != .today then stt := stt.fail s!"shape.{f}" s!"T {s}"
+  return { st with heap := h', tp := tp, stats := stt }
+
+/-- The bytes of a transaction's changes c on P (026-17's stand-ins, as
+026-21's): the record (48 + 16 a changed key node), the top nodes (48 + 16 a
+skip pointer), the key nodes made (B-new) and every key node changed (B-all),
+each whole at the transaction's end; and the counts of key nodes made and key
+klongs added. -/
+structure Bytes where
+  recB : Nat := 0
+  top : Nat := 0
+  new : Nat := 0
+  all : Nat := 0
+  madeKey : Nat := 0
+  tops : Nat := 0
+  klongs : Nat := 0
+  changed : Std.HashSet NodeId := {}
+  made : List NodeId := []
+
+def bytesOf (p : Params) (P' : Nodes) (c : Changes BVal) : Bytes := Id.run do
+  let isKey (x : NodeId) : Bool := match P'[x]? with
+    | some nd => !nd.isData && decide (nd.level ≤ p.keyMax)
+    | none => false
+  let madeKeys := (c.new.filter (fun n => !n.isData && decide (n.level ≤ p.keyMax))).map (·.id)
+  let tops := c.new.filter (fun n =>
+    !n.isData && decide (p.topLevel 0 ≤ n.level) && decide (n.level < p.rootLevel))
+  let keyAdds := c.adds.filter (fun q => isKey q.1)
+  let changed : Std.HashSet NodeId := Std.HashSet.ofList (madeKeys ++ keyAdds.map (·.1))
+  let topB := tops.foldl (fun b z => b + 48 + 16 * (match P'[z.id]? with
+    | some nd => nd.hist.countP (fun e => match e.val with
+      | .skip _ _ => true
+      | _ => false)
+    | none => 0)) 0
+  let size (y : NodeId) : Nat := match P'[y]? with
+    | some nd => keyNodeBytes nd
+    | none => 0
+  return { recB := 48 + 16 * changed.size, top := topB,
+           new := madeKeys.foldl (fun a y => a + size y) 0,
+           all := changed.fold (fun a y => a + size y) 0,
+           madeKey := madeKeys.length, tops := tops.length, klongs := keyAdds.length,
+           changed := changed, made := madeKeys }
+
+/-! ## The comparison of one operation (cmp1) -/
+
+structure Canon where
+  names : Std.HashMap NodeId String := {}
+  k : Nat := 0
+  exact : Array String := #[]
+  lists : Array String := #[]
+  newKeys : Nat := 0
+  oldChanged : Array NodeId := #[]
+
+def showVal (nm : NodeId → String) : BVal → String
+  | .key c y => s!"k{c}>{nm y}"
+  | .del cs => s!"d{cs}"
+  | v => s!"{repr v}"
+
+def Canon.name (cn : Canon) (P0 : Nodes) (y : NodeId) : Canon × String :=
+  if P0.contains y then (cn, s!"o{y}") else
+    match cn.names[y]? with
+    | some s => (cn, s)
+    | none =>
+      let s := s!"n{cn.k}"
+      ({ cn with names := cn.names.insert y s, k := cn.k + 1 }, s)
+
+/-- The canonical form of the tree P at time t (the latest), against P0 (the
+tree before): see the header, cmp1. -/
+partial def canonWalk (p : Params) (P0 P : Nodes) (t : Time) (cn : Canon) (x : NodeId) : Canon := Id.run do
+  match P[x]? with
+  | none => return cn
+  | some nd =>
+    if nd.isData || p.keyMax < nd.level then return cn
+    let kn : KNode := { leaf := p.heightOf nd.level == 0, ks := klongsOf nd.hist }
+    let lv := kn.live
+    let mut cn := cn
+    -- name the children in order
+    for (_, y) in lv do
+      cn := (cn.name P0 y).1
+    let nm (y : NodeId) : String := if P0.contains y then s!"o{y}" else cn.names.getD y "?"
+    let addsT := nd.hist.filter (fun e => e.time == t)
+    if !addsT.isEmpty then
+      cn := { cn with
+        exact := cn.exact.push s!"{nm x}@{nd.level}:{addsT.map (fun e => showVal nm e.val)}",
+        lists := cn.lists.push s!"{nm x}@{nd.level}:{lv.map (fun q => (q.1, nm q.2))}",
+        newKeys := cn.newKeys + (if P0.contains x then 0 else 1),
+        oldChanged := if P0.contains x then cn.oldChanged.push x else cn.oldChanged }
+    for (c, y) in lv do
+      if !kn.leaf || segLen c == 7 then cn := canonWalk p P0 P t cn y
+    return cn
+
+def canonOf (p : Params) (P0 P : Nodes) (t : Time) : Canon :=
+  match rootAt (viewN P) t with
+  | none => {}
+  | some r =>
+    let cn := ({} : Canon).name P0 r
+    canonWalk p P0 P t cn.1 r
+
+/-! ## Reads and fill -/
+
+def scanAll (p : Params) (P : Nodes) (t : Time) : List (Key × Nat) :=
+  (scan p (viewN P) t {} 1000000000).map (fun kv => (kv.key, kv.h))
+
+def refOp (r : Ref) (op : Tree.Op) : Ref :=
+  match op with
+  | .put k h => r.insert k h
+  | .del k => r.erase k
+
+structure Fill where
+  nodes : Nat := 0
+  klongs : Nat := 0
+  live : Nat := 0
+  dead : Nat := 0
+  times : Nat := 0
+  height : Nat := 0
+
+def fillAt (p : Params) (P : Nodes) (t : Time) : Fill := Id.run do
+  let v := viewN P
+  match rootAt v t with
+  | none => return {}
+  | some r =>
+    let mut a : Fill := {}
+    for x in nodesAt p v t p.fuel r do
+      match P[x]? with
+      | some nd =>
+        if !nd.isData && decide (nd.level ≤ p.keyMax) then
+          let ks := klongsOf (nd.hist.upTo t)
+          let n : KNode := { leaf := p.heightOf nd.level == 0, ks := ks }
+          let times := ks.countP (fun k => match k with
+            | .time _ => true
+            | _ => false)
+          a := { nodes := a.nodes + 1, klongs := a.klongs + ks.length,
+                 live := a.live + (n.liveAt t).length, dead := a.dead + n.deadCount,
+                 times := a.times + times, height := max a.height (p.heightOf nd.level) }
+      | none => pure ()
+    return a
+
+/-! ## A transaction -/
+
+def isPut : Tree.Op → Bool
+  | .put _ _ => true
+  | .del _ => false
+
+def valBytes (ops : List Tree.Op) : Nat :=
+  ops.foldl (fun s op => match op with
+    | .put k _ => s + 40 + 8 * k.length
+    | .del _ => s) 0
+
+def opStr : Tree.Op → String
+  | .put k _ => s!"put {k}"
+  | .del k => s!"del {k}"
+
+def runTx (cfg : Cfg) (name : String) (st : St) (T : Nat) (x : SIS.Check.Tree.TTx) : Except String St := do
+  let p := cfg.p
+  let ops := x.ops.toList.map (·.1)
+  let keys := ops.map (·.key)
+  let dups := keys.length - keys.eraseDups.length
+  let P0 := st.P
+  let w0 ← startW p P0 st.next
+  let noops := ops.map (fun op => match op with
+    | .del k => !st.ref.contains k
+    | .put _ _ => false)
+  let w ← match cfg.mode with
+    | .today => do
+      let (_, w) ← runAct p P0 T w0 (ops.mapM putKv)
+      pure w
+    | .pe => do
+      let ((), w) ← runAct p P0 T w0 (Pe.runTx ops)
+      pure w
+    | .pet => do
+      let ((), w) ← runAct p P0 T w0 (Pe.runTx ops { todayCut := ops.length == 1 })
+      pure w
+    | .peh => do
+      let ((), w) ← runAct p P0 T w0 (Pe.runTx ops { cap := some (p.M / 2) })
+      pure w
+  match w.outside.find? (fun q => !w.taken.contains q.1) with
+  | some (_, g, h) => throw s!"bounds: the tree leaves the level bounds: segment {g}, height {h}"
+  | none => pure ()
+  let c := changesOf T w
+  let P' ← applyC P0 T c
+  let b := bytesOf p P' c
+  let mut stt := st.stats
+  -- no node made is left out: every key node made is named by a live klong of
+  -- a key node that the transaction changed or made, or is the new space root
+  let named : Std.HashSet NodeId := b.changed.fold (fun acc z => match P'[z]? with
+    | some nd =>
+      let kn : KNode := { leaf := p.heightOf nd.level == 0, ks := klongsOf nd.hist }
+      kn.live.foldl (fun acc q => acc.insert q.2) acc
+    | none => acc) {}
+  for z in b.made do
+    if !named.contains z && !(w.newTop && w.top.rootKey == z) then
+      stt := stt.fail "made.unnamed" s!"T {T}: key node {z} made and named by no live klong"
+  stt := { stt with taken := stt.taken + w.taken.length, madeKey := stt.madeKey + b.madeKey,
+                    tops := stt.tops + b.tops, versions := stt.versions + b.changed.size,
+                    klongs := stt.klongs + b.klongs }
+  for n in w.trail do
+    stt := { stt with reached := bump stt.reached n }
+  -- today's writer from the same P: the paired bytes, and cmp1
+  if cfg.mode != .today && (cfg.paired || ops.length == 1) then
+    match runAct p P0 T w0 (ops.mapM putKv) with
+    | .error e => stt := stt.fail "today.error" s!"T {T}: {e}"
+    | .ok (_, wt) =>
+      let ct := changesOf T wt
+      match applyC P0 T ct with
+      | .error e => stt := stt.fail "today.error" s!"T {T}: {e}"
+      | .ok Pt =>
+        if cfg.paired then
+          let bt := bytesOf p Pt ct
+          stt := { stt with pTxs := stt.pTxs + 1, pRec := stt.pRec + bt.recB, pTop := stt.pTop + bt.top,
+                            pNew := stt.pNew + bt.new, pAll := stt.pAll + bt.all,
+                            pMadeKey := stt.pMadeKey + bt.madeKey, pKlongs := stt.pKlongs + bt.klongs }
+        if ops.length == 1 then
+          stt := { stt with tx1 := stt.tx1 + 1 }
+          let ca := canonOf p P0 Pt T
+          let cb := canonOf p P0 P' T
+          let kind := if ca.exact == cb.exact then "exact"
+            else if ca.lists == cb.lists then "lists"
+            else if ca.newKeys == cb.newKeys && ca.oldChanged.toList.mergeSort (· ≤ ·) ==
+                cb.oldChanged.toList.mergeSort (· ≤ ·) then "other.samenodes"
+            else "other.othernodes"
+          let isDel := match ops with
+            | [.del _] => "del"
+            | _ => "put"
+          stt := { stt with cmp := bump (bump stt.cmp kind) s!"{kind}.{isDel}" }
+          if kind != "exact" then
+            let bt := bytesOf p Pt ct
+            stt := { stt with cmp := bump (bump stt.cmp s!"{kind}.ktoday" bt.klongs) s!"{kind}.kpe" b.klongs }
+            stt := { stt with cmp := bump (bump stt.cmp s!"{kind}.btoday" bt.all) s!"{kind}.bpe" b.all }
+            -- a transaction of one operation where PE writes more than today
+            if bt.all < b.all || bt.new < b.new || bt.klongs < b.klongs || bt.madeKey < b.madeKey then
+              stt := { stt with cmp := bump stt.cmp "more" }
+              if bt.all < b.all then stt := { stt with cmp := bump stt.cmp "more.ball" }
+              if bt.new < b.new then stt := { stt with cmp := bump stt.cmp "more.bnew" }
+              if bt.klongs < b.klongs then stt := { stt with cmp := bump stt.cmp "more.klongs" }
+              if bt.madeKey < b.madeKey then stt := { stt with cmp := bump stt.cmp "more.made" }
+              if stt.cmpLines.size < 40 then
+                let notes := (wt.trail.reverse.filter (fun n => !n.startsWith "pe.")).eraseDups
+                let pen := (w.trail.reverse.filter (fun n => n.startsWith "pe.")).eraseDups
+                let line := s!"MORE {name} T={T} {kind} {opStr ops.head!} B-all today {bt.all} pe {b.all}; " ++
+                  s!"B-new today {bt.new} pe {b.new}; klongs today {bt.klongs} pe {b.klongs}; " ++
+                  s!"today-notes={notes} pe-notes={pen}\n  today: {ca.exact.toList}\n  pe:    {cb.exact.toList}"
+                stt := { stt with cmpLines := stt.cmpLines.push line }
+          if kind.startsWith "other" && stt.cmpLines.size < 20 then
+            let notes := (wt.trail.reverse.filter (fun n => !n.startsWith "pe.")).eraseDups
+            let line := s!"CMP1 {name} T={T} {kind} {opStr ops.head!} today-notes={notes}\n" ++
+              s!"  today: {ca.lists.toList}\n  pe:    {cb.lists.toList}"
+            stt := { stt with cmpLines := stt.cmpLines.push line }
+  let delB := (ops.zip noops).foldl (fun s (op, noop) => match op with
+    | .del k => if noop then s else s + 28 + 8 * k.length
+    | .put _ _ => s) 0
+  stt := { stt with txs := stt.txs + 1, ops := stt.ops + ops.length,
+                    dels := stt.dels + (ops.filter (!isPut ·)).length,
+                    noops := stt.noops + (noops.filter id).length, dupkeys := stt.dupkeys + dups,
+                    bRec := stt.bRec + b.recB, bVal := stt.bVal + valBytes ops, bDel := stt.bDel + delB,
+                    bTop := stt.bTop + b.top, changedT := stt.changedT + b.changed.size,
+                    bNew := stt.bNew + b.new, bAll := stt.bAll + b.all }
+  let mut st := { st with P := P', next := w.next, stats := stt }
+  if cfg.contract then st := checkContract cfg st T ops c w
+  stt := st.stats
+  -- the reference and the map
+  let ref := ops.foldl refOp st.ref
+  for op in ops do
+    stt := { stt with gets := stt.gets + 1 }
+    let mv := get p (viewN P') T op.key
+    if mv != ref.get? op.key then
+      stt := stt.fail "map.get" s!"T {T}: get of {op.key}: the tree {mv}, the reference {ref.get? op.key}"
+  for (jt, key, jv) in x.gets do
+    stt := { stt with jreads := stt.jreads + 1 }
+    let mv := get p (viewN P') jt key
+    if mv != jv then stt := stt.fail "map.javaget" s!"T {T}: GET at {jt} of {key}: the tree {mv}, Java {jv}"
+  for sc in x.scans do
+    stt := { stt with jreads := stt.jreads + 1 }
+    let ms := (scan p (viewN P') sc.t sc.req sc.limit).map (fun kv => (kv.key, kv.h))
+    if ms != sc.results then stt := stt.fail "map.javascan" s!"T {T}: SCAN at {sc.t}"
+  if cfg.contract then
+    let cont := Contract.contents (st.heap.tree.at T)
+    if cont != ref.toList then stt := stt.fail "C2.reference" s!"T {T}"
+  return { st with ref := ref, stats := stt }
+
+/-! ## A trace -/
+
+def showMap (m : Std.HashMap String Nat) : String :=
+  ",".intercalate ((m.toList.mergeSort (fun a b => decide (a.1 ≤ b.1))).map (fun (k, v) => s!"{k}:{v}"))
+
+def resultLine (name : String) (mode : Mode) (p : Params) (stt : Stats) : String :=
+  s!"RESULT trace={name} mode={mode.name} M={p.M} G={p.G} H={p.H} m={p.mergeBelow} c={p.mergeMax} " ++
+  s!"h={p.splitAbove} theta={p.theta} " ++
+  s!"txs={stt.txs} ops={stt.ops} dels={stt.dels} noops={stt.noops} dupkeys={stt.dupkeys} tx1={stt.tx1} " ++
+  s!"taken={stt.taken} madekey={stt.madeKey} tops={stt.tops} versions={stt.versions} " ++
+  s!"klongs={stt.klongs} changedT={stt.changedT} brec={stt.bRec} bval={stt.bVal} bdel={stt.bDel} " ++
+  s!"btop={stt.bTop} bnew={stt.bNew} ball={stt.bAll} " ++
+  s!"ptxs={stt.pTxs} prec={stt.pRec} ptop={stt.pTop} pnew={stt.pNew} pall={stt.pAll} " ++
+  s!"pmadekey={stt.pMadeKey} pklongs={stt.pKlongs} cmp={showMap stt.cmp} " ++
+  s!"samples={stt.samples} snodes={stt.sNodes} " ++
+  s!"sklongs={stt.sKlongs} slive={stt.sLive} sdead={stt.sDead} stimes={stt.sTimes} " ++
+  s!"height={stt.height} endnodes={stt.endNodes} endklongs={stt.endKlongs} endlive={stt.endLive} " ++
+  s!"enddead={stt.endDead} endtimes={stt.endTimes} gets={stt.gets} scans={stt.scans} " ++
+  s!"jreads={stt.jreads} csteps={stt.cSteps} shapeend={showMap stt.shapeEnd} " ++
+  s!"fails={showMap stt.fails} reached={showMap stt.reached}"
+
+def addFill (stt : Stats) (f : Fill) : Stats :=
+  { stt with samples := stt.samples + 1, sNodes := stt.sNodes + f.nodes,
+             sKlongs := stt.sKlongs + f.klongs, sLive := stt.sLive + f.live,
+             sDead := stt.sDead + f.dead, sTimes := stt.sTimes + f.times,
+             height := max stt.height f.height }
+
+def runTrace (mode : Mode) (contract paired : Bool) (hplus : Nat) (file : String) : IO Bool := do
+  let text ← IO.FS.readFile file
+  let tt := SIS.Check.Tree.parseTree text
+  let name := (file.splitOn "/").getLast!
+  match tt.tree with
+  | none =>
+    IO.println s!"RESULT trace={name} mode={mode.name} fails=noTREEline"
+    return false
+  | some (p0, _) =>
+    let p := { p0 with H := p0.H + hplus }
+    let cfg : Cfg := { mode := mode, p := p, contract := contract, paired := paired }
+    let P := toNodes (initStruct p)
+    let objs : Std.HashMap NodeId Contract.Obj := P.fold (fun m x nd => match objOf p nd with
+      | some o => if x == root then m else m.insert x o
+      | none => m) {}
+    let mut st : St := { P := P, heap := { objs := objs, roots := [(0, 1)] },
+                         tp := [(2, (⟨0, 1, []⟩ : Contract.TopNode))],
+                         snaps := #[(0, ∅)] }
+    let mut lastT := 0
+    let mut n := 0
+    for x in tt.txs do
+      if x.idx == 0 then continue
+      let T := x.idx
+      match runTx cfg name st T x with
+      | .error e =>
+        st := { st with stats := st.stats.fail "error" s!"T {T}: {e}" }
+        break
+      | .ok st' =>
+        st := st'
+        lastT := T
+        n := n + 1
+        if n % 10 == 0 then
+          let mut stt := { st.stats with scans := st.stats.scans + 1 }
+          if scanAll p st.P T != st.ref.toList then stt := stt.fail "map.scan" s!"T {T}"
+          st := { st with stats := stt }
+        if n % 20 == 0 then st := { st with stats := addFill st.stats (fillAt p st.P T) }
+        if n % 50 == 0 then st := { st with snaps := st.snaps.push (T, st.ref) }
+    let t := lastT
+    let mut stt := { st.stats with scans := st.stats.scans + 1 }
+    if scanAll p st.P t != st.ref.toList then stt := stt.fail "map.scan" s!"T {lastT}"
+    let f := fillAt p st.P t
+    stt := addFill stt f
+    stt := { stt with endNodes := f.nodes, endKlongs := f.klongs, endLive := f.live,
+                      endDead := f.dead, endTimes := f.times }
+    for (T, r) in st.snaps do
+      if T == 0 then continue
+      stt := { stt with scans := stt.scans + 1 }
+      if scanAll p st.P T != r.toList then stt := stt.fail "map.history" s!"T {T}"
+    IO.println (resultLine name mode p stt)
+    for f in stt.first do
+      IO.println s!"  {f}"
+    for l in stt.cmpLines do
+      IO.println l
+    return stt.fails.isEmpty
+
+end PeTrial
+
+open PeTrial in
+def main (args : List String) : IO UInt32 := do
+  match args with
+  | m :: rest =>
+    match Mode.ofString m with
+    | none =>
+      IO.println "Usage: petrial today|pe|pet|peh [--contract] [--paired] [--hplus=K] TRACE..."
+      return 2
+    | some mode =>
+      let contract := rest.contains "--contract"
+      let paired := rest.contains "--paired"
+      let hplus := rest.foldl (fun k o => if o.startsWith "--hplus=" then ((o.drop 8).toNat?).getD k else k) 2
+      let files := rest.filter (fun o => !o.startsWith "--")
+      let mut ok := true
+      for f in files do
+        let r ← runTrace mode contract paired hplus f
+        ok := ok && r
+      IO.println (if ok then "PETRIAL OK" else "PETRIAL FAILED")
+      return (if ok then 0 else 1)
+  | [] =>
+    IO.println "Usage: petrial today|pe|pet|peh [--contract] [--paired] [--hplus=K] TRACE..."
+    return 2

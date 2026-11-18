@@ -1,0 +1,27 @@
+# cmp1 of mode pe without --contract on all 288 traces (petrial v3): sums
+exact 58553
+exact.del 8551
+exact.put 50002
+lists 1382
+lists.bpe 551088
+lists.btoday 561248
+lists.del 108
+lists.kpe 13629
+lists.ktoday 14264
+lists.put 1274
+more 8
+more.ball 8
+other.othernodes 2447
+other.othernodes.bpe 790512
+other.othernodes.btoday 1027920
+other.othernodes.del 306
+other.othernodes.kpe 18903
+other.othernodes.ktoday 25775
+other.othernodes.put 2141
+other.samenodes 472
+other.samenodes.bpe 216368
+other.samenodes.btoday 218992
+other.samenodes.del 3
+other.samenodes.kpe 5587
+other.samenodes.ktoday 5751
+other.samenodes.put 469
