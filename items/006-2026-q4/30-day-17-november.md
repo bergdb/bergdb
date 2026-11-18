@@ -1,6 +1,6 @@
 # 006-30 Day work, 17 November 2026
 
-Created 2026-11-17 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-17 by Frans Lundberg. Status: done (the outcome written 2026-11-17, 23:29). The plan for the
 coordinator's day of 2026-11-17 (coord-1117), a Tuesday: the progress
 and the outcome. The way of working is 013-02's (the coordinator).
 
@@ -128,3 +128,77 @@ The defaults below go ahead unless Frans says otherwise before he leaves.
 * 19:06 Landed: 030-14 done (387886af: also Java's readers after a crash or restarts; a key node's kind from its level, checked; the independent review's leaf-flag example ruled out in Lean) and 030-15 (6fd5fdeb: strict trace parsing; one proved verdict for contractcheck; the gate pins the statement files, 90 files). 124 theorems. Started 030-16: the writer's delete step (Opus at xhigh), beside 030-10's puts.
 * 20:15 Landed (e7c873ee): the model's writer proved to meet the contract for every put (030-10: putKv_put, any key); the delete in parts (030-16: the full node, the bitmap, a leaf that keeps a live klong); the contract on the reclaim and large sets with Java's search checked (030-12: 25,735 transactions, no failure). 153 theorems.
 * 21:01 Landed 030-13 (3f1e2fea): the contract's checks in level2.sh and night.sh, in parallel parts. Started 030-17 (Java's readers under eviction and after a cut; Opus at xhigh) and a second independent review, of the writer proofs (Codex).
+
+
+## 6. Outcome
+
+Written 2026-11-17, 23:29, by coord-1117. The provers stopped at 23:00
+with the week at 58 % (Frans's cap 60 %); a third independent review
+(Codex) checked this outcome against the Lean at a16e5903.
+
+**The day.** BergDB went public at 14:18 (029): a new repository with the
+cleaned history from 2013, Apache-2.0, five releases with jars and Javadoc,
+the site https://bergdb.org with the logo of 2013, a privacy scan of every
+version before the switch. The proofs' old line was paused and frozen
+(tag `proofs-2026-11-17`); the contract approach and a fresh start were
+decided (030-04).
+
+**The proofs, main a16e5903: 195 theorems, Lean's three standard axioms
+only, 135 statement files pinned.** Proved, for any history that meets the
+writer's contract (`lean/contract/`) and given the assumptions of 030-04,
+section 3.5:
+
+- every get and scan, of the package's readers and of Java's readers
+  starting from Java's top search through the skip pointers, gives the
+  plain map's answer at every time (030-05, 030-08: `get_right`,
+  `scan_right`, `top_right`, `jget_right`, `jscan_right`);
+- the tree stays a tree (no node reached twice; `tree_right`);
+- recovery after a crash, restarts, lazy reading, eviction with handles and
+  reclaim's safe cuts for BergDB's key tree, by the abstract model's old
+  proofs (030-07: `bridge_runOK`, `full_recovery`, `full_restart`,
+  `full_eviction`, `full_cut`); restarts replay the given changes: that
+  Java's writer makes the same change is an assumption (3.5, item 9);
+- every get and scan right after a crash, restarts, a lazy startup,
+  eviction and safe cuts, with Java's readers too (030-14, 030-17);
+- a trace that passes the checkers is a history that meets the contract
+  (030-09, 030-15: `checkVerdict_sound`, `fullHistoryOk_meets`).
+
+**Tested, not proved:** the contract and the bridge's clauses on 195 traces
+of the level 2 and reclaim sets (29,735 transactions), the medium set (27
+traces, 13,667 transactions) and the large set (60 traces, 170,000
+transactions, the contract checker); Java's own check of the contract in
+its unit and functional tests (about 2 million transactions, no failure);
+the 13 assumptions of 3.5. The checks run in `level2.sh` and `night.sh`
+(030-13).
+
+**Not yet proved: the writer** (030-10, 030-16). Proved: every put that the
+model's writer accepts keeps the contract, any key; one-segment deletes
+whose leaf keeps a live klong or is the space root; the merge loop, a
+merge's parent and root collapse given named premises. Open: the join with
+the model's real view over whole runs, the delete's books, the merge's
+middle part (`WmgRestOk`), the upward unlink of an emptied leaf, deletes
+of longer keys. The old route's hard cases (l4, R3, R4, ValOld) did not
+come back: the contract has no fill rule.
+
+**Reviews:** 030-06 and 030-11 (Claude, Opus xhigh) and three by Codex (Sol
+Max; Frans, 17:53). Their findings were fixed (the checkers' completeness and
+strict parsing, the leaf flag, the statement pins, the balance rule and
+`Shows` on the nodes reached) or are on the writer's list. The third review
+found no false main theorem; three small new points: a bitmap beyond 64
+bits is read as empty, failed PROBE lines and missing GET/SCAN lines pass
+the checkers, and 030-09's "4.3 million" is 3.96 million.
+
+**For Frans to decide**, each with a recommendation:
+
+1. The old proofs (lean/SIS/Tree, about 210,000 lines): delete now, or after
+   the writer proof. Recommended: after the writer proof; the new package
+   still imports two of its files.
+2. Java's commit-time check lives in `bergdb.core` (TransCheck, a hook in
+   Db.java, off by default). Recommended: keep it there, off by default.
+3. Who pushes `main` now that it is public (013-02). Recommended: the day's
+   coordinator only, after a privacy check.
+4. The next nights: the writer proof (the view's join, the delete's books,
+   the merge's middle); then reclaim's scheme (T-SCHEME, Frans 18:04).
+   Recommended: yes, with the week's 42 % left until Monday 22:00.
+5. The third review's three small points: fixed by an agent next time.
+   Recommended: yes.

@@ -48,12 +48,12 @@ structure CasPreD (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   wroot : (treeOf i s w).root = some w.top.rootKey
   wframe : Frame i s (dirtyOf w) (treeOf i s w)
   wtop : WTopInv i s tp w.top w.newTop
-  wbal : BalancedAll p (treeOf i s w)
+  wbal : Balanced p (treeOf i s w)
   vleaf : V.leaf = n.leaf
   lastLeaf : last.leaf = n.leaf
   lastKs : ksOf last = Klong.time i :: (live (ksOf V)).map (fun cy => Klong.key cy.1 cy.2)
   vsound : Sound p.M (some x) (treeOf i s (w.withNode x V)) w.top.rootKey C
-  vbal : BalancedAll p (treeOf i s (w.withNode x V))
+  vbal : Balanced p (treeOf i s (w.withNode x V))
   vfirst : ∃ t rest, V.ks = SIS.Tree.Klong.time t :: rest
   vtimes : TimesLe V i
 

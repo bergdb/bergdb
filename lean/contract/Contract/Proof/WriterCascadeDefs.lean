@@ -57,6 +57,8 @@ structure CasPre (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top) 
   look : w.nodes.lookup x = some n
   on : ∃ c0, w.path[depth]? = some (c0, x)
   path : PathOk i s w depth
+  nodup : ∀ e e' c c' u, e < e' → e' ≤ depth → w.path[e]? = some (c, u) →
+    w.path[e']? = some (c', u) → False
   inner : PathInner w depth
   books : PutBooks p i base s w
   wf : klongsWf (ksOf n) = true

@@ -58,7 +58,7 @@ theorem before0 : Before p 1 3 s0 tp0 where
   inv := by decide
   tree := by decide
   balanced := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨-, rfl⟩ := s0_key hx
     exact ⟨by decide, by decide, fun h => absurd h (by decide)⟩
   books := {
@@ -81,7 +81,7 @@ theorem before0 : Before p 1 3 s0 tp0 where
 
 theorem shows0 : Shows p v0 2 s0 tp0 where
   key := by
-    intro x n hx
+    intro x _ n hx
     obtain ⟨rfl, rfl⟩ := s0_key hx
     exact ⟨_, rfl, rfl, rfl, by decide, by decide, rfl⟩
   top := ⟨t0, zn0, top0, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -173,7 +173,7 @@ theorem s1_key {x : NodeId} {n : KNode} (h : s1.obj x = some (.key n)) :
 
 theorem shows1 : Shows p v1 2 s1 tp0 where
   key := by
-    intro x n hx
+    intro x _ n hx
     rcases s1_key hx with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
     · exact ⟨_, rfl, rfl, rfl, by decide, by decide, rfl⟩
     · exact ⟨_, rfl, rfl, rfl, by decide, by decide, rfl⟩

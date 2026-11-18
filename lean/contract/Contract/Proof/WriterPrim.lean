@@ -362,7 +362,8 @@ the map is the same, and `PInv` and the path are kept. -/
 theorem getNode_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : Top}
     {v : View BVal} {z : NodeId} {ex : Option NodeId} {C : List (Key × Nat)} {w : MW}
     (hs : Shows p v z s tp) (hb : Books i base s tp) (hI : PInv p i base s tp ex C w)
-    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m)) :
+    {x : NodeId} {m : KNode} (hx : (treeOf i s w).obj x = some (.key m))
+    (hxr : x ∈ reach (treeOf i s w)) (ho : OldReach i s w) :
     ∃ n w', SIS.Tree.getNode x { p := p, i := i, view := v } w = .ok (n, w') ∧
       ksOf n = m.ks ∧ n.leaf = m.leaf ∧ w'.nodes.lookup x = some n ∧
       treeOf i s w' = treeOf i s w ∧ PInv p i base s tp ex C w' ∧
@@ -389,7 +390,8 @@ theorem getNode_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
       | some h => simp [treeOf, hlk, e] at hx
     have hsx : s.obj x = some (.key m) := by
       simpa only [treeOf, ht, hlk, hv, Bool.false_eq_true, ↓reduceIte] using hx
-    obtain ⟨nd, hvx, hd, hlev, hkm, hks, hleaf⟩ := hs.key x m hsx
+    have hxs : x ∈ reach s := ho x hxr (by rw [hsx]; rfl)
+    obtain ⟨nd, hvx, hd, hlev, hkm, hks, hleaf⟩ := hs.key x hxs m hsx
     have hget := getNode_miss { p := p, i := i, view := v } hlk hvx hd (by rw [hlev]; exact hkm)
     let n : MNode := ⟨p.heightOf nd.level == 0, SIS.Tree.klongsOf nd.hist⟩
     have hksn : ksOf n = m.ks := hks
@@ -413,7 +415,7 @@ theorem getNode_spec {p : MParams} {i : Time} {base : NodeId} {s : Tree} {tp : T
         · simp only [treeOf, w', prim_lookup_append_ne _ _ hy]
           rfl
       · rfl
-    have hm0 : 0 < m.level := (hI.balanced x m hx).1
+    have hm0 : 0 < m.level := (hI.balanced x hxr m hx).1
     obtain ⟨hg, hh, hkl⟩ := prim_level_gh p hm0 hkm
     have htb := prim_timesBefore (hb.times x m hsx)
     have hntimes : ∀ t, SIS.Tree.Klong.time t ∈ n.ks → t < i := fun t h =>
@@ -524,7 +526,7 @@ step and a conclusion about the state after it, so that they compose.
   until a `putNode` gives it its klongs: `PutBooksE` is `PutBooks` with such
   nodes allowed, each no node of s.
 * 4.2 The frame, through `Frame.set`.
-* 4.3 BalancedOK, through `BalancedAll.set`.
+* 4.3 BalancedOK, of the nodes reached, through `Balanced.of_reach`.
 * 4.4 The key access path.
 * 4.5 The top, and `PInv` over a step that leaves the map as it is. -/
 
@@ -1046,116 +1048,217 @@ theorem frame_afterNewValue {i : Time} {s : Tree} {w : MW} (h : Nat)
 
 /-! ### 4.3 BalancedOK -/
 
-/-- BalancedOK after node x is set to o: o, if a key node, has a level above
-0, is a segment leaf exactly at height 0, and each key klong of it, in an
-inner node, names a key node of the tree before, one level below; and if x
-was a key node, o is a key node on its level, so that a node that names x
-still finds one. -/
-theorem BalancedAll.set {p : MParams} {T : Tree} (hB : BalancedAll p T) {x : NodeId} {o : Obj}
-    (hkeep : ∀ m0, T.obj x = some (.key m0) → ∃ m, o = .key m ∧ m.level = m0.level)
-    (ho : ∀ m, o = .key m → 0 < m.level ∧ m.leaf = (p.heightOf m.level == 0) ∧
-      (m.leaf = false → ∀ c y, Klong.key c y ∈ m.ks → ∃ m', T.obj y = some (.key m') ∧
-        m'.level + 1 = m.level)) :
-    BalancedAll p (T.set x o) := by
-  intro y m hy
+theorem prim_liveWith_mem (del : List Nat) : ∀ (l : List (Klong × Nat))
+    (m : List (Nat × NodeId)) (a : Nat × NodeId),
+    a ∈ l.foldl (fun m (ki : Klong × Nat) => match ki with
+      | (k, i) => match k with
+        | .key c y => if del.contains i then m else insertCv c y m
+        | _ => m) m →
+    a ∈ m ∨ ∃ i, (Klong.key a.1 a.2, i) ∈ l
+  | [], m, a, h => Or.inl h
+  | (k, i) :: r, m, a, h => by
+    simp only [List.foldl_cons] at h
+    rcases prim_liveWith_mem del r _ a h with h1 | ⟨i', h1⟩
+    · cases k with
+      | time t => exact Or.inl h1
+      | del b => exact Or.inl h1
+      | key c y =>
+        simp only at h1
+        split at h1
+        · exact Or.inl h1
+        · rcases mem_insertCv h1 with h2 | h2
+          · right
+            refine ⟨i, ?_⟩
+            rw [h2]
+            exact List.mem_cons_self
+          · exact Or.inl h2
+    · exact Or.inr ⟨i', List.mem_cons_of_mem _ h1⟩
+
+/-- A live klong is a key klong of the node. (`live_mem_key` of
+BridgeReach.lean, which this file does not import.) -/
+theorem prim_live_mem_key {ks : List Klong} {c : Nat} {y : NodeId} (h : (c, y) ∈ live ks) :
+    Klong.key c y ∈ ks := by
+  unfold live liveWith at h
+  rcases prim_liveWith_mem (lastBitmap ks) ks.zipIdx [] (c, y) h with h1 | ⟨i, h1⟩
+  · simp at h1
+  · obtain ⟨hlt, heq⟩ := List.mem_zipIdx' h1
+    have h2 : Klong.key c y = ks[i] := heq
+    rw [h2]
+    exact List.getElem_mem hlt
+
+/-- BalancedOK of the tree B from that of A: every node reached in B is
+reached in A or is in N (the nodes made or changed); a node reached in A and
+not in N is the same in B; every key node of A is a key node of B on its
+level; and every node of N reached in B meets the rule in B. -/
+theorem Balanced.of_reach {p : MParams} {A B : Tree} {N : List NodeId}
+    (hA : Balanced p A)
+    (hreach : ∀ z ∈ reach B, z ∈ reach A ∨ z ∈ N)
+    (hold : ∀ z ∈ reach A, z ∉ N → B.obj z = A.obj z)
+    (hlev : ∀ y m, A.obj y = some (.key m) → ∃ m', B.obj y = some (.key m') ∧
+      m'.level = m.level)
+    (hnew : ∀ z ∈ N, z ∈ reach B → ∀ m, B.obj z = some (.key m) → 0 < m.level ∧
+      m.leaf = (p.heightOf m.level == 0) ∧
+      (m.leaf = false → ∀ c y, (c, y) ∈ live m.ks → ∃ m', B.obj y = some (.key m') ∧
+        m'.level + 1 = m.level)) : Balanced p B := by
+  intro x hx n hn
+  by_cases hxN : x ∈ N
+  · exact hnew x hxN hx n hn
+  · have hxA : x ∈ reach A := (hreach x hx).resolve_right hxN
+    rw [hold x hxA hxN] at hn
+    obtain ⟨h1, h2, h3⟩ := hA x hxA n hn
+    refine ⟨h1, h2, fun hl c y hy => ?_⟩
+    obtain ⟨m, hm, hml⟩ := h3 hl c y hy
+    obtain ⟨m', hm', e⟩ := hlev y m hm
+    exact ⟨m', hm', by omega⟩
+
+/-- The nodes reached: the walk from the space root. -/
+theorem reach_of_root {T : Tree} {r : NodeId} (h : T.root = some r) :
+    reach T = reachAt T (T.fuel r) r := by
+  unfold reach; rw [h]
+
+/-- BalancedOK of a state carries over to a state with the same map. -/
+theorem balanced_treeOf_congr {p : MParams} {i : Time} {s : Tree} {w w' : MW}
+    (hB : Balanced p (treeOf i s w)) (h : treeOf i s w' = treeOf i s w) :
+    Balanced p (treeOf i s w') := by
+  rw [h]; exact hB
+
+theorem prim_set_obj_self (T : Tree) (x : NodeId) (o : Obj) : (T.set x o).obj x = some o := by
+  simp [Tree.set]
+
+theorem prim_set_obj_ne (T : Tree) {x y : NodeId} (o : Obj) (h : y ≠ x) :
+    (T.set x o).obj y = T.obj y := by
+  simp [Tree.set, h]
+
+/-- `hlev` of `Balanced.of_reach` for the same tree. -/
+theorem levels_kept_refl (T : Tree) :
+    ∀ y m, T.obj y = some (.key m) → ∃ m', T.obj y = some (.key m') ∧ m'.level = m.level :=
+  fun _ m h => ⟨m, h, rfl⟩
+
+/-- `hlev` of `Balanced.of_reach` over two steps. -/
+theorem levels_kept_trans {A B C : Tree}
+    (h1 : ∀ y m, A.obj y = some (.key m) → ∃ m', B.obj y = some (.key m') ∧ m'.level = m.level)
+    (h2 : ∀ y m, B.obj y = some (.key m) → ∃ m', C.obj y = some (.key m') ∧ m'.level = m.level) :
+    ∀ y m, A.obj y = some (.key m) → ∃ m', C.obj y = some (.key m') ∧ m'.level = m.level := by
+  intro y m hm
+  obtain ⟨m1, hm1, e1⟩ := h1 y m hm
+  obtain ⟨m2, hm2, e2⟩ := h2 y m1 hm1
+  exact ⟨m2, hm2, by rw [e2, e1]⟩
+
+/-- `hlev` for node x set to o: o is a key node on x's level if x was a key
+node. -/
+theorem levels_kept_set {T : Tree} {x : NodeId} {o : Obj}
+    (hkeep : ∀ m0, T.obj x = some (.key m0) → ∃ m, o = .key m ∧ m.level = m0.level) :
+    ∀ y m, T.obj y = some (.key m) → ∃ m', (T.set x o).obj y = some (.key m') ∧
+      m'.level = m.level := by
+  intro y m hm
   by_cases e : y = x
   · subst e
-    simp only [Tree.set, ↓reduceIte, Option.some.injEq] at hy
-    obtain ⟨h1, h2, h3⟩ := ho m hy
-    refine ⟨h1, h2, fun hl c z hz => ?_⟩
-    obtain ⟨m', hm', hlev⟩ := h3 hl c z hz
-    have hzy : z ≠ y := by
-      intro ez; subst ez
-      obtain ⟨m'', ho', hl''⟩ := hkeep m' hm'
-      rw [hy] at ho'; cases ho'
-      omega
-    exact ⟨m', by simp [Tree.set, hzy, hm'], hlev⟩
-  · simp only [Tree.set, e, ↓reduceIte] at hy
-    obtain ⟨h1, h2, h3⟩ := hB y m hy
-    refine ⟨h1, h2, fun hl c z hz => ?_⟩
-    obtain ⟨m', hm', hlev⟩ := h3 hl c z hz
-    by_cases ez : z = x
-    · subst ez
-      obtain ⟨m'', ho', hl''⟩ := hkeep m' hm'
-      exact ⟨m'', by simp [Tree.set, ho'], by omega⟩
-    · exact ⟨m', by simp [Tree.set, ez, hm'], hlev⟩
+    obtain ⟨m', ho, hl⟩ := hkeep m hm
+    exact ⟨m', by rw [prim_set_obj_self, ho], hl⟩
+  · exact ⟨m, by rw [prim_set_obj_ne _ _ e, hm], rfl⟩
 
-theorem prim_key_mem_ksOf {n : MNode} {c : Nat} {y : NodeId} (h : Klong.key c y ∈ ksOf n) :
-    SIS.Tree.Klong.key c y ∈ n.ks := by
-  obtain ⟨k, hk, e⟩ := List.mem_map.mp h
-  cases k with
-  | time t => simp [kOf] at e
-  | key c' y' =>
-    simp only [kOf, Klong.key.injEq] at e
-    rw [← e.1, ← e.2]; exact hk
-  | del b => simp [kOf] at e
+/-- `hlev` for a new node x: x was no node. -/
+theorem levels_kept_set_none {T : Tree} {x : NodeId} (o : Obj) (hx : T.obj x = none) :
+    ∀ y m, T.obj y = some (.key m) → ∃ m', (T.set x o).obj y = some (.key m') ∧
+      m'.level = m.level :=
+  levels_kept_set (fun m0 hm0 => by rw [hx] at hm0; cases hm0)
 
-theorem prim_heightOf_keyLevel (p : MParams) (g : Nat) {h : Nat} (hh : h ≤ p.H) :
-    p.heightOf (p.keyLevel g h) = h := by
-  unfold SIS.Tree.Params.heightOf SIS.Tree.Params.keyLevel
-  rw [show 1 + (p.G - g) * (p.H + 1) + h - 1 = h + (p.G - g) * (p.H + 1) by omega,
-    Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt (Nat.lt_succ_of_le hh)]
-
-/-- `putNode` of node x of the overlay, kept, keeps BalancedOK if the new node
-has the old one's kind and each key klong of it, in an inner node, names a key
-node of the map one level below x's. -/
-theorem balancedAll_withNode {p : MParams} {i : Time} {s : Tree} {w : MW} {x : NodeId}
-    {n n' : MNode} (hB : BalancedAll p (treeOf i s w)) (hx : w.nodes.lookup x = some n)
-    (ht : w.taken.contains x = false) (hleaf : n'.leaf = n.leaf)
-    (hks : n'.leaf = false → ∀ c y, SIS.Tree.Klong.key c y ∈ n'.ks →
-      ∃ m', (treeOf i s w).obj y = some (.key m') ∧ m'.level + 1 = wLevel s w x) :
-    BalancedAll p (treeOf i s (w.withNode x n')) := by
+/-- `hlev` for `putNode` of node x of the overlay, kept: it keeps its level. -/
+theorem levels_kept_withNode (i : Time) (s : Tree) {w : MW} {x : NodeId} {n : MNode}
+    (n' : MNode) (hx : w.nodes.lookup x = some n) (ht : w.taken.contains x = false) :
+    ∀ y m, (treeOf i s w).obj y = some (.key m) →
+      ∃ m', (treeOf i s (w.withNode x n')).obj y = some (.key m') ∧ m'.level = m.level := by
   rw [treeOf_withNode i s n' ht]
-  have hold := treeOf_obj_overlay i s hx ht
-  obtain ⟨h1, h2, -⟩ := hB x _ hold
-  refine hB.set (fun m0 hm0 => ⟨_, rfl, ?_⟩) (fun m hm => ?_)
-  · rw [hold] at hm0; cases hm0; rfl
-  · cases hm
-    refine ⟨h1, by rw [hleaf]; exact h2, fun hl c y hy => hks hl c y (prim_key_mem_ksOf hy)⟩
+  refine levels_kept_set (fun m0 hm0 => ⟨_, rfl, ?_⟩)
+  rw [treeOf_obj_overlay i s hx ht] at hm0
+  cases hm0; rfl
 
-/-- `newKey` keeps BalancedOK, for a node at height h at most H, a segment
-leaf exactly at height 0, whose key klongs, in an inner node, name key nodes of
-the map one level below. -/
-theorem balancedAll_afterNewKey {p : MParams} {i : Time} {s : Tree} {w : MW} (g h : Nat)
-    (leaf : Bool) (ks : List MKlong) (hB : BalancedAll p (treeOf i s w))
-    (hs : s.obj w.next = none) (hn : w.nodes.lookup w.next = none)
-    (ht : w.taken.contains w.next = false) (hm : ∀ m ∈ w.made, m.id ≠ w.next)
-    (hh : h ≤ p.H) (hl : leaf = (h == 0))
-    (hks : leaf = false → ∀ c y, SIS.Tree.Klong.key c y ∈ ks →
-      ∃ m', (treeOf i s w).obj y = some (.key m') ∧ m'.level + 1 = p.keyLevel g h) :
-    BalancedAll p (treeOf i s (w.afterNewKey p g h leaf ks)) := by
+/-- `hlev` for `newKey`: the node made is no node of the map before. -/
+theorem levels_kept_afterNewKey (i : Time) (s : Tree) {w : MW} (p : MParams) (g h : Nat)
+    (leaf : Bool) (ks : List MKlong) (hs : s.obj w.next = none)
+    (hn : w.nodes.lookup w.next = none) (ht : w.taken.contains w.next = false)
+    (hm : ∀ m ∈ w.made, m.id ≠ w.next) :
+    ∀ y m, (treeOf i s w).obj y = some (.key m) →
+      ∃ m', (treeOf i s (w.afterNewKey p g h leaf ks)).obj y = some (.key m') ∧
+        m'.level = m.level := by
   rw [treeOf_afterNewKey i s p g h leaf ks hs hn ht hm]
-  refine hB.set (fun m0 hm0 => ?_) (fun m hm => ?_)
-  · exfalso
-    simp only [treeOf, ht, hn, Bool.false_eq_true, ↓reduceIte] at hm0
-    cases e : w.vals.lookup w.next with
-    | none => rw [e, hs] at hm0; cases hm0
-    | some v => rw [e] at hm0; cases hm0
-  · cases hm
-    refine ⟨by show 0 < p.keyLevel g h; unfold SIS.Tree.Params.keyLevel; omega, ?_,
-      fun hl' c y hy => ?_⟩
-    · show leaf = (p.heightOf (p.keyLevel g h) == 0)
-      rw [prim_heightOf_keyLevel p g hh, hl]
-    · obtain ⟨k, hk, e⟩ := List.mem_map.mp hy
-      cases k with
-      | time t => simp [kOf] at e
-      | key c' y' =>
-        simp only [kOf, Klong.key.injEq] at e
-        rw [e.1, e.2] at hk
-        exact hks hl' c y hk
-      | del b => simp [kOf] at e
+  refine levels_kept_set (fun m0 hm0 => ?_)
+  exfalso
+  simp only [treeOf, ht, hn, Bool.false_eq_true, ↓reduceIte] at hm0
+  cases e : w.vals.lookup w.next with
+  | none => rw [e, hs] at hm0; cases hm0
+  | some v => rw [e] at hm0; cases hm0
 
-/-- `newValue` keeps BalancedOK: the value made is no key node. -/
-theorem balancedAll_afterNewValue {p : MParams} {i : Time} {s : Tree} {w : MW} (h : Nat)
-    (hB : BalancedAll p (treeOf i s w)) (hs : s.obj w.next = none)
-    (hn : w.nodes.lookup w.next = none) (hv : w.vals.lookup w.next = none)
-    (ht : w.taken.contains w.next = false) :
-    BalancedAll p (treeOf i s (w.afterNewValue h)) := by
+/-- `hlev` for `newValue`: the value made is no node of the map before. -/
+theorem levels_kept_afterNewValue (i : Time) (s : Tree) {w : MW} (h : Nat)
+    (hs : s.obj w.next = none) (hn : w.nodes.lookup w.next = none)
+    (hv : w.vals.lookup w.next = none) (ht : w.taken.contains w.next = false) :
+    ∀ y m, (treeOf i s w).obj y = some (.key m) →
+      ∃ m', (treeOf i s (w.afterNewValue h)).obj y = some (.key m') ∧ m'.level = m.level := by
   rw [treeOf_afterNewValue i s h hn hv ht]
-  refine hB.set (fun m0 hm0 => ?_) (fun m hm => ?_)
-  · simp only [treeOf, ht, hn, hv, hs, Bool.false_eq_true, ↓reduceIte] at hm0
-    cases hm0
-  · cases hm
+  exact levels_kept_set_none _ (by simp only [treeOf, ht, hn, hv, hs, Bool.false_eq_true,
+    ↓reduceIte])
+
+theorem prim_reachAt_set_nokey {T : Tree} {x : NodeId} {o : Obj} (ho : ∀ m, o ≠ .key m) :
+    ∀ (f : Nat) (u z : NodeId), z ∈ reachAt (T.set x o) f u → z ∈ reachAt T f u ∨ z = x
+  | 0, u, z, h => by
+    simp only [reachAt, List.mem_singleton] at h
+    exact Or.inl (by rw [h]; exact tc_self T 0 u)
+  | f + 1, u, z, h => by
+    rcases tc_mem_succ.mp h with rfl | ⟨n, hn, cy, hcy, hz⟩
+    · exact Or.inl (tc_self T _ _)
+    · by_cases e : u = x
+      · subst e
+        rw [prim_set_obj_self] at hn
+        cases hn
+        exact absurd rfl (ho n)
+      · rw [prim_set_obj_ne _ _ e] at hn
+        rcases prim_reachAt_set_nokey ho f cy.2 z hz with h1 | h1
+        · exact Or.inl (tc_kid hn hcy h1)
+        · exact Or.inr h1
+
+/-- Node x set to an object that is no key node: the nodes reached are those
+reached before, and x. -/
+theorem reach_set_nokey {T : Tree} {x : NodeId} {o : Obj} (ho : ∀ m, o ≠ .key m) {z : NodeId}
+    (hz : z ∈ reach (T.set x o)) : z ∈ reach T ∨ z = x := by
+  cases e : T.root with
+  | none =>
+    have hr : (T.set x o).root = none := e
+    unfold reach at hz; rw [hr] at hz; cases hz
+  | some r =>
+    have hr : (T.set x o).root = some r := e
+    rw [reach_of_root hr] at hz
+    rw [reach_of_root e]
+    by_cases er : r = x
+    · subst er
+      have hf : (T.set r o).fuel r = 0 := by
+        unfold Tree.fuel
+        rw [prim_set_obj_self]
+        cases o with
+        | key m => exact absurd rfl (ho m)
+        | val v => rfl
+      rw [hf] at hz
+      simp only [reachAt, List.mem_singleton] at hz
+      exact Or.inr hz
+    · have hf : (T.set x o).fuel r = T.fuel r := by
+        unfold Tree.fuel; rw [prim_set_obj_ne _ _ er]
+      rw [hf] at hz
+      exact prim_reachAt_set_nokey ho _ r z hz
+
+/-- A value added where there was no node keeps BalancedOK: it changes no key
+node, and the nodes reached grow by it only. -/
+theorem balanced_set_val {p : MParams} {T : Tree} (hB : Balanced p T) {v : NodeId}
+    (hv : T.obj v = none) (h : Nat) : Balanced p (T.set v (.val h)) := by
+  refine Balanced.of_reach (N := [v]) hB (fun z hz => ?_) (fun z _ hz => ?_)
+    (levels_kept_set_none _ hv) (fun z hz _ m hm => ?_)
+  · rcases reach_set_nokey (fun m => by simp) hz with h1 | h1
+    · exact Or.inl h1
+    · exact Or.inr (by simp [h1])
+  · exact prim_set_obj_ne _ _ (by simpa using hz)
+  · simp only [List.mem_singleton] at hz
+    subst hz
+    rw [prim_set_obj_self] at hm
+    cases hm
 
 /-! ### 4.4 The key access path -/
 

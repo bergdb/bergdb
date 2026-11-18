@@ -278,7 +278,9 @@ startup rests on one more, tested (added by 030-14):
     `ReclaimReaders` (readers at old lookup times on a cold cache after a
     restart while reclaim cuts, level 3; with forced eviction, level 4), and
     `conformance.sh reclaim` (probes after restarts from the cut stream,
-    level 3).
+    level 3). After a startup without a cut it can be said once for every
+    time (030-17, `HoldsP`): Java's tree holds the structure whole, each key
+    node with well-formed klongs whose entries are the node's in the stream.
 
 ## 3.6 Later, optional
 

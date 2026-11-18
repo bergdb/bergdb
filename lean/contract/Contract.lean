@@ -92,9 +92,15 @@ import Contract.Proof.WriterMergeParent
 import Contract.WriterExample2
 import Contract.Proof.WriterExec
 import Contract.Proof.WriterPutNamed
+import Contract.Proof.WriterView
 import Contract.RecoverCut
 import Contract.Proof.TopFrom
 import Contract.Proof.RecoverCut
 import Contract.RecoverCutTheorems
 import Contract.RecoverCutExample
 import Contract.KindsCheck
+import Contract.RecoverWhole
+import Contract.Proof.Prefix
+import Contract.Proof.RecoverWhole
+import Contract.RecoverWholeTheorems
+import Contract.Proof.WriterMergeUp

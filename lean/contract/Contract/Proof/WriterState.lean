@@ -58,7 +58,7 @@ structure PInv (p : MParams) (i : Time) (base : NodeId) (s : Tree) (tp : Top)
   sound : Sound p.M ex (treeOf i s w) w.top.rootKey C
   frame : Frame i s (dirtyOf w) (treeOf i s w)
   top : WTopInv i s tp w.top w.newTop
-  balanced : BalancedAll p (treeOf i s w)
+  balanced : Balanced p (treeOf i s w)
   books : PutBooks p i base s w
 
 /-- `Mid` but for the delete's books: what a put keeps. -/
