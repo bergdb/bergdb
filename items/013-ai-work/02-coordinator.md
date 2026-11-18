@@ -218,8 +218,10 @@ fewer when usage is tight (section 9).
 Several sessions share the main tree, the Git index, the CPU and
 `news.md`. Today's coordinator owns:
 
-* **commits to `main`.** Other sessions report finished, gated files to
-  it, with their hunks of shared files, and it commits them. `main`'s
+* **commits to `main`, and pushes.** Other sessions report finished,
+  gated files to it, with their hunks of shared files, and it commits
+  them. Only the day's coordinator pushes `main`, after the privacy check
+  below (Frans, 2026-11-18, 006-30 decision 3). `main`'s
   remote, `origin`, is the public repository github.com/bergdb/bergdb
   (since 2026-11-17): a commit to `main` is public once pushed, and a
   push cannot be taken back (`main` refuses force pushes). Before each
