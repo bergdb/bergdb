@@ -194,6 +194,11 @@ The decisions, as recorded here:
   transactions differ from today's change (the order of a full node's
   split). Landed aefde32e (the item; lean/pe/ and lean/peproof/ stay on
   the branch). For Frans: PE as 2026.6's writer.
+* 15:28 `night.sh`: the kill-and-restart harness failed (seed 20261118,
+  database 14: "a committed transaction lost, or one there that was not
+  committed by then"); it passed on 2026-11-16. 028-15, landed today, is
+  a suspect. Agent kr (028-17) started 15:30: reproduce, bisect, cause,
+  fix.
 
 
 ## 4b. Unattended, 13:48 to 07:00
