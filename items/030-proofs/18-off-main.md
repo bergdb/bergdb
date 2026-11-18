@@ -95,6 +95,8 @@ kept, their proofs deleted; left, as `HandleReclaimTheorems.lean` is
 pinned and a statement changes only on Frans's word):
 `Rule4PosCut_handles`, `RunPosCut_handles`; Tree/Props.lean's
 `KlongsRoundTrip`, `SearchEqSpec`, `ExecRootOKTree`, `VirtLiveOKTree`.
+Dropped afterwards on Frans's word (State, 10:20), with
+`runHandlesCutPos`, which only they used.
 No theorem was cut out of a kept file: whole-file deletion was the lever,
 and a kept file's unused theorems are few next to what went.
 
@@ -181,18 +183,36 @@ GATED 133eb269.
 
 2026-11-18. Done: both parts gated and committed on the branch
 `030-18-off-main` in the clone of coord-1118's agent rm, for the
-coordinator to land. Left for Frans:
+coordinator to land (on `main` as 150a111a). Two questions went to
+Frans; he decided both on 2026-11-18, 10:20: "1 and 2 as recommended".
 
-* The statements kept without their proofs (section 2): drop them from
-  the kept files, or keep them as the record of what the old line proved?
-  They are in pinned files (`HandleReclaimTheorems.lean`), so either way a
-  statement file changes on his word.
-* `BergDB/` (the user indexes' proofs, 020-29) was kept whole: not part of
-  the old proof line, which 006-31's D1 names as lean/SIS.
-* Comments inside kept Lean files still cite deleted files in places; they
-  are records, like the older items.
+1. The statements kept without their proofs (section 2): dropped, with
+   anything that then had no user; the tag `proofs-2026-11-17` keeps
+   them. Done in 20d59ce9: `Rule4PosCut_handles`, `RunPosCut_handles` and
+   `runHandlesCutPos` out of `SIS/HandleReclaimTheorems.lean` (a pinned
+   file: `pin.sh` run; no main theorem of `lean/contract/` changed);
+   `KlongsRoundTrip` (TP1), `SearchEqSpec` (TP9), `ExecRootOKTree` (TP17)
+   and `VirtLiveOKTree` (TP18) out of `SIS/Tree/Props.lean`; comments that
+   cited them in `Handle.lean` and `HandleReclaimExample.lean`, and
+   `lean/README.md`, 027-11 and 027-13, point to the tag. Gates: `lake
+   build` in `lean/` (with the six executables) and `lean/contract/`;
+   `gate.sh 17e78665`: steps 1 to 3 and 5 pass (126 theorems; the pinned
+   files changed: `Handle.lean`, `HandleReclaimTheorems.lean`), step 4
+   lists only the `lean/SIS`, `lean/README.md` and 027 files of this
+   change; `gate.sh` without a base: GATE OK; `level2.sh` in full:
+   LEVEL 2 OK (TRACECHECK OK 70 and 50, TAKECHECK OK, the
+   contract and bridge sets with no failure). No executable's code changed (comments and unused definitions
+   only), so not level 3 or 4.
+2. `BergDB/` (the user indexes' proofs, 020-29), kept whole as it is: not
+   part of the old proof line, which 006-31's D1 names as lean/SIS.
+
+Comments inside kept Lean files still cite deleted files in places; they
+are records, like the older items.
 
 
 # Log
 
 2026-11-18. Created; parts 1 and 2 by an agent of coord-1118.
+2026-11-18, 10:20. Frans on the two points of the State note: "1 and 2 as
+recommended": the statements without their proofs dropped (20d59ce9),
+`BergDB/` kept as it is.
