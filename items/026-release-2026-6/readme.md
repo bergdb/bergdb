@@ -164,7 +164,8 @@ Files
 * 08-fixed-node-size.md. 026-08, the node size fixed at 30 for users,
   the other sizes for tests only (Frans, 2026-11-13, 09:21): the four
   `DbBuilder.maxNodeSize` setters package-private, `TestNodeSize` for
-  the tests outside `bergdb.core`; on main since 2026-11-13 (04ee9336).
+  the tests outside `bergdb.core`; on main since 2026-11-13 (04ee9336);
+  done, Frans's answers to Q1 and Q2 on 2026-11-18 (10:52).
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38):
   `GetMany.valuesBefore`; the steps' loads 44 to 60 % fewer, the steps
@@ -342,3 +343,6 @@ agent of coord-1118 (Frans, 11:51).
 
 2026-11-18. 026-22 registered and done: MT against the contract, a short
 check by an agent of coord-1118 (11:53 to 12:40).
+
+2026-11-18. 026-08 done: Frans's answers (10:52, "As recommended"); its
+work on main since 2026-11-13, nothing to port (agent of coord-1118).

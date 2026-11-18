@@ -1,7 +1,8 @@
 # 026-08. The node size fixed at 30 for users; other sizes for tests only
 
-Created 2026-11-13 by Frans Lundberg. Status: open: done on the branch
-`026-08-node-size` (State, below), to land.
+Created 2026-11-13 by Frans Lundberg. Status: done: on main since
+2026-11-13 (`04ee9336`); Frans's answers to Q1 and Q2 of 2026-11-18,
+10:52 (State, below).
 
 For release 2026.6, with the stable stream format (027-03): one node
 size, B = 30, for every database a user makes, by the Pub API and the
@@ -173,12 +174,18 @@ Questions for Frans
   node-size method at all, which says what the format says; a no-op
   would be a method whose only use is to suggest a choice that does not
   exist. A user who called it drops the call (releases/next.md).
+  **Answer** (Frans, 2026-11-18, 10:52, on Q1 and Q2: "As
+  recommended"): removed, as applied; `maxNodeSize30()` stays
+  package-private.
 * **Q2. The test hook a public class `bergdb.core.TestNodeSize` in the
   release jar, internal by the Javadoc.** Recommended and applied, for
   the reasons in "What was made": it is the smallest change that keeps
   every test, harness and conformance set working, and keeps the user's
   `DbBuilder` free of the subject. The alternative, hiding it from the
   release jar, means moving the Pub layer's testers out of `src`.
+  **Answer** (Frans, 2026-11-18, 10:52: "As recommended"): as applied;
+  `TestNodeSize` stays a public class in the release jar, internal by
+  its Javadoc.
 
 
 Gates
@@ -207,10 +214,34 @@ logs in the clone's `java/build/level1/` and `java/build/level2/`.
   `da63f84f` only `java/stress/CountGates.java` and
   `java/stress/count-gates.sh` changed under `java/`, neither run by
   level 1 or 2, and CountGates does not set a node size.
+* On main since then: every gate of the work that landed after it ran
+  with this change in the tree; the latest, 028-15's merge `1b1001ee`
+  (GATED `13a9d368`, 2026-11-18): BEFORE COMMIT OK, LEVEL 1 to 4 OK.
 
 
 State
 =====
+
+2026-11-18, by agent ns of coord-1118. Done. The work has been on main
+since 2026-11-13: the branch `026-08-node-size` was fast-forwarded onto
+main that morning (`e277a18a` the code, `da63f84f` and `04ee9336` the
+item, `775ae35f` the merge of main), before the history was rewritten
+for the public repository (029); the hashes in this item are the
+rewritten ones. The clone `/Users/f/fl/bench/2026-11-13/ns30/clone`
+keeps the pre-2026-11-17 hashes of the same commits (`babea6b2` the
+code, the same change line for line as `e277a18a`). So nothing was to
+port: on 2026-11-18 a port of the code commit onto main (`1b1001ee`)
+by `git apply -3` met only the change itself, already there, with
+028-15's later words around it. Checked on main: `DbBuilder` has no
+public node-size method, `defaultSettings()` sets 30,
+`TestNodeSize.builder(n)` gives 8, 14, 30 and 62, and its Javadoc and
+Db's "The Core API" call it internal; releases/next.md has the change
+under "Core API" (2026.5, tagged 2026-11-12, does not have it, so
+2026.6 is the first release with it). Frans answered Q1 and Q2
+(2026-11-18, 10:52: "As recommended"), both as applied: nothing to
+change. Frans set the stable stream format aside for 2026.6 (2026-11-18,
+11:51; 026's Log); the node size stays 30 for users all the same, as
+decided here, and the meta block's field stays the hook.
 
 2026-11-13, 10:37. Done, to land: code, Javadoc, 027-03,
 releases/next.md, this item and its Files line, committed in the clone
@@ -230,3 +261,12 @@ Log
 2026-11-13, 10:09 to 10:37. Made by agent ns30 of coord-1113 on the
 branch `026-08-node-size`: the setters package-private,
 `TestNodeSize`, the Javadoc, 027-03, releases/next.md; gates passed.
+
+2026-11-13, about 10:37. On main: the branch fast-forwarded (`04ee9336`).
+
+2026-11-18, 10:52. Frans on Q1 and Q2: "As recommended": both as
+applied (Questions for Frans).
+
+2026-11-18. Agent ns of coord-1118, sent to port the branch onto
+today's main: found it on main since 2026-11-13, nothing to port;
+Frans's answers recorded; status done.
