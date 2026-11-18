@@ -75,7 +75,8 @@ What was made
 On the branch `028-15-sd-kv` (from `main` `2cc9493c`), by agent sdkv of
 coord-1118, 2026-11-18.
 
-* **The KV.** `/#i/-startup-distance` (`DbConstants.SD_KEY`), 4 bytes, an
+* **The KV.** `/#i/-sd` (`DbConstants.SD_KEY`; `/#i/-startup-distance`
+  until the rename below), 4 bytes, an
   `i32` little-endian, from 10 to 10^9 (`DbBuilder.MAX_STARTUP_DISTANCE`).
   `Db.setStartupDistance` commits a transaction that puts it (the clamp
   and the "nothing written if in force" rule as before); a refused or
@@ -94,7 +95,7 @@ coord-1118, 2026-11-18.
 * **The meta block.** Bytes 40 to 43 reserved, written zero, not read
   (`MetaBlock.getStartupDistance`/`setStartupDistance` gone).
 * **`/#i/-dummy`** gone, with its 200,000 bytes at each change.
-  `Trans.coreKey` refuses a caller's write at `/#i/-startup-distance`
+  `Trans.coreKey` refuses a caller's write at `/#i/-sd`
   instead of `/#i/-dummy`, which is now an ordinary key under `/#i/`.
 * **The unit** stays stream bytes.
 
@@ -233,3 +234,43 @@ pushed. For Frans to confirm: the agent's decisions 1 to 4 above (the
 creating start's record, the value's bytes, its transaction internal, the
 KV in every database). 026-12's SF4 is open again (Frans, 11:51); 028-15
 stands as option A.
+
+
+The key's name: `/#i/-sd`
+-------------------------
+
+Frans, 2026-11-18, 12:45 (relayed by coord-1118), after 028-15 landed on
+`main` as `1b1001ee`, the agent's decisions 1 to 4 confirmed as made:
+"/#i/-startup-distance" is unnecessarily long, "/#i/-sd" is better ("Fits
+in one klong").
+
+By 027-03's key encoding (section 13; `Keys.toSegments`: a segment holds
+7 bytes, and a key whose bkey is a multiple of 7 bytes long ends in an
+empty segment):
+
+* `/#i/-startup-distance`: bkey 21 bytes (01 25 6b 01 2f 75 76 63 74 76
+  77 72 2f 66 6b 75 76 63 70 65 67), **4 segments**: 4 key klongs on its
+  path, one in each segment's key node, and the creating start's record
+  made those key nodes.
+* `/#i/-sd`: bkey 7 bytes (01 25 6b 01 2f 75 66), **2 segments**: a key
+  klong in the space root and the empty last segment in a key node of
+  its own. Not one klong, by one byte: a key fits in one klong if its
+  bkey has at most 6 bytes, such as `/#i/-s` (6 bytes). Made as Frans
+  named it; told to coord-1118 at once, for Frans to choose `/#i/-s` if
+  one klong is what matters (a one-line change and CST's positions).
+
+Made on the branch `028-15-sd-key` from `main` `f2d034e1`: the constant,
+Db's, Trans's and the tests' texts, key-encoding.md, 027-02, 027-03,
+027-11 and `releases/next.md`; TraceExport and `lean/contract/` do not
+name the key. The creation's record is 176 bytes shorter, so CST's found
+cases moved again (seeds 729001, 20765, 20770 and 20806 now). No other
+test changed.
+
+**CoreDemo** (`java/stress/core-build/CoreDemo.java`, night.sh's
+core-build step, failing since 028-15 landed): its scans read every key,
+and so also `/#i/-startup-distance`. They now scan its own keys only,
+from `/fruit` with a `GetMany.Prefix` stop condition, as Db's Javadoc
+tells a Core API user ("Keys and the layers above"); its output and
+checks are as before.
+
+Gates of `028-15-sd-key`: (below).

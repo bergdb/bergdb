@@ -61,7 +61,7 @@ An entry value is one of (011-11, 2.4):
 
 Since bergdb 028-15 the start that creates a database commits a record after
 the primordial one: an internal transaction that puts the startup distance's
-KV, `/#i/-startup-distance` (027-03, sections 14.2 and 15). The exporter's run
+KV, `/#i/-sd` (027-03, sections 14.2 and 15). The exporter's run
 A records it through the hooks as any record, R(1), with `kind=table` under
 reclaim; its first hook records R(0) before it changes the tree. So the first
 user transaction is R(2) of a trace, and a trace's T(1) puts the KV.

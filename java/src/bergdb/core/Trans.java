@@ -170,7 +170,7 @@ public class Trans {
     
     /**
      * Whether a key is one of the keys that the Core writes itself (bergdb 024-37; 010-04,
-     * R5): the key "/#i/-startup-distance" (DbConstants.SD_KEY, the startup distance; bergdb
+     * R5): the key "/#i/-sd" (DbConstants.SD_KEY, the startup distance; bergdb
      * 028-15; "/#i/-dummy" until then), and reclaim's directory "/#i/dreclaim/" and every
      * key under it (Reclaim.KEY_PREFIX_SKEY: its settings, its table, the row of its
      * iteration and maintain()'s filler). A start reads
@@ -191,7 +191,7 @@ public class Trans {
     /** The message of the refusal of a caller's write at one of the Core's own keys. */
     static String coreKeyMessage(long[] key) {
         return "The key " + Keys.toDisplayString(Keys.toBytes(key)) + " is one that the Core "
-                + "writes itself, \"/#i/-startup-distance\" or a key under \"/#i/dreclaim/\": "
+                + "writes itself, \"/#i/-sd\" or a key under \"/#i/dreclaim/\": "
                 + "a start reads it, and a put or a delete there could make a database that never "
                 + "starts again. The write is refused, nothing of it is written, and the "
                 + "database goes on (bergdb 010-04, R5; 024-37).";
@@ -248,7 +248,7 @@ public class Trans {
      * takes them, a put or a delete, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and
      * L4); Db.execute() refuses a transaction of more than Db.MAX_OPERATIONS operations (500)
      * or of more bytes than its limits (L1, L3, L5).</p>
-     * <p>A put or a delete at a key that the Core writes itself, "/#i/-startup-distance" or
+     * <p>A put or a delete at a key that the Core writes itself, "/#i/-sd" or
      * reclaim's "/#i/dreclaim/" or a key under it, is refused with IllegalArgumentException by the call
      * that takes it, and nothing is added (Db, "The Core's own keys are refused"; bergdb 010-04,
      * R5; 024-37). A key that a key transformation gives there is refused by Db.execute() with

@@ -9,7 +9,7 @@ import bergdb.stream.MemoryStream;
 
 /**
  * The keys that the Core writes itself (bergdb 024-37; 010-04, R5; Trans.coreKey()): the key
- * "/#i/-startup-distance" ("/#i/-dummy" until bergdb 028-15), and "/#i/dreclaim/" and every
+ * "/#i/-sd" ("/#i/-dummy" until bergdb 028-15), and "/#i/dreclaim/" and every
  * key under it. A caller's put or delete there is
  * refused, by the Trans.Builder call that takes it with IllegalArgumentException, or by
  * Db.execute() with a DbException for the internal calls putLongKey() and deleteLongKey() and
@@ -20,12 +20,12 @@ import bergdb.stream.MemoryStream;
 public class DbTesterCoreKeys {
 
     /** The Core's keys, and keys under its reclaim directory that it does not write today. */
-    private static final String[] CORE = {"/#i/-startup-distance", "/#i/dreclaim/",
+    private static final String[] CORE = {"/#i/-sd", "/#i/dreclaim/",
             "/#i/dreclaim/-settings.txt", "/#i/dreclaim/-table.txt", "/#i/dreclaim/-current.txt",
             "/#i/dreclaim/-fill.txt", "/#i/dreclaim/-other.txt", "/#i/dreclaim/dx/-y"};
 
     /** Keys next to them, and the Pub API's keys under "/#i/": taken. */
-    private static final String[] OTHERS = {"/#i/-startup-distance2", "/#i/-startup-dist",
+    private static final String[] OTHERS = {"/#i/-sd2", "/#i/-s",
             "/#i/-dummy", "/#i/dreclaimx/-a",
             "/#i/dreclai/-a", "/#i/didef/-n", "/#i/dient/dn/-k", "/#i/didel/dn/-0000000000000001",
             "/#i/-other", "/#j/dreclaim/-settings.txt"};
@@ -104,7 +104,7 @@ public class DbTesterCoreKeys {
                     DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME));
             Assert.assertEquals("the startup distance", 500 * 1000, db.getStartupDistance());
             Assert.assertEquals("the startup distance's KV", 500 * 1000, Db.parseStartupDistance(
-                    DbUtil.get(db, Long.MAX_VALUE, "/#i/-startup-distance")));
+                    DbUtil.get(db, Long.MAX_VALUE, "/#i/-sd")));
             Assert.assertArrayEquals("/after", new byte[] {'1'},
                     DbUtil.get(db, Long.MAX_VALUE, "/after"));
         } finally {

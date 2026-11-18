@@ -536,7 +536,7 @@ public class DbTesterJavadoc {
     /**
      * Db, "Keys and the layers above" (bergdb 020-24-09, U9-4): the Core writes BergDB's keys
      * itself, with no Pub API: a new database has one, the startup distance, 4 bytes at
-     * "/#i/-startup-distance", which setStartupDistance() puts again (bergdb 028-15; a value
+     * "/#i/-sd", which setStartupDistance() puts again (bergdb 028-15; a value
      * of 200 kB at "/#i/-dummy" until then), setRetainDuration() reclaim's settings at
      * "/#i/dreclaim/-settings.txt"; a scan returns them, getTransactionCount() counts their
      * transactions, and a StopCondition that returns CONTINUE for the keys that start with 01
@@ -557,7 +557,7 @@ public class DbTesterJavadoc {
             db.setStartupDistance(500 * 1000);
             db.setRetainDuration(3600 * Clock.UNITS_PER_SEC);
             Assert.assertEquals("transactions", 3, db.getTransactionCount());
-            byte[] sd = Keys.toBytes("/#i/-startup-distance");
+            byte[] sd = Keys.toBytes("/#i/-sd");
             byte[] settings = Keys.toBytes("/#i/dreclaim/-settings.txt");
             List<byte[]> bergdbs = new ArrayList<>();
             for (Kvt kvt : scan(db, null)) {
@@ -571,7 +571,7 @@ public class DbTesterJavadoc {
                 }
             }
             Assert.assertEquals("BergDB's keys", 2, bergdbs.size());
-            Assert.assertTrue("/#i/-startup-distance", Arrays.equals(sd, bergdbs.get(0)));
+            Assert.assertTrue("/#i/-sd", Arrays.equals(sd, bergdbs.get(0)));
             Assert.assertTrue("the settings", Arrays.equals(settings, bergdbs.get(1)));
 
             List<Kvt> yours = scan(db, new GetMany.StopCondition() {

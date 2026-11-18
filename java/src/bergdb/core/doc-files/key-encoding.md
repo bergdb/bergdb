@@ -138,7 +138,7 @@ first two bytes, written here as the ikeys whose bkeys they are (/d is
   and the other such keys, a bkey without an ikey too, reserved for it.
 * **BergDB's internal ones**: every key that starts with /#. The IKP /#i/
   holds the Core Layer's own keys, /#i/dreclaim/ of Reclaim and
-  /#i/-startup-distance of Db (/#i/-dummy until bergdb 028-15), and the
+  /#i/-sd of Db (/#i/-dummy until bergdb 028-15), and the
   Pub API's: /#i/didef/, /#i/dient/ and
   /#i/didel/ for its user indexes, and /#i/div/, hashed only, never stored
   (bergdb 020-10, section 4.1); /#i/dii/ and /#i/di/, release 2026.3's,

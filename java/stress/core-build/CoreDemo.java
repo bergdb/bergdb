@@ -41,7 +41,12 @@ public class CoreDemo {
         System.out.println("CoreDemo OK: the same reads after a restart");
     }
 
-    /** The reads, checked, as text: getOne at both times, getMany, getTrans. */
+    /**
+     * The reads, checked, as text: getOne at both times, getMany, getTrans. The scan reads
+     * the demo's own keys, those under "/fruit": the Core API shows BergDB's keys too, under
+     * "/#", as the startup distance's KV that every database has (Db, "Keys and the layers
+     * above"; bergdb 028-15).
+     */
     static String read(Db db, long time1, long time2) {
         StringBuilder b = new StringBuilder();
         GetData gd = db.newGetData();
@@ -58,6 +63,8 @@ public class CoreDemo {
         for (long time : new long[] {time1, Long.MAX_VALUE}) {
             GetMany g = db.newGetMany();
             g.lookupTime = time;
+            g.startKey = Keys.toSegments("/fruit");
+            g.stopCondition = new GetMany.Prefix(Keys.toSegments("/fruit"));
             db.getMany(g);
             StringBuilder kvs = new StringBuilder();
             for (Kvt kvt : g.result) {
