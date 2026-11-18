@@ -84,6 +84,10 @@ The decisions, as recorded here:
   unlike today's), then a proof spike of the lemmas of emit and settle.
   Frans, 12:47: "The PE trial. Yes, do it as recommended. Good if done by
   07:00 tomorrow. If possible."
+* **W9, 030-20: the commit check's cost** (agent cc, Opus high, on s1,
+  until 23:30 at the latest): `TransCheck` on against off in the
+  performance suites, small and large transactions, a profile of one
+  commit. Frans, 13:48: "Sure, start it."
 * **W3, D3 in 013-02** (the coordinator): only the day's coordinator
   pushes `main`.
 
@@ -180,6 +184,27 @@ The decisions, as recorded here:
   it. [...] Just wonder about the performance cost of that. Could be too
   high, I am afraid." 030-20 written: what CC gives, what exists, what it
   would take, the cost to measure.
+* 13:48 Frans: "Sure, start it. Work unattended until 07:00. I may or
+  may not check in before that." Agent cc (030-20's cost) started.
+
+
+## 4b. Unattended, 13:48 to 07:00
+
+What runs while Frans is away:
+
+* `night.sh` on 1b1001ee, to about 15:45; its report goes to `news.md`.
+* The PE trial (026-24, agent pe) to 07:00: the go/no-go of its model
+  phase, then the proof spike.
+* The commit check's cost (030-20, agent cc) on s1, to 23:30 at the
+  latest.
+* The coordinator: a check-in every 20 minutes (no quiet block: no timing
+  on F53 tonight), lands gated work, writes `news.md` on failures; from
+  06:00 the morning summary.
+
+Decided by rule, without asking (Frans's defaults of 013-01 and today's):
+the stop at week 85 %; gated work lands on main and is pushed; no new
+proof or design work is started beyond the PE trial (reclaim's contract
+waits for the morning); a no-go of the PE trial ends it with its result.
 
 
 ## 5. Outcome
