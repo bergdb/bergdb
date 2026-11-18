@@ -286,7 +286,9 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
                                  a model time), `K c y` (a key klong: compare
                                  value c, pointee y) or `B b` (a delete bitmap:
                                  bit j of the number b set if it deletes klong
-                                 j; cumulative, as Java's)
+                                 j; cumulative, as Java's; b < 2^62, since
+                                 Java's bitmap has 62 bits, for the klongs 0 to
+                                 61: Klong, Dag.MAX_NODE_SIZE)
     GET t key v                  in TX i, after the KN lines: Dag.getOne of the
                                  key at model time t, after T(i), gave the value
                                  with hash v, or `-` for none
@@ -317,8 +319,12 @@ the order given in section 2 (`BASE` and `OP` first, then `NEW`, `ADD`,
 `CUT` and `PHYSCUT`, `LIVE`, `PROBE`, `FIRST`, `SLOT`, the handles' lines);
 `TX i`, i > 0, starting with `BASE`; `TX 0` without `BASE`, `OP`, `GET`,
 `SCAN`, `TOUCH`, `FA`, `CUT` or `PHYSCUT`; the `TREE` line with 4, 6, 7 or
-8 numbers. The bridge checker (`lake exe bridgecheck`) reads a trace only
-if it is whole in the same way. The contract checker's
+8 numbers. Since bergdb 030-19 also: every `B b` klong with b < 2^62; no
+`PROBE` line that fails (run B's and run E's checks fail a trace as an
+`ERROR` line does); and the reads of every `TX i`, i > 0: the same number
+of `GET` lines in each, at least one, and one `SCAN` line, so that a trace
+exported with `gets=0` fails. The bridge checker (`lake exe bridgecheck`)
+reads a trace only if it is whole in the same way. The contract checker's
 `LIVE` lines, with `live=1`, are checked against the package's search and the space
 root at each time.
 
@@ -330,8 +336,8 @@ RANGET lines, on 2026-11-11 only.)
 
 The reads of the GET and SCAN lines are at random times from the first
 available time on, of keys of the workload, `gets=N` GET lines and one
-SCAN line a transaction (default 4), from a generator of their own: a
-trace's workload is the same with and without `tree=1`.
+SCAN line a transaction (default 4; with `gets=0` none), from a generator
+of their own: a trace's workload is the same with and without `tree=1`.
 
 A key node made without an entry has one time klong and no other (`KN x l
 1 T t`): the primordial key node, and a space root that a delete emptied

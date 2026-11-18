@@ -27,7 +27,14 @@ trace is whole, line by line, before the contract is checked
   node that exists or is made, with its klongs exactly; every index node
   made is a key node with its `KN` line or a top node with its root pointer
   (the root, node 0, is made in `TX 0`); every value made has its `ADD ... V`
-  line; one `GD` and one `DIRTY` line.
+  line; one `GD` and one `DIRTY` line;
+* (bergdb 030-19, the three points of an independent review, Codex 3) a delete
+  bitmap of a `KN` line is a number below 2^62, Java's 62 bits (`isBitmap`,
+  Trace.lean); no `PROBE` line fails (run B's restart and run E's eviction
+  checks, as the exporter's own `ERROR` lines); and every `TX i`, i > 0, has its
+  reads: n `GET` lines, n > 0 the same in each, and one `SCAN` line (the
+  exporter's `gets=N`, default 4, 027-02, section 4), so that a trace that
+  passes has tested Java's readers in every transaction.
 
 `completeFault` gives the first fault, with its line number, or none.
 Nothing here needs Mathlib.
@@ -79,6 +86,11 @@ structure LineState where
   rptrs : List NodeId := []
   gd : Nat := 0
   dirty : Nat := 0
+  /-- (bergdb 030-19) The GET and SCAN lines of the transaction being read, and the
+  number of GET lines of each transaction after `TX 0`, once the first has ended. -/
+  gets : Nat := 0
+  scans : Nat := 0
+  getsN : Option Nat := none
   /-- The place (`rankOf`) of the last line of the transaction being read,
   and in a version: 0 before its first VER line, then 1 after a VER line, 2
   after an H line, 3 after a SKIPT line, 4 after an F line (bergdb 030-15). -/
@@ -91,8 +103,16 @@ def klongToksOk : Nat → List String → Bool
   | 0, _ :: _ => false
   | n + 1, "T" :: t :: r => isNum t && klongToksOk n r
   | n + 1, "K" :: c :: y :: r => isNum c && isNum y && klongToksOk n r
-  | n + 1, "B" :: b :: r => isNum b && klongToksOk n r
+  | n + 1, "B" :: b :: r => isBitmap b && klongToksOk n r
   | _ + 1, _ => false
+
+/-- A `B` klong of a KN line's tokens with a number of 2^62 or more (bergdb 030-19): in a
+KN line a `B` token always starts a delete bitmap (a compare value or a pointee is a
+number). -/
+def wideBitmap : List String → Bool
+  | "B" :: b :: r => (isNum b && !isBitmap b) || wideBitmap (b :: r)
+  | _ :: r => wideBitmap r
+  | [] => false
 
 /-- All tokens are numbers (digits only: `isNum`, Trace.lean). -/
 def allNums (toks : List String) : Bool := toks.all isNum
@@ -201,7 +221,11 @@ def lineFault (toks : List String) : Option String :=
       isNum a && isNum y && (k == "canon" || k == "snap") && isNumOrNone r && isNum e && isNum x
     | ["HPTR", a, y, r, h] => isNum a && isNum y && isNumOrNone r && isNumOrNone h
     | _ => false
-  if ok then none else some s!"not of the grammar of trace format 3: {" ".intercalate toks}"
+  if ok then none
+  else if toks.head? == some "KN" && wideBitmap toks then
+    some s!"a delete bitmap wider than Java's {bitmapBits} bits (027-02, section 4): {
+      " ".intercalate toks}"
+  else some s!"not of the grammar of trace format 3: {" ".intercalate toks}"
 
 /-- The place of a kind of line in a transaction (bergdb 027-02, section 2,
 "Within TX i, the order is"; section 4): the lines of a transaction come in
@@ -252,6 +276,12 @@ the nodes. -/
 def endTx (st : LineState) (i : Nat) : Except String LineState := do
   if st.gd != 1 then throw s!"TX {i} has {st.gd} GD lines, not one"
   if st.dirty != 1 then throw s!"TX {i} has {st.dirty} DIRTY lines, not one"
+  -- The reads (bergdb 030-19): n GET lines, n > 0 the same in every TX i > 0, one SCAN line.
+  if i != 0 then
+    if st.scans != 1 then throw s!"TX {i} has {st.scans} SCAN lines, not one"
+    if st.gets == 0 then throw s!"TX {i} has no GET line"
+    if let some n := st.getsN then
+      if st.gets != n then throw s!"TX {i} has {st.gets} GET lines, the transactions before it {n}"
   let mut nodes := st.nodes
   for (x, isVal) in st.news do
     if isVal then
@@ -270,7 +300,8 @@ def endTx (st : LineState) (i : Nat) : Except String LineState := do
   for z in st.rptrs do
     if !st.tops.contains z then throw s!"TX {i}: a root pointer of {z}, no top node made"
   return { st with tx := none, next := i + 1, nodes := nodes, news := [], kns := [], vals := [],
-                   tops := [], rptrs := [], gd := 0, dirty := 0, rank := 0, verPart := 0 }
+                   tops := [], rptrs := [], gd := 0, dirty := 0, rank := 0, verPart := 0,
+                   gets := 0, scans := 0, getsN := if i == 0 then st.getsN else some st.gets }
 
 /-- An ADD line `ADD x t e` of transaction i. -/
 def addLine (st : LineState) (i : Nat) (toks : List String) : Except String LineState := do
@@ -344,6 +375,9 @@ def lineStep (st : LineState) (ln : Nat) (line : String) : Except String LineSta
       if toks != ["TRACE", "3"] then throw s!"line {ln}: the first line is not TRACE 3"
       return { st with first := false }
     if t == "ERROR" then throw s!"line {ln}: the exporter's {line}"
+    -- A PROBE line that fails (bergdb 030-19): run B's or run E's check found Java wrong.
+    if t == "PROBE" && toks[2]? == some "fail" then
+      throw s!"line {ln}: a PROBE line that failed (a check of run B or run E): {line}"
     if !lineKinds.contains t then throw s!"line {ln}: a line of an unknown kind: {line}"
     if !textKinds.contains t && (line.splitOn " ").length != toks.length then
       throw s!"line {ln}: tokens not separated by one space: {line}"
@@ -407,6 +441,8 @@ def lineStep (st : LineState) (ln : Nat) (line : String) : Except String LineSta
       | "DIRTY" :: r =>
         if !allNums r || r.length % 2 != 0 then throw s!"line {ln}: a DIRTY line"
         return { st with dirty := st.dirty + 1 }
+      | "GET" :: _ => return { st with gets := st.gets + 1 }
+      | "SCAN" :: _ => return { st with scans := st.scans + 1 }
       | k :: _ =>
         if headKinds.contains k || k == "TX" || k == "DONE" then
           throw s!"line {ln}: a {k} line inside TX {i}"

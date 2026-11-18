@@ -32,7 +32,10 @@ For TX 0: the start tree meets the invariants and is empty (`Start`).
 Before that, the trace must be whole (`completeFault`, Complete.lean; bergdb
 030-09): TRACE 3, no ERROR line and no line of an unknown kind, the
 transactions numbered 0, 1, 2, ... and closed, a DONE line naming the last,
-and each transaction's NEW, ADD and KN lines all of its change. TX j is
+and each transaction's NEW, ADD and KN lines all of its change; since bergdb
+030-19 also no PROBE line that fails, every delete bitmap below 2^62 (Java's
+62 bits), and the reads of every transaction after TX 0 (its GET lines, as
+many as in the others, and one SCAN line). TX j is
 checked at time j, so a trace that passes is a history that meets the
 contract (`historyOk_meets`, Contract/History.lean). With LIVE lines (the
 exporter's live=1), L1: each is Java's search and top search as the

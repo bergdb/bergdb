@@ -16,7 +16,12 @@
 # test/small.trace (a bare OP or GET line, a SCAN in the direction BANANA, an OP
 # line in TX 0, a key entry that is not its klong's), and lines out of their
 # order. A GET with a wrong answer passes this checker: the reads are the
-# contract checker's (check.sh runs both).
+# contract checker's (check.sh runs both). Since bergdb 030-19, the three points of
+# an independent review (Codex, review 3), which the trace's wholeness
+# (`completeFault`) now fails in both checkers: a delete bitmap wider than Java's 62
+# bits (2^64 added to a bitmap of a KN line; the review's B 2^64 with an empty delete
+# entry), a PROBE line that fails, and reads left out (every GET and SCAN line, the
+# SCAN line of one transaction).
 #
 # Usage: lean/contract/bridge-faults.sh
 # Needs: the checker (cd lean/contract && lake build bridgecheck) and the traces
@@ -84,6 +89,17 @@ fault bare-get $G '{ print } /^TX 5$/ { t = 1 } t && !d && /^GET / { print "GET"
 fault banana $G '/^TX 5$/ { t = 1 } t && !d && /^SCAN / { $3 = "BANANA"; d = 1 } { print }'
 fault tx0-op $G '{ print } /^TX 0$/ { print "OP P 1 8 99" }'
 fault order $G '/^TX 5$/ { t = 1 } t && !d && /^GD/ { g = $0; d = 1; next } { print } g != "" && /^DIRTY/ { print g; g = "" }'
+# bergdb 030-19: the first B klong of a KN line with 2^64 added: the same bits 0 to 63,
+# read as the bitmap itself until 030-19.
+L=$(awk '/^KN .* B /{print NR; exit}' $G)
+B=$(awk -v l=$L 'NR==l{for (k=1; k<NF; k++) if ($k=="B") {print $(k+1); exit}}' $G)
+W=$(echo "18446744073709551616 + $B" | bc)
+export L W
+fault bitmap64 $G 'NR == ENVIRON["L"] { for (k = 1; k < NF; k++) if ($k == "B") { $(k + 1) = ENVIRON["W"]; break } }
+    { print }'
+fault probe-fail $G '/^END 5$/ { print "PROBE 5 fail wrong values after restart" } { print }'
+fault no-reads $G '!/^GET / && !/^SCAN / { print }'
+fault no-scan $G '/^TX / { tx = $2 } !(tx == 5 && /^SCAN /) { print }'
 # The review's own faults, in a hand-made trace of two transactions that passes.
 S=test/small.trace
 expect small PASS $S
@@ -92,6 +108,11 @@ fault s-bare-get $S '{ print } /^GET / { print "GET" }'
 fault s-banana $S '/^SCAN 1 F / { $3 = "BANANA" } { print }'
 fault s-tx0-op $S '{ print } /^TX 0$/ { print "OP P 1 8 99" }'
 fault s-wrong-entry $S '/^ADD 3 1 K 56 4$/ { $5 = 64 } { print }'
+# bergdb 030-19: the third review's (Codex) faults.
+fault s-bitmap $S '{ if ($0 == "KN 3 1 2 T 1 K 56 4") print "KN 3 1 3 T 1 K 56 4 B 18446744073709551616"; else print }
+    /^ADD 3 1 K 56 4$/ { print "ADD 3 1 D 0" }'
+fault s-probe-fail $S '/^END 1$/ { print "PROBE 1 fail wrong values after restart" } { print }'
+fault s-no-reads $S '!/^GET / && !/^SCAN / { print }'
 
 rm -rf $DIR
 if [ $FAILED -eq 0 ]; then

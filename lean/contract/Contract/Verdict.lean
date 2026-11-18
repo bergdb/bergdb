@@ -23,7 +23,10 @@ are the package's searches and the top's cached times. They are tests of
 the assumptions that reads rest on (030-04, section 3.5), not part of the
 contract; the theorem speaks of the contract only. So the verdict is all
 that the checker's loop counts: a trace passes if and only if no count is
-other than zero, which the checker also checks.
+other than zero, which the checker also checks. Since bergdb 030-19 a whole
+trace (`completeFault`) has reads in every transaction after `TX 0`, so
+`readsOk` is not true for want of reads, and no PROBE line that fails (an
+independent review, Codex 3: the checkers passed a trace with neither).
 Nothing here needs Mathlib.
 -/
 import Contract.Complete
