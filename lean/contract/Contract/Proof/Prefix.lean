@@ -13,12 +13,40 @@ note, item 3; Proof/RecoverWhole.lean).
 -/
 import Mathlib.Tactic
 import Contract.Proof.BridgeMap
-import Contract.Proof.NodeAlg
 
 namespace Contract
 
 open SIS (History)
 open SIS.Check (BVal)
+
+/-! ## The check of the times (W1), as steps
+
+From Proof/NodeAlg.lean of the writer proof (bergdb 030-10), which left `main`
+on 2026-11-18 (030-18); the writer proof is at the tag `writer-proof-2026-11-18`. -/
+
+/-- The step of the check of the times (W1). -/
+def tStep (acc : Bool × Option Time) (k : Klong) : Bool × Option Time :=
+  match k with
+  | .time t => (acc.1 && (match acc.2 with
+      | some t0 => decide (t0 < t)
+      | none => true), some t)
+  | _ => acc
+
+/-- The check of the first klong (W1). -/
+def headOk (ks : List Klong) : Bool :=
+  match ks with
+  | .time _ :: _ => true
+  | [] => true
+  | _ => false
+
+theorem timesOk_eq (ks : List Klong) :
+    timesOk ks = (headOk ks && (ks.foldl tStep (true, none)).1) := rfl
+
+theorem headOk_append {ks : List Klong} (hne : ks ≠ []) (l : List Klong) :
+    headOk (ks ++ l) = headOk ks := by
+  cases ks with
+  | nil => exact absurd rfl hne
+  | cons k r => cases k <;> rfl
 
 /-! ## W2 to W5 of a prefix -/
 

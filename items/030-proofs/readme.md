@@ -75,6 +75,10 @@ D0. The contract approach, a fresh start
   the test oracle.
 * **Next:** the spike (030-04, section 7): one agent, about a day; Frans
   decides when. If it succeeds, 030-04's step 4 follows without asking.
+* **The writer proof** (030-10, 030-16; every put proved, deletes in
+  part) was taken off `main` on 2026-11-18 (Frans, 08:42; 030-18): it is
+  at the tag `writer-proof-2026-11-18`. No proof nights for now (006-31,
+  D4).
 * **What it changes here:** D1 is paused; D3's goal moves to 030-04's
   step 4. "The aim" above is as written on 16 November; D0's aim is its
   goal. The rules above hold for `lean/` as before; the new package's
@@ -301,7 +305,8 @@ Files
   night of 17 November: does the model's writer meet the contract? The
   refinement map from the writer's state to the contract's tree, checked on
   the traces; the statement; how far a proof got and what the rest costs.
-  Status: open.
+  Taken off `main` 2026-11-18 (030-18); the code is at the tag
+  `writer-proof-2026-11-18`. Status: open.
 * [030-14](14-reads-after-crash.md). Reads after a crash, a restart and
   under eviction, end to end (030-11, finding 3): a reader of the model's
   view at a time, with each key node's kind from its level (K-LEVEL, a new
@@ -324,7 +329,8 @@ Files
   from a delete), the bitmap in every form, a delete of a one-segment key whose
   leaf keeps a live klong (`putKv_del1_keep`, the merges as a premise);
   030-10's `BalancedAll` shown false for a dead klong (`writerMeets_false`).
-  The night of 17 November. Status: open.
+  The night of 17 November. Taken off `main` 2026-11-18 (030-18); the code
+  is at the tag `writer-proof-2026-11-18`. Status: open.
 * [030-17](17-readers-eviction-cut.md). Java's readers under eviction, after
   a lazy startup and after reclaim's safe cuts, end to end, with Java's
   search through the skip pointers; what that search reads (`TopFrom`), so

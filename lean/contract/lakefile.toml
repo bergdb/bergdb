@@ -21,7 +21,3 @@ root = "ContractCheck"
 [[lean_exe]]
 name = "bridgecheck"
 root = "BridgeCheck"
-
-[[lean_exe]]
-name = "writercheck"
-root = "WriterCheck"

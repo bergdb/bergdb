@@ -198,6 +198,11 @@ each, 19:20 to 19:50. They changed no statement.
 
 # State
 
+2026-11-18. Taken off `main` on Frans's word (2026-11-18, 08:42; 006-31,
+section 1; done in 030-18): the writer proof's files left `lean/contract/`.
+The code is at the tag `writer-proof-2026-11-18` (main 52459c9d); to go on,
+start from the tag. The notes below are as the work left them.
+
 2026-11-17, 22:05. Section 1. The last gated commit: 868af087 (on main
 d7966251). I stopped here for the week's budget (55 %, the stop at 60 %),
 with 030-10's restatement of `BalancedAll` to come first (F3).
@@ -253,3 +258,5 @@ klongs), my D3.
 (stopped for the week's budget; `merge_spec` left out); prover H: the loop
 restated on `MergeOk` and `WmgFresh`. Main d7966251 merged.
 GATED 868af087: the merges' loop (mergeUp_spec, afterOkW_on, given MergeOk), the merge reduced to WmgRestOk (merge_spec_of_rest), root collapse with WcrLink and SNamed only; the review's points in the item.
+2026-11-18. Taken off `main` (030-18); the code is at the tag
+`writer-proof-2026-11-18`.
