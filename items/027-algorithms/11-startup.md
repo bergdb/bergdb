@@ -378,10 +378,9 @@ T3 and T4 are part 6's; what they give a start:
   005-62: `Rule4PosCut_handles`, `RunPosCut_handles`); T8
   (`T8_recoverCut`: a start from a safely cut stream gives the same
   lookups from fa on and the same D); the costs of section 4. Since
-  2026-11-18 (030-18) the proofs of rule 4 by position after a cut, of
-  `T4_ends` and of a cold start's reads are at the tag `proofs-2026-11-17` only;
-  lean/SIS keeps their statements' files where the contract package
-  uses them.
+  2026-11-18 (030-18) rule 4 by position after a cut, `T4_ends` and a
+  cold start's reads, statements and proofs, are at the tag
+  `proofs-2026-11-17` only.
 * **Assumptions**: `RunOK` (A2 to A5); BergDB's still-dirty test, or the
   exact one with a written root (the `_noD` and `_drop` bounds: BergDB's
   only); `LiveAppend` and `TreeRunOK` for T1-L, T2-L, CC and the `_noD`
