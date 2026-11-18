@@ -999,7 +999,8 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
      each pointer of D's nodes linked to its node's canonical object by
      the pointer's position, through the section's versions and their
      prevPos, without reading the stream (005-57; proved in the Lean model,
-     005-58, `Rule4Pos_handles`; after a cut, 005-62). With -ea,
+     005-58, `Rule4Pos_handles`; after a cut, 005-62, proved at the tag
+     `proofs-2026-11-17`, 030-18). With -ea,
      `checkLinkById` (:829) compares it with rule 4 by node id.
    * **prevPos**'s role: it maps the version a key node replaced to its
      id (`posToId`), so that rule 4 and Rule R find a node by an older

@@ -616,6 +616,11 @@ the premises that are not proved or not given back, each tested:
 
 # State
 
+2026-11-18. Taken off `main` on Frans's word (2026-11-18, 08:42; 006-31,
+section 1; done in 030-18): the writer proof's files left `lean/contract/`.
+The code is at the tag `writer-proof-2026-11-18` (main 52459c9d); to go on,
+start from the tag. The notes below are as the work left them.
+
 2026-11-17, 23:00. Items 1 and 2 done; item 3 (the puts) done for every
 key; item 4: the first delete done, the rest is 030-16's since 19:12;
 item 5 written (section 5). The statement was restated three times this
@@ -849,3 +854,5 @@ needed for 030-07's `mem_blive_entriesOf`). `gate.sh 53e66e73`: GATE OK
 GATED 6ad9b53a: the model's own view shows the key nodes that the tree reaches (reachable_of_holds, shows_key_of_holds), given the space root reachable, falling levels and well-formed klongs.
 2026-11-17, 23:00. The week is at 58 %: by the coordinator's word of 22:00
 no new part is started. The night's STOP file is not there yet.
+2026-11-18. Taken off `main` (030-18); the code is at the tag
+`writer-proof-2026-11-18`.
