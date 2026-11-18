@@ -57,10 +57,12 @@ in its tests. Written by an agent of coord-1117 ("I" below), on the branch
   transaction's keys and of the leaves it touched, the frame and D, and
   Java's search. On in the unit tests (`before-commit.sh`, `unit.sh`; no
   cost seen); the f-tests with it are `java/stress/transcheck.sh`, a step
-  of `night.sh`, since there it costs about 7 s. No failure in 4.3 million
-  transactions of the unit tests and f-tests, with restarts, eviction,
-  reclaim and the Pub layer; `TransCheckTester` shows that it finds four
-  kinds of fault made on purpose.
+  of `night.sh`, since there it costs about 7 s. No failure in 3.96 million
+  transactions of the unit tests and f-tests (one run of each, section 3:
+  130,517 and 3,833,784), with restarts, eviction, reclaim and the Pub
+  layer; `TransCheckTester` shows that it finds four kinds of fault made on
+  purpose. (Until 030-19 this said 4.3 million, the sum of another run,
+  section 4's `transcheck.sh`; the f-tests' count differs from run to run.)
 - **The medium set, contract check only** (030-05 stopped at 16 of 27):
   all 27 traces CONTRACT OK, 13,667 transactions, 736,718 operations,
   109,336 GET, 27,334 SCAN, node sizes 8 to 62; no trace not whole, no
@@ -79,7 +81,8 @@ in its tests. Written by an agent of coord-1117 ("I" below), on the branch
   at the head of the trace; any one is a change that the trace cannot
   express (027-02, section 2).
 - **PROBE lines do not fail the contract's checker.** They are run B's;
-  `tracecheck` checks them. The contract is checked on run A.
+  `tracecheck` checks them. The contract is checked on run A. (Changed in
+  030-19: a PROBE line that fails fails both checkers.)
 - **F7, node permanence and levels, by the trace's meaning, not by a
   test:** the heap only grows because the stream does (a node of the trace
   is a node written or in D, and nothing is removed from an append-only

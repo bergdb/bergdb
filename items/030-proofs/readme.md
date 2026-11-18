@@ -340,6 +340,12 @@ Files
   time (`HoldsP`, the tree holds the structure whole); `bridge-faults.sh`
   fixed (it failed on main 3f1e2fea). The night of 17 November. Status:
   done.
+* [030-19](19-codex3-points.md). The three points of Codex review 3 fixed
+  in the checkers (006-31, D5): a delete bitmap of 2^62 or more refused
+  (Java's has 62 bits; `B 2^64` was read as empty), a PROBE line that fails
+  and a transaction without its GET and SCAN lines fail both checkers, with
+  fault tests; 030-09's "4.3 million" is 3.96 million. No statement
+  changed. Written 2026-11-18. Status: done.
 
 Log
 ===

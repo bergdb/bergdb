@@ -223,6 +223,12 @@ Files
   refuted; the frames are the largest new cost; the evidence and the
   Lean as text in 19-proof-trial/, the branch `026-19-proof-trial` kept.
 
+* 20-step-times-net-change.md. 026-20, two designs for 2026.6's writer
+  that remove (step times) or reduce (net change) the take-back inside a
+  transaction, from coord-1117's discussion with Frans (2026-11-18, 06:43
+  to 08:49): the terms, the time klong's layout, the risks, a comparison
+  and a proposed first study; nothing decided.
+
 
 Log
 ===
@@ -271,3 +277,10 @@ Frans's idea (12:54, 13:11).
 2026-11-17. How the release is made: the binaries to GitHub Releases,
 `releases/2026.6/` with the notes and `SHA256SUMS` only, no source zip,
 `baseline.zip` not published (029; Frans, 11:40).
+
+2026-11-18. The writer proof (030-10, 030-16) taken off main, tagged
+`writer-proof-2026-11-18` (Frans, 08:42; 006-31). 026-20 written down:
+step times and net change (Frans, 08:49: "Either we start investigating
+Net Change. Or we investigate Step Times. Not sure which to start with,
+or a first study of both, before we decide the direction of the
+implementation.").
