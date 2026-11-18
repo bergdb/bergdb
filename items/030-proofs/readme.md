@@ -19,10 +19,22 @@ the current model and Java will be proven if we continue with that work."
 The aim
 =======
 
-A fully proved model: "We still try to prove everything now. Once that
-work is done, I may decide on a general policy on this." (Frans,
-2026-11-15, 08:47.) The goals in order are 006-26, section 8; what each
-word means (proved, reduced, tested) is 006-26's.
+**The core algorithms are proved** (Frans, 2026-11-18, 13:12): every
+correctness claim reads "proved, given the tested assumptions" of 030-04,
+section 3.5. Two parts are left for it: the writer meets the contract
+(030-04's assumption 1; the direction is chosen after the PE trial,
+026-24), and reclaim chooses only safe cuts (assumption 11, T-SCHEME).
+Frans: ""the core algorithms are proved". Yes, this is the result to aim
+for. This is how far we would wish to go. If maintenable at a reasonable
+cost, this would be great. That is a valuable garantee." Beyond it, and
+not aimed for: Java against the model (tested by design), the platform's
+assumptions (tested), the cost and bounded-startup statements, and what
+the model leaves out (threads, the Pub layer, the cache's budget).
+
+Before: a fully proved model: "We still try to prove everything now.
+Once that work is done, I may decide on a general policy on this."
+(Frans, 2026-11-15, 08:47.) The goals in order were 006-26, section 8;
+what each word means (proved, reduced, tested) is 006-26's.
 
 
 The rules

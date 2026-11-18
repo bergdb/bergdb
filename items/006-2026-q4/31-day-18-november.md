@@ -36,10 +36,10 @@ The decisions, as recorded here:
 
 ## 2. The ground rules
 
-* Usage: the week's stop at 80 % (Frans, 08:56: "Use 80 % as today's
-  stop. For now, at least."); up to three agents, Opus 5.5. The agents
+* Usage: the week's stop at 85 % (Frans, 12:51; 80 % from 08:56: "Use
+  80 % as today's stop. For now, at least."); up to three agents. The agents
   stop at the STOP file `/Users/f/fl/bench/2026-11-18/STOP`, touched by a
-  usage watch at week 80 % (65 % from 08:44 to 08:56).
+  usage watch at week 85 % (65 % from 08:44, 80 % from 08:56).
 * Agents work in their own clones and commit there; the coordinator lands
   their gated commits on main and pushes.
 
@@ -165,6 +165,14 @@ The decisions, as recorded here:
   I think "/#i/-sd" is better. Fits in one klong." Agent sd resumed 12:46:
   the key renamed `/#i/-sd`, CoreDemo reads only its own keys.
 * 12:47 Frans: the PE trial (above). Agent pe (026-24) started 12:48.
+* 12:51 Frans: "Raise the limit to 85 %. Use "/#i/-sd"." (The key takes
+  two klongs, against four before; "/#i/-s" would take one.)
+* 13:12 The aim of the proofs, after a discussion of what is not proved
+  (the writer, reclaim's cut, and what stays tested or out of the
+  model). Frans: ""the core algorithms are proved". Yes, this is the
+  result to aim for. This is how far we would wish to go. If maintenable
+  at a reasonable cost, this would be great. That is a valuable
+  garantee." Written into 030's aim.
 
 
 ## 5. Outcome
