@@ -101,7 +101,7 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
-| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37) | open, started |
+| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
 
 
 Closed
