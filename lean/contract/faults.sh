@@ -15,6 +15,12 @@
 # an OP line in TX 0, a GET with a wrong answer), and a number with an underscore,
 # two spaces between tokens, lines out of their order, a TX without its BASE line.
 # Since bergdb 030-17, K-LEVEL: the TREE line's h set to 0 (KIND alone fails).
+# Since bergdb 030-19, the three points of an independent review (Codex, review 3):
+# a delete bitmap wider than Java's 62 bits (2^64 added to a bitmap of a KN line,
+# which was read as the bitmap itself, and the review's B 2^64 with an empty delete
+# entry, read as an empty bitmap; and 2^62 added, which C1 caught), a PROBE line that
+# fails (a PROBE line that is ok passes), and reads left out: every GET and SCAN line,
+# the GET lines or the SCAN line of one transaction, one GET line of one.
 #
 # Usage: lean/contract/faults.sh
 # Needs: the checker (cd lean/contract && lake build contractcheck) and java/build
@@ -109,6 +115,34 @@ expect kindh0 FAIL $DIR/kindh0.trace
 grep -q 'KIND [1-9]' $DIR/kindh0.out || { echo "   kindh0: WRONG, not KIND"; FAILED=$((FAILED + 1)); }
 grep -q 'C1 0, C2 0, C3 0, R1 0, L1 0, C4 0, C5 0' $DIR/kindh0.out \
     || { echo "   kindh0: WRONG, a clause other than KIND"; FAILED=$((FAILED + 1)); }
+# bergdb 030-19: a delete bitmap is a number below 2^62 (Java's has 62 bits, 027-02,
+# section 4). The first B klong of a KN line from TX 30 on gets 2^64 added: the same
+# bits 0 to 63, so the checker read it as the bitmap itself until 030-19 and passed
+# the trace; with 2^62 added, bit 62 deletes a klong after the bitmap (C1 caught it).
+L=$(awk '/^TX /{tx=$2} tx>=30 && /^KN .* B /{print NR; exit}' $G)
+B=$(awk -v l=$L 'NR==l{for (k=1; k<NF; k++) if ($k=="B") {print $(k+1); exit}}' $G)
+W64=$(echo "18446744073709551616 + $B" | bc)
+W62=$(echo "4611686018427387904 + $B" | bc)
+WIDE='NR==l{for (k=1; k<NF; k++) if ($k=="B") {$(k+1)=w; break}} {print}'
+awk -v l=$L -v w=$W64 "$WIDE" $G > $DIR/bitmap64.trace
+expect bitmap64 FAIL $DIR/bitmap64.trace
+awk -v l=$L -v w=$W62 "$WIDE" $G > $DIR/bitmap62.trace
+expect bitmap62 FAIL $DIR/bitmap62.trace
+# A PROBE line that fails (run B's or run E's check, 027-02, section 2) fails the trace;
+# one that is ok does not.
+awk '/^END 30$/{print "PROBE 30 fail wrong values after restart"} {print}' $G > $DIR/probefail.trace
+expect probefail FAIL $DIR/probefail.trace
+awk '/^END 30$/{print "PROBE 30 ok"} {print}' $G > $DIR/probeok.trace
+expect probeok PASS $DIR/probeok.trace
+# Reads left out: every TX i > 0 has n GET lines, n > 0 the same in each, and one SCAN line.
+grep -v '^GET \|^SCAN ' $G > $DIR/noreads.trace
+expect noreads FAIL $DIR/noreads.trace
+awk '/^TX /{tx=$2} !(tx==30 && /^GET /){print}' $G > $DIR/nogets.trace
+expect nogets FAIL $DIR/nogets.trace
+awk '/^TX /{tx=$2} !(tx==30 && /^SCAN /){print}' $G > $DIR/noscan.trace
+expect noscan FAIL $DIR/noscan.trace
+awk '/^TX /{tx=$2} tx==30 && /^GET / && !d{d=1; next} {print}' $G > $DIR/oneget.trace
+expect oneget FAIL $DIR/oneget.trace
 # The review's own faults, in a hand-made trace of two transactions that passes.
 S=test/small.trace
 expect small PASS $S
@@ -122,6 +156,16 @@ awk '{print} /^TX 0$/{print "OP P 1 8 99"}' $S > $DIR/s-tx0op.trace
 expect s-tx0op FAIL $DIR/s-tx0op.trace
 sed 's/^GET 1 2 56 64 5$/GET 1 2 56 64 999/' $S > $DIR/s-wrongget.trace
 expect s-wrongget FAIL $DIR/s-wrongget.trace
+# bergdb 030-19: the third review's (Codex) faults: B 2^64 with an empty delete entry,
+# a PROBE line that fails, the GET and SCAN lines left out.
+awk '{print} /^ADD 3 1 K 56 4$/{print "ADD 3 1 D 0"}' $S \
+    | sed 's/^KN 3 1 2 T 1 K 56 4$/KN 3 1 3 T 1 K 56 4 B 18446744073709551616/' \
+    > $DIR/s-bitmap.trace
+expect s-bitmap FAIL $DIR/s-bitmap.trace
+awk '/^END 1$/{print "PROBE 1 fail wrong values after restart"} {print}' $S > $DIR/s-probefail.trace
+expect s-probefail FAIL $DIR/s-probefail.trace
+grep -v '^GET \|^SCAN ' $S > $DIR/s-noreads.trace
+expect s-noreads FAIL $DIR/s-noreads.trace
 
 # From Java: a klong of an existing node changed in memory at the last record, R(60).
 $JAVA -ea $PROPS -Dfault=60 -cp $CP bergdb.core.TraceExport 1 $DIR/java.trace > $DIR/java.txt 2>&1

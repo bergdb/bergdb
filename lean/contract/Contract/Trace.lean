@@ -74,8 +74,29 @@ def readKey : List String → Except String (Option Key × List String)
     return (some cs, r.drop n)
   | [] => .error "a key is missing"
 
-/-- The bits of a bitmap written as a number. -/
-def bitsOf (b : Nat) : List Nat := (List.range 64).filter (fun j => b.testBit j)
+/-- The width of a delete bitmap: Java's has 62 bits, for the klongs at index 0 to
+61 (Klong; `Dag.MAX_NODE_SIZE` is 62), so the number b of a `B b` klong is below
+2^62 (bergdb 027-02, section 4; 030-19). -/
+def bitmapBits : Nat := 62
+
+/-- A token is a delete bitmap: a number below 2^62 (bergdb 030-19). -/
+def isBitmap (s : String) : Bool := isNum s && decide (s.toNat?.getD 0 < 2 ^ bitmapBits)
+
+/-- The bits of a bitmap written as a number, every one of them. Until bergdb 030-19
+only bits 0 to 63 were read, so that a wider number was read in part (an independent
+review, Codex 3: `B 2^64` was read as an empty bitmap); a bitmap of 2^62 or more is
+now refused (`readKlongs`, and `klongToksOk` in Complete.lean). -/
+def bitsOf (b : Nat) : List Nat := (List.range (b.log2 + 1)).filter (fun j => b.testBit j)
+
+/-- `bitsOf b` holds bit j exactly if b has it. -/
+theorem mem_bitsOf_iff {b j : Nat} : j ∈ bitsOf b ↔ b.testBit j = true := by
+  simp only [bitsOf, List.mem_filter, List.mem_range, and_iff_right_iff_imp]
+  intro h
+  refine Nat.lt_of_not_le fun hj => ?_
+  have : b < 2 ^ j :=
+    Nat.lt_of_lt_of_le Nat.lt_log2_self (Nat.pow_le_pow_right (by omega) hj)
+  rw [Nat.testBit_lt_two_pow this] at h
+  exact Bool.false_ne_true h
 
 /-- n klongs at the front of the tokens. -/
 def readKlongs : Nat → List String → Except String (List Klong)
@@ -92,6 +113,7 @@ def readKlongs : Nat → List String → Except String (List Klong)
     return .key c y :: ks
   | n + 1, "B" :: b :: r => do
     let b ← num b
+    if 2 ^ bitmapBits ≤ b then throw s!"a delete bitmap wider than {bitmapBits} bits: B {b}"
     let ks ← readKlongs n r
     return .del (bitsOf b) :: ks
   | _, _ => .error "a KN line's klongs"

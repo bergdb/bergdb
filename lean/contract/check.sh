@@ -17,8 +17,8 @@
 # Prints the summaries of each set, then CONTRACT OK (both checkers passed every
 # trace) or CONTRACT FAILED; the lines of every trace go to
 # java/build/traces/tree-SET/contract.txt and bridge.txt. First the checkers' own
-# tests: faults.sh (bergdb 030-09, 030-15), faults-top.sh (030-08) and
-# bridge-faults.sh (030-07, 030-15; if the small and the reclaim set are there):
+# tests: faults.sh (bergdb 030-09, 030-15, 030-19), faults-top.sh (030-08) and
+# bridge-faults.sh (030-07, 030-15, 030-19; if the small and the reclaim set are there):
 # faults made in a trace must fail it. About 2 minutes for small, drain and reclaim.
 # The bridge's clauses in the model's words too: bridge-check.sh, or
 # .lake/build/bin/bridgecheck --model TRACE...
