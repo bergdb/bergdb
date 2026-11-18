@@ -273,4 +273,10 @@ from `/fruit` with a `GetMany.Prefix` stop condition, as Db's Javadoc
 tells a Core API user ("Keys and the layers above"); its output and
 checks are as before.
 
-Gates of `028-15-sd-key`: (below).
+Gates of `028-15-sd-key` at `b732048b` (2026-11-18, 13:25 to 14:05, with
+night.sh running on `main`): `java/before-commit.sh` BEFORE COMMIT OK;
+`sh java/stress/core-build.sh unit f` CORE BUILD OK (CoreDemo's scans
+show `/fruit/apple=red /fruit/banana=yellow`, then `/fruit/apple=green`);
+`java/stress/level1.sh` LEVEL 1 OK; `java/stress/level2.sh` full LEVEL 2
+OK. State: gated on the branch, not merged, not pushed; for Frans: the
+key is two klongs, not one (above).
