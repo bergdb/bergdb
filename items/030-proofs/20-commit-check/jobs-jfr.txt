@@ -1,0 +1,4 @@
+# set 3: JFR profiles with the check on, 1M keys, updates, one transaction size each
+jfr jfr-t1 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000 -Dcc.tsizes=1 -Dcc.kinds=update
+jfr jfr-t500 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000 -Dcc.tsizes=500 -Dcc.kinds=update
+jfr jfr-off-t1 0 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000 -Dcc.tsizes=1 -Dcc.kinds=update

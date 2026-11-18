@@ -1,0 +1,13 @@
+# set 6: Perf, the durable commits of the principal suite (execute, then sync), 1 and 16 threads; ABBAAB
+d-1k-t1-r1-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t1-r1-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t1-r2-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t1-r2-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t1-r3-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t1-r3-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000
+d-1k-t16-r1-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000
+d-1k-t16-r1-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000
+d-1k-t16-r2-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000
+d-1k-t16-r2-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000
+d-1k-t16-r3-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000
+d-1k-t16-r3-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable -Dperf.threads=16 -Dperf.ops=1600 -Dperf.warmup=100000

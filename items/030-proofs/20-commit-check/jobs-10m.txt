@@ -1,0 +1,7 @@
+# set 4: CCBench, 10M keys of 8 bytes (all in a 2.9 GB heap), updates and mixed; ABBAAB
+cc10m-r1-tc0 0 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed
+cc10m-r1-tc1 1 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed
+cc10m-r2-tc1 1 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed
+cc10m-r2-tc0 0 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed
+cc10m-r3-tc0 0 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed
+cc10m-r3-tc1 1 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.kinds=update,mixed

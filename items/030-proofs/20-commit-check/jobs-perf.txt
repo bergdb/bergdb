@@ -1,0 +1,19 @@
+# set 2: Perf, the write scenarios of the quick suite and w-uni-100-inf of the principal one
+w-uni-1k-inf-r1-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-r1-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-r2-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-r2-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-r3-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-r3-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-fin-r1-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-r1-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-r2-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-r2-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-r3-tc0 0 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-r3-tc1 1 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-100-inf-r1-tc0 0 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000
+w-uni-100-inf-r1-tc1 1 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000
+w-uni-100-inf-r2-tc1 1 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000
+w-uni-100-inf-r2-tc0 0 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000
+w-uni-100-inf-r3-tc0 0 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000
+w-uni-100-inf-r3-tc1 1 2500m Perf write -Dperf.n=1000000 -Dperf.valsize=100 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=4500000

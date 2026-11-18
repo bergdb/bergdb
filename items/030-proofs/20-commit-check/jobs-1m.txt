@@ -1,0 +1,9 @@
+# set 1: CCBench, 1M keys of 100 bytes, transaction sizes 1, 10, 100, 500; ABBA
+cc1m-r1-tc0 0 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r1-tc1 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r2-tc1 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r2-tc0 0 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r3-tc0 0 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r3-tc1 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r4-tc1 1 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cc1m-r4-tc0 0 2g CCBench -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000

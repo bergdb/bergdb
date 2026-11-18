@@ -1,0 +1,7 @@
+# set 5: CCBench as set 1, the tuned check (tuned/TransCheck.java) against none; ABBAAB
+cctuned1m-r1-tc0 0 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cctuned1m-r1-tc1 1 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cctuned1m-r2-tc1 1 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cctuned1m-r2-tc0 0 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cctuned1m-r3-tc0 0 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
+cctuned1m-r3-tc1 1 2g CCBenchTuned -Dcc.n=1000000 -Dcc.valsize=100 -Dcc.ops=200000 -Dcc.warm=40000
