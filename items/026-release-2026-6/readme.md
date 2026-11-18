@@ -239,6 +239,17 @@ Files
   to 08:49): the terms, the time klong's layout, the risks, a comparison
   and a proposed first study; nothing decided.
 
+* 21-step-times-study.md. 026-21, a first study of both designs of 026-20
+  in the Lean model (Frans, 2026-11-18, 08:49 and 08:56: "simplification is
+  the overall goal"): net change is today's Java already; step times need
+  the delete cut into pieces (risk 2) and then remove the take-back and its
+  books; the costs on the traces and on a bulk load and a Pub-like index;
+  the evidence in 21-step-times-study/, the branch `026-21-study`. Done
+  2026-11-18, 10:55: (b), step times with the delete in pieces, is
+  recommended; at node size 30 it costs nothing on random work and a few
+  per cent on index updates, and up to 1.4 times the bytes on sorted
+  loads in large transactions; Frans decides.
+
 
 Log
 ===
@@ -294,6 +305,11 @@ step times and net change (Frans, 08:49: "Either we start investigating
 Net Change. Or we investigate Step Times. Not sure which to start with,
 or a first study of both, before we decide the direction of the
 implementation.").
+
+2026-11-18. 026-21 registered: the first study of both designs, one
+combined study (Frans, 08:56), by an agent of coord-1118.
+
+2026-11-18. 026-21 done: the result for Frans (10:55).
 
 2026-11-18. 028-15 option A and 026-12's SF4 (a) (Frans, 10:50: "SF4
 (a), 028-15 A"); the stable format then set aside for 2026.6 (11:51:

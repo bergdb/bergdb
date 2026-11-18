@@ -1,0 +1,188 @@
+traces left out (not run to the end in every mode of their set): 0
+
+# By set
+
+== large2
+  today: traces 120, txs 340000, ops 1100217 (dels 182991), dupkeys 0; steps 340000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [340000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 96594, V2.version 14524, V1.drop 1337, V1.top 80
+    self (an action on its own nodes): 11216 actions; merge.takeback 15296, merge.made.right 7975, merge.made.left 7321, top.inplace 1995, rc.takeback.space 1991, split.space1.inplace 1651, split.time.inplace 55, split.space3.inplace 4; taken back 17287
+    fill (samples 17120): klongs/node 5.58, live/node 2.83, dead/node 0.75, time klongs/node 1.93, nodes/sample 427.8, height max 7
+    made key nodes 483101, tops 25759, versions 1323825, key klongs added 2654112, time splits 175705, space splits 51688, merges 33056
+    bytes: B-new 143525500, B-all 390586700 (values 47409600, deletes 4369964, records 37501200, tops 3038640, made key nodes 51206096, changed key nodes 298267296)
+    checks: gets 1100217, scans 40920, Java reads 1700000, contract steps 340000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 120, txs 340000, ops 1100217 (dels 182991), dupkeys 0; steps 370941 (1.091 a tx, most 11, txs with >1 20560 = 6.0 %, hist [319440, 13703, 4346, 1630, 881]); bumps between ops 14584, inside 16357
+    bump reasons: V1.change 14961, V1.drop 13360, V1.top 2620; would bump (no bump made): V2.version 33731
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 17120): klongs/node 5.59, live/node 2.83, dead/node 0.75, time klongs/node 1.93, nodes/sample 427.9, height max 7
+    made key nodes 510772, tops 30157, versions 1381805, key klongs added 2762143, time splits 182127, space splits 52359, merges 33671
+    bytes: B-new 147855484, B-all 396573452 (values 47409600, deletes 4369964, records 38124576, tops 3614400, made key nodes 54336944, changed key nodes 303054912)
+    against today: versions 1.044, klongs 1.041, made key nodes 1.057, tops 1.171, B-new 1.030, B-all 1.015, index B-new 1.047, index B-all 1.018, time splits 1.037, space splits 1.013, dead/node 0.999
+    checks: gets 1100217, scans 40920, Java reads 1700000, contract steps 370941; failures: none; writer's rules at tx ends: none; between: FillOK 13745, RootsOK 2612
+
+# By node size
+
+== M=30
+  today: traces 40, txs 140000, ops 417787 (dels 93438), dupkeys 0; steps 140000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [140000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 900, V2.version 829, V1.drop 5
+    self (an action on its own nodes): 207 actions; merge.takeback 209, merge.made.left 112, merge.made.right 97; taken back 209
+    fill (samples 7040): klongs/node 9.53, live/node 4.69, dead/node 1.56, time klongs/node 3.06, nodes/sample 269.1, height max 2
+    made key nodes 72805, tops 634, versions 441230, key klongs added 967493, time splits 32300, space splits 6640, merges 2627
+    bytes: B-new 45896856, B-all 173269544 (values 17103936, deletes 2100424, records 13779680, tops 51968, made key nodes 12860848, changed key nodes 140233536)
+    checks: gets 417787, scans 16840, Java reads 700000, contract steps 140000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 40, txs 140000, ops 417787 (dels 93438), dupkeys 0; steps 141074 (1.008 a tx, most 4, txs with >1 1060 = 0.8 %, hist [138940, 1047, 12, 1, 0]); bumps between ops 865, inside 209
+    bump reasons: V1.change 873, V1.drop 201; would bump (no bump made): V2.version 3152
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 7040): klongs/node 9.53, live/node 4.70, dead/node 1.56, time klongs/node 3.06, nodes/sample 269.0, height max 2
+    made key nodes 72993, tops 636, versions 442553, key klongs added 968914, time splits 32398, space splits 6609, merges 2574
+    bytes: B-new 45947912, B-all 173422568 (values 17103936, deletes 2100424, records 13784080, tops 52096, made key nodes 12907376, changed key nodes 140382032)
+    against today: versions 1.003, klongs 1.001, made key nodes 1.003, tops 1.003, B-new 1.001, B-all 1.001, index B-new 1.002, index B-all 1.001, time splits 1.003, space splits 0.995, dead/node 0.999
+    checks: gets 417787, scans 16840, Java reads 700000, contract steps 141074; failures: none; writer's rules at tx ends: none; between: FillOK 209
+== M=62
+  today: traces 20, txs 20000, ops 305907 (dels 18638), dupkeys 0; steps 20000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [20000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 85014, V2.version 2527
+    self (an action on its own nodes): 1647 actions; split.space1.inplace 1647; taken back 0
+    fill (samples 1020): klongs/node 4.02, live/node 2.10, dead/node 0.40, time klongs/node 1.49, nodes/sample 4494.3, height max 2
+    made key nodes 172786, tops 82, versions 343995, key klongs added 710971, time splits 1864, space splits 6071, merges 17
+    bytes: B-new 39220772, B-all 118497652 (values 15636480, deletes 480772, records 6463920, tops 5600, made key nodes 16634000, changed key nodes 95910880)
+    checks: gets 305907, scans 2420, Java reads 100000, contract steps 20000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 20000, ops 305907 (dels 18638), dupkeys 0; steps 24238 (1.212 a tx, most 4, txs with >1 2410 = 12.1 %, hist [17590, 653, 1686, 71, 0]); bumps between ops 4238, inside 0
+    bump reasons: V1.change 4238; would bump (no bump made): V2.version 4226
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 1020): klongs/node 4.03, live/node 2.10, dead/node 0.40, time klongs/node 1.50, nodes/sample 4496.2, height max 2
+    made key nodes 174708, tops 100, versions 350464, key klongs added 764339, time splits 2012, space splits 6132, merges 20
+    bytes: B-new 40222612, B-all 119599156 (values 15636480, deletes 480772, records 6498064, tops 7040, made key nodes 17600256, changed key nodes 96976800)
+    against today: versions 1.019, klongs 1.075, made key nodes 1.011, tops 1.220, B-new 1.026, B-all 1.009, index B-new 1.043, index B-all 1.011, time splits 1.079, space splits 1.010, dead/node 1.001
+    checks: gets 305907, scans 2420, Java reads 100000, contract steps 24238; failures: none; writer's rules at tx ends: none; between: none
+== M=8
+  today: traces 60, txs 180000, ops 376523 (dels 70915), dupkeys 0; steps 180000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [180000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V2.version 11168, V1.change 10680, V1.drop 1332, V1.top 80
+    self (an action on its own nodes): 9362 actions; merge.takeback 15087, merge.made.right 7878, merge.made.left 7209, top.inplace 1995, rc.takeback.space 1991, split.time.inplace 55, split.space1.inplace 4, split.space3.inplace 4; taken back 17078
+    fill (samples 9060): klongs/node 5.20, live/node 2.64, dead/node 0.77, time klongs/node 1.73, nodes/sample 93.3, height max 7
+    made key nodes 237510, tops 25043, versions 538600, key klongs added 975648, time splits 141541, space splits 38977, merges 30412
+    bytes: B-new 58407872, B-all 98819504 (values 14669184, deletes 1788768, records 17257600, tops 2981072, made key nodes 21711248, changed key nodes 62122880)
+    checks: gets 376523, scans 21660, Java reads 900000, contract steps 180000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 60, txs 180000, ops 376523 (dels 70915), dupkeys 0; steps 205629 (1.142 a tx, most 11, txs with >1 17090 = 9.5 %, hist [162910, 12003, 2648, 1558, 881]); bumps between ops 9481, inside 16148
+    bump reasons: V1.drop 13159, V1.change 9850, V1.top 2620; would bump (no bump made): V2.version 26353
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 9060): klongs/node 5.19, live/node 2.64, dead/node 0.77, time klongs/node 1.74, nodes/sample 93.4, height max 7
+    made key nodes 263071, tops 29421, versions 588788, key klongs added 1028890, time splits 147717, space splits 39618, merges 31077
+    bytes: B-new 61684960, B-all 103551728 (values 14669184, deletes 1788768, records 17842432, tops 3555264, made key nodes 23829312, changed key nodes 65696080)
+    against today: versions 1.093, klongs 1.055, made key nodes 1.108, tops 1.175, B-new 1.056, B-all 1.048, index B-new 1.078, index B-all 1.057, time splits 1.044, space splits 1.016, dead/node 0.994
+    checks: gets 376523, scans 21660, Java reads 900000, contract steps 205629; failures: none; writer's rules at tx ends: none; between: FillOK 13536, RootsOK 2612
+
+# All
+
+== all
+  today: traces 120, txs 340000, ops 1100217 (dels 182991), dupkeys 0; steps 340000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [340000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 96594, V2.version 14524, V1.drop 1337, V1.top 80
+    self (an action on its own nodes): 11216 actions; merge.takeback 15296, merge.made.right 7975, merge.made.left 7321, top.inplace 1995, rc.takeback.space 1991, split.space1.inplace 1651, split.time.inplace 55, split.space3.inplace 4; taken back 17287
+    fill (samples 17120): klongs/node 5.58, live/node 2.83, dead/node 0.75, time klongs/node 1.93, nodes/sample 427.8, height max 7
+    made key nodes 483101, tops 25759, versions 1323825, key klongs added 2654112, time splits 175705, space splits 51688, merges 33056
+    bytes: B-new 143525500, B-all 390586700 (values 47409600, deletes 4369964, records 37501200, tops 3038640, made key nodes 51206096, changed key nodes 298267296)
+    checks: gets 1100217, scans 40920, Java reads 1700000, contract steps 340000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 120, txs 340000, ops 1100217 (dels 182991), dupkeys 0; steps 370941 (1.091 a tx, most 11, txs with >1 20560 = 6.0 %, hist [319440, 13703, 4346, 1630, 881]); bumps between ops 14584, inside 16357
+    bump reasons: V1.change 14961, V1.drop 13360, V1.top 2620; would bump (no bump made): V2.version 33731
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 17120): klongs/node 5.59, live/node 2.83, dead/node 0.75, time klongs/node 1.93, nodes/sample 427.9, height max 7
+    made key nodes 510772, tops 30157, versions 1381805, key klongs added 2762143, time splits 182127, space splits 52359, merges 33671
+    bytes: B-new 147855484, B-all 396573452 (values 47409600, deletes 4369964, records 38124576, tops 3614400, made key nodes 54336944, changed key nodes 303054912)
+    against today: versions 1.044, klongs 1.041, made key nodes 1.057, tops 1.171, B-new 1.030, B-all 1.015, index B-new 1.047, index B-all 1.018, time splits 1.037, space splits 1.013, dead/node 0.999
+    checks: gets 1100217, scans 40920, Java reads 1700000, contract steps 370941; failures: none; writer's rules at tx ends: none; between: FillOK 13745, RootsOK 2612
+traces left out (not run to the end in every mode of their set): 0
+
+== large2/l-5000 M=30
+  today: traces 20, txs 100000, ops 237316 (dels 57142), dupkeys 0; steps 100000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [100000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 565, V2.version 534, V1.drop 4
+    self (an action on its own nodes): 177 actions; merge.takeback 179, merge.made.left 94, merge.made.right 85; taken back 179
+    fill (samples 5020): klongs/node 19.72, live/node 11.51, dead/node 3.05, time klongs/node 4.65, nodes/sample 69.4, height max 2
+    made key nodes 31081, tops 486, versions 238760, key klongs added 581783, time splits 22714, space splits 3024, merges 2010
+    bytes: B-new 25834348, B-all 103202908 (values 8648352, deletes 1172124, records 8620160, tops 40896, made key nodes 7352816, changed key nodes 84721376)
+    checks: gets 237316, scans 12020, Java reads 500000, contract steps 100000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 100000, ops 237316 (dels 57142), dupkeys 0; steps 100745 (1.007 a tx, most 4, txs with >1 734 = 0.7 %, hist [99266, 724, 9, 1, 0]); bumps between ops 562, inside 183
+    bump reasons: V1.change 570, V1.drop 175; would bump (no bump made): V2.version 2269
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 5020): klongs/node 19.74, live/node 11.53, dead/node 3.04, time klongs/node 4.66, nodes/sample 69.3, height max 2
+    made key nodes 31241, tops 486, versions 239698, key klongs added 583147, time splits 22798, space splits 3000, merges 1965
+    bytes: B-new 25877500, B-all 103344444 (values 8648352, deletes 1172124, records 8623872, tops 40896, made key nodes 7392256, changed key nodes 84859200)
+    against today: versions 1.004, klongs 1.002, made key nodes 1.005, tops 1.000, B-new 1.002, B-all 1.001, index B-new 1.003, index B-all 1.002, time splits 1.004, space splits 0.992, dead/node 0.998
+    checks: gets 237316, scans 12020, Java reads 500000, contract steps 100745; failures: none; writer's rules at tx ends: none; between: FillOK 183
+== large2/l-big62 M=62
+  today: traces 20, txs 20000, ops 305907 (dels 18638), dupkeys 0; steps 20000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [20000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 85014, V2.version 2527
+    self (an action on its own nodes): 1647 actions; split.space1.inplace 1647; taken back 0
+    fill (samples 1020): klongs/node 4.02, live/node 2.10, dead/node 0.40, time klongs/node 1.49, nodes/sample 4494.3, height max 2
+    made key nodes 172786, tops 82, versions 343995, key klongs added 710971, time splits 1864, space splits 6071, merges 17
+    bytes: B-new 39220772, B-all 118497652 (values 15636480, deletes 480772, records 6463920, tops 5600, made key nodes 16634000, changed key nodes 95910880)
+    checks: gets 305907, scans 2420, Java reads 100000, contract steps 20000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 20000, ops 305907 (dels 18638), dupkeys 0; steps 24238 (1.212 a tx, most 4, txs with >1 2410 = 12.1 %, hist [17590, 653, 1686, 71, 0]); bumps between ops 4238, inside 0
+    bump reasons: V1.change 4238; would bump (no bump made): V2.version 4226
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 1020): klongs/node 4.03, live/node 2.10, dead/node 0.40, time klongs/node 1.50, nodes/sample 4496.2, height max 2
+    made key nodes 174708, tops 100, versions 350464, key klongs added 764339, time splits 2012, space splits 6132, merges 20
+    bytes: B-new 40222612, B-all 119599156 (values 15636480, deletes 480772, records 6498064, tops 7040, made key nodes 17600256, changed key nodes 96976800)
+    against today: versions 1.019, klongs 1.075, made key nodes 1.011, tops 1.220, B-new 1.026, B-all 1.009, index B-new 1.043, index B-all 1.011, time splits 1.079, space splits 1.010, dead/node 1.001
+    checks: gets 305907, scans 2420, Java reads 100000, contract steps 24238; failures: none; writer's rules at tx ends: none; between: none
+== large2/l-few M=8
+  today: traces 20, txs 100000, ops 241691 (dels 48214), dupkeys 0; steps 100000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [100000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V2.version 10857, V1.change 10366, V1.drop 1316, V1.top 78
+    self (an action on its own nodes): 7981 actions; merge.takeback 12977, merge.made.right 6669, merge.made.left 6308, top.inplace 1992, rc.takeback.space 1990, split.time.inplace 54, split.space1.inplace 3, split.space3.inplace 2; taken back 14967
+    fill (samples 5020): klongs/node 5.16, live/node 2.54, dead/node 0.83, time klongs/node 1.73, nodes/sample 15.0, height max 3
+    made key nodes 159162, tops 11404, versions 351547, key klongs added 659503, time splits 97978, space splits 23668, merges 24703
+    bytes: B-new 37246948, B-all 63420276 (values 9286896, deletes 1391220, records 10424752, tops 1357712, made key nodes 14786368, changed key nodes 40959696)
+    checks: gets 241691, scans 12020, Java reads 500000, contract steps 100000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 100000, ops 241691 (dels 48214), dupkeys 0; steps 123211 (1.232 a tx, most 9, txs with >1 15453 = 15.5 %, hist [84547, 10900, 2295, 1420, 838]); bumps between ops 9190, inside 14021
+    bump reasons: V1.drop 11046, V1.change 9550, V1.top 2615; would bump (no bump made): V2.version 22353
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 5020): klongs/node 5.18, live/node 2.53, dead/node 0.83, time klongs/node 1.77, nodes/sample 15.0, height max 3
+    made key nodes 181378, tops 15748, versions 395955, key klongs added 705631, time splits 103266, space splits 24208, merges 25235
+    bytes: B-new 40179892, B-all 67598868 (values 9286896, deletes 1391220, records 10930800, tops 1929120, made key nodes 16641856, changed key nodes 44060832)
+    against today: versions 1.126, klongs 1.070, made key nodes 1.140, tops 1.381, B-new 1.079, B-all 1.066, index B-new 1.110, index B-all 1.079, time splits 1.054, space splits 1.023, dead/node 0.991
+    checks: gets 241691, scans 12020, Java reads 500000, contract steps 123211; failures: none; writer's rules at tx ends: none; between: FillOK 11414, RootsOK 2607
+== large2/l-hot M=8
+  today: traces 20, txs 40000, ops 40000 (dels 0), dupkeys 0; steps 40000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [40000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): none
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 2020): klongs/node 4.00, live/node 1.00, dead/node 1.00, time klongs/node 2.00, nodes/sample 1.0, height max 0
+    made key nodes 13320, tops 13320, versions 40000, key klongs added 40000, time splits 13320, space splits 0, merges 0
+    bytes: B-new 6929920, B-all 9917760 (values 1920000, deletes 0, records 2560000, tops 1597440, made key nodes 852480, changed key nodes 3840320)
+    checks: gets 40000, scans 4820, Java reads 200000, contract steps 40000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 40000, ops 40000 (dels 0), dupkeys 0; steps 40000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [40000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): none
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 2020): klongs/node 4.00, live/node 1.00, dead/node 1.00, time klongs/node 2.00, nodes/sample 1.0, height max 0
+    made key nodes 13320, tops 13320, versions 40000, key klongs added 40000, time splits 13320, space splits 0, merges 0
+    bytes: B-new 6929920, B-all 9917760 (values 1920000, deletes 0, records 2560000, tops 1597440, made key nodes 852480, changed key nodes 3840320)
+    against today: versions 1.000, klongs 1.000, made key nodes 1.000, tops 1.000, B-new 1.000, B-all 1.000, index B-new 1.000, index B-all 1.000, time splits 1.000, space splits 0.000, dead/node 1.000
+    checks: gets 40000, scans 4820, Java reads 200000, contract steps 40000; failures: none; writer's rules at tx ends: none; between: none
+== large2/l-long M=30
+  today: traces 20, txs 40000, ops 180471 (dels 36296), dupkeys 0; steps 40000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [40000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 335, V2.version 295, V1.drop 1
+    self (an action on its own nodes): 30 actions; merge.takeback 30, merge.made.left 18, merge.made.right 12; taken back 30
+    fill (samples 2020): klongs/node 7.24, live/node 3.16, dead/node 1.23, time klongs/node 2.70, nodes/sample 765.3, height max 2
+    made key nodes 41724, tops 148, versions 202470, key klongs added 385710, time splits 9586, space splits 3616, merges 617
+    bytes: B-new 20062508, B-all 70066636 (values 8455584, deletes 928300, records 5159520, tops 11072, made key nodes 5508032, changed key nodes 55512160)
+    checks: gets 180471, scans 4820, Java reads 200000, contract steps 40000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 40000, ops 180471 (dels 36296), dupkeys 0; steps 40329 (1.008 a tx, most 3, txs with >1 326 = 0.8 %, hist [39674, 323, 3, 0, 0]); bumps between ops 303, inside 26
+    bump reasons: V1.change 303, V1.drop 26; would bump (no bump made): V2.version 883
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 2020): klongs/node 7.24, live/node 3.16, dead/node 1.23, time klongs/node 2.70, nodes/sample 765.4, height max 2
+    made key nodes 41752, tops 150, versions 202855, key klongs added 385767, time splits 9600, space splits 3609, merges 609
+    bytes: B-new 20070412, B-all 70078124 (values 8455584, deletes 928300, records 5160208, tops 11200, made key nodes 5515120, changed key nodes 55522832)
+    against today: versions 1.002, klongs 1.000, made key nodes 1.001, tops 1.014, B-new 1.000, B-all 1.000, index B-new 1.001, index B-all 1.000, time splits 1.001, space splits 0.998, dead/node 1.000
+    checks: gets 180471, scans 4820, Java reads 200000, contract steps 40329; failures: none; writer's rules at tx ends: none; between: FillOK 26
+== large2/l-mixed M=8
+  today: traces 20, txs 40000, ops 94832 (dels 22701), dupkeys 0; steps 40000 (1.000 a tx, most 1, txs with >1 0 = 0.0 %, hist [40000, 0, 0, 0, 0]); bumps between ops 0, inside 0
+    bump reasons: none; would bump (no bump made): V1.change 314, V2.version 311, V1.drop 16, V1.top 2
+    self (an action on its own nodes): 1381 actions; merge.takeback 2110, merge.made.right 1209, merge.made.left 901, top.inplace 3, split.space3.inplace 2, split.space1.inplace 1, rc.takeback.space 1, split.time.inplace 1; taken back 2111
+    fill (samples 2020): klongs/node 5.20, live/node 2.65, dead/node 0.77, time klongs/node 1.73, nodes/sample 380.4, height max 7
+    made key nodes 65028, tops 319, versions 147053, key klongs added 276145, time splits 30243, space splits 15309, merges 5709
+    bytes: B-new 14231004, B-all 25481468 (values 3462288, deletes 397548, records 4272848, tops 25920, made key nodes 6072400, changed key nodes 17322864)
+    checks: gets 94832, scans 4820, Java reads 200000, contract steps 40000; failures: none; writer's rules at tx ends: none; between: none
+  b: traces 20, txs 40000, ops 94832 (dels 22701), dupkeys 0; steps 42418 (1.060 a tx, most 11, txs with >1 1637 = 4.1 %, hist [38363, 1103, 353, 138, 43]); bumps between ops 291, inside 2127
+    bump reasons: V1.drop 2113, V1.change 300, V1.top 5; would bump (no bump made): V2.version 4000
+    self (an action on its own nodes): 0 actions; none; taken back 0
+    fill (samples 2020): klongs/node 5.20, live/node 2.65, dead/node 0.76, time klongs/node 1.73, nodes/sample 380.4, height max 7
+    made key nodes 68373, tops 353, versions 152833, key klongs added 283259, time splits 31131, space splits 15410, merges 5842
+    bytes: B-new 14575148, B-all 26035100 (values 3462288, deletes 397548, records 4351632, tops 28704, made key nodes 6334976, changed key nodes 17794928)
+    against today: versions 1.039, klongs 1.026, made key nodes 1.051, tops 1.107, B-new 1.024, B-all 1.022, index B-new 1.033, index B-all 1.026, time splits 1.029, space splits 1.007, dead/node 0.994
+    checks: gets 94832, scans 4820, Java reads 200000, contract steps 42418; failures: none; writer's rules at tx ends: none; between: FillOK 2122, RootsOK 5

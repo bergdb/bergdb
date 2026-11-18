@@ -1,0 +1,473 @@
+/-
+The study of two writer designs (bergdb 026-21): the writer of step times
+(026-20, design 2) as it would be, made from today's (lean/SIS/Tree/Exec.lean,
+which stays as it is). Under the rule "never change or drop a node made at the
+current step; start a new step first", with a delete cut into its core, its
+merges and its root collapses (Study/Steps.lean), these parts of today's
+writer never run (026-21, section 4, and the counts of mode b): the take-back
+(`takeBack`, `takeBackRoot`, `retarget`, `canTakeBack`, the merge's take-back
+of a node it made), the splits in place of a node the transaction made
+(`spaceSplitInPlace`, `timeSplitInPlace`, fault 12's fix), the top node
+changed in place, and the book of what a split's node replaces
+(`setMadeFor`, `replacedBy`, `W.madeFor`, `W.taken`).
+
+This file is today's writer without them: every definition that changes is
+here, a copy with those parts taken out; every other one is today's, called
+from Exec.lean. `steptimes`'s mode `bp` runs it under the same rule as mode b;
+the two must give the same counts and trees. Its size against today's is
+026-21's count of the model writer's code (section 4).
+-/
+import SIS.Tree.Exec
+import Study.Steps
+
+namespace StepW
+
+open SIS SIS.Check
+open SIS.Tree hiding newSuperRoot handleFullWith appendKlongs handleFull appendDeleteKlong
+  emptyKeyNext climb replaceRoot mergeParent merge setValue setNode putSegs
+open Study (Fix)
+
+/-- `TopDs.newSuperRoot`: a new top node with the next ordinal, always (a top
+node made at the step is never changed). -/
+def newSuperRoot (y : NodeId) : M Unit := do
+  let c ← read
+  let w ← get
+  note "top.new"
+  let z ← fresh
+  let o := if w.top.ord == 0 then 1 else w.top.ord + 1
+  let skips := (List.range (topHeight o)).filterMap (fun j =>
+    if o.testBit j then
+      match w.top.skips.lookup j with
+      | some t => some (j, t)
+      | none => some (j, w.top.id)
+    else none)
+  modify (fun w => { w with top := ⟨z, o, c.i, y, skips⟩, newTop := true,
+                            made := w.made ++ [⟨z, c.p.topLevel o, false⟩] })
+
+/-- `Dag.handleFullNode` without the splits in place: node x, from before the
+step, is replaced by its last version (a time split) or by two halves (a
+space split), and loses its klongs of the step. -/
+def handleFullWith (up : NodeId → List (Nat × NodeId) → M Unit) (depth : Nat) (x : NodeId)
+    (ins : List (Nat × NodeId)) (last : KNode) (compact : Bool := false) : M Unit := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode x
+  let (g, h) ← ghOf x
+  let parent ← parentAt depth
+  let parentLeaf ← match parent with
+    | some q => do pure (← getNode q).leaf
+    | none => pure false
+  if compact then note "dead.compact"
+  if !compact && last.size > c.p.splitAbove then
+    modify (fun w => { w with spaceSplits := w.spaceSplits + 1 })
+    let first ← newKey g h n.leaf []
+    let second ← newKey g h n.leaf []
+    let (f, s, sc) := halves n.leaf tt last ins
+    putNode first f
+    putNode second s
+    match parent with
+    | none =>
+      note "split.space3"
+      let r ← newKey g (h + 1) false [.time tt, .key 0 first, .key sc second]
+      newSuperRoot r
+    | some q =>
+      if parentLeaf then
+        note "split.space2"
+        let r ← newKey g (h + 1) false [.time tt, .key 0 first, .key sc second]
+        up q [(← klongAt depth, r)]
+      else
+        note "split.space1"
+        up q [(← klongAt depth, first), (sc, second)]
+  else
+    let l ← replaceOrAdd last ins
+    if l.size == 1 then note "lone-time-klong"
+    let y ← newKey g h n.leaf l.ks
+    match parent with
+    | none =>
+      note "split.time2"
+      newSuperRoot y
+    | some q =>
+      note "split.time1"
+      up q [(← klongAt depth, y)]
+  let n ← getNode x
+  putNode x (n.toPrev (tt - 1))
+
+/-- `Dag.appendKlongs`. -/
+def appendKlongs : Nat → NodeId → List (Nat × NodeId) → M Unit
+  | depth, x, ins => do
+    let c ← read
+    let n ← getNode x
+    let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
+      | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
+      | d + 1 => fun q more => appendKlongs d q more
+    if n.size + ins.length + 1 > c.p.M then
+      handleFullWith up depth x ins (n.lastVersion c.i)
+    else if deadOver c.p (ins.foldl (fun n (cv, y) => n.add c.i (.key cv y)) n) then
+      handleFullWith up depth x ins (n.lastVersion c.i) true
+    else addKeys x ins
+
+/-- `Dag.handleFullNode` with a last version made by the caller (a delete). -/
+def handleFull (depth : Nat) (x : NodeId) (last : KNode) (compact : Bool := false) : M Unit :=
+  let up : NodeId → List (Nat × NodeId) → M Unit := match depth with
+    | 0 => fun _ _ => throw "corrupt: a split's parent above depth 0"
+    | d + 1 => fun q more => appendKlongs d q more
+  handleFullWith up depth x [] last compact
+
+/-- `Dag.appendDeleteKlong`, as today's. -/
+def appendDeleteKlong (x : NodeId) (depth : Nat) (cv : Nat) : M Bool := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode x
+  if n.ks.any (fun k => match k with
+      | .time t => decide (tt < t)
+      | _ => false) then
+    throw s!"Bug: key node {x} has a time after the transaction's"
+  let arrayDel := n.lastBitmap
+  let hasTransDel := (match n.ks.getLast? with
+    | some (.del _) => true
+    | _ => false) && n.lastTime == some tt
+  let union := bitsUnion arrayDel (n.bitsOf cv)
+  let isNoop := union == arrayDel
+  if !isNoop then
+    if hasTransDel then
+      let n' := n.setAt (n.size - 1) (.del union)
+      if deadOver c.p n' then
+        note "bitmap.inplace.dead"
+        handleFull depth x (n.lastVersionGivenDel tt union) true
+      else
+        note "bitmap.inplace"
+        putNode x n'
+    else if n.size + 1 < c.p.M then
+      let n' := n.add tt (.del union)
+      if deadOver c.p n' then
+        note "bitmap.dead"
+        handleFull depth x (n.lastVersionGivenDel tt union) true
+      else
+        note "bitmap.new"
+        putNode x n'
+    else
+      note "bitmap.full"
+      handleFull depth x (n.lastVersionGivenDel tt union)
+  pure isNoop
+
+/-- `Dag.emptyKeyNext`, LE-b, as today's. -/
+def emptyKeyNext (x : NodeId) (depth : Nat) : M Unit := do
+  let c ← read
+  let tt := c.i
+  let n ← getNode x
+  let arrayDel := n.lastBitmap
+  let hasTransDel := (match n.ks.getLast? with
+    | some (.del _) => true
+    | _ => false) && n.lastTime == some tt
+  let e := (n.bitsOf 0).getLast?
+  let del0 := bitsUnion arrayDel (n.bitsOf 0)
+  let j := n.ks.zipIdx.foldl (fun (best : Option (Nat × Nat × NodeId)) (k, i) =>
+    match k with
+    | .key cv y =>
+      if del0.contains i then best else
+        match best with
+        | none => some (i, cv, y)
+        | some (_, jcv, _) => if cv ≤ jcv then some (i, cv, y) else best
+    | _ => best) none
+  match e, j with
+  | some e, some (_, jcv, jy) =>
+    if arrayDel.contains e then
+      throw s!"Bug: LE-b at {tt} in key node {x}: no live klong of the empty key"
+    let union := bitsUnion arrayDel (n.bitsOf jcv)
+    let ofTt := n.lastTime == some tt
+    let inPlace := ofTt && (match n.lastTimeIndex with
+      | some ti => decide (ti < e)
+      | none => false)
+    let need := (if hasTransDel then 0 else 1) + (if inPlace then 0 else 1) + (if ofTt then 0 else 1)
+    let full : Bool → M Unit := fun compact => do
+      let last := n.lastVersionGivenDel tt del0
+      match last.ks with
+      | t :: .key c1 y1 :: r =>
+        if c1 != jcv then
+          throw s!"Bug: LE-b at {tt} in key node {x}: the last version does not start with the next child"
+        note (if compact then "leb.dead" else "leb.full")
+        handleFull depth x { last with ks := t :: .key 0 y1 :: r } compact
+      | _ => throw s!"Bug: LE-b at {tt} in key node {x}: the last version does not start with the next child"
+    if n.size + need ≤ c.p.M then
+      let n1 := if hasTransDel then n.setAt (n.size - 1) (.del union) else n.add tt (.del union)
+      let n2 := if inPlace then n1.repoint e jy else n1.add tt (.key 0 jy)
+      if deadOver c.p n2 then full true else
+        note (if inPlace then "leb.inplace" else "leb.newklong")
+        putNode x n2
+    else full false
+  | none, _ => throw s!"Bug: LE-b at {tt} in key node {x}: no live klong of the empty key"
+  | _, none => throw s!"Bug: LE-b at {tt} in key node {x}: no next child"
+
+/-- The climb of `Dag.deleteUpward`, without the take-back's check. -/
+def climb : Nat → M Nat
+  | 0 => do
+    let c ← read
+    let x ← pathNode 0
+    let n ← getNode x
+    if !n.leaf then throw s!"Bug: the upward unlink at {c.i}: inner space root {x} is emptied"
+    pure 0
+  | t + 1 => do
+    let k ← klongAt (t + 1)
+    let pn ← getNode (← pathNode t)
+    if pn.allKeysIn (bitsUnion pn.lastBitmap (pn.bitsOf k)) then climb t else pure t
+
+/-- `Dag.replaceRoot`, as today's. -/
+def replaceRoot (x : NodeId) (depth only : Nat) : M Unit := do
+  let c ← read
+  let n ← getNode x
+  match n.ptr? only with
+  | none => throw s!"corrupt: root collapse at {c.i}: klong {only} of {x} is no key klong"
+  | some child =>
+    match depth with
+    | 0 =>
+      note "rc.replace.space"
+      unlink x
+      newSuperRoot child
+    | d + 1 =>
+      note "rc.replace.segment"
+      let leaf ← pathNode d
+      let k ← klongAt (d + 1)
+      unlink x
+      appendKlongs d leaf [(k, child)]
+
+/-- `Dag.mergeParent`, as today's. -/
+def mergeParent (p : NodeId) (depth il cL : Nat) (m1 : NodeId) (ir cR : Nat)
+    (m2 : Option (NodeId × Nat)) : M Unit := do
+  let c ← read
+  let tt := c.i
+  let pn ← getNode p
+  let deleteR := match m2 with
+    | some (_, g) => g != cR
+    | none => true
+  let ofTt := pn.lastTime == some tt
+  let after (i : Nat) : Bool := match pn.lastTimeIndex with
+    | some ti => decide (ti < i)
+    | none => false
+  let arrayDel := pn.lastBitmap
+  let hasTransDel := (match pn.ks.getLast? with
+    | some (.del _) => true
+    | _ => false) && ofTt
+  let union := if deleteR then bitsUnion arrayDel (pn.bitsOf cR) else arrayDel
+  let lInPlace := ofTt && after il
+  let rInPlace := !deleteR && ofTt && after ir
+  let need := (if deleteR && !hasTransDel then 1 else 0) + (if lInPlace then 0 else 1) +
+    (if m2.isNone || rInPlace then 0 else 1) + (if ofTt then 0 else 1)
+  let full : Bool → M Unit := fun compact => do
+    note (if compact then "merge.parent.dead" else "merge.parent.full")
+    let last := pn.lastVersionGivenDel tt union
+    let last ← match replaceKlong last.ks tt cL m1 with
+      | .ok (some ks) => pure { last with ks := ks }
+      | .ok none => throw s!"Bug: merge at {tt}: no klong of the left child in the last version of {p}"
+      | .error e => throw e
+    let last ← match m2 with
+      | some (y, g) =>
+        if deleteR then pure { last with ks := insertSorted last.ks g y }
+        else match replaceKlong last.ks tt cR y with
+          | .ok (some ks) => pure { last with ks := ks }
+          | .ok none => throw s!"Bug: merge at {tt}: no klong of the right child in the last version of {p}"
+          | .error e => throw e
+      | none => pure last
+    handleFull depth p last compact
+  if pn.size + need ≤ c.p.M then
+    let n1 := if !deleteR then pn
+      else if hasTransDel then pn.setAt (pn.size - 1) (.del union)
+      else pn.add tt (.del union)
+    let n2 := if lInPlace then n1.repoint il m1 else n1.add tt (.key cL m1)
+    let n3 := match m2 with
+      | some (y, g) => if rInPlace then n2.repoint ir y else n2.add tt (.key (if deleteR then g else cR) y)
+      | none => n2
+    if deadOver c.p n3 then full true else
+      note (if deleteR then "merge.parent.delete" else "merge.parent.repoint")
+      putNode p n3
+  else full false
+
+/-- `Dag.merge` without the take-back: the two nodes merged are from before
+the step, and are left out by `unlink`. -/
+def merge (x : NodeId) (d : Nat) : M Nat := do
+  let c ← read
+  let tt := c.i
+  let p ← pathNode (d - 1)
+  let pn ← getNode p
+  let xn ← getNode x
+  let inner := !xn.leaf
+  let cx ← klongAt d
+  let (ix?, ia, ib) := mergeIdx pn cx
+  let ix ← match ix? with
+    | some ix => pure ix
+    | none => throw s!"Bug: merge at {tt}: key node {x} has no live klong {cx} in {p}"
+  if pn.ptr? ix != some x then
+    throw s!"Bug: merge at {tt}: key node {x} is not the live child of its klong in {p}"
+  let left ← match ib with
+    | some (ib, _) => do
+      let (ls, lsn) ← sibling p pn ib inner
+      if ia.isNone || lsn.cnt + xn.cnt ≤ c.p.mergeMax then pure (some (ib, ls, lsn))
+      else pure none
+    | none => pure none
+  let (l, ln, il, r, rn, ir) ← match left with
+    | some (ib, ls, lsn) => pure (ls, lsn, ib, x, xn, ix)
+    | none =>
+      match ia with
+      | some (ia, _) => do
+        let (rs, rsn) ← sibling p pn ia inner
+        pure (x, xn, ix, rs, rsn, ia)
+      | none => throw s!"Bug: merge at {tt}: key node {x} has no sibling in {p}"
+  note (if left.isSome then "merge.left" else "merge.right")
+  let cL ← match pn.cv? il with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {il} in {p}"
+  let cR ← match pn.cv? ir with
+    | some v => pure v
+    | none => throw s!"Bug: merge at {tt}: no klong {ir} in {p}"
+  let lvL := ln.live
+  let lvR := rn.live
+  if lvL.isEmpty || lvR.isEmpty then
+    throw s!"Bug: merge at {tt}: key node {l} or {r} has no live klong"
+  if inner && ((lvL.head?.map (·.1)) != some 0 || (lvR.head?.map (·.1)) != some 0) then
+    throw s!"Bug: merge at {tt}: inner node {l} or {r} has no live klong of the empty key first"
+  let (first, second) := mergeKlongs inner c.p.mergeMax cR lvL lvR
+  modify (fun w => { w with merges := w.merges + 1 })
+  note (if second.isSome then "merge.two" else "merge.one")
+  note (if inner then "merge.inner" else "merge.leaf")
+  let (g, h) ← ghOf x
+  let m1 ← newKey g h (!inner) (newKlongs tt first)
+  let m2 ← match second with
+    | some (ks2, g2) => do
+      let y ← newKey g h (!inner) (newKlongs tt ks2)
+      pure (some (y, g2))
+    | none => pure none
+  mergeParent p (d - 1) il cL m1 ir cR m2
+  unlink l
+  unlink r
+  pure (if second.isSome then 2 else 1)
+
+/-! ## A put (`Dag.putKv`) -/
+
+/-- `Dag.setValue`, a put. -/
+def setValue (segRoot : NodeId) (cv : Nat) (h : Nat) : M Unit := do
+  let c ← read
+  let leaf ← descendLte cv c.p.fuel segRoot
+  let v ← newValue h
+  let n ← getNode leaf
+  let n' := n.add c.i (.key cv v)
+  if n.size + 1 < c.p.M && !deadOver c.p n' then putNode leaf n'
+  else appendKlongs ((← pathSize) - 1) leaf [(cv, v)]
+
+/-- `Dag.setNode`. -/
+def setNode (segRoot : NodeId) (cv : Nat) (create : Bool) : M (Option NodeId) := do
+  let c ← read
+  let cur ← descendLte cv c.p.fuel segRoot
+  let n ← getNode cur
+  match n.searchEq c.i cv with
+  | some fd =>
+    pathAdd (some fd.c) fd.y
+    pure (some fd.y)
+  | none =>
+    if !create then pure none else
+      let (g, _) ← ghOf cur
+      note "segment.new"
+      let child ← newKey (g + 1) 0 true []
+      if n.size + 1 < c.p.M then putNode cur (n.add c.i (.key cv child))
+      else appendKlongs ((← pathSize) - 1) cur [(cv, child)]
+      pure (some child)
+
+/-- The loop of `Dag.putKv` over the key's segments, a put. -/
+def putSegs (h : Nat) : List Nat → NodeId → M Unit
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], segRoot => setValue segRoot cv h
+  | cv :: rest, segRoot => do
+    match ← setNode segRoot cv true with
+    | none => pure ()
+    | some next => putSegs h rest next
+
+/-- A put: one action. -/
+def put (key : Key) (h : Nat) : M Unit := do
+  pathClear
+  putSegs h key (← findRoot)
+
+/-! ## A delete: its core, one merge, one root collapse -/
+
+/-- The delete's core: the change at the leaf, or the upward unlink with the
+delete or LE-b at the stop node. Returns whether it was a noop, and the fix
+left to do. -/
+def delCore (leaf : NodeId) (depth : Nat) (cv : Nat) : M (Bool × Option Fix) := do
+  let c ← read
+  let n ← getNode leaf
+  let leafUnion := bitsUnion n.lastBitmap (n.bitsOf cv)
+  if leafUnion == n.lastBitmap then return (true, none)
+  if !n.allKeysIn leafUnion then
+    let (g, h) ← ghOf leaf
+    let _ ← appendDeleteKlong leaf depth cv
+    return (false, if c.p.merges then some ⟨g, h, true, false, g⟩ else none)
+  let stop ← climb depth
+  if stop == depth then
+    note "up.root-kept-empty"
+    let _ ← appendDeleteKlong leaf depth cv
+    return (false, none)
+  note "up.climb"
+  let path := (← get).path
+  let segment ← (path.take stop).foldlM (fun s (e : Option Nat × NodeId) => do
+    pure (if (← getNode e.2).leaf then s + 1 else s)) 0
+  for j in List.range (depth - stop) do
+    note "up.unlink"
+    unlink (← pathNode (depth - j))
+  let s ← pathNode stop
+  let cs ← klongAt (stop + 1)
+  let sn ← getNode s
+  let (gs, hs) ← ghOf s
+  if sn.leaf then
+    note "up.stop-at-segment-leaf"
+    let _ ← appendDeleteKlong s stop cs
+    return (false, if c.p.merges then some ⟨gs, hs, true, false, gs⟩ else none)
+  if sn.smallestLive != some 0 then
+    throw s!"Bug: the upward unlink at {c.i}: inner node {s} has no live klong of the empty key"
+  if cs != 0 then
+    let _ ← appendDeleteKlong s stop cs
+  else
+    emptyKeyNext s stop
+  return (false, some ⟨gs, hs, c.p.merges, true, segment⟩)
+
+/-- Down a delete's key, segment by segment, to the core at its leaf. -/
+def delSegs : List Nat → NodeId → M (Bool × Option Fix)
+  | [], _ => throw "corrupt: a key without segments"
+  | [cv], r => do
+    let c ← read
+    let leaf ← descendLte cv c.p.fuel r
+    delCore leaf ((← pathSize) - 1) cv
+  | cv :: rest, r => do
+    match ← setNode r cv false with
+    | none => pure (true, none)
+    | some next => delSegs rest next
+
+/-- A delete's first action. -/
+def delFirst (key : Key) : M (Bool × Option Fix) := do
+  pathClear
+  delSegs key (← findRoot)
+
+/-- One merge: none if the node of segment g at height h is a root, its
+parent a segment leaf, or it holds m live klongs or more; else the merge's
+result, 1 or 2. -/
+def mergeAt (key : Key) (g h : Nat) : M (Option Nat) := do
+  let c ← read
+  let d ← descendToHeight key g h
+  if d == 0 then return none
+  let x ← pathNode d
+  if (← getNode (← pathNode (d - 1))).leaf then return none
+  if (← getNode x).cnt ≥ c.p.mergeBelow then return none
+  pure (some (← merge x d))
+
+/-- One root collapse: true if the root of segment `segment`'s tree, an inner
+node with one live klong, was replaced by its child. -/
+def collapseOnce (key : Key) (segment : Nat) : M Bool := do
+  let c ← read
+  let root ← descendToSegmentRoot key segment
+  let n ← getNode root
+  if n.leaf then return false
+  match n.onlyLiveKlong with
+  | none => return false
+  | some only =>
+    if n.cv? only != some 0 then
+      throw s!"Bug: root collapse at {c.i}: the one live klong of root {root} is not the empty key"
+    replaceRoot root ((← pathSize) - 1) only
+    return true
+
+end StepW
