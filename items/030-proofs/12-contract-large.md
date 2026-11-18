@@ -138,3 +138,4 @@ GATED b22c6cce: the medium set not live 27 of 27, live 24 of 27 (m-d62 running),
 2026-11-18, 00:30 to 03:55. The medium set with LIVE lines finished (27
 of 27); the large set's seeds 11 to 30 with main's checkers, 120 of 120;
 pulled main; the item done.
+GATED 989df4b1: done: reclaim, medium (live 27 of 27) and large sets; main's contract and bridge checkers on 222 traces, 532,402 transactions, no failure; gate base 77c876a7.
