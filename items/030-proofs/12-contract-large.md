@@ -1,6 +1,6 @@
 # 030-12. The writer's contract on the reclaim, medium and large sets
 
-Created 2026-11-17 by Frans Lundberg. Status: open.
+Created 2026-11-17 by Frans Lundberg. Status: done.
 
 More evidence for the tested half of the contract approach (030-04): the
 contract check of 030-05 and 030-09 (`lean/contract/check.sh`'s
@@ -36,6 +36,14 @@ clause, no trace not whole, no ERROR line.
   220,958,484 LIVE lines, 62,172 SKIPT. m-d30's traces (1.2 GB, 17
   million LIVE lines) took 4.4 to 4.5 hours each to check (the checker
   grew to 4 GB), m-d62's (1.7 GB, 16 million) 4.0 to 4.1 hours.
+- **The large set's seeds 11 to 30**, without `live=1`, with main's
+  two checkers: 120 of 120 CONTRACT OK and BRIDGE OK; 340,000
+  transactions, 1,100,217 operations, 1,360,000 GET, 340,000 SCAN,
+  843,991 SKIPT; the bridge: 1,426,086 nodes made, 3,735,494 entries;
+  3.4 hours, three at a time.
+- **In all, with main's checkers**: 222 of 222 traces (reclaim 15,
+  medium 27, large 180 over seeds 1 to 30), 532,402 transactions,
+  2,415,268 operations, no failure of any clause of either checker.
 - **The check's time with LIVE lines is not linear in the trace**:
   l-5000's 4.1 GB (57.7 million LIVE lines) took 1.7 hours, m-d30's
   1.2 GB 4.4 hours. By reading (not measured): each LIVE line is checked
@@ -87,9 +95,10 @@ on each trace. No script under `java/stress` is changed.
 
 # State
 
-2026-11-18, 02:20. Done: the reclaim, medium and large sets checked, with
+2026-11-18, 03:55. Done: the reclaim, medium and large sets checked, with
 and without LIVE lines, and with main's checkers (contract with K-LEVEL,
-and the bridge) on the traces without LIVE lines; no failure anywhere.
+and the bridge) on the traces without LIVE lines, and the large set's
+seeds 11 to 30; no failure anywhere.
 Branch `030-12-large` in `/Users/f/fl/bench/2026-11-17/night/s4e/clone`,
 merged with main 77c876a7. Nothing of Java or the scripts changed.
 
@@ -126,3 +135,6 @@ both of main's checkers; the large set's seeds 11 to 30 started, without
 LIVE lines, with main's checkers.
 GATED a33be2f4: the reclaim set (live=1) 15 of 15 and the large set (live=1) 6 of 6 CONTRACT OK, 25,735 transactions; gate base 6db019b3.
 GATED b22c6cce: the medium set not live 27 of 27, live 24 of 27 (m-d62 running), large 10 seeds not live 60 of 60; gate base d7966251.
+2026-11-18, 00:30 to 03:55. The medium set with LIVE lines finished (27
+of 27); the large set's seeds 11 to 30 with main's checkers, 120 of 120;
+pulled main; the item done.
