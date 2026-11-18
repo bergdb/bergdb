@@ -13,7 +13,7 @@ fits. Written by an agent of coord-1117 ("I" below), on the branch
 
 # 1. The result
 
-Java met the contract on every trace checked so far; no failure of any
+Java met the contract on every trace checked; no failure of any
 clause, no trace not whole, no ERROR line.
 
 - **The reclaim set**, `live=1`, 3 seeds: 15 of 15 CONTRACT OK; 8,735
@@ -31,20 +31,11 @@ clause, no trace not whole, no ERROR line.
 - **The medium set**, without `live=1`, 3 seeds: 27 of 27 CONTRACT OK;
   13,667 transactions, 736,718 operations, 54,668 GET, 13,667 SCAN,
   62,172 SKIPT; 554 s (as 030-09's run).
-- **The medium set**, `live=1`, 3 seeds: 24 of 27 CONTRACT OK so far,
-  all but m-d62 (running); 12,467 transactions, 499,669 operations,
-  172,401,282 LIVE lines
-  (m-d8, m-d30, m-mixed, m-long, m-big, m-long3, m-fifo, m-r-del).
-  m-d30's traces (1.2 GB, 17 million LIVE lines) take 4.4 to 4.5 hours
-  each to check, and the checker grows to 4 GB; m-d62's are 1.7 GB.
-- **Main's checkers (d7966251) on the traces without LIVE lines**:
-  `contractcheck` with K-LEVEL (030-17) and `bridgecheck` (030-07) on
-  the reclaim set (3 seeds, 15 traces), the medium set (3 seeds, 27) and
-  the large set (10 seeds, 60): 102 of 102 CONTRACT OK and BRIDGE OK.
-  192,402 transactions, 1,315,051 operations; the bridge: 1,359,030
-  nodes made, 3,585,447 entries, 17,453 touched (reclaim and m-r-del
-  only); no failure of any clause (KIND 0). 2.3 hours of the contract
-  check and 5.1 hours of the bridge check, summed over the traces.
+- **The medium set**, `live=1`, 3 seeds: 27 of 27 CONTRACT OK; 13,667
+  transactions, 736,718 operations, 54,668 GET, 13,667 SCAN,
+  220,958,484 LIVE lines, 62,172 SKIPT. m-d30's traces (1.2 GB, 17
+  million LIVE lines) took 4.4 to 4.5 hours each to check (the checker
+  grew to 4 GB), m-d62's (1.7 GB, 16 million) 4.0 to 4.1 hours.
 - **The check's time with LIVE lines is not linear in the trace**:
   l-5000's 4.1 GB (57.7 million LIVE lines) took 1.7 hours, m-d30's
   1.2 GB 4.4 hours. By reading (not measured): each LIVE line is checked
@@ -95,6 +86,28 @@ on each trace. No script under `java/stress` is changed.
 
 
 # State
+
+2026-11-18, 02:20. Done: the reclaim, medium and large sets checked, with
+and without LIVE lines, and with main's checkers (contract with K-LEVEL,
+and the bridge) on the traces without LIVE lines; no failure anywhere.
+Branch `030-12-large` in `/Users/f/fl/bench/2026-11-17/night/s4e/clone`,
+merged with main 77c876a7. Nothing of Java or the scripts changed.
+
+- The scripts, in `/Users/f/fl/bench/2026-11-17/night/s4e/`: `run.sh SET
+  SEEDS LIVE [PAR]` (export and contractcheck of a set), `run2.sh` (the
+  same with `ONLY=` a pattern of configurations and `TAG=`), `run3.sh`
+  (seeds `S0` to `S1`, main's two checkers from the worktree `bw`),
+  `recheck.sh DIR...` (main's checkers on traces already made). Outputs in
+  `out/SET-liveL[TAG]/`: `summary.txt`, `times.txt`, per trace its
+  `.contract.txt` (and `.new-contract.txt`, `.bridge.txt`).
+- The lasting way to run a set is main's `java/stress/contractconf.sh
+  SET [seeds]` (030-13); it has no `live=1` switch; a set with LIVE lines
+  needs `-Dlive=1` in the configurations, as my scripts add.
+- What could follow: the checker's time on LIVE lines (section 1, the
+  last point: quadratic by reading, 4 hours for a 1.7 GB trace) if LIVE
+  lines are wanted on the medium set in night.sh; main's checkers on the
+  traces with LIVE lines (not run: the old checker passed them, and
+  by reading, K-LEVEL and the bridge do not use the LIVE lines).
 
 
 # Log
