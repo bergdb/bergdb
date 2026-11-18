@@ -291,7 +291,8 @@ whole stream" until 028-11.
 * **Rule R is safe** (lemma M): a newer version serves every time an
   older one serves: proved (`LM_newer`, `LM_ruleR`, `LM_cutTo`).
 * **Rule 4 by position is rule 4 by node id**: proved for the model
-  (`Rule4Pos_handles`; after a safe cut `Rule4PosCut_handles`); tested
+  (`Rule4Pos_handles`; after a safe cut `Rule4PosCut_handles`, proved at
+  the tag `proofs-2026-11-17`, 030-18); tested
   in Java with `-ea` at every start of every test (005-57).
 * **The newest written top node is the super root at ts**: argued
   (011-11, section 8.3); refused otherwise (1.6); gated for an older
@@ -319,7 +320,7 @@ T3 and T4 are part 6's; what they give a start:
   proved for records of at least m bytes (`T3_take_rerun`), and every
   Java record has at least 48 (`TransSeq.ownBytes`).
 * **R(s) and R(k)**: each within its transaction and the debt before it:
-  proved, nothing assumed (`T4_ends`). R(s) can be large: after one or
+  proved, nothing assumed (`T4_ends`, at the tag `proofs-2026-11-17`; 030-18). R(s) can be large: after one or
   two transactions of 1.88 GB each start took 27 to 75 s, 0.6 s once
   150 MB more was written: measured (020-24-13, U13-7).
 * **D**: at most the section's got-dirty pairs, 16 bytes each (007-01,
@@ -341,7 +342,9 @@ T3 and T4 are part 6's; what they give a start:
   T(j): proved (`coldReads_tree_drop`). For Java: reduced to `DropStep`,
   not checked on Java's runs (TREE and `RunOK` are, by C-A; `LiveAppend`
   is proved for the trace's instance); what the model leaves uncounted
-  is open (section 5).
+  is open (section 5). These proofs of a cold start's reads
+  (`coldReads_*`, `removedAt_bound`) and their definitions are at
+  the tag `proofs-2026-11-17` since 2026-11-18 (030-18); `lean/` no longer holds them.
 * **Time, warm** (F53): 7.4 s at 10M keys, 8-byte values and 50 MB, 12.4
   s at 200 MB, 70 to 86 s at 1000 MB with 10M to 50M keys, most of it
   the rerun and the section's nodes: measured (007-05); 6.6 and 12.1 s
@@ -364,8 +367,8 @@ T3 and T4 are part 6's; what they give a start:
   (`Version.cutTo`, `canonOfVersion`, `sectionNodes`, `pathOf`,
   `lazyStartup`, Java's start step by step); Handle.lean (`HMem.linkD`,
   `HMem.linkDPos`, `inPosToId`, `HMem.byPos`, `HMem.linkDPosFrom`);
-  BoundCold.lean (`rerunReach`, `removedAt`); BoundColdDrop.lean
-  (`DropStep`, `DropRunOK`).
+  at the tag `proofs-2026-11-17` (030-18), BoundCold.lean (`rerunReach`,
+  `removedAt`) and BoundColdDrop.lean (`DropStep`, `DropRunOK`).
 * **Proved** (no `sorry` under lean/SIS): T1 (`T1_recovery`, `T1_nodes`,
   `T1_crash`) and T2 (`T2_restart`); T1-L (`T1_lazy`: after Java's lazy
   start, reads and writer follows read P at every time up to k, every
@@ -374,13 +377,17 @@ T3 and T4 are part 6's; what they give a start:
   `Rule4_positions`, `Rule4Pos_handles`, `RunPos_handles`; after a cut,
   005-62: `Rule4PosCut_handles`, `RunPosCut_handles`); T8
   (`T8_recoverCut`: a start from a safely cut stream gives the same
-  lookups from fa on and the same D); the costs of section 4.
+  lookups from fa on and the same D); the costs of section 4. Since
+  2026-11-18 (030-18) the proofs of rule 4 by position after a cut, of
+  `T4_ends` and of a cold start's reads are at the tag `proofs-2026-11-17` only;
+  lean/SIS keeps their statements' files where the contract package
+  uses them.
 * **Assumptions**: `RunOK` (A2 to A5); BergDB's still-dirty test, or the
   exact one with a written root (the `_noD` and `_drop` bounds: BergDB's
   only); `LiveAppend` and `TreeRunOK` for T1-L, T2-L, CC and the `_noD`
   bounds; `EvictRunOK` with handles; `ExecRootOK` and `VirtLiveOK` after
   a cut; `DropRunOK` for `coldReads_tree_drop`, needed:
-  SIS/BoundColdDropExample.lean has a run that meets the rest and TREE
+  SIS/BoundColdDropExample.lean (at the tag `proofs-2026-11-17`) has a run that meets the rest and TREE
   where one entry makes six nodes unreachable. A crash keeps a prefix of
   whole records. **Stated, not proved**: nothing.
 * **Left out**: bytes and positions (s is `lastSp`, a record number);
@@ -450,7 +457,8 @@ cycle check (027-03, 14.2).
 ## 8. Principles and rules
 
 **P5**, bounded startup: the section by T3, its ends by T4, a cold
-start's reads by `coldReads_*` (for Java reduced to `DropStep`); the
+start's reads by `coldReads_*` (for Java reduced to `DropStep`; at
+the tag `proofs-2026-11-17`); the
 time measured, with no constant. **P2**: a restart changes no record
 (T2); the meta block in memory is set as the run without the restart
 has it. **P10**: sd is the start's one setting, in the stream. **P7**: a

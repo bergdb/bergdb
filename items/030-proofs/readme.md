@@ -88,8 +88,12 @@ D0. The contract approach, a fresh start
 D1. The key tree, today's model (the main line until 2026-11-17; paused)
 ------------------------------------------------------------------------
 
+* **Deleted** from `main` on 2026-11-18 (Frans, 08:42, 006-31, D1;
+  030-18): `lean/` keeps the executable model, the checkers, the test
+  programs and the abstract model's proofs that `lean/contract/` imports.
+  The old line is at the tag `proofs-2026-11-17` (f4d73289).
 * **Paused** since 2026-11-17 (Frans, 09:13 and 11:14; 030-04). Frozen
-  at the tag `proofs-2026-11-17` (f4d73289); nothing is deleted. The
+  at the tag `proofs-2026-11-17` (f4d73289). The
   state and the next step below are as the night left them, for a
   restart.
 * **Goal:** TP7, TP10 and TP11 proved for the key tree with Java's
