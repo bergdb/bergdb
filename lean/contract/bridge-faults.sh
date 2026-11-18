@@ -65,14 +65,16 @@ fault key-entry $G '!d && /^ADD [0-9]+ 1 K / { $5 = $5 + 8; d = 1 } { print }'
 fault delete-entry $G '!d && /^ADD [0-9]+ [0-9]+ D 1 / { $6 = $6 + 8; d = 1 } { print }'
 # The first value of TX 1 has no NEW line.
 fault no-new $G '!d && /^NEW [0-9]+ 0 D$/ { d = 1; next } { print }'
-# The first key node made in TX 2 is on level 0.
-fault level-0 $G 'tx == 2 && !d && /^NEW [0-9]+ [1-9][0-9]* I$/ { $3 = 0; d = 1 } /^TX / { tx = $2 } { print }'
+# The first key node made in TX 3 is on level 0 (TX 2 until bergdb 028-15, when TX 1
+# became the creating start's KV of the startup distance).
+fault level-0 $G 'tx == 3 && !d && /^NEW [0-9]+ [1-9][0-9]* I$/ { $3 = 0; d = 1 } /^TX / { tx = $2 } { print }'
 # The TREE line's h is 0: every level is a segment leaf's, and the inner nodes fail KIND.
 fault kind-h0 $G '/^TREE / && !d { $4 = 0; d = 1 } { print }'
 # The first skip pointer of a top node is left out.
 fault no-skip $G '!d && /^ADD [0-9]+ [0-9]+ S / { d = 1; next } { print }'
-# The root pointer of the top node made in TX 2 names another node.
-fault root-pointer $G 'tx == 2 && !d && /^ADD [0-9]+ 2 R / { $5 = $5 - 2; d = 1 } /^TX / { tx = $2 } { print }'
+# The root pointer of the top node made in TX 3 names another node (TX 2 until bergdb
+# 028-15).
+fault root-pointer $G 'tx == 3 && !d && /^ADD [0-9]+ 3 R / { $5 = $5 - 2; d = 1 } /^TX / { tx = $2 } { print }'
 # The first TOUCH line loses its last node.
 fault touch $R '!d && /^TOUCH / { NF = NF - 1; d = 1 } { print }'
 # The primordial top node names another key node.
