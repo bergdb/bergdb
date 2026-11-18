@@ -77,6 +77,13 @@ The decisions, as recorded here:
   opinion on possible directions to simplify the writer? [...] open-ended
   proposals for simplifications are welcome. A Fable High agent for this.
   Just a short question, not a full study."
+* **W8, 026-24: the PE trial** (agent pe, Opus xhigh, until 2026-11-19,
+  07:00): 026-23's "plan, then emit" in the Lean model: a paper check,
+  `plan` run on the traces as the go/no-go (refused at one contract or
+  shape fault, bytes above 1.02 times, or a one-operation transaction
+  unlike today's), then a proof spike of the lemmas of emit and settle.
+  Frans, 12:47: "The PE trial. Yes, do it as recommended. Good if done by
+  07:00 tomorrow. If possible."
 * **W3, D3 in 013-02** (the coordinator): only the day's coordinator
   pushes `main`.
 
@@ -149,6 +156,15 @@ The decisions, as recorded here:
   done after algos settle." `night.sh` started on 1b1001ee (run
   2026-11-18-1239); 026-01 (compact nodes) and the versioning rule wait
   until the algorithms settle.
+* 12:40 026-08 done (agent ns): its code has been on main since
+  2026-11-13 (e277a18a); its item still said "to land". Frans's answers
+  and a State note landed, f2d034e1.
+* 12:43 `night.sh`'s Core-alone step failed: CoreDemo's scan of all keys
+  now also returns 028-15's internal key. 12:45 Frans: "028-15, 1-4 are
+  fine as recommended. But "/#i/-startup-distance" is unnecessarily long.
+  I think "/#i/-sd" is better. Fits in one klong." Agent sd resumed 12:46:
+  the key renamed `/#i/-sd`, CoreDemo reads only its own keys.
+* 12:47 Frans: the PE trial (above). Agent pe (026-24) started 12:48.
 
 
 ## 5. Outcome
