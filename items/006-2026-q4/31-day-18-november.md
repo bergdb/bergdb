@@ -219,7 +219,12 @@ The decisions, as recorded here:
 * 21:37 Frans: "Document this work in a todo item. Start it now. One
   startup transaction." (21:30: "Either we have a fully initialized
   database or not.") 028-18 registered (5e278bdd); agent one started
-  21:39, until 06:15 at the latest.
+  21:38, until 06:15 at the latest.
+* 21:42 Frans on PE: "Go! Good luck with the proof. If you successfully
+  prove it, feel free to do the Java implementation too. Opus high for
+  that." Agent pw (030-21: the complete proof that the PE writer meets
+  the contract, one segment first; Opus xhigh) started 21:43. If it is
+  complete and gated, the Java implementation follows (Opus high).
 
 
 ## 4b. Unattended, 13:48 to 07:00
@@ -239,6 +244,8 @@ Decided by rule, without asking (Frans's defaults of 013-01 and today's):
 the stop at week 85 %; gated work lands on main and is pushed; no new
 proof or design work is started beyond the PE trial (reclaim's contract
 waits for the morning); a no-go of the PE trial ends it with its result.
+Changed by Frans's word in the evening: 028-18 (21:37) and the complete
+PE proof, then Java if it is proved (21:42).
 
 
 ## 5. Outcome
