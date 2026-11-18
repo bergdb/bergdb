@@ -225,6 +225,12 @@ The decisions, as recorded here:
   that." Agent pw (030-21: the complete proof that the PE writer meets
   the contract, one segment first; Opus xhigh) started 21:43. If it is
   complete and gated, the Java implementation follows (Opus high).
+* 23:10 028-18 stopped at the rule on pinned statements: a creation in
+  one record breaks a pinned statement either way (the contract's start
+  is the empty tree; the model's startup position comes before its
+  record). Options A, B and C for Frans in 028-18; the Java part made and
+  gated, but for the contract, on the branch `028-18-prepared`. Findings
+  landed f0c30dfe.
 
 
 ## 4b. Unattended, 13:48 to 07:00
