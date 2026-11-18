@@ -210,6 +210,12 @@ The decisions, as recorded here:
 * 16:08 `night.sh` ended: NIGHT FAILED: core-build, kill-restart (191
   minutes); both fixed on main since (026c322a, 32e72560); every other
   step OK.
+* 16:56 030-20's cost measured (agent cc, on s1): with `TransCheck` an
+  in-memory commit is 3.5 to 6 times slower (the check 74 to 84 % of a
+  commit), small and large transactions alike; durable commits (with a
+  sync) hardly see it. Too costly to have always on as written; a check
+  designed for speed is estimated, not measured, at 1.5 to 2 times.
+  Landed 52396e84.
 
 
 ## 4b. Unattended, 13:48 to 07:00
