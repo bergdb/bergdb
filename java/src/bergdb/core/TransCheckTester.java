@@ -65,12 +65,17 @@ public class TransCheckTester {
                 message != null && message.startsWith("transcheck") && message.contains(text));
     }
 
-    /** The index of the first key klong of x. */
+    /**
+     * The index of the first key klong of x for /a: before it, the space root has the klong of
+     * the startup distance's key, which every database has (bergdb 028-15).
+     */
     private static int firstKey(KeyNode x) {
+        long a = Keys.toSegments("/a")[0];
         for (int i = 0; i < x.size; i++) {
-            if (Klong.getIntType(x.klongs[i]) == Klong.INT_TYPE_KEY) return i;
+            if (Klong.getIntType(x.klongs[i]) == Klong.INT_TYPE_KEY
+                    && Klong.getCompareValue(x.klongs[i]) == a) return i;
         }
-        throw new AssertionError("no key klong");
+        throw new AssertionError("no key klong of /a");
     }
 
     /** A klong of a node made before gets another compare value: the frame. */

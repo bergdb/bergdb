@@ -61,7 +61,12 @@ public class StoredTrans {
      * layout too. A change of RecoverableStream's framing (a record's size field or last
      * byte, the meta blocks) changes MetaBlock's version instead, which recovery checks
      * before it writes; the zero fill of a torn record, before its format is read, uses
-     * only the framing (2026-10-25, bergdb 005-40).</p>
+     * only the framing (2026-10-25, bergdb 005-40). Since release 2026.6 a change that an
+     * older release cannot read raises MetaBlock's version as well, so that the older
+     * release refuses the stream before it writes (bergdb 026-12, SF3): 155 since
+     * 2026-11-18, when the startup distance left the meta block (bergdb 028-15); a stream of
+     * version 154, of release 2026.5 or earlier, is refused by its meta block, before a
+     * record is read.</p>
      */
     public final static byte RECORD_FORMAT = 7;
     
@@ -248,10 +253,9 @@ public class StoredTrans {
             return s + "A larger number is a database written by a newer version of BergDB.";
         }
         return s + "A smaller number is a database written by an older version of BergDB, "
-                + "which this version cannot open: format 6 was written by release 2026.4, "
-                + "which opens it (its deletes have no merges; bergdb 024-21), format 5 by "
-                + "release 2026.3 and earlier (bergdb 023-07, section 5.8), format 2 until "
-                + "2026-10-15 (bergdb 011-11, M18).";
+                + "which this version cannot open; or the stream is damaged, as the meta "
+                + "block's version of a database of release 2026.5 or earlier refuses it "
+                + "before (bergdb 028-15).";
     }
     
     public String toString() {
@@ -1165,8 +1169,9 @@ public class StoredTrans {
     /**
      * A transaction of the format before 2026-10-15 (2), or of release 2026.3 and earlier (5),
      * is refused with a clear message, as a VersioningStreamException since 2026-10-25
-     * (bergdb 005-40); the message names release 2026.3 since format 6 (bergdb 023-07,
-     * section 5.8).
+     * (bergdb 005-40); the message named release 2026.3 from format 6 (bergdb 023-07,
+     * section 5.8), and since bergdb 028-15 the meta block's version that refuses a database
+     * of release 2026.5 or earlier first.
      */
     @Nano
     private static void testRefusesOldFormat() {
@@ -1184,15 +1189,16 @@ public class StoredTrans {
                 String m = e.getMessage();
                 Assert.assertTrue(m, m.contains("format version " + format + ";"));
                 Assert.assertTrue(m, m.contains("older version"));
-                Assert.assertTrue(m, m.contains("release 2026.3"));
+                Assert.assertTrue(m, m.contains("release 2026.5 or earlier"));
             }
         }
     }
     
     /**
-     * A transaction of format 6, written by release 2026.4, is refused with a message that
-     * names that release, which opens it (bergdb 024-21: format 7's deletes merge underfull
-     * key nodes, so a record of format 6 means another tree).
+     * A transaction of format 6 is refused as one of an older BergDB (bergdb 024-21: format
+     * 7's deletes merge underfull key nodes, so a record of format 6 means another tree).
+     * The message named release 2026.4 until bergdb 028-15: a database of a release before
+     * 2026.6 is refused by its meta block's version, before a record is read.
      */
     @Nano
     private static void testRefusesFormat6() {
@@ -1208,7 +1214,6 @@ public class StoredTrans {
             String m = e.getMessage();
             Assert.assertTrue(m, m.contains("format version 6;"));
             Assert.assertTrue(m, m.contains("older version"));
-            Assert.assertTrue(m, m.contains("format 6 was written by release 2026.4"));
         }
     }
     

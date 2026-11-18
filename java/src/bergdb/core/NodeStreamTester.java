@@ -298,6 +298,7 @@ public class NodeStreamTester {
         
         NodeStream.TransIterator ti = db.internal().nodeStream().createTransIterator(0);
         ti.next();
+        ti.next();      // the creating start's startup distance (bergdb 028-15)
         ti.next();
         StoredTrans stored = ti.getStoredTrans();
         
@@ -454,13 +455,15 @@ public class NodeStreamTester {
      * there as the meta block names no transaction, looped for ever. Now it throws. Since
      * 2026-10-25 (005-33) the start refuses such a stream before recovery, with a
      * DatabaseNotCreatedException, and writes nothing; DbTester.testCrash8InCreation has every
-     * cut.
+     * cut. The creating start's record of the startup distance, after the primordial one
+     * (bergdb 028-15), is cut off first.
      */
     @Nano
     public static void testCrashInPrimordialTrans() throws IOException, InterruptedException {
         MemoryStream s = new MemoryStream();
         Db.builder().testSetup(s).start().close();
         MemoryStream created = s.copy();    // close() closed s.
+        created.truncate(Db.CREATION_LENGTH);
         final long first = RecoverableStream.META_BLOCK_SIZE;
         final long end = created.getLength();
         byte[] size = new byte[4];

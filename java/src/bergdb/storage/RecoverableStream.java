@@ -754,9 +754,8 @@ public class RecoverableStream {
         
         int version = Bytes.bytesToIntLE(header, 4);    // An int, bergdb 019-01.
         
-        if (version != MetaBlock.VERSION_154) {
-            throw new VersioningStreamException("Cannot read meta block with version " 
-                    + version + ". Version supported: " + MetaBlock.VERSION_154);
+        if (version != MetaBlock.CURRENT_VERSION) {
+            throw new VersioningStreamException(versionRefused(version));
         }
         
         byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];
@@ -768,6 +767,29 @@ public class RecoverableStream {
         }
         
         return new MetaBlock(metaBytes, blockPos);
+    }
+    
+    /**
+     * The message of a VersioningStreamException for a meta block whose version is not
+     * MetaBlock.CURRENT_VERSION (bergdb 028-15; 026-12, SF4 (a)): it names the release that
+     * wrote an older one, and what a user does.
+     */
+    static String versionRefused(int version) {
+        String s = "Cannot read meta block with version " + version + ". Version supported: "
+                + MetaBlock.CURRENT_VERSION + ". ";
+        if (version == MetaBlock.VERSION_154) {
+            return s + "Version 154 is a database written by BergDB release 2026.5 or earlier, "
+                    + "which this release does not open: its format is older than the stable "
+                    + "format of release 2026.6 (bergdb 026-12, SF4). To keep its data, make "
+                    + "the database again: read it with release 2026.5 and put the data into a "
+                    + "new database with this release. The start has written nothing.";
+        }
+        if (version > MetaBlock.CURRENT_VERSION) {
+            return s + "A larger number is a database written by a newer version of BergDB. "
+                    + "The start has written nothing.";
+        }
+        return s + "The stream is damaged, or it was written by a version of BergDB "
+                + "before 2015. The start has written nothing.";
     }
     
     /**
@@ -1232,7 +1254,7 @@ public class RecoverableStream {
             appendNamedTransactions(new RecoverableStream(mstream, new MetaBlock()), 250);
             for (long pos = 0; pos + META_BLOCK_SIZE <= mstream.getLength();
                     pos += META_BLOCK_DISTANCE) {
-                MemoryStream.TestAccess.write(mstream, new byte[]{(byte) 155, 0}, pos + 4);
+                MemoryStream.TestAccess.write(mstream, new byte[]{(byte) 156, 0}, pos + 4);
             }
             
             for (int x : new int[] {0, 3, 50}) {
@@ -1242,7 +1264,7 @@ public class RecoverableStream {
                     new RecoverableStream(m, new MetaBlock()).recover();
                     throw new AssertionError("recovered, " + x + " bytes into the meta block");
                 } catch (VersioningStreamException e) {
-                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("155"));
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("156"));
                 }
                 Assert.assertEquals("cut " + x + " bytes into the meta block",
                         META_BLOCK_DISTANCE + x, m.getLength());
@@ -1297,9 +1319,9 @@ public class RecoverableStream {
                 Assert.assertFalse(n + " zero bytes", isIncompleteCreation(zeros, creation));
             }
             MemoryStream version = created.copy();
-            MemoryStream.TestAccess.write(version, new byte[] {(byte) 155}, 4);
+            MemoryStream.TestAccess.write(version, new byte[] {(byte) 154}, 4);
             version.truncate(10);
-            Assert.assertFalse("version 155", isIncompleteCreation(version, creation));
+            Assert.assertFalse("version 154", isIncompleteCreation(version, creation));
             version.truncate(4);
             Assert.assertTrue("the magic bytes only", isIncompleteCreation(version, creation));
             for (int offset : new int[] {6, 7}) {     // Bergdb 019-01: the version is an int.
@@ -1702,7 +1724,7 @@ public class RecoverableStream {
         
         @Nano
         public static void testReadMetaBlock3() throws IOException {
-            // Version 154 should work.
+            // Version 155 should work (154 until bergdb 028-15).
             
             MemoryStream mstream = new MemoryStream();
             MetaBlock meta = new MetaBlock();            
@@ -1713,9 +1735,36 @@ public class RecoverableStream {
             mstream.close();
             
             MemoryStream m = mstream.copy();
-            MemoryStream.TestAccess.write(m, new byte[]{(byte) 154, 0}, 4);
+            MemoryStream.TestAccess.write(m, new byte[]{(byte) 155, 0}, 4);
             
             RecoverableStream.readMetaBlock(m, 0);
+        }
+        
+        /**
+         * Bergdb 028-15 (026-12, SF4 (a)): a meta block of version 154, as every release until
+         * 2026.5 wrote, is refused with a message that names release 2026.5 and what a user
+         * does; a newer version with one that says so.
+         */
+        @Nano
+        public static void testReadMetaBlockVersion154Refused() throws IOException {
+            MemoryStream mstream = new MemoryStream();
+            RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
+            byte[] bytes = new byte[1000];
+            r1.append(bytes, 0, bytes.length, false, 1234L);
+            mstream.close();
+            
+            for (int version : new int[] {154, 156}) {
+                MemoryStream m = mstream.copy();
+                MemoryStream.TestAccess.write(m, new byte[]{(byte) version, 0}, 4);
+                try {
+                    RecoverableStream.readMetaBlock(m, 0);
+                    throw new AssertionError("version " + version + " read");
+                } catch (VersioningStreamException e) {
+                    String s = e.getMessage();
+                    Assert.assertTrue(s, s.contains("version " + version));
+                    Assert.assertTrue(s, s.contains(version == 154 ? "release 2026.5" : "newer"));
+                }
+            }
         }
     }
 }

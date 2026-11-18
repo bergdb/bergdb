@@ -12,22 +12,24 @@ import bergdb.nanotest.Nano;
  * Little-endian-first byte order is used.
  *
  * <pre>
- * FORMAT OF A META BLOCK, v154
+ * FORMAT OF A META BLOCK, v155
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       4       Version of BergDB stream format, an int (154 for this version). Until
- *                 2026-11-05 it was read as an unsigned short, so bytes 6 and 7 were not
- *                 checked; every version of BergDB writes 0 there (bergdb 019-01).
+ * 4       4       Version of BergDB stream format, an int (155 for this version; 154 until
+ *                 release 2026.5, bergdb 028-15). Until 2026-11-05 it was read as an
+ *                 unsigned short, so bytes 6 and 7 were not checked; every version of BergDB
+ *                 writes 0 there (bergdb 019-01).
  * 8       8       time, the creation's time as a long, set once (Db.writePrimordialTransaction).
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
- * 40      4       startupDistance in bytes, the setting in force; 50 MB by default (DbBuilder).
+ * 40      4       Reserved, written zero and not read. The startup distance until version
+ *                 155; since then an internal KV of the Core (bergdb 028-15, Db.SD_KEY).
  * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short:
  *                 30 in every database a user makes (bergdb 026-08), 8, 14 or 62 in some
  *                 that BergDB's own tests make; a start with another size is refused, and
- *                 so is a stream whose meta block has 0, as those written before 2026-10-27
- *                 have (bergdb 005-50).
+ *                 so is 0, a damaged block (bergdb 005-50; every block of version 155 has
+ *                 the size).
  * 46     81       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE, 10. It indicates that the block is valid.
  * </pre>
@@ -35,8 +37,12 @@ import bergdb.nanotest.Nano;
 public class MetaBlock {    
     private static final byte META_BLOCK_LAST_BYTE = (byte) Util.identity(10);
     public static final byte[] MAGIC = new byte[] {'b', 'e', 'r', 'g'};
-    public static final int VERSION_133 = Util.identity(133);
+    
+    /** The version of release 2026.5 and earlier: the startup distance at offset 40. */
     public static final int VERSION_154 = Util.identity(154);
+    
+    /** The version since release 2026.6 (bergdb 028-15): offset 40 reserved. */
+    public static final int VERSION_155 = Util.identity(155);
     
     /**
      * The version of the stream's framing, which RecoverableStream reads and writes: the meta
@@ -47,9 +53,13 @@ public class MetaBlock {
      * version is refused. A new field in the reserved bytes, which an older version can
      * ignore, keeps the number, as maxNodeSize at offset 44 did (2026-10-27, bergdb 005-50):
      * an older version neither checks nor reads those bytes, and it copies a block it read
-     * whole, so it starts such a stream as before and passes the field on.
+     * whole, so it starts such a stream as before and passes the field on. 155 since
+     * 2026-11-18 (bergdb 028-15; 026-12, SF3 and SF4 (a)): the startup distance left the
+     * block for an internal KV of the Core, which an older version does not read, and
+     * release 2026.6's format is the first stable one; 2026.6 refuses 154, which every
+     * release until 2026.5 wrote, and 2026.5 refuses 155, both before they write.
      */
-    private static final int CURRENT_VERSION = VERSION_154;
+    static final int CURRENT_VERSION = VERSION_155;
     
     /** Bytes to fill-out meta block in case of a stream crash in meta block. */
     static final byte[] FILL_OUT_TEMPLATE = new byte[RecoverableStream.META_BLOCK_SIZE];
@@ -213,18 +223,10 @@ public class MetaBlock {
         Bytes.longToBytesLE(spos, block, 16);
     }
     
-    public int getStartupDistance() {
-        return Bytes.bytesToIntLE(block, 40);
-    }
-    
-    public void setStartupDistance(int startupDistance) {
-        Bytes.intToBytesLE(startupDistance, block, 40);
-    }
-    
     /**
-     * The maximum node size of the database, from its creation, or 0 in a block written
-     * before it was recorded (2026-10-27, bergdb 005-50). A start refuses another size, and
-     * 0 (Db.refuseOtherNodeSize).
+     * The maximum node size of the database, from its creation (2026-10-27, bergdb 005-50).
+     * A start refuses another size, and 0, which no block of version 155 has
+     * (Db.refuseOtherNodeSize).
      */
     public int getMaxNodeSize() {
         return Bytes.bytesToUShortLE(block, 44);
@@ -289,14 +291,18 @@ public class MetaBlock {
         @Nano
         public static void version() {
             MetaBlock b = new MetaBlock();
-            Assert.assertEquals(154, b.getVersion());
+            Assert.assertEquals(155, b.getVersion());
         }
         
+        /** Bergdb 028-15: bytes 40 to 43, the startup distance until version 155, zero. */
         @Nano
-        public static void startupDistance() {
+        public static void startupDistanceBytesZero() {
             MetaBlock b = new MetaBlock();
-            b.setStartupDistance(10*1000000);
-            Assert.assertEquals(10*1000000, b.getStartupDistance());
+            b.setMaxNodeSize(30);
+            b.setLastTransSpos(1234);
+            for (int i = 40; i < 44; i++) {
+                Assert.assertEquals("byte " + i, 0, b.getBlock()[i]);
+            }
         }
         
         /** Bergdb 005-50: the node size, 2 bytes at offset 44; 0 until it is set. */

@@ -10,6 +10,8 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
 import bergdb.common.Bug;
+import bergdb.common.Bytes;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -226,9 +228,9 @@ import bergdb.stream.SalsaStream;
  * Of them, the keys that the Core writes itself are refused (below).</li>
  * </ul>
  * <p><b>The Core's own keys are refused</b> (bergdb 024-37; 010-04, R5: the Core API never
- * destroys the key-value store). The key "/#i/-dummy" (the bkey 01 25 6b 01 2f 66 77 6f 6f
- * 7b), and reclaim's directory "/#i/dreclaim/" with every key under it, are written by the
- * Core alone. A start reads them, and a value there that the Core did not write could make
+ * destroys the key-value store). The key "/#i/-startup-distance" (bergdb 028-15), and
+ * reclaim's directory "/#i/dreclaim/" with every key under it, are written by the Core
+ * alone. A start reads them, and a value there that the Core did not write could make
  * a database that never starts again (until release 2026.5 seven bytes put at
  * "/#i/dreclaim/-settings.txt" did). So a caller's put or delete at one of them is refused
  * before anything is written, and the database goes on: by the Trans.Builder call that
@@ -238,9 +240,10 @@ import bergdb.stream.SalsaStream;
  * "/#i/" (those that start with "/#i/di") are not refused: the Pub API writes them through
  * Db. A read of the Core's keys is allowed.</p>
  * <p>The Core writes BergDB's keys itself, also in a database that the Pub API never opens
- * (bergdb 020-24-09, U9-4). A new database has none. setStartupDistance() puts a value of 200
- * kB at "/#i/-dummy" (the bytes 01 25 6b 01 2f 66 77 6f 6f 7b), which stays live, so that
- * reclaim copies it forward as any live value; setRetainDuration() and
+ * (bergdb 020-24-09, U9-4). A new database has one: the startup distance, 4 bytes at
+ * "/#i/-startup-distance", which the creation and each change by setStartupDistance() put,
+ * and which stays live, so that reclaim copies it forward as any live value (bergdb 028-15;
+ * until then a value of 200 kB at "/#i/-dummy" at each change); setRetainDuration() and
  * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
  * reclaim, when it runs, keeps its state under "/#i/dreclaim/", as maintain() its filler
  * "/#i/dreclaim/-fill.txt", deleted at once. getMany() returns these keys
@@ -564,7 +567,6 @@ public class Db implements AutoCloseable {
         
         RecoverableStream rstream = new RecoverableStream(aos, metaBlock);
         this.nodeStream = new NodeStream(rstream, writeLock);
-        this.nodeStream.getMetaBlock().setStartupDistance(b.startupDistance);
         
         this.nodeCollection = new NodeCollection(dbInfo, nodeStream, cache);
         nodeCollection.setLoadListener(new NodeCollection.LoadListener() {
@@ -624,7 +626,8 @@ public class Db implements AutoCloseable {
 
     /**
      * The startup distance in force, in bytes: after start(), the stream's, as the creation
-     * (DbBuilder.startupDistance()) or the last setStartupDistance() set it.
+     * (DbBuilder.startupDistance()) or the last setStartupDistance() set it, kept in the
+     * internal KV "/#i/-startup-distance" (bergdb 028-15).
      */
     public int getStartupDistance() {
         synchronized (writeLock) {
@@ -646,35 +649,27 @@ public class Db implements AutoCloseable {
      * 007-07). So one call is enough, with no need to lower the distance in steps. The
      * section comes down only as transactions are committed: in 007-06's runs, over stream
      * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
-     * commits a transaction with a value of 200 kB, at the key "/#i/-dummy", where it stays
-     * live (Keys and the layers above), so that a meta block in the stream
-     * records the new setting: a start reads it from there, as the setting decides the
-     * stream's bytes (010-P2). The value is clamped to 400,000 to 1,000,000,000 bytes
+     * commits a small transaction that puts the new setting, 4 bytes, at the key
+     * "/#i/-startup-distance", where it stays live (Keys and the layers above): a start reads
+     * it from there, at its end, as the setting decides the stream's bytes (010-P2; bergdb
+     * 028-15; until then a meta block kept it, and this method put 200 kB at "/#i/-dummy" to
+     * get one written). The value is clamped to 400,000 to 1,000,000,000 bytes
      * (twice RecoverableStream.META_BLOCK_DISTANCE to 10^9), and the clamped value is set; a
      * call whose clamped value is the setting in force writes nothing (bergdb 005-53). So on
-     * a database whose setting is outside that range, which DbBuilder.startupDistance allows
-     * below it (10 bytes and up; it refuses more than 10^9 since bergdb 028-12) and an
-     * older database's stream may hold above it, any call writes and sets a value inside it
-     * (bergdb 015-76). A negative value is refused with IllegalArgumentException and
-     * changes nothing. On a database that is not active the call throws as a transaction does
-     * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
-     * is refused leaves the setting as it was. With a finite retain duration the setting
+     * a database whose setting is below that range, which DbBuilder.startupDistance allows
+     * (10 bytes and up; it refuses more than 10^9 since bergdb 028-12), any call writes and
+     * sets a value inside it (bergdb 015-76). A negative value is refused with
+     * IllegalArgumentException and changes nothing. On a database that is not active the
+     * call throws as a transaction does (IllegalDbStateException, DbStoppingException,
+     * DbFailedException), and a call that is refused leaves the setting as it was. With a finite retain duration the setting
      * also paces reclaim: an iteration begins at a commit only after more than twice it of
      * stream since the last one began, so a larger distance cuts later and keeps more of
      * the stream (setRetainDuration(); bergdb 026-13, U13-4). A crash inside the call
-     * starts with the new setting if it comes after the meta block within the record and
-     * with the old one if before, also as the record is aborted, its dummy value lost: a
-     * start takes the setting from the last valid meta block. Not a bug: the setting is not
-     * data, both values are valid, and a crash just after the record's end gives the new
-     * one too (bergdb 028-08; 027-11, section 1.4).
+     * starts with the old setting, as its record is aborted, and one after the record's end
+     * with the new: the setting is a KV, written with its record (bergdb 028-15; until then
+     * a crash inside the record could start with either, bergdb 028-08).
      */
     public void setStartupDistance(int newDistance) {
-        //
-        // A dummy transaction of size >= META_BLOCK_DISTANCE is written
-        // to the stream to ensure that the new value of startupDistance is 
-        // stored in a meta block in the stream.
-        //
-        
         if (newDistance < 0) {
             throw new IllegalArgumentException("Bad newDistance: " + newDistance + ".");
         }
@@ -685,26 +680,58 @@ public class Db implements AutoCloseable {
         newDistance = newDistance < min ? min : newDistance;
         newDistance = newDistance > max ? max : newDistance;
         
-        int dist = (int) newDistance;
-        byte[] dummyValue = new byte[RecoverableStream.META_BLOCK_DISTANCE];
-        
         synchronized (writeLock) {
             // The state first, so that a refused call changes nothing (bergdb 005-53).
             assertDbStateIsActive("setStartupDistance");
             int old = this.startupDistance;
             if (newDistance == old) return;
+            // The new setting paces this transaction's own take already, as the meta block's
+            // did until bergdb 028-15.
             this.startupDistance = newDistance;
-            this.nodeStream.getMetaBlock().setStartupDistance(dist);
             try {
-                this.execute(trans().putCore(DbConstants.DUMMY_KEY, dummyValue).build());
+                putStartupDistanceKv(newDistance, false);
             } catch (RuntimeException | Error e) {
                 // Refused, or the database failed and must be restarted, which reads the
                 // stream's setting.
                 this.startupDistance = old;
-                this.nodeStream.getMetaBlock().setStartupDistance(old);
                 throw e;
             }
         }
+    }
+    
+    /**
+     * Commits the transaction that puts 'distance' at the startup distance's KV,
+     * DbConstants.SD_KEY (bergdb 028-15): by setStartupDistance(), as a user transaction is
+     * (as its dummy value was until then), and by the start that creates the database, an
+     * internal transaction ('internal'), as reclaim's settings are put: it takes a time
+     * after the primordial record's also when no user transaction has one left (DbClock,
+     * bergdb 015-55), and reclaim does not count it. The caller holds writeLock.
+     */
+    private void putStartupDistanceKv(int distance, boolean internal) {
+        byte[] value = new byte[4];
+        Bytes.intToBytesLE(distance, value, 0);
+        Trans t = trans().putCore(DbConstants.SD_KEY, value).build();
+        t.isInternal = internal;
+        this.execute(t);
+    }
+    
+    /**
+     * The startup distance that the KV's bytes give (bergdb 028-15): 4 bytes, an int,
+     * little-endian, from 10 to DbBuilder.MAX_STARTUP_DISTANCE, 10^9, as the builder and
+     * setStartupDistance() set it.
+     * 
+     * @throws InternalDataException  for other bytes
+     */
+    static int parseStartupDistance(byte[] value) {
+        if (value.length == 4) {
+            int d = Bytes.bytesToIntLE(value, 0);
+            if (d >= 10 && d <= DbBuilder.MAX_STARTUP_DISTANCE) {
+                return d;
+            }
+        }
+        throw new InternalDataException("Bad value of /#i/-startup-distance, "
+                + StringUtil.toHex(value) + ": 4 bytes, an int, little-endian, from 10 to "
+                + DbBuilder.MAX_STARTUP_DISTANCE + " expected (bergdb 028-15).");
     }
     
     /**
@@ -981,7 +1008,9 @@ public class Db implements AutoCloseable {
     /**
      * The number of transactions that this Db has executed since its start(), BergDB's own
      * included (the settings' commits, reclaim's steps; Keys and the layers above): 0 after a
-     * start, not the number of transactions in the database (bergdb 020-24-09, U9-10).
+     * start, not the number of transactions in the database (bergdb 020-24-09, U9-10). The
+     * transaction of the start that creates the database, which puts the startup distance
+     * (bergdb 028-15), is not counted.
      */
     public long getTransactionCount() {
         synchronized (writeLock) {
@@ -1071,8 +1100,10 @@ public class Db implements AutoCloseable {
      * @throws StreamIoException
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
-     *          start, 30 but in BergDB's own tests (bergdb 026-08), or none, as one written
-     *          before 2026-10-27 (bergdb 005-50); the start then writes nothing.
+     *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
+     *          005-50); and with a VersioningStreamException, a database of release 2026.5 or
+     *          earlier, of the meta block's version 154 (bergdb 028-15; 026-12, SF4 (a)). The
+     *          start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33). The start writes nothing.
@@ -1166,8 +1197,12 @@ public class Db implements AutoCloseable {
                     + "020-28). The start has written nothing.", e);
         }
         
-        long startupPos = readStartupPosAndDistance();
+        long startupPos = readStartupPos();
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
+        // The stream holds the primordial record alone: this start creates the database, or
+        // a crash or a stop came before the creating start's KV of the startup distance.
+        final boolean primordialOnly = transactions.size() == 1
+                && transactions.get(0).tpos == RecoverableStream.META_BLOCK_SIZE;
         
         setLastTransTimeOfDbClock(transactions);
         
@@ -1179,6 +1214,7 @@ public class Db implements AutoCloseable {
         writeCreatedTxtIfMissing();
         
         this.state = DbState.ACTIVE;
+        readStartupDistanceKv(primordialOnly);
         reclaim.initFromDb();
         synchronized (writeLock) {
             // The admission of the large values that the start made resident, as after a
@@ -1197,6 +1233,16 @@ public class Db implements AutoCloseable {
         if (auditEvery > 0) {
             synchronized (writeLock) {
                 audit(true);
+            }
+        }
+        if (primordialOnly) {
+            // The creation's KV of the startup distance, the builder's (bergdb 028-15): the
+            // writer's first transaction, before any other. A start that throws here has
+            // written the primordial record, or nothing, and the next start writes it.
+            synchronized (writeLock) {
+                putStartupDistanceKv(startupDistance, true);
+                aux.transactionCount = 0;       // 0 after a start (getTransactionCount())
+                aux.kvCount = 0;
             }
         }
         
@@ -1220,23 +1266,46 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Reads the startup pos and the startup distance from the stream and sets them for the
-     * run: the startup pos from the last committed record, which stores it (bergdb 027-03,
-     * section 8.1), the startup distance from the last valid meta block. Until 2026-11-14,
-     * the public Db.start(StartParams) let a caller give both instead, unchecked (bergdb
-     * 028-10).
+     * Reads the startup pos from the stream and sets it for the run: from the last committed
+     * record, which stores it (bergdb 027-03, section 8.1). The startup distance is read at
+     * the end of the start, from its KV (readStartupDistanceKv; bergdb 028-15); until then
+     * from the last valid meta block, here. Until 2026-11-14, the public
+     * Db.start(StartParams) let a caller give both instead, unchecked (bergdb 028-10).
      * 
      * @throws StreamFormatException
      *          If the meta block's format is bad, or a record's startupPos cannot be one
      *          that the take wrote.
      */
-    private long readStartupPosAndDistance() {
+    private long readStartupPos() {
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.checkFormat();
         long startupPos = getStartupPosFromLastTransaction(meta.getLastTransSpos());
-        startupDistance = meta.getStartupDistance();
         x.startupPos.set(startupPos);
         return startupPos;
+    }
+    
+    /**
+     * Reads the startup distance from its KV, DbConstants.SD_KEY, at the end of the start,
+     * before the writer's first transaction (bergdb 028-15): only the writer uses it, as the
+     * take's setting (TransSeq.take). A stream that holds the primordial record alone has no
+     * KV yet, and the start keeps the builder's setting, which it then puts (startInner); any
+     * other stream must have it, as every record after the primordial one comes after the
+     * creating start's KV, which reclaim copies forward as any live KV.
+     * 
+     * @throws InternalDataException  if the KV's bytes are not a startup distance
+     * @throws StreamFormatException  if a stream with more than the primordial record has
+     *          no KV: a damaged stream, as every database of the meta block's version 155
+     *          has it (older ones are refused before, by the version)
+     */
+    private void readStartupDistanceKv(boolean primordialOnly) {
+        byte[] value = getOne(Long.MAX_VALUE, DbConstants.SD_KEY, newGetData());
+        if (value != null) {
+            startupDistance = parseStartupDistance(value);
+        } else if (!primordialOnly) {
+            throw new StreamFormatException("The database has no startup distance, the KV "
+                    + "/#i/-startup-distance that every database since release 2026.6 has from "
+                    + "its creation on (bergdb 028-15): the stream is damaged.");
+        }
     }
 
     /**
@@ -1551,7 +1620,8 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a start with another maximum node size than the database's, and a database
-     * whose meta block has none, before recovery writes anything (2026-10-27, bergdb 005-50).
+     * whose meta block has none, a damaged one since every block of the meta block's version
+     * 155 has it, before recovery writes anything (2026-10-27, bergdb 005-50; 028-15).
      * The size is in every meta block from the creation on; this reads the last valid one,
      * as recovery does first. Before, a start with another size reran the startup section
      * with it, which splits nodes otherwise, and failed with what looked like a corrupt
@@ -1563,7 +1633,7 @@ public class Db implements AutoCloseable {
      * field is kept, written and checked, as a hook for a later release that allows others.
      *
      * @throws StreamFormatException
-     * @throws VersioningStreamException  no size: a database written before 2026-10-27
+     * @throws VersioningStreamException  a meta block of another version (readMetaBlock)
      */
     private void refuseOtherNodeSize() {
         MetaBlock last = nodeStream.readLastValidMetaBlock();
@@ -1571,17 +1641,15 @@ public class Db implements AutoCloseable {
             return;     // recover() refuses it.
         }
         final int size = last.getMaxNodeSize();
-        if (size == 0) {
-            throw new VersioningStreamException("The database's meta block has no maximum node "
-                    + "size: it was written by a version of BergDB before 2026-10-27, which "
-                    + "this one does not start (bergdb 005-50). The start has written nothing.");
-        }
-        if (size > Dag.MAX_NODE_SIZE) {
-            // No release makes one: 62 is the largest (bergdb 024-19, Q6). A damaged block.
+        if (size == 0 || size > Dag.MAX_NODE_SIZE) {
+            // No release makes one: 62 is the largest (bergdb 024-19, Q6), and every block
+            // has the size since 2026-10-27 (bergdb 005-50), so every block of the meta
+            // block's version 155 (bergdb 028-15). A damaged block.
             throw new StreamFormatException("The database's meta block gives the maximum node "
-                    + "size " + size + ", above " + Dag.MAX_NODE_SIZE + ", the largest node "
-                    + "size of BergDB (bergdb 024-19, Q6): the block is damaged, or the stream "
-                    + "is not BergDB's. The start has written nothing.");
+                    + "size " + size + ", " + (size == 0 ? "none" : "above " + Dag.MAX_NODE_SIZE
+                    + ", the largest node size of BergDB (bergdb 024-19, Q6)") + ": the block "
+                    + "is damaged, or the stream is not BergDB's. The start has written "
+                    + "nothing.");
         }
         if (size != maxNodeSize) {
             throw new StreamFormatException("The database's maximum node size is " + size
@@ -1630,7 +1698,6 @@ public class Db implements AutoCloseable {
         
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(databaseId.getBytes());
-        meta.setStartupDistance(startupDistance);
         meta.setMaxNodeSize(maxNodeSize);       // bergdb 005-50
         meta.setTime(tt);
         

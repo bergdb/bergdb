@@ -22,6 +22,13 @@ public class DbConstants {
     
     public static final long[] INTERNAL_PREFIX_SKEY = Keys.toSegments(INTERNAL_PREFIX);
     
-    /** Used for internal dummy writes. */
-    static final long[] DUMMY_KEY = Keys.toSegments(INTERNAL_PREFIX + "-dummy");
+    /**
+     * The startup distance's key, "/#i/-startup-distance" (bergdb 028-15): its value, the
+     * setting in force, is 4 bytes, an int, little-endian, from 10 to 10^9
+     * (DbBuilder.MAX_STARTUP_DISTANCE). Written by the creating start and by
+     * Db.setStartupDistance(), read at the end of a start (Db.readStartupDistanceKv). Until
+     * the meta block's version 155, the setting was the meta block's, bytes 40 to 43, and
+     * setStartupDistance() put 200,000 zero bytes at "/#i/-dummy" to get a meta block written.
+     */
+    static final long[] SD_KEY = Keys.toSegments(INTERNAL_PREFIX + "-startup-distance");
 }

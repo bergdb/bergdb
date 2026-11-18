@@ -900,8 +900,8 @@ public class Reclaim implements Db.TransactionListener {
                 eod[0] = true;
             }
         };
-        if (it.endKey != null && (it.endKey.length == 0
-                || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0))) {
+        if (it.endKey.length == 0
+                || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0)) {
             eod[0] = true;      // No key was live at tStart, or the steps covered endKey.
         } else {
             db.getMany(g);
@@ -1435,9 +1435,10 @@ public class Reclaim implements Db.TransactionListener {
         /**
          * The last key live at tStart, or NO_KEY if none was (bergdb 026-05; 023-05, P8): the
          * steps scan, each at its own time, the keys after lastKey up to it (Reclaim.step). A
-         * value that needs a rewrite was live at tStart, so its key is at most endKey. Null in
-         * a row stored without it, before 026-05: the scan is then bounded by the end of the
-         * key space only.
+         * value that needs a rewrite was live at tStart, so its key is at most endKey. Every
+         * row has it: a row stored without it, before 026-05, by release 2026.5 or earlier,
+         * is in a stream that a start refuses by its meta block's version (bergdb 028-15), and
+         * deserialize() refuses a row without it.
          */
         long[] endKey;
         
@@ -1502,10 +1503,8 @@ public class Reclaim implements Db.TransactionListener {
                 m.put("lastKey", b.toString().trim());
             }
             
-            // bergdb 026-05: "none" for NO_KEY; no line for null (a row stored before).
-            if (endKey != null) {
-                m.put("endKey", endKey.length == 0 ? "none" : serializeKey(endKey));
-            }
+            // bergdb 026-05: "none" for NO_KEY.
+            m.put("endKey", endKey.length == 0 ? "none" : serializeKey(endKey));
             
             m.put("done", done ? "true" : "false");
             m.put("cut", cut ? "true" : "false");
@@ -1564,8 +1563,13 @@ public class Reclaim implements Db.TransactionListener {
                 }
             }
             
-            String end = m.get("endKey");      // bergdb 026-05.
-            endKey = end == null ? null : end.equals("none") ? NO_KEY : parseKey(end);
+            // Bergdb 026-05; required since bergdb 028-15, as every row of a stream that a
+            // start opens has it (no bound until then for a row without it).
+            String end = m.get("endKey");
+            if (end == null) {
+                throw new InternalDataException("Missing 'endKey' in " + TABLE_KEY_NAME);
+            }
+            endKey = end.equals("none") ? NO_KEY : parseKey(end);
             
             done = false;
             
@@ -1638,6 +1642,7 @@ public class Reclaim implements Db.TransactionListener {
             i1.done = true;
             i1.kvCount = 10;
             i1.lastKey = new long[]{123};
+            i1.endKey = new long[]{456};
             i1.pStart = 1000;
             i1.tEnd = 20*1000;
             i1.tStart = 10*1000;
@@ -1660,6 +1665,7 @@ public class Reclaim implements Db.TransactionListener {
             i1.done = false;
             i1.kvCount = 10;
             i1.lastKey = new long[]{123};
+            i1.endKey = new long[]{456};
             i1.pStart = 1000;
             i1.tEnd = 20*1000;
             i1.tStart = 10*1000;
@@ -1681,19 +1687,16 @@ public class Reclaim implements Db.TransactionListener {
         private static void testSerializeEndKey() {
             IterationInfo i1 = new IterationInfo();
             i1.lastKey = new long[]{123};
-            for (long[] end : new long[][] {{1, -2, 3}, IterationInfo.NO_KEY, null}) {
+            for (long[] end : new long[][] {{1, -2, 3}, IterationInfo.NO_KEY}) {
                 i1.endKey = end;
                 String s = i1.serialize();
                 IterationInfo i2 = new IterationInfo();
                 i2.deserialize(s);
-                if (end == null) {
-                    Assert.assertTrue(s, !s.contains("endKey") && i2.endKey == null);
-                } else {
-                    Assert.assertArrayEquals(end, i2.endKey);
-                }
+                Assert.assertArrayEquals(end, i2.endKey);
             }
             i1.endKey = new long[]{5};
-            for (String bad : new String[] {"endKey=x\n", "endKey=\n", "endKey=5 y\n"}) {
+            // A row without endKey is refused since bergdb 028-15.
+            for (String bad : new String[] {"endKey=x\n", "endKey=\n", "endKey=5 y\n", ""}) {
                 InternalDataException ex = null;
                 try {
                     new IterationInfo().deserialize(i1.serialize().replace("endKey=5\n", bad));
@@ -1710,6 +1713,7 @@ public class Reclaim implements Db.TransactionListener {
             i1.done = false;
             i1.kvCount = 10;
             i1.lastKey = new long[]{123};
+            i1.endKey = new long[]{456};
             i1.pStart = 1000;
             i1.tEnd = 20*1000;
             i1.tStart = 10*1000;

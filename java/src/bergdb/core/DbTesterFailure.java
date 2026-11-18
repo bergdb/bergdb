@@ -944,7 +944,9 @@ public class DbTesterFailure {
             final boolean part = i == 1;
             final String what = part ? "part" : "none";
             final int d = RecoverableStream.META_BLOCK_DISTANCE;
-            final int bufferSize = part ? d - (int) Db.CREATION_LENGTH + 64 : 100 * 1000;
+            // The creation's records: the primordial one and the startup distance's (028-15).
+            final long created = DbTester.createdLength();
+            final int bufferSize = part ? d - (int) created + 64 : 100 * 1000;
             final FaultStream s = new FaultStream();
             final DbBuilder b = Db.builder();
             b.testSetupExceptStream();
@@ -954,7 +956,7 @@ public class DbTesterFailure {
             Thread writer = null;
             try {
                 db.sync(SyncLevel.ORDINARY);     // The buffer is empty.
-                Assert.assertEquals(Db.CREATION_LENGTH, db.getStreamLength());
+                Assert.assertEquals(created, db.getStreamLength());
                 s.holdAppends = true;            // The flush waits; the buffer fills.
                 
                 // A record that fills the buffer but about 3,000 bytes, then one of 6,000. In

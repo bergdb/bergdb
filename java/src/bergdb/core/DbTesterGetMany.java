@@ -41,7 +41,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "2", "3");
         db.close();
@@ -60,7 +60,7 @@ public class DbTesterGetMany {
         d.lookupTime = 100;
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3", "2", "1");
         
@@ -87,7 +87,7 @@ public class DbTesterGetMany {
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
         
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "basedir/a", "basedir/b", "basedir/c");
         
@@ -107,7 +107,7 @@ public class DbTesterGetMany {
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
         
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3", "2", "1");
         
@@ -132,7 +132,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 1;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(0, d.result.size());
         
@@ -140,7 +140,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 25;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "2", "3");
         
@@ -148,7 +148,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "2", "3");
         db.close();
@@ -167,7 +167,7 @@ public class DbTesterGetMany {
         d.lookupTime = 1;
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(0, d.result.size());
         
@@ -176,7 +176,7 @@ public class DbTesterGetMany {
         d.lookupTime = 25;
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3", "2");
         
@@ -185,7 +185,7 @@ public class DbTesterGetMany {
         d.lookupTime = Long.MAX_VALUE;
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3", "2", "1");
         db.close();
@@ -217,7 +217,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "2", "3");
         
@@ -240,12 +240,15 @@ public class DbTesterGetMany {
         d.stopCondition = new GetMany.StopCondition() {
             int count = 0;
             public int handleKvt(Kvt kvt) {
+                if (DbTesterJavadoc.bergDbKey(kvt.key)) {
+                    return CONTINUE;        // the startup distance's KV (bergdb 028-15)
+                }
                 count++;
                 return count > 2 ? STOP : ADD;
             }
             public void eod() {}
         };
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "2");
         db.close();
@@ -263,7 +266,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), true);
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "3");
         
@@ -271,7 +274,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), false);
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1");
         db.close();
@@ -289,7 +292,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("z - should be the last"));
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "1", "2", "3", "4");
         db.close();
@@ -303,7 +306,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = 100;
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("a"), false);
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(0, d.result.size());
         db.close();
@@ -322,7 +325,7 @@ public class DbTesterGetMany {
         d.lookupTime = 100;
         d.setBackward();
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), true, true);
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3", "2");
         
@@ -331,7 +334,7 @@ public class DbTesterGetMany {
         d.lookupTime = 100;
         d.setBackward();
         d.stopCondition = new GetMany.Endpoint(Keys.toSegments("c"), false, true);
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "3");
         db.close();
@@ -363,7 +366,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(size, d.result.size());
         
@@ -400,7 +403,7 @@ public class DbTesterGetMany {
         d.startKey = null;
         d.lookupTime = time + 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(size, d.result.size());
         
@@ -423,7 +426,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("b");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         assertResultValues(d.result, "2", "3");
         db.close();
@@ -453,7 +456,7 @@ public class DbTesterGetMany {
         d.lookupTime = 100;
         d.setBackward();
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(2, d.result.size());
         Kvt kvt = d.result.get(0);
@@ -475,7 +478,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("bbb");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         Assert.assertEquals(1, d.result.size());
         assertValueEquals("3", d.result.get(0).value);
         
@@ -483,7 +486,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("aa");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(2, d.result.size());
         assertValueEquals("2", d.result.get(0).value);
@@ -503,7 +506,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("0");    // '0' < 'a'
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(3, d.result.size());
         db.close();
@@ -521,7 +524,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("z");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(0, d.result.size());
         db.close();
@@ -543,14 +546,14 @@ public class DbTesterGetMany {
         GetMany g = db.newGetMany();
         g.startKey = null;
         g.inclusive = true;
-        db.getMany(g);
+        getMany(db, g);
         
         Assert.assertEquals(16, g.result.size());
         
         g = db.newGetMany();
         g.startKey = Keys.toSegments("0");
         g.inclusive = false;
-        db.getMany(g);
+        getMany(db, g);
         
         Assert.assertEquals(15, g.result.size());
         db.close();
@@ -570,7 +573,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("directory/19");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(2, d.result.size());
         Assert.assertTrue(Keys.areEqual(
@@ -602,7 +605,7 @@ public class DbTesterGetMany {
         d.startKey = Keys.toSegments("directory/19");
         d.lookupTime = 100;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         
         Assert.assertEquals(2, d.result.size());
         Assert.assertEquals(0, Keys.compareKeys(
@@ -626,7 +629,7 @@ public class DbTesterGetMany {
         d.startKey = keys.get(0);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         Assert.assertEquals(size, d.result.size());
         for (int i = 0; i < size; i++) {
             long[] k1 = keys.get(i);
@@ -672,7 +675,7 @@ public class DbTesterGetMany {
         d.startKey = keys.get(size - 1);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         Assert.assertEquals(1, d.result.size());
         Assert.assertEquals(0, Keys.compareKeys(keys.get(size - 1), d.result.get(0).key));
         
@@ -682,7 +685,7 @@ public class DbTesterGetMany {
         d.startKey = keys.get(5);
         d.lookupTime = Long.MAX_VALUE;
         d.stopCondition = new GetMany.DontStop();
-        db.getMany(d);
+        getMany(db, d);
         Assert.assertEquals(size - 5, d.result.size());
         for (int i = 5; i < size; i++) {
             long[] k1 = keys.get(i);
@@ -707,7 +710,7 @@ public class DbTesterGetMany {
         g = db.newGetMany();
         g.startKey = Keys.toSegments("0");
         g.inclusive = true;
-        db.getMany(g);
+        getMany(db, g);
         Assert.assertEquals(10, g.result.size());
         db.close();
     }
@@ -742,7 +745,7 @@ public class DbTesterGetMany {
                         g.startKey = Keys.toSegments(key);
                         g.inclusive = true;
                         g.forward = forward;
-                        db.getMany(g);
+                        getMany(db, g);
                         String what = "maxNode " + maxNode + ", long " + longKeys + ", forward "
                                 + forward + ", key " + key;
                         Assert.assertTrue(what + ": no result", g.result.size() > 0);
@@ -753,7 +756,7 @@ public class DbTesterGetMany {
                         g.startKey = Keys.toSegments(key);
                         g.inclusive = false;
                         g.forward = forward;
-                        db.getMany(g);
+                        getMany(db, g);
                         if (g.result.size() > 0) {
                             Assert.assertTrue(what + ": exclusive returned the start key",
                                     Keys.compareKeys(g.startKey, g.result.get(0).key) != 0);
@@ -823,7 +826,7 @@ public class DbTesterGetMany {
                         }
                         public void eod() {}
                     };
-                    db.getMany(g);
+                    getMany(db, g);
 
                     List<long[]> expected = new ArrayList<long[]>();
                     for (int i = 0; i < keys.size(); i++) {
@@ -900,7 +903,7 @@ public class DbTesterGetMany {
         g.startKey = Keys.toSegments("002");
         g.forward = forward;
         Assert.assertEquals(1, g.startKey.length);
-        db.getMany(g);
+        getMany(db, g);
 
         if (forward) {
             Assert.assertEquals(2, g.result.size());
@@ -946,7 +949,7 @@ public class DbTesterGetMany {
         g.startKey = startSkey;
         g.stopCondition = new GetMany.DontStop();
         
-        db.getMany(g);
+        getMany(db, g);
         
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[1], g.result.get(0).key);
@@ -991,7 +994,7 @@ public class DbTesterGetMany {
         g.startKey = startSkey;
         g.stopCondition = new GetMany.DontStop();
         
-        db.getMany(g);
+        getMany(db, g);
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[2], g.result.get(0).key);
         
@@ -1033,7 +1036,7 @@ public class DbTesterGetMany {
         g.startKey = startSkey;
         g.stopCondition = new GetMany.DontStop();
         
-        db.getMany(g);
+        getMany(db, g);
         
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[1], g.result.get(0).key);
@@ -1074,7 +1077,7 @@ public class DbTesterGetMany {
         g.forward = false;
         g.startKey = startSkey;
         g.stopCondition = new GetMany.DontStop();
-        db.getMany(g);
+        getMany(db, g);
         
         Assert.assertEquals(1, g.result.size());
         Assert.assertArrayEquals(skeys[0], g.result.get(0).key);
@@ -1090,9 +1093,9 @@ public class DbTesterGetMany {
         g.startKey = null;
         g.lookupTime = 100;
         g.stopCondition = new GetMany.DontStop();
-        db.getMany(g);
+        getMany(db, g);
         
-        Assert.assertEquals(4, g.getOpCount);
+        Assert.assertEquals(4 + DbTesterJavadoc.NEW_DB_KVS, g.getOpCount);
         db.close();
     }
     
@@ -1160,7 +1163,7 @@ public class DbTesterGetMany {
         g.inclusive = inclusive;
         g.forward = forward;
         g.stopCondition = stop;
-        db.getMany(g);
+        getMany(db, g);
         List<String> keys = new ArrayList<String>();
         for (Kvt kvt : g.result) {
             keys.add(new String(Keys.toBytes(kvt.key), StandardCharsets.US_ASCII));
@@ -1231,7 +1234,7 @@ public class DbTesterGetMany {
                 g.startKey = start;
                 g.inclusive = inclusive;
                 g.stopCondition = new GetMany.Endpoint(end, endInclusive);
-                db.getMany(g);
+                getMany(db, g);
                 
                 final boolean[] eod = new boolean[1];
                 GetMany h = db.newGetMany();
@@ -1249,7 +1252,7 @@ public class DbTesterGetMany {
                         eod[0] = true;
                     }
                 };
-                db.getMany(h);
+                getMany(db, h);
                 
                 String about = "scan " + i + " from " + (start == null ? "null" 
                         : Keys.toString(start)) + " to " + Keys.toString(end) + " at " 
@@ -1263,7 +1266,7 @@ public class DbTesterGetMany {
             backward.endKey = Keys.toSegments(ascii("a"));
             boolean refused = false;
             try {
-                db.getMany(backward);
+                getMany(db, backward);
             } catch (IllegalArgumentException e) {
                 refused = true;
             }
@@ -1319,14 +1322,14 @@ public class DbTesterGetMany {
             g.endInclusive = false;
             g.stopCondition = new GetMany.Endpoint(to, false);     // as the Pub API's scan
             g.gd.pointerListener = keyNodeCounter(withEnd);
-            db.getMany(g);
+            getMany(db, g);
             
             final int[] stopOnly = new int[1];
             GetMany h = db.newGetMany();
             h.startKey = from;
             h.stopCondition = new GetMany.Endpoint(to, false);
             h.gd.pointerListener = keyNodeCounter(stopOnly);
-            db.getMany(h);
+            getMany(db, h);
             
             Assert.assertEquals(50, g.result.size());
             Assert.assertEquals(keysOf(h.result), keysOf(g.result));
@@ -1383,14 +1386,14 @@ public class DbTesterGetMany {
             g.endInclusive = false;
             g.stopCondition = new GetMany.Endpoint(to, false);
             g.gd.pointerListener = keyNodeCounter(withEnd);
-            db.getMany(g);
+            getMany(db, g);
             
             final int[] stopOnly = new int[1];
             GetMany h = db.newGetMany();
             h.startKey = from;
             h.stopCondition = new GetMany.Endpoint(to, false);
             h.gd.pointerListener = keyNodeCounter(stopOnly);
-            db.getMany(h);
+            getMany(db, h);
             
             Assert.assertEquals(5, g.result.size());
             Assert.assertEquals(keysOf(h.result), keysOf(g.result));
@@ -1421,6 +1424,7 @@ public class DbTesterGetMany {
             GetMany g = db.newGetMany();
             g.actualLookupTime = db.lookupTime(Long.MAX_VALUE);
             g.endKey = Keys.toSegments(ascii("pppppppa"));
+            g.startKey = Keys.toSegments(ascii("p"));     // after BergDB's keys (028-15)
             KeyNode root = dag.getTopDs().findRoot(g.actualLookupTime, g.gd);
             GetMany.Chain chain = g.new Chain();
             chain.setup(root);
@@ -1509,10 +1513,10 @@ public class DbTesterGetMany {
                 db = Db.builder().testSetup().clock(clock).mainStream(stream.copy()).start();
             }
             GetMany all = db.newGetMany();
-            db.getMany(all);
+            getMany(db, all);
             GetMany some = db.newGetMany();
             some.valuesBefore = p;
-            db.getMany(some);
+            getMany(db, some);
             Assert.assertEquals(200, all.result.size());
             Assert.assertEquals(200, some.result.size());
             int with = 0;
@@ -1595,6 +1599,16 @@ public class DbTesterGetMany {
         }
         
         return db;
+    }
+    
+    /**
+     * db.getMany(g), and the KVs of BergDB's keys, under "/#", removed from g.result: the
+     * startup distance's KV, which every database has since bergdb 028-15, as Db's Javadoc
+     * tells a caller to skip them.
+     */
+    private static void getMany(Db db, GetMany g) {
+        db.getMany(g);
+        g.result.removeIf(kvt -> DbTesterJavadoc.bergDbKey(kvt.key));
     }
     
     private static void assertResultValues(List<Kvt> result, String... values) {
