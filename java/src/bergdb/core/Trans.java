@@ -170,9 +170,10 @@ public class Trans {
     
     /**
      * Whether a key is one of the keys that the Core writes itself (bergdb 024-37; 010-04,
-     * R5): the key "/#i/-dummy" (DbConstants.DUMMY_KEY, setStartupDistance()'s dummy KV), and
-     * reclaim's directory "/#i/dreclaim/" and every key under it (Reclaim.KEY_PREFIX_SKEY: its
-     * settings, its table, the row of its iteration and maintain()'s filler). A start reads
+     * R5): the key "/#i/-startup-distance" (DbConstants.SD_KEY, the startup distance; bergdb
+     * 028-15; "/#i/-dummy" until then), and reclaim's directory "/#i/dreclaim/" and every
+     * key under it (Reclaim.KEY_PREFIX_SKEY: its settings, its table, the row of its
+     * iteration and maintain()'s filler). A start reads
      * them and refuses what it cannot take, so a caller's put or delete there could make a
      * database that never starts again (CA3; 022-06-2, U2-8): the Builder's public calls
      * refuse such a key with IllegalArgumentException, and Db.execute() refuses a KV at one
@@ -182,7 +183,7 @@ public class Trans {
      * them. Only keys under "/#", the bytes 01 25, are compared further.
      */
     static boolean coreKey(long[] key) {
-        return ownKey(key) && (Keys.compareArrays(key, DbConstants.DUMMY_KEY) == 0
+        return ownKey(key) && (Keys.compareArrays(key, DbConstants.SD_KEY) == 0
                 || Keys.compareArrays(key, Reclaim.KEY_PREFIX_SKEY) == 0
                 || Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, key));
     }
@@ -190,10 +191,10 @@ public class Trans {
     /** The message of the refusal of a caller's write at one of the Core's own keys. */
     static String coreKeyMessage(long[] key) {
         return "The key " + Keys.toDisplayString(Keys.toBytes(key)) + " is one that the Core "
-                + "writes itself, \"/#i/-dummy\" or a key under \"/#i/dreclaim/\": a start reads "
-                + "it, and a put or a delete there could make a database that never starts "
-                + "again. The write is refused, nothing of it is written, and the database goes "
-                + "on (bergdb 010-04, R5; 024-37).";
+                + "writes itself, \"/#i/-startup-distance\" or a key under \"/#i/dreclaim/\": "
+                + "a start reads it, and a put or a delete there could make a database that never "
+                + "starts again. The write is refused, nothing of it is written, and the "
+                + "database goes on (bergdb 010-04, R5; 024-37).";
     }
     
     public String toString() {
@@ -247,8 +248,8 @@ public class Trans {
      * takes them, a put or a delete, and nothing is added (Db, "Limits"; bergdb 024-17, L2 and
      * L4); Db.execute() refuses a transaction of more than Db.MAX_OPERATIONS operations (500)
      * or of more bytes than its limits (L1, L3, L5).</p>
-     * <p>A put or a delete at a key that the Core writes itself, "/#i/-dummy" or reclaim's
-     * "/#i/dreclaim/" or a key under it, is refused with IllegalArgumentException by the call
+     * <p>A put or a delete at a key that the Core writes itself, "/#i/-startup-distance" or
+     * reclaim's "/#i/dreclaim/" or a key under it, is refused with IllegalArgumentException by the call
      * that takes it, and nothing is added (Db, "The Core's own keys are refused"; bergdb 010-04,
      * R5; 024-37). A key that a key transformation gives there is refused by Db.execute() with
      * a DbException, and so is a KV of putLongKey() or deleteLongKey() there. The Core's own

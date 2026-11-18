@@ -28,6 +28,21 @@ public class DbTesterJavadoc {
 
     private static final long LATEST = Long.MAX_VALUE;
 
+    /**
+     * The KVs of BergDB's own in every database from its creation on: the startup distance's
+     * (bergdb 028-15), which a scan of the whole database returns too.
+     */
+    static final int NEW_DB_KVS = 1;
+
+    /**
+     * Whether a key is BergDB's, under "/#": its bytes begin with 01 25 (Db, "Keys and the
+     * layers above").
+     */
+    static boolean bergDbKey(long[] key) {
+        byte[] k = Keys.toBytes(key);
+        return k.length >= 2 && k[0] == 1 && k[1] == 0x25;
+    }
+
     private static Db dbWithKeys(int n) {
         Db db = Db.builder().testSetup().start();
         for (int i = 0; i < n; i++) {
@@ -259,22 +274,26 @@ public class DbTesterJavadoc {
             int[] counts = {0, 1, 3, 5, 7};
             for (int n : counts) {
                 GetMany g = db.newGetMany();
+                g.startKey = Keys.toSegments("k");      // after BergDB's keys (bergdb 028-15)
                 g.stopCondition = new GetMany.GetN(n);
                 db.getMany(g);
                 Assert.assertEquals("GetN(" + n + ")", Math.min(n, 5), g.result.size());
 
                 g = db.newGetMany();
+                g.startKey = Keys.toSegments("k");
                 g.stopCondition = new GetMany.PrefixN(Keys.toSegments("k"), n);
                 db.getMany(g);
                 Assert.assertEquals("PrefixN(k, " + n + ")", Math.min(n, 5), g.result.size());
             }
             GetMany g = db.newGetMany();
+            g.startKey = Keys.toSegments("k");
             g.stopCondition = new GetMany.GetOne();
             db.getMany(g);
             Assert.assertEquals("GetOne", 1, g.result.size());
 
             long[] prefix = Keys.toSegments("k");
             g = db.newGetMany();
+            g.startKey = Keys.toSegments("k");
             g.stopCondition = new GetMany.PrefixN(prefix, 10);
             prefix[0] = Keys.toSegments("x")[0];
             db.getMany(g);
@@ -307,7 +326,7 @@ public class DbTesterJavadoc {
                 }
             };
             long[] times = {LATEST, 0};
-            int[] sizes = {3, 0};
+            int[] sizes = {3 + NEW_DB_KVS, 0};
             for (int i = 0; i < times.length; i++) {
                 calls[0] = calls[1] = 0;
                 GetMany g = db.newGetMany();
@@ -481,7 +500,8 @@ public class DbTesterJavadoc {
             }
             db.execute(b.build());
 
-            byte[][] sorted = keys.clone();
+            byte[][] sorted = Arrays.copyOf(keys, keys.length + 1);
+            sorted[keys.length] = Keys.toBytes(DbConstants.SD_KEY);    // bergdb 028-15
             Arrays.sort(sorted, Arrays::compareUnsigned);
             List<Kvt> forward = scan(db, null);
             GetMany g = db.newGetMany();
@@ -515,8 +535,9 @@ public class DbTesterJavadoc {
 
     /**
      * Db, "Keys and the layers above" (bergdb 020-24-09, U9-4): the Core writes BergDB's keys
-     * itself, with no Pub API: a new database has none; setStartupDistance() puts a value of
-     * 200 kB at "/#i/-dummy", setRetainDuration() reclaim's settings at
+     * itself, with no Pub API: a new database has one, the startup distance, 4 bytes at
+     * "/#i/-startup-distance", which setStartupDistance() puts again (bergdb 028-15; a value
+     * of 200 kB at "/#i/-dummy" until then), setRetainDuration() reclaim's settings at
      * "/#i/dreclaim/-settings.txt"; a scan returns them, getTransactionCount() counts their
      * transactions, and a StopCondition that returns CONTINUE for the keys that start with 01
      * 25 leaves the user's keys, those around 01 25 too.
@@ -531,25 +552,26 @@ public class DbTesterJavadoc {
                 b.put(k, new byte[] {7});
             }
             db.execute(b.build());
-            Assert.assertEquals("a new database", mine.length, scan(db, null).size());
+            Assert.assertEquals("a new database", mine.length + 1, scan(db, null).size());
 
             db.setStartupDistance(500 * 1000);
             db.setRetainDuration(3600 * Clock.UNITS_PER_SEC);
             Assert.assertEquals("transactions", 3, db.getTransactionCount());
-            byte[] dummy = {1, 0x25, 0x6b, 1, 0x2f, 0x66, 0x77, 0x6f, 0x6f, 0x7b};
+            byte[] sd = Keys.toBytes("/#i/-startup-distance");
             byte[] settings = Keys.toBytes("/#i/dreclaim/-settings.txt");
             List<byte[]> bergdbs = new ArrayList<>();
             for (Kvt kvt : scan(db, null)) {
                 byte[] k = Keys.toBytes(kvt.key);
                 if (k.length >= 2 && k[0] == 1 && k[1] == 0x25) {
                     bergdbs.add(k);
-                    if (Arrays.equals(k, dummy)) {
-                        Assert.assertEquals("the dummy's value", 200 * 1000, kvt.value.length);
+                    if (Arrays.equals(k, sd)) {
+                        Assert.assertArrayEquals("the startup distance's value",
+                                new byte[] {0x20, (byte) 0xa1, 0x07, 0}, kvt.value);
                     }
                 }
             }
             Assert.assertEquals("BergDB's keys", 2, bergdbs.size());
-            Assert.assertTrue("/#i/-dummy", Arrays.equals(dummy, bergdbs.get(0)));
+            Assert.assertTrue("/#i/-startup-distance", Arrays.equals(sd, bergdbs.get(0)));
             Assert.assertTrue("the settings", Arrays.equals(settings, bergdbs.get(1)));
 
             List<Kvt> yours = scan(db, new GetMany.StopCondition() {
@@ -667,7 +689,7 @@ public class DbTesterJavadoc {
             Assert.assertTrue("inclusive, forward", g.inclusive && g.forward);
             Assert.assertTrue("stopCondition", g.stopCondition instanceof GetMany.DontStop);
             db.getMany(g);
-            Assert.assertEquals("every KV", 3, g.result.size());
+            Assert.assertEquals("every KV", 3 + NEW_DB_KVS, g.result.size());
             assertThrows("a second call", IllegalArgumentException.class, () -> db.getMany(g));
             Assert.assertEquals("v0", new String(get(db, "k0")));
         } finally {
@@ -677,18 +699,20 @@ public class DbTesterJavadoc {
 
     /**
      * Kvt.time and GetData.kvTime: the time of the key node entry that points to the value,
-     * not the time of the write (bergdb 021-19; 020-24-09, U9-3). T1 puts 27 keys, and T2 a
-     * 28th, which replaces their full key node (a space split), so that T1's keys read T2's
+     * not the time of the write (bergdb 021-19; 020-24-09, U9-3). T1 puts 25 keys, and T2 a
+     * 26th, which replaces their full key node (a space split), so that T1's keys read T2's
      * time; at or after the write's time and at or before the lookup time; a read before T2
      * gives T1's; the write's time is getTrans(tpos).tt. If the time becomes the write's, the
-     * last assertion fails, and the Javadoc of both is to change.
+     * last assertion fails, and the Javadoc of both is to change. 25 keys since bergdb 028-15:
+     * the startup distance's KV, with its time klong, takes two places in the root.
      */
     @Nano
     public static void testKvTimeIsTheEntrysTime() {
         Db db = Db.builder().testSetup().start();
+        final int n = 25;
         try {
             Trans.Builder b = db.trans();
-            for (int i = 0; i < 27; i++) {
+            for (int i = 0; i < n; i++) {
                 b.put(new byte[] {(byte) (2 * i)}, new byte[] {1});
             }
             Trans t1 = b.build();
@@ -698,10 +722,11 @@ public class DbTesterJavadoc {
 
             GetMany g = db.newGetMany();
             db.getMany(g);
-            Assert.assertEquals("KVs", 28, g.result.size());
+            Assert.assertEquals("KVs", n + 1 + NEW_DB_KVS, g.result.size());
             GetData gd = db.newGetData();
             int later = 0;
             for (Kvt kvt : g.result) {
+                if (bergDbKey(kvt.key)) continue;       // the startup distance (bergdb 028-15)
                 boolean ofT2 = Keys.toBytes(kvt.key)[0] == 55;
                 long written = ofT2 ? t2.tt : t1.tt;
                 Assert.assertTrue("at or after the write's time", kvt.time >= written);
@@ -716,7 +741,7 @@ public class DbTesterJavadoc {
                 }
                 later += kvt.time != written ? 1 : 0;
             }
-            Assert.assertEquals("T1's keys with T2's time", 27, later);
+            Assert.assertEquals("T1's keys with T2's time", n, later);
         } finally {
             db.close();
         }
@@ -917,7 +942,7 @@ public class DbTesterJavadoc {
             emptyStart.startKey = none;
             final GetMany notEmpty = db.newGetMany();
             db.getMany(notEmpty);
-            Assert.assertEquals("two KVs", 2, notEmpty.result.size());
+            Assert.assertEquals("two KVs", 2 + NEW_DB_KVS, notEmpty.result.size());
             final GetMany badAnswer = db.newGetMany();
             badAnswer.stopCondition = new GetMany.StopCondition() {
                 public int handleKvt(Kvt kvt) {
@@ -955,7 +980,7 @@ public class DbTesterJavadoc {
                 Assert.assertTrue(about + ": the message names it, " + e.getMessage(),
                         e.getMessage().contains(params[i]));
             }
-            Assert.assertEquals("unchanged", 2, notEmpty.result.size());
+            Assert.assertEquals("unchanged", 2 + NEW_DB_KVS, notEmpty.result.size());
             assertSpoiled(made, 6);
             Trans t = b.get().put("k2", "v2").build();
             Assert.assertEquals("nothing added", 1, t.kvs.length);

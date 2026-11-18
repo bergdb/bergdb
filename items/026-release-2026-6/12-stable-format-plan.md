@@ -339,6 +339,17 @@ the bytes change in 2026.6 anyway; reading format 7 would keep its
 reader for good; (a) removes code; with the meta version raised, 2026.5
 refuses a 2026.6 database before it writes.
 
+**Frans, 2026-11-18.** At 10:50: "SF4 (a), 028-15 A". At 11:51: "Let's
+forget about stable format for the stream. I decide to not focus on this
+for this release. The focus for the release are the algorithsm,
+simplifying them, proving them. If possible." So SF4 is open again, and
+not 2026.6's focus: no format is called the first stable one. What
+stands is 028-15's option A: 2026.6 refuses 2026.5's databases and
+older, with a message that names release 2026.5 (meta version 155, done
+in 028-15, the code removing the "absent means older" paths that the
+raise made dead: a reclaim row without endKey, a meta block without the
+node size, format 6's message).
+
 ### SF5. What a reader does with what it does not know
 
 **The question.** Reserved bytes, unused bits, paddings, unknown node
@@ -462,7 +473,9 @@ from the last record) and written by a small transaction when sd
 changes; the meta bytes become reserved zero and the dummy goes (017-07,
 section 2). With SF4 (a), no fallback for older streams. **Recommended:
 the KV**, by Frans's rule for the meta block (2.1, precedents). Cost: a
-KV and a read at the start; 200 kB less at each change.
+KV and a read at the start; 200 kB less at each change. **Done** in
+028-15 (Frans, 2026-11-18, 10:50, "028-15 A": older streams refused, no
+fallback), with SF4 itself set aside at 11:51 (above).
 
 **(b) The unit.** Options: stream bytes, as today (a compact stream at
 the same sd keeps about 1/r times the transactions, r 0.44 to 0.81 by
@@ -745,3 +758,10 @@ Frans: 11 questions, SF1 to SF11, each with a recommendation; none
 decided. Next: the walk through them with Frans, one at a time, in
 section 3's order; then M1 and M3 (agents, no timing slot) beside the
 first decisions.
+
+2026-11-18. SF4: Frans chose (a) at 10:50 ("SF4 (a), 028-15 A") and set
+the stable format aside for 2026.6 at 11:51 ("Let's forget about stable
+format for the stream. I decide to not focus on this for this
+release."): SF4 is open again. SF7 (a) done in 028-15 (the KV, meta
+version 155, 2026.5's databases refused). The other questions as they
+were.

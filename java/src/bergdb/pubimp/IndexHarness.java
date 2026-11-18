@@ -1298,7 +1298,7 @@ final class IndexHarness {
      * The system property harness.sd, a startup distance in bytes for the harnesses' runs by
      * hand and the soak (bergdb 020-17), or 0: the default. The Pub API's least is 5 MB,
      * more than a harness's stream, so that nothing of the index is evicted; with the Core's
-     * Db.setStartupDistance, at least 400,000 bytes (it commits a value of 200 kB, at each
+     * Db.setStartupDistance, at least 400,000 bytes (it commits a small transaction, at each
      * start, to record the setting), the nodes written before it can be, and are with the
      * property evict (every, random) or a small evictbudget.
      */

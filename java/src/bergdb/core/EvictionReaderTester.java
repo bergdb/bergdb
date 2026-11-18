@@ -597,7 +597,13 @@ public class EvictionReaderTester {
      */
     @Nano
     public static void testAuditWithReaderCleanup() throws Exception {
-        final Db db = Db.builder().testSetup(new MemoryStream()).audit(1).start();
+        final Db db = Db.builder().testSetup(new MemoryStream()).audit(1).startupDistance(10)
+                .start();
+        // A record whose take writes the index nodes of the creating start's record of the
+        // startup distance (bergdb 028-15), so that the audit asks the oracle of a clean
+        // canonical node before its copy of the handles; with only that record's dirty nodes
+        // it asked after the copy.
+        db.execute(db.trans().put("/x", "1").build());
         Thread auditor = null, blocker = null;
         final CountDownLatch mapHeld = new CountDownLatch(1), mapRelease = new CountDownLatch(1);
         try {

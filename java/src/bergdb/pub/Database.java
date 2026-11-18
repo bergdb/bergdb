@@ -400,7 +400,7 @@ public interface Database extends AutoCloseable {
      * stream that a start reads (bergdb 005-49), while the database runs (bergdb 005-53).
      * The value is clamped as DatabaseBuilder.startupDistanceInMb() clamps it, to 5 to 1000
      * MB. The new setting is in force when the method returns. It is written to the stream
-     * with a small transaction of the database's own (a value of 200 kB), so a restart keeps
+     * with a small transaction of the database's own (a KV of 4 bytes), so a restart keeps
      * it, as it keeps the setting the database was created with; a call with the setting in
      * force writes nothing. A setting that changes the stream's bytes, as this one does, is
      * kept in the stream; one that does not, as the cache size, lasts for the run. Like any

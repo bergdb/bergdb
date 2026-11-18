@@ -18,6 +18,27 @@ each tag), and `baseline.zip` is not published (bergdb 026, "How the
 release is made"; 029). The notes say so where they list the files.
 
 
+### The stream
+
+* **Databases of release 2026.5 and earlier are refused: make them again**
+  (bergdb 028-15, option A; Frans, 2026-11-18, 10:50). The startup
+  distance moved out of the meta blocks into a key-value pair of BergDB's
+  own, `/#i/-startup-distance`, and the meta block's version is 155 (154
+  until now). A start of an older database throws a
+  `VersioningStreamException` whose message names release 2026.5, and
+  writes nothing. To keep the data, read it with release 2026.5 and put
+  it into a new database with this release. Release 2026.5 refuses a
+  database of this release in the same way. A change of the startup
+  distance (`Database.setStartupDistanceInMb`, `Db.setStartupDistance`)
+  now writes a small transaction, not one of 200 kB, and a crash inside
+  it starts with the old setting. The Core API: every database has that
+  key-value pair from its creation on, and a scan of the whole key space
+  returns it (Db, "Keys and the layers above"); the creation writes two
+  records, so a new database's first transaction has a time one unit
+  later than before. The stream's bytes changed for every configuration
+  of StreamDigest (a record after the primordial one, and no dummy
+  value).
+
 ### Pub API
 
 * **`bergdb.pub.Limits`: the limits as constants, and a check of a key

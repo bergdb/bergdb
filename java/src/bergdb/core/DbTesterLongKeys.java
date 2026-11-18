@@ -53,7 +53,10 @@ public class DbTesterLongKeys {
                 value.getBytes(java.nio.charset.StandardCharsets.UTF_8), DbUtil.get(db, key));
     }
 
-    /** The keys of a scan of the whole database, forward or backward. */
+    /**
+     * The keys of a scan of the whole database, forward or backward, but the startup
+     * distance's, which every database has (bergdb 028-15).
+     */
     private static void assertScan(Db db, boolean forward, byte[]... keys) {
         GetMany g = db.newGetMany();
         g.lookupTime = LATEST;
@@ -63,6 +66,7 @@ public class DbTesterLongKeys {
         g.stopCondition = new GetMany.DontStop();
         db.getMany(g);
         List<Kvt> result = g.result;
+        result.removeIf(kvt -> Keys.compareArrays(kvt.key, DbConstants.SD_KEY) == 0);
         Assert.assertEquals("the scan's KVs", keys.length, result.size());
         for (int i = 0; i < keys.length; i++) {
             Assert.assertTrue("the scan's key " + i,

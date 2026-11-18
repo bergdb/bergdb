@@ -130,7 +130,9 @@ public class PubTesterJavadocRest {
      * last transaction's, else the next clock unit; a put, a delete, a w(), an empty w() and
      * an rw() each have a time of their own, increasing. Connection.transactionInfo() gives
      * the same time for the value it wrote. sync(SyncLevel) of a Transaction, a Connection
-     * and a Database refuses null with IllegalArgumentException.
+     * and a Database refuses null with IllegalArgumentException. The creation takes the
+     * clock's time and the next unit, for its record of the startup distance (bergdb
+     * 028-15), so the first transaction's time is t0 + 2.
      */
     @Nano
     public static void testTransactionTimes() {
@@ -143,7 +145,7 @@ public class PubTesterJavadocRest {
                     c.w().put("/b.txt", "b").execute(), c.w().execute(),
                     c.rw(env -> env.put("/c.txt", "c"))};
             for (int i = 0; i < ts.length; i++) {
-                Assert.assertEquals("transaction " + i, t0 + 1 + i, ts[i].getTime().units());
+                Assert.assertEquals("transaction " + i, t0 + 2 + i, ts[i].getTime().units());
             }
             clock.setTime(Time.units(t0 + 1000));
             Transaction t = c.put("/d.txt", "d");
@@ -344,7 +346,9 @@ public class PubTesterJavadocRest {
 
         final TestClock testClock = new TestClock();
         final long lastUser = Time.MAX.units() - 1024;
-        testClock.setTime(Time.units(lastUser - 1));
+        // The creation takes two times, its record of the startup distance the second
+        // (bergdb 028-15).
+        testClock.setTime(Time.units(lastUser - 2));
         try (Database db = Factory.database().memory().clock(testClock).start()) {
             final Connection c = db.connection();
             Assert.assertEquals(lastUser, c.put("/a.txt", "a").getTime().units());

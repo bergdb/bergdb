@@ -102,7 +102,8 @@ public class ScenarioTester {
         g.startKey = null;
         db.getMany(g);
         
-        Assert.assertTrue(g.result.size() == n);
+        // And the startup distance's KV, which every database has (bergdb 028-15).
+        Assert.assertTrue(g.result.size() == n + 1);
         db.close();
     }
     

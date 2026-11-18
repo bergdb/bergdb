@@ -9,7 +9,8 @@ import bergdb.stream.MemoryStream;
 
 /**
  * The keys that the Core writes itself (bergdb 024-37; 010-04, R5; Trans.coreKey()): the key
- * "/#i/-dummy", and "/#i/dreclaim/" and every key under it. A caller's put or delete there is
+ * "/#i/-startup-distance" ("/#i/-dummy" until bergdb 028-15), and "/#i/dreclaim/" and every
+ * key under it. A caller's put or delete there is
  * refused, by the Trans.Builder call that takes it with IllegalArgumentException, or by
  * Db.execute() with a DbException for the internal calls putLongKey() and deleteLongKey() and
  * for a key that a key transformation gives. Nothing is written, the database goes on, and
@@ -19,12 +20,13 @@ import bergdb.stream.MemoryStream;
 public class DbTesterCoreKeys {
 
     /** The Core's keys, and keys under its reclaim directory that it does not write today. */
-    private static final String[] CORE = {"/#i/-dummy", "/#i/dreclaim/",
+    private static final String[] CORE = {"/#i/-startup-distance", "/#i/dreclaim/",
             "/#i/dreclaim/-settings.txt", "/#i/dreclaim/-table.txt", "/#i/dreclaim/-current.txt",
             "/#i/dreclaim/-fill.txt", "/#i/dreclaim/-other.txt", "/#i/dreclaim/dx/-y"};
 
     /** Keys next to them, and the Pub API's keys under "/#i/": taken. */
-    private static final String[] OTHERS = {"/#i/-dummy2", "/#i/-dumm", "/#i/dreclaimx/-a",
+    private static final String[] OTHERS = {"/#i/-startup-distance2", "/#i/-startup-dist",
+            "/#i/-dummy", "/#i/dreclaimx/-a",
             "/#i/dreclai/-a", "/#i/didef/-n", "/#i/dient/dn/-k", "/#i/didel/dn/-0000000000000001",
             "/#i/-other", "/#j/dreclaim/-settings.txt"};
 
@@ -44,8 +46,8 @@ public class DbTesterCoreKeys {
 
     /**
      * CA3: each way to put or delete a key of the Core's own is refused, nothing is written,
-     * the database goes on and starts again with the settings and the dummy as the Core put
-     * them. The keys next to them, and the Pub API's, are taken.
+     * the database goes on and starts again with the settings and the startup distance as
+     * the Core put them. The keys next to them, and the Pub API's, are taken.
      */
     @Nano
     public static void testCallersWritesRefused() {
@@ -100,8 +102,9 @@ public class DbTesterCoreKeys {
             Assert.assertEquals("the retain duration", retain, db.getRetainDuration());
             Assert.assertArrayEquals("the settings", settings,
                     DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME));
-            Assert.assertEquals("the dummy", 200 * 1000,
-                    DbUtil.get(db, Long.MAX_VALUE, "/#i/-dummy").length);
+            Assert.assertEquals("the startup distance", 500 * 1000, db.getStartupDistance());
+            Assert.assertEquals("the startup distance's KV", 500 * 1000, Db.parseStartupDistance(
+                    DbUtil.get(db, Long.MAX_VALUE, "/#i/-startup-distance")));
             Assert.assertArrayEquals("/after", new byte[] {'1'},
                     DbUtil.get(db, Long.MAX_VALUE, "/after"));
         } finally {
@@ -135,7 +138,13 @@ public class DbTesterCoreKeys {
                 refused(s + ", key transformation", DbException.class, () -> d.execute(t));
                 Assert.assertEquals(s + ": nothing written", count, db.getTransactionCount());
                 Assert.assertNull(DbUtil.get(db, Long.MAX_VALUE, "/u"));
-                Assert.assertNull(DbUtil.get(db, Long.MAX_VALUE, s));
+                byte[] core = DbUtil.get(db, Long.MAX_VALUE, s);
+                if (Keys.compareArrays(target, DbConstants.SD_KEY) == 0) {
+                    Assert.assertEquals(s + ": the Core's value", db.getStartupDistance(),
+                            Db.parseStartupDistance(core));     // bergdb 028-15
+                } else {
+                    Assert.assertNull(core);
+                }
                 Assert.assertTrue(s + ": the key as written",
                         Keys.compareArrays(written, t.kvs[0].getKey()) == 0
                         || Keys.compareArrays(written, t.kvs[1].getKey()) == 0);

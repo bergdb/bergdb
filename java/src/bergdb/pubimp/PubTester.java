@@ -2045,7 +2045,8 @@ public class PubTester {
     /**
      * The startup distance set while the database runs (Database.setStartupDistanceInMb,
      * bergdb 005-53, option E): in force when the call returns, written to the stream with
-     * the call's own transaction (a value of 200 kB), and kept by a restart whose builder
+     * the call's own transaction (a KV of 4 bytes since bergdb 028-15, a value of 200 kB
+     * until then), and kept by a restart whose builder
      * passes its default; a call with the setting in force appends nothing; the value clamped
      * to 5 to 1000 MB, as the builder clamps it. A call after stop() throws and leaves the
      * setting as it was. Until 005-53 the core's setter wrote its transaction also for the
@@ -2063,8 +2064,8 @@ public class PubTester {
         d.setStartupDistanceInMb(20);
         Assert.assertEquals(20, d.getStartupDistanceInMb());
         Assert.assertEquals(20 * 1000000, db.getStartupDistance());
-        Assert.assertTrue("the call's transaction", 
-                db.getStreamLength() - length >= RecoverableStream.META_BLOCK_DISTANCE);
+        Assert.assertTrue("the call's transaction", db.getStreamLength() > length
+                && db.getStreamLength() - length < RecoverableStream.META_BLOCK_DISTANCE);
         
         length = db.getStreamLength();
         d.setStartupDistanceInMb(20);
@@ -2165,7 +2166,10 @@ public class PubTester {
      * about 22 MB, all of the stream), lowered to 5 MB, then 300 commits. No record from the
      * call on is more than a third of what the records wrote until they were back near their
      * size before the call; with the deadline at twice the new setting at once, the call's
-     * own record would take most of it.
+     * own record would take most of it. Since the call's record is small (a KV of 4 bytes,
+     * bergdb 028-15; 200 kB until then, which began the payment at once), the records grow
+     * over the first commits after it, past 10 times their size before the call, and then
+     * come back: the payment is counted from the call until they are back.
      */
     @Nano("f")
     public static void testDecreaseOfStartupDistanceInMbF() {
@@ -2186,14 +2190,15 @@ public class PubTester {
         d.setStartupDistanceInMb(5);
         long largest = db.getStreamLength() - length;
         long paid = largest;
-        boolean back = false;
+        boolean paying = false, back = false;
         for (int i = 0; i < 300; i++) {
             length = db.getStreamLength();
             WBuilder w = d.connection().w();
             for (int j = 0; j < 20; j++) w.put("/k/" + r.nextInt(1000 * 1000), "vvvv");
             w.execute();
             long record = db.getStreamLength() - length;
-            back = back || record < 10 * before;
+            paying = paying || record >= 10 * before;
+            back = back || (paying && record < 10 * before);
             if (!back) {
                 paid += record;
                 largest = Math.max(largest, record);
@@ -3241,7 +3246,10 @@ public class PubTester {
         for (CryptoKey key : new CryptoKey[] {null, CryptoKey.generate()}) {
             MemoryStream m = new MemoryStream();
             ((DatabaseImp) builderOn(m, key).start()).getDb().close();
-            final long length = m.getLength();
+            // The creation, Db.CREATION_LENGTH: the first meta block and the primordial record;
+            // the creating start's record of the startup distance follows (bergdb 028-15).
+            final long length = 272;
+            Assert.assertTrue("the creating start's record", m.getLength() > length);
             
             for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1}) {
                 MemoryStream m2 = m.copy();

@@ -33,7 +33,8 @@ recovery's fill.
 * **s**, the startup pos: R(k)'s startupPos, a record's position (0 is
   read as 128, the first record). **ts**, the startup time, R(s)'s time.
   **The startup section**: R(s), ..., R(k); T(s) is not rerun. **sd**:
-  the startup distance of the last valid meta block.
+  the startup distance, the KV `/#i/-startup-distance` (since 028-15;
+  until then the last valid meta block's).
 * **topPos**: R(k)'s position of the newest written top node. **gd(j)**:
   R(j)'s got-dirty pairs (id, position). **prevPos**: the position of
   the version before, which a key node version names. A **vpos** (odd)
@@ -49,8 +50,9 @@ recovery's fill.
 In this order, under the write lock and `readSync`; from step 2 on, a
 refusal has written nothing:
 
-1. **An empty stream** is created: meta block 0 (lastTrans −1, sd, the
-   node size, the builder's id or a random one, the time) and the
+1. **An empty stream** is created: meta block 0 (lastTrans −1, the
+   node size, the builder's id or a random one, the time; sd too until
+   028-15) and the
    primordial record, a super root and an empty key node: 272 bytes
    (`Db.CREATION_LENGTH`, asserted at the creation; 264 until 024-25,
    26c21000). With `created.txt` (the Pub
@@ -62,12 +64,14 @@ refusal has written nothing:
 3. **The last valid meta block** B: of the blocks complete in the
    stream, from the last down to the first at or after the first
    position, the first whose last byte is 10. Each block read must have
-   the magic and the version 154: else a `StreamFormatException` (SFE)
-   that names the causes (020-28), or a `VersioningStreamException`
-   (005-40). B's time must not be negative. None valid: an SFE.
-4. **Its node size**: 0 is refused (a stream before 2026-10-27, 005-50);
-   above 62 is a damaged block; another than the start's (30 but in
-   tests, 026-08) is refused.
+   the magic and the version 155 (154 until 028-15, whose streams, of
+   2026.5 and before, are refused with a message that names 2026.5): else
+   a `StreamFormatException` (SFE) that names the causes (020-28), or a
+   `VersioningStreamException` (005-40). B's time must not be negative.
+   None valid: an SFE.
+4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
+   before 2026-10-27 until 028-15, 005-50); another than the start's (30
+   but in tests, 026-08) is refused.
 5. **Its lastTrans**: −1, or from max(128, the first position) to below
    the block (019-34); else an SFE.
 
@@ -105,26 +109,24 @@ other damage is refused as far as the checks see it.
             of 8, and 0 or at least 128     (015-75; R's own position,
             which the take never writes, since 028-09)
         s := R.startupPos;  last := R's position
-    the meta block in memory: lastTrans := last;  sd := its sd, with
-        no range check (027-03, G9)
+    the meta block in memory: lastTrans := last
     section := every committed record from s (128 if 0) to the end,
         parsed; the record at s must be committed          (005-28)
     the clock's last time := the last record's time
 
-sd is B's, so a change of the setting takes effect at the first meta
-block written after it: `setStartupDistance` (clamped to 400,000 bytes
-to 10^9) sets it in the meta block in memory and writes a record of at
-least MD bytes, with a meta block inside. A crash after that block and
-before the record's end aborts the record, and the start takes the new
-sd all the same; a crash inside the block, the old one. Not a bug
-(028-08): the setting is not data, both values are valid, and a crash
-just after the record's end gives the new one too
-(`testCrashInsideSetStartupDistance`). Until 028-09, a startupPos equal
+sd is read at the end of the start (1.9), from its KV. Until 028-15 it
+was B's: `setStartupDistance` set it in the meta block in memory and
+wrote a record of at least MD bytes (the dummy `/#i/-dummy`), with a
+meta block inside, so that a crash after that block and before the
+record's end took the new sd though the record was aborted (028-08, not
+a bug). Since 028-15 the setting is a KV of the setter's record: a crash
+before the record's end starts with the old sd, one after it with the
+new (`testCrashInsideSetStartupDistance`). Until 028-09, a startupPos equal
 to its own record's position was taken: a section of R(k) alone, whose
 transaction is not rerun, so every key that no index node of R(k) held
 was gone, and the next commit wrote that s again
 (`testOwnPositionStartupPosRefused`). A start takes s and sd from the
-stream only (`Db.readStartupPosAndDistance`): `Db.start()` has no
+stream only (`Db.readStartupPos`, `Db.readStartupDistanceKv`): `Db.start()` has no
 parameters. Until 028-10 (2026-11-14), the public `Db.start(StartParams)`
 took a caller's s and sd unchecked and skipped the walk above; an s
 after the stream's lost the keys before it for good, a bug by R5.
@@ -232,9 +234,16 @@ Every value node in memory has a position and every key node passes its
 check (`postStartupCheck`, always on; an `AssertionError` otherwise); the
 cut back ends (M22); Rule R stays. The STM's first time is the last
 record's (after the validation, 005-75); `created.txt` is written if
-missing (015-01); the database is active; reclaim reads its settings and
-table, and makes a cut that a crash left pending (027-13, section 1.9);
-eviction takes in what the start made resident (015-68, 019-47). The
+missing (015-01); the database is active; sd is read from its KV
+(`Db.readStartupDistanceKv`, 028-15: 4 bytes, 10 to 10^9, else an
+`InternalDataException`; no KV is an SFE unless the stream holds the
+primordial record alone, when the builder's sd is kept); reclaim reads
+its settings and table, and makes a cut that a crash left pending
+(027-13, section 1.9); eviction takes in what the start made resident
+(015-68, 019-47). A stream of the primordial record alone (a creation,
+or a crash before the creating start's next record) gets that record
+now: an internal transaction that puts the builder's sd at the KV, the
+writer's first (027-03, section 14.2). The
 start returns s as stored, sd, ts, the records read and R(k)'s last
 position (`StartInfo`). A start that throws closes the storage before
 the exception leaves (005-32).
@@ -420,7 +429,8 @@ T3 and T4 are part 6's; what they give a start:
 ## 6. In Java
 
 `core/Db` (`startInner`, the order of 1.2 to 1.9, and the methods it
-calls, `readStartupPosAndDistance` among them; `StartInfo`);
+calls, `readStartupPos` and `readStartupDistanceKv` among them;
+`StartInfo`);
 `core/DbStarter` (1.4's validation to 1.9); `core/NodeCollection`
 (`setStartupSection`, `readVersion`,
 `endReconstruction`, `followStreamPointer`, `resolvePointers`,
@@ -553,3 +563,7 @@ is 028-11.
 the three tests show (028-08 not a bug; 028-09 fixed, a startupPos at its
 own record refused; 028-10 a bug by R5, for Frans), section 7 their
 tests, section 9 the outcomes, 1.11 `level1.sh`'s corrected header.
+
+2026-11-18. 028-15 (agent sdkv of coord-1118): sd is a KV read at the end
+of a start (1.1, 1.4, 1.9); meta version 155, a block without the node
+size damaged (1.2); the creating start's record of sd (1.9).

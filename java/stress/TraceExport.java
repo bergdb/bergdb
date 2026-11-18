@@ -252,15 +252,20 @@ public class TraceExport {
         return db;
     }
 
-    /** Starts the database without setting the retain duration (run A sets it later). */
+    /** Starts the database without setting the retain duration. */
     Db startOnly(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
+        return builder(stream, clock, schedule).start();
+    }
+
+    /** The builder of the runs' databases. */
+    DbBuilder builder(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance)
                 .evictionSchedule(schedule, Long.getLong("evictseed", seed));
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
-        return b.start();
+        return b;
     }
 
     /** A new stream: with reclaim a CutStream, which refuses reads below the cut. */
@@ -760,11 +765,62 @@ public class TraceExport {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
         // The retain duration is set below, once the hooks record: its call commits a
-        // record of reclaim's settings, R(1) (bergdb 015-87).
-        final Db db = startOnly(stream, clock, Eviction.Schedule.NONE);
+        // record of reclaim's settings (bergdb 015-87). The hooks record from the start on:
+        // the creating start commits R(1), the startup distance's KV (bergdb 028-15), and
+        // R(0) is recorded at the first hook of that transaction, before it changes the tree.
+        final Db db = builder(stream, clock, Eviction.Schedule.NONE).build();
         final NodeStream ns = db.internal().nodeStream();
+        final List<ValueNode> created = new ArrayList<ValueNode>();
+        final List<Node> touched = new ArrayList<Node>();
+        final boolean[] r0done = {false};
+        final Runnable initR0 = () -> {
+            if (!r0done[0]) {
+                r0done[0] = true;
+                recordR0(db, ns);
+            }
+        };
+        Db.TestHooks hooks = new Db.TestHooks() {
+            public void transExecuted(Db.ExecuteData x) {
+                initR0.run();
+                record(db, x, created, touched, ns);
+                created.clear();
+                touched.clear();
+                treeOps.clear();
+            }
+            public void valueNodeCreated(ValueNode node, long[] key) {
+                initR0.run();
+                created.add(node);
+                // The operation that Db.putKvs gave the Dag last changed it: a put, or a
+                // delete that deleted (bergdb 024-12, section 2.6).
+                if (!treeOps.isEmpty()) treeOps.get(treeOps.size() - 1)[2] = Boolean.TRUE;
+            }
+            public void kvApplied(long[] key, byte[] value) {
+                initR0.run();
+                treeOps.add(new Object[] {key.clone(), value, Boolean.FALSE});
+            }
+            public void nodeTouched(Node node) {
+                initR0.run();
+                touched.add(node);
+            }
+            public void nodeReplaced(Node node) {
+                initR0.run();
+            }
+        };
 
-        // R(0), the primordial record.
+        Db.testHooks = hooks;
+        try {
+            db.start();
+            initR0.run();
+            runAWorkload(db, stream, clock);
+        } finally {
+            Db.testHooks = null;
+        }
+        db.sync(SyncLevel.ORDINARY);
+        return stream;
+    }
+
+    /** R(0), the primordial record, and the state after it. */
+    void recordR0(Db db, NodeStream ns) {
         Rec r0 = new Rec();
         r0.index = 0;
         r0.kind = "init";
@@ -781,34 +837,12 @@ public class TraceExport {
         parseRecord(db, r0);
         recordDirty(db, r0);
         if (live) recordLive(db, r0);
-
-        final List<ValueNode> created = new ArrayList<ValueNode>();
-        final List<Node> touched = new ArrayList<Node>();
         if (tree) recordTreeInit(db, r0, ns);
-        Db.TestHooks hooks = new Db.TestHooks() {
-            public void transExecuted(Db.ExecuteData x) {
-                record(db, x, created, touched, ns);
-                created.clear();
-                touched.clear();
-                treeOps.clear();
-            }
-            public void valueNodeCreated(ValueNode node, long[] key) {
-                created.add(node);
-                // The operation that Db.putKvs gave the Dag last changed it: a put, or a
-                // delete that deleted (bergdb 024-12, section 2.6).
-                if (!treeOps.isEmpty()) treeOps.get(treeOps.size() - 1)[2] = Boolean.TRUE;
-            }
-            public void kvApplied(long[] key, byte[] value) {
-                treeOps.add(new Object[] {key.clone(), value, Boolean.FALSE});
-            }
-            public void nodeTouched(Node node) {
-                touched.add(node);
-            }
-            public void nodeReplaced(Node node) {}
-        };
+    }
 
-        Db.testHooks = hooks;
-        try {
+    /** Run A's workload, its calls recorded through the hooks. */
+    void runAWorkload(Db db, AppendOnlyStream stream, CoreTestClock clock) {
+        {
             if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
             for (int i = 0; i < n; i++) {
                 clock.setTime(times[i]);
@@ -829,11 +863,7 @@ public class TraceExport {
                 }
                 if (retain > 0) afterCall(db, stream, i);
             }
-        } finally {
-            Db.testHooks = null;
         }
-        db.sync(SyncLevel.ORDINARY);
-        return stream;
     }
 
     /** Records R(i), the record of transaction x.trans, which Db has just appended. */

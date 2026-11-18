@@ -269,10 +269,12 @@ public class DbTester {
         
         KeyNode k = (KeyNode) db.internal().findNode(new int[]{0}, db.newGetData());
         
-        long klong = k.getKlong(5);
+        // The root's klongs: time, time, the startup distance's key (bergdb 028-15), time,
+        // "a", "b", time, and the delete bitmap; until 028-15 the bitmap was klong 5.
+        long klong = k.getKlong(7);
         Assert.assertEquals("check TYPE_DELETE_BITMAP", Klong.getType(klong), Klong.TYPE_DELETE_BITMAP);
         
-        boolean[] expected = new boolean[]{false, false, true, true, false, false};
+        boolean[] expected = new boolean[]{false, false, false, false, true, true, false, false};
         for (int i = 0; i < expected.length; i++) {
             Assert.assertEquals(expected[i], Klong.isDeleted(klong, i));
         }
@@ -1399,13 +1401,16 @@ public class DbTester {
      * DatabaseNotCreatedException and leaves the stream as it was. Before, it threw one of
      * three StreamFormatExceptions, and from 129 bytes on recovery zero-filled the
      * transaction first. The whole creation starts. An f-test, as its 264 starts take about
-     * 110 ms; the unit tests start on some of the cuts (NodeStreamTester, PubTester).
+     * 110 ms; the unit tests start on some of the cuts (NodeStreamTester, PubTester). The
+     * creating start's record of the startup distance (bergdb 028-15) is cut off first: a
+     * crash inside it is DbTesterRestart.testCrashInCreatingStartsKv.
      */
     @Nano("f")
     public static void testCrash8InCreation() throws IOException {
         MemoryStream s = new MemoryStream();
         Db.builder().testSetup(s).start().close();
         MemoryStream created = s.copy();        // close() closed s.
+        created.truncate(Db.CREATION_LENGTH);
         final int length = (int) created.getLength();
         Assert.assertEquals(Db.CREATION_LENGTH, length);
         byte[] bytes = new byte[length];
@@ -2012,6 +2017,21 @@ public class DbTester {
     }
     
     /**
+     * The length of a new database's stream after its creating start: the creation
+     * (Db.CREATION_LENGTH, the first meta block and the primordial record) and the record of
+     * the startup distance's KV (bergdb 028-15).
+     */
+    static long createdLength() {
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).start();
+        try {
+            return db.getStreamLength();
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * Large transactions relative to startupDistance. 
      * Startup pos should be the tpos of the kv transaction
      * (the following index node transaction will write all dirty index nodes to stream).
@@ -2029,7 +2049,9 @@ public class DbTester {
             sp[i] = db.internal().getStartupPosForEvict();
         }
         
-        assertEquals(0, sp[0]);
+        // The record of the creating start's startup distance (bergdb 028-15); 0, the
+        // primordial record, until then.
+        assertEquals(Db.CREATION_LENGTH, sp[0]);
         for (int i = 1; i < n; i++) {
             assertEquals("i=" + i, tpos[i-1], sp[i]);
         }
@@ -2151,8 +2173,10 @@ public class DbTester {
         }
         db.close();
         // 116 commits with the cap of the share's factor at 2 (bergdb 024-31), which makes
-        // the catch-up longer and its records smaller; below 60 before it.
-        assertTrue("below 2 sd after " + below, below >= 0 && below < 150);
+        // the catch-up longer and its records smaller; below 60 before it. 154 since the
+        // call's record is small (bergdb 028-15): its 200 kB dummy value, gone, was stream
+        // that the take paced and the section's span counted.
+        assertTrue("below 2 sd after " + below, below >= 0 && below < 200);
     }
     
     /** The nodes of D: the nodes that got dirty in the transactions of TransSeq. */

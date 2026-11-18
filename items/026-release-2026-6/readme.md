@@ -54,7 +54,17 @@ Work moved here from 2026.5:
   (028-15; 026-12, SF7 (a); 024-01, OT4; Frans, 2026-11-16, 10:32:
   "There is still a stream format change that I want to get in place in
   the next release. The startup distance!"): the meta block's bytes 40
-  to 43 reserved, and `/#i/-dummy`'s 200 kB at each change gone.
+  to 43 reserved, and `/#i/-dummy`'s 200 kB at each change gone. Option
+  A (Frans, 2026-11-18, 10:50, "SF4 (a), 028-15 A"): 2026.6 refuses
+  2026.5's databases and older, with a message that names 2026.5, the
+  meta version raised to 155; made in 028-15.
+* **2026.5's databases refused, the stable format set aside** (026-12,
+  SF4): Frans chose SF4 (a) at 10:50 on 2026-11-18, and at 11:51: "Let's
+  forget about stable format for the stream. I decide to not focus on
+  this for this release. The focus for the release are the algorithsm,
+  simplifying them, proving them. If possible." So SF4 is open again,
+  not this release's focus; what stands is 028-15's option A, older
+  databases refused (above).
 * **The versioning and compatibility rule and the corpus of saved
   databases** (027-03, section 21, V-A to V-D, and 21.3; Frans,
   2026-11-13, 09:23: "Yes, decided work."): a stable format needs its
@@ -319,6 +329,11 @@ implementation.").
 combined study (Frans, 08:56), by an agent of coord-1118.
 
 2026-11-18. 026-21 done: the result for Frans (10:55).
+
+2026-11-18. 028-15 option A and 026-12's SF4 (a) (Frans, 10:50: "SF4
+(a), 028-15 A"); the stable format then set aside for 2026.6 (11:51:
+"Let's forget about stable format for the stream."), so SF4 open again;
+028-15 made on the branch `028-15-sd-kv` (coord-1118).
 
 2026-11-18. 026-23 registered: a second opinion on a simpler writer, by an
 agent of coord-1118 (Frans, 11:51).

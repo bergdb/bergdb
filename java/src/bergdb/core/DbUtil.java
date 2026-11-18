@@ -36,7 +36,9 @@ public class DbUtil {
     private DbUtil() {}
     
     /**
-     * Gets the first key in the database.
+     * Gets the first key in the database that is not BergDB's: BergDB's keys, under "/#", their
+     * bytes beginning with 01 25, are skipped (Db, "Keys and the layers above"), as every
+     * database has one since bergdb 028-15, the startup distance's.
      * 
      * @param db  The database.
      * @param lookupTime  The DB time for which to make the lookup. Use Long.MAX_VALUE to 
@@ -46,7 +48,14 @@ public class DbUtil {
      */
     public static byte[] getFirstKey(Db db, long lookupTime, GetData gd) {
         GetMany g = db.newGetMany();
-        g.stopCondition = new GetMany.GetOne();
+        g.stopCondition = new GetMany.StopCondition() {
+            public int handleKvt(Kvt kvt) {
+                byte[] k = Keys.toBytes(kvt.key);
+                return k.length >= 2 && k[0] == 1 && k[1] == 0x25 ? CONTINUE : ADD_AND_STOP;
+            }
+            
+            public void eod() {}
+        };
         g.startKey = null;
         g.lookupTime = lookupTime;
         db.getMany(g);

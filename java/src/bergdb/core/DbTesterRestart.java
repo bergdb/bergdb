@@ -2,6 +2,7 @@ package bergdb.core;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -168,17 +169,17 @@ public class DbTesterRestart {
         try (Db db = Db.builder().testSetup(stream).clock(clock)
                 .startupDistance(1000000).start()) {
             clock.setTime(10);
-            Trans t = db.trans().put("/a", "1").build();
-            db.execute(t);
-            a = t.tpos;
+            db.execute(db.trans().put("/a", "1").build());
             clock.setTime(20);
             db.execute(db.trans().put("/b", "2"));
             clock.setTime(30);
             db.execute(db.trans().put("/c", "3"));
         }
         
-        // A's record holds the got-dirty entries (B and C dirty no new node); an entry
+        // The first record after the primordial one, the creating start's of the startup
+        // distance (bergdb 028-15; A's until then), holds the got-dirty entries; an entry
         // whose position is a node written before, at the creation.
+        a = Db.CREATION_LENGTH;
         byte[] record = readRecord(stream, a);
         long[] dirty = StoredTrans.parse(a, record).gotDirtyIdsAndSpos;
         int entry = -1;
@@ -329,18 +330,16 @@ public class DbTesterRestart {
 
     /** The bytes of the record at 'tpos', which must not span a meta block. */
     /**
-     * A crash inside the record that Db.setStartupDistance writes (bergdb 028-08): the
-     * setting is in the meta block that the record holds, so a crash after that block and
-     * before the record's end starts with the new setting, though the record is aborted
-     * (its dummy value is not there), and a later start keeps it; a crash inside the block
-     * starts with the old one. Not a bug: the setting is not data, both values are valid
-     * settings, and a caller whose process stopped inside the call cannot tell the cases
-     * apart, as a crash just after the record's end gives the new setting too (bergdb
-     * 027-11, section 1.4).
+     * A crash inside the record that Db.setStartupDistance writes (bergdb 028-08; 028-15):
+     * the setting is a KV of that record, so a crash anywhere before the record's end
+     * starts with the old setting, the record aborted, and one at its end with the new; a
+     * later start keeps what the first one read. Until bergdb 028-15 the setting was in the
+     * meta block that the record held, with a dummy value of 200 kB, and a crash after that
+     * block and before the record's end started with the new setting. The builder's setting
+     * of the restarts, another, is not taken: the stream's is.
      */
     @Nano
     public static void testCrashInsideSetStartupDistance() throws IOException {
-        final int md = RecoverableStream.META_BLOCK_DISTANCE;
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         long before, after;
@@ -352,33 +351,209 @@ public class DbTesterRestart {
             clock.setTime(20);
             db.setStartupDistance(2000000);
             after = db.getStreamLength();
+            Assert.assertEquals(2000000, db.getStartupDistance());
         }
-        long block = (before / md + 1) * md;        // the meta block inside the record
-        Assert.assertTrue("a block inside the record", 
-                block > before && block + RecoverableStream.META_BLOCK_SIZE < after - 8);
+        Assert.assertTrue("a small record, " + (after - before), after - before < 1000);
         
-        long[] cuts = {after, after - 8, block + RecoverableStream.META_BLOCK_SIZE, 
-                block + RecoverableStream.META_BLOCK_SIZE - 1, block};
-        int[] expected = {2000000, 2000000, 2000000, 1000000, 1000000};
-        for (int i = 0; i < cuts.length; i++) {
-            MemoryStream cut = stream.copy();
-            cut.truncate(cuts[i]);
+        for (long cut = before; cut <= after; cut += cut + 8 < after ? 8 : 1) {
+            MemoryStream m = stream.copy();
+            m.truncate(cut);
+            int expected = cut == after ? 2000000 : 1000000;
             for (int start = 0; start < 2; start++) {
-                try (Db db = Db.builder().testSetup(cut).clock(clock)
-                        .startupDistance(1000000).start()) {
-                    String at = "cut at " + cuts[i] + ", start " + start;
-                    Assert.assertEquals(at, expected[i], db.getStartupDistance());
+                try (Db db = Db.builder().testSetup(m).clock(clock)
+                        .startupDistance(3000000).start()) {
+                    String at = "cut at " + cut + ", start " + start;
+                    Assert.assertEquals(at, expected, db.getStartupDistance());
                     Assert.assertEquals(at, "1", DbUtil.getString(db, "/a"));
-                    byte[] dummy = db.getOne(Long.MAX_VALUE, DbConstants.DUMMY_KEY, 
-                            db.newGetData());
-                    Assert.assertEquals(at + ", the setter's record committed", 
-                            cuts[i] == after, dummy != null);
+                    byte[] kv = db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, db.newGetData());
+                    Assert.assertEquals(at, expected, Db.parseStartupDistance(kv));
                 }
-                cut = cut.copy();       // a closed MemoryStream refuses appends
+                m = m.copy();       // a closed MemoryStream refuses appends
             }
         }
     }
 
+    /**
+     * Bergdb 028-15: a crash inside the creating start's record of the startup distance, or
+     * before it, after the primordial record: recovery cuts the record off, and the start,
+     * which finds the primordial record alone and no KV, takes its builder's setting, which
+     * it puts; a later start keeps that one. The whole record keeps the creation's setting,
+     * whatever the builder of a later start says.
+     */
+    @Nano
+    public static void testCrashInCreatingStartsKv() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db.builder().testSetup(stream).clock(clock).startupDistance(1000000).start().close();
+        final long end = stream.getLength();
+        Assert.assertTrue("a record after the creation", end > Db.CREATION_LENGTH);
+        
+        for (long cut = Db.CREATION_LENGTH; cut <= end; cut += cut + 8 < end ? 8 : 1) {
+            MemoryStream m = stream.copy();
+            m.truncate(cut);
+            int expected = cut == end ? 1000000 : 2000000;
+            for (int start = 0; start < 2; start++) {
+                try (Db db = Db.builder().testSetup(m).clock(clock)
+                        .startupDistance(start == 0 ? 2000000 : 3000000).start()) {
+                    String at = "cut at " + cut + ", start " + start;
+                    Assert.assertEquals(at, expected, db.getStartupDistance());
+                    byte[] kv = db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, db.newGetData());
+                    Assert.assertEquals(at, expected, Db.parseStartupDistance(kv));
+                    Assert.assertEquals(at + ", the counters", 0, db.getTransactionCount());
+                }
+                m = m.copy();       // a closed MemoryStream refuses appends
+            }
+        }
+    }
+    
+    /**
+     * Bergdb 028-15 (option A; Frans, 2026-11-18, 10:50): a database of release 2026.5 or
+     * earlier, its meta blocks of version 154, is refused at the start with a
+     * VersioningStreamException whose message names release 2026.5 and says to make the
+     * database again, and the start writes nothing.
+     */
+    @Nano
+    public static void testVersion154Refused() throws IOException {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/k", new byte[300 * 1000]).build());     // two blocks
+        }
+        MemoryStream m = s.copy();
+        for (long pos = 0; pos + 128 <= m.getLength();
+                pos += RecoverableStream.META_BLOCK_DISTANCE) {
+            MemoryStream.TestAccess.write(m, new byte[] {(byte) 154, 0, 0, 0}, pos + 4);
+        }
+        byte[] before = bytesOf(m);
+        try (Db db = Db.builder().testSetup(m).clock(clock).start()) {
+            throw new AssertionError("started a database of version 154");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("release 2026.5")
+                    && e.getMessage().contains("make the database again"));
+        }
+        Assert.assertArrayEquals("the stream as it was", before, bytesOf(m));
+    }
+    
+    /**
+     * Bergdb 028-15: the startup distance is a KV, read at the end of a start. A change by
+     * setStartupDistance() is kept over restarts, whatever the builder of a restart says, and
+     * the meta blocks' bytes 40 to 43, where it was until the meta block's version 155, are
+     * zero in every block. A KV of other bytes is refused at the start with an
+     * InternalDataException; a stream with records after the primordial one and no KV with a
+     * StreamFormatException, as damaged.
+     */
+    @Nano
+    public static void testStartupDistanceKvKept() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        try (Db db = Db.builder().testSetup(stream).clock(clock).start()) {
+            Assert.assertEquals(50 * 1000000, db.getStartupDistance());     // the default
+            clock.setTime(10);
+            db.execute(db.trans().put("/a", new byte[300 * 1000]).build());  // meta blocks
+            db.setStartupDistance(700 * 1000);
+            Assert.assertEquals(700 * 1000, db.getStartupDistance());
+        }
+        for (int start = 0; start < 2; start++) {
+            stream = stream.copy();
+            try (Db db = Db.builder().testSetup(stream).clock(clock)
+                    .startupDistance(1234567).start()) {
+                Assert.assertEquals("start " + start, 700 * 1000, db.getStartupDistance());
+                if (start == 1) {
+                    db.setStartupDistance(800 * 1000);
+                }
+            }
+        }
+        stream = stream.copy();
+        try (Db db = Db.builder().testSetup(stream).clock(clock).start()) {
+            Assert.assertEquals("after the second change", 800 * 1000, db.getStartupDistance());
+        }
+        final int md = RecoverableStream.META_BLOCK_DISTANCE;
+        Assert.assertTrue("two meta blocks", stream.getLength() > md + 128);
+        for (long pos = 0; pos + 128 <= stream.getLength(); pos += md) {
+            byte[] block = new byte[128];
+            stream.read(pos, block, 0, block.length);
+            for (int i = 40; i < 44; i++) {
+                Assert.assertEquals("block at " + pos + ", byte " + i, 0, block[i]);
+            }
+        }
+        
+        byte[][] bad = {{1, 2, 3}, {9, 0, 0, 0}, {1, (byte) 0xca, (byte) 0x9a, 0x3b},
+                {0, 0, 0, (byte) 0x80}, {0x20, (byte) 0xa1, 0x07, 0, 0}};
+        for (byte[] value : bad) {
+            MemoryStream m = stream.copy();
+            try (Db db = Db.builder().testSetup(m).clock(clock).start()) {
+                db.execute(db.trans().putCore(DbConstants.SD_KEY, value).build());
+            }
+            try (Db db = Db.builder().testSetup(m.copy()).clock(clock).start()) {
+                throw new AssertionError("started with " + Arrays.toString(value));
+            } catch (InternalDataException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                        "Bad value of /#i/-startup-distance"));
+            }
+        }
+        
+        MemoryStream m = stream.copy();
+        try (Db db = Db.builder().testSetup(m).clock(clock).start()) {
+            db.execute(db.trans().deleteCore(DbConstants.SD_KEY).build());
+        }
+        try (Db db = Db.builder().testSetup(m.copy()).clock(clock).start()) {
+            throw new AssertionError("started without the KV");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("has no startup distance"));
+        }
+    }
+    
+    /**
+     * Bergdb 028-15: reclaim's cuts leave the startup distance's KV live. The creation's
+     * setting, 1000 bytes, and a later one, both cut away with their records, are kept: the
+     * KV is copied forward as any live KV, and a start after the cuts reads the last
+     * setting.
+     */
+    @Nano
+    public static void testStartupDistanceKvAfterReclaimCut() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long setterEnd = 0;
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                .maxNodeSize8().start();
+        try {
+            Random rnd = new Random(1);
+            for (int i = 1; i <= 3000; i++) {
+                clock.setTime(i * Clock.UNITS_PER_SEC / 10);
+                byte[] value = new byte[1 + rnd.nextInt(200)];
+                rnd.nextBytes(value);
+                db.execute(db.trans().put("/k/" + rnd.nextInt(500), value));
+                if (i == 100) {
+                    db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                }
+                if (i == 1500) {
+                    db.setStartupDistance(400 * 1000);      // the least that the call sets
+                    setterEnd = db.getStreamLength();
+                }
+            }
+            for (int i = 3001; i <= 9000 && db.getFirstAvailablePos() <= setterEnd; i++) {
+                clock.setTime(i * Clock.UNITS_PER_SEC / 10);
+                byte[] value = new byte[1 + rnd.nextInt(200)];
+                rnd.nextBytes(value);
+                db.execute(db.trans().put("/k/" + rnd.nextInt(500), value));
+            }
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertTrue("cut past the setter's record, " + db.getFirstAvailablePos()
+                    + " <= " + setterEnd, db.getFirstAvailablePos() > setterEnd);
+            GetData gd = db.newGetData();
+            Assert.assertTrue("the KV", db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, gd) != null);
+            Assert.assertTrue("the KV's record after the cut",
+                    gd.tpos >= db.getFirstAvailablePos());
+        } finally {
+            db.close();
+        }
+        try (Db again = Db.builder().testSetup(stream.copy()).clock(clock).maxNodeSize8()
+                .start()) {
+            Assert.assertEquals(400 * 1000, again.getStartupDistance());
+        }
+    }
+    
     /**
      * A last record whose startupPos is its own position is refused with a
      * StreamFormatException (bergdb 028-09): the take never writes it, as a record's take
@@ -1105,9 +1280,11 @@ public class DbTesterRestart {
     }
     
     /**
-     * Bergdb 005-50: a database whose meta block has no maximum node size (0), as one written
-     * before 2026-10-27, is refused with a VersioningStreamException, whatever size the start
-     * uses, and the start writes nothing.
+     * Bergdb 005-50: a database whose meta block has no maximum node size (0) is refused,
+     * whatever size the start uses, and the start writes nothing: since bergdb 028-15 with a
+     * StreamFormatException, as a damaged block, since every block of version 155 has the
+     * size; until then with a VersioningStreamException, as a database written before
+     * 2026-10-27.
      */
     @Nano
     private static void testNoNodeSizeRefused() throws IOException {
@@ -1126,9 +1303,10 @@ public class DbTesterRestart {
             try {
                 nodeSize(Db.builder().testSetup(m).clock(clock), size).start();
                 throw new AssertionError("started a database without a node size");
-            } catch (VersioningStreamException e) {
+            } catch (StreamFormatException e) {
+                Assert.assertFalse(e.toString(), e instanceof VersioningStreamException);
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains(
-                        "meta block has no maximum node size"));
+                        "maximum node size 0, none: the block is damaged"));
             }
             Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
         }
@@ -1169,9 +1347,9 @@ public class DbTesterRestart {
     /**
      * Bergdb 019-01: the version at offset 4 of a meta block is an int, and a block whose
      * bytes 6 or 7 are not 0 is refused with a VersioningStreamException, as a block of
-     * another version is, and the start writes nothing. Every BergDB writes 154 as an int
-     * there; until 2026-11-05 the version was read as 2 bytes, and such a block was taken as
-     * version 154 (016-06, R6-F3).
+     * another version is, and the start writes nothing. Every BergDB writes its version, 155
+     * since bergdb 028-15, as an int there; until 2026-11-05 the version was read as 2 bytes,
+     * and such a block was taken as version 154 (016-06, R6-F3).
      */
     @Nano
     private static void testVersionHighBytesRefused() throws IOException {
@@ -1187,7 +1365,7 @@ public class DbTesterRestart {
         for (int offset : new int[] {6, 7}) {
             MemoryStream m = s.copy();
             MemoryStream.TestAccess.write(m, new byte[] {1}, offset);
-            int version = 154 + (1 << (8 * (offset - 4)));
+            int version = 155 + (1 << (8 * (offset - 4)));
             try {
                 Db.builder().testSetup(m).clock(clock).start().close();
                 throw new AssertionError("started a database whose meta block has version "
@@ -1846,7 +2024,9 @@ public class DbTesterRestart {
     /**
      * Top node ordinals across 2^32, and to the end, with reclaim (bergdb item 005-02). One
      * key updated in every transaction and one written in the first only, which reclaim
-     * rewrites; a new top node about every three transactions. A retention of one second
+     * rewrites; a new top node about every nine transactions (every three until bergdb
+     * 028-15, when every database got the startup distance's KV: from 400 below 2^32 and
+     * the end then, from 150 now). A retention of one second
      * cuts the front of the stream, from about transaction 900 on, with the first top node
      * and the second, whose skip pointers name the first. A restart every 150 transactions;
      * after each, both keys are checked at every transaction's time from the first available
@@ -1854,8 +2034,8 @@ public class DbTesterRestart {
      * stay within Db.TOP_ORDINAL_MARGIN, at most five above Db.LAST_TOP_ORDINAL.
      */
     @Nano private static void testOrdinalsWithReclaim() {
-        runOrdinalsWithReclaim((1L << 32) - 400, (1L << 32) + 300);
-        runOrdinalsWithReclaim(Db.LAST_TOP_ORDINAL - 400, Long.MAX_VALUE);
+        runOrdinalsWithReclaim((1L << 32) - 150, (1L << 32) + 100);
+        runOrdinalsWithReclaim(Db.LAST_TOP_ORDINAL - 150, Long.MAX_VALUE);
     }
 
     /** Runs until the super root's ordinal is 'until' or a transaction is refused. */
