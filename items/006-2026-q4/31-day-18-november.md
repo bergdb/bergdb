@@ -85,6 +85,9 @@ The decisions, as recorded here:
   proofs deleted (588 files; lean/ 337,483 to 84,556 lines; lean/SIS/Tree
   210,119 to 3,507); GATE OK, LEVEL 2, 3 and 4 OK; LANDED 150a111a. Left
   for Frans: two statements and four Props kept without their proofs (030-18).
+* 10:20 Frans on 030-18's two points: "1 and 2 as recommended": the
+  statements kept without their proofs are dropped (agent rm, resumed
+  10:21); lean/BergDB (the user indexes' proofs, 020-29) is kept.
 
 
 ## 5. Outcome
