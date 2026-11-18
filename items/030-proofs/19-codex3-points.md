@@ -197,3 +197,7 @@ Log
 - 08:58 027-02, section 4; comments in ContractCheck.lean and Verdict.lean;
   `pin.sh`; `gate.sh 52459c9d` GATE OK.
 - 09:00 030-09's count corrected (section 1; and its PROBE decision noted).
+- 09:02 GATED 36cd14bb: the three points fixed, with fault tests;
+  `gate.sh 52459c9d` GATE OK (195 theorems, the standard axioms only, the
+  four pinned files changed listed for review); `check.sh small drain
+  reclaim` CONTRACT OK on the commit (195 traces, 60 s).
