@@ -235,15 +235,17 @@ What they say, in short (the statements' files say it in full):
   and the rest of Theorems.lean) and liveness (`cleanup_ends`,
   `build_ends`, `no_orphans`, `lock_released`).
 
-Statements kept without their proofs: rule 4 by position after a cut
-(`Rule4PosCut_handles`, `RunPosCut_handles`, SIS/HandleReclaimTheorems.lean;
-005-62) and the tree properties of SIS/Tree/Props.lean, MergeProps.lean and
-DeadProps.lean that the old proofs proved (such as `SearchEqSpec`,
-`KlongsRoundTrip`, `ExecRootOKTree`, `VirtLiveOKTree`) are definitions of
-type `Prop` in files that stay; their proofs, and the other old theorems
-(the key tree's TP7, TP10 and TP11; T4's records and ends; a cold start's
-reads, `coldReads_*`; `bounded_startup`), are at the tag
-`proofs-2026-11-17`.
+The statements whose proofs went with the old line were dropped too
+(Frans, 2026-11-18, 10:20; bergdb 030-18): rule 4 by position after a cut
+(`Rule4PosCut_handles`, `RunPosCut_handles`, `runHandlesCutPos`; 005-62) and
+the tree properties TP1, TP9, TP17 and TP18 (`KlongsRoundTrip`,
+`SearchEqSpec`, `ExecRootOKTree`, `VirtLiveOKTree`). They, their proofs, and
+the other old theorems (the key tree's TP7, TP10 and TP11; T4's records and
+ends; a cold start's reads, `coldReads_*`; `bounded_startup`) are at the tag
+`proofs-2026-11-17`. The other properties of SIS/Tree/Props.lean,
+MergeProps.lean and DeadProps.lean stay as definitions of type `Prop`;
+TP13 and TP15 are proved (`specOKTree`, `liveAppendTree`,
+Check/TreeLive.lean).
 
 What the contract package proves, and from what, is bergdb 030-04 and the
 030 items; its gate is `contract/gate.sh`.

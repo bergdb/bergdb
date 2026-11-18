@@ -43,7 +43,7 @@ The operations, each mirroring one of Java's:
   bergdb 005-58 proves the same (`Rule4Pos_handles`, HandleTheorems.lean); after a
   cut, with Java's skip of the pointers below the stream's first position
   (`HMem.linkDPosFrom`, `handleStartupPosFrom`), which bergdb 005-62 proves the
-  same (`Rule4PosCut_handles`, HandleReclaimTheorems.lean);
+  same (`Rule4PosCut_handles`, at the tag `proofs-2026-11-17`; bergdb 030-18);
 * runs with reads and evictions between transactions (`HCacheOp`,
   `runHandles`).
 
@@ -804,7 +804,7 @@ the header included, are gone). Java runs rule 4 on the nodes of D only (the
 got-dirty nodes), not on TopDs, which the root's object stands for, so the
 root's object, unless its node is in D, is linked as by `HMem.linkDPos`. With
 `first` 0 this is `HMem.linkDPos`. That it links what `HMem.linkD` links after a
-safe cut is `Rule4PosCut_handles` (HandleReclaimTheorems.lean). -/
+safe cut is `Rule4PosCut_handles` (bergdb 005-62; at the tag `proofs-2026-11-17`). -/
 def HMem.linkDPosFrom (sp : Spec V T) (S : Stream V T) (first : Nat) (m : HMem V) (D : Dirty) :
     HMem V :=
   { m with objs := m.objs.map (fun p =>

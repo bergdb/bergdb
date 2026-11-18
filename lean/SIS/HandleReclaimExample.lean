@@ -34,7 +34,7 @@ stream from the running memory at every time from the first available time on
 (T9), then the restart from the cut stream and its reads; and rule 4 by position
 with the cut as the stream's first position, at the restart's cut and at the
 largest cut so far, links what rule 4 by node id links (`Rule4PosCut_handles`,
-bergdb 005-62). At the end: the lookups from the first available time on are the
+bergdb 005-62, at the tag `proofs-2026-11-17`). At the end: the lookups from the first available time on are the
 run's. Returns (transactions, failures). -/
 def checkHandleCut [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T × Option Nat))
     (policy seed : Nat) : Nat × Nat :=
@@ -91,7 +91,7 @@ objects of D's nodes that hold no handle and name a record below the cut. -/
 the run without restarts cut at the largest cut so far, with the memory before
 rule 4: [restarts; those with a cut above 0; pointers of the canonical objects of
 D's nodes that hold no handle and name a record below the cut; of those, the
-ones to a node with a canonical object (none, by `Rule4PosCut_handles`);
+ones to a node with a canonical object (none, by `Rule4PosCut_handles`, at the tag `proofs-2026-11-17`);
 restarts where rule 4 by position with the largest cut as the first position
 differs from rule 4 by node id (none); with the restart's own cut (none); and
 without the skip, `handleStartupPos` (none)]. -/

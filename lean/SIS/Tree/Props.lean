@@ -1,8 +1,8 @@
 /-
 The tree model (bergdb 024-12, section 6): the stated properties of BergDB's
 key tree. Each is a definition of type `Prop`, named and documented, with its
-proof left for later (bergdb 024-06: C1, C2, C3 and E), but TP17 and TP18, which
-SIS/Proof/TreeRoot.lean proves: in this model every theorem is proved in full,
+proof left for later (bergdb 024-06: C1, C2, C3 and E): in this model every
+theorem is proved in full,
 with nothing assumed, so a statement without a proof is not written as a
 theorem. The item
 lists them as TP1 to TP27 (TP23 and TP26 are in Bound.lean, TP24 in Top.lean)
@@ -13,6 +13,11 @@ since, in other files; among them TP7, TP10 and TP11, from named premises
 The tree checker computes the invariants (`faultsAt`) on Java's structure
 after every transaction, and the reads against a reference; TreeTest.lean
 (`lake exe treetest`) runs them on small cases. That is evidence, not proof.
+
+Since 2026-11-18 (bergdb 030-18; Frans: the statements without their proofs
+dropped) the old proofs are at the tag `proofs-2026-11-17` only, and TP1
+(`KlongsRoundTrip`), TP9 (`SearchEqSpec`), TP17 (`ExecRootOKTree`) and TP18
+(`VirtLiveOKTree`), proved there, are no longer stated here.
 -/
 import SIS.Tree.Inv
 import SIS.Assumptions
@@ -111,12 +116,6 @@ def ScanReq.wf (req : ScanReq) : Bool :=
 
 /-! ## TP1 to TP8: the invariants of the tree -/
 
-/-- TP1. Klongs and histories correspond: the entries of well-formed klongs
-give the klongs back (D3, D4: the marker makes it one to one). With it,
-`Tree.exec` reads from P exactly the nodes Java has. -/
-def KlongsRoundTrip : Prop :=
-  ∀ ks : List Klong, klongsWf ks = true → klongsOf (entriesOf ks) = ks
-
 /-- TP2. The leftmost rule (LE-b, since 2026.4): at time t, the smallest live
 klong of every reachable inner node is the empty key's. Every put relies on it
 (`Dag.checkFound`). -/
@@ -164,13 +163,6 @@ def NoBug (p : Params) : Prop :=
       e.startsWith "bounds:" = true
 
 /-! ## TP9 to TP12: the multiversion map (bergdb 024-06, C2) -/
-
-/-- TP9. A search in a node is a lookup in its live klongs: `searchEq` at t
-finds the klong of c that is live at t, if there is one. (The five other
-searches have the same form.) -/
-def SearchEqSpec : Prop :=
-  ∀ (n : KNode) (t : Time) (c : Nat), klongsWf n.ks = true →
-    (n.searchEq t c).map (·.y) = (n.liveAt t).lookup c
 
 /-- TP10. BergDB is a multiversion map: a get at time t gives the value of the
 key's last put at or before t, none if a delete came after it. -/
@@ -223,16 +215,6 @@ def LiveAppendTree (p : Params) : Prop := LiveAppend (treeSpec p)
 change. With TP14 and TP15, the theorems with handles. -/
 def EvictRunOKTree (p : Params) : Prop :=
   ∀ (al : Algo BVal Tx) ts, Within p ts → EvictRunOK (treeSpec p) al ts
-
-/-- TP17, proved in SIS/Proof/TreeRoot.lean (`execRootOKTree`). `ExecRootOK`: a
-transaction sees the root only through its live
-children (`lastTop`: the root's last entry; the writer's view has no root:
-`rootless`). For T8 and T12. -/
-def ExecRootOKTree (p : Params) : Prop := ExecRootOK (treeSpec p)
-
-/-- TP18, proved in SIS/Proof/TreeRoot.lean (`virtLiveOKTree`). `VirtLiveOK`:
-the root's live children are those of its last entry (a property of `blive`). -/
-def VirtLiveOKTree (p : Params) : Prop := VirtLiveOK (treeSpec p)
 
 /-- TP19. `exec` reads only nodes reachable at i-1 (it starts at the root and
 follows live klongs), so P itself serves for P@(i-1): what the tree checker

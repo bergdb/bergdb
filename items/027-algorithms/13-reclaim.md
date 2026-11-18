@@ -358,9 +358,9 @@ pending, M1's condition holds, or the dead hand has more.
   same D). T12 (`T12_restartCut`, with eviction `T12_handles`): a run
   that restarts from safe cut streams appends the records of the run
   without restarts. `Rule4PosCut_handles`, `RunPosCut_handles` (005-62):
-  rule 4 by position after a cut is rule 4 by node id; its proof is at
-  the tag `proofs-2026-11-17` since 2026-11-18 (030-18), the statement stays in
-  HandleReclaimTheorems.lean.
+  rule 4 by position after a cut is rule 4 by node id; the statements
+  and their proof are at the tag `proofs-2026-11-17` since 2026-11-18
+  (030-18).
 * **Assumptions**: `RunOK` (A2 to A5, TREE), Java's still-dirty test and
   marking, `LiveAppend`, `EvictRunOK`; for T8 and T12 `ExecRootOK`,
   `VirtLiveOK`, `PolicyCutOK`. REWRITES and LIVEBELOW are premises.

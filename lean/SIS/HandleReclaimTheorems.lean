@@ -14,12 +14,10 @@ the physical layer, `PhysRunOK`, since bergdb 024-09) and those of stage 2
 (`EvictRunOK`), and for T12 those of the logical T12 (`ExecRootOK`,
 `VirtLiveOK`, `PolicyCutOK`).
 
-And rule 4 by position after a cut (bergdb 005-62, question 2; Java's since
-bergdb 005-57): `Rule4PosCut_handles` (the startup from a stream cut safely, with
-Java's skip of the pointers below the stream's first position,
-`handleStartupPosFrom`, is the startup with rule 4 by node id) and
-`RunPosCut_handles` (so the run with it, `runHandlesCutPos`, is `runHandlesCut`,
-and `T12_handles` holds for it as it is).
+Rule 4 by position after a cut (bergdb 005-62: `Rule4PosCut_handles`,
+`RunPosCut_handles`, `runHandlesCutPos`) was stated here, with its proof in
+SIS/Proof/HandleCutPos.lean; both are at the tag `proofs-2026-11-17` since
+2026-11-18 (bergdb 030-18; Frans: the statements without their proofs dropped).
 -/
 import SIS.HandleTheorems
 import SIS.Reclaim
@@ -91,60 +89,5 @@ def T12_handles (sp : Spec V T) (al : Algo V T) : Prop :=
     let r := run sp al (cs.map (·.1))
     db.S = cutStream (cutMax (cs.map (·.2.1))) r.S ∧ db.D = r.D ∧
       SameFrom sp (lastFa r.S) cs.length db.P r.P
-
-/-! ## Rule 4 by position after a cut (bergdb 005-62) -/
-
-/-- A run with handles, restarts and cuts, with rule 4 by position (bergdb 005-62;
-Java's since bergdb 005-57): `runHandlesCut` with `handleStartupPosFrom` in place of
-`handleStartup`, at R(0) with the stream's first position 0, and at a restart
-marked some c from the stream cut at c with the first position c (Java's first
-position is at or below the largest cut: `Rule4PosCut_handles` holds for every
-first position up to the cut). Nothing else changed. -/
-def runHandlesCutPos (sp : Spec V T) (al : Algo V T) (ts : List (T × Option Nat × List HCacheOp)) :
-    DB V T × HMem V × Stream V T :=
-  ts.foldl (fun (acc : DB V T × HMem V × Stream V T) p =>
-    let r := handleTrans sp al acc.2.2 acc.1 acc.2.1 p.1
-    match p.2.1 with
-    | some c =>
-      let S := cutStream c r.1.S
-      (startup sp S, handleStartupPosFrom sp c S, S)
-    | none => (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
-    (init sp, handleStartupPosFrom sp 0 (init sp).S, (init sp).S)
-
-/-- Rule 4 by position after a cut is rule 4 by node id (bergdb 005-62, question
-2). In a run as in `Rule4Pos_handles`, with T12's assumptions on the virtual root
-(`ExecRootOK`, `VirtLiveOK`), take the stream S after any transaction k and a cut
-at c that is safe there (`CutOK`). The startup with handles and Java's rule 4 by
-position from the stream cut at c, with any first position up to c
-(`handleStartupPosFrom`: a pointer of a node of D below the first position is left
-as it is), gives the same memory as the startup with rule 4 by node id from it
-(`handleStartup`), the one that `runHandlesCut` and `T12_handles` use. So no
-pointer that Java skips names a node with a canonical object, and every other
-one is found by `posToId`, by `byPos`, or, for a top node's, by node id.
-Proved: `rule4PosCut_handles` (SIS/Proof/HandleCutPos.lean). -/
-def Rule4PosCut_handles (sp : Spec V T) (al : Algo V T) : Prop :=
-  ∀ ts : List T, RunOK sp al ts → LiveAppend sp → EvictRunOK sp al ts →
-    al.stillDirty = javaTest sp → al.mark = true → ExecRootOK sp → VirtLiveOK sp →
-    ∀ k ≤ ts.length, ∀ c first, CutOK sp c (run sp al (ts.take k)) k → first ≤ c →
-      handleStartupPosFrom sp first (cutStream c (run sp al (ts.take k)).S) =
-        handleStartup sp (cutStream c (run sp al (ts.take k)).S)
-
-/-- Runs with cuts and rule 4 by position are runs with cuts and rule 4 by node id
-(bergdb 005-62). With the assumptions of `T12_handles`, the run with handles and
-rule 4 by position at every startup (`runHandlesCutPos`) is the same as
-`runHandlesCut` after every transaction and its operations or its restart: the
-same state, memory and stream of the last startup. So `T12_handles` holds for it
-as it is. Proved: `runPosCut_handles` (SIS/Proof/HandleCutPos.lean). -/
-def RunPosCut_handles (sp : Spec V T) (al : Algo V T) : Prop :=
-  ∀ cs : List (T × Option Nat × List HCacheOp),
-    RunOK sp al (cs.map (·.1)) → LiveAppend sp →
-    EvictRunOK sp al (cs.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
-    ExecRootOK sp → VirtLiveOK sp → PolicyCutOK al →
-    (∀ j (h : j < cs.length) c, cs[j].2.1 = some c →
-      CutOK sp (cutMax ((cs.take (j + 1)).map (·.2.1))) (run sp al ((cs.map (·.1)).take (j + 1)))
-        (j + 1)) →
-    (∀ j (h : j < cs.length), cs[j].2.1 = none → ∀ t, HCacheOp.read t ∈ cs[j].2.2 →
-      lastFa (run sp al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1) →
-    ∀ j ≤ cs.length, runHandlesCutPos sp al (cs.take j) = runHandlesCut sp al (cs.take j)
 
 end SIS
