@@ -45,8 +45,9 @@ For Frans, in plain words. Details in sections 1 to 6.
   available time on. It no longer needs `IterationOK`, nor a key live at
   the iteration's end: the last step puts its row.
 - **Not vacuous:** a history PE writes, of five transactions, with an
-  iteration of two steps that follow the model, rewrites four old values
-  (`StepsExample`).
+  iteration of two steps that follow the model, in which all four keys
+  with old values are written during the iteration: three by the steps'
+  rewrites, one by a user transaction between them (`StepsExample`).
 - **What stays tested:** that Java's steps are the model's steps (section
   4; not checked on the traces today, a check is proposed in section 5),
   RC1 and RC4 at each cut (Java's arithmetic, as before), and, as for every
