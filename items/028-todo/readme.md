@@ -105,6 +105,7 @@ Open
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
+| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | none | in progress |
 
 
 Closed
@@ -182,3 +183,7 @@ branch `028-18-option-c` by an agent of coord-1118.
 
 2026-11-19. 028-18 done: option C gated (KILL RESTART OK with seeds 20261118,
 20261119 and 20261120) and landed.
+
+2026-11-19. 028-26 registered by coord-1118 from Codex's review of PE
+(finding 1) and taken by an agent of coord-1118: reclaim's charge omits
+the index nodes that PE makes.

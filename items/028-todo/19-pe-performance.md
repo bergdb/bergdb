@@ -30,6 +30,19 @@ What, from 026-25 (sections 6 and 7):
   user records are 16 % smaller, and its worst commit was 1.2 to 1.8
   times longer. Find why (reclaim's pacing on PE's tree shapes, or the
   reclaim row's bytes, 026-25 section 2) before changing anything.
+  **Part of it explained and fixed by 028-26** (2026-11-19): a step's
+  row charged only the nodes that its touch made dirty, not PE's new
+  nodes (replacements, cuts, joins), so the allowance let reclaim
+  rewrite more than f of the growth (Codex's review of PE, finding 1:
+  90,832 of 301,856 index bytes uncharged in a probe's first iteration
+  at node size 8). Now charged, the row stored again after the step; in
+  the probe's workload over 20,000 updates the stream grew 1.5 to 7.8 %
+  less, with fewer steps (028-26, Measurements). To remeasure here, as
+  026-25 section 7, on F53 and s1: Perf write at 10M keys with reclaim
+  (bytes a put, physical cuts in 6M transactions, the stream kept at
+  most, reclaim's steps and records, the worst commit), against main
+  before 028-26 and the old writer; whether the rest of the 6.8 % and
+  the extra cuts remain.
 
 The rule: an optimization that keeps the trees (node for node the proved
 writer, `Contract.PE.peTx`) needs no proof work; the level scripts check
@@ -50,3 +63,6 @@ Log
 ===
 
 2026-11-19. Registered by coord-1118 at Frans's word (09:32).
+
+2026-11-19. Reclaim's pace: the uncharged PE nodes fixed in 028-26; what
+to remeasure noted above. By an agent of coord-1118.

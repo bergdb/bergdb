@@ -139,16 +139,38 @@ step(it, W) is one internal transaction, at its own time ts:
      (`Trans.dirtiedBytes`, read by the row's value transformation). The
      transformation runs before the writer applies any of the
      transaction's operations, which it gets as one batch (record format
-     8, 026-25), so nodes dirty before the step, and those that the puts
-     make dirty, are not counted. Until format 8 the operations were
-     applied one by one in key order, and the bytes of the nodes that the
-     rewrites of keys before the row's key made dirty were counted too.
+     8, 026-25), so nodes dirty before the step are not counted, and
+     those that the puts make dirty are counted after the commit (4b).
+     Until format 8 the operations were applied one by one in key order,
+     the row counted the nodes that the rewrites of keys before the row's
+     key made dirty, and those after it were never counted.
      The row is the last call on its key: it replaces a rewrite of that
      key, whose bytes stay counted.
 4. **Commit.** A step cannot conflict: the scan and the commit hold the
    write lock, so no key is written after the scan's time (argued; no
    test). A step that conflicted would be dropped, to come again at a
    later call.
+
+   4b. **The row again** (028-26). rewritten += the bytes of the index
+   nodes that the transaction made dirty after the row was made: its
+   `Trans.dirtiedBytes` at the end less those the row counted, which are
+   PE's new nodes (replacements, cuts, joins, a new top node), each at
+   its size when it got dirty. If they are more than 0 and this step is
+   not the last, the row is stored again at `-current.txt`, in an
+   internal transaction of its own; after the last step, the table of 5
+   holds them. So, after every call, the row in the stream is the row in
+   memory, and a restart resumes with the same charge (INV-RESTART).
+   Why a second transaction: the row is a value of the transaction whose
+   dirty bytes it counts, and PE makes a value node, with its id, when
+   the plan applies its operation at its segment leaf, before nodes that
+   the row would count are made (026-25, section 2, "The ids"); a count
+   carried in memory to the next step's row is lost at a restart, which
+   then paces the steps otherwise (028-26 tried it:
+   `testReclaimSettingsKeptOverRestarts` failed). The bytes that the
+   second transaction makes dirty are not counted, as those of the
+   table's transactions are not; a crash between the two transactions
+   loses the step's new nodes from the charge. Until 028-26 they were
+   counted nowhere (Codex's review of PE, 2026-11-19, finding 1).
 5. **The end.** After the last step: done := true; tEnd := ts; pEnd :=
    the step's record's position; the table is stored, in a transaction of
    its own.
@@ -259,7 +281,8 @@ pending, M1's condition holds, or the dead hand has more.
   live after a call (027-03, section 15: the texts; the row is read
   leniently, the settings strictly). Reclaim's transactions are ordinary
   records (027-03, section 8): a step's holds its puts, its row and the
-  got-dirty ids of its touch and puts. Nothing of a scan is stored.
+  got-dirty ids of its touch and puts; the row stored again (1.4, 4b) is
+  a record of its own. Nothing of a scan is stored.
 
 
 ## 3. Invariants
@@ -313,9 +336,9 @@ pending, M1's condition holds, or the dead hand has more.
   `testLastStepWithinRecordLimit`). Its dirty nodes: at most 3 h s + 3 a
   put, h a segment tree's height (024-07, B1; 024-05, BD7); argued;
   gated (`testStepDirtiesItsPathsOnly`).
-* **After a user transaction**: at most five internal transactions
-  (begin, a step, the end, the safe positions, the cut); argued (the
-  margin of 1,024 times and top node ordinals).
+* **After a user transaction**: at most six internal transactions
+  (begin, a step, the row again, the end, the safe positions, the cut);
+  argued (the margin of 1,024 times and top node ordinals).
 * **An iteration's rewrites**: about f of the stream's growth since
   pStart, by the allowance at commits (a step may pass it by its dirty
   bytes and one KV; `maintain()`'s steps have none), unless paced by
@@ -388,7 +411,7 @@ pending, M1's condition holds, or the dead hand has more.
 ## 6. In Java
 
 * `core/Reclaim`: `transactionCompleted` (1.2), `lastKeyAt` (E), `step`
-  (1.4), `markSafePositions` (1.5), `pretruncateIfPossible` (1.6),
+  and `storeCurrent` (1.4), `markSafePositions` (1.5), `pretruncateIfPossible` (1.6),
   `cutIfDurable` (1.7), `initFromDb` (1.9), `maintain` and its
   conditions (1.10), `setSettings`, `fractionOf`, `IterationInfo`,
   `IterationTable`; the class comment.
@@ -407,8 +430,10 @@ pending, M1's condition holds, or the dead hand has more.
 
 ## 7. Tests
 
-* **Gated by `before-commit.sh`**: `Reclaim`'s 38 tests, among them
+* **Gated by `before-commit.sh`**: `Reclaim`'s 39 tests, among them
   section 3's and `testAllowanceCountsIndexNodes`,
+  `testAllowanceCountsNodesMadeAfterTheRow` (028-26: 4b's charge, in
+  memory and as stored, at node sizes 8 and 30),
   `testStepReserveSplitsSteps`, `testQueueBeforeAKeyEnds`,
   `testCutKeepsMetaBlockTransaction`, `testRestartResumesIteration`;
   ReclaimRetentionTester (7),
@@ -475,7 +500,8 @@ and 023-08, fault 13 (the scan at a step's time); 024-07 (the last touch,
 T-COVER, T-LATEST, B1 to B4); 024-29, 026-04 (the fraction, the lag's
 mechanism); 024-30, 026-11 (the count gates, G4's lag); 024-32
 (`maintain()`); 024-34 (OP8); 026-05 (each step at its own time, E, the
-count, the pending cut); 026-10 (the forget at a decided cut).
+count, the pending cut); 026-10 (the forget at a decided cut); 028-26
+(the row again, 1.4's 4b).
 
 
 Log
@@ -507,3 +533,7 @@ section 5.1).
 the writer gets the step's operations as one batch after the row's
 value transformation; LIVEBELOW's premise now PE's drops and collapses.
 By an agent of coord-1118, on the branch `027-pe`.
+
+2026-11-19. 1.4's 4b, the row stored again with the bytes of the nodes
+that PE made after it (028-26); sections 2, 4, 6, 7 and 10 with it. By
+an agent of coord-1118, on the branch `028-26-reclaim-charge`.
