@@ -42,7 +42,12 @@ Checks, per transaction i (R(0) included):
        also CUT-live, T-COVER's second premise (`liveBelowFailures`): every
        index node reachable at the first available time has a data node
        below it then (BergDB's delete unlinks the nodes it empties; no touch
-       of a key range writes an empty node again)
+       of a key range writes an empty node again). Since bergdb 030-23 also
+       reclaim's contract RC (030-22): RC1-order, the cut at or after the
+       earlier ones; RC2-rewrites, every data node reachable at the first
+       available time with its version at the cut or later; RC4-waits, the
+       startup pos of R(i) after v, the first record whose startup pos
+       reached the first available time (Java's two waits); RC3 is CUT-live
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
        physical states (`slotFailures`; INV-SLOT of the design before handles,
        SIS/EvictExample.lean's `invSlotB`, which `TC_records` proved, until
@@ -164,6 +169,11 @@ def main (args : List String) : IO UInt32 := do
     let mut diag : Tally := {}
     let mut ccut : Tally := {}
     let mut cutCount := 0
+    -- RC (bergdb 030-23): CUT lines checked, the least margin sp(i) - v of RC4, and
+    -- the CUT lines with a margin of 1.
+    let mut rcCount := 0
+    let mut rcMargin := 0
+    let mut rcTight := 0
     -- The stream as the model sees it from a CUT on: version stubs before the cut.
     let mut Sc := jrecs
     let mut cutNow := 0
@@ -264,10 +274,26 @@ def main (args : List String) : IO UInt32 := do
             (fun y => (rm.getD y #[]).toList) (fun y => sec.get? y) r.dirty fuel)
         let cf := cutFailures cc f r.dirty below.eraseDups (jrecs.getD i r0).top (fun x => m.get? x)
         -- T-COVER's second premise at the first available time (bergdb 024-07).
-        let live := liveBelowFailures sp P' f (reachList sp P' f)
+        let rlF := reachList sp P' f
+        let live := liveBelowFailures sp P' f rlF
         let lf := if live.isEmpty then [] else
           [("CUT-live", s!"reachable at {f} without a data node below it: {showIds live}")]
-        ccut := ccut.add i (faFail ++ cf ++ lf)
+        -- Reclaim's contract RC (bergdb 030-23): RC1's order of the cuts, RC2, RC4.
+        let dataOld := rlF.eraseDups.filter (fun x => match P'.get? x with
+          | some n => n.isData && (match m.get? x with
+            | some (q, _) => decide (q < cc)
+            | none => true)
+          | none => false)
+        let sps := (recs.toList.take (i + 1)).map (·.sp)
+        let (rcf, v) := rcFailures cc f cutNow i sps dataOld
+        rcCount := rcCount + 1
+        match v with
+        | some v =>
+          let mg := r.sp - v
+          rcMargin := if rcCount == 1 then mg else min rcMargin mg
+          if mg == 1 then rcTight := rcTight + 1
+        | none => pure ()
+        ccut := ccut.add i (faFail ++ cf ++ lf ++ rcf)
         if cutNow < cc then
           for q in [cutNow:cc] do
             Sc := Sc.modify q Record.cut
@@ -357,6 +383,7 @@ def main (args : List String) : IO UInt32 := do
       IO.println (s!"C-CUT cuts: {ccut.failing} of {cutCount} CUT lines (and PHYSCUT lines) fail" ++
         (if ccut.byName.isEmpty then "" else s!" ({", ".intercalate (ccut.byName.map (fun p => s!"{p.1} {p.2}"))})"))
       for e in ccut.examples do IO.println s!"  {e}"
+      IO.println s!"C-CUT RC (bergdb 030-23): RC1 to RC4 at {rcCount} CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: {rcMargin}, CUT lines with a margin of 1: {rcTight}"
     diag.show "diagnostics" total
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
