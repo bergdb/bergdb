@@ -257,10 +257,11 @@ the mapping between them and positions; alignment; ids and vpos; times.
   :59), given in creation order from its record's position + 1; the
   creation's root key node has id 0 and its top node id 1 (012-02,
   section 2.5). An odd reference names a node not yet written; an even one
-  a written version. Since format 6 the ids of a record can have gaps:
-  the take-back drops a node made and emptied in one transaction, and its
-  id stays used (`Dag.takeBack`, `dag/Dag.java`:1443; `DbStarter`,
-  :402 to :410).
+  a written version. In formats 6 and 7 the ids of a record could have
+  gaps: the take-back dropped a node made and emptied in one transaction,
+  and its id stayed used. Since format 8 the writer makes no such node
+  (`PeWriter`, 026-25): a record's ids are its nodes', and the ids of its
+  delete nodes, in the writer's order (section 8.2).
 * **Times**: an `i64` in units of 100 ns since 1970-01-01 00:00 UTC
   (`Clock.UNITS_PER_SEC` = 10^7), from `Klong.MIN_TIME` = 0 to
   `Klong.MAX_TIME` = 2^56 − 1 (`dag/Klong`, :61 and :62), about the year
@@ -316,12 +317,15 @@ size; `Dag` refuses one when it is made (`Dag.MAX_NODE_SIZE`,
 `DagTester.testNodeSizeAbove62Refused`); and a start refuses a meta
 block that gives one as damaged, before any write
 (`Db.refuseOtherNodeSize`, `DbTesterRestart.testNodeSizeAbove62Refused`).
-The writer's rules of record format 7 are functions of B, so that a
-start's rerun of a record makes the same nodes: the thresholds m, h and
-c (024-14), and theta, the most dead key klongs a key node holds after
-a write: 7 B / 30 by integer division, at least 2, so 2, 3, 7 and 14 at
-8, 14, 30 and 62 (`Dag.theta`, the Lean model's `Params.thetaFor`;
-024-23; the floor 2, not 1, by 024-19, Q4).
+The writer's rules of record format 8 (format 7's but the cut size) are
+functions of B, so that a start's rerun of a record makes the same
+nodes: the thresholds m, h and c (024-14); theta, the most dead key
+klongs a key node holds after a write: 7 B / 30 by integer division, at
+least 2, so 2, 3, 7 and 14 at 8, 14, 30 and 62 (`Dag.theta`, the Lean
+model's `Params.thetaFor`; 024-23; the floor 2, not 1, by 024-19, Q4);
+and since format 8 the cut size, the most entries of each new node that
+a list is cut into, B / 2 (`Dag.cutSize`, the Lean model's
+`Pe.cutSize`; 026-24, section 2.6; 026-25).
 
 **The startup distance** (sd) was bytes 40 to 43 until version 155: since
 028-15 (Frans, 2026-11-18, 10:50, "SF4 (a), 028-15 A"; 026-12, SF7 (a))
@@ -511,7 +515,24 @@ pairs) is 41 bytes and 7 zeros: 48.
 * A got-dirty pair whose id is not the node at its position: an SFE
   (`DbStarter.canonicalNode`, :494).
 
-### 8.2. The format number, 7
+### 8.2. The format number, 8
+
+Format 8 since 2026-11-19 (026-25): format 7's record layout; what
+changed is the tree a record means. A start gives a record's KVs, in
+stored order (key order), to the writer PE as one batch (`Dag.putKvs`,
+`PeWriter`; the design 026-23, section 1.2, the trial 026-24, the proof
+030-21): a plan over the tree decides, from the whole batch, what each
+node touched holds after the transaction, and then each decided node is
+written once: nothing, klongs appended, or new nodes, its list cut into
+parts of at most B / 2 entries (section 6). No node is made and taken
+back, and the nodes' ids come in the writer's order: a value or delete
+node when its operation is applied at its segment leaf, a segment tree's
+new key nodes when that tree is emitted, the space root's tree bottom-up,
+the top node last. A start refuses a record whose KVs are not in strictly
+increasing key order (`DbStarter.rerunTransaction`). A stream of format 7
+is release 2026.5's, whose meta block (version 154) a start refuses first
+(section 21.1), or of a build of 2026.6 before 026-25. Format 7, below,
+as it was:
 
 Format 7 since 2026-11-11 (`d502af3d`; 024-21): format 6's record layout,
 and a record's deletes are rerun with the merges of underfull key nodes,
@@ -539,7 +560,8 @@ deletes when a start reruns it, and so the tree the stream holds
   fault 12).
 
 History: 2 until 2026-10-15; 5 from then (topPos in the header, 011-11,
-M18) to 2026-11-10; 6 since. Format 6 is the only one 2026.4 reads.
+M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
+6 is the only one 2026.4 reads, 7 the only one 2026.5 reads.
 
 ### 8.3. The record limit
 
@@ -790,10 +812,13 @@ A klong is an `i64`; its type is bits 62 and 63 (`Klong`'s class comment,
   `Klong.EMPTY_KEY` (:79), the empty key, is `0x4000000000000000`.
 * **Delete bitmap**: 62 bits, one per klong index 0 to 61
   (`DELETE_BITS`, :88); a bitmap holds the bits of the node's bitmap
-  before it and its own (`Dag.appendDeleteKlong`), and a reader applies
-  the latest one it has read (012-02, section 6.3.1). A second delete in
-  the same node by the same transaction changes that transaction's
-  bitmap in place when it is the node's last klong.
+  before it and its own (`PeWriter.emitBits`), and a reader applies
+  the latest one it has read (012-02, section 6.3.1). Since format 8 a
+  transaction writes at most one bitmap in a node, with the bits of
+  every compare value it removes there (026-25); until then a second
+  delete in the same node by the same transaction changed that
+  transaction's bitmap in place when it was the node's last klong
+  (`Dag.appendDeleteKlong`).
 
 ### 11.3. What a node holds: to be written
 
@@ -814,8 +839,9 @@ to 5.3, with the code of `Dag` and `KeyNode`:
   (`KeyNode.firstAndSecond`, :1348), and when the child it names empties,
   the next live child gets a new empty-key klong
   (`Dag.emptyKeyNext`, :1491);
-* the stop node's delete bitmap of the upward unlink, root collapse and
-  the take-back (section 8.2);
+* a delete bitmap of the klongs whose compare values a write removes
+  (formats 6 and 7: the stop node's of the upward unlink, root collapse
+  and the take-back; section 8.2);
 * the bound on n: at most the maximum node size, + 1 transiently
   (`KeyNode.check`, :1633), and at most 62 klongs that a bitmap can
   name (62 the largest node size, section 6);
@@ -1506,7 +1532,7 @@ not focus on this for this release.").**
 |---|---|---|
 | meta version 155     | the framing; sd's place (028-15)   | `readMetaBlock`; before writes |
 | meta node size ≠ 0   | a block not damaged (028-15)       | `refuseOtherNodeSize`; before  |
-| record format 7      | header, nodes, the rerun's meaning | `Parser.parse`; after recovery |
+| record format 8      | header, nodes, the rerun's meaning | `Parser.parse`; after recovery |
 | node formats 3, 3, 5 | each node's layout                 | each parser, at a parse        |
 | object header 0x82   | the Pub layer's objects (020-07)   | `ObjectFormat`, at a read      |
 | index def. version=1 | an index definition (020-10)       | `IndexManager.start`           |
@@ -1523,7 +1549,12 @@ not focus on this for this release.").**
   checked when it is read, and a read that meets another format fails the
   database.
 * History: record format 2 until 2026-10-15, 5 until 2026-11-10, 6 until
-  2026-11-11, 7 since; meta 154 from 2015 to 2026-11-18, 155 since
+  2026-11-11, 7 until 2026-11-19, 8 since (026-25: 2026.6's meta version
+  already refuses 2026.5's format 7, but a record's format byte names the
+  rerun's meaning, so that a release that reads several formats, 21.3's
+  V-B or V-C, can tell them apart; and a database of a build of 2026.6
+  before 026-25 is refused, not rerun into another tree); meta 154 from
+  2015 to 2026-11-18, 155 since
   (028-15); the node size since 2026-10-27. Each change has refused all
   older databases ("new databases only", F1-008-11's Q5). 2026.4 refuses
   2026.1 to 2026.3 (023-02, F9 (a)); 2026.5 need not open 2026.4's
@@ -1649,6 +1680,11 @@ corpus in 21.3). By agent ns30 of coord-1113, on the branch
 step's row, not its touch's; a missing endKey line told apart from
 `none`, and the row's defaults; endKey's landing without Q9 (Q8); G17
 since 024-37. Section 19's G17 row and section 20's Q8 not changed.
+
+2026-11-19. 026-25: record format 8, the writer PE (sections 5's ids,
+6's rules of B and the cut size, 8.2, 11.2's bitmap, 11.2's list of
+what a key node holds, 21.1). By an agent of coord-1118, on the branch
+`026-25-pe-java`.
 
 2026-11-18. 028-15 (Frans, 10:50, "SF4 (a), 028-15 A"): the startup
 distance an internal KV, `/#i/-sd`, put by the creating

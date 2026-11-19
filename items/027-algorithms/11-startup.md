@@ -184,13 +184,14 @@ M18). x is the tree's root.
 
 For each j from s + 1 to k, in order:
 
-1. **The puts.** Each value or delete node of R(j), in stored order (key
-   order), is put at T(j)'s time through the writer, which makes each
-   node it reaches canonical; deletes and merges are rerun as format 7
-   has them (part 4). A node made gets the next vpos as its id; if R(j)
-   holds a node with that id, its position (a value its offset, 005-34);
-   an index node with a version in the section, newById's position. A
-   key node made and taken back is dropped (023-05, P4).
+1. **The puts.** The value and delete nodes of R(j), in stored order
+   (key order, strictly increasing, else an SFE), are given at T(j)'s
+   time to the writer as one batch (`Dag.putKvs`, PE since record format
+   8, 026-25; part 4), which makes each node it reaches canonical. A node
+   made gets the next vpos as its id; if R(j) holds a node with that id,
+   its position (a value its offset, 005-34); an index node with a version
+   in the section, newById's position. (Until format 8 each KV was put
+   alone, and a key node made and taken back was dropped, 023-05, P4.)
 2. **D.** For each pair (id, p) of gd(j): id's canonical object; or the
    version at newById[id], or at p if p is a position, whose id must be
    id (015-75), a key node validated and cut back to ts. It is made
@@ -409,9 +410,10 @@ T3 and T4 are part 6's; what they give a start:
     (`followStreamPointer`, step 1); for a top node's pointer that
     neither map of rule 4 finds (005-57 found none); at topPos when not
     in posToId (1.6).
-  * Merges: a format 7 merge reads up to two siblings a level (024-21)
-    and may leave one unchanged, on no path of `pathOf`; the cold-read
-    bounds do not cover Java's rerun of deletes.
+  * Merges: a join of the writer (PE's rebalance, format 8; a merge of
+    format 7, 024-21) reads a sibling a level and may leave it unchanged
+    when it does not join it (the count of M1), on no path of `pathOf`;
+    the cold-read bounds do not cover Java's rerun of deletes.
   * The touch: Java's rerun does not repeat a reclaim step's touch
     (1.7), the model's does; that D adds no read (`MemInv.coverGd`)
     rests for Java on the touched nodes being on the step's put paths

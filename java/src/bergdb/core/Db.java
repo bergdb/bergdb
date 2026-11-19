@@ -3810,7 +3810,8 @@ public class Db implements AutoCloseable {
      * 772,454 nodes in one transaction, pinned at once and then written in one record of 206
      * MB (bergdb 024-07, section 2). The range was walked for
      * the nodes that held deleted keys only, which no put reaches; since format 6 a delete
-     * unlinks the nodes it empties (Dag.deleteUpward), so every index node that a lookup
+     * unlinks the nodes it empties (since format 8 PeWriter drops them; until then
+     * Dag.deleteUpward), so every index node that a lookup
      * reaches, but an empty space root, has a live key below it, and the put of that key, the
      * user's or a step's rewrite, makes the node dirty (024-07, section 4; the Lean model's
      * T_cover).</p>

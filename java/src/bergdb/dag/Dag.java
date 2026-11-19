@@ -311,7 +311,7 @@ public class Dag {
     }
     
     /**
-     * Creates a PutData object suitable for use with as a parameter to Dag.putKv().
+     * Creates a PutData object suitable for use with as a parameter to Dag.putKvs().
      * Use Db.newPutData() instead if you want to use the PutData object as a 
      * parameter with methods of Db. The caller sets its pointerFollower, as Db does.
      */
@@ -534,6 +534,14 @@ public class Dag {
      * would have, so it overflows by its size no more often, and later compactions in the
      * transaction are of nodes the transaction made, in place: nothing more is counted.</li>
      * </ul>
+     * 
+     * <p>The count above was argued for the writer of record formats 6 and 7, whose
+     * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), which
+     * writes each node once: a node of the paths, kept, appended or replaced by new nodes, a
+     * list of more than h entries cut into parts of at least m, and new roots above a cut
+     * root; the bound is kept as it was, and checked for PE by the tree checker on every
+     * traced transaction (its C-T8: the key nodes marked are at most this bound) and by
+     * DagTester's tests of the bound. An argument for PE's own counts is not written.</p>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
      *      changes nothing.
@@ -952,8 +960,9 @@ public class Dag {
     // ======== Format 7's fill rule: the thresholds (bergdb 024-21; 024-11, section 5.1) ========
     //
     // The thresholds of a key node's fill, each a function of the node size B (maxNodeSize,
-    // which the database's meta block holds). They are rules of record format 7
-    // (StoredTrans.RECORD_FORMAT): a start reruns a record's puts and deletes with them, so a
+    // which the database's meta block holds). They are rules of record formats 7 and 8
+    // (StoredTrans.RECORD_FORMAT), with format 8's cut size (cutSize, below; bergdb 026-25):
+    // a start reruns a record's puts and deletes with them, so a
     // change of any of them is a change of the format, and of every database's tree. Frans
     // decided them on 2026-11-11 at 14:34 (bergdb 024-14, QT1: the set m8, 8/17/17 for B =
     // 30); until then prototype P5's 7/15/15 (023-05). Another node size B gets v * B / 30 by
@@ -966,16 +975,19 @@ public class Dag {
     static final int THRESHOLDS_NODE_SIZE = 30;
 
     /**
-     * h at node size 30: rule O (handleFullNode) replaces a full node by its last version, a
-     * time split, if that holds at most h klongs with its time klong, else splits it in two
-     * halves, a space split, each of at least h / 2 live klongs. 2026.4: B / 2, 15.
+     * h at node size 30: since record format 8 (PeWriter; bergdb 026-25) a list of at most h
+     * entries that does not fit its node is one new node, a longer one is cut into parts of at
+     * most cutSize. Until then rule O (handleFullNode) replaced a full node by its last
+     * version, a time split, if that held at most h klongs with its time klong, else split it
+     * in two halves, a space split, each of at least h / 2 live klongs. 2026.4: B / 2, 15.
      */
     static final int SPLIT_ABOVE_30 = 17;
 
     /**
      * m at node size 30: after every transaction, every reachable key node that is not the
-     * root of a segment tree holds at least m live klongs (bergdb 024-11, BU1 and V1); a delete
-     * that leaves one with m - 1 merges it (mergeAfterDelete).
+     * root of a segment tree holds at least m live klongs (bergdb 024-11, BU1 and V1): a node
+     * that a transaction leaves with fewer is joined with a neighbour (since record format 8
+     * PeWriter's rebalance; until then a delete merged it, Dag.mergeAfterDelete).
      */
     static final int MIN_FILL_30 = 8;
 
@@ -1034,24 +1046,19 @@ public class Dag {
     // ======== Option 2 of dead klongs: compaction at the write (bergdb 024-23; 024-18) ========
     //
     // A key node holds at most theta dead KEY klongs (deadCount: deleted by the node's last
-    // bitmap, or followed by a later KEY klong of the same compare value). Before the writer
-    // applies a write to a key node, it takes the dead klongs that the write adds: a put's
-    // klong 1 if its key is live in the node (isLive), else 0; a delete's bitmap, new or the
-    // transaction's own changed in place, 1; LE-b's bitmap and empty key 2, or 1 when the empty
-    // key is pointed in place; a merge's parent 1 or 2; a split's klongs in the parent and
-    // root collapse's klong 1 for each of a live compare value; a new segment's klong and a
-    // klong pointed in place 0. If the node would then hold more than theta, it is full
-    // (deadFull), and rule O replaces it by its last version with the write applied
-    // (handleFullNode with 'compaction'): always one node, a time split, as the node had room
-    // for the write and its last version has no more klongs; a node that the transaction made
-    // is compacted in place. A node without room is full by its size first, as before. So after
-    // every write a node holds at most theta dead klongs (bergdb 024-23, TP39), where the
-    // merges alone allow B; and reclaim's rewrites, which are puts, compact the cold leaves
-    // that they take above theta. A compaction keeps every live klong, so it changes no node's
-    // fill (V1, BU1).
-    // A function of the node and the write, so a start's rerun of a record of format 7 makes
-    // the same nodes; no field (bergdb 024-23, sections 2.2 to 2.4; Frans's decision of
-    // 2026-11-11, 024-18, QD1). The Lean model: Exec.lean's deadOver.
+    // bitmap, or followed by a later KEY klong of the same compare value). Since record format
+    // 8 (PeWriter.decide, bergdb 026-25): a node that would hold more than theta with the
+    // klongs that a transaction appends to it is replaced instead by one new node of its live
+    // list, if that fits, else its list is cut as any list that does not fit. So after every
+    // transaction a node holds at most theta dead klongs (bergdb 024-23, TP39), and reclaim's
+    // rewrites, which are puts, compact the cold leaves that they take above theta. A
+    // compaction keeps every live klong, so it changes no node's fill (V1, BU1). Until format
+    // 8 the old writer counted the dead klongs of each write (isLive, deadFull) and rule O
+    // replaced the node by its last version with the write applied (handleFullNode with
+    // 'compaction'). A function of the node and the transaction, so a start's rerun of a
+    // record makes the same nodes; no field (bergdb 024-23, sections 2.2 to 2.4; Frans's
+    // decision of 2026-11-11, 024-18, QD1). The Lean model: Pe.lean's deadOver (Exec.lean's
+    // for the old writer).
     //
 
     /** theta at node size 30 (Frans, 2026-11-11; bergdb 024-18, QD1). */
@@ -1064,7 +1071,7 @@ public class Dag {
      * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2, from node size
      * 8 (2 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
      * (bergdb 024-23, OD2; other node sizes are open with 024-14's QT2). A rule of record
-     * format 7, as the thresholds are. The floor was 1 until 2026-11-12 (Frans, 024-19, Q4):
+     * formats 7 and 8, as the thresholds are. The floor was 1 until 2026-11-12 (Frans, 024-19, Q4):
      * theta 1 at 8 compacted a node at every second dead klong and cost 25 percent of the
      * bytes a put (024-19, section 4.5).
      */

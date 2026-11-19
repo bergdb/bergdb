@@ -41,9 +41,168 @@ From 026-24's recommendation, step 2, and coord-1118's brief:
 5. Not touched: the creation path (028-18 waits for Frans), lean/contract.
 
 
-# 2. Progress
+# 2. Java's writer
 
-(Kept current while the work goes on.)
+`java/src/bergdb/dag/PeWriter.java`, called by `Dag.putKvs(keys,
+values, pd)`: the program of PeWriter.lean (`plan`, `planKids`, `route`,
+`applyGroups`, `planTree`, `rebalance`, `joinAt`, `settleRoot`, `mkNode`,
+`decideNode`, `emit`, `newParts`), each Java method naming the definition
+it restates. The differences of form, none of which changes a node:
+
+- A node is named by the pointer that reached it (a node and the index of
+  its klong), not by an id: an entry is unchanged in a node if it is the
+  node's own live klong of its compare value (`kept`). A node made and a
+  value are named by their objects. A node written that names an old node
+  copies the pointer that named it, its handle and reference as a coherent
+  pair (`KeyNode.addKlongCopyPointer` from another node; the A-COPY of
+  030-07).
+- Heights come from the planned children (a segment leaf 0, an inner node
+  one above its children), not from levels: Java has no level field.
+- The walk over the segments is a loop with a stack of frames, not a
+  recursion: a key of BergDB's own may have 8,193 segments (024-17's L3;
+  `DbTesterLongKeys.testOwnLongKeysSmallStack` runs in a stack of 256 kB).
+  Within a segment tree the recursions (rebalance, settle, emit) are bounded
+  by its height; a descent of more than 1,000 nodes in one tree is a cycle
+  of a damaged stream (`PointerFollower.cycle`).
+- A delete that deletes makes a delete node, with an id, for the record
+  (`ValueNode.createDelete`, as before); a delete of a key with no value is
+  a noop and makes nothing. Java has no level bounds G and H and every key
+  of `Keys.toSegments` is one the tree can hold, so nothing is refused.
+- The cut size is `Dag.cutSize(B)` = B / 2, PeWriter.lean's `cap` (026-24,
+  section 2.6, its recommendation; 030-21 ran the traces with `cap` = h,
+  and its theorems hold for any `cap` from 1 to M - 1, `Cfg.Ok`).
+
+**The ids.** Db gives a node its id when it is reported made, so the order
+of the reports is that of PeWriter.lean's fresh ids: a value or delete node
+when its operation is applied at its segment leaf (key order), a segment
+tree's new key nodes when that tree is emitted, before the leaf's later
+operations, the space root's tree bottom-up and left to right, the top node
+last. A node made is filled first, then reported made (its id, and the
+resident registry counts it with what it holds, as a time split's last
+version was), then its pointers, then changed.
+
+**The listeners and D.** The plan follows pointers without telling pd's
+pointer listener, so a node that a plan reads is not marked; the writer
+reports what Db's step 3 needs: a node made (`keyNodeCreated`, then
+`keyNodeChanged`), a node that gets klongs (`keyNodeChanged`), a node of the
+tree before that is not reachable after (`keyNodeReplaced`: replaced by new
+nodes, joined, emptied, collapsed), and a node kept as it was with a node
+written below it (`keyNodeOnPath`, new), which Db marks: so D is the Lean
+model's marked set, the changed nodes and their current ancestors (C-T9 and
+A2A3Check2's MARKING: equal at every transaction). The super root and the
+space root are marked by the find of the root, as before.
+
+**The batch.** `Db.putKvs` runs an internal transaction's value
+transformations first (each reads its key's value at tt, which is the
+value before the transaction, as a transaction has one operation a key),
+then gives the Dag the KVs as one batch, in key order; the start's rerun
+gives it a record's KVs in their stored order and refuses a record whose
+KVs are not strictly increasing (an SFE; it was an
+IllegalArgumentException of `Dag.putKvs` in `CorruptStreamTester.testSample`).
+A reclaim step's row (`Reclaim`'s value transformation) therefore stores
+the bytes that the step's touch made dirty (`Trans.dirtiedBytes`), and no
+longer also those of the step's puts that sort before the row: **for Frans
+to confirm** (the smallest choice; the touch covers the paths of all the
+step's keys, the puts' new nodes are left out, which was already true of
+the puts that sort after the row).
+
+
+# 3. The oracle
+
+`lean/SIS/Tree/Pe.lean`: PeWriter.lean's definitions copied, on the
+model's P (a key node read from its history, `klongsOf`, with its level),
+with Java's ids (a fresh id the next vpos, two on; a delete that deletes
+takes one) and Java's bitmaps (bits in increasing order without repeats),
+the cut size `cutSize` = M / 2, and a result in the model's writer state
+`W`, so that the tree checker's checks run unchanged: `Pe.runOps` replaces
+`runOps` in `Check/Tree.lean` (C-T1 to C-T8) and `TreeCheck.lean`
+(`--hplus`), `Pe.exec` replaces `Tree.exec` in `Check/TreeRun.lean`
+(C-T9). A noop is a delete of a key with no value at i - 1 (`get`). The old
+writer of the model, `SIS/Tree/Exec.lean`, stays: `treeSpec` and the
+statements of SIS/Tree/Props.lean are about it, and `treetest` runs it.
+
+lean/contract imports lean/SIS (`require sis`), so lean/SIS cannot import
+`Contract.PE`. Instead, 25-pe-java/pecmp/ (a Lake package of this item,
+which builds PeWriter.lean's closure from lean/contract's sources into its
+own .lake, as that closure needs neither Mathlib nor lean/SIS) runs both
+writers on Java's structure before every transaction of Java's traces and
+walks both trees after it from their space roots: the same old nodes, every
+node written by either written by the other, with the same level, kind and
+klongs, the nodes made renamed by a bijection, values with the same hash.
+Results in section 6.
+
+The tree checker then compares Java with PE node for node, with the ids:
+the nodes made (NEW), the entries (ADD), the klongs (KN), the noops, the
+reads, the touch, the invariants, the bound and the whole run.
+
+
+# 4. The record format
+
+Raised to **8** (`StoredTrans.RECORD_FORMAT`). By 027-03, section 21.1,
+the record format covers "header, nodes, the rerun's meaning", and PE
+changes the rerun's meaning: the same record makes another tree, with
+other ids. 2026.6 already refuses 2026.5's streams by the meta version
+(155 since 028-15), so a release reader never meets a format 7 record of
+2026.5; the number is raised anyway because:
+
+- 21.2: "Each record carries its format byte ... A reader can tell, record
+  by record, which rules apply": with format 7 meaning both 2026.5's
+  writer and PE, a later release that reads several formats (21.3's V-B or
+  V-C) could not tell them apart;
+- a database made by a build of 2026.6 before this item (meta 155, format
+  7, the old writer's tree) is refused with a message, not rerun into
+  another tree than its stream holds (its got-dirty ids would name other
+  nodes);
+- it costs one constant, one test (`StoredTrans.testRefusesFormat6` now
+  refuses 6 and 7) and the message; format 7's meaning had changed twice
+  without a new number before 2026.5, but each time within one release's
+  development.
+
+027-03 is updated (sections 5, 6, 8.2, 11.2, 21.1 and its log), with
+027-08's description and 027-11's rerun.
+
+
+# 5. What was removed
+
+The old writer of formats 2 to 7 in Java, and its books:
+
+- `Dag.java`: putKv's per-operation walk (setValue, setNode), the upward
+  unlink (deleteUpward, unlink, the climb), the take-back (takeBack,
+  canTakeBack, retarget, takeBackRoot), LE-b's relabel (emptyKeyNext),
+  root collapse by descent (collapseRoot, replaceRoot, descendTo*), the
+  merges at the delete (mergeAfterDelete, merge, sibling, mergeParent,
+  link), appendDeleteKlong, appendKlongs, handleFullNode and the five
+  splits (time splits, space splits, in place and not), isLive, deadFull,
+  the SplitListener, `keyNodeTakenBack`; 1,892 code lines (lines that are
+  not blank or comments) before, 782 after.
+- `KeyNode.java`: firstAndSecond, replaceKlong, addSortedKlong,
+  setContentFrom, copyPointer, repointKlong (1,289 code lines, 1,163).
+- `PutData.java`: the key access path, madeFor/replacedBy, the split
+  counters and listener, fullNodes, newRootsMade, oneKwi, twoKwis (69, 27);
+  `KeyAccessPath.java` (117 code lines) gone.
+- `Db`: the nodes taken back (takenBackInTrans); DbStarter's take-back;
+  TransCheck's take-back (it now fails a node made or changed and replaced
+  in one transaction: each node is written once).
+- The write half: about 1,395 code lines before (Dag 1,110, KeyNode 126,
+  PutData 42, KeyAccessPath 117), about 890 after (PeWriter.java 846, the
+  entry points in Dag 43): 36 % less. With comments, PeWriter.java is
+  1,081 lines against the 2,011 lines of Dag.java's old write half.
+
+Tests and tools changed with it: the Dag's tests and fuzzers give a
+transaction as one batch (DagTester, MergeTester, DeadKlongTester,
+UnlinkFuzz, DagFuzz, A2A3Check, A2A3Check2, DagExamples); the take-back's
+assertions became the writer's (joins, cuts, collapses: `Dag.stat*`);
+TraceExport's noop flags by key, its Dag counters line; conformance.sh and
+level2.sh require joins of their draining configurations, where they
+required take-backs; CorruptStreamTester's positions found again in the new
+streams (six tests, with probes kept in the agent's scratch, not here);
+a few thresholds of tests that depend on the tree's shape (sections 6 and
+the Log).
+
+
+# 6. Gates and results
+
+(Filled as the gates pass.)
 
 
 # State

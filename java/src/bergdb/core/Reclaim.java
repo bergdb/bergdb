@@ -64,7 +64,8 @@ import bergdb.stream.MemoryStream;
  * by the step that rewrote it (a value stored before pCut and live at a time t from tEnd on
  * was live, with that value, from tStart to t, so the step whose range holds its key met it;
  * step(), bergdb 023-05, P8, section 2.3). An index node: a delete unlinks the nodes it empties
- * (Dag.deleteUpward, format 6), so the node has a live key below it; if nothing below the
+ * (since record format 8 the writer drops them, PeWriter's rebalance and settleRoot; formats 6
+ * and 7, Dag.deleteUpward), so the node has a live key below it; if nothing below the
  * node changed since pCut, that key's value is stored before pCut, and the step that rewrote
  * it made the node dirty; otherwise the transaction that changed something below it did
  * (bergdb 024-07, section 4). The space root, the only node that can be empty, is on the path
@@ -3508,7 +3509,8 @@ public class Reclaim implements Db.TransactionListener {
         
         /**
          * bergdb 024-07, the premise of a step that makes dirty its own paths only: a delete
-         * unlinks the nodes it empties (Dag.deleteUpward), so no index node that a lookup
+         * unlinks the nodes it empties (since record format 8 PeWriter drops them; formats 6
+         * and 7, Dag.deleteUpward), so no index node that a lookup
          * reaches is left without a live key below it, where no put would make it dirty
          * again and its version would stay below the cut (testDeletedKeysAfterCut, at a
          * larger size and at the first available time too). 600 short keys and 300 long
