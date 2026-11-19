@@ -4,8 +4,14 @@
 Created 2026-11-11 by Frans Lundberg. Status: open.
 
 Release 2026.6 of BergDB, after 2026.5 (024): its plan, its decisions and
-the work towards it. Its preliminary theme: **simpler algorithms**
-(Frans, 2026-11-16, 10:26; the study behind it is 006-28).
+the work towards it. Its theme: **proven algorithms** (Frans,
+2026-11-19), after 2026.5's "solid algorithms": BergDB's core algorithms
+are proved, given tested assumptions (030). The preliminary theme was
+simpler algorithms (Frans, 2026-11-16; the study behind it is 006-28).
+
+The stable stream format is not in this release: it waits for a later
+one, perhaps more than one release later, to be looked at together with
+encryption and replication (Frans, 2026-11-19).
 
 The stream format's draft specification is 027-03 (024-02 until
 2026-11-13), kept up to date with the code.
@@ -382,3 +388,8 @@ work on main since 2026-11-13, nothing to port (agent of coord-1118).
 (Frans, 12:47).
 
 2026-11-18. 026-24 done: the PE trial's result for Frans (go).
+
+2026-11-19. Theme: proven algorithms (Frans), after the proofs of the
+writer (030-21) and of reclaim (030-23 to 030-25). The stable stream
+format waits for a later release, perhaps more than one release later,
+together with encryption and replication (Frans).

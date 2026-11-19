@@ -18,6 +18,13 @@ each tag), and `baseline.zip` is not published (bergdb 026, "How the
 release is made"; 029). The notes say so where they list the files.
 
 
+### The theme
+
+Proven algorithms (Frans, 2026-11-19): BergDB's core algorithms are
+proved, given tested assumptions (bergdb 030). Release 2026.5's theme
+was solid algorithms. The stable stream format waits for a later release.
+
+
 ### The stream
 
 * **Databases of release 2026.5 and earlier are refused: make them again**
