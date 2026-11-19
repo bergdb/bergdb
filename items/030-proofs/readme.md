@@ -467,6 +467,15 @@ Files
   in Lean; RC2 and RC3 for the key tree, from the iteration and VAL-NEW,
   which PE meets; the top theorem for PE (`PE.pe_reclaim_reads`); 3,991
   lines of Lean. Written 2026-11-19. Status: done.
+* [030-25](25-iteration-ok.md). Reclaim's iteration proved: a model of
+  the iteration's steps (027-13, section 1.4: each step's scan at its own
+  time from lastKey up to E, any stops before or after a KV, the rewrites
+  and the row, the last step's scan past the end; `StepsOK`) and the proof
+  that a history whose steps follow it meets `IterationOK`, given VAL-NEW
+  (`iterationOK_of_stepsOK`); the top theorem with the steps in place of
+  `IterationOK` (`PE.pe_reclaim_reads_steps`); an example; how Java's steps
+  could be checked on traces; 730 lines of Lean. Written 2026-11-19.
+  Status: done.
 
 Log
 ===
