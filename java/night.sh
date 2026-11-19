@@ -182,6 +182,13 @@ kill_seeds() {
     done
 }
 
+# week.sh short's conformance: the checker built first, as the level scripts do for theirs.
+conformance_small() {
+    (cd ../lean && lake build) > build/lake-week.txt 2>&1 \
+        || { echo "CONFORMANCE FAILED: lake build (log: java/build/lake-week.txt)"; return 1; }
+    sh stress/conformance.sh small 1
+}
+
 # The day's number (days since 1970), for week.sh's seeds: other seeds each day, and
 # other than night.sh's of the same day.
 DAY=$(( $(date +%s) / 86400 ))
@@ -228,7 +235,7 @@ elif [ $KIND = week ]; then
         -o build/harness-soak-week
 fi
 if [ $SHORT = 1 ]; then
-    step conformance-small sh stress/conformance.sh small 1
+    step conformance-small conformance_small
 elif [ $LARGE = 1 ]; then
     step conformance-large sh stress/conformance.sh large
 fi

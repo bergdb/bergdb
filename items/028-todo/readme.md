@@ -105,7 +105,6 @@ Open
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
-| [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | in progress |
 
 
 Closed
@@ -113,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | done | 2026-11-19 |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | done (1b1001ee, 026c322a) | 2026-11-18 |
 | [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the creation whole (option C) | C (09:53) | done | 2026-11-19 |
 | [028-17](17-creation-kv-not-synced.md) | Fix | A crash after a new database's start left the primordial record alone | none | done | 2026-11-18 |
@@ -187,3 +187,8 @@ branch `028-18-option-c` by an agent of coord-1118.
 2026-11-19. 028-23 registered and taken: the test scripts sorted by kind,
 functional (before-commit.sh, night.sh, a new week.sh) and timing (a new
 timing.sh) (Frans, 10:25 to 10:39), by an agent of coord-1118.
+
+2026-11-19. 028-23 done on its branch: before-commit.sh, night.sh and a
+new week.sh functional, a new timing.sh the only one that needs a quiet
+machine; 13 load-sensitive checks made robust; the user apps in
+java/stress/apps/, by an agent of coord-1118.

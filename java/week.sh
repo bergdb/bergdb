@@ -15,8 +15,9 @@
 #
 # Usage: java/week.sh          the week run, about 11 hours on F53 (an estimate of
 #                              2026-11-19 from the steps' times below)
-#        java/week.sh short    a trial of the script: week's own steps small (about 25
-#                              minutes), night's steps left out
+#        java/week.sh short    a trial of the script: week's own steps small (about 15
+#                              minutes on a quiet F53, 33 at a load near 90), night's
+#                              steps left out
 #
 # It is night.sh's run (night.sh week; the same clone of HEAD in build/week/RUN/repo, the
 # same report, build/week/RUN/report.txt, ending WEEK OK or WEEK FAILED, the same logs and
@@ -41,7 +42,8 @@
 #   7. conformance-large: stress/conformance.sh large (night.sh large's step), 12 traces of
 #      1,000 to 5,000 transactions at node sizes 8 to 62; about 5 hours.
 # With "short": apps quick, kill-restart 10 kills on two seeds, fuzz 1 minute, unlinkfuzz
-# one block, harness-soak -r 1, and conformance small with 1 seed in place of large.
+# one block, harness-soak -r 1, and conformance small with 1 seed in place of large (the
+# Lean checker built first: night's level steps, which build it, are left out).
 # Not in it, by hand before a release: stress/android.sh (needs the Android SDK).
 # Set JAVA_HOME or PATH for the JDK; the build needs javac too, and the Lean steps elan.
 

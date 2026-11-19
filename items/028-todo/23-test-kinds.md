@@ -1,7 +1,7 @@
 028-23. Change: the test scripts sorted by kind, functional and timing
 =====================================================================
 
-Status: in progress. Kind: Change. Frans: decided (10:39).
+Status: done. Kind: Change. Frans: decided (10:39).
 Created 2026-11-19 by Frans Lundberg.
 
 What: sort the test scripts by kind. Functional testing in
@@ -277,3 +277,26 @@ Log
 
 2026-11-19. Registered (Frans, 10:25, 10:34, 10:39) and taken by an agent
 of coord-1118: in progress; branch `028-23-test-kinds` in a scratch clone.
+
+2026-11-19. Done on the branch `028-23-test-kinds`, main merged in, by an
+agent of coord-1118. Gates, all on F53 at a load of 30 to 96 (other
+sessions' gates and night.sh): BEFORE COMMIT OK (166 s; the first run
+failed once in IndexJobsHarness, the race of section 3, item 14, fixed;
+the class then 6 times in parallel, all OK); COUNT GATES OK (554 s);
+InterruptStress 10 s OK; the night tests' StorageFaultTester OK (279 s);
+`stress/apps.sh quick` APPS OK (6 minutes; soak and kill lines tried with
+smaller arguments); `week.sh short` (30 minutes): apps-quick, kill-restart-week (2 seeds
+of 10 kills), fuzz-week, unlinkfuzz-week (1,122 s at that load) and
+harness-soak-week ok, conformance-small failed for want of the Lean
+checker (night's level steps build it; short mode skips them), so the
+short step now builds it first, and that step alone then gave
+CONFORMANCE OK (170 s); `timing.sh core`
+refused at 8 % idle (TIMING REFUSED, exit 2); `FORCE=1 ROUNDS=1
+PAUSE_SECONDS=5 timing.sh core pauses`, a trial and not a measurement (the
+CPU 0 to 1 % idle): the reference release-2026.5 cloned and built, CORE
+and the pause probe ran on both builds, TIMING ALERTS as expected under
+that load; performance.sh's harness compiles against 2026.5's jar; `sh -n`
+on every changed script. Not run: a full week.sh (the coordinator starts
+the first tonight) and timing.sh on a quiet machine (its times in the
+headers are estimates until then).
+
