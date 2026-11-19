@@ -210,11 +210,14 @@ In 21-pe-proof/ (the trial's program with two checks added, as
 
 # State
 
-2026-11-19, 02:10. **Done: the complete proof, gated.** Branch
-`030-21-pe-proof` in /Users/f/fl/bench/2026-11-18/pw/clone, merged with
-main 622d774d; `lean/contract/gate.sh` GATE OK (132 theorems, the standard
-axioms only, 73 files of the closure, 84 pinned). For landing, one commit
-on main (see the Log for its hash). No run going.
+2026-11-19, 02:15. **Done: the complete proof, gated.** GATED: 9ee10300
+on the branch `030-21-land` in /Users/f/fl/bench/2026-11-18/pw/clone, one
+commit on main 622d774d (the work's history is on the branch
+`030-21-pe-proof`, the same tree); `lean/contract/gate.sh 622d774d`: GATE
+OK (132 theorems, the standard axioms only; no file changed outside
+lean/contract/ and items/030-proofs/; the pinned files changed are
+Axioms.lean, with four theorems and two examples added, and the new
+statement files). No run going.
 
 - What is left (the Result): PE's acceptance (tested), `MeetsFull` for PE
   (its record in the model's words), Java.
