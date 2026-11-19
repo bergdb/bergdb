@@ -1,0 +1,10 @@
+# bergdb 026-25, perf2: jobs-10m.txt's CCBench and Perf write with reclaim on F53 (f53-run.sh),
+# with a heap of 8 GB (F53 has 32 GB); main and pe in ABBA order, two each.
+cc10m-main-r1a main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-pe-r1b pe 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-pe-r2a pe 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-main-r2b main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+w10m-fin-pe-r1a pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w10m-fin-main-r1b main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w10m-fin-main-r2a main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w10m-fin-pe-r2b pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000

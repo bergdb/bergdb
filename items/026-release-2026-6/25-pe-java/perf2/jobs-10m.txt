@@ -1,0 +1,22 @@
+# bergdb 026-25, perf2: on s1. CCBench at 10M keys of 8-byte values (as 030-20's set 4; all in a
+# 2.9 GB heap, no eviction): the load (transactions of 500 puts), then update, insert, delete and
+# mixed in transactions of 1, 10, 100 and 500 operations, history kept. Perf write, transactions of
+# one put after a warm-up: with history kept at 10M keys, 500,000 transactions; with reclaim at 5M
+# keys (retention 0.1 updates a key, R = 500,000 transactions; until the first physical cut, at
+# least 2M transactions, at most 4M). At 10M keys with reclaim both builds ran out of the 2.9 GB
+# heap (at 1.6M and 1.7M transactions), and with a cache budget of 1 GB (-Devictbudget) the load
+# took 322 s and the updates ran at 25 a second, bound by the disk. Perf with keep=1 halt=1: no
+# restart and check of every key after the measured phase (at 5M keys it read the stream from the
+# disk for more than 10 minutes on s1; the runner deletes the directory). main and pe in ABBA order.
+cc10m-main-r1a main 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-pe-r1b pe 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-pe-r2a pe 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-main-r2b main 2900m CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+w5m-fin-pe-r1a pe 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=5000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w5m-fin-main-r1b main 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=5000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w5m-fin-main-r2a main 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=5000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w5m-fin-pe-r2b pe 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=5000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.mincuts=1 -Dperf.ops=2000000 -Dperf.maxops=4000000
+w10m-inf-main-r1a main 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=100000 -Dperf.retain=inf -Dperf.ops=500000
+w10m-inf-pe-r1b pe 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=100000 -Dperf.retain=inf -Dperf.ops=500000
+w10m-inf-pe-r2a pe 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=100000 -Dperf.retain=inf -Dperf.ops=500000
+w10m-inf-main-r2b main 2900m Perf write -Dperf.keep=1 -Dperf.halt=1 -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=100000 -Dperf.retain=inf -Dperf.ops=500000

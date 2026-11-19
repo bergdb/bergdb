@@ -1,0 +1,5 @@
+# bergdb 026-25, perf2: SetLoop 30 (setloop/SetLoop.java) on F53, ABBA, 2026-11-19 07:42; µs a transaction
+main-a SET median 1.769 us, min 1.710, max 2.129 (30 runs)
+pe-b SET median 1.945 us, min 1.900, max 2.841 (30 runs)
+pe-c SET median 1.936 us, min 1.891, max 2.960 (30 runs)
+main-d SET median 1.728 us, min 1.714, max 2.123 (30 runs)

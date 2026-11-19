@@ -1,0 +1,56 @@
+# bergdb 026-25, perf2: summarize.py on s1's runs (run-s1.sh, jobs-10m.txt), 2026-11-19 07:29 to 08:52.
+# Failed runs (out of heap at 10M keys with reclaim; the 1 GB cache budget; the slow check) in
+# /Users/f/fl/bench/2026-11-19/perf/s1-out/failed/, not summarized.
+CCBench: 2 runs of main, 2 of pe; µs an operation, median (range)
+- update 1: main 20.93 (19.57-22.28), pe 22.12 (22.09-22.15), pe/main 1.057
+- insert 1: main 18.23 (18.04-18.42), pe 17.14 (15.70-18.57), pe/main 0.940
+- delete 1: main 17.60 (16.35-18.85), pe 17.62 (17.30-17.93), pe/main 1.001
+- mixed 1: main 15.91 (15.76-16.06), pe 15.01 (14.09-15.93), pe/main 0.943
+- update 10: main 13.77 (13.16-14.38), pe 15.13 (13.30-16.96), pe/main 1.099
+- insert 10: main 17.12 (15.45-18.79), pe 18.92 (17.53-20.31), pe/main 1.105
+- delete 10: main 15.20 (13.78-16.62), pe 17.57 (17.42-17.71), pe/main 1.156
+- mixed 10: main 15.74 (14.81-16.67), pe 17.81 (17.34-18.29), pe/main 1.132
+- update 100: main 20.30 (19.52-21.07), pe 17.10 (16.19-18.01), pe/main 0.842
+- insert 100: main 19.90 (17.79-22.01), pe 17.78 (17.42-18.14), pe/main 0.894
+- delete 100: main 16.97 (15.55-18.39), pe 17.22 (16.02-18.41), pe/main 1.015
+- mixed 100: main 18.74 (16.48-21.01), pe 17.46 (17.41-17.52), pe/main 0.932
+- update 500: main 18.52 (17.20-19.85), pe 20.83 (20.68-20.99), pe/main 1.125
+- insert 500: main 22.65 (20.84-24.45), pe 25.02 (23.39-26.65), pe/main 1.105
+- delete 500: main 18.49 (18.12-18.86), pe 21.40 (21.18-21.61), pe/main 1.157
+- mixed 500: main 22.15 (20.20-24.09), pe 23.62 (22.70-24.54), pe/main 1.066
+- geometric mean of pe/main over the 16 cases: 1.031
+- load puts/s: main 68487, pe 62350, pe/main 0.910
+- stream MB: main 6363.0, pe 6243.0
+Perf w10m-inf: 2 runs of main, 2 of pe; medians
+- commits: main 5e+05 (5e+05-5e+05), pe 5e+05 (5e+05-5e+05), pe/main 1.000
+- commits_per_s: main 5.114e+04 (4.977e+04-5.25e+04), pe 4.987e+04 (4.664e+04-5.31e+04), pe/main 0.975
+- commit.append.mean_us: main 18.08 (17.87-18.29), pe 19.07 (18.08-20.05), pe/main 1.055
+- commit.append.p99_us: main 79.1 (76.8-81.41), pe 75.9 (64.77-87.04), pe/main 0.960
+- commit.append.p999_us: main 309.2 (303.1-315.4), pe 341 (270.3-411.6), pe/main 1.103
+- commit.append.max_us: main 2.475e+05 (2.341e+05-2.609e+05), pe 2.047e+05 (1.824e+05-2.269e+05), pe/main 0.827
+- load.puts_per_s: main 7.546e+04 (7.539e+04-7.553e+04), pe 6.957e+04 (6.786e+04-7.128e+04), pe/main 0.922
+- bytes_appended_per_put: main 771.3 (771.3-771.3), pe 760 (760-760), pe/main 0.985
+- stream_appended_mb: main 385.7 (385.7-385.7), pe 380 (380-380), pe/main 0.985
+- gc.mxbean.count: main 5.5 (5-6), pe 7 (6-8), pe/main 1.273
+- gc.mxbean.time_ms: main 1026 (906-1147), pe 1056 (1037-1075), pe/main 1.029
+- heap.after_gc_mb_max: main 2404 (2399-2409), pe 2368 (2348-2388), pe/main 0.985
+- rss_mb_max: main 2769 (2767-2772), pe 3172 (3167-3177), pe/main 1.146
+- reclaim.steps: main 0 (0-0), pe 0 (0-0), pe/main -
+- reclaim.cuts_physical: main 0 (0-0), pe 0 (0-0), pe/main -
+Perf w5m-fin: 2 runs of main, 2 of pe; medians
+- commits: main 2.228e+06 (2.228e+06-2.229e+06), pe 2e+06 (2e+06-2e+06), pe/main 0.897
+- commits_per_s: main 3.022e+04 (2.961e+04-3.083e+04), pe 3.054e+04 (3.013e+04-3.095e+04), pe/main 1.010
+- commit.append.mean_us: main 32.09 (31.55-32.63), pe 31.54 (31.2-31.87), pe/main 0.983
+- commit.append.p99_us: main 745.5 (729.1-761.9), pe 577.5 (565.2-589.8), pe/main 0.775
+- commit.append.p999_us: main 1167 (1147-1188), pe 915.5 (897-933.9), pe/main 0.784
+- commit.append.max_us: main 2.189e+05 (2.099e+05-2.278e+05), pe 3.903e+05 (3.661e+05-4.144e+05), pe/main 1.783
+- load.puts_per_s: main 1.005e+05 (1.004e+05-1.005e+05), pe 9.039e+04 (8.929e+04-9.149e+04), pe/main 0.900
+- bytes_appended_per_put: main 1016 (1016-1016), pe 1069 (1069-1069), pe/main 1.053
+- stream_appended_mb: main 2263 (2262-2264), pe 2139 (2139-2139), pe/main 0.945
+- gc.mxbean.count: main 34 (34-34), pe 30 (30-30), pe/main 0.882
+- gc.mxbean.time_ms: main 4472 (4454-4489), pe 4504 (4485-4522), pe/main 1.007
+- heap.after_gc_mb_max: main 2476 (2461-2491), pe 2331 (2324-2338), pe/main 0.941
+- rss_mb_max: main 3033 (3018-3049), pe 3183 (3178-3188), pe/main 1.049
+- reclaim.steps: main 9.042e+04 (9.039e+04-9.044e+04), pe 1.086e+05 (1.086e+05-1.086e+05), pe/main 1.201
+- reclaim.cuts_physical: main 1 (1-1), pe 1 (1-1), pe/main 1.000
+- kept_mb_max: main 4187 (4186-4188), pe 3686 (3674-3697), pe/main 0.880

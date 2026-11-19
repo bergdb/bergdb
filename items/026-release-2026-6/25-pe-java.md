@@ -329,6 +329,130 @@ further (the next steps: a leaf's changes in work arrays, VNs reused
 between transactions).
 
 
+# 7. Performance, quiet machines
+
+Frans, 2026-11-19, 07:25: "You can have this machine to yourself until
+09:00. For performance testing. You can use s1 too." main at 519880cb
+(its Java that of 62cd36c4) against d64e5638, each built in its own clone;
+on F53 from 07:33 to 08:46 with nothing else heavy (the CPU 88 to 98 %
+idle before each run, noted in each output; Spotlight's indexing of the
+new clones, which held the load near 13, was stopped by renaming their
+directory perf.noindex, with a link perf), on s1 from
+07:29 to 08:52. Scripts and summaries in 25-pe-java/perf2/; the raw
+outputs in /Users/f/fl/bench/2026-11-19/perf/ (not kept in Git).
+
+**The result.**
+
+- **CORE's set is about 11 to 18 % slower with PE, not 3 times.** The
+  1.19 against main's 0.39 of the gates' level 1 (section 6, at a load
+  near 90) was the load. On a quiet F53, 10 runs each in ABBA order: set main 0.33
+  to 0.39, PE 0.39 to 0.43 (smaller is faster; pe/main 1.11 in the first
+  session, 1.18 in the second, quieter one); the same in a loop of the set
+  test alone, 1.94 against 1.75 µs a transaction (1.11). get, get4t and
+  getmany are the same (pe/main 0.97 to 1.00).
+- **Why** (JFR of the set test, `profile-set-*.txt`): set is transactions
+  of one put of a random 4-byte key with an empty value, into a database of
+  100,000 keys in memory (inserts, then the same keys updated). The
+  writer's part is 1.01 µs a transaction with PE against 0.87 with main
+  (`PeWriter.run` 52 % of 1.94 µs, `Dag.putKv` 50 % of 1.74). PE tries the
+  short way on every transaction (0.67 µs), and most of that is
+  `shortLeaf` (0.45 µs), which builds the leaf's whole live list
+  (`PeWriter.live`, 0.22 µs, and an IdentityHashMap a transaction) to
+  decide the leaf by counts, where main searches the leaf for the key and
+  appends. The transactions that the short way does not take (a full
+  leaf, cut; dead klongs over theta) pay for the try and then the plan and
+  the emit: 0.34 µs averaged over all transactions, against 0.13 µs for
+  main's splits (`handleFullNode`). So the slowdown is real and is the
+  writer's own CPU on a small database in memory; the likely remedy is a
+  short way that decides a leaf without its live list (a count of its
+  live and dead klongs, as main's `isLive` and `deadCount`), and that
+  keeps its lists for the plan without a map a transaction.
+- **At 10M keys the writers are within a few per cent**, where the cost is
+  mostly memory, the stream and GC: CCBench (10M keys of 8-byte values,
+  update, insert, delete and mixed in transactions of 1 to 500, history
+  kept) pe/main 1.03 on F53 and 1.03 on s1 (geometric means of 16 cases);
+  Perf's commits a second 0.96 to 0.98 with history kept and 1.00 to
+  1.04 with reclaim. The load (transactions of 100 or 500 puts) is
+  slower: 0.90 to 0.97 of main's puts a second on F53, 0.90 to 0.92 on
+  s1.
+- **With reclaim PE's databases cut sooner and keep less, for about 6 %
+  more bytes written.** In the same 6M transactions on F53 PE made 3
+  physical cuts against main's 1 and kept at most 9.1 GB against 10.0;
+  its user records are 16 % smaller (fewer index nodes a commit), its
+  reclaim steps' bytes 22 % larger, in all 1,348 bytes a put against
+  1,262. The same on s1 at 5M keys (1,069 against 1,016; kept at most
+  0.88 of main's). Not explained here: a difference of reclaim's pace,
+  not of the writer's speed; perhaps the reclaim row's bytes (section 2).
+  PE's worst commit was also longer: 315 to 336 ms against 228 on F53,
+  366 to 414 against 210 to 228 on s1 (the p99 and p99.9 were 22 to 25 %
+  shorter); not explained either (no GC log in these runs).
+- **Judgment.** At the sizes BergDB is optimized for, PE costs a few per
+  cent in the writer's time and up to 10 % in the load, and nothing in
+  the commit latencies but the worst one; the set test's 11 to 18 % is a
+  small database in memory, the case that comes last. So the
+  performance does not stand against the merge; the short way without the
+  live list, the load and reclaim's pace (more cuts, more bytes) are for a
+  later item.
+
+**F53 (M1 Pro, 10 cores, 32 GB; OpenJDK 27.0.1).**
+
+- CORE (`core-f53.sh`, level 1's `bergdb.dev.props.Core`, one JVM a run,
+  ABBA; `summary-f53-core.txt`): session 1 (3 rounds, 6 runs each): get
+  0.27 / 0.27, get4t 0.19 / 0.19, getmany 0.25 / 0.25, set 0.37 (0.33 to
+  0.39) / 0.41 (0.39 to 0.43), CORE 0.26 / 0.27; session 2 (2 rounds, 4
+  each): set 0.33 (0.33 to 0.34) / 0.39 (0.39 to 0.39), CORE 0.24 / 0.25.
+  The set test alone (`setloop/SetLoop.java`, 30 runs a JVM, ABBA;
+  `summary-f53-setloop.txt`): main 1.77 and 1.73 µs, PE 1.95 and 1.94.
+- The other Props, once each (`summary-f53-props.txt`): MEM 129.5 / 129.1,
+  SEG 226.9 / 228.3, MEM10M 127.1 / 128.1, SS 1.53 / 1.53 (main / PE).
+- CCBench at 10M keys (8 GB heap, 4 runs each, ABBA; `summary-f53-10m.txt`):
+  pe/main from 0.91 (delete, 500) to 1.21 (update, 500), the geometric
+  mean 1.027; the load 187,690 against 194,269 puts a second (0.966); the
+  stream 6,243 MB against 6,363.
+- Perf write at 10M keys, history kept (1M transactions of one put, 2 runs
+  each): 137,300 against 142,500 commits a second (0.963), append mean
+  1.03, p99 1.01, p99.9 1.04 of main's; the load 0.895; bytes appended
+  0.983.
+- Perf write at 10M keys with reclaim (retention 0.1 updates a key): until
+  the first physical cut (2 each), PE's came after 2.99M transactions,
+  main's after 3.88M; for a fixed 3M transactions (2 each): 1.036 of
+  main's commits a second, append mean 0.965, p99 0.76, p99.9 0.78, the
+  load 0.934, bytes a put 1,338 against 1,261, reclaim steps 1.26, the
+  worst commit 1.42; for 6M transactions (2 each, ABBA): 1.002 of main's
+  commits a second, append mean 0.99, p99 0.77, p99.9 0.75, the load
+  0.94, bytes a put 1,348 against 1,262 (1.068), reclaim steps 1.67,
+  physical cuts 3 against 1, kept at most 9.08 GB against 10.06, the
+  worst commit 1.20.
+
+**s1 (2 vCPUs, 3.8 GB; nothing else running; `summary-s1-10m.txt`).**
+
+- CCBench at 10M keys (2.9 GB heap, as 030-20's set 4; 2 runs each, ABBA):
+  pe/main from 0.84 (update, 100) to 1.16 (delete, 10 and 500), the
+  geometric mean 1.031; the load 62,350 against 68,487 puts a second
+  (0.910). The heap is nearly full at 10M keys (2.45 GB used after the
+  load), so the runs are noisy (a case's two runs differ by up to 20 %).
+- Perf with reclaim does not fit s1 at 10M keys: both builds ran out of
+  the 2.9 GB heap (at 1.6M and 1.7M transactions), and with a cache budget
+  of 1 GB (`-Devictbudget`) the load took 322 s and the updates ran at 25
+  a second, bound by the disk. So 5M keys (2 runs each; until the first
+  cut, PE's at 2.0M transactions, main's at 2.23M): 1.010 of main's
+  commits a second, append mean 0.98, p99 0.78, p99.9 0.78, the load
+  0.900, bytes a put 1,069 against 1,016 (1.053), GC time 1.01, RSS 1.05,
+  kept at most 0.88; the worst commit 366 and 414 ms against 210 and 228,
+  and the slowest second 696 and 807 commits against 6,400 and 7,668.
+- Perf at 10M keys, history kept (500,000 transactions after the load, 2
+  runs each): 0.975 of main's commits a second (49,870 against 51,140;
+  PE's two runs 46,640 and 53,100), append mean 1.06, p99 0.96, p99.9
+  1.10, the load 0.922, bytes appended 0.985, GC time 1.03, RSS 1.15.
+  Perf on s1 ran with keep=1 halt=1, without the check of every key after
+  a restart (at 5M keys it read the stream from the disk for more than 10
+  minutes).
+
+GC time and RSS on F53 are not compared: with an 8 GB heap a measured
+phase has none to ten collections, and the RSS is the heap the JVM
+happened to touch.
+
+
 # State
 
 2026-11-19, 05:05. **GATED d64e5638** (the last code change; the commits
@@ -339,6 +463,12 @@ section 6 pass. For Frans: the performance left (section 6: about 8 %
 in CCBench, 0.94 to 0.99 of main's commits a second); the reclaim row's
 bytes (section 2); the kill-restart harness's late exit run (section 6);
 format 8 (section 4). Then the merge into main.
+
+2026-11-19, 09:00. Timed on quiet machines (section 7): CORE's set 11 to
+18 % slower with PE (the short way builds a leaf's live list), not 3
+times as under load; at 10M keys within a few per cent of main, the load
+up to 10 % slower; with reclaim PE's databases cut sooner and keep less
+for about 6 % more bytes written. Nothing in the code changed.
 
 
 # Log
@@ -359,3 +489,7 @@ routing by one scan and fewer allocations brought it near main's (03:50 to
 03:59, section 6). Gates on d64e5638 from 04:00, all passed by 05:03
 (kill-restart's seed 20261119 a second time, section 6); s1's runs from
 03:45 to 04:27.
+Timing on quiet machines (Frans, 07:25, F53 to 09:00 and s1), 07:25 to
+09:00, section 7: CORE ABBA, the set test profiled (JFR), the other Props,
+CCBench and Perf at 10M keys on F53 and s1 (Perf with reclaim at 5M on
+s1: at 10M it did not fit s1's heap); s1 left clean.

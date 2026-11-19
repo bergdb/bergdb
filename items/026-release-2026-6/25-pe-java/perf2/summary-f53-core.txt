@@ -1,0 +1,35 @@
+# bergdb 026-25, perf2: Props CORE on F53 (core-f53.sh), session 1, 07:33 to 07:40, 3 ABBA rounds
+r1a main CORE 0.26 get 0.26 get4t 0.19 getmany 0.25 set 0.38
+r1d main CORE 0.26 get 0.27 get4t 0.18 getmany 0.25 set 0.39
+r2a main CORE 0.27 get 0.25 get4t 0.20 getmany 0.25 set 0.39
+r2d main CORE 0.26 get 0.28 get4t 0.19 getmany 0.25 set 0.36
+r3a main CORE 0.26 get 0.27 get4t 0.20 getmany 0.25 set 0.36
+r3d main CORE 0.24 get 0.25 get4t 0.16 getmany 0.25 set 0.33
+r1b pe   CORE 0.27 get 0.27 get4t 0.18 getmany 0.25 set 0.41
+r1c pe   CORE 0.27 get 0.25 get4t 0.19 getmany 0.25 set 0.41
+r2b pe   CORE 0.27 get 0.27 get4t 0.19 getmany 0.25 set 0.43
+r2c pe   CORE 0.27 get 0.26 get4t 0.18 getmany 0.25 set 0.43
+r3b pe   CORE 0.27 get 0.27 get4t 0.19 getmany 0.25 set 0.39
+r3c pe   CORE 0.25 get 0.24 get4t 0.17 getmany 0.25 set 0.39
+6 runs of main, 6 of pe: median (range), pe/main
+- CORE: main 0.260 (0.24-0.27), pe 0.270 (0.25-0.27), pe/main 1.038
+- get: main 0.265 (0.25-0.28), pe 0.265 (0.24-0.27), pe/main 1.000
+- get4t: main 0.190 (0.16-0.20), pe 0.185 (0.17-0.19), pe/main 0.974
+- getmany: main 0.250 (0.25-0.25), pe 0.250 (0.25-0.25), pe/main 1.000
+- set: main 0.370 (0.33-0.39), pe 0.410 (0.39-0.43), pe/main 1.108
+
+# session 2, 08:21 to 08:25, 2 ABBA rounds (MINIDLE=75; the machine idler, 92 to 98 %)
+r1a main CORE 0.25 get 0.25 get4t 0.18 getmany 0.24 set 0.34
+r1d main CORE 0.24 get 0.24 get4t 0.18 getmany 0.25 set 0.33
+r2a main CORE 0.24 get 0.23 get4t 0.17 getmany 0.25 set 0.33
+r2d main CORE 0.24 get 0.24 get4t 0.17 getmany 0.25 set 0.33
+r1b pe   CORE 0.25 get 0.25 get4t 0.17 getmany 0.25 set 0.39
+r1c pe   CORE 0.25 get 0.23 get4t 0.17 getmany 0.25 set 0.39
+r2b pe   CORE 0.25 get 0.23 get4t 0.16 getmany 0.25 set 0.39
+r2c pe   CORE 0.25 get 0.24 get4t 0.17 getmany 0.25 set 0.39
+4 runs of main, 4 of pe: median (range), pe/main
+- CORE: main 0.240 (0.24-0.25), pe 0.250 (0.25-0.25), pe/main 1.042
+- get: main 0.240 (0.23-0.25), pe 0.235 (0.23-0.25), pe/main 0.979
+- get4t: main 0.175 (0.17-0.18), pe 0.170 (0.16-0.17), pe/main 0.971
+- getmany: main 0.250 (0.24-0.25), pe 0.250 (0.25-0.25), pe/main 1.000
+- set: main 0.330 (0.33-0.34), pe 0.390 (0.39-0.39), pe/main 1.182

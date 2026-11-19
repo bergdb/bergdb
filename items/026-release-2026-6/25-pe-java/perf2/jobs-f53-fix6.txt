@@ -1,0 +1,7 @@
+# bergdb 026-25, perf2: on F53 after jobs-f53-fix.txt, in the last 20 minutes: the same with 6M
+# transactions, once each (main, then pe), to see whether the reclaim bytes of section 7 are a
+# matter of the window. Then pe and main again (ABBA), as time allowed.
+w10m-fix6-main-r1a main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+w10m-fix6-pe-r1b pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+w10m-fix6-pe-r2a pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+w10m-fix6-main-r2b main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000

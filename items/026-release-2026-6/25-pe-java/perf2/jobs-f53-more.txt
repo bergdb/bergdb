@@ -1,0 +1,10 @@
+# bergdb 026-25, perf2: on F53 after jobs-f53-10m.txt: CCBench at 10M twice more for each build, then
+# Perf write at 10M with history kept; heap 8 GB; ABBA.
+cc10m-pe-r3a pe 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-main-r3b main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-main-r4a main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc10m-pe-r4b pe 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+w10m-inf-main-r1a main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=inf -Dperf.ops=1000000
+w10m-inf-pe-r1b pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=inf -Dperf.ops=1000000
+w10m-inf-pe-r2a pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=inf -Dperf.ops=1000000
+w10m-inf-main-r2b main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=inf -Dperf.ops=1000000

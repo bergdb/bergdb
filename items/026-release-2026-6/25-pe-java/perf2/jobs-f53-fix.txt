@@ -1,0 +1,6 @@
+# bergdb 026-25, perf2: on F53 after jobs-f53-more.txt: Perf write at 10M with reclaim for a fixed
+# 3M transactions (no wanted cut), so that both builds do the same user work; heap 8 GB; ABBA.
+w10m-fix-pe-r1a pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=3000000
+w10m-fix-main-r1b main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=3000000
+w10m-fix-main-r2a main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=3000000
+w10m-fix-pe-r2b pe 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=3000000
