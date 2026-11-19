@@ -202,7 +202,8 @@ public class DbTesterLimits {
         long time = sec;
         clock.setTime(time);
         Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).maxNodeSize8()
-                .startupDistance(2000).start();
+                .start();
+        db.setStartupDistance(2000);
         try {
             db.setRetainDuration(sec);
             final long count = db.getTransactionCount();

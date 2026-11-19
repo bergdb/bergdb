@@ -80,9 +80,9 @@ public class CcDbNightTest {
         
         database = Factory.database()
                 .create(dir)
-                .startupDistanceInMb(5)
                 .cacheSizeInMb(cacheSizeInMb)
                 .start();
+        database.setStartupDistanceInMb(5);
         
         double time = database.getStartupInfo().getStartupDuration();
         out.format("Db started in %.3f seconds, dir:%s\n", time, dir);

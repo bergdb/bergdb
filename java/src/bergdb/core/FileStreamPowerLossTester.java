@@ -601,7 +601,8 @@ public class FileStreamPowerLossTester {
     static String key(int i) { return "/history/long-key-segment-" + i; }
 
     static Db start(FileStream stream, CoreTestClock clock) {
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(20000).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        db.setStartupDistance(20000);
         db.setRetainDuration(2 * SEC);      // Writes nothing after the first start (bergdb 015-87).
         return db;
     }

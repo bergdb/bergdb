@@ -77,12 +77,12 @@ public class CrashTest {
 
     Db start(CutStream ms, CoreTestClock clock) {
         DbBuilder b = Db.builder().testSetup(ms).clock(clock);
-        if (sd > 0) b.startupDistance(sd);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.start();
+        if (sd > 0) db.setStartupDistance(sd);      // nothing written if in force (bergdb 028-13)
         if (retain > 0) db.setRetainDuration(retain * Clock.UNITS_PER_SEC);
         return db;
     }

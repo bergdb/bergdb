@@ -39,9 +39,9 @@ public class ScenarioTester {
         Db db = Db.builder()
                 .mainStream(stream)
                 .clock(clock)
-                .startupDistance(startupDistance)
                 .noEvict()
                 .start();
+        db.setStartupDistance(startupDistance);
         
         for (int i = 0; i < n; i++) {
             byte[] value = new byte[valueSize];
@@ -86,8 +86,9 @@ public class ScenarioTester {
         int n = 40;
         
         Db db = Db.builder().testSetup().mainStream(stream)
-                .clock(clock).noEvict().startupDistance(100*1000)
+                .clock(clock).noEvict()
                 .start();
+        db.setStartupDistance(100*1000);
         
         for (int i = 0; i < n; i++) {
             long time = 1000 + i * 10;
@@ -125,7 +126,8 @@ public class ScenarioTester {
         MemoryStream stream = new MemoryStream();
 
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                .startupDistance(100*1000).start();
+                .start();
+        db.setStartupDistance(100*1000);
         
         db.execute(db.trans().put("/direct/key1", "v1"));
         db.execute(db.trans().put("/z1", new byte[200*1000]));
@@ -165,8 +167,9 @@ public class ScenarioTester {
         int valueSize = 100*1000;
 
         Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                .startupDistance(10*1000).build();
+                .build();
         db.start();
+        db.setStartupDistance(10*1000);
         
         for (int i = 0; i < n; i++) {
             Trans trans = db.trans().put("/z" + i, new byte[valueSize + i]).build();
@@ -199,7 +202,12 @@ public class ScenarioTester {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(10*1000).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        // 10 kB until bergdb 028-13, set by the builder at the creation. Set after the start,
+        // a record of its own, at 5 or 20 kB the take writes some nodes and moves the startup
+        // pos, so that db2 below holds stream pointers, which DagComparison cannot follow; at
+        // 100 kB the whole stream, about 16 kB, is the startup section, as it was.
+        db.setStartupDistance(100*1000);
         
         String[] keys = new String[] {
                 "/seven1/seven2/key1",

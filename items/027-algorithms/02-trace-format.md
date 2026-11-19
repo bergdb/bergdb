@@ -64,7 +64,11 @@ the primordial one: an internal transaction that puts the startup distance's
 KV, `/#i/-sd` (027-03, sections 14.2 and 15). The exporter's run
 A records it through the hooks as any record, R(1), with `kind=table` under
 reclaim; its first hook records R(0) before it changes the tree. So the first
-user transaction is R(2) of a trace, and a trace's T(1) puts the KV.
+user transaction is R(2) of a trace, and a trace's T(1) puts the KV. Since
+bergdb 028-13 the KV holds the default, 50 MB, and the exporter sets the
+run's sd (CONFIG's `sd`) with `Db.setStartupDistance` right after the start:
+R(2), a user transaction that puts the KV again, and the workload's first
+transaction is R(3).
 
 Format 2 (`TRACE 2`, since 2026-10-16, bergdb item 001, WP L5; the checker
 still reads format 1) adds, from the item's plan (001-01, 8.2):

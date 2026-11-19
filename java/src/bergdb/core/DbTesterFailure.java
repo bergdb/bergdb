@@ -1681,8 +1681,10 @@ public class DbTesterFailure {
      * after every 'audit'-th transaction and at startup, or off (0).
      */
     private static Db startEvicting(AppendOnlyStream s, int audit) {
-        return Db.builder().testSetup(s).maxNodeSize8().startupDistance(1000)
+        Db db = Db.builder().testSetup(s).maxNodeSize8()
                 .evictionSchedule(Eviction.Schedule.EVERY, 1).audit(audit).start();
+        db.setStartupDistance(1000);      // nothing written if in force (bergdb 028-13)
+        return db;
     }
 
     private static String key(int i) {

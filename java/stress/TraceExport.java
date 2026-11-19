@@ -254,12 +254,16 @@ public class TraceExport {
 
     /** Starts the database without setting the retain duration. */
     Db startOnly(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
-        return builder(stream, clock, schedule).start();
+        Db db = builder(stream, clock, schedule).start();
+        // The startup distance, after the start (bergdb 028-13): the first start commits a
+        // record that puts it, the starts after it write nothing.
+        db.setStartupDistance(startupDistance);
+        return db;
     }
 
     /** The builder of the runs' databases. */
     DbBuilder builder(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
-        DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance)
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock)
                 .evictionSchedule(schedule, Long.getLong("evictseed", seed));
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
@@ -818,6 +822,7 @@ public class TraceExport {
         try {
             db.start();
             initR0.run();
+            db.setStartupDistance(startupDistance);     // R(2) (bergdb 028-13)
             runAWorkload(db, stream, clock);
         } finally {
             Db.testHooks = null;

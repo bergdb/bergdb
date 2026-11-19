@@ -99,8 +99,10 @@ import bergdb.stream.SalsaStream;
  * DbBuilder.build() throws, before a Db is made, does the application close the stream with
  * its close()). FileStream's constructor throws IOException, a DirectoryInUseException for a
  * directory that another stream has open. The builder's defaults: the system clock
- * (currentTime()), a cache budget of 200 MB and a startup distance of 50 MB; of its other
- * methods, id() and createdTxt() are the Pub API's, the rest for tests. The maximum node size,
+ * (currentTime()) and a cache budget of 200 MB; of its other methods, id() and createdTxt()
+ * are the Pub API's, the rest for tests. A new database has a startup distance of 50 MB;
+ * setStartupDistance() changes it, also right after the start that creates the database
+ * (no builder method sets it since bergdb 028-13). The maximum node size,
  * the most klongs of a node of the index, is 30 for every database, by this API and the Pub
  * API, with no method to set it (bergdb 026-08): the stream keeps it, and a start refuses a
  * database of another size, as BergDB's own tests make at 8, 14 and 62. An example with keys
@@ -476,6 +478,26 @@ public class Db implements AutoCloseable {
     /** Current startupDistance. Sync note: protected by writeLock. */
     private int startupDistance;
     
+    /**
+     * The startup distance of a new database, 50 MB: the creating start puts it at its KV,
+     * and setStartupDistance() changes it (bergdb 028-13; until then DbBuilder's
+     * startupDistance() set another). 2026-10-13 (bergdb 011-04, "Level 2 under load"): was
+     * 20 MB. With 50 MB, startup takes about 0.6 s with 1000-byte values (1.4 s with
+     * 100-byte values, single-put transactions), and the bytes appended per user byte fall
+     * by 9% (1000 bytes) to 26% (100 bytes).
+     */
+    static final int DEFAULT_STARTUP_DISTANCE = 50 * 1000000;
+    
+    /** The smallest startup distance, 10 bytes (setStartupDistance(); bergdb 028-13). */
+    static final int MIN_STARTUP_DISTANCE = 10;
+    
+    /**
+     * The largest startup distance, 10^9 bytes (setStartupDistance()). Above it, the debt of
+     * index nodes that the take writes could pass the room of a record and stop the take
+     * past its deadline (bergdb 028-12).
+     */
+    static final int MAX_STARTUP_DISTANCE = 1000 * 1000000;
+    
     // ---- Misc ----
     
     private DatabaseId databaseId;
@@ -555,7 +577,7 @@ public class Db implements AutoCloseable {
  
         this.maxNodeSize = b.maxNodeSize;
         this.transCheck = TransCheck.ON ? new TransCheck(b.maxNodeSize) : null;
-        this.startupDistance = b.startupDistance;
+        this.startupDistance = DEFAULT_STARTUP_DISTANCE;
         this.metaBlock = new MetaBlock();        
         // Before the storage, whose threads and open files nothing would close if this threw
         // (bergdb 005-32): a null clock.
@@ -626,7 +648,7 @@ public class Db implements AutoCloseable {
 
     /**
      * The startup distance in force, in bytes: after start(), the stream's, as the creation
-     * (DbBuilder.startupDistance()) or the last setStartupDistance() set it, kept in the
+     * (50 MB, DEFAULT_STARTUP_DISTANCE) or the last setStartupDistance() set it, kept in the
      * internal KV "/#i/-sd" (bergdb 028-15).
      */
     public int getStartupDistance() {
@@ -653,13 +675,20 @@ public class Db implements AutoCloseable {
      * "/#i/-sd", where it stays live (Keys and the layers above): a start reads
      * it from there, at its end, as the setting decides the stream's bytes (010-P2; bergdb
      * 028-15; until then a meta block kept it, and this method put 200 kB at "/#i/-dummy" to
-     * get one written). The value is clamped to 400,000 to 1,000,000,000 bytes
-     * (twice RecoverableStream.META_BLOCK_DISTANCE to 10^9), and the clamped value is set; a
-     * call whose clamped value is the setting in force writes nothing (bergdb 005-53). So on
-     * a database whose setting is below that range, which DbBuilder.startupDistance allows
-     * (10 bytes and up; it refuses more than 10^9 since bergdb 028-12), any call writes and
-     * sets a value inside it (bergdb 015-76). A negative value is refused with
-     * IllegalArgumentException and changes nothing. On a database that is not active the
+     * get one written). A new database has 50 MB (DEFAULT_STARTUP_DISTANCE); this method is
+     * the only way to set another, also right after the start that creates the database
+     * (bergdb 028-13: DbBuilder's startupDistance() was removed). The value is clamped to the
+     * database's whole range, 10 to 1,000,000,000 bytes (MIN_STARTUP_DISTANCE to
+     * MAX_STARTUP_DISTANCE, the range of the KV), so that tests can use any value in it; the
+     * clamped value is set and returned, and getStartupDistance() gives it too. A call whose
+     * clamped value is the setting in force writes nothing (bergdb 005-53). Until 028-13 the
+     * range was 400,000 to 10^9, twice RecoverableStream.META_BLOCK_DISTANCE, to keep the
+     * 200 kB dummy small beside the startup section; the dummy went with 028-15, and no other
+     * part of BergDB needs a floor above 10 bytes (the builder took 10 bytes and up before).
+     * Above 10^9, the debt of index nodes that the take writes could pass the room of a
+     * record and stop the take past its deadline (bergdb 028-12). A value below 1 is refused
+     * with IllegalArgumentException and changes nothing (until 028-13, 0 was taken and
+     * clamped). On a database that is not active the
      * call throws as a transaction does (IllegalDbStateException, DbStoppingException,
      * DbFailedException), and a call that is refused leaves the setting as it was. With a finite retain duration the setting
      * also paces reclaim: an iteration begins at a commit only after more than twice it of
@@ -668,23 +697,24 @@ public class Db implements AutoCloseable {
      * starts with the old setting, as its record is aborted, and one after the record's end
      * with the new: the setting is a KV, written with its record (bergdb 028-15; until then
      * a crash inside the record could start with either, bergdb 028-08).
+     * 
+     * @param newDistance  the startup distance in bytes, 1 or more; clamped to 10 to 10^9
+     * @return  the startup distance set, the clamped value, now in force
+     * @throws IllegalArgumentException  if newDistance is below 1
      */
-    public void setStartupDistance(int newDistance) {
-        if (newDistance < 0) {
-            throw new IllegalArgumentException("Bad newDistance: " + newDistance + ".");
+    public int setStartupDistance(int newDistance) {
+        if (newDistance < 1) {
+            throw new IllegalArgumentException("Bad newDistance: " + newDistance
+                    + ", 1 or more expected.");
         }
         
-        int min = RecoverableStream.META_BLOCK_DISTANCE * 2;
-        int max = 1000*1000000;
-        
-        newDistance = newDistance < min ? min : newDistance;
-        newDistance = newDistance > max ? max : newDistance;
+        newDistance = Math.max(MIN_STARTUP_DISTANCE, Math.min(MAX_STARTUP_DISTANCE, newDistance));
         
         synchronized (writeLock) {
             // The state first, so that a refused call changes nothing (bergdb 005-53).
             assertDbStateIsActive("setStartupDistance");
             int old = this.startupDistance;
-            if (newDistance == old) return;
+            if (newDistance == old) return newDistance;
             // The new setting paces this transaction's own take already, as the meta block's
             // did until bergdb 028-15.
             this.startupDistance = newDistance;
@@ -696,6 +726,7 @@ public class Db implements AutoCloseable {
                 this.startupDistance = old;
                 throw e;
             }
+            return newDistance;
         }
     }
     
@@ -717,7 +748,7 @@ public class Db implements AutoCloseable {
     
     /**
      * The startup distance that the KV's bytes give (bergdb 028-15): 4 bytes, an int,
-     * little-endian, from 10 to DbBuilder.MAX_STARTUP_DISTANCE, 10^9, as the builder and
+     * little-endian, from 10 to MAX_STARTUP_DISTANCE, 10^9, as the creation and
      * setStartupDistance() set it.
      * 
      * @throws InternalDataException  for other bytes
@@ -725,13 +756,13 @@ public class Db implements AutoCloseable {
     static int parseStartupDistance(byte[] value) {
         if (value.length == 4) {
             int d = Bytes.bytesToIntLE(value, 0);
-            if (d >= 10 && d <= DbBuilder.MAX_STARTUP_DISTANCE) {
+            if (d >= MIN_STARTUP_DISTANCE && d <= MAX_STARTUP_DISTANCE) {
                 return d;
             }
         }
         throw new InternalDataException("Bad value of /#i/-sd, "
                 + StringUtil.toHex(value) + ": 4 bytes, an int, little-endian, from 10 to "
-                + DbBuilder.MAX_STARTUP_DISTANCE + " expected (bergdb 028-15).");
+                + MAX_STARTUP_DISTANCE + " expected (bergdb 028-15).");
     }
     
     /**
@@ -1239,8 +1270,9 @@ public class Db implements AutoCloseable {
             }
         }
         if (creating) {
-            // The creation's second record, the KV of the startup distance, the builder's
-            // (bergdb 028-15): the writer's first transaction, before any other. A start that
+            // The creation's second record, the KV of the startup distance, 50 MB
+            // (DEFAULT_STARTUP_DISTANCE; bergdb 028-15, 028-13): the writer's first
+            // transaction, before any other. A start that
             // throws here, or a crash before the record is durable, leaves the primordial
             // record alone, or a part of it, and the next start refuses the stream as a
             // creation that did not complete (refuseIncompleteCreation; bergdb 028-18).
@@ -1305,7 +1337,7 @@ public class Db implements AutoCloseable {
      * Reads the startup distance from its KV, DbConstants.SD_KEY, at the end of the start,
      * before the writer's first transaction (bergdb 028-15): only the writer uses it, as the
      * take's setting (TransSeq.take). The start that creates the database ('creating') finds
-     * no KV yet, and keeps the builder's setting, which it then puts (startInner); any other
+     * no KV yet, and keeps the default, 50 MB, which it then puts (startInner); any other
      * stream must have it, as every record after the primordial one comes after the
      * creating start's KV, which reclaim copies forward as any live KV, and a stream with
      * the primordial record alone is refused before (refuseIncompleteCreation; bergdb

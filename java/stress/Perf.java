@@ -310,7 +310,6 @@ public class Perf {
         if (buffTime > 0) b.stream("main", counting, StorageManager.DEFAULT_BUFFER_SIZE, buffTime);
         else b.stream("main", counting);
         b.clock(clock).noEvict().testId();
-        if (sd > 0) b.startupDistance(sd);
         return b.build();
     }
 
@@ -728,6 +727,7 @@ public class Perf {
         prepareDir();
         db = openDb();
         db.start();
+        if (sd > 0) db.setStartupDistance(sd);      // kept in the stream (bergdb 028-13)
         System.out.println("startupDistance " + db.getStartupDistance());
         info.put("startupDistanceBytes", (long) db.getStartupDistance());
         load();
@@ -1200,6 +1200,7 @@ public class Perf {
         prepareDir();
         db = openDb();
         db.start();
+        if (sd > 0) db.setStartupDistance(sd);      // kept in the stream (bergdb 028-13)
         load();
         int hist = history >= 0 ? history : n;
         updates(hist, seed + 11, "history", true);

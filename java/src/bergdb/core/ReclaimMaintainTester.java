@@ -44,7 +44,8 @@ public class ReclaimMaintainTester {
         }
 
         void start() {
-            db = Db.builder().testSetup(stream).clock(clock).startupDistance(100000).start();
+            db = Db.builder().testSetup(stream).clock(clock).start();
+            db.setStartupDistance(100000);
             synchronized (db.internal().getWriteLock()) {
                 stats = db.internal().reclaim().enableStats();
             }

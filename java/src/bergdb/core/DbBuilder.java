@@ -12,8 +12,10 @@ import bergdb.stream.MemoryStream;
 /**
  * An object of this class is used to properly build a Db object: Db.builder() gives one, and
  * start() builds and starts the Db. A Db's user sets the stream (mainStream()), and may set
- * the clock, the cache size indicator and the startup distance; the defaults are the system
- * clock, 200 MB and 50 MB. The maximum node size is 30 for every database a user makes, and
+ * the clock and the cache size indicator; the defaults are the system clock and 200 MB. The
+ * startup distance is not the builder's since bergdb 028-13: a new database has 50 MB, and
+ * Db.setStartupDistance() changes it, also right after the start that creates the database.
+ * The maximum node size is 30 for every database a user makes, and
  * no public method sets it (bergdb 026-08): the stream keeps it, and a start refuses a
  * database of another size. The sizes 8, 14 and 62 are for BergDB's own tests
  * (maxNodeSize8(), TestNodeSize). Of the other methods, id() and createdTxt() are for the Pub
@@ -28,7 +30,6 @@ import bergdb.stream.MemoryStream;
 public class DbBuilder {
     Clock clock;
     int maxNodeSize;
-    int startupDistance;
     long cacheSizeIndicator;
     DatabaseId id;
     /** The database's one stream, or null (bergdb 005-11: no replicas since 2026-11-04). */
@@ -69,12 +70,10 @@ public class DbBuilder {
         // 2026-11-05 (bergdb 015-87): the retain duration is no longer a builder setting;
         // it is kept in the stream and set by Db.setRetainDuration. Forever until then.
         //
+        // 2026-11-19 (bergdb 028-13): the startup distance is no longer the builder's; its
+        // default, 50 MB, is Db.DEFAULT_STARTUP_DISTANCE.
+        //
         
-        // 2026-10-13 (bergdb 011-04, "Level 2 under load"): was 20 MB. With
-        // 50 MB, startup takes about 0.6 s with 1000-byte values (1.4 s with 100-byte 
-        // values, single-put transactions), and the bytes appended per user byte fall
-        // by 9% (1000 bytes) to 26% (100 bytes). The cache size indicator is kept.
-        startupDistance = 50 * 1000000;
         cacheSizeIndicator = 200 * 1000000;
         clock = new SystemClock();
         
@@ -180,31 +179,6 @@ public class DbBuilder {
      */
     DbBuilder maxNodeSize62() {
         this.maxNodeSize = 64 - 2;
-        return this;
-    }
-
-    /** The largest startup distance, 10^9 bytes, as Db.setStartupDistance's (bergdb 028-12). */
-    static final int MAX_STARTUP_DISTANCE = 1000 * 1000000;
-
-    /**
-     * The startup distance in bytes for a new database, 50 MB by default; a database keeps
-     * the one in its stream (Db.setStartupDistance()). A value below 10 or above 10^9
-     * (MAX_STARTUP_DISTANCE, the largest that Db.setStartupDistance() sets) is refused with
-     * IllegalArgumentException, and the builder keeps the value it had. Above 10^9, the
-     * debt of index nodes that the take writes could pass the room of a record and stop the
-     * take past its deadline (bergdb 028-12). A database made before with a larger setting
-     * starts with it, as the stream keeps it.
-     */
-    public DbBuilder startupDistance(int startupDistance) {
-        if (startupDistance < 10) {
-            throw new IllegalArgumentException("Too small, " + startupDistance);
-        }
-        if (startupDistance > MAX_STARTUP_DISTANCE) {
-            throw new IllegalArgumentException("Too large, " + startupDistance
-                    + ", the largest is " + MAX_STARTUP_DISTANCE);
-        }
-
-        this.startupDistance = startupDistance;
         return this;
     }
     

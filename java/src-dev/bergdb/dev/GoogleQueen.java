@@ -24,7 +24,8 @@ public class GoogleQueen {
         FileStream stream = new FileStream(new File("/a/temp/queen-test"));
         
         long t0 = System.nanoTime();
-        Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).start();
+        Db db = Db.builder().mainStream(stream).start();
+        db.setStartupDistance(40*1000000);
         long t1 = System.nanoTime();
         
         System.out.println("Started, startup time: " + 1e-9*(t1-t0));

@@ -79,9 +79,10 @@ public class Interactive {
     private void start() throws Exception {
         DatabaseBuilderImp imp = (DatabaseBuilderImp)
                 Factory.database().create(dirname)
-                .startupDistanceInMb(startupDistance).cacheSizeInMb(cacheSize);
+                .cacheSizeInMb(cacheSize);
         
         database = imp.start();
+        database.setStartupDistanceInMb(startupDistance);
         
         db = ((DatabaseImp) database).getDb();
         

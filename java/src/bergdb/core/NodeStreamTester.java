@@ -207,8 +207,9 @@ public class NodeStreamTester {
     public static void testSimpleRestart() {
         MemoryStream mstream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().mainStream(mstream).startupDistance(10000).clock(clock).build();
+        Db db = Db.builder().testSetup().mainStream(mstream).clock(clock).build();
         db.start();
+        db.setStartupDistance(10000);
         clock.setTime(10);
         db.execute(db.trans().put("admin1", "Sanna").build());
 
@@ -429,7 +430,8 @@ public class NodeStreamTester {
     @Nano
     public static void testStartupPosAtFailedTrans() throws IOException, InterruptedException {
         MemoryStream s = new MemoryStream();
-        Db db = Db.builder().testSetup(s).startupDistance(10).start();
+        Db db = Db.builder().testSetup(s).start();
+        db.setStartupDistance(10);
         Trans x = null;
         Trans t = null;
         for (int i = 0; i < 4; i++) {

@@ -86,8 +86,8 @@ public class CcDbTest {
         
         database = Factory.database()
                 .create(dir)
-                .startupDistanceInMb(5)
                 .start();
+        database.setStartupDistanceInMb(5);
         
         double time = database.getStartupInfo().getStartupDuration();
         System.out.format("Db started in %.2f seconds, dir:%s\n", time, dir);

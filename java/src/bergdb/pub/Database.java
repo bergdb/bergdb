@@ -98,7 +98,7 @@ import bergdb.pub.util.SyncLevel;
  * 005-55). Until it closes, a started database holds its write buffer, 64 KiB to 10 MB of
  * heap as its writes need (about 0.7 MB of heap in all for a small file database), one
  * thread and three open files (a file database; bergdb 026-07; 020-24-10, U10-2;
- * DatabaseBuilder.startupDistanceInMb()). stop() returns at once; close()
+ * setStartupDistanceInMb()). stop() returns at once; close()
  * waits until the database is closed. Database is
  * AutoCloseable (bergdb 005-59), so a try-with-resources block closes it when the block ends,
  * also when the block throws:</p>
@@ -398,8 +398,11 @@ public interface Database extends AutoCloseable {
     /**
      * <p>Sets the startup distance, the target size of the startup section: the part of the
      * stream that a start reads (bergdb 005-49), while the database runs (bergdb 005-53).
-     * The value is clamped as DatabaseBuilder.startupDistanceInMb() clamps it, to 5 to 1000
-     * MB. The new setting is in force when the method returns. It is written to the stream
+     * A new database has 50 MB. This method is the only way to set another: call it right
+     * after start(), also the start that creates the database; DatabaseBuilder has no method
+     * for it since release 2026.6 (bergdb 028-13). The value is clamped to 5 to 1000 MB, and
+     * getStartupDistanceInMb() then gives the value set. The new setting is in force when
+     * the method returns. It is written to the stream
      * with a small transaction of the database's own (a KV of 4 bytes), so a restart keeps
      * it, as it keeps the setting the database was created with; a call with the setting in
      * force writes nothing. A setting that changes the stream's bytes, as this one does, is
@@ -415,9 +418,52 @@ public interface Database extends AutoCloseable {
      * Without commits it does not move. After an increase, commits write less of the index
      * until the section has grown to the setting. A larger distance writes fewer bytes a put
      * and starts more slowly. With a finite retain duration it also paces reclaim: a larger
-     * distance cuts later and keeps more on disk (setRetainDuration()).</p>
+     * distance cuts later and keeps more on disk (setRetainDuration(); bergdb 020-24-06,
+     * U6-2).</p>
      *
-     * @param startupDistanceInMb  The startup distance in megabytes (mega = 1000000).
+     * <p>A small startup distance can decrease database startup time, while a larger
+     * startup distance can improve the overall database performance. For a low-end PC with
+     * 0.5 GB of RAM, a value of 5 is reasonable, while a database of 10 million keys or more
+     * may use 200 to 1000 (bergdb 005-38). At the default, 50, startup took about 0.6 s with
+     * 100,000 keys of 1000-byte values and 1.4 s with 1 million keys of 100-byte values,
+     * written by single puts, with the stream in the operating system's file cache, on a
+     * fast SSD (measured 2026-10-13, before eviction; bergdb 011-04). A start's time grows
+     * with the transactions it reruns and the index nodes it reads, so with more keys: with
+     * 10 to 50 million keys of small values, a warm start takes about 62 to 104 ms a
+     * megabyte of its startup section, 3 to 5 s at 50 (bergdb 006-19, 007-05); measure a
+     * start with your own data. A start reruns each transaction of its startup section
+     * whole, so a transaction larger than the startup distance makes every start read all
+     * of it, also after small transactions after it, until about twice the startup distance
+     * has been written after it: at a startup distance of 5, after one transaction of 200 MB
+     * a start took 2.7 to 3.1 s, and 0.07 s once 10 MB more had been written (bergdb
+     * 020-24-13, U13-7).</p>
+     *
+     * <p>The startup distance, not the cache budget (DatabaseBuilder.cacheSizeInMb()), sets
+     * the heap that a database needs. What the database must keep in memory, the index
+     * nodes changed since its startup position, which eviction never takes, is about 2 to 3
+     * times the startup distance of heap (bergdb 006-19), and a start needs about twice the
+     * startup distance of heap above what the running database needs, whatever the budget
+     * (bergdb 019-45). A new user's catalogue of 2 million objects, 4.9 GB of stream, with a
+     * budget of 4 MB (bergdb 020-24-04, U4-2): at the default 50, the heap held 110 to 160 MB
+     * after a start; the start failed with an OutOfMemoryError in a heap of 256 MB and ran in
+     * 384 MB. At 5, it held 21 to 42 MB and ran in 96 MB. So for a small heap set a small
+     * startup distance; the budget comes on top of what must be kept. A start reads the
+     * stream's setting, so a database that is to run in a small heap gets its small setting
+     * right after the start that creates it, and keeps it.</p>
+     *
+     * <p>Every started database also holds its write buffer, from its start until it closes
+     * (stop()): 64 KiB at the start, whatever its data, startup distance and budget. The
+     * buffer grows with the write rate, up to 10 MB, when writes come faster than the
+     * storage takes them, and shrinks back to 64 KiB after 2 seconds with nothing to write
+     * (bergdb 026-07). So a small started database holds about 0.7 MB of heap (a file
+     * database; a memory database about 1.7 MB, its stream included), one thread and three
+     * open files, and up to 10 MB more while it writes fast. Until release 2026.6 the buffer
+     * was 10 MB from the start: a small file database held about 11 MB of heap, and 48 small
+     * ones filled a heap of 512 MB (bergdb 020-24-10, U10-2). A closed database releases its
+     * buffer (close()).</p>
+     *
+     * @param startupDistanceInMb  The startup distance in megabytes (mega = 1000000),
+     *     clamped to 5 to 1000.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a
      *     transaction does; the setting is then unchanged.
      * @throws DbFailedException  If the database has failed, as a transaction does.

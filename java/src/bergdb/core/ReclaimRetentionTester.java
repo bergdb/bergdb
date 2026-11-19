@@ -52,7 +52,8 @@ public class ReclaimRetentionTester {
             clock = new CoreTestClock();
             clock.setTime(time);
             db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(retain);
             stats = db.internal().reclaim().enableStats();
             Assert.assertTrue("the first available lookup time moved back over a restart: "

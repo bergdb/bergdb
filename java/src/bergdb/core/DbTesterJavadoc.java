@@ -351,7 +351,7 @@ public class DbTesterJavadoc {
     }
 
     /**
-     * DbBuilder's refusals: id(null), startupDistance() below 10, stream() with a null name
+     * DbBuilder's refusals: id(null), stream() with a null name
      * or stream or a negative buffer size or time, reclaimStepReserve() below 1, each with
      * IllegalArgumentException, and a second stream's name with IllegalStateException;
      * mainStream() replaces a stream of any name, stream() one of the same name; a buffer
@@ -365,7 +365,6 @@ public class DbTesterJavadoc {
         final MemoryStream s = new MemoryStream();
         Call[] refused = {
             () -> Db.builder().id(null),
-            () -> Db.builder().startupDistance(9),
             () -> Db.builder().stream(null, s),
             () -> Db.builder().stream("main", null),
             () -> Db.builder().stream("main", s, -1, 10),
@@ -383,7 +382,6 @@ public class DbTesterJavadoc {
         assertThrows("no stream", IllegalStateException.class, () -> Db.builder().build());
         assertThrows("a second name", IllegalStateException.class, 
                 () -> Db.builder().stream("a", new MemoryStream()).stream("b", s));
-        Db.builder().startupDistance(10);
         
         // mainStream() replaces a stream of any name; stream() one of the same name.
         Db other = Db.builder().stream("other", new MemoryStream()).mainStream(s).testId()
@@ -430,37 +428,42 @@ public class DbTesterJavadoc {
     }
 
     /**
-     * DbBuilder.startupDistance(): 10 to 10^9 taken, as Db.setStartupDistance() sets at most
-     * 10^9; a value above 10^9 (10^9 + 1, Integer.MAX_VALUE) or below 10 is refused with
-     * IllegalArgumentException, and the builder keeps the value it had (bergdb 028-12).
+     * Db.setStartupDistance(), the only way to set the startup distance since bergdb 028-13
+     * (DbBuilder.startupDistance() was removed): a new database has 50 MB; 10 to 10^9 taken
+     * as given and returned; a value above 10^9 (10^9 + 1, Integer.MAX_VALUE) clamped to
+     * 10^9, one from 1 to 9 to 10, and the clamped value returned and in force; a value
+     * below 1 refused with IllegalArgumentException, the setting kept. Until 028-13 the
+     * builder refused values outside 10 to 10^9 (028-12), and the setter clamped to 400,000
+     * to 10^9.
      */
     @Nano
-    public static void testBuilderStartupDistanceLimit() {
+    public static void testSetStartupDistanceRange() {
         final int max = 1000 * 1000000;
-        Assert.assertEquals(max, DbBuilder.MAX_STARTUP_DISTANCE);
-        int[] bad = {max + 1, Integer.MAX_VALUE, 9, 0, -1, Integer.MIN_VALUE};
-        for (final int sd : bad) {
-            assertThrows("startupDistance(" + sd + ")", IllegalArgumentException.class,
-                    () -> Db.builder().startupDistance(sd));
-        }
-        Db.builder().startupDistance(10);
-        
-        Db db = Db.builder().testSetup().startupDistance(max).start();
+        Assert.assertEquals(max, Db.MAX_STARTUP_DISTANCE);
+        Assert.assertEquals(10, Db.MIN_STARTUP_DISTANCE);
+        Db db = Db.builder().testSetup().start();
         try {
-            Assert.assertEquals("10^9 taken", max, db.getStartupDistance());
+            Assert.assertEquals("the default", 50 * 1000000, db.getStartupDistance());
+            Assert.assertEquals("10^9 taken", max, db.setStartupDistance(max));
+            Assert.assertEquals("10^9 in force", max, db.getStartupDistance());
             db.execute(db.trans().put("k", "v").build());
             Assert.assertEquals("v", new String(get(db, "k")));
-        } finally {
-            db.close();
-        }
-        
-        final DbBuilder b = Db.builder().testSetup().startupDistance(2000);
-        assertThrows("10^9 + 1 after 2000", IllegalArgumentException.class,
-                () -> b.startupDistance(max + 1));
-        db = b.start();
-        try {
-            Assert.assertEquals("the value before the refused one", 2000,
-                    db.getStartupDistance());
+            Assert.assertEquals("10 taken", 10, db.setStartupDistance(10));
+            Assert.assertEquals("2000 taken", 2000, db.setStartupDistance(2000));
+            int[][] clamped = {{max + 1, max}, {Integer.MAX_VALUE, max}, {9, 10}, {1, 10}};
+            for (int[] c : clamped) {
+                Assert.assertEquals("setStartupDistance(" + c[0] + ")", c[1],
+                        db.setStartupDistance(c[0]));
+                Assert.assertEquals("in force after " + c[0], c[1], db.getStartupDistance());
+            }
+            for (final int sd : new int[] {0, -1, Integer.MIN_VALUE}) {
+                final Db d = db;
+                assertThrows("setStartupDistance(" + sd + ")", IllegalArgumentException.class,
+                        () -> d.setStartupDistance(sd));
+                Assert.assertEquals("kept after " + sd, 10, db.getStartupDistance());
+            }
+            db.execute(db.trans().put("k", "w").build());
+            Assert.assertEquals("w", new String(get(db, "k")));
         } finally {
             db.close();
         }

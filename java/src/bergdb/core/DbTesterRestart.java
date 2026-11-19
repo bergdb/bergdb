@@ -52,7 +52,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long lastPos;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             db.execute(db.trans().put("/k1", "1"));
             clock.setTime(20);
@@ -74,7 +75,7 @@ public class DbTesterRestart {
             Bytes.longToBytesLE(b[1], timeBytes, 0);
             MemoryStream.TestAccess.write(corrupt, timeBytes, b[0] + 8);
             try (Db ignored = Db.builder().testSetup(corrupt).clock(clock)
-                    .startupDistance(1000000).start()) {
+                    .start()) {
                 throw new AssertionError("started with corrupt record time " + b[1]);
             } catch (StreamFormatException expected) {
                 String message = b[1] < 0 || b[1] > Klong.MAX_TIME
@@ -95,7 +96,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long a, c;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             Trans t = db.trans().put("/a", "1").build();
             db.execute(t);
@@ -112,7 +114,7 @@ public class DbTesterRestart {
         Bytes.intToBytesLE((int) (c - a), size, 0);     // A's size + B's: B's last byte
         MemoryStream.TestAccess.write(corrupt, size, a);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
             throw new AssertionError("started with A's size over B; /b = " 
                     + (DbUtil.get(db, Long.MAX_VALUE, "/b") == null ? "lost" : "found"));
         } catch (StreamFormatException expected) {
@@ -133,7 +135,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long c;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             db.execute(db.trans().put("/a", "1"));
             clock.setTime(20);
@@ -147,7 +150,7 @@ public class DbTesterRestart {
             Bytes.longToBytesLE(sp, bytes, 0);
             MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
             try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                    .startupDistance(1000000).start()) {
+                    .start()) {
                 throw new AssertionError("started with startupPos " + sp);
             } catch (StreamFormatException expected) {
                 Assert.assertTrue(expected.getMessage(), 
@@ -168,7 +171,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long a;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             db.execute(db.trans().put("/a", "1").build());
             clock.setTime(20);
@@ -207,7 +211,7 @@ public class DbTesterRestart {
         Bytes.longToBytesLE(123456789L, id, 0);
         MemoryStream.TestAccess.write(corrupt, id, a + at);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
             throw new AssertionError("started with got-dirty id 123456789");
         } catch (StreamFormatException expected) {
             Assert.assertTrue(expected.getMessage(), 
@@ -227,7 +231,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         ArrayList<Long> tposes = new ArrayList<Long>();
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(100).start()) {
+                .start()) {
+            db.setStartupDistance(100);
             for (int i = 1; i <= 6; i++) {
                 clock.setTime(10 * i);
                 Trans t = db.trans().put("/k" + i, "" + i).build();
@@ -264,7 +269,7 @@ public class DbTesterRestart {
         Bytes.longToBytesLE(older, bytes, 0);
         MemoryStream.TestAccess.write(corrupt, bytes, last + 24);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                .startupDistance(100).start()) {
+                .start()) {
             throw new AssertionError("started with topPos " + older + ", not " + topPos);
         } catch (StreamFormatException expected) {
             Assert.assertTrue(expected.getMessage(), 
@@ -283,7 +288,8 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             db.execute(db.trans().put("/a", "1"));
             clock.setTime(20);
@@ -297,7 +303,7 @@ public class DbTesterRestart {
             MemoryStream.TestAccess.write(corrupt, b, 23);
             long length = corrupt.getLength();
             try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                    .startupDistance(1000000).start()) {
+                    .start()) {
                 throw new AssertionError("started with byte 23 xor " + mask);
             } catch (StreamFormatException expected) {
                 Assert.assertTrue(expected.getMessage(),
@@ -309,7 +315,8 @@ public class DbTesterRestart {
         // in the first meta block, or one after itself (bergdb 019-40): refused too.
         final MemoryStream large = stream.copy();     // A closed stream takes no append.
         try (Db db = Db.builder().testSetup(large).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(30);
             db.execute(db.trans().put("/c", new byte[RecoverableStream.META_BLOCK_DISTANCE]));
         }
@@ -320,7 +327,7 @@ public class DbTesterRestart {
             Bytes.longToBytesLE(spos, b, 0);
             MemoryStream.TestAccess.write(corrupt, b, block + 16);
             try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                    .startupDistance(1000000).start()) {
+                    .start()) {
                 throw new AssertionError("started with the last transaction at " + spos);
             } catch (StreamFormatException expected) {
                 Assert.assertTrue(expected.getMessage(),
@@ -336,8 +343,7 @@ public class DbTesterRestart {
      * starts with the old setting, the record aborted, and one at its end with the new; a
      * later start keeps what the first one read. Until bergdb 028-15 the setting was in the
      * meta block that the record held, with a dummy value of 200 kB, and a crash after that
-     * block and before the record's end started with the new setting. The builder's setting
-     * of the restarts, another, is not taken: the stream's is.
+     * block and before the record's end started with the new setting.
      */
     @Nano
     public static void testCrashInsideSetStartupDistance() throws IOException {
@@ -345,7 +351,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long before, after;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             clock.setTime(10);
             db.execute(db.trans().put("/a", "1"));
             before = db.getStreamLength();
@@ -362,7 +369,7 @@ public class DbTesterRestart {
             int expected = cut == after ? 2000000 : 1000000;
             for (int start = 0; start < 2; start++) {
                 try (Db db = Db.builder().testSetup(m).clock(clock)
-                        .startupDistance(3000000).start()) {
+                        .start()) {
                     String at = "cut at " + cut + ", start " + start;
                     Assert.assertEquals(at, expected, db.getStartupDistance());
                     Assert.assertEquals(at, "1", DbUtil.getString(db, "/a"));
@@ -381,15 +388,15 @@ public class DbTesterRestart {
      * part of the second record (a cut at every 8th byte), or on it and the second record
      * failed (its last byte 0, as recovery's zero fill leaves it) throws a
      * DatabaseNotCreatedException and leaves the stream as it was, also at a second try; a
-     * Core API start, without created.txt. The whole creation keeps the creator's setting,
-     * whatever the builder of a later start says, with the counters 0. From 028-15 to 028-18
-     * such a start completed the creation with its own builder's setting.
+     * Core API start, without created.txt. The whole creation keeps its setting, the default
+     * (50 MB; no builder sets another since bergdb 028-13), with the counters 0. From 028-15
+     * to 028-18 such a start completed the creation with its own builder's setting.
      */
     @Nano
     public static void testCrashInCreationsSecondRecord() throws IOException {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db.builder().testSetup(stream).clock(clock).startupDistance(1000000).start().close();
+        Db.builder().testSetup(stream).clock(clock).start().close();
         final long end = stream.getLength();
         Assert.assertTrue("a record after the creation", end > Db.CREATION_LENGTH);
         
@@ -408,7 +415,7 @@ public class DbTesterRestart {
                 String at = "length " + before.length + ", start " + start;
                 MemoryStream copy = m.copy();
                 try (Db db = Db.builder().testSetup(copy).clock(clock)
-                        .startupDistance(2000000).start()) {
+                        .start()) {
                     throw new AssertionError("started, " + at);
                 } catch (DatabaseNotCreatedException e) {
                     Assert.assertTrue(at + ": " + e.getMessage(),
@@ -421,10 +428,12 @@ public class DbTesterRestart {
         for (int start = 0; start < 2; start++) {
             MemoryStream m = stream.copy();
             try (Db db = Db.builder().testSetup(m).clock(clock)
-                    .startupDistance(2000000 + start).start()) {
-                Assert.assertEquals("start " + start, 1000000, db.getStartupDistance());
+                    .start()) {
+                Assert.assertEquals("start " + start, Db.DEFAULT_STARTUP_DISTANCE,
+                        db.getStartupDistance());
                 byte[] kv = db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, db.newGetData());
-                Assert.assertEquals("start " + start, 1000000, Db.parseStartupDistance(kv));
+                Assert.assertEquals("start " + start, Db.DEFAULT_STARTUP_DISTANCE,
+                        Db.parseStartupDistance(kv));
                 Assert.assertEquals("the counters", 0, db.getTransactionCount());
             }
             stream = m.copy();      // a closed MemoryStream refuses appends
@@ -462,7 +471,7 @@ public class DbTesterRestart {
     
     /**
      * Bergdb 028-15: the startup distance is a KV, read at the end of a start. A change by
-     * setStartupDistance() is kept over restarts, whatever the builder of a restart says, and
+     * setStartupDistance() is kept over restarts, and
      * the meta blocks' bytes 40 to 43, where it was until the meta block's version 155, are
      * zero in every block. A KV of other bytes is refused at the start with an
      * InternalDataException; a stream with records after the primordial one and no KV with a
@@ -482,7 +491,7 @@ public class DbTesterRestart {
         for (int start = 0; start < 2; start++) {
             stream = stream.copy();
             try (Db db = Db.builder().testSetup(stream).clock(clock)
-                    .startupDistance(1234567).start()) {
+                    .start()) {
                 Assert.assertEquals("start " + start, 700 * 1000, db.getStartupDistance());
                 if (start == 1) {
                     db.setStartupDistance(800 * 1000);
@@ -540,8 +549,9 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         long setterEnd = 0;
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+        Db db = Db.builder().testSetup(stream).clock(clock)
                 .maxNodeSize8().start();
+        db.setStartupDistance(1000);
         try {
             Random rnd = new Random(1);
             for (int i = 1; i <= 3000; i++) {
@@ -553,7 +563,7 @@ public class DbTesterRestart {
                     db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
                 }
                 if (i == 1500) {
-                    db.setStartupDistance(400 * 1000);      // the least that the call sets
+                    db.setStartupDistance(400 * 1000);      // another setting
                     setterEnd = db.getStreamLength();
                 }
             }
@@ -593,7 +603,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long c = 0;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
+            db.setStartupDistance(1000000);
             for (int i = 1; i <= 4; i++) {
                 clock.setTime(10 * i);
                 Trans t = db.trans().put("/k" + i, "" + i).build();
@@ -607,7 +618,7 @@ public class DbTesterRestart {
         Bytes.longToBytesLE(c, bytes, 0);
         MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
-                .startupDistance(1000000).start()) {
+                .start()) {
             throw new AssertionError("started with startupPos " + c + ", its own; /k1 = " 
                     + DbUtil.getString(db, "/k1"));
         } catch (StreamFormatException expected) {
@@ -633,7 +644,8 @@ public class DbTesterRestart {
             long oldReadTime;
             long boundary;
             try (Db db = Db.builder().testSetup(stream).clock(clock)
-                    .startupDistance(startupDistance).start()) {
+                    .start()) {
+                db.setStartupDistance(startupDistance);
                 clock.setTime(10);
                 db.execute(db.trans().put("/k", "1"));
                 GetData read = db.newGetData();
@@ -650,7 +662,7 @@ public class DbTesterRestart {
                 assertStmRefused(db, oldReadTime);
             }
             try (Db db = Db.builder().testSetup(stream.copy()).clock(clock)
-                    .startupDistance(startupDistance).start()) {
+                    .start()) {
                 assertStmRefused(db, oldReadTime);
                 // An empty commit must not erase the boundary either.
                 db.execute(db.trans().build());
@@ -743,7 +755,8 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(2);
         Db db = Db.builder().testSetup(stream)
-                .clock(clock).startupDistance(10*1000).start();
+                .clock(clock).start();
+        db.setStartupDistance(10*1000);
         byte[] bytes = new byte[1000];
         
         for (int i = 0; i < 20; i++) {
@@ -782,7 +795,8 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        db.setStartupDistance(startupDistance);
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
         db.sync(SyncLevel.ORDINARY);
         
@@ -810,7 +824,8 @@ public class DbTesterRestart {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        db.setStartupDistance(startupDistance);
         db.execute(db.trans().put("key", "value"));
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
         db.sync(SyncLevel.ORDINARY);
@@ -856,8 +871,9 @@ public class DbTesterRestart {
     private static Object[] settingsRun(boolean restarts) throws IOException {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+        Db db = Db.builder().testSetup(stream).clock(clock)
                 .maxNodeSize8().start();
+        db.setStartupDistance(1000);
         try {
             Random rnd = new Random(1);
             for (int i = 1; i <= 2000; i++) {
@@ -873,7 +889,7 @@ public class DbTesterRestart {
                     db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
-                    db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                    db = Db.builder().testSetup(stream).clock(clock)
                             .maxNodeSize8().start();    // The settings not set again.
                     Assert.assertEquals("retain after a restart", 1 * Clock.UNITS_PER_SEC,
                             db.getRetainDuration());
@@ -1023,8 +1039,9 @@ public class DbTesterRestart {
         CutStream stream = new CutStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(Clock.UNITS_PER_SEC);
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+        Db db = Db.builder().testSetup(stream).clock(clock)
                 .maxNodeSize8().start();
+        db.setStartupDistance(1000);
         db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
         final long settingsEnd = db.getStreamLength();
         final String kv = "retain=" + Clock.UNITS_PER_SEC + "\nfraction=16384\n";
@@ -1050,7 +1067,7 @@ public class DbTesterRestart {
         db.stop();
         
         stream = stream.copy();
-        db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+        db = Db.builder().testSetup(stream).clock(clock)
                 .maxNodeSize8().start();
         Assert.assertEquals("after a restart on the cut stream", 1 * Clock.UNITS_PER_SEC,
                 db.getRetainDuration());
@@ -1526,7 +1543,8 @@ public class DbTesterRestart {
         Random rnd = new Random(1);
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(s).clock(clock).startupDistance(10 * 1000).start();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
+        db.setStartupDistance(10 * 1000);
         long time = 10;
         int restarts = 0;
         
@@ -1695,7 +1713,8 @@ public class DbTesterRestart {
     private static MemoryStream decreaseRun(int restartEvery) {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000 * 1000).start();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        db.setStartupDistance(2000 * 1000);
         Random random = new Random(1);
         long time = 10;
         for (int i = 0; i < 4300; i++) {
@@ -1747,10 +1766,12 @@ public class DbTesterRestart {
         }
         
         Db start() {
-            DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(2000);
+            DbBuilder b = Db.builder().testSetup(stream).clock(clock);
             if (maxNodeSize == 8) b.maxNodeSize8();
             if (maxNodeSize == 30) b.maxNodeSize30();
-            return b.start();
+            Db db = b.start();
+            db.setStartupDistance(2000);      // nothing written if in force (bergdb 028-13)
+            return db;
         }
         
         void run(int n) {
@@ -1876,8 +1897,9 @@ public class DbTesterRestart {
         for (int mode = 0; mode < 2; mode++) {      // 0: no KVs, 1: deletes of missing keys
             MemoryStream s = new MemoryStream();
             CoreTestClock clock = new CoreTestClock();
-            Db db = Db.builder().testSetup(s).clock(clock).startupDistance(100).maxNodeSize8()
+            Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8()
                     .start();
+            db.setStartupDistance(100);
             long time = 10;
             for (int i = 0; i < 50; i++) {
                 clock.setTime(time++);
@@ -1893,8 +1915,7 @@ public class DbTesterRestart {
                 db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s = s.copy();
-                db = Db.builder().testSetup(s).clock(clock).startupDistance(100).maxNodeSize8()
-                        .start();
+                db = Db.builder().testSetup(s).clock(clock).maxNodeSize8().start();
                 for (int i = 0; i < 50; i++) {
                     Assert.assertArrayEquals("mode " + mode + ", round " + round + ", key " + i,
                             StringUtil.toBytes("v" + i), DbUtil.get(db, Long.MAX_VALUE, "/k/" + i));
@@ -1917,8 +1938,9 @@ public class DbTesterRestart {
     @Nano("f") private static void testRestartAfterManyTopNodes() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8()
+        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8()
                 .start();
+        db.setStartupDistance(10000);
         int n = 0;
         while (db.internal().newestWrittenTop().topNodeId < 32800) {
             clock.setTime(10L * (n + 1));
@@ -1929,7 +1951,7 @@ public class DbTesterRestart {
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         s = s.copy();
-        db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8().start();
+        db = Db.builder().testSetup(s).clock(clock).maxNodeSize8().start();
         Assert.assertEquals("super root after the restart", superRoot,
                 db.internal().superRoot().topNodeId);
         int[] at = {0, 1, n / 4, n / 2, (3 * n) / 4, n - 2, n - 1};
@@ -2136,18 +2158,21 @@ public class DbTesterRestart {
     private static Db startOrdinalTest(AppendOnlyStream s, CoreTestClock clock, String setup,
             long second) {
         DbBuilder b = Db.builder().testSetup(s).clock(clock).maxNodeSize8()
-                .startupDistance(setup.equals("sd100000") ? 100000 : 1000)
                 .secondTopOrdinal(second);
         if (setup.equals("evict")) {
             b.evictionSchedule(Eviction.Schedule.EVERY, 1).audit(1);
         }
-        return b.start();
+        Db db = b.start();
+        // Nothing written if in force (bergdb 028-13).
+        db.setStartupDistance(setup.equals("sd100000") ? 100000 : 1000);
+        return db;
     }
 
     /** As Reclaim.Tester's databases for cuts. */
     private static Db startReclaimOrdinalTest(CutStream s, CoreTestClock clock, long second) {
-        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8().startupDistance(2000)
+        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8()
                 .secondTopOrdinal(second).start();
+        db.setStartupDistance(2000);
         db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
         return db;
     }

@@ -1883,21 +1883,26 @@ public class DbTester {
         db.stop();
     }
     
+    /**
+     * StartInfo.startupDistance is the setting in force at the start: the creation's, the
+     * default, 50 MB, and after a restart the stream's, as setStartupDistance() set it
+     * (bergdb 028-13: no builder sets it).
+     */
     @Nano
     public static void testStartInfoReportsEffectiveDistance() {
         MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().testSetup(stream).startupDistance(523456).build();
+        Db db = Db.builder().testSetup(stream).build();
         try {
-            Assert.assertEquals("creation", 523456, db.start().startupDistance);
+            Assert.assertEquals("creation", Db.DEFAULT_STARTUP_DISTANCE,
+                    db.start().startupDistance);
             db.setStartupDistance(567890);
         } finally {
             db.close();
         }
 
-        Db reopened = Db.builder().testSetup(stream.copy()).startupDistance(987654).build();
+        Db reopened = Db.builder().testSetup(stream.copy()).build();
         try {
-            Assert.assertEquals("stored distance, not the builder's", 567890,
-                    reopened.start().startupDistance);
+            Assert.assertEquals("stored distance", 567890, reopened.start().startupDistance);
         } finally {
             reopened.close();
         }
@@ -1905,14 +1910,15 @@ public class DbTester {
 
     @Nano
     public static void testStartupDistance1() {
-        // Checks that startupDistance from Db.Builder is used.
+        // A new database has the default, 50 MB, before and after its start (bergdb 028-13:
+        // until then the builder's setting).
         
         MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().mainStream(stream).startupDistance(523456).build();
+        Db db = Db.builder().mainStream(stream).build();
         
-        Assert.assertEquals(523456, db.getStartupDistance());
+        Assert.assertEquals(50 * 1000000, db.getStartupDistance());
         db.start();
-        Assert.assertEquals(523456, db.getStartupDistance());
+        Assert.assertEquals(50 * 1000000, db.getStartupDistance());
         db.stop();
     }
     
@@ -1921,10 +1927,10 @@ public class DbTester {
         // A decreased of startup distance is seen immediately by DB.getStartupDistance().
         
         MemoryStream stream = new MemoryStream();
-        Db db = Db.builder().mainStream(stream).startupDistance(2*1000000).build();
-        
-        Assert.assertEquals(2*1000000, db.getStartupDistance());
+        Db db = Db.builder().mainStream(stream).build();
         db.start();
+        db.setStartupDistance(2*1000000);
+        Assert.assertEquals(2*1000000, db.getStartupDistance());
         
         db.execute(db.trans().put("key", "value").build());
         db.setStartupDistance(1*1000000);
@@ -1941,7 +1947,8 @@ public class DbTester {
      */
     @Nano
     public static void testSetStartupDistanceInForceOrRefused() {
-        Db db = Db.builder().testSetup().startupDistance(2*1000000).start();
+        Db db = Db.builder().testSetup().start();
+        db.setStartupDistance(2*1000000);
         db.execute(db.trans().put("key", "value").build());
         long length = db.getStreamLength();
         db.setStartupDistance(2*1000000);
@@ -1962,47 +1969,63 @@ public class DbTester {
     }
     
     /**
-     * setStartupDistance clamps its argument to 400,000 (twice META_BLOCK_DISTANCE) to
-     * 10^9 bytes and sets the clamped value; a call whose clamped value is the setting in
-     * force writes nothing (bergdb 015-76, 016-06's R6-F5). The builder allows settings
-     * outside that range (the tests use 100 to 2,000): on such a database a call with the
-     * setting in force sets the clamped value and writes the 200 kB transaction, as the
-     * Javadoc now says. A negative value is refused and changes nothing.
+     * setStartupDistance clamps its argument to the database's whole range, 10 to 10^9
+     * bytes, sets the clamped value and returns it; a call whose clamped value is the
+     * setting in force writes nothing (bergdb 015-76, 016-06's R6-F5; 028-13: the range was
+     * 400,000 to 10^9, and the builder took 10 and up). Every value of the range is taken as
+     * it is, the smallest and the largest too, and kept over a restart. A value below 1 is
+     * refused with IllegalArgumentException and changes nothing (0 was clamped until
+     * 028-13).
      */
     @Nano
     public static void testSetStartupDistanceClamped() {
-        int min = bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE * 2;
-        int max = 1000 * 1000000;
-        Assert.assertEquals(400 * 1000, min);
-        try (Db db = Db.builder().testSetup().startupDistance(2000).start()) {
+        int min = Db.MIN_STARTUP_DISTANCE;
+        int max = Db.MAX_STARTUP_DISTANCE;
+        Assert.assertEquals(10, min);
+        Assert.assertEquals(1000 * 1000000, max);
+        MemoryStream stream = new MemoryStream();
+        try (Db db = Db.builder().testSetup(stream).start()) {
             db.execute(db.trans().put("key", "value").build());
             long length = db.getStreamLength();
             
-            db.setStartupDistance(2000);
+            for (int v : new int[] {10, 11, 100, 2000, 399999, 400000, 50 * 1000000, max}) {
+                Assert.assertEquals("returned, " + v, v, db.setStartupDistance(v));
+                Assert.assertEquals("in force, " + v, v, db.getStartupDistance());
+                Assert.assertTrue("written, " + v, db.getStreamLength() > length);
+                length = db.getStreamLength();
+            }
+            
+            Assert.assertEquals("above the range", max, db.setStartupDistance(max + 1));
+            Assert.assertEquals("nothing written above", length, db.getStreamLength());
+            Assert.assertEquals("above the range", max, db.setStartupDistance(Integer.MAX_VALUE));
+            Assert.assertEquals("nothing written above", length, db.getStreamLength());
+            
+            Assert.assertEquals("below the range", min, db.setStartupDistance(1));
             Assert.assertEquals("below the range", min, db.getStartupDistance());
             Assert.assertTrue("written", db.getStreamLength() > length);
-            
             length = db.getStreamLength();
-            db.setStartupDistance(100);
-            db.setStartupDistance(min);
+            Assert.assertEquals("below the range", min, db.setStartupDistance(9));
             Assert.assertEquals("the clamped value in force", min, db.getStartupDistance());
             Assert.assertEquals("nothing written", length, db.getStreamLength());
             
-            db.setStartupDistance(Integer.MAX_VALUE);
-            Assert.assertEquals("above the range", max, db.getStartupDistance());
-            length = db.getStreamLength();
-            db.setStartupDistance(max + 1);
-            Assert.assertEquals("nothing written above", length, db.getStreamLength());
-            
-            Exception ex = null;
-            try {
-                db.setStartupDistance(-1);
-            } catch (IllegalArgumentException e) {
-                ex = e;
+            for (int bad : new int[] {0, -1, Integer.MIN_VALUE}) {
+                Exception ex = null;
+                try {
+                    db.setStartupDistance(bad);
+                } catch (IllegalArgumentException e) {
+                    ex = e;
+                }
+                Assert.assertTrue("refused, " + bad, ex != null);
+                Assert.assertEquals(min, db.getStartupDistance());
+                Assert.assertEquals("nothing written, " + bad, length, db.getStreamLength());
             }
-            Assert.assertTrue("negative refused", ex != null);
-            Assert.assertEquals(max, db.getStartupDistance());
-            Assert.assertEquals("nothing written, negative", length, db.getStreamLength());
+        }
+        try (Db db = Db.builder().testSetup(stream.copy()).start()) {
+            Assert.assertEquals("the smallest, kept", min, db.getStartupDistance());
+            for (int i = 0; i < 20; i++) {
+                db.execute(db.trans().put("key" + i, "value" + i).build());
+            }
+            Assert.assertEquals("value19", DbUtil.getString(db, "key19"));
         }
     }
     
@@ -2041,7 +2064,9 @@ public class DbTester {
      * (the following index node transaction will write all dirty index nodes to stream).
      */
     @Nano private static void testStartupPos1() {
-        Db db = Db.builder().testSetup().startupDistance(1*1000).start();
+        Db db = Db.builder().testSetup().start();
+        final long setterPos = db.getStreamLength();
+        db.setStartupDistance(1*1000);
         int n = 6;
         long[] tpos = new long[n];
         long[] sp = new long[n];
@@ -2053,9 +2078,9 @@ public class DbTester {
             sp[i] = db.internal().getStartupPosForEvict();
         }
         
-        // The record of the creating start's startup distance (bergdb 028-15); 0, the
-        // primordial record, until then.
-        assertEquals(Db.CREATION_LENGTH, sp[0]);
+        // The setter's record (bergdb 028-13); the record of the creating start's startup
+        // distance from 028-15; 0, the primordial record, until then.
+        assertEquals(setterPos, sp[0]);
         for (int i = 1; i < n; i++) {
             assertEquals("i=" + i, tpos[i-1], sp[i]);
         }
@@ -2101,7 +2126,8 @@ public class DbTester {
     public static void testPaceHoldsTheStartupSection() {
         final int sd = 10 * 1000;
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().clock(clock).startupDistance(sd).start();
+        Db db = Db.builder().testSetup().clock(clock).start();
+        db.setStartupDistance(sd);
         Random random = new Random(1);
         double sections = 0;
         long records = 0;
@@ -2144,7 +2170,8 @@ public class DbTester {
     public static void testDecreaseOfStartupDistance() {
         final int sd = 450 * 1000;
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().clock(clock).startupDistance(2000 * 1000).start();
+        Db db = Db.builder().testSetup().clock(clock).start();
+        db.setStartupDistance(2000 * 1000);
         Random random = new Random(1);
         long time = 10;
         for (int i = 0; i < 4000; i++) {
@@ -2205,7 +2232,8 @@ public class DbTester {
     @Nano
     public static void testDeleteOfMissingKeyMarksNothing() {
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
+        db.setStartupDistance(100);
         long time = 10;
         for (int i = 0; i < 30; i++) {
             clock.setTime(time++);
@@ -2241,7 +2269,8 @@ public class DbTester {
     @Nano
     public static void testReplacedNodeLeavesD() {
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
+        db.setStartupDistance(100);
         long time = 10;
         for (int i = 0; i < 3; i++) {
             clock.setTime(time++);
@@ -2299,7 +2328,8 @@ public class DbTester {
     @Nano
     public static void testTouchTransactionReplacedNodes() {
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup().startupDistance(100).maxNodeSize8().clock(clock).start();
+        Db db = Db.builder().testSetup().maxNodeSize8().clock(clock).start();
+        db.setStartupDistance(100);
         long time = 10;
         for (int i = 0; i < 30; i++) {
             clock.setTime(time++);
@@ -2471,7 +2501,8 @@ public class DbTester {
             long time = 1000 * 1000;
             clock.setTime(time);
             final int sd = 10 * 1000;
-            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(sd).start();
+            Db db = Db.builder().testSetup(stream).clock(clock).start();
+            db.setStartupDistance(sd);
             List<Integer> order = new ArrayList<Integer>();
             for (int k = 0; k < 10000; k++) {
                 order.add(k);
@@ -2555,7 +2586,8 @@ public class DbTester {
             long time = 1000 * 1000;
             clock.setTime(time);
             Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                    .startupDistance(150 * 1000).start();
+                    .start();
+            db.setStartupDistance(150 * 1000);
             Random r = new Random(17);
             for (int i = 0; i < 300; i++) {
                 clock.setTime(time += 1000);
@@ -2575,7 +2607,7 @@ public class DbTester {
             CoreTestClock clock2 = new CoreTestClock();
             clock2.setTime(time += 1000);
             Db db2 = Db.builder().testSetup(stream.copy()).clock(clock2).maxNodeSize8()
-                    .startupDistance(150 * 1000).start();
+                    .start();
             assertEquals(checksum, DbUtil.checksum(db2));
             db2.stop();
         } finally {
@@ -2661,7 +2693,8 @@ public class DbTester {
             final int d = RecoverableStream.META_BLOCK_DISTANCE;
             Random random = new Random(34);
             MemoryStream s = new MemoryStream();
-            Db db = Db.builder().testSetup(s).startupDistance(startupDistance).start();
+            Db db = Db.builder().testSetup(s).start();
+            db.setStartupDistance(startupDistance);
             List<Trans> ts = new ArrayList<Trans>();
             int crossing = 0;
             while (crossing < 3) {
@@ -2682,7 +2715,7 @@ public class DbTester {
             db.sync(SyncLevel.ORDINARY);
             db.stop();
             
-            Db db2 = Db.builder().testSetup(s.copy()).startupDistance(startupDistance).start();
+            Db db2 = Db.builder().testSetup(s.copy()).start();
             checkGetTrans(db2, ts);
             db2.stop();
         }

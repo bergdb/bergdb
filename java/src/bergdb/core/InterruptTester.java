@@ -74,8 +74,9 @@ public class InterruptTester {
         final FileStream fs = new FileStream(dir);
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        final Db db = b.stream("main", fs, 1000 * 1000, 10).clock(clock).startupDistance(20000)
+        final Db db = b.stream("main", fs, 1000 * 1000, 10).clock(clock)
                 .start();
+        db.setStartupDistance(20000);
         db.setRetainDuration(2 * SEC);      // Kept in the stream (bergdb 015-87).
         try {
             Random r = new Random(1);

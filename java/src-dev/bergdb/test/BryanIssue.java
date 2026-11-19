@@ -55,6 +55,10 @@ public class BryanIssue {
         b.mainStream(memoryStream);
         b.testSetupExceptStream();
     }   
+    
+    /** Called right after each start, with the started database. */
+    public void afterStart(Database d) {
+    }
 
     public int runJob(final int startId) throws Exception {
         final int n = 1000;        
@@ -65,6 +69,7 @@ public class BryanIssue {
         initDb(builder);
         
         Database d = builder.start();
+        afterStart(d);
         try {
             out.format("\n---- STARTED ----\n");
             out.println(String.format("Db checksum: %d", dbChecksum(d)));

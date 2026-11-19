@@ -394,7 +394,6 @@ public class Soak {
     Db openDb() throws IOException {
         FileStream s = new FileStream(dir, io);   // (FileStream reads its own files only, not the marker.)
         DbBuilder b = Db.builder().stream("main", s).systemClock().noEvict().testId();
-        if (sd > 0) b.startupDistance(sd);
         if (maxnode == 8) b.maxNodeSize8();
         if (maxnode == 14) b.maxNodeSize14();
         if (maxnode == 30) b.maxNodeSize30();
@@ -1171,6 +1170,7 @@ public class Soak {
         prepareDir();
         db = openDb();
         db.start();
+        if (sd > 0) db.setStartupDistance(sd);      // kept in the stream (bergdb 028-13)
         info.put("startupDistanceBytes", (long) db.getStartupDistance());
         enableStats();
         load();

@@ -119,7 +119,8 @@ public class PubTester {
             }
         });
         db = DatabaseImp.createAndStart(TestNodeSize.builder(8).testSetup(s)
-                .startupDistance(1000).evictionSchedule(Eviction.Schedule.EVERY, 1).build());
+                .evictionSchedule(Eviction.Schedule.EVERY, 1).build());
+        ((DatabaseImp) db).getDb().setStartupDistance(1000);
         try {
             final Connection c = db.connection();
             for (int i = 0; i < 100; i++) {
@@ -2174,7 +2175,8 @@ public class PubTester {
     @Nano("f")
     public static void testDecreaseOfStartupDistanceInMbF() {
         Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(new MemoryStream())
-                .startupDistanceInMb(50).start();
+                .start();
+        d.setStartupDistanceInMb(50);
         Db db = ((DatabaseImp) d).getDb();
         java.util.Random r = new java.util.Random(1);
         long before = 0;
@@ -2257,7 +2259,8 @@ public class PubTester {
     @Nano("f")
     public static void testLoweredCacheSizeWhileIdleF() throws InterruptedException {
         Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(new MemoryStream())
-                .startupDistanceInMb(5).cacheSizeInMb(100).start();
+                .cacheSizeInMb(100).start();
+        d.setStartupDistanceInMb(5);
         Db db = ((DatabaseImp) d).getDb();
         char[] chars = new char[1000];
         java.util.Arrays.fill(chars, 'v');
@@ -2320,8 +2323,9 @@ public class PubTester {
     public static void testFirstAvailableLookupTime2() {
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(db);
+        db.setStartupDistance(2000);
         Duration retain = Duration.seconds(1);
         d.setRetainDuration(retain);
         Connection c = d.connection();
@@ -4115,8 +4119,9 @@ public class PubTester {
     private static void testTransactionInfoAfterReclaim() {
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(db);
+        db.setStartupDistance(2000);
         d.setRetainDuration(Duration.seconds(1));
         Connection c = d.connection();
         
@@ -4166,8 +4171,9 @@ public class PubTester {
     private static void testTransactionInfoOfReclaimsCopy() {
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(db);
+        db.setStartupDistance(2000);
         try {
             d.setRetainDuration(Duration.seconds(60));
             Connection c = d.connection();
@@ -4302,8 +4308,9 @@ public class PubTester {
     private static void testTransactionInfoAgainstOracle() {
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(db);
+        db.setStartupDistance(2000);
         try {
             d.setRetainDuration(Duration.seconds(1));
             Connection c = d.connection();

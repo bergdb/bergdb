@@ -88,9 +88,9 @@ public class LargerThanMemory {
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
-        if (sd > 0) b.startupDistance(sd);
         Db d = b.build();
         d.start();
+        if (sd > 0) d.setStartupDistance(sd);      // nothing written if in force (bergdb 028-13)
         // Kept in the stream (bergdb 015-87): after the first start this writes nothing.
         if (retain > 0) d.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
         return d;

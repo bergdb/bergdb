@@ -108,8 +108,10 @@ public class RestartStress {
         }
         DbBuilder b = (maxNode == 0 ? Db.builder() : TestNodeSize.builder(maxNode))
                 .testSetup(stream).clock(clock);
-        if (startupDistance > 0) b.startupDistance(startupDistance);
-        return b.start();
+        Db db = b.start();
+        // Nothing written if in force (bergdb 028-13).
+        if (startupDistance > 0) db.setStartupDistance(startupDistance);
+        return db;
     }
 
     String key(int i) {

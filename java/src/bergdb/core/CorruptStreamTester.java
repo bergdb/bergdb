@@ -270,7 +270,8 @@ public class CorruptStreamTester {
         TreeMap<String, byte[]> state = new TreeMap<String, byte[]>();
         o.states.add(new TreeMap<String, byte[]>(state));
         try (Db db = Db.builder().testSetup(s).clock(clock)
-                .startupDistance(c.startupDistance).start()) {
+                .start()) {
+            db.setStartupDistance(c.startupDistance);
             for (int i = 1; i <= o.n; i++) {
                 clock.setTime(TIME_STEP * i);
                 Trans.Builder b = db.trans();
@@ -606,9 +607,10 @@ public class CorruptStreamTester {
      * and without for other damage, where the audit's own reads would meet the damage first.
      */
     private static Db start(Original o, Copy c, AppendOnlyStream stream, CoreTestClock clock) {
+        // The original's startup distance is the stream's, set after its creation (bergdb
+        // 028-13): a start reads it from the stream.
         return Db.builder().testSetup(stream).clock(clock)
-                .audit(c.expected >= 0 ? AUDIT_EVERY : 0)
-                .startupDistance(o.config.startupDistance).start();
+                .audit(c.expected >= 0 ? AUDIT_EVERY : 0).start();
     }
 
     /**
@@ -1235,59 +1237,65 @@ public class CorruptStreamTester {
     // ======== Tests ========
 
     /**
-     * The copies that found 019-32 (2026-11-06; bergdb 018-07, section 6), each now refused,
-     * a read that fails the database, or what the original held (check). Before 019-32's
-     * fix, each failed: a start or a read threw an AssertionError or a ClassCastException.
-     * A row: the workload, the Original's seed, the record, then the node's offset in it,
-     * its byte and the xor (its checksum made right). Each copy is refused or fails a read,
-     * not taken (since bergdb 024-25: a row that drifts to bytes a start does not check
-     * fails here, not later).
-     * The second row's record moved with format 7 (bergdb 024-21: the merges at the delete,
-     * then the thresholds 8/17/17): the workload's last record, its last value node, was at
-     * 31880, offset 156, in format 6, and at 27808, offset 596, with P5's thresholds. With
-     * option 2 of dead klongs (bergdb 024-23) the same nodes were found again: the first row's
-     * key node of the last record (was at 365024, offset 104), the second row's (27640, 708),
-     * the sixth row's leaf in seed 729025 (seed 729011's stream has no key node written after
-     * its first record: its primordial node 0 is compacted, not filled), the eighth row's top
-     * node (180568, 88), and the last row's odd value pointer, a klong of the same kind, which
-     * a read finds (was the stream's byte 3336, now in a node that the start reads). With the
-     * node header of 12 bytes and CRC32C (bergdb 024-25) the same nodes again, at the same
+     * The copies that found 019-32 (2026-11-06; bergdb 018-07, section 6), each now
+     * refused, a read that fails the database, or what the original held (check). Before
+     * 019-32's fix, each failed: a start or a read threw an AssertionError or a
+     * ClassCastException. A row: the workload, the Original's seed, the record, then the
+     * node's offset in it, its byte and the xor (its checksum made right). Each copy is
+     * refused or fails a read, not taken (since bergdb 024-25: a row that drifts to bytes a
+     * start does not check fails here, not later). The second row's record moved with
+     * format 7 (bergdb 024-21: the merges at the delete, then the thresholds 8/17/17): the
+     * workload's last record, its last value node, was at 31880, offset 156, in format 6,
+     * and at 27808, offset 596, with P5's thresholds. With option 2 of dead klongs (bergdb
+     * 024-23) the same nodes were found again: the first row's key node of the last record
+     * (was at 365024, offset 104), the second row's (27640, 708), the sixth row's leaf in
+     * seed 729025 (seed 729011's stream has no key node written after its first record: its
+     * primordial node 0 is compacted, not filled), the eighth row's top node (180568, 88),
+     * and the last row's odd value pointer, a klong of the same kind, which a read finds
+     * (was the stream's byte 3336, now in a node that the start reads). With the node
+     * header of 12 bytes and CRC32C (bergdb 024-25) the same nodes again, at the same
      * field: the last record with a key node (313592, offset 128), the value node of time
      * 500 (26560, 688, the key's byte 41), the root key node and the top node of the record
      * of time 80 (2792; the top node's id at 24, the count at 13), the leaf in seed 729003
      * (seed 729025's stream has no key node written after its first record now), the flag
      * at 12, the top node of time 210 (182064, 112, its skip pointer at 64); the last two
-     * rows, flips of the stream's bytes 3151 and 7200 that Fletcher-16 did not see (019-33),
-     * are the same xors made in their nodes with the checksum made right (CRC32C sees them).
-     * With the creating start's record of the startup distance (bergdb 028-15), whose KV
-     * every database has, the positions moved again: the last record with a key node (365624,
-     * offset 128); the value node of time 500 (27312, 704); the root key node and the top
-     * node of the record of time 90 (3664; the record of time 80 holds no index node now),
-     * the same fields, its pointer 4 at 271 the value pointer that was pointer 6; the leaf in
-     * seed 729025 (4968; seed 729003's stream has no key node written after its first record
-     * now); the top node of time 210 (182560, 112); and the odd value pointer, the same
-     * klong's, now at the node's byte 352. With the key's shorter name, /#i/-sd (two
-     * segments, not four; Frans, 2026-11-18, 12:45), 176 bytes less at the creation: the last
-     * record with a key node (313944); the value node of time 500 (27088); the records of
-     * time 90 (3488) and 180 (7640); the leaf in seed 729001 (4968); the top node of time 210
-     * (181824). With the writer of record format 8 (bergdb 026-25): the last record with a key
-     * node (365384); the value node of time 500 (27680, 720); the odd value pointer, the same
-     * value's, in the last version of the key node that the record of time 180 held in format
-     * 7 (8232, 112, its byte 344).
+     * rows, flips of the stream's bytes 3151 and 7200 that Fletcher-16 did not see
+     * (019-33), are the same xors made in their nodes with the checksum made right (CRC32C
+     * sees them). With the creating start's record of the startup distance (bergdb 028-15),
+     * whose KV every database has, the positions moved again: the last record with a key
+     * node (365624, offset 128); the value node of time 500 (27312, 704); the root key node
+     * and the top node of the record of time 90 (3664; the record of time 80 holds no index
+     * node now), the same fields, its pointer 4 at 271 the value pointer that was pointer
+     * 6; the leaf in seed 729025 (4968; seed 729003's stream has no key node written after
+     * its first record now); the top node of time 210 (182560, 112); and the odd value
+     * pointer, the same klong's, now at the node's byte 352. With the key's shorter name,
+     * /#i/-sd (two segments, not four; Frans, 2026-11-18, 12:45), 176 bytes less at the
+     * creation: the last record with a key node (313944); the value node of time 500
+     * (27088); the records of time 90 (3488) and 180 (7640); the leaf in seed 729001
+     * (4968); the top node of time 210 (181824). With the writer of record format 8 (bergdb
+     * 026-25): the last record with a key node (365384); the value node of time 500 (27680,
+     * 720); the odd value pointer, the same value's, in the last version of the key node
+     * that the record of time 180 held in format 7 (8232, 112, its byte 344). Since bergdb
+     * 028-13 (the startup distance set after the creation, a record of its own): the last
+     * record with a key node (365528, offset 656); the value node of time 500 (28080); the
+     * root key node and the top node of the record of time 80 (3352; the record of time 90
+     * holds no key node now); the leaf in seed 729020 (4968; seed 729001's stream has no
+     * key node written after its first records now); the top node of time 210 (182464); the
+     * odd value pointer in the key node of time 190 (8184).
      */
     @Nano
     public static void testFound019_32() {
         Object[][] rows = {
-            {META, 3348004L, 365384, 128, 39, 0x80},    // a klong of type 2, at the start
-            {TAKE, 3552484L, 27680, 720, 41, 0x80},     // a value node's key, at the start
-            {TAKE, 4184729L, 3488, 80, 13, 0x01},       // a key count, at the start
-            {TAKE, 4184729L, 3488, 80, 24, 0x01},       // a key node's id 0 to 1, at a read
-            {TAKE, 4184729L, 3488, 32, 24, 0x01},       // a top node's id 1 to 0, at a read
-            {ALL, 729001L, 4968, 80, 12, 0x01},         // a leaf's flag, at the start
+            {META, 3348004L, 365528, 656, 39, 0x80},    // a klong of type 2, at the start
+            {TAKE, 3552484L, 28080, 720, 41, 0x80},     // a value node's key, at the start
+            {TAKE, 4184729L, 3352, 80, 13, 0x01},       // a key count, at the start
+            {TAKE, 4184729L, 3352, 80, 24, 0x01},       // a key node's id 0 to 1, at a read
+            {TAKE, 4184729L, 3352, 32, 24, 0x01},       // a top node's id 1 to 0, at a read
+            {ALL, 729020L, 4968, 80, 12, 0x01},         // a leaf's flag, at the start
             {ALL, 729042L, 128, 80, 12, 0x01},          // the flag of a leaf without keys
-            {META, 3980311L, 181824, 112, 64, 0x80},    // a skip pointer to a key node
-            {TAKE, 4184729L, 3488, 80, 271, 0xff},      // a value pointer negative
-            {TAKE, 4184729L, 8232, 112, 344, 0xff},     // a value pointer odd, a read
+            {META, 3980311L, 182464, 112, 64, 0x80},    // a skip pointer to a key node
+            {TAKE, 4184729L, 3352, 80, 271, 0xff},      // a value pointer negative
+            {TAKE, 4184729L, 8184, 112, 344, 0xff},     // a value pointer odd, a read
         };
         Map<String, Original> originals = new TreeMap<String, Original>();
         for (Object[] row : rows) {
@@ -1313,24 +1321,26 @@ public class CorruptStreamTester {
     }
 
     /**
-     * A time klong with a reserved bit set (bergdb 024-25, section 12), refused at the start.
-     * Found by testFull on 2026-11-12 (its seed 20404): LONG's original of seed 3971451, the
-     * node at offset 1104 of the record at 27920, its klong 0, the time 460, xor 1 at its byte
-     * 39, bit 56; the checksum made right. Before, the start took it, and KeyNode.addKlong's
-     * assert (-ea) compared the whole klong, 2^56 + 460, with the rerun's time 500 (without
-     * -ea it started and answered right: getTime() ignores the bit). Seed 20775 had found it
-     * too (2026-11-10). Since the creating start's record of the startup distance (bergdb
-     * 028-15): the node at offset 736 of the record at 27280, its klong 0, the time 410;
-     * since the key's shorter name (/#i/-sd), the new node at offset 832 of the record at
-     * 25376.
+     * A time klong with a reserved bit set (bergdb 024-25, section 12), refused at the
+     * start. Found by testFull on 2026-11-12 (its seed 20404): LONG's original of seed
+     * 3971451, the node at offset 1104 of the record at 27920, its klong 0, the time 460,
+     * xor 1 at its byte 39, bit 56; the checksum made right. Before, the start took it, and
+     * KeyNode.addKlong's assert (-ea) compared the whole klong, 2^56 + 460, with the
+     * rerun's time 500 (without -ea it started and answered right: getTime() ignores the
+     * bit). Seed 20775 had found it too (2026-11-10). Since the creating start's record of
+     * the startup distance (bergdb 028-15): the node at offset 736 of the record at 27280,
+     * its klong 0, the time 410; since the key's shorter name (/#i/-sd), the new node at
+     * offset 832 of the record at 25376. Since bergdb 028-13 (the startup distance set
+     * after the creation, a record of its own): the new node at offset 208 of the record at
+     * 25080, of time 490.
      */
     @Nano
     public static void testFoundTimeKlongBits() {
         Original o = write(LONG, 3971451L);
-        Record rec = o.recordAt(25376);
+        Record rec = o.recordAt(25080);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 832) node = n;
+            if (n[0] == 208) node = n;
         }
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         nb[39] ^= (byte) 0x01;
@@ -1344,38 +1354,44 @@ public class CorruptStreamTester {
 
     /**
      * A pointer that a start links by node id, set to a version of a node of another type,
-     * its node's checksum made right (bergdb 021-11): each refused at the start. Before, the
-     * start's rule 4 (NodeCollection.linkToCanonical) gave the pointer that node's handle,
-     * and a read threw an AssertionError ("Expected a KeyNode") or a ClassCastException, or
-     * the check of rule 4 (005-57), which runs with -ea, threw an AssertionError (without
-     * -ea, a read fails). A row: the record of LONG's original of seed 1, the node's offset
-     * in it, the pointer's byte in the node, the position it is set to. Found again with
-     * option 2 of dead klongs (bergdb 024-23): the inner key node id 6217 in the record at
-     * 22712 (was id 4129 at 28856, offset 1112, its byte 120), the newest top node at 22904
-     * (was 30504), whose skip pointer 0 now names the key node at 18848 (was the top node at
-     * 30472 to 7080), and the older top node at 18008 (was 26224). With the node header of
-     * 12 bytes (bergdb 024-25): the key node id 13333 in the record at 23952 (offset 416, its
-     * pointer 1 at 176) to the top node of its record at 23984, and to an older version of
-     * that top node (id 13335) at 18752; the top node at 21880, of ordinal 1, its skip
-     * pointer 0 (its byte 48) to the key node at 18848. Since the creating start's record of
-     * the startup distance (bergdb 028-15), in the section's first record, at 32640: the key
-     * node id 5833 (offset 544, its pointer 1 at 120) to the top node of its record at 32672,
-     * and to an older version of that top node (id 26591) at 30496; the top node id 3333
-     * (offset 128), its skip pointer 0 (its byte 48) to the key node at 31072. Since the
-     * key's shorter name (/#i/-sd), in the last record, at 35664: the key node id 3187
-     * (offset 496, its pointer 1 at 184) to the top node of its record at 35696, and to an
-     * older version of it at 31720; the top node id 3189 (offset 32), its skip pointer 0 to
-     * the key node at 31864. With the writer of record format 8 (bergdb 026-25), in the
-     * section's record at 30184: the key node id 25581 (offset 832, its pointer 1 at 184) to
-     * the top node id 9741 of its record at 30312, and to an older version of it at 25608; the
-     * top node id 25583 (offset 32), its skip pointer 0 to the key node at 27984.
+     * its node's checksum made right (bergdb 021-11): each refused at the start. Before,
+     * the start's rule 4 (NodeCollection.linkToCanonical) gave the pointer that node's
+     * handle, and a read threw an AssertionError ("Expected a KeyNode") or a
+     * ClassCastException, or the check of rule 4 (005-57), which runs with -ea, threw an
+     * AssertionError (without -ea, a read fails). A row: the record of LONG's original of
+     * seed 1, the node's offset in it, the pointer's byte in the node, the position it is
+     * set to. Found again with option 2 of dead klongs (bergdb 024-23): the inner key node
+     * id 6217 in the record at 22712 (was id 4129 at 28856, offset 1112, its byte 120), the
+     * newest top node at 22904 (was 30504), whose skip pointer 0 now names the key node at
+     * 18848 (was the top node at 30472 to 7080), and the older top node at 18008 (was
+     * 26224). With the node header of 12 bytes (bergdb 024-25): the key node id 13333 in
+     * the record at 23952 (offset 416, its pointer 1 at 176) to the top node of its record
+     * at 23984, and to an older version of that top node (id 13335) at 18752; the top node
+     * at 21880, of ordinal 1, its skip pointer 0 (its byte 48) to the key node at 18848.
+     * Since the creating start's record of the startup distance (bergdb 028-15), in the
+     * section's first record, at 32640: the key node id 5833 (offset 544, its pointer 1 at
+     * 120) to the top node of its record at 32672, and to an older version of that top node
+     * (id 26591) at 30496; the top node id 3333 (offset 128), its skip pointer 0 (its byte
+     * 48) to the key node at 31072. Since the key's shorter name (/#i/-sd), in the last
+     * record, at 35664: the key node id 3187 (offset 496, its pointer 1 at 184) to the top
+     * node of its record at 35696, and to an older version of it at 31720; the top node id
+     * 3189 (offset 32), its skip pointer 0 to the key node at 31864. With the writer of
+     * record format 8 (bergdb 026-25), in the section's record at 30184: the key node id
+     * 25581 (offset 832, its pointer 1 at 184) to the top node id 9741 of its record at
+     * 30312, and to an older version of it at 25608; the top node id 25583 (offset 32), its
+     * skip pointer 0 to the key node at 27984. Since bergdb 028-13 (the startup distance
+     * set after the creation, a record of its own), in the section's record at 44144, its
+     * only record with nodes: the key node id 27581 (offset 3232, its pointer 1 at 184) to
+     * the top node id 12317 of its record at 44336, and to an older version of it at 40392,
+     * before the section; the top node id 27583 (offset 400), its skip pointer 0 to the key
+     * node at 46064.
      */
     @Nano
     public static void testFound021_11() {
         long[][] rows = {
-            {30184, 832, 184, 30312},   // a key node's pointer 1 to the newest top node
-            {30184, 32, 48, 27984},     // a top node's skip pointer 0 to a key node
-            {30184, 832, 184, 25608},   // to an older top node version: 005-57's check (-ea)
+            {44144, 3232, 184, 44336},  // a key node's pointer 1 to the newest top node
+            {44144, 400, 48, 46064},    // a top node's skip pointer 0 to a key node
+            {44144, 3232, 184, 40392},  // to an older top node version: 005-57's check (-ea)
         };
         Original o = write(LONG, 1);
         for (long[] row : rows) {
@@ -1397,37 +1413,41 @@ public class CorruptStreamTester {
 
     /**
      * A key node that a start reads from before the startup section, damaged so that it
-     * breaks KeyNode's invariants (bergdb 021-12): each copy refused at the start. Before, the
-     * start threw an AssertionError: its check of the nodes in memory (KeyNode.check, from
-     * DbStarter.postStartupCheck, also without -ea), or an assert of KeyNode.addKlong when the
-     * rerun put into the node. Copies of LONG's first full run (seed 20766), in its node at
-     * offset 200 of the record at 36336, until format 7's thresholds 8/17/17 (bergdb 024-21):
-     * that run's stream no longer has a node before the section that the start reads, so the
-     * same copies are made in seed 20767's, its node at offset 72 of the record at 21592; with
-     * option 2 of dead klongs (bergdb 024-23) in the same seed's node at offset 208 of the
-     * record at 26632; with the node header of 12 bytes (bergdb 024-25) at offset 384 of the
-     * record at 30176, the stream's flips by 0xff (019-33's, which Fletcher-16 did not see)
-     * made in the node with its checksum made right. Since the creating start's record of the
-     * startup distance (bergdb 028-15) seed 20767's stream has no node before the section that
-     * the start reads; seed 20766's has again, at offset 656 of the record at 33600, whose
-     * last time klong is at its bytes 136 to 143. Since the key's shorter name (/#i/-sd),
-     * seed 20770's node at offset 1840 of the record at 39832, its last time klong at its
-     * bytes 144 to 151. With the writer of record format 8 (bergdb 026-25), seed 20766's node at
-     * offset 304 of the record at 33184, its last time klong at its bytes 192 to 199.
+     * breaks KeyNode's invariants (bergdb 021-12): each copy refused at the start. Before,
+     * the start threw an AssertionError: its check of the nodes in memory (KeyNode.check,
+     * from DbStarter.postStartupCheck, also without -ea), or an assert of KeyNode.addKlong
+     * when the rerun put into the node. Copies of LONG's first full run (seed 20766), in
+     * its node at offset 200 of the record at 36336, until format 7's thresholds 8/17/17
+     * (bergdb 024-21): that run's stream no longer has a node before the section that the
+     * start reads, so the same copies are made in seed 20767's, its node at offset 72 of
+     * the record at 21592; with option 2 of dead klongs (bergdb 024-23) in the same seed's
+     * node at offset 208 of the record at 26632; with the node header of 12 bytes (bergdb
+     * 024-25) at offset 384 of the record at 30176, the stream's flips by 0xff (019-33's,
+     * which Fletcher-16 did not see) made in the node with its checksum made right. Since
+     * the creating start's record of the startup distance (bergdb 028-15) seed 20767's
+     * stream has no node before the section that the start reads; seed 20766's has again,
+     * at offset 656 of the record at 33600, whose last time klong is at its bytes 136 to
+     * 143. Since the key's shorter name (/#i/-sd), seed 20770's node at offset 1840 of the
+     * record at 39832, its last time klong at its bytes 144 to 151. With the writer of
+     * record format 8 (bergdb 026-25), seed 20766's node at offset 304 of the record at
+     * 33184, its last time klong at its bytes 192 to 199. Since bergdb 028-13 (the startup
+     * distance set after the creation, a record of its own), seed 20766's stream has no
+     * such node; seed 20774's node at offset 2000 of the record at 29344, its last time
+     * klong at its bytes 112 to 119.
      */
     @Nano
     public static void testFound021_12() {
-        Original o = write(LONG, 20766L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(33184);
+        Original o = write(LONG, 20774L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(29344);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 304) node = n;
+            if (n[0] == 2000) node = n;
         }
         List<Copy> copies = new ArrayList<Copy>();
         // A time klong's byte flipped by 0xff (019-33's flip): the times not increasing, at
         // the start's check (the node's byte 34), and its last time after the startup time,
-        // at the check of a version before the section (its byte 138).
-        for (int at : new int[] {34, 194}) {
+        // at the check of a version before the section (its byte 114).
+        for (int at : new int[] {34, 114}) {
             byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
             nb[at] ^= (byte) 0xff;
             copies.add(nodeCopy(o, rec, node, nb, "xor 255 at its byte " + at));
@@ -1448,11 +1468,11 @@ public class CorruptStreamTester {
         // holds the object's identity hash ("K/44" in one run, "K/ab" in the next), and
         // printed the whole node over many lines.
         String[] texts = {
-            "Time not increasing, 320, 16711990, index=10",
-            "Key node 17009 at 33488, before the startup section, has the time 16712140, after "
-                    + "the startup time 470.",
-            "Bad spos of pointer 0 of key node 17009 at 33488: -1, at or before the startup "
-                    + "time 470.",
+            "Time not increasing, 380, 16712050, index=10",
+            "Key node 27877 at 31344, before the startup section, has the time 16712060, after "
+                    + "the startup time 430.",
+            "Bad spos of pointer 0 of key node 27877 at 31344: -1, at or before the startup "
+                    + "time 430.",
         };
         for (int i = 0; i < copies.size(); i++) {
             Assert.assertEquals(copies.get(i).what, texts[i], refusal(o, copies.get(i)));
@@ -1462,40 +1482,43 @@ public class CorruptStreamTester {
     /**
      * A key node's prevPos (its byte 8) xor 0x80, its checksum made right: testFull's copy
      * of 2026-11-10 (its seed 20767, the release night of 2026.4) in the first node of the
-     * startup section. The prevPos then named the version of the node's own child before the
-     * section, and the start's Rule R made the node's pointer to that child a pointer to the
-     * node itself. A get looped without end in Dag.getEqNodeInSegment, and testFull's copy
-     * did not end in 60 s; now the get fails the database (OpData.descentTo()), and so does
-     * a scan of the copy (GetMany's check of its chain). Since format 7's thresholds 8/17/17
-     * (bergdb 024-21) seed 20767's stream has no such node; the copy sets the prevPos to the
-     * position of the version of the node's child (its pointer 1) before the section, what
-     * the xor did by chance, in the first node of the record at 25584 of seed 20777 (until
-     * then the xor of 0x80 in the record at 19632 of seed 20767); with option 2 of dead klongs
-     * (bergdb 024-23) the first node of the record at 39248 of seed 20828, its prevPos set to
-     * 15800; with the node header of 12 bytes (bergdb 024-25), whose records of the section
-     * begin with top nodes, the key node at offset 800 of the record at 33840 of the same
-     * seed, the section's first, its prevPos (its byte 16) set to 14544, its pointer 1. Since
-     * the creating start's record of the startup distance (bergdb 028-15) the start refuses
-     * each such copy of seed 20828's; in seed 20807's, the key node at offset 496 of the
-     * record at 21400, the section's first record, its prevPos set to 14656, its pointer 1;
-     * since the key's shorter name (/#i/-sd), seed 20806's, the key node at offset 592 of the
-     * record at 32672, its prevPos set to 14704. With the writer of record format 8 (bergdb
-     * 026-25), seed 20810's, the key node at offset 832 of the record at 37816, the section's
-     * first, its prevPos set to 16864, its pointer 1.
+     * startup section. The prevPos then named the version of the node's own child before
+     * the section, and the start's Rule R made the node's pointer to that child a pointer
+     * to the node itself. A get looped without end in Dag.getEqNodeInSegment, and
+     * testFull's copy did not end in 60 s; now the get fails the database
+     * (OpData.descentTo()), and so does a scan of the copy (GetMany's check of its chain).
+     * Since format 7's thresholds 8/17/17 (bergdb 024-21) seed 20767's stream has no such
+     * node; the copy sets the prevPos to the position of the version of the node's child
+     * (its pointer 1) before the section, what the xor did by chance, in the first node of
+     * the record at 25584 of seed 20777 (until then the xor of 0x80 in the record at 19632
+     * of seed 20767); with option 2 of dead klongs (bergdb 024-23) the first node of the
+     * record at 39248 of seed 20828, its prevPos set to 15800; with the node header of 12
+     * bytes (bergdb 024-25), whose records of the section begin with top nodes, the key
+     * node at offset 800 of the record at 33840 of the same seed, the section's first, its
+     * prevPos (its byte 16) set to 14544, its pointer 1. Since the creating start's record
+     * of the startup distance (bergdb 028-15) the start refuses each such copy of seed
+     * 20828's; in seed 20807's, the key node at offset 496 of the record at 21400, the
+     * section's first record, its prevPos set to 14656, its pointer 1; since the key's
+     * shorter name (/#i/-sd), seed 20806's, the key node at offset 592 of the record at
+     * 32672, its prevPos set to 14704. With the writer of record format 8 (bergdb 026-25),
+     * seed 20810's, the key node at offset 832 of the record at 37816, the section's first,
+     * its prevPos set to 16864, its pointer 1. Since bergdb 028-13 (the startup distance
+     * set after the creation, a record of its own), the same seed's key node at offset 464
+     * of the record at 36344, the section's first, its prevPos set to 15296, its pointer 1.
      */
     @Nano
     public static void testFoundDescentCycle() {
         Original o = write(LONG, 20810L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(37816);
+        Record rec = o.recordAt(36344);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 832) node = n;
+            if (n[0] == 464) node = n;
         }
         Assert.assertEquals(bergdb.dag.Node.TYPE_KEY_NODE, rec.bytes[node[0] + 4]);
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
-        Assert.assertEquals(16864, Bytes.bytesToLongLE(nb, 32 + 8 * ((node[1] - 32) / 16) + 8));
-        Bytes.longToBytesLE(16864, nb, 16);
-        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 16864");
+        Assert.assertEquals(15296, Bytes.bytesToLongLE(nb, 32 + 8 * ((node[1] - 32) / 16) + 8));
+        Bytes.longToBytesLE(15296, nb, 16);
+        Copy c = nodeCopy(o, rec, node, nb, "its prevPos set to 15296");
         Results results = new Results();
         checkAll(o, Arrays.asList(c), 1, 60, results);
         assertNoFailure(results);
@@ -1536,18 +1559,19 @@ public class CorruptStreamTester {
      * 028-14), the top node at offset 96 of the record at 43440, xor 1 at its byte 49. The
      * pointer then named the top node itself, and a get at a time before the node's looped
      * in TopDs.findSuperRootAtTime() without end: testFull's copy did not end in 60 s. Now
-     * the walk takes only top nodes of a smaller ordinal (TopDs.skipTo()), and the get fails
-     * the database. Since the creating start's record of the startup distance (bergdb
+     * the walk takes only top nodes of a smaller ordinal (TopDs.skipTo()), and the get
+     * fails the database. Since the creating start's record of the startup distance (bergdb
      * 028-15), the same seed's top node at offset 128 of the record at 30160, its skip
      * pointer 0 set to the node's own position (no xor of a byte gives it there); since the
-     * key's shorter name (/#i/-sd), the top node at offset 96 of the record at 24080; with the
-     * writer of record format 8 (bergdb 026-25), the top node at offset 32 of the record at
-     * 41296.
+     * key's shorter name (/#i/-sd), the top node at offset 96 of the record at 24080; with
+     * the writer of record format 8 (bergdb 026-25), the top node at offset 32 of the
+     * record at 41296. Since bergdb 028-13 (the startup distance set after the creation, a
+     * record of its own): the top node at offset 32 of the record at 26896.
      */
     @Nano
     public static void testFoundTopCycle() {
         Original o = write(LONG, 20772L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(41296);
+        Record rec = o.recordAt(26896);
         int[] node = null;
         for (int[] n : rec.nodes) {
             if (n[0] == 32) node = n;
@@ -1568,29 +1592,32 @@ public class CorruptStreamTester {
      * A key node's prevPos changed, its checksum made right, in the first record of the
      * startup section: testFull's copies of seeds 20769 and 20770 (2026-11-10, run for the
      * release of 2026.4), each change of the prevPos of one key node. The version that the
-     * prevPos named, before the section, is the one that its parent's pointer names; without
-     * it in DbStarter's posToId, rule 4 by position found no canonical object for the
-     * pointer, and by node id the node's: the start's check of rule 4 (005-57, with -ea)
-     * threw an AssertionError. Now the start refuses the stream (checkLinkById). With the
-     * node header of 12 bytes (bergdb 024-25) the key node at offset 80 of the record at
-     * 22736 of seed 20770, its prevPos (its byte 16) xor 1. Until then the record at 21584
-     * of seed 20769, its first node, at offset 32, xor 1 at its byte 8: since option 2 of dead
-     * klongs (bergdb 024-23) that node was a top node, the byte its h, and the copy was
-     * refused for its size, not by checkLinkById; the test now checks the refusal's text.
-     * Since the creating start's record of the startup distance (bergdb 028-15) the key node
-     * at offset 80 of the record at 21992, in the section, the same node of the first
-     * segment (id 465, 273 before); since the key's shorter name (/#i/-sd), seed 20765's
-     * record at 25544, the node at offset 128, the same node (id 417); with the writer of
-     * record format 8 (bergdb 026-25), the record at 33032, a record of the section, the node
-     * at offset 448, the same node (id 423).
+     * prevPos named, before the section, is the one that its parent's pointer names;
+     * without it in DbStarter's posToId, rule 4 by position found no canonical object for
+     * the pointer, and by node id the node's: the start's check of rule 4 (005-57, with
+     * -ea) threw an AssertionError. Now the start refuses the stream (checkLinkById). With
+     * the node header of 12 bytes (bergdb 024-25) the key node at offset 80 of the record
+     * at 22736 of seed 20770, its prevPos (its byte 16) xor 1. Until then the record at
+     * 21584 of seed 20769, its first node, at offset 32, xor 1 at its byte 8: since option
+     * 2 of dead klongs (bergdb 024-23) that node was a top node, the byte its h, and the
+     * copy was refused for its size, not by checkLinkById; the test now checks the
+     * refusal's text. Since the creating start's record of the startup distance (bergdb
+     * 028-15) the key node at offset 80 of the record at 21992, in the section, the same
+     * node of the first segment (id 465, 273 before); since the key's shorter name
+     * (/#i/-sd), seed 20765's record at 25544, the node at offset 128, the same node (id
+     * 417); with the writer of record format 8 (bergdb 026-25), the record at 33032, a
+     * record of the section, the node at offset 448, the same node (id 423). Since bergdb
+     * 028-13 (the startup distance set after the creation, a record of its own): seed
+     * 20769's record at 26600, a record of the section, the node at offset 1104, the same
+     * node of the first segment (id 521).
      */
     @Nano
     public static void testFoundLinkByIdPrevPos() {
-        Original o = write(LONG, 20765L * 31 + LONG.name.hashCode());
-        Record rec = o.recordAt(33032);
+        Original o = write(LONG, 20769L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(26600);
         int[] node = null;
         for (int[] n : rec.nodes) {
-            if (n[0] == 448) node = n;
+            if (n[0] == 1104) node = n;
         }
         byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
         nb[16] ^= (byte) 0x01;
@@ -1600,8 +1627,8 @@ public class CorruptStreamTester {
             throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
                     : out.kind));
         }
-        Assert.assertEquals(c.what, "Pointer 2 of node 11529 names 28312, a version of node 423 "
-                + "(at 33480 in the startup section), but no version of the section names it as "
+        Assert.assertEquals(c.what, "Pointer 2 of node 4331 names 21480, a version of node 521 "
+                + "(at 27704 in the startup section), but no version of the section names it as "
                 + "its prevPos.", refusal(o, c));
     }
 

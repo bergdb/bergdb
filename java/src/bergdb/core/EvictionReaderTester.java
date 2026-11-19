@@ -50,8 +50,10 @@ public class EvictionReaderTester {
 
     private static Db start(MemoryStream s, CoreTestClock clock, Eviction.Schedule schedule,
             int audit) {
-        return Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8().startupDistance(200)
+        Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
                 .evictionSchedule(schedule, 1).audit(audit).start();
+        db.setStartupDistance(200);      // nothing written if in force (bergdb 028-13)
+        return db;
     }
 
     private static String value(int i, int j) {
@@ -504,9 +506,10 @@ public class EvictionReaderTester {
         final CoreTestClock clock = new CoreTestClock();
         final Db db = budget
                 ? Db.builder().testSetup(s1).clock(clock).testId().maxNodeSize8()
-                        .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                        .cacheSizeIndicator(4 * 1000)
                         .evictionSchedule(Eviction.Schedule.BUDGET, 1).audit(0).start()
                 : start(s1, clock, Eviction.Schedule.RANDOM, 0);
+        db.setStartupDistance(200);      // nothing written if in force (bergdb 028-13)
         final int keys = 50;
         final String[][] history = new String[n][];     // per transaction, its values by key
         final long[] times = new long[n];
@@ -597,8 +600,9 @@ public class EvictionReaderTester {
      */
     @Nano
     public static void testAuditWithReaderCleanup() throws Exception {
-        final Db db = Db.builder().testSetup(new MemoryStream()).audit(1).startupDistance(10)
+        final Db db = Db.builder().testSetup(new MemoryStream()).audit(1)
                 .start();
+        db.setStartupDistance(10);
         // A record whose take writes the index nodes of the creating start's record of the
         // startup distance (bergdb 028-15), so that the audit asks the oracle of a clean
         // canonical node before its copy of the handles; with only that record's dirty nodes

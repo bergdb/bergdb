@@ -437,8 +437,9 @@ public class PubTesterJavadocNewUsers {
     public static void testDroppedIteratorsHoldNothing() {
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(db);
+        db.setStartupDistance(2000);
         try {
             Connection c = d.connection();
             long ms = Duration.seconds(0.001).units();
@@ -495,8 +496,9 @@ public class PubTesterJavadocNewUsers {
     @Nano
     public static void testStartWithTheFirstFileDeleted(TestEnvironment env) throws IOException {
         File dir = env.createTempDir();
-        try (Database d = Factory.database().create(dir.getPath()).startupDistanceInMb(5)
+        try (Database d = Factory.database().create(dir.getPath())
                 .start()) {
+            d.setStartupDistanceInMb(5);
             Connection c = d.connection();
             for (int i = 0; i < 2000; i++) {      // 1500 showed it; 1000 did not.
                 c.put(String.format("/log/%012d.bin", i), new byte[1000]);
@@ -741,7 +743,8 @@ public class PubTesterJavadocNewUsers {
             } else {
                 b.create(new File(root, "d" + i).getPath());
             }
-            Database d = b.startupDistanceInMb(5).start();
+            Database d = b.start();
+            d.setStartupDistanceInMb(5);
             d.connection().put("/a.txt", "a");
             if (i % 2 == 0) {
                 d.close();

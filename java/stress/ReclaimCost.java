@@ -156,7 +156,7 @@ public class ReclaimCost {
             stream = cutStream;
         }
         DbBuilder b = Db.builder().stream("main", stream).clock(clock).noEvict()
-                .testId().startupDistance(sd);
+                .testId();
         return b.build();
     }
 
@@ -235,6 +235,7 @@ public class ReclaimCost {
                 + " disk=" + disk + " touchstats=" + touchStats);
         db = start(true);
         db.start();
+        db.setStartupDistance(sd);      // kept in the stream (bergdb 028-13)
 
         // Phase 1: load.
         int[] perm = new int[n];

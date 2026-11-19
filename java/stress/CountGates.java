@@ -155,9 +155,10 @@ public class CountGates {
             clock.setTime(time);
             try {
                 DbBuilder b = Db.builder().mainStream(new FileStream(dir)).clock(clock);
-                if (sd > 0) b.startupDistance(sd).testId();     // G4
+                if (sd > 0) b.testId();     // G4
                 if (sd > 0 && i("g4evict", 1) == 0) b.noEvict();
                 db = b.start();
+                if (sd > 0) db.setStartupDistance(sd);      // bergdb 028-13
             } catch (IOException e) {
                 throw new java.io.UncheckedIOException(e);
             }

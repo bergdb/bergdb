@@ -455,12 +455,13 @@ public class DbTesterStream {
      * its records, the primordial one and the creating start's record of the startup
      * distance (bergdb 028-15). The files are copied while the database runs, after a
      * transaction that no sync made durable, as a kill of the process leaves them, and a
-     * start on the copy finds the creator's startup distance, and a time before the lost
-     * transaction's. Until 028-17 the second record waited in the write buffer: the copy
-     * held the primordial record alone, and its start put the KV with its own builder's
-     * setting at its own time, after the lost transaction's (night.sh's kill-restart.sh,
-     * 2026-11-18). Since 028-18 such a copy is refused (DatabaseNotCreatedException);
-     * testCreatedTxtAfterBothRecords checks the order of the sync and created.txt.
+     * start on the copy finds the creator's startup distance (the default, 50 MB, since
+     * bergdb 028-13), and a time before the lost transaction's. Until 028-17 the second
+     * record waited in the write buffer: the copy held the primordial record alone, and its
+     * start put the KV with its own builder's setting at its own time, after the lost
+     * transaction's (night.sh's kill-restart.sh, 2026-11-18). Since 028-18 such a copy is
+     * refused (DatabaseNotCreatedException); testCreatedTxtAfterBothRecords checks the
+     * order of the sync and created.txt.
      */
     @Nano
     private static void testCreationDurableWhenStartReturns(TestEnvironment env)
@@ -472,7 +473,7 @@ public class DbTesterStream {
         File copy = env.createTempDir();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).createdTxt(dir)
-                .startupDistance(5000000).start();
+                .start();
         Db again = null;
         try {
             clock.setTime(1000);
@@ -487,8 +488,8 @@ public class DbTesterStream {
             CoreTestClock clock2 = new CoreTestClock();
             clock2.setTime(2000);
             again = Db.builder().testSetup(new FileStream(copy)).clock(clock2).createdTxt(copy)
-                    .startupDistance(2000000).start();
-            Assert.assertEquals("the creator's startup distance", 5000000,
+                    .start();
+            Assert.assertEquals("the creator's startup distance", Db.DEFAULT_STARTUP_DISTANCE,
                     again.getStartupDistance());
             if (DbUtil.get(again, Long.MAX_VALUE, "k") == null) {
                 long t = again.lookupTime(Long.MAX_VALUE);
@@ -532,7 +533,7 @@ public class DbTesterStream {
         CoreTestClock clock = new CoreTestClock();
         long length;
         try (Db db = Db.builder().testSetup(new FileStream(dir, io)).clock(clock)
-                .createdTxt(dir).startupDistance(5000000).start()) {
+                .createdTxt(dir).start()) {
             length = db.getStreamLength();
             Assert.assertTrue("created.txt when start() returns", txt.isFile());
             Assert.assertTrue("both records, " + length, length > Db.CREATION_LENGTH);
@@ -544,11 +545,12 @@ public class DbTesterStream {
                 }
             }
             Assert.assertTrue("a force of both records, of " + forces.size(), covered);
+            db.setStartupDistance(5000000);     // after the start (bergdb 028-13)
         }
         clock.setTime(1000);
         try (Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).createdTxt(dir)
-                .startupDistance(2000000).start()) {
-            Assert.assertEquals("the creator's", 5000000, db.getStartupDistance());
+                .start()) {
+            Assert.assertEquals("the first run's", 5000000, db.getStartupDistance());
             db.setStartupDistance(3000000);
         }
         clock.setTime(2000);
@@ -695,7 +697,8 @@ public class DbTesterStream {
     public static void testLargeTransactions() {
         MemoryStream s = new MemoryStream();
         int valueSize = 1000*1000;
-        Db db = Db.builder().testSetup().startupDistance(100*1000).mainStream(s).start();
+        Db db = Db.builder().testSetup().mainStream(s).start();
+        db.setStartupDistance(100*1000);
         int n = 5;
         
         db.execute(db.trans().put("/small1", "v-small1"));

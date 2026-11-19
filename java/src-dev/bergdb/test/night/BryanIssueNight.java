@@ -5,6 +5,7 @@ import java.io.IOException;
 import bergdb.core.DbBuilder;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pubimp.DatabaseBuilderImp;
 import bergdb.stream.FileStream;
@@ -41,6 +42,14 @@ public class BryanIssueNight extends BryanIssue {
         DbBuilder b = ((DatabaseBuilderImp) builder).getDbBuilder();
         b.mainStream(new FileStream(new File(dbPath)));
         b.testSetupExceptStream();
-        b.startupDistance(20 * 1000000);
+    }
+    
+    /**
+     * The startup distance, 20 MB, set right after the start (bergdb 028-13: the builder's
+     * method was removed); a call with the setting in force writes nothing.
+     */
+    @Override
+    public void afterStart(Database d) {
+        d.setStartupDistanceInMb(20);
     }
 }

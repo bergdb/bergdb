@@ -728,10 +728,11 @@ public class DbTesterGetMany {
             for (boolean longKeys : new boolean[] {false, true}) {
                 for (boolean forward : new boolean[] {true, false}) {
                     CoreTestClock clock = new CoreTestClock();
-                    DbBuilder b = Db.builder().testSetup().clock(clock).startupDistance(10000);
+                    DbBuilder b = Db.builder().testSetup().clock(clock);
                     if (maxNode == 8) b.maxNodeSize8();
                     if (maxNode == 14) b.maxNodeSize14();
                     Db db = b.start();
+                    db.setStartupDistance(10000);
                     int n = 120;
                     for (int i = 0; i < n; i++) {
                         clock.setTime(1000 + i * 10);
@@ -780,10 +781,11 @@ public class DbTesterGetMany {
             java.util.Random r = new java.util.Random(seed);
             int[] nodeSizes = {0, 8, 14};
             CoreTestClock clock = new CoreTestClock();
-            DbBuilder b = Db.builder().testSetup().clock(clock).startupDistance(10000);
+            DbBuilder b = Db.builder().testSetup().clock(clock);
             if (nodeSizes[seed % 3] == 8) b.maxNodeSize8();
             if (nodeSizes[seed % 3] == 14) b.maxNodeSize14();
             Db db = b.start();
+            db.setStartupDistance(10000);
 
             final List<long[]> keys = new ArrayList<long[]>();
             int n = 20 + r.nextInt(300);

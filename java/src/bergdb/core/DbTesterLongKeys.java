@@ -172,8 +172,9 @@ public class DbTesterLongKeys {
             final byte[] second = key("/d/", Db.MAX_KEY_BYTES);
             final byte[] own1 = ownKey(10 * 1000);
             final byte[] own2 = ownKey(Db.MAX_TRANS_KEY_BYTES);
-            Db db = builder(nodeSize, new MemoryStream()).startupDistance(200 * 1000 * 1000)
+            Db db = builder(nodeSize, new MemoryStream())
                     .start();
+            db.setStartupDistance(200 * 1000 * 1000);
             try {
                 db.execute(db.trans().put(first, "first".getBytes()).build());
                 db.execute(db.trans().put(second, "second".getBytes()).build());
@@ -237,7 +238,8 @@ public class DbTesterLongKeys {
             final byte[] first = ownKey(10 * 1000);
             final byte[] second = ownKey(Db.MAX_TRANS_KEY_BYTES);
             MemoryStream stream = new MemoryStream();
-            Db db = Db.builder().testSetup(stream).startupDistance(200 * 1000 * 1000).start();
+            Db db = Db.builder().testSetup(stream).start();
+            db.setStartupDistance(200 * 1000 * 1000);
             try {
                 db.execute(db.trans().putLongKey(Keys.toSegments(first), null, 
                         "first".getBytes(), null).build());

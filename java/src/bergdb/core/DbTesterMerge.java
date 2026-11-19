@@ -133,7 +133,8 @@ public class DbTesterMerge {
         for (int sd : new int[] {10, 10 * 1000 * 1000}) {
             String at0 = "startup distance " + sd;
             MemoryStream ms = new MemoryStream();
-            Db db = Db.builder().testSetup(ms).maxNodeSize8().startupDistance(sd).start();
+            Db db = Db.builder().testSetup(ms).maxNodeSize8().start();
+            db.setStartupDistance(sd);
             TreeMap<String, String> state = new TreeMap<String, String>();
             List<TreeMap<String, String>> ts = workload(1200, 3, 40, sd);
             for (int i = 0; i < ts.size(); i++) {
@@ -150,7 +151,8 @@ public class DbTesterMerge {
                     String before = tree(db);
                     db.close();
                     ms = ms.copy();
-                    db = Db.builder().testSetup(ms).maxNodeSize8().startupDistance(sd).start();
+                    db = Db.builder().testSetup(ms).maxNodeSize8().start();
+                    db.setStartupDistance(sd);
                     Assert.assertEquals(at + ": the tree after the restart", before, tree(db));
                     checkFill(db, at + ", restarted");
                     checkValues(db, state, 1200, at + ", restarted");
@@ -177,7 +179,8 @@ public class DbTesterMerge {
             for (int sd : new int[] {10, 10 * 1000 * 1000}) {
                 String at0 = "node size " + b + ", startup distance " + sd;
                 MemoryStream ms = new MemoryStream();
-                Db db = builder(ms, b, sd).start();
+                Db db = builder(ms, b).start();
+                db.setStartupDistance(sd);
                 TreeMap<String, String> state = new TreeMap<String, String>();
                 Random rnd = new Random(b + sd);
                 final long compactions0 = Dag.statCompactions;
@@ -200,7 +203,8 @@ public class DbTesterMerge {
                         db.close();
                         ms = ms.copy();
                         final long c0 = Dag.statCompactions;
-                        db = builder(ms, b, sd).start();
+                        db = builder(ms, b).start();
+                        db.setStartupDistance(sd);      // nothing written if in force
                         rerun += Dag.statCompactions - c0;
                         Assert.assertEquals(at + ": the tree after the restart", before, tree(db));
                         checkFill(db, at + ", restarted");
@@ -217,8 +221,8 @@ public class DbTesterMerge {
         }
     }
 
-    private static DbBuilder builder(MemoryStream ms, int b, int sd) {
-        DbBuilder builder = Db.builder().testSetup(ms).startupDistance(sd);
+    private static DbBuilder builder(MemoryStream ms, int b) {
+        DbBuilder builder = Db.builder().testSetup(ms);
         return b == 14 ? builder.maxNodeSize14() : builder.maxNodeSize30();
     }
 
@@ -231,7 +235,8 @@ public class DbTesterMerge {
     @Nano
     public static void testCrashCutsRerunTheMerges() {
         CutStream cs = new CutStream();
-        Db db = Db.builder().testSetup(cs).maxNodeSize8().startupDistance(10).start();
+        Db db = Db.builder().testSetup(cs).maxNodeSize8().start();
+        db.setStartupDistance(10);
         List<TreeMap<String, String>> ts = workload(600, 3, 30, 7);
         List<Long> ends = new ArrayList<Long>();
         List<String> trees = new ArrayList<String>();
@@ -258,7 +263,8 @@ public class DbTesterMerge {
                 String at = "transaction " + i + (inside == 0 ? ", its end" : ", inside");
                 CutStream c = cs.copy();
                 c.truncate(cut);
-                Db d = Db.builder().testSetup(c).maxNodeSize8().startupDistance(10).start();
+                Db d = Db.builder().testSetup(c).maxNodeSize8().start();
+                d.setStartupDistance(10);
                 checkValues(d, states.get(last), 600, at);
                 Assert.assertEquals(at + ": the tree", trees.get(last), tree(d));
                 checkFill(d, at);
@@ -276,8 +282,9 @@ public class DbTesterMerge {
      */
     @Nano
     public static void testReadersAcrossMerges() throws InterruptedException {
-        final Db db = Db.builder().testSetup().maxNodeSize8().startupDistance(1000)
+        final Db db = Db.builder().testSetup().maxNodeSize8()
                 .evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+        db.setStartupDistance(1000);
         final int n = 1500;
         final List<TreeMap<String, String>> ts = workload(n, 3, 50, 3);
         final List<Long> times = Collections.synchronizedList(new ArrayList<Long>());
