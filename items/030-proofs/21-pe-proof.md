@@ -270,16 +270,15 @@ allows, PE's acceptance. On the branch `030-21-full`.
 
 # State
 
-2026-11-19, 04:20. Part 1 done and on main (b15f4b1b). Part 2, `MeetsFull`
-for PE, **reduced to one named premise, `Prov`**, GATED: dba4059b on the
-branch `030-21-full-land` in /Users/f/fl/bench/2026-11-18/pw/clone (one
-commit on main 62cd36c4; the history on `030-21-full`, the same tree;
-`gate.sh 62cd36c4` GATE OK, 135 theorems, the standard axioms only; the
-pinned files changed: Axioms.lean, with two theorems and an example added,
-and the new PeRecord.lean, PeAdopt.lean, PeFull.lean). Running: a sub-agent
-proving `Prov` (branch `030-21-adopt` in /Users/f/fl/bench/2026-11-18/pw/adopt,
-report by 06:15). Next: merge it; `pe_full` and `pe_crash_reads` without the
-premise; Axioms.lean, statements.pin, a landing commit, its GATED hash here.
+2026-11-19, 04:43. **Done.** Part 1 on main (b15f4b1b). **Part 2,
+`MeetsFull` for PE, proved**, GATED: 06d03970 on the branch
+`030-21-prov-land` in /Users/f/fl/bench/2026-11-18/pw/clone (one commit on
+main d035643c; the history on `030-21-full` and `030-21-adopt`, the same
+tree; `gate.sh d035643c` GATE OK, 137 theorems, the standard axioms only;
+the pinned files changed: Axioms.lean, with `pe_full` and `pe_crash_reads`
+added, PeAdopt.lean, its header only, and the new PeFullProved.lean; no
+existing statement changed). No run going. Left (Result): PE's acceptance
+(tested), Java.
 
 # Log
 
