@@ -176,7 +176,9 @@ Within `TX i`, the order is: `NEW` lines, `ADD` lines, `REC`, the versions
 applying them gives Java's order of entries. A comment line after the
 `ERROR` lines counts the key nodes that no top node reaches: nodes that a
 later key of their transaction replaced (M1 of 011-11), which the checker reports as A3
-failures.
+failures. Since record format 8 the writer, PE, writes each node once and
+replaces no node that its own transaction made (bergdb 026-25), so the
+line does not appear; the level scripts' traces of 026-25 had none.
 
 The root (id 0) appears in `TX 0` as a node, and gets an `ADD 0 i T z` for each
 top node z that T(i) creates.
@@ -245,9 +247,14 @@ format 2 with the lines that the tree model needs (lean/SIS/Tree/*.lean):
 each transaction's operations, the key nodes as klongs, and reads of Java.
 The exporter writes them with the property `tree=1`; `lake exe treecheck`
 (lean/TreeCheck.lean, lean/Check/Tree.lean) reads them, and `tracecheck`
-reads over them. `java/stress/treeconf.sh` runs the exporter and
-`treecheck`. A key is written as `n c1 ... cn`: the number of its segments
-and their compare values (`Keys.toSegments`); `-` stands for no key.
+reads over them. Since record format 8 (bergdb 026-25) `treecheck`'s
+writer is PE (lean/SIS/Tree/Pe.lean, a copy of the proved writer of
+030-21 on the model's tree): it runs each transaction's OP lines and
+compares Java's result node for node, with the ids; until then it ran the
+model's old writer (lean/SIS/Tree/Exec.lean, still built for `treetest`).
+`java/stress/treeconf.sh` runs the exporter and `treecheck`. A key is
+written as `n c1 ... cn`: the number of its segments and their compare
+values (`Keys.toSegments`); `-` stands for no key.
 
     TREE m g h k mb mc sa th     after CONFIG: the node size M; the bounds of
                                  the levels, G (the largest segment index of a
@@ -259,26 +266,47 @@ and their compare values (`Keys.toSegments`); `-` stands for no key.
                                  the top node with ordinal o the level
                                  2 + g(h + 1) + h + o (section 2's NEW lines).
                                  Since record format 7 (bergdb 024-21, 024-22)
-                                 the writer's thresholds: mb, the least live
-                                 klongs of a key node that is not a root
-                                 (Dag.minFill; 1 below node size 8, where
-                                 nothing merges); mc, the most live klongs of
-                                 a merge's one new node (Dag.mergeCap); sa,
-                                 rule O's h, the most klongs of a last version
-                                 that a time split keeps (Dag.splitAbove): 8,
-                                 17 and 17 at node size 30. Since 024-23 a
-                                 ninth token, th: option 2's theta, the most
-                                 dead klongs a key node holds after a write
+                                 the writer's thresholds, in their roles in
+                                 PE since record format 8 (bergdb 026-25;
+                                 027-08): mb, m, the least live klongs of a
+                                 key node that a transaction changes and that
+                                 is not a root: a smaller one is joined with
+                                 a neighbour (Dag.minFill; 1 below node size
+                                 8, where nothing is joined); mc, c, the most
+                                 entries of a joined node: a longer joined
+                                 list is cut into parts of at most c
+                                 (Dag.mergeCap); sa, h: a list of at most h
+                                 entries that its node cannot take is one new
+                                 node, a longer one is cut into parts of at
+                                 most the cut size, M / 2, which the line
+                                 does not give: the checker computes it
+                                 (Dag.splitAbove, Dag.cutSize; lean/SIS/Tree/
+                                 Pe.lean, cutSize): 8, 17 and 17 at node size
+                                 30. Until format 8 sa was rule O's h, the
+                                 most klongs of a last version that a time
+                                 split kept, and mc the most live klongs of a
+                                 merge's one new node. Since 024-23 a ninth
+                                 token, th: option 2's theta, the most dead
+                                 klongs a key node holds after a write
                                  (Dag.theta: 7 at node size 30; 0 below 8,
                                  none). The checker reads a line of 7 numbers
                                  too (theta 0, off), of 4 (2026.4's writer: no
-                                 merges, h = M / 2), and of 6 (sa = mc)
+                                 merges, h = M / 2), and of 6 (sa = mc); its
+                                 writer is PE in each case
     BASE b                       in TX i, i > 0, first: the id of the first node
                                  that T(i) makes; the following get b + 2,
                                  b + 4 and so on, in the order Java makes them
-                                 (Db.setIdOfNode; a delete's marker uses one)
+                                 (Db.setIdOfNode; a delete's marker uses one);
+                                 since record format 8 PE's order (027-03,
+                                 section 8.2): a value or a delete's marker
+                                 when its operation is applied at its segment
+                                 leaf, a segment tree's new key nodes when
+                                 that tree is emitted, the space root's tree
+                                 bottom-up, the top node last
     OP P key v                   in TX i, after BASE, in the order the Dag gets
-                                 them (Db.putKvs): a put of the key, v the
+                                 them (Db.putKvs; since record format 8 one
+                                 batch, in strictly increasing key order,
+                                 Dag.putKvs): a put of the key, v the
                                  value's hash (as V's, section 1)
     OP D key                     a delete that deleted
     OP N key                     a delete that changed nothing (not in the
@@ -348,8 +376,11 @@ SCAN line a transaction (default 4; with `gets=0` none), from a generator
 of their own: a trace's workload is the same with and without `tree=1`.
 
 A key node made without an entry has one time klong and no other (`KN x l
-1 T t`): the primordial key node, and a space root that a delete emptied
-by a time split. Its history is empty, so the ADD lines do not show it;
+1 T t`): the primordial key node, and an empty space root that a
+transaction made (since record format 8: PE's space root left with no
+entry, when it was an inner node, or a segment leaf that could not take
+the transaction's bitmap; until then a space root that a delete emptied
+by a time split). Its history is empty, so the ADD lines do not show it;
 the tree model has an entry for it, the marker (lean/SIS/Tree/Node.lean,
 `marker`: a delete entry without compare values), which `treecheck` adds
 to a key node made without entries and leaves out when it compares

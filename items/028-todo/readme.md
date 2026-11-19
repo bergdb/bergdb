@@ -102,6 +102,8 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
+| [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
+| [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
 
 
@@ -169,3 +171,7 @@ coord-1118.
 028-18 registered: one startup transaction (Frans, 21:30 and 21:37).
 
 2026-11-19. 028-19 registered: PE's speed and reclaim's pace (Frans, 09:32).
+
+2026-11-19. 028-21 and 028-22 registered: dirtyNodeBound for PE, and the
+Java comments of the old writer; found by an agent of coord-1118 while
+bringing 027 up to date with PE (branch `027-pe`).
