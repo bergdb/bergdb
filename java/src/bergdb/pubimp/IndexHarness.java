@@ -1597,9 +1597,14 @@ final class IndexHarness {
             rc.exists(DIRS[0] + "k0");
             long frozen = rc.getLookupTime().units();
             long last = m.times.isEmpty() ? 0 : m.times.last();
-            check(frozen >= last && frozen <= t, "the frozen lookup time " + frozen
+            // The current time after the read, not t, taken before it: an index job's
+            // thread, a build's or a cleanup's, commits the database's own transactions at
+            // any moment, also between the two, and the latest state is then at a time after
+            // t (bergdb 028-32). No read is at a time after the current time.
+            long after = now();
+            check(frozen >= last && frozen <= after, "the frozen lookup time " + frozen
                     + ", not from the last transaction's time, " + last + ", to the current "
-                    + "time, " + t);
+                    + "time after the read, " + after);
             t = frozen;
         } else {
             rc.setLookupTime(Time.units(t));

@@ -112,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-32](32-frozen-lookup-time.md) | Fix | IndexHarness bounds a frozen lookup time by an earlier time | none | done | 2026-11-19 |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | done | 2026-11-19 |
 | [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done | 2026-11-19 |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decided B | done | 2026-11-19 |
@@ -244,3 +245,9 @@ coord-1118.
 
 2026-11-19. 028-28 to 028-31 registered by coord-1118 from the day's
 reports; 028-22, 028-24 to 028-27 moved to Closed.
+
+2026-11-19. 028-32 registered and taken: week.sh's harness-soak failure
+(run 2026-11-19-1514), a harness bug: IndexHarness bounded a frozen lookup
+time by the current time taken before the read, while an index job may
+commit between; gated on the branch `028-32-frozen-lookup-time`, by an
+agent of coord-1118.
