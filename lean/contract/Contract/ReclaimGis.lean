@@ -20,10 +20,11 @@ GIS-J, a definition: for runs with A6', RC gives GIS-J's clauses; with it,
 `tschemeReads_of_gis` gives `TSchemeReads`.
 -/
 import Contract.ReclaimScheme
+import Contract.Proof.ReclaimGis
 
 namespace Contract
 
-open SIS (Spec Algo DB Version reachable good follow lastSp lastFa run ReadsPhys RunOK javaTest)
+open SIS (Spec Algo DB Version reachable good follow lastSp lastFa inD run ReadsPhys RunOK javaTest)
 
 variable {V T : Type} [DecidableEq V]
 
@@ -169,5 +170,97 @@ theorem tschemeReads_of_gis {sp : Spec V T} {al : Algo V T} (h : TSchemeGis sp a
     TSchemeReads sp al := by
   intro hj hmk ts hok hev c e k hk hrc
   exact reads_of_gis hok hj hk (h hj hmk ts hok hev c e k hk hrc)
+
+/-! ## GIS-J's clauses: first steps -/
+
+section
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- Lemma G (bergdb 030-23, section 5.2; GOODC by running): under RC, a version
+that is good for a time t' from e to k at which its node is reachable is at c
+or later. -/
+theorem rc_goodc (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) {c e k : Nat}
+    (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ t' x r g, e ≤ t' → t' ≤ k → reachable sp db.P t' x = true →
+      db.S.versionAt r x = some g → good sp db.S db.P t' g = true → c ≤ r := by
+  dsimp only
+  intro t' x r g het htk hr hg hgood
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have hls : SIS.LiveSub sp := hok.1.liveSub
+  obtain ⟨hce, -, hrw, hlb, -⟩ := hrc
+  have hek : e ≤ k := by omega
+  have hinvk := SIS.inv_st sp al ts hok hst k hk
+  have hinve := SIS.inv_st sp al ts hok hst e (by omega)
+  have hge := SIS.st_grow sp al ts hok hst (j := e) (j' := k) hek hk
+  have hdo := SIS.dataOnce_st sp al ts hok hst k hk
+  change (SIS.st sp al ts k).S.versionAt r x = some g at hg
+  cases hx : (SIS.st sp al ts e).P.get? x with
+  | none =>
+    -- Made after T(e): its versions are after e.
+    have := SIS.st_version_after hok hst hek hk hx hg
+    omega
+  | some n0 =>
+    have hre : reachable sp (SIS.st sp al ts e).P e x = true :=
+      SIS.reach_back_st hok hst hk (t' - e) t' (by omega) htk x hr (by simp [hx])
+    -- A data node reachable at e has all its versions at c or later (RC2, one version).
+    have hdata : ∀ d m, (SIS.st sp al ts e).P.get? d = some m → m.isData = true →
+        reachable sp (SIS.st sp al ts e).P e d = true →
+        ∀ r' u, (SIS.st sp al ts k).S.versionAt r' d = some u → c ≤ r' := by
+      intro d m hm hmd hrd r' u hu
+      obtain ⟨u0, hu0, hcu⟩ := hrw d m hm hmd hrd
+      have hu0k : (SIS.st sp al ts k).S.versionAt u0.recNo d = some u0 :=
+        SIS.versionAt_prefix (SIS.st_S_prefix sp al ts hek hk) (hinve.lv_at hu0)
+      obtain ⟨mk, hmk, -, hmkd, -⟩ := hge d m hm
+      have h1 := hdo d mk u0.recNo u0 hmk (by rw [hmkd]; exact hmd) hu0k
+      have h2 := hdo d mk r' u hmk (by rw [hmkd]; exact hmd) hu
+      rw [h1, Option.some.injEq] at h2
+      subst h2
+      have := (hinvk.version_node hu).2.1
+      omega
+    cases hd : n0.isData with
+    | true => exact hdata x n0 hx hd hre r g hg
+    | false =>
+      -- A written index node: a data node below it at e (RC3).
+      have hxw : SIS.written sp x = true := hinvk.written_of_versionAt hg
+      obtain ⟨d, m, hdr, hm, hmd⟩ := hlb x n0 hx hd hxw hre
+      have hrd : reachable sp (SIS.st sp al ts e).P e d = true := by
+        rw [SIS.reachable_iff] at hre ⊢
+        exact SIS.reach_of_mem_reachFrom sp _ e (n0.level + 1) x n0 (by omega) hx hre d hdr
+      obtain ⟨nk, hnk, -, -, -⟩ := hge x n0 hx
+      have hdr' : d ∈ SIS.reachFrom sp (SIS.st sp al ts k).P e x nk := by
+        rw [SIS.reachFrom_grow hls hinve.ptrs hge (Nat.le_refl e) (n0.level + 1) x n0 nk (by omega)
+          hx hnk]
+        exact hdr
+      exact good_ge_below hinvk hce het (nk.level + 1) x nk r g (by omega) hnk hg hgood d hdr'
+        (hdata d m hm hmd hrd)
+
+/-- GIS-J's clause (i) for the nodes not in D: under RC, the latest version of
+a node reachable at a time from the first available time to k, and not in D,
+has GIS's I. -/
+theorem gis_latest_clean (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    {c e k : Nat} (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ t x w, lastFa db.S ≤ t → t ≤ k → reachable sp db.P t x = true → inD db.D x = false →
+      db.S.lv x = some w → GisI sp db c e k w := by
+  dsimp only
+  intro t x w hft htk hr hxD hw
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have hls : SIS.LiveSub sp := hok.1.liveSub
+  have hinvk := SIS.inv_st sp al ts hok hst k hk
+  have hcw := rc_latest hok hj hk hrc t x hft htk hr w hw
+  have hef := hrc.2.1
+  change (SIS.st sp al ts k).S.lv x = some w at hw
+  have hxw := hinvk.written_of_lv hw
+  obtain ⟨v, hv, hgv⟩ := hinvk.clean_good hls hxD hxw htk hr
+  rw [hw, Option.some.injEq] at hv
+  subst hv
+  have hwa := hinvk.lv_at hw
+  have hwn := (hinvk.version_node hwa).1
+  refine ⟨hcw, t, w.recNo, w, by omega, htk, by rw [hwn]; exact hr, by rw [hwn]; exact hwa,
+    Nat.le_refl _, hgv⟩
+
+end
 
 end Contract
