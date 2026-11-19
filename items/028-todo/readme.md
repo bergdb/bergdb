@@ -104,7 +104,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
-| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
+| [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
 | [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | in progress |
 
 
@@ -114,6 +114,7 @@ Closed
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | done (1b1001ee, 026c322a) | 2026-11-18 |
+| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the creation whole (option C) | C (09:53) | done | 2026-11-19 |
 | [028-17](17-creation-kv-not-synced.md) | Fix | A crash after a new database's start left the primordial record alone | none | done | 2026-11-18 |
 | [028-16](16-second-start-closes-db.md) | Fix | A refused second start of one Db closes the database the first started | none | done | 2026-11-16 |
 | [028-14](14-corrupt-node-no-end.md) | Investigate | A damaged node with its checksum right: a start that does not end | none | done | 2026-11-16 |
@@ -176,6 +177,12 @@ coord-1118.
 2026-11-19. 028-21 and 028-22 registered: dirtyNodeBound for PE, and the
 Java comments of the old writer; found by an agent of coord-1118 while
 bringing 027 up to date with PE (branch `027-pe`).
+
+2026-11-19. 028-18: Frans chose option C (09:53, 09:59); made on the
+branch `028-18-option-c` by an agent of coord-1118.
+
+2026-11-19. 028-18 done: option C gated (KILL RESTART OK with seeds 20261118,
+20261119 and 20261120) and landed.
 
 2026-11-19. 028-23 registered and taken: the test scripts sorted by kind,
 functional (before-commit.sh, night.sh, a new week.sh) and timing (a new

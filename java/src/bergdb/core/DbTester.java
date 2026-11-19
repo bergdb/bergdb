@@ -1402,8 +1402,10 @@ public class DbTester {
      * three StreamFormatExceptions, and from 129 bytes on recovery zero-filled the
      * transaction first. The whole creation starts. An f-test, as its 264 starts take about
      * 110 ms; the unit tests start on some of the cuts (NodeStreamTester, PubTester). The
-     * creating start's record of the startup distance (bergdb 028-15) is cut off first: a
-     * crash inside it is DbTesterRestart.testCrashInCreatingStartsKv.
+     * creating start's record of the startup distance (bergdb 028-15) is cut off first; the
+     * primordial record whole and alone is refused too (bergdb 028-18), and a crash inside
+     * the second record is DbTesterRestart.testCrashInCreationsSecondRecord. The whole
+     * creation, both records, starts.
      */
     @Nano("f")
     public static void testCrash8InCreation() throws IOException {
@@ -1418,9 +1420,11 @@ public class DbTester {
         MemoryStream failed = created.copy();
         MemoryStream.TestAccess.write(failed, new byte[] {0}, length - 1);
         
-        for (int cut = 1; cut <= length; cut++) {
-            MemoryStream m = cut < length ? created.copy() : failed.copy();
-            m.truncate(cut);
+        for (int cut = 1; cut <= length + 1; cut++) {
+            // length + 1: the primordial record whole and alone (bergdb 028-18).
+            MemoryStream m = cut < length ? created.copy() : cut == length ? failed.copy()
+                    : created.copy();
+            m.truncate(Math.min(cut, length));
             Db db = Db.builder().testSetup(m).build();
             try {
                 db.start();
@@ -1429,7 +1433,7 @@ public class DbTester {
                 // Expected.
             }
             MemoryStream after = m.copy();      // The failed start closed m.
-            byte[] expected = java.util.Arrays.copyOf(bytes, cut);
+            byte[] expected = java.util.Arrays.copyOf(bytes, Math.min(cut, length));
             if (cut == length) {
                 expected[length - 1] = 0;
             }
@@ -1438,7 +1442,7 @@ public class DbTester {
             Assert.assertArrayEquals("cut at " + cut, expected, actual);
         }
         
-        Db db = Db.builder().testSetup(created.copy()).start();
+        Db db = Db.builder().testSetup(s.copy()).start();
         db.execute(db.trans().put("key1", "value1"));
         Assert.assertEquals("value1", DbUtil.getString(db, "key1"));
         db.close();

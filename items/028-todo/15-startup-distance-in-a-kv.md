@@ -130,7 +130,11 @@ each small:
 
 **Decided by the agent, for Frans to confirm:**
 
-1. *Where the creation puts the KV.* Not in the primordial record itself,
+1. *Where the creation puts the KV.* (Changed by 028-18, option C, on
+   2026-11-19: a start no longer completes a lone primordial record; it
+   refuses it with `DatabaseNotCreatedException`, and with `created.txt`
+   both records are synced before it is written. The rest of this point
+   is as 028-15 made it.) Not in the primordial record itself,
    but in the creating start's next record (an internal transaction).
    The primordial record is the Lean model's initial structure (the tree
    checker requires R(0) to be the model's `initStruct`), and putting a
