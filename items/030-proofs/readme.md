@@ -221,9 +221,21 @@ D6. Reclaim's safe cuts (T-SCHEME)
   G (`rc_goodc`), clause (i) up to the startup pos, clause (ii)'s case 1;
   open: clause (ii)'s case 2 (a child made after e, seen only on Java's
   traces) and Rule A's chains.
-* **Next:** `TSchemeGis` (030-23, section 5), then RC2 and RC3 for the
-  tree and the top theorem (030-22, steps 4 to 6); Frans decides when.
-* **Items:** 030-22; 030-23; 001-07, section 5; 024-07, section 4.
+* **State (2026-11-19, 030-24):** RC gives `CutOK`, proved, for runs with
+  A6' (`cutOK_of_rc`): the read half by the independent search's read
+  invariant (`old_reads_good`, `rc_part2`; `TSchemeReads` holds), so the
+  theorems after cuts need only RC at each cut (`full_cut_of_rc`,
+  `cut_keeps_top_of_rc`, `cut_java_reads_of_rc`; for PE
+  `PE.pe_cut_java_reads`). `TScheme` as stated (RunOK alone) is false, in
+  Lean (`AdoptionExample.tscheme_false`). RC3 and RC2 for the key tree
+  proved (`rc3_tree`; `rc2_of_iteration` from `IterationOK`, the iteration
+  in the contract's words, and VAL-NEW); the top theorem for PE with
+  VAL-NEW as a premise (`PE.pe_reclaim_reads_of_valNew`). Left:
+  `PE.pe_valNew`.
+* **Next:** `PE.pe_valNew` (030-24, State). Tested, not proved: RC1 and
+  RC4 (Java's arithmetic), `IterationOK` (Java's iteration against its
+  model).
+* **Items:** 030-22; 030-23; 030-24; 001-07, section 5; 024-07, section 4.
 
 Where the contract's checks run
 -------------------------------
@@ -448,9 +460,11 @@ Files
   of clause (i) and clause (ii)'s case 1 are proved; the candidates
   refuted, with counterexamples; 1,688 lines of Lean. Written 2026-11-19.
   Status: done.
-* [030-24](24-reclaim-step2.md). Reclaim's proof, step 2: from 030-23's
-  open part to the reads after cuts given only RC at each cut. Started
-  2026-11-19. Status: open.
+* [030-24](24-reclaim-step2.md). Reclaim's proof, step 2: RC gives
+  `CutOK` (the read half by the independent search's invariant), so the
+  reads after cuts need only RC at each cut; `TScheme` without A6' false,
+  in Lean; RC2 and RC3 for the key tree, from the iteration and VAL-NEW;
+  the top theorem for PE given VAL-NEW. Started 2026-11-19. Status: open.
 
 Log
 ===

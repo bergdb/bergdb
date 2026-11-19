@@ -38,7 +38,8 @@ RESULT
   (`Inv.newer`); and the reach bookkeeping (`live_child_back`,
   `index_exists_at_startup`). Then by induction on `ReadsPhys`
   (`oldReadsGood_st`).
-- **Part 2 from it** (`reads_ge_cut`, `rc_reads`): a version a read follows
+- **Part 2 from it** (`reads_ge_cut`, `rc_reads`; restated as `rc_part2`
+  and, with the first wait alone, `rc_part2_first_wait`): a version a read follows
   that is written after s is after the cut (s ≥ e ≥ c by the first wait);
   one written at or before s is good at a time from e on at which its node
   is reachable, so at the cut or later (030-23's Lemma G, which the search
