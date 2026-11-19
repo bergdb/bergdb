@@ -190,3 +190,8 @@ Log
 `028-26-reclaim-charge` in /Users/f/fl/bench/2026-11-19/rch/clone (from
 main a0a76461). The carry (11:15) failed `before-commit.sh`'s restart
 test; the row stored again after the step (11:25).
+Before-commit and level 1 passed on dfc3c55e (11:30, 11:36); the chain
+stopped at coord-1118's word to merge main (028-20, 028-23) and 028-21's
+branch (94ecce18) first. `testLastStepWithinRecordLimit`'s comment
+brought to 028-21's bound (a probe of its user transactions: at most 902
+index nodes, 175 kB; 866 with the bound before 028-21, on PE's trees).
