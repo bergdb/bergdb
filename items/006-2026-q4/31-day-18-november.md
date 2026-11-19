@@ -231,6 +231,16 @@ The decisions, as recorded here:
   record). Options A, B and C for Frans in 028-18; the Java part made and
   gated, but for the contract, on the branch `028-18-prepared`. Findings
   landed f0c30dfe.
+* 02:08 (19 November) 030-21 done (agent pw, 21:43 to 02:08, with its
+  sub-provers): the complete proof that PE's writer meets the writer's
+  contract, TREE and the top: every history PE writes from the empty
+  tree meets `MeetsTop` (`Contract.PE.pe_meetsTop_start`), so every get
+  and scan at every time is right; 15,003 lines, the standard axioms
+  only, GATE OK, no existing statement changed. LANDED b15f4b1b. Left:
+  `MeetsFull` for PE (recovery, restarts, eviction, cuts), PE's
+  acceptance (tested), Java.
+* 02:10 Agent pw resumed for `MeetsFull` for PE, then acceptance; agent
+  pej started: Java's writer as PE (026-25, Opus high; Frans, 21:42).
 
 
 ## 4b. Unattended, 13:48 to 07:00
