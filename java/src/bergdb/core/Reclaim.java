@@ -2767,7 +2767,7 @@ public class Reclaim implements Db.TransactionListener {
                 CoreTestClock clock = new CoreTestClock();
                 long time = Clock.UNITS_PER_SEC;
                 clock.setTime(time);
-                DbBuilder builder = Db.builder().testSetup().clock(clock).startupDistance(2000);
+                DbBuilder builder = Db.builder().testSetup().clock(clock);
                 if (nodeSize == 8) {
                     builder.maxNodeSize8();
                 } else {
@@ -2775,6 +2775,7 @@ public class Reclaim implements Db.TransactionListener {
                 }
                 Db db = builder.start();
                 try {
+                    db.setStartupDistance(2000);
                     Reclaim reclaim = db.internal().reclaim();
                     Stats stats = reclaim.enableStats();
                     for (int i = 0; i < 3000; i += 100) {
