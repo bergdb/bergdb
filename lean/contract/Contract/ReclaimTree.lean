@@ -299,14 +299,299 @@ def IterationOK (h : BHist) (c s e : Nat) : Prop :=
     (∃ i, i < c ∧ madeAt h i y = true) →
     ∃ j, ∃ hj : j < h.txs.length, s ≤ j + 1 ∧ j + 1 ≤ e ∧ k ∈ h.txs[j].ops.map Op.key
 
-/- Not yet proved (bergdb 030-24):
+/-! ### Lemmas for RC2 from the iteration -/
+
+/-- The keys of what a node holds by id are those of what it holds. -/
+theorem idListAt_keys (s : Tree) : ∀ (f : Nat) (x : NodeId),
+    (idListAt s f x).map Prod.fst = (listAt s f x).map Prod.fst
+  | 0, _ => rfl
+  | f + 1, x => by
+    simp only [idListAt, listAt]
+    cases s.obj x with
+    | none => rfl
+    | some o =>
+      cases o with
+      | val _ => rfl
+      | key n =>
+        simp only [List.map_flatMap]
+        apply List.flatMap_congr
+        rintro ⟨c, y⟩ _
+        unfold idKlongList klongList
+        cases n.leaf with
+        | false =>
+          simp only [Bool.false_eq_true, ite_false]
+          exact idListAt_keys s f y
+        | true =>
+          cases isLong c with
+          | true =>
+            simp only [ite_true, List.map_map]
+            have := congrArg (List.map (fun k => c :: k)) (idListAt_keys s f y)
+            simpa [List.map_map, Function.comp_def] using this
+          | false =>
+            simp only [ite_true, Bool.false_eq_true, ite_false]
+            cases s.obj y with
+            | none => rfl
+            | some o => cases o <;> rfl
+
+/-- The keys of the contents by id are those of the contents. -/
+theorem idContents_keys (s : Tree) : (idContents s).map Prod.fst = (contents s).map Prod.fst := by
+  unfold idContents contents
+  cases s.root with
+  | none => rfl
+  | some r => exact idListAt_keys s _ r
+
+/-- A live key's node, by id, is a value. -/
+theorem idListAt_val (s : Tree) : ∀ (f : Nat) (x : NodeId) (k : Key) (y : NodeId),
+    (k, y) ∈ idListAt s f x → ∃ w, s.obj y = some (.val w)
+  | 0, _, _, _, h => by simp [idListAt] at h
+  | f + 1, x, k, y, h => by
+    simp only [idListAt] at h
+    cases hx : s.obj x with
+    | none => rw [hx] at h; simp at h
+    | some o =>
+      rw [hx] at h
+      cases o with
+      | val _ => simp at h
+      | key n =>
+        simp only [List.mem_flatMap] at h
+        obtain ⟨⟨c, z⟩, _, hz⟩ := h
+        unfold idKlongList at hz
+        cases hl : n.leaf with
+        | false =>
+          simp only [hl, Bool.false_eq_true, ite_false] at hz
+          exact idListAt_val s f z k y hz
+        | true =>
+          cases hc : isLong c with
+          | true =>
+            simp only [hl, hc, ite_true, List.mem_map] at hz
+            obtain ⟨⟨k', y'⟩, hk', heq⟩ := hz
+            injection heq with _ h2
+            subst h2
+            exact idListAt_val s f z k' y' hk'
+          | false =>
+            simp only [hl, hc, ite_true, Bool.false_eq_true, ite_false] at hz
+            split at hz
+            · rename_i w hw
+              simp only [List.mem_singleton, Prod.mk.injEq] at hz
+              obtain ⟨_, rfl⟩ := hz
+              exact ⟨w, hw⟩
+            · simp at hz
+
+/-- In a list with distinct keys, a key's pair is what `lookup` finds. -/
+theorem lookup_of_mem {β : Type} : ∀ {l : List (Key × β)}, (l.map Prod.fst).Nodup →
+    ∀ {k : Key} {y : β}, (k, y) ∈ l → l.lookup k = some y
+  | [], _, _, _, h => by simp at h
+  | (k', y') :: l, hn, k, y, h => by
+    simp only [List.map_cons, List.nodup_cons, List.mem_map] at hn
+    rcases List.mem_cons.mp h with h1 | h1
+    · injection h1 with h2 h3
+      subst h2 h3
+      simp [List.lookup]
+    · have hkk : k ≠ k' := by
+        rintro rfl
+        exact hn.1 ⟨(k, y), h1, rfl⟩
+      have : (k == k') = false := by simpa using hkk
+      simp only [List.lookup, this]
+      exact lookup_of_mem hn.2 h1
+
+/-- A key that a list lacks: `lookup` finds nothing. -/
+theorem lookup_none {β : Type} {l : List (Key × β)} {k : Key} (h : k ∉ l.map Prod.fst) :
+    l.lookup k = none := by
+  induction l with
+  | nil => rfl
+  | cons a l ih =>
+    obtain ⟨k', y'⟩ := a
+    simp only [List.map_cons, List.mem_cons, not_or] at h
+    have : (k == k') = false := by simpa using h.1
+    simp only [List.lookup, this]
+    exact ih h.2
+
+/-- A sound tree's contents have distinct keys. -/
+theorem contents_nodup {p : Params} {s : Tree} (h : invOk p s = true) :
+    ((contents s).map Prod.fst).Nodup := by
+  unfold invOk at h
+  unfold contents
+  cases hr : s.root with
+  | none => simp
+  | some r =>
+    simp only [hr] at h
+    cases ho : s.obj r with
+    | none => simp [ho] at h
+    | some o =>
+      simp only [ho] at h
+      cases o with
+      | val _ => simp at h
+      | key n =>
+        simp only [Bool.and_eq_true] at h
+        have hg := walk_good _ _ _ _ h.2
+        have hs := hg.sorted
+        unfold L at hs
+        have : ((listAt s (s.fuel r) r).map Prod.fst).Pairwise (· < ·) :=
+          List.pairwise_map.mpr hs
+        exact this.imp (fun hab => ne_of_lt hab)
+
+/-- After operations of which none puts k, and one deletes it, k is gone. -/
+theorem applyOps_del_gone {k : Key} : ∀ (ops : List Op) (m : List (Key × Nat)),
+    k ∉ putKeys ops → k ∈ ops.map Op.key → k ∉ (applyOps ops m).map Prod.fst
+  | [], _, _, h => by simp at h
+  | op :: ops, m, hp, hk => by
+    have hp' : k ∉ putKeys ops := by
+      intro h
+      apply hp
+      cases op <;> simp_all [putKeys]
+    rw [PeProof.Keys.applyOps_cons']
+    by_cases hk' : k ∈ ops.map Op.key
+    · exact applyOps_del_gone ops _ hp' hk'
+    · have hop : op = .del k := by
+        have hk1 : op.key = k := by
+          simp only [List.map_cons, List.mem_cons] at hk
+          rcases hk with h | h
+          · exact h.symm
+          · exact absurd h hk'
+        cases op with
+        | put k' v =>
+          exfalso
+          apply hp
+          simp only [Op.key] at hk1
+          subst hk1
+          simp [putKeys]
+        | del k' => simp only [Op.key] at hk1; rw [hk1]
+      subst hop
+      intro hmem
+      obtain ⟨e, he, rfl⟩ := List.mem_map.mp hmem
+      rcases PeProof.Keys.mem_applyOps he with h1 | ⟨op', hop', v, hv⟩
+      · have := (List.mem_filter.mp h1).2
+        simp at this
+      · apply hp'
+        simp only [putKeys, List.mem_filterMap]
+        exact ⟨op', hop', by rw [hv]⟩
+
+section Iter
+
+variable {p : Params} {h : BHist} {top : Nat → Top}
+
+/-- With VAL-NEW, a key that no transaction from a to b writes keeps its
+value node. -/
+theorem ValNew.keep (hv : ValNew h) (k : Key) {a : Nat} :
+    ∀ b, a ≤ b → b ≤ h.txs.length →
+      (∀ j (hj : j < h.txs.length), a ≤ j → j < b → k ∉ h.txs[j].ops.map Op.key) →
+      (idContents ((h.tree b).at b)).lookup k = (idContents ((h.tree a).at a)).lookup k
+  | 0, hab, _, _ => by
+    have : a = 0 := by omega
+    subst this
+    rfl
+  | b + 1, hab, hb, hno => by
+    rcases Nat.lt_or_ge a (b + 1) with hlt | hge
+    · rw [(hv b (by omega) k).2 (hno b (by omega) (by omega) (by omega))]
+      exact ValNew.keep hv k b (by omega) (by omega)
+        (fun j hj h1 h2 => hno j hj h1 (by omega))
+    · have : a = b + 1 := by omega
+      subst this
+      rfl
+
+/-- Every node of the tree after transaction j was made by a transaction up to
+j. -/
+theorem MeetsFull.made (hm : MeetsFull p h top) : ∀ j, j ≤ h.txs.length → ∀ y,
+    ((h.tree j).obj y).isSome = true → ∃ i, i ≤ j ∧ madeAt h i y = true
+  | 0, _, y, hy => by
+    obtain ⟨r, z, lr, lz, l0, -, -, -, -, -, -, -, hnew, -, -, hnone, -⟩ := hm.start
+    have hyr : y = r := by
+      by_contra hne
+      change (h.s0.obj y).isSome = true at hy
+      rw [hnone y hne] at hy
+      cases hy
+    subst hyr
+    refine ⟨0, le_refl _, ?_⟩
+    simp [madeAt, BHist.chs, hnew]
+  | j + 1, hj, y, hy => by
+    cases h0 : (h.tree j).obj y with
+    | some o =>
+      obtain ⟨i, hi, hmade⟩ := MeetsFull.made hm j (by omega) y (by rw [h0]; rfl)
+      exact ⟨i, by omega, hmade⟩
+    | none =>
+      have hmade := (hm.step j (by omega)).2.2.1 y h0 hy
+      refine ⟨j + 1, le_refl _, ?_⟩
+      have : (h.chs.getD (j + 1) { new := [], adds := [] }) = h.txs[j].c := by
+        simp [BHist.chs, show j < h.txs.length by omega]
+      simp only [madeAt, this, List.any_eq_true, beq_iff_eq]
+      obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp hmade
+      exact ⟨nn, hnn, hid⟩
+
+/-- The last of the transactions from a to b that has a property. -/
+theorem last_of {W : Nat → Prop} {a : Nat} : ∀ b, (∃ j, a ≤ j ∧ j < b ∧ W j) →
+    ∃ j, a ≤ j ∧ j < b ∧ W j ∧ ∀ j', j < j' → j' < b → ¬ W j'
+  | 0, ⟨j, _, hj, _⟩ => absurd hj (Nat.not_lt_zero _)
+  | b + 1, hex => by
+    by_cases hb : a ≤ b ∧ W b
+    · exact ⟨b, hb.1, by omega, hb.2, fun j' h1 h2 => by omega⟩
+    · obtain ⟨j, h1, h2, h3⟩ := hex
+      have hjb : j < b := by
+        rcases Nat.lt_or_ge j b with h | h
+        · exact h
+        · have : j = b := by omega
+          subst this
+          exact absurd ⟨h1, h3⟩ hb
+      obtain ⟨j0, g1, g2, g3, g4⟩ := last_of b ⟨j, h1, hjb, h3⟩
+      refine ⟨j0, g1, by omega, g3, fun j' k1 k2 => ?_⟩
+      rcases Nat.lt_or_ge j' b with h | h
+      · exact g4 j' k1 h
+      · have : j' = b := by omega
+        subst this
+        exact fun hw => hb ⟨by omega, hw⟩
+
+end Iter
+
 /-- **RC2 from the iteration** (bergdb 030-24): with VAL-NEW, an iteration that
 meets `IterationOK` leaves every live key's value node made at c or later. -/
 theorem rc2_of_iteration {p : Params} {h : BHist} {top : Nat → Top} (hm : MeetsFull p h top)
     (hM : 1 ≤ p.M) (hv : ValNew h) {c s e : Nat} (hit : IterationOK h c s e) :
     RC2Tree h c e := by
-  (proof to come)
--/
+  obtain ⟨hcs, hs1, hse, hen, hit⟩ := hit
+  intro k y hky
+  -- The key's value node at e, by lookup: the contents' keys are distinct.
+  have hnd : ((idContents ((h.tree e).at e)).map Prod.fst).Nodup := by
+    rw [idContents_keys]
+    exact contents_nodup (hm.inv_at hM e hen)
+  have hle := lookup_of_mem hnd hky
+  -- y is a value of the tree, made by a transaction up to e.
+  have hys : ((h.tree e).obj y).isSome = true := by
+    unfold idContents at hky
+    split at hky
+    · obtain ⟨w, hw⟩ := idListAt_val _ _ _ _ _ hky
+      simp only [Tree.at] at hw
+      cases h' : (h.tree e).obj y with
+      | none => rw [h'] at hw; cases hw
+      | some _ => rfl
+    · simp at hky
+  obtain ⟨i0, hi0, hmade0⟩ := hm.made e hen y hys
+  by_cases hex : ∃ j, s - 1 ≤ j ∧ j < e ∧ ∃ hj : j < h.txs.length, k ∈ h.txs[j].ops.map Op.key
+  · -- The last transaction up to e that writes k.
+    obtain ⟨j, h1, h2, ⟨hj, hw⟩, h4⟩ := last_of e hex
+    have hkeep := hv.keep k (a := j + 1) e (by omega) hen
+      (fun j' hj' a1 a2 hw' => h4 j' (by omega) a2 ⟨hj', hw'⟩)
+    by_cases hput : k ∈ putKeys h.txs[j].ops
+    · -- A put: its new value node is the one at e.
+      obtain ⟨y', hy', hmade'⟩ := (hv j hj k).1 hput
+      rw [hkeep, hy'] at hle
+      injection hle with hle
+      subst hle
+      exact ⟨j + 1, by omega, by omega, hmade'⟩
+    · -- A delete: k is not live after it, nor at e.
+      exfalso
+      have hc := (hm.step j hj).1.1
+      simp only [contractOk, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at hc
+      have hgone := applyOps_del_gone h.txs[j].ops (contents ((h.tree j).at j)) hput hw
+      rw [← hc.2, ← idContents_keys] at hgone
+      rw [hkeep, lookup_none hgone] at hle
+      cases hle
+  · -- No transaction from s to e writes k: its value node is the one before s.
+    have hkeep := hv.keep k (a := s - 1) e (by omega) hen
+      (fun j hj a1 a2 hw => hex ⟨j, a1, a2, hj, hw⟩)
+    rw [hkeep] at hle
+    refine ⟨i0, ?_, hi0, hmade0⟩
+    by_contra hlt
+    obtain ⟨j, hj, h1, h2, h3⟩ := hit k y hle ⟨i0, by omega, hmade0⟩
+    exact hex ⟨j, by omega, by omega, hj, h3⟩
 
 /-! ## The cuts of a run, with the iteration -/
 
@@ -322,15 +607,19 @@ def CutsMeetIter (h : BHist) (al : SIS.Algo BVal Nat)
     ∃ s e, IterationOK h c s e ∧ contents ((h.tree e).at e) ≠ [] ∧
       e ≤ SIS.lastFa (SIS.run h.spec al (h.ts.take (j + 1))).S ∧ RC4 h.spec al h.ts e (j + 1)
 
-/- Not yet proved (bergdb 030-24):
 /-- With VAL-NEW, cuts that meet the iteration meet RC. -/
 theorem cutsMeetRC_of_iter {p : Params} {h : BHist} {top : Nat → Top} (hm : MeetsFull p h top)
     (hM : 1 ≤ p.M) (hv : ValNew h) (al : SIS.Algo BVal Nat)
     {cs : List (Nat × Option Nat × List SIS.HCacheOp)} (hcs : cs.map (·.1) = h.ts)
     (hit : CutsMeetIter h al cs) :
     CutsMeetRC h.spec al cs := by
-  (proof to come)
--/
+  intro j hjl c hc
+  obtain ⟨hord, s, e, hiter, hne, hfa, hrc4⟩ := hit j hjl c hc
+  refine ⟨hord, e, ?_⟩
+  obtain ⟨hcs', -, hse, hen, -⟩ := id hiter
+  rw [hcs]
+  exact ⟨by omega, hfa, rc2_of_tree hm hM al hen (rc2_of_iteration hm hM hv hiter),
+    rc3_tree hm hM al hen hne, hrc4⟩
 
 end Contract
 

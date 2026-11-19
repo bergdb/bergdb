@@ -181,3 +181,5 @@ open Contract
 #print axioms Contract.AdoptionExample.tscheme_false
 #print axioms rc3_tree
 #print axioms rc2_of_tree
+#print axioms rc2_of_iteration
+#print axioms cutsMeetRC_of_iter
