@@ -23,11 +23,11 @@
 # the GET lines or the SCAN line of one transaction, one GET line of one.
 #
 # Usage: lean/contract/faults.sh
-# Needs: the checker (cd lean/contract && lake build contractcheck) and java/build
+# Needs: the checker (cd lean/contractcheck && lake build contractcheck) and java/build
 # (java/build.sh). Prints one line per fault and FAULTS OK or FAULTS FAILED.
 cd "$(dirname "$0")"
-CHECK=$(pwd)/.lake/build/bin/contractcheck
-[ -x "$CHECK" ] || { echo "FAULTS FAILED: no checker; run lake build in lean/contract/"; exit 1; }
+CHECK=$(pwd)/../contractcheck/.lake/build/bin/contractcheck
+[ -x "$CHECK" ] || { echo "FAULTS FAILED: no checker; run lake build in lean/contractcheck/"; exit 1; }
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 DIR=${TMPDIR:-/tmp}/contract-faults.$$

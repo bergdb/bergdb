@@ -12,9 +12,8 @@
 #
 # Usage: [TREE=1] java/stress/contractconf.sh [small|drain|reclaim|medium|large] [seeds]
 #   seeds: as treeconf.sh's (default 3 for medium).
-# Builds the contract package with lake (lean/contract/, which builds the old
-# package lean/ it uses; with Mathlib: if its .lake has no Mathlib, lake exe
-# cache get fetches the Mathlib cache first: 7.6 GB, about 4 minutes). Needs
+# Builds the checkers with lake (lean/contractcheck/: lean/contract/'s files,
+# without Mathlib, bergdb 028-24; it builds the old package lean/ it uses). Needs
 # java/build (java/build.sh). Logs go to build/contractconf/; the traces and
 # the checkers' outputs to build/traces/tree-SET/. Prints the summary of each
 # check, then CONTRACTCONF OK or CONTRACTCONF FAILED. Set JAVA_HOME or PATH for
@@ -45,12 +44,8 @@ if [ "$TREE" = 1 ]; then
 else
     TC=none
 fi
-if [ ! -d ../lean/contract/.lake/packages/mathlib ]; then
-    (cd ../lean/contract && lake exe cache get) > $LOG/$SET-lake-contract-cache.txt 2>&1 \
-        || fail "the contract package, lake exe cache get" $LOG/$SET-lake-contract-cache.txt
-fi
-(cd ../lean/contract && lake build) > $LOG/$SET-lake-contract.txt 2>&1 \
-    || fail "the contract package, lake build" $LOG/$SET-lake-contract.txt
+(cd ../lean/contractcheck && lake build) > $LOG/$SET-lake-contract.txt 2>&1 \
+    || fail "the contract checkers, lake build in lean/contractcheck" $LOG/$SET-lake-contract.txt
 
 s=$(date +%s)
 TREECHECK=$TC sh stress/treeconf.sh $SET $SEEDS > $LOG/$SET-treeconf.txt 2>&1

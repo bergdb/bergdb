@@ -51,9 +51,10 @@ a snapshot of the former `docs/` of 2026-11-12.
   the demos, about 2 minutes. It is the only requirement. The level scripts
   (`java/stress/level1.sh` to `level4.sh`) are deeper checks, not commit
   gates; `level2.sh`, `level3.sh` and `level4.sh` need Lean (elan) for their
-  conformance steps, and `level2.sh` also the contract package
-  `lean/contract/`, with Mathlib (030-13; it runs `lake exe cache get` there
-  if the cache is missing).
+  conformance steps, but not Mathlib: `level2.sh` builds the contract
+  checkers in `lean/contractcheck/`, without Mathlib (028-24). Only the
+  contract package's proofs, `lean/contract/` and its `gate.sh`, need
+  Mathlib (030-04).
 - Tests are of two kinds (028-23), written in each script's header and
   printed at its start: functional, whose result does not depend on the
   machine's speed or load (time limits inside are hang guards), and

@@ -13,7 +13,8 @@
 # Usage: lean/contract/check.sh [SET ...]     (default: small drain)
 # Needs: the traces (java/build.sh; cd lean && lake build treecheck;
 # java/stress/treeconf.sh small; java/stress/treeconf.sh drain; and reclaim for the
-# bridge checker's own test) and the checkers (cd lean/contract && lake build).
+# bridge checker's own test) and the checkers (cd lean/contractcheck && lake build;
+# no Mathlib, bergdb 028-24).
 # Prints the summaries of each set, then CONTRACT OK (both checkers passed every
 # trace) or CONTRACT FAILED; the lines of every trace go to
 # java/build/traces/tree-SET/contract.txt and bridge.txt. First the checkers' own
@@ -21,13 +22,13 @@
 # bridge-faults.sh (030-07, 030-15, 030-19; if the small and the reclaim set are there):
 # faults made in a trace must fail it. About 2 minutes for small, drain and reclaim.
 # The bridge's clauses in the model's words too: bridge-check.sh, or
-# .lake/build/bin/bridgecheck --model TRACE...
+# ../contractcheck/.lake/build/bin/bridgecheck --model TRACE...
 # PAR=N checks a set in N parts at once with each checker (default 4; par.sh,
 # bergdb 030-13): the medium set 1359 s (contract) and 4097 s (bridge) in one part.
 cd "$(dirname "$0")"
-CHECK=.lake/build/bin/contractcheck
-BCHECK=.lake/build/bin/bridgecheck
-[ -x "$CHECK" ] && [ -x "$BCHECK" ] || { echo "CONTRACT FAILED: no checkers; run lake build in lean/contract/"; exit 1; }
+CHECK=../contractcheck/.lake/build/bin/contractcheck
+BCHECK=../contractcheck/.lake/build/bin/bridgecheck
+[ -x "$CHECK" ] && [ -x "$BCHECK" ] || { echo "CONTRACT FAILED: no checkers; run lake build in lean/contractcheck/"; exit 1; }
 ./faults.sh > /dev/null 2>&1 || { echo "CONTRACT FAILED: the checker's own test, lean/contract/faults.sh"; exit 1; }
 ./faults-top.sh > /dev/null 2>&1 || { echo "CONTRACT FAILED: the checker's own test of the top, lean/contract/faults-top.sh"; exit 1; }
 if ls ../../java/build/traces/tree-small/mixed-1.trace ../../java/build/traces/tree-reclaim/r-del-1.trace > /dev/null 2>&1; then

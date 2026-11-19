@@ -1,0 +1,29 @@
+# The contract package's checkers without Mathlib (bergdb 028-24): the
+# executables contractcheck (ContractCheck.lean) and bridgecheck
+# (BridgeCheck.lean), built from the contract package's own files, which
+# stay in ../contract/ (srcDir): the files the proofs speak of are the files
+# the checkers run. The checkers' imports take nothing from Mathlib; this
+# package has no Mathlib, so a build here fails if they ever do. The level
+# scripts and night.sh build the checkers here; the proofs build in
+# ../contract/ (with Mathlib, gate.sh).
+name = "contractcheck"
+version = "0.1.0"
+srcDir = "../contract"
+defaultTargets = ["contractcheck", "bridgecheck"]
+
+[[require]]
+name = "sis"
+path = ".."
+
+# The checkers' modules, Contract.*, in ../contract/Contract/. Only what the
+# two executables import is built.
+[[lean_lib]]
+name = "Contract"
+
+[[lean_exe]]
+name = "contractcheck"
+root = "ContractCheck"
+
+[[lean_exe]]
+name = "bridgecheck"
+root = "BridgeCheck"

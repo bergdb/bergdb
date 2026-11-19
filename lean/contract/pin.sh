@@ -11,7 +11,9 @@
 # list of theorems and the closure's tool (Axioms.lean, Statements.lean); the
 # checkers' main files, which turn a verdict into an exit status (ContractCheck.lean,
 # BridgeCheck.lean); the gate (gate.sh); and the Lean version and the libraries
-# (lean-toolchain, lakefile.toml and lake-manifest.json of both packages).
+# (lean-toolchain, lakefile.toml and lake-manifest.json of the three packages:
+# lean/, lean/contract/ and lean/contractcheck/, which builds the checkers from
+# lean/contract/'s files without Mathlib, bergdb 028-24).
 #
 # Usage: lean/contract/pin.sh. Needs lake build in lean/contract/.
 cd "$(dirname "$0")"
@@ -20,7 +22,8 @@ FILES=$(lake env lean Statements.lean 2>&1 | grep '^lean/')
 EXTRA="lean/contract/Axioms.lean lean/contract/Statements.lean lean/contract/ContractCheck.lean
 lean/contract/BridgeCheck.lean lean/contract/gate.sh lean/contract/lean-toolchain
 lean/contract/lakefile.toml lean/contract/lake-manifest.json lean/lean-toolchain
-lean/lakefile.toml lean/lake-manifest.json"
+lean/lakefile.toml lean/lake-manifest.json lean/contractcheck/lean-toolchain
+lean/contractcheck/lakefile.toml lean/contractcheck/lake-manifest.json"
 cd ../..
 {
     echo "$FILES"
