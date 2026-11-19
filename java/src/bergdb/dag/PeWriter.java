@@ -625,8 +625,8 @@ final class PeWriter {
             final int sz = x.size;
             final long[] ks = x.klongs;
             final int k = hi - lo;
-            final long[] bestCv = new long[k];
-            final int[] bestIdx = new int[k];
+            final long[] bestCv = cCv = new long[k];
+            final int[] bestIdx = cIdx = new int[k];
             java.util.Arrays.fill(bestIdx, -1);
             long del = Klong.DELETE_NONE_BITMAP;
             boolean haveDel = false;
@@ -657,10 +657,8 @@ final class PeWriter {
             if (!emptyKeyFirst) {
                 return false;
             }
-            cCv = new long[k];
-            cIdx = new int[k];
             cStart = new int[k + 1];
-            for (int o = 0; o < k; o++) {
+            for (int o = 0; o < k; o++) {          // compacted in place: nc <= o
                 if (bestIdx[o] < 0) {
                     return false;
                 }
@@ -924,7 +922,7 @@ final class PeWriter {
         final boolean original = c instanceof Tgt && j >= 0 && ((Tgt) c).src == x
                 && ((Tgt) c).idx == lv.idx[j];
         final boolean absent = c == REMOVED && j < 0;
-        int k = findSorted(ch, cv);
+        final int k = findSorted(ch, cv);
         if (original || absent) {
             if (k >= 0) {
                 ch.remove(k);
@@ -935,25 +933,26 @@ final class PeWriter {
             ch.set(k, new Ent(cv, c));
             return;
         }
-        k = 0;
-        while (k < ch.size() && ch.get(k).cv < cv) {
-            k++;
-        }
-        ch.add(k, new Ent(cv, c));
+        ch.add(-k - 1, new Ent(cv, c));
     }
 
-    /** The index of cv in a list in increasing order of compare values, or -1. */
+    /** The index of cv in a list in increasing order of compare values, or -(insertion
+     *  point) - 1, as Arrays.binarySearch. */
     private static int findSorted(List<Ent> ch, long cv) {
-        for (int k = 0; k < ch.size(); k++) {
-            final long c = ch.get(k).cv;
-            if (c == cv) {
-                return k;
-            }
-            if (c > cv) {
-                break;
+        int lo = 0;
+        int hi = ch.size() - 1;
+        while (lo <= hi) {
+            final int mid = (lo + hi) >>> 1;
+            final long c = ch.get(mid).cv;
+            if (c < cv) {
+                lo = mid + 1;
+            } else if (c > cv) {
+                hi = mid - 1;
+            } else {
+                return mid;
             }
         }
-        return -1;
+        return -(lo + 1);
     }
 
     /** A leaf's whole list: its live list with the changes ch, each child an old pointer or
@@ -1011,11 +1010,16 @@ final class PeWriter {
         int n;
         int keys;
 
-        Live(int size) {
-            cv = new long[size];
-            idx = new int[size];
+        Live(long[] cv, int[] idx, int n, int keys) {
+            this.cv = cv;
+            this.idx = idx;
+            this.n = n;
+            this.keys = keys;
         }
     }
+
+    /** live()'s work arrays (a node has at most Dag.MAX_NODE_SIZE klongs, but a damaged one). */
+    private static final ThreadLocal<long[][]> LIVE_WORK = new ThreadLocal<long[][]>();
 
     /**
      * Contract's live: for each compare value with a key klong that the last bitmap does not
@@ -1023,10 +1027,20 @@ final class PeWriter {
      */
     static Live live(KeyNode node) {
         // One pass from the end: a key klong after the last bitmap is not deleted by it, and
-        // the first klong of a compare value met is its latest.
+        // the first klong of a compare value met is its latest. The list is made at the end of
+        // work arrays, [b, sz), in increasing order (met from the end, the klongs of a node
+        // mostly come in decreasing order, each at the front), and copied out at its size.
         final int sz = node.size;
         final long[] ks = node.klongs;
-        final Live lv = new Live(sz);
+        long[][] work = LIVE_WORK.get();
+        if (work == null || work[0].length < sz) {
+            work = new long[][] {new long[Math.max(sz, 64)], new long[Math.max(sz, 64)]};
+            LIVE_WORK.set(work);
+        }
+        final long[] wcv = work[0];
+        final long[] widx = work[1];
+        int n = 0;
+        int keys = 0;
         long del = Klong.DELETE_NONE_BITMAP;
         boolean haveDel = false;
         for (int i = sz - 1; i >= 0; i--) {
@@ -1042,32 +1056,31 @@ final class PeWriter {
             if (type != Klong.INT_TYPE_KEY) {
                 continue;
             }
-            lv.keys++;
+            keys++;
             if (Klong.isDeleted(del, i)) {
                 continue;
             }
             final long cv = Klong.getCompareValue(k);
-            // The list is kept at the arrays' end, [b, sz), in increasing order: met from the
-            // end, the klongs of a node mostly come in decreasing order, each at the front.
-            final int b = sz - lv.n;
+            final int b = sz - n;
             int j = b;
-            while (j < sz && lv.cv[j] < cv) {
+            while (j < sz && wcv[j] < cv) {
                 j++;
             }
-            if (j < sz && lv.cv[j] == cv) {
+            if (j < sz && wcv[j] == cv) {
                 continue;                       // an earlier klong of it: shadowed
             }
-            System.arraycopy(lv.cv, b, lv.cv, b - 1, j - b);
-            System.arraycopy(lv.idx, b, lv.idx, b - 1, j - b);
-            lv.cv[j - 1] = cv;
-            lv.idx[j - 1] = i;
-            lv.n++;
+            System.arraycopy(wcv, b, wcv, b - 1, j - b);
+            System.arraycopy(widx, b, widx, b - 1, j - b);
+            wcv[j - 1] = cv;
+            widx[j - 1] = i;
+            n++;
         }
-        if (lv.n < sz) {
-            System.arraycopy(lv.cv, sz - lv.n, lv.cv, 0, lv.n);
-            System.arraycopy(lv.idx, sz - lv.n, lv.idx, 0, lv.n);
+        final long[] cv = java.util.Arrays.copyOfRange(wcv, sz - n, sz);
+        final int[] idx = new int[n];
+        for (int j = 0; j < n; j++) {
+            idx[j] = (int) widx[sz - n + j];
         }
-        return lv;
+        return new Live(cv, idx, n, keys);
     }
 
     /** The last bitmap of the klongs, none set if there is none. */
