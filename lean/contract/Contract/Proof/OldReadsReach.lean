@@ -1,4 +1,4 @@
-/- Reachability bookkeeping for the read-prefix invariant. -/
+/- bergdb 030-24: reachability bookkeeping for the read invariant. -/
 import Contract.Proof.OldReadsSection
 namespace Contract.OldReads
 open SIS

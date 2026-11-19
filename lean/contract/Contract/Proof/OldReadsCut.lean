@@ -1,4 +1,5 @@
-/- The open read half, with RC2/RC3 stated at the iteration's end e. -/
+/- bergdb 030-24: part 2 of `CutOK`, with RC2 and RC3 at the iteration's end
+   e and the first wait (`rc_reads`). -/
 import Contract.Proof.OldReadsClosure
 namespace Contract.OldReads
 open SIS

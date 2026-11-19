@@ -1,4 +1,5 @@
-/- A first preservation lemma for the proposed package. No new axioms. -/
+/- bergdb 030-24: I0 and I5 hold in every reached state (`sectionLatest_st`,
+   `sectionRefsGood_st`). -/
 import Contract.Proof.OldReadsDefs
 import SIS.Proof.BoundT4Debt
 

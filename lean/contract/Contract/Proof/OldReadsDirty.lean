@@ -1,4 +1,5 @@
-/- The pending-reference invariant. A6' enters only via EvLogic.clean. -/
+/- bergdb 030-24: I3, the pending-reference invariant (`pendingRefsFresh_st`);
+   A6' enters only through `EvLogic.clean`. -/
 import Contract.Proof.OldReadsReach
 namespace Contract.OldReads
 open SIS

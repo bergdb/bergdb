@@ -1,4 +1,5 @@
-/- From the local section certificate to physical read closure. -/
+/- bergdb 030-24: from I5 to the read invariant (`oldReadsGood_st`), by
+   induction on `ReadsPhys`. -/
 import Contract.Proof.OldReadsReach
 namespace Contract.OldReads
 open SIS

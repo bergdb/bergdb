@@ -1,5 +1,8 @@
-/- Research statements and a small soundness kernel. Preservation of the new
-   predicates is argued in report.md; it is NOT claimed as a Lean theorem.
+/- bergdb 030-24: the read invariant of the independent search made beside
+   030-23, its definitions and the step from it to part 2 of `CutOK`
+   (`reads_ge_cut`); with I0 (`SectionLatest`), I5 (`SectionRefsGood`) and I3
+   (`PendingRefsFresh`), which hold in every reached state (OldReadsSection.lean,
+   OldReadsClosure.lean, OldReadsDirty.lean), and I4 (`AfterVFrozen`), unused.
    It changes none of the model's definitions. -/
 import SIS.Proof.CutCover
 
