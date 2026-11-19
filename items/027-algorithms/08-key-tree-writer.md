@@ -627,8 +627,11 @@ transactions are not checked (027-13, 1.4).
   delete that deletes makes no node (Java makes a delete node, with an
   id); a recursion, not frames. lean/SIS/Tree/Pe.lean is its copy on the
   tree model's P, with Java's ids (a delete node takes one), bitmaps as
-  bit sets and cap = B / 2, for the tree checker; 026-25's `pecmp` found
-  the two equal on Java's traces (026-25, section 3).
+  bit sets and cap = B / 2, for the tree checker; `pecmp` (lean/pecmp/,
+  first 026-25's, section 3) runs the two on Java's structure before every
+  transaction of `level2.sh`'s tree sets and fails if they write anything
+  different, the top node included (030-28); Pe.lean is pinned in
+  lean/contract/statements.pin, which `level2.sh` checks (030-28).
 * **Proved** (030-21; lean/contract, `gate.sh`, Lean's three standard
   axioms):
   * `pe_step`, `pe_meetsTop`, `pe_meetsTop_start`: every history PE
@@ -905,3 +908,7 @@ including later-segment trees before the space root's tree. Sections 1.9,
 1.10, 7 and 9 updated; the new regression compares reports and marks
 with the plan forced by a package-private test hook. 028-22 corrected
 Java's remaining comments about the old writer.
+
+2026-11-19. 030-28: pecmp, the comparison of Pe.lean with the proved
+writer, is a step of level2.sh, with the top node and the writes in their
+order; Pe.lean is pinned (section 5).

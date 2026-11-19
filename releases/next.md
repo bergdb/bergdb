@@ -55,6 +55,33 @@ was solid algorithms. The stable stream format waits for a later release.
   created whole or not at all. With the Pub API, `created.txt` is written
   after both records are synced, before `start()` returns.
 
+* **The writer is PE, the writer that is proved to meet the writer's
+  contract; record format 8** (bergdb 026-25, 030-21; Frans, 2026-11-19,
+  09:32). A transaction's keys and values reach the key tree as one batch:
+  the writer plans the whole transaction over the tree, decides each index
+  node once, and then writes each decided node once ("plan, then emit"),
+  where the writer of 2026.5 changed the tree key by key, with splits in
+  place, merges at a delete and nodes made and taken back within a
+  transaction. It is the writer that bergdb 030-21 proves: every history
+  it writes meets the writer's contract, from which the reads, recovery,
+  restarts, eviction and reclaim's cuts are proved (bergdb 030, the
+  release's theme); the level scripts compare Java, node by node, with a
+  copy of it at every traced transaction, and the copy with it (030-28). What a program reads is unchanged; the
+  trees have other shapes. Each record has the record format 8 (7 until
+  now), as the same record makes another tree with this writer: a
+  database written with format 7 by a development build of this release
+  is refused with a message, and one of release 2026.5 is refused by the
+  meta block's version, as above. Speed (bergdb 026-25, section 7): at
+  10M keys within a few per cent of 2026.5's writer, the load of
+  transactions of 100 or 500 puts 0.90 to 0.97 of its puts a second; a
+  small database in memory 11 to 18 % slower in CORE's set; with reclaim
+  more cuts, less of the stream kept and about 6 % more bytes written;
+  follow-up work is bergdb 028-19. The stream's bytes changed for
+  every configuration of StreamDigest, the l2-* and the l3-* ones; the
+  digests before and after are in bergdb 030-28, section 6. Tests whose
+  expected values changed: a few thresholds of tests that depend on the
+  tree's shape, and `StoredTrans.testRefusesFormat6`, which refuses
+  formats 6 and 7 (026-25).
 * **Reclaim charges every index node that its steps make dirty** (bergdb
   028-26). With a finite retain duration (`setRetainDuration`), a
   reclaim step's internal transaction counts toward reclaim's allowance,

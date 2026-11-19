@@ -10,6 +10,11 @@
 #   about 2 minutes (an older measure).
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
+#   0. The pins (bergdb 030-28): lean/contract/pins.sh, every file pinned in
+#      lean/contract/statements.pin (the main theorems' statements, the tree
+#      checker's writer lean/SIS/Tree/Pe.lean, pecmp) has its pinned hash; no
+#      build, about a second. First its own test: a changed and a removed pinned
+#      file must fail.
 #   1. The unit tests (bergdb.dev.Unit), which include small level 2 tests.
 #   2. RestartStress, random configurations: startup distances from 100
 #      bytes to the default 50 MB, node sizes 8 to 62, 5 to 3000 keys,
@@ -54,6 +59,15 @@
 #      test, bridge-faults.sh, on a small and a reclaim trace). About 80 s.
 #      It builds the checkers in lean/contractcheck/, a Lake package without
 #      Mathlib that builds them from lean/contract/'s files (bergdb 028-24).
+#  8c. The tested writer is the proved writer (bergdb 030-28): lean/pecmp/check.sh
+#      on the small, drain and reclaim sets of step 8: pecmp runs the tree
+#      checker's writer (lean/SIS/Tree/Pe.lean, a copy) and the proved writer
+#      (lean/contract/Contract/PeWriter.lean, bergdb 030-21) on Java's structure
+#      before every transaction, and they must write the same: the writes in
+#      their order, the ids' order, the trees, the top node. So Java, which step 8
+#      compares with the copy node for node, writes what the proved writer
+#      writes. First pecmp's own tests (--cap-h, --top-fault) must fail. Builds
+#      pecmp in lean/pecmp/ (no Mathlib); a few seconds a set.
 #   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
@@ -79,9 +93,9 @@
 #      model's javaTake (lean/SIS/BoundExample.lean), and its integer share
 #      and dither those of the model's shareFp and ditherFp.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
-# needs javac too. Steps 7, 8 and 8b need Lean (elan, with the toolchain of
-# ../lean/lean-toolchain and ../lean/contractcheck/lean-toolchain); they build the
-# checkers with lake.
+# needs javac too. Steps 7, 8, 8b and 8c need Lean (elan, with the toolchain of
+# ../lean/lean-toolchain, ../lean/contractcheck/lean-toolchain and
+# ../lean/pecmp/lean-toolchain); they build the checkers with lake.
 #
 # Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
 # load; its time limits are hang guards, generous for a loaded machine.
@@ -112,6 +126,11 @@ fail() {
 # Removes old logs and databases, files only (see build.sh about Finder).
 mkdir -p $LOG/disk
 find $LOG -type f -delete
+
+echo "0. The pins (bergdb 030-28)"
+sh ../lean/contract/pins.sh > $LOG/pins.txt 2>&1
+grep -q '^PINS OK' $LOG/pins.txt || fail "lean/contract/pins.sh: $(grep -A3 '^changed\|^PINS FAILED' $LOG/pins.txt | head -4 | tr '\n' ' ')" $LOG/pins.txt
+echo "   $(grep 'files have their pinned hashes' $LOG/pins.txt)"
 
 echo "1. Unit tests"
 $JAVA -ea -cp build/bergdb.jar bergdb.dev.Unit > $LOG/unit.txt 2>&1
@@ -215,6 +234,13 @@ grep '^tree-' $LOG/contract.txt | sed 's/^/   contract, /' | cut -c1-150
 sh ../lean/contract/bridge-check.sh small drain > $LOG/bridge.txt 2>&1
 grep -q '^BRIDGE OK' $LOG/bridge.txt || fail "lean/contract/bridge-check.sh small drain" $LOG/bridge.txt
 grep '^tree-' $LOG/bridge.txt | sed 's/^/   bridge, /' | cut -c1-150
+
+echo "8c. The tested writer against the proved writer (bergdb 030-28)"
+(cd ../lean/pecmp && lake build) > $LOG/lake-pecmp.txt 2>&1 \
+    || fail "pecmp, lake build in lean/pecmp" $LOG/lake-pecmp.txt
+sh ../lean/pecmp/check.sh small drain reclaim > $LOG/pecmp.txt 2>&1
+grep -q '^PECMP OK' $LOG/pecmp.txt || fail "lean/pecmp/check.sh small drain reclaim" $LOG/pecmp.txt
+grep '^tree-' $LOG/pecmp.txt | sed 's/^/   pecmp, /' | cut -c1-150
 
 echo "7. Conformance with the Lean model"
 n=0

@@ -249,6 +249,11 @@ changes (030-13):
 * `java/stress/level2.sh`, step 8b: `lean/contract/check.sh` (the contract,
   with its fault tests) and `lean/contract/bridge-check.sh` (the bridge,
   with its fault test) on the small and drain tree sets that step 8 writes.
+  Step 8c (030-28): `lean/pecmp/check.sh`, the tree checker's writer (the
+  copy lean/SIS/Tree/Pe.lean, which step 8 compares with Java node for
+  node) against the proved writer, on the small, drain and reclaim sets,
+  with its own tests. Step 0 (030-28): `lean/contract/pins.sh`, the
+  hashes of statements.pin (the statements, the copy, pecmp), no build.
 * `java/night.sh`: `java/stress/transcheck.sh` (TransCheck in the unit and
   f-tests); level2.sh full; and `java/stress/contractconf.sh medium`, the
   medium tree set with the tree model's check, the contract and the bridge.
@@ -476,6 +481,17 @@ Files
   `IterationOK` (`PE.pe_reclaim_reads_steps`); an example; how Java's steps
   could be checked on traces; 730 lines of Lean. Written 2026-11-19.
   Status: done.
+* [030-28](28-writer-copy-checked.md). The tested writer is the proved
+  writer, checked routinely: the tree checker's writer, the copy
+  lean/SIS/Tree/Pe.lean, compared with the proved writer at every
+  transaction of level 2's tree sets (`pecmp`, lean/pecmp/, step 8c of
+  `level2.sh`: the writes in their order, the ids' order, the trees, the
+  top node), (B) chosen over running the proved writer in the checkers;
+  the copy and pecmp pinned in statements.pin (no statement changed); the
+  pins checked every night without a build (`pins.sh`, step 0); Java's
+  depth guard unreachable on an undamaged stream, and `pe_accepts`'
+  premises met by every transaction Java admits (G = 8,192, H = 100); the
+  digests of record format 8. Written 2026-11-19. Status: done.
 
 Log
 ===
