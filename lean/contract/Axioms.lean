@@ -169,3 +169,12 @@ open Contract
 #print axioms gis_latest_dirty
 #print axioms gis_clause2_case1
 #print axioms gis_clause1_le_sp
+#print axioms old_reads_good
+#print axioms rc_part2
+#print axioms cutOK_of_rc
+#print axioms tschemeReads_holds
+#print axioms hcut_of_cutsMeetRC
+#print axioms full_cut_of_rc
+#print axioms cut_keeps_top_of_rc
+#print axioms cut_java_reads_of_rc
+#print axioms Contract.PE.pe_cut_java_reads
