@@ -1,0 +1,244 @@
+# 030-23: tracecheck with RC (07c186ce's checker) on the reclaim traces of night.sh 2026-11-19-0949 (c458bfea, Java's PE).
+# Per trace: the verdict, C-CUT's line and RC's line.
+reclaim-r-big-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 27 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 27 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 16, CUT lines with a margin of 1: 0
+reclaim-r-big-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 28 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 16, CUT lines with a margin of 1: 0
+reclaim-r-big-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 29 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 29 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-r-big-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 27 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 27 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+reclaim-r-big-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 27 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 27 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+reclaim-r-del-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 12 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 12 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-del-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 7 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 7 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+reclaim-r-del-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 9 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 9 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-r-del-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 11 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-del-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 11 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-drain-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-drain-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-r-drain-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+reclaim-r-drain-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-drain-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-r-idle-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-r-idle-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 12, CUT lines with a margin of 1: 0
+reclaim-r-idle-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 2 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 2 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 15, CUT lines with a margin of 1: 0
+reclaim-r-idle-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 2 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 2 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-idle-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 14, CUT lines with a margin of 1: 0
+reclaim-r-long-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 13 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 13 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+reclaim-r-long-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+reclaim-r-long-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+reclaim-r-long-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 15 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-r-long-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 16 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 16 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 21, CUT lines with a margin of 1: 0
+reclaim-r-maint-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 96 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 96 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 23, CUT lines with a margin of 1: 0
+reclaim-r-maint-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 97 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 97 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 22, CUT lines with a margin of 1: 0
+reclaim-r-maint-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 98 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 98 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 24, CUT lines with a margin of 1: 0
+reclaim-r-maint-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 94 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 94 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 24, CUT lines with a margin of 1: 0
+reclaim-r-maint-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 96 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 96 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 22, CUT lines with a margin of 1: 0
+reclaim-r-small-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+reclaim-r-small-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+reclaim-r-small-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-r-small-4.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-r-small-5.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+tree-reclaim-r-big-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 27 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 27 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 16, CUT lines with a margin of 1: 0
+tree-reclaim-r-big-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 28 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 16, CUT lines with a margin of 1: 0
+tree-reclaim-r-big-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 29 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 29 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+tree-reclaim-r-del-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 12 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 12 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+tree-reclaim-r-del-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 7 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 7 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+tree-reclaim-r-del-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 9 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 9 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+tree-reclaim-r-idle-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+tree-reclaim-r-idle-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 12, CUT lines with a margin of 1: 0
+tree-reclaim-r-idle-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 2 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 2 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 15, CUT lines with a margin of 1: 0
+tree-reclaim-r-long-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 13 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 13 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+tree-reclaim-r-long-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+tree-reclaim-r-long-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 19, CUT lines with a margin of 1: 0
+tree-reclaim-r-small-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+tree-reclaim-r-small-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+tree-reclaim-r-small-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+
+# The reclaim traces of 030-12 (2026-11-17, before Java's PE; reclaim-live0 and reclaim-live1, 15 each), same checker.
+reclaim-live0-r-big-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 29 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 29 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+reclaim-live0-r-big-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 28 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live0-r-big-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 30 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 30 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live0-r-del-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 11 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+reclaim-live0-r-del-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 10 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+reclaim-live0-r-del-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 10 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 12, CUT lines with a margin of 1: 0
+reclaim-live0-r-idle-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+reclaim-live0-r-idle-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-live0-r-idle-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-live0-r-long-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 15 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live0-r-long-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+reclaim-live0-r-long-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 13 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 13 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live0-r-small-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 4 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-live0-r-small-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-live0-r-small-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 4 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-live1-r-big-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 29 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 29 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+reclaim-live1-r-big-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 28 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 28 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live1-r-big-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 30 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 30 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live1-r-del-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 11 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 11 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+reclaim-live1-r-del-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 10 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 13, CUT lines with a margin of 1: 0
+reclaim-live1-r-del-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 10 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 10 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 12, CUT lines with a margin of 1: 0
+reclaim-live1-r-idle-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 9, CUT lines with a margin of 1: 0
+reclaim-live1-r-idle-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-live1-r-idle-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-live1-r-long-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 15 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 15 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live1-r-long-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 14 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 14 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 17, CUT lines with a margin of 1: 0
+reclaim-live1-r-long-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 13 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 13 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 18, CUT lines with a margin of 1: 0
+reclaim-live1-r-small-1.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 4 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 11, CUT lines with a margin of 1: 0
+reclaim-live1-r-small-2.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 3 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 3 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0
+reclaim-live1-r-small-3.txt: TRACECHECK OK
+  C-CUT cuts: 0 of 4 CUT lines (and PHYSCUT lines) fail
+  C-CUT RC (bergdb 030-23): RC1 to RC4 at 4 CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: 10, CUT lines with a margin of 1: 0

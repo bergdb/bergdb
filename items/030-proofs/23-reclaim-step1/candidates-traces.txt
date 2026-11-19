@@ -1,0 +1,1148 @@
+# 030-23: the candidates on the 50 reclaim traces of night.sh 2026-11-19-0949 (c458bfea, Java's PE),
+# TraceCand.lean.txt with --giw, at every CUT line. Summed per set (sum.sh), then each trace's output.
+
+reclaim: 35 traces, 784 CUT lines
+  LNLK             0 CUT lines fail,     69208 instances
+  POSTV           71 CUT lines fail,    206445 instances
+  PBORD            0 CUT lines fail,   1009948 instances
+  OLDCHAIN         0 CUT lines fail,   2450262 instances
+  GIW(i)           0 CUT lines fail,         0 instances
+  GIW(ii)        783 CUT lines fail,  15024078 instances
+  GIW(iii)         0 CUT lines fail,         0 instances
+  GIR(i)           0 CUT lines fail,         0 instances
+  GIR(ii)          0 CUT lines fail,  12216833 instances
+  GIR(iii)         0 CUT lines fail,         0 instances
+  UNREACH(ii)    784 CUT lines fail,         0 instances
+  GIS(i)           0 CUT lines fail,         0 instances
+  GIS(ii)          0 CUT lines fail,  12216833 instances
+  GIS(iii)         0 CUT lines fail,         0 instances
+  GIS-J(i)         0 CUT lines fail,         0 instances
+  GIS-J(iii)       0 CUT lines fail,         0 instances
+  POSTV-R          0 CUT lines fail,    206445 instances
+  GOODC            0 CUT lines fail,   3158557 instances
+  GIS-CASE2      782 CUT lines fail,  12216833 instances
+  GIS(ii) outside case 1: 112939 112939 112939 112939 109426 0 112939 96809
+    (instances; child made after e; version put back; child gained after the last good time; no reference; no version at or after it; the first is the child's first version; the first is good at its own record, reachable then)
+tree-reclaim: 15 traces, 170 CUT lines
+  LNLK             0 CUT lines fail,     27497 instances
+  POSTV            6 CUT lines fail,     44279 instances
+  PBORD            0 CUT lines fail,    237619 instances
+  OLDCHAIN         0 CUT lines fail,    768868 instances
+  GIW(i)           0 CUT lines fail,         0 instances
+  GIW(ii)        170 CUT lines fail,   4684519 instances
+  GIW(iii)         0 CUT lines fail,         0 instances
+  GIR(i)           0 CUT lines fail,         0 instances
+  GIR(ii)          0 CUT lines fail,   3533184 instances
+  GIR(iii)         0 CUT lines fail,         0 instances
+  UNREACH(ii)    170 CUT lines fail,         0 instances
+  GIS(i)           0 CUT lines fail,         0 instances
+  GIS(ii)          0 CUT lines fail,   3533184 instances
+  GIS(iii)         0 CUT lines fail,         0 instances
+  GIS-J(i)         0 CUT lines fail,         0 instances
+  GIS-J(iii)       0 CUT lines fail,         0 instances
+  POSTV-R          0 CUT lines fail,     44279 instances
+  GOODC            0 CUT lines fail,    992653 instances
+  GIS-CASE2      170 CUT lines fail,   3533184 instances
+  GIS(ii) outside case 1: 19639 19639 19639 19639 19112 0 19639 17299
+    (instances; child made after e; version put back; child gained after the last good time; no reference; no version at or after it; the first is the child's first version; the first is good at its own record, reachable then)
+
+## reclaim-r-big-1
+TRACECAND reclaim/r-big-1.trace: 27 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5404 instances
+  POSTV: 1 CUT lines fail, 8722 instances; first: T(182): (86214,158) after v=157 names [107898] below c=104 (c=104, e=156; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 48418 instances
+  OLDCHAIN: 0 CUT lines fail, 169932 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 27 CUT lines fail, 1000125 instances; first: T(132) t=100: (12450,48) has I, child (9906,18) not (c=48, e=100; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 725202 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 27 CUT lines fail, 0 instances; first: T(132) t=101: (92828,77) has I, its live child 95938 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 725202 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 8722 instances
+  GOODC: 0 CUT lines fail, 194936 instances
+  GIS-CASE2: 27 CUT lines fail, 725202 instances; first: T(132) t=102: (422,102), child 147020: no good version at or before it has 147020 live at its time (c=48, e=100)
+  GIS-CASE2 instances: 3770; of them the child made after e: 3770; the version put back at its record: 3770; the child gained by an entry after the node's last good time and up to t: 3770; the version names no version of the child: 3770; the child has no version at or after the reference: 0; the first such is the child's first version: 3770; the first such is good for its own record, at which the child is reachable: 3322
+## reclaim-r-big-2
+TRACECAND reclaim/r-big-2.trace: 28 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5696 instances
+  POSTV: 0 CUT lines fail, 9082 instances
+  PBORD: 0 CUT lines fail, 52678 instances
+  OLDCHAIN: 0 CUT lines fail, 180779 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 28 CUT lines fail, 1046602 instances; first: T(129) t=96: (34878,47) has I, child (19802,24) not (c=45, e=96; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 762488 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 28 CUT lines fail, 0 instances; first: T(129) t=97: (92196,76) has I, its live child 95554 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 762488 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 9082 instances
+  GOODC: 0 CUT lines fail, 203121 instances
+  GIS-CASE2: 28 CUT lines fail, 762488 instances; first: T(129) t=98: (422,98), child 148188: no good version at or before it has 148188 live at its time (c=45, e=96)
+  GIS-CASE2 instances: 3998; of them the child made after e: 3998; the version put back at its record: 3998; the child gained by an entry after the node's last good time and up to t: 3998; the version names no version of the child: 3993; the child has no version at or after the reference: 0; the first such is the child's first version: 3998; the first such is good for its own record, at which the child is reachable: 3609
+## reclaim-r-big-3
+TRACECAND reclaim/r-big-3.trace: 29 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5744 instances
+  POSTV: 1 CUT lines fail, 9241 instances; first: T(681): (1258888,656) after v=655 names [1224272, 1213466] below c=604 (c=604, e=654; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 50050 instances
+  OLDCHAIN: 0 CUT lines fail, 175450 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 29 CUT lines fail, 1080853 instances; first: T(129) t=76: (1412,8) has I, child (1402,5) not (c=7, e=76; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 800750 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 29 CUT lines fail, 0 instances; first: T(129) t=77: (2412,51) has I, its live child 50738 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 800750 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 9241 instances
+  GOODC: 0 CUT lines fail, 208925 instances
+  GIS-CASE2: 29 CUT lines fail, 800750 instances; first: T(129) t=77: (422,77), child 93540: no good version at or before it has 93540 live at its time (c=7, e=76)
+  GIS-CASE2 instances: 4807; of them the child made after e: 4807; the version put back at its record: 4807; the child gained by an entry after the node's last good time and up to t: 4807; the version names no version of the child: 4807; the child has no version at or after the reference: 0; the first such is the child's first version: 4807; the first such is good for its own record, at which the child is reachable: 4334
+## reclaim-r-big-4
+TRACECAND reclaim/r-big-4.trace: 27 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5471 instances
+  POSTV: 0 CUT lines fail, 8168 instances
+  PBORD: 0 CUT lines fail, 52013 instances
+  OLDCHAIN: 0 CUT lines fail, 179083 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 27 CUT lines fail, 922571 instances; first: T(126) t=99: (28250,48) has I, child (7242,14) not (c=45, e=99; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 665497 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 27 CUT lines fail, 0 instances; first: T(126) t=100: (93212,74) has I, its live child 96906 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 665497 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 8168 instances
+  GOODC: 0 CUT lines fail, 183861 instances
+  GIS-CASE2: 27 CUT lines fail, 665497 instances; first: T(126) t=101: (422,101), child 149172: no good version at or before it has 149172 live at its time (c=45, e=99)
+  GIS-CASE2 instances: 3795; of them the child made after e: 3795; the version put back at its record: 3795; the child gained by an entry after the node's last good time and up to t: 3795; the version names no version of the child: 3795; the child has no version at or after the reference: 0; the first such is the child's first version: 3795; the first such is good for its own record, at which the child is reachable: 3325
+## reclaim-r-big-5
+TRACECAND reclaim/r-big-5.trace: 27 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5502 instances
+  POSTV: 0 CUT lines fail, 9856 instances
+  PBORD: 0 CUT lines fail, 59606 instances
+  OLDCHAIN: 0 CUT lines fail, 189574 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 27 CUT lines fail, 1035362 instances; first: T(130) t=97: (19870,51) has I, child (3214,9) not (c=47, e=97; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 760232 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 27 CUT lines fail, 0 instances; first: T(130) t=98: (93404,73) has I, its live child 96538 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 760232 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 9856 instances
+  GOODC: 0 CUT lines fail, 215892 instances
+  GIS-CASE2: 27 CUT lines fail, 760232 instances; first: T(130) t=99: (422,99), child 151036: no good version at or before it has 151036 live at its time (c=47, e=97)
+  GIS-CASE2 instances: 4059; of them the child made after e: 4059; the version put back at its record: 4059; the child gained by an entry after the node's last good time and up to t: 4059; the version names no version of the child: 4040; the child has no version at or after the reference: 0; the first such is the child's first version: 4059; the first such is good for its own record, at which the child is reachable: 3499
+## reclaim-r-del-1
+TRACECAND reclaim/r-del-1.trace: 12 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1591 instances
+  POSTV: 0 CUT lines fail, 2331 instances
+  PBORD: 0 CUT lines fail, 10751 instances
+  OLDCHAIN: 0 CUT lines fail, 32026 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 12 CUT lines fail, 212370 instances; first: T(182) t=134: (22774,56) has I, child (44684,55) not (c=56, e=134; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 149130 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 12 CUT lines fail, 0 instances; first: T(182) t=135: (91188,100) has I, its live child 91186 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 149130 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 2331 instances
+  GOODC: 0 CUT lines fail, 48726 instances
+  GIS-CASE2: 12 CUT lines fail, 149130 instances; first: T(182) t=144: (128554,144), child 146670: no good version at or before it has 146670 live at its time (c=56, e=134)
+  GIS-CASE2 instances: 1056; of them the child made after e: 1056; the version put back at its record: 1056; the child gained by an entry after the node's last good time and up to t: 1056; the version names no version of the child: 1056; the child has no version at or after the reference: 0; the first such is the child's first version: 1056; the first such is good for its own record, at which the child is reachable: 872
+## reclaim-r-del-2
+TRACECAND reclaim/r-del-2.trace: 7 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 867 instances
+  POSTV: 0 CUT lines fail, 731 instances
+  PBORD: 0 CUT lines fail, 5497 instances
+  OLDCHAIN: 0 CUT lines fail, 16784 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 7 CUT lines fail, 58119 instances; first: T(196) t=182: (83248,108) has I, child (32962,52) not (c=106, e=182; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 35352 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 7 CUT lines fail, 0 instances; first: T(196) t=183: (140868,149) has I, its live child 140866 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 35352 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 731 instances
+  GOODC: 0 CUT lines fail, 17000 instances
+  GIS-CASE2: 7 CUT lines fail, 35352 instances; first: T(196) t=189: (181932,189), child 194188: no good version at or before it has 194188 live at its time (c=106, e=182)
+  GIS-CASE2 instances: 179; of them the child made after e: 179; the version put back at its record: 179; the child gained by an entry after the node's last good time and up to t: 179; the version names no version of the child: 179; the child has no version at or after the reference: 0; the first such is the child's first version: 179; the first such is good for its own record, at which the child is reachable: 146
+## reclaim-r-del-3
+TRACECAND reclaim/r-del-3.trace: 9 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1105 instances
+  POSTV: 0 CUT lines fail, 1437 instances
+  PBORD: 0 CUT lines fail, 8212 instances
+  OLDCHAIN: 0 CUT lines fail, 23690 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 9 CUT lines fail, 130471 instances; first: T(197) t=181: (62028,104) has I, child (89122,103) not (c=104, e=181; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 89402 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 9 CUT lines fail, 0 instances; first: T(197) t=182: (138396,142) has I, its live child 138394 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 89402 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 1437 instances
+  GOODC: 0 CUT lines fail, 30709 instances
+  GIS-CASE2: 9 CUT lines fail, 89402 instances; first: T(197) t=187: (172778,187), child 188964: no good version at or before it has 188964 live at its time (c=104, e=181)
+  GIS-CASE2 instances: 507; of them the child made after e: 507; the version put back at its record: 507; the child gained by an entry after the node's last good time and up to t: 507; the version names no version of the child: 507; the child has no version at or after the reference: 0; the first such is the child's first version: 507; the first such is good for its own record, at which the child is reachable: 394
+## reclaim-r-del-4
+TRACECAND reclaim/r-del-4.trace: 11 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1394 instances
+  POSTV: 0 CUT lines fail, 2198 instances
+  PBORD: 0 CUT lines fail, 9918 instances
+  OLDCHAIN: 0 CUT lines fail, 28553 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 11 CUT lines fail, 221303 instances; first: T(186) t=135: (37434,62) has I, child (12296,22) not (c=57, e=135; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 154397 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 11 CUT lines fail, 0 instances; first: T(186) t=136: (91852,100) has I, its live child 91850 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 154397 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 2198 instances
+  GOODC: 0 CUT lines fail, 49300 instances
+  GIS-CASE2: 10 CUT lines fail, 154397 instances; first: T(186) t=142: (73194,142), child 144992: no good version at or before it has 144992 live at its time (c=57, e=135)
+  GIS-CASE2 instances: 872; of them the child made after e: 872; the version put back at its record: 872; the child gained by an entry after the node's last good time and up to t: 872; the version names no version of the child: 872; the child has no version at or after the reference: 0; the first such is the child's first version: 872; the first such is good for its own record, at which the child is reachable: 712
+## reclaim-r-del-5
+TRACECAND reclaim/r-del-5.trace: 11 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1430 instances
+  POSTV: 0 CUT lines fail, 2171 instances
+  PBORD: 0 CUT lines fail, 9464 instances
+  OLDCHAIN: 0 CUT lines fail, 27865 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 11 CUT lines fail, 208271 instances; first: T(188) t=142: (48088,63) has I, child (36426,52) not (c=61, e=142; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 148556 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 11 CUT lines fail, 0 instances; first: T(188) t=143: (94844,105) has I, its live child 94842 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 148556 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 2171 instances
+  GOODC: 0 CUT lines fail, 48040 instances
+  GIS-CASE2: 10 CUT lines fail, 148556 instances; first: T(188) t=153: (150964,153), child 151962: no good version at or before it has 151962 live at its time (c=61, e=142)
+  GIS-CASE2 instances: 1029; of them the child made after e: 1029; the version put back at its record: 1029; the child gained by an entry after the node's last good time and up to t: 1029; the version names no version of the child: 1029; the child has no version at or after the reference: 0; the first such is the child's first version: 1029; the first such is good for its own record, at which the child is reachable: 888
+## reclaim-r-drain-1
+TRACECAND reclaim/r-drain-1.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 86 instances
+  POSTV: 0 CUT lines fail, 300 instances
+  PBORD: 0 CUT lines fail, 1551 instances
+  OLDCHAIN: 0 CUT lines fail, 2066 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 27672 instances; first: T(265) t=231: (91582,123) has I, child (67324,90) not (c=118, e=231; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10376 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(265) t=232: (136804,177) has I, its live child 136802 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10376 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 300 instances
+  GOODC: 0 CUT lines fail, 2509 instances
+  GIS-CASE2: 3 CUT lines fail, 10376 instances; first: T(265) t=239: (185384,239), child 186096: no good version at or before it has 186096 live at its time (c=118, e=231)
+  GIS-CASE2 instances: 174; of them the child made after e: 174; the version put back at its record: 174; the child gained by an entry after the node's last good time and up to t: 174; the version names no version of the child: 174; the child has no version at or after the reference: 0; the first such is the child's first version: 174; the first such is good for its own record, at which the child is reachable: 162
+## reclaim-r-drain-2
+TRACECAND reclaim/r-drain-2.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 92 instances
+  POSTV: 0 CUT lines fail, 332 instances
+  PBORD: 0 CUT lines fail, 1466 instances
+  OLDCHAIN: 0 CUT lines fail, 1780 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 28059 instances; first: T(288) t=260: (80784,138) has I, child (80780,128) not (c=138, e=260; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10120 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(288) t=261: (133548,203) has I, its live child 133546 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10120 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 332 instances
+  GOODC: 0 CUT lines fail, 2284 instances
+  GIS-CASE2: 3 CUT lines fail, 10120 instances; first: T(288) t=266: (177616,266), child 180766: no good version at or before it has 180766 live at its time (c=138, e=260)
+  GIS-CASE2 instances: 244; of them the child made after e: 244; the version put back at its record: 244; the child gained by an entry after the node's last good time and up to t: 244; the version names no version of the child: 244; the child has no version at or after the reference: 0; the first such is the child's first version: 244; the first such is good for its own record, at which the child is reachable: 197
+## reclaim-r-drain-3
+TRACECAND reclaim/r-drain-3.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 94 instances
+  POSTV: 0 CUT lines fail, 316 instances
+  PBORD: 0 CUT lines fail, 1378 instances
+  OLDCHAIN: 0 CUT lines fail, 1739 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 28020 instances; first: T(293) t=264: (81824,135) has I, child (82934,128) not (c=135, e=264; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 9674 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(293) t=265: (134212,204) has I, its live child 134210 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 9674 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 316 instances
+  GOODC: 0 CUT lines fail, 2629 instances
+  GIS-CASE2: 3 CUT lines fail, 9674 instances; first: T(293) t=269: (171754,269), child 182018: no good version at or before it has 182018 live at its time (c=135, e=264)
+  GIS-CASE2 instances: 200; of them the child made after e: 200; the version put back at its record: 200; the child gained by an entry after the node's last good time and up to t: 200; the version names no version of the child: 200; the child has no version at or after the reference: 0; the first such is the child's first version: 200; the first such is good for its own record, at which the child is reachable: 194
+## reclaim-r-drain-4
+TRACECAND reclaim/r-drain-4.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 100 instances
+  POSTV: 0 CUT lines fail, 277 instances
+  PBORD: 0 CUT lines fail, 1531 instances
+  OLDCHAIN: 0 CUT lines fail, 1974 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 21864 instances; first: T(264) t=239: (90454,130) has I, child (82716,116) not (c=128, e=239; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 7714 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(264) t=240: (136212,193) has I, its live child 136210 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 7714 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 277 instances
+  GOODC: 0 CUT lines fail, 2237 instances
+  GIS-CASE2: 3 CUT lines fail, 7714 instances; first: T(264) t=244: (172458,244), child 184542: no good version at or before it has 184542 live at its time (c=128, e=239)
+  GIS-CASE2 instances: 142; of them the child made after e: 142; the version put back at its record: 142; the child gained by an entry after the node's last good time and up to t: 142; the version names no version of the child: 142; the child has no version at or after the reference: 0; the first such is the child's first version: 142; the first such is good for its own record, at which the child is reachable: 120
+## reclaim-r-drain-5
+TRACECAND reclaim/r-drain-5.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 87 instances
+  POSTV: 0 CUT lines fail, 330 instances
+  PBORD: 0 CUT lines fail, 1464 instances
+  OLDCHAIN: 0 CUT lines fail, 2022 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 28453 instances; first: T(291) t=259: (84730,143) has I, child (73410,117) not (c=141, e=259; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10457 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(291) t=260: (134756,205) has I, its live child 134754 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10457 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 330 instances
+  GOODC: 0 CUT lines fail, 2870 instances
+  GIS-CASE2: 3 CUT lines fail, 10457 instances; first: T(291) t=265: (169228,265), child 182592: no good version at or before it has 182592 live at its time (c=141, e=259)
+  GIS-CASE2 instances: 216; of them the child made after e: 216; the version put back at its record: 216; the child gained by an entry after the node's last good time and up to t: 216; the version names no version of the child: 216; the child has no version at or after the reference: 0; the first such is the child's first version: 216; the first such is good for its own record, at which the child is reachable: 198
+## reclaim-r-idle-1
+TRACECAND reclaim/r-idle-1.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 264 instances
+  POSTV: 0 CUT lines fail, 284 instances
+  PBORD: 0 CUT lines fail, 1588 instances
+  OLDCHAIN: 0 CUT lines fail, 4447 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 23344 instances; first: T(296) t=274: (85062,159) has I, child (59450,110) not (c=155, e=274; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 13228 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(296) t=275: (138004,220) has I, its live child 138002 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 13228 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 284 instances
+  GOODC: 0 CUT lines fail, 5766 instances
+  GIS-CASE2: 3 CUT lines fail, 13228 instances; first: T(296) t=279: (167324,279), child 187560: no good version at or before it has 187560 live at its time (c=155, e=274)
+  GIS-CASE2 instances: 96; of them the child made after e: 96; the version put back at its record: 96; the child gained by an entry after the node's last good time and up to t: 96; the version names no version of the child: 96; the child has no version at or after the reference: 0; the first such is the child's first version: 96; the first such is good for its own record, at which the child is reachable: 78
+## reclaim-r-idle-2
+TRACECAND reclaim/r-idle-2.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 267 instances
+  POSTV: 0 CUT lines fail, 323 instances
+  PBORD: 0 CUT lines fail, 1507 instances
+  OLDCHAIN: 0 CUT lines fail, 4448 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 27915 instances; first: T(301) t=269: (67230,154) has I, child (55634,101) not (c=152, e=269; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 17106 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(301) t=270: (135844,208) has I, its live child 135842 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 17106 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 323 instances
+  GOODC: 0 CUT lines fail, 7340 instances
+  GIS-CASE2: 3 CUT lines fail, 17106 instances; first: T(301) t=276: (171048,276), child 185046: no good version at or before it has 185046 live at its time (c=152, e=269)
+  GIS-CASE2 instances: 118; of them the child made after e: 118; the version put back at its record: 118; the child gained by an entry after the node's last good time and up to t: 118; the version names no version of the child: 118; the child has no version at or after the reference: 0; the first such is the child's first version: 118; the first such is good for its own record, at which the child is reachable: 118
+## reclaim-r-idle-3
+TRACECAND reclaim/r-idle-3.trace: 2 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 176 instances
+  POSTV: 0 CUT lines fail, 232 instances
+  PBORD: 0 CUT lines fail, 877 instances
+  OLDCHAIN: 0 CUT lines fail, 2757 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 2 CUT lines fail, 20947 instances; first: T(319) t=291: (82942,160) has I, child (82938,149) not (c=158, e=291; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 12925 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 2 CUT lines fail, 0 instances; first: T(319) t=292: (136652,227) has I, its live child 136650 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 12925 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 232 instances
+  GOODC: 0 CUT lines fail, 5367 instances
+  GIS-CASE2: 2 CUT lines fail, 12925 instances; first: T(319) t=312: (194760,312), child 195004: no good version at or before it has 195004 live at its time (c=158, e=291)
+  GIS-CASE2 instances: 47; of them the child made after e: 47; the version put back at its record: 47; the child gained by an entry after the node's last good time and up to t: 47; the version names no version of the child: 47; the child has no version at or after the reference: 0; the first such is the child's first version: 47; the first such is good for its own record, at which the child is reachable: 47
+## reclaim-r-idle-4
+TRACECAND reclaim/r-idle-4.trace: 2 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 172 instances
+  POSTV: 0 CUT lines fail, 218 instances
+  PBORD: 0 CUT lines fail, 844 instances
+  OLDCHAIN: 0 CUT lines fail, 2485 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 2 CUT lines fail, 18137 instances; first: T(322) t=296: (79190,162) has I, child (89098,159) not (c=160, e=296; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10904 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 2 CUT lines fail, 0 instances; first: T(322) t=297: (136284,228) has I, its live child 136282 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10904 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 218 instances
+  GOODC: 0 CUT lines fail, 4211 instances
+  GIS-CASE2: 2 CUT lines fail, 10904 instances; first: T(322) t=309: (187370,309), child 193312: no good version at or before it has 193312 live at its time (c=160, e=296)
+  GIS-CASE2 instances: 62; of them the child made after e: 62; the version put back at its record: 62; the child gained by an entry after the node's last good time and up to t: 62; the version names no version of the child: 62; the child has no version at or after the reference: 0; the first such is the child's first version: 62; the first such is good for its own record, at which the child is reachable: 62
+## reclaim-r-idle-5
+TRACECAND reclaim/r-idle-5.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 270 instances
+  POSTV: 1 CUT lines fail, 335 instances; first: T(300): (3492,281) after v=280 names [53682] below c=142 (c=142, e=279; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 1451 instances
+  OLDCHAIN: 0 CUT lines fail, 4756 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 25452 instances; first: T(300) t=279: (77142,144) has I, child (77138,127) not (c=142, e=279; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 15801 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(300) t=280: (137732,210) has I, its live child 137730 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 15801 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 335 instances
+  GOODC: 0 CUT lines fail, 6862 instances
+  GIS-CASE2: 3 CUT lines fail, 15801 instances; first: T(300) t=286: (174456,286), child 189806: no good version at or before it has 189806 live at its time (c=142, e=279)
+  GIS-CASE2 instances: 74; of them the child made after e: 74; the version put back at its record: 74; the child gained by an entry after the node's last good time and up to t: 74; the version names no version of the child: 74; the child has no version at or after the reference: 0; the first such is the child's first version: 74; the first such is good for its own record, at which the child is reachable: 74
+## reclaim-r-long-1
+TRACECAND reclaim/r-long-1.trace: 13 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1892 instances
+  POSTV: 2 CUT lines fail, 3469 instances; first: T(202): (149964,178) after v=177 names [131520] below c=116 (c=116, e=176; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 16734 instances
+  OLDCHAIN: 0 CUT lines fail, 46172 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 13 CUT lines fail, 323182 instances; first: T(157) t=112: (40320,57) has I, child (25954,31) not (c=48, e=112; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 282704 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 13 CUT lines fail, 0 instances; first: T(157) t=113: (88844,86) has I, its live child 91474 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 282704 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3469 instances
+  GOODC: 0 CUT lines fail, 81296 instances
+  GIS-CASE2: 13 CUT lines fail, 282704 instances; first: T(157) t=114: (422,114), child 139516: no good version at or before it has 139516 live at its time (c=48, e=112)
+  GIS-CASE2 instances: 1274; of them the child made after e: 1274; the version put back at its record: 1274; the child gained by an entry after the node's last good time and up to t: 1274; the version names no version of the child: 1137; the child has no version at or after the reference: 0; the first such is the child's first version: 1274; the first such is good for its own record, at which the child is reachable: 1178
+## reclaim-r-long-2
+TRACECAND reclaim/r-long-2.trace: 14 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1975 instances
+  POSTV: 0 CUT lines fail, 3536 instances
+  PBORD: 0 CUT lines fail, 17835 instances
+  OLDCHAIN: 0 CUT lines fail, 52311 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 14 CUT lines fail, 338537 instances; first: T(156) t=119: (26752,58) has I, child (23362,33) not (c=54, e=119; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 302006 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 14 CUT lines fail, 0 instances; first: T(156) t=120: (88084,89) has I, its live child 91330 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 302006 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3536 instances
+  GOODC: 0 CUT lines fail, 89826 instances
+  GIS-CASE2: 14 CUT lines fail, 302006 instances; first: T(156) t=121: (422,121), child 139828: no good version at or before it has 139828 live at its time (c=54, e=119)
+  GIS-CASE2 instances: 1466; of them the child made after e: 1466; the version put back at its record: 1466; the child gained by an entry after the node's last good time and up to t: 1466; the version names no version of the child: 1338; the child has no version at or after the reference: 0; the first such is the child's first version: 1466; the first such is good for its own record, at which the child is reachable: 1290
+## reclaim-r-long-3
+TRACECAND reclaim/r-long-3.trace: 14 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1997 instances
+  POSTV: 2 CUT lines fail, 3700 instances; first: T(161): (27528,126) after v=125 names [13026] below c=57 (c=57, e=124; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 18204 instances
+  OLDCHAIN: 0 CUT lines fail, 51841 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 14 CUT lines fail, 344573 instances; first: T(161) t=124: (33338,61) has I, child (11298,22) not (c=57, e=124; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 302724 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 14 CUT lines fail, 0 instances; first: T(161) t=125: (88340,94) has I, its live child 91450 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 302724 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3700 instances
+  GOODC: 0 CUT lines fail, 87105 instances
+  GIS-CASE2: 14 CUT lines fail, 302724 instances; first: T(161) t=126: (422,126), child 140036: no good version at or before it has 140036 live at its time (c=57, e=124)
+  GIS-CASE2 instances: 1859; of them the child made after e: 1859; the version put back at its record: 1859; the child gained by an entry after the node's last good time and up to t: 1859; the version names no version of the child: 1602; the child has no version at or after the reference: 0; the first such is the child's first version: 1859; the first such is good for its own record, at which the child is reachable: 1541
+## reclaim-r-long-4
+TRACECAND reclaim/r-long-4.trace: 15 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 2233 instances
+  POSTV: 2 CUT lines fail, 4270 instances; first: T(321): (359720,301) after v=300 names [331914] below c=243 (c=243, e=299; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 19473 instances
+  OLDCHAIN: 0 CUT lines fail, 58743 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 15 CUT lines fail, 417191 instances; first: T(152) t=116: (39954,64) has I, child (30306,36) not (c=51, e=116; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 368397 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 15 CUT lines fail, 0 instances; first: T(152) t=117: (89076,89) has I, its live child 92186 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 368397 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 4270 instances
+  GOODC: 0 CUT lines fail, 105806 instances
+  GIS-CASE2: 15 CUT lines fail, 368397 instances; first: T(152) t=118: (422,118), child 141644: no good version at or before it has 141644 live at its time (c=51, e=116)
+  GIS-CASE2 instances: 1755; of them the child made after e: 1755; the version put back at its record: 1755; the child gained by an entry after the node's last good time and up to t: 1755; the version names no version of the child: 1665; the child has no version at or after the reference: 0; the first such is the child's first version: 1755; the first such is good for its own record, at which the child is reachable: 1390
+## reclaim-r-long-5
+TRACECAND reclaim/r-long-5.trace: 16 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 2359 instances
+  POSTV: 4 CUT lines fail, 4995 instances; first: T(233): (224858,212) after v=211 names [151050, 181698] below c=153 (c=153, e=210; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 22036 instances
+  OLDCHAIN: 0 CUT lines fail, 67510 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 16 CUT lines fail, 474271 instances; first: T(156) t=117: (46058,63) has I, child (46050,50) not (c=51, e=117; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 427919 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 16 CUT lines fail, 0 instances; first: T(156) t=118: (87236,91) has I, its live child 90618 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 427919 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 4995 instances
+  GOODC: 0 CUT lines fail, 118957 instances
+  GIS-CASE2: 16 CUT lines fail, 427919 instances; first: T(156) t=119: (422,119), child 139228: no good version at or before it has 139228 live at its time (c=51, e=117)
+  GIS-CASE2 instances: 2179; of them the child made after e: 2179; the version put back at its record: 2179; the child gained by an entry after the node's last good time and up to t: 2179; the version names no version of the child: 1884; the child has no version at or after the reference: 0; the first such is the child's first version: 2179; the first such is good for its own record, at which the child is reachable: 1822
+## reclaim-r-maint-1
+TRACECAND reclaim/r-maint-1.trace: 96 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 4462 instances
+  POSTV: 21 CUT lines fail, 26067 instances; first: T(30): (1,7) after v=6 names [866, 868] below c=4 (c=4, e=5; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 116560 instances
+  OLDCHAIN: 0 CUT lines fail, 218081 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 96 CUT lines fail, 1423755 instances; first: T(30) t=5: (1,6) has I, child (866,3) not (c=4, e=5; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 1268874 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 96 CUT lines fail, 0 instances; first: T(30) t=6: (1412,5) has I, its live child 1410 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 1268874 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 26067 instances
+  GOODC: 0 CUT lines fail, 286550 instances
+  GIS-CASE2: 96 CUT lines fail, 1268874 instances; first: T(30) t=10: (5156,10), child 5434: no good version at or before it has 5434 live at its time (c=4, e=5)
+  GIS-CASE2 instances: 16464; of them the child made after e: 16464; the version put back at its record: 16464; the child gained by an entry after the node's last good time and up to t: 16464; the version names no version of the child: 15422; the child has no version at or after the reference: 0; the first such is the child's first version: 16464; the first such is good for its own record, at which the child is reachable: 13707
+## reclaim-r-maint-2
+TRACECAND reclaim/r-maint-2.trace: 97 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 4378 instances
+  POSTV: 12 CUT lines fail, 25046 instances; first: T(33): (1,7) after v=6 names [866, 868] below c=4 (c=4, e=5; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 111466 instances
+  OLDCHAIN: 0 CUT lines fail, 213399 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 97 CUT lines fail, 1324376 instances; first: T(33) t=5: (1,6) has I, child (866,3) not (c=4, e=5; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 1180682 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 97 CUT lines fail, 0 instances; first: T(33) t=6: (1412,5) has I, its live child 1410 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 1180682 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 25046 instances
+  GOODC: 0 CUT lines fail, 276244 instances
+  GIS-CASE2: 97 CUT lines fail, 1180682 instances; first: T(33) t=19: (5350,19), child 11144: no good version at or before it has 11144 live at its time (c=4, e=5)
+  GIS-CASE2 instances: 16072; of them the child made after e: 16072; the version put back at its record: 16072; the child gained by an entry after the node's last good time and up to t: 16072; the version names no version of the child: 15329; the child has no version at or after the reference: 0; the first such is the child's first version: 16072; the first such is good for its own record, at which the child is reachable: 13767
+## reclaim-r-maint-3
+TRACECAND reclaim/r-maint-3.trace: 98 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 4618 instances
+  POSTV: 4 CUT lines fail, 26582 instances; first: T(37): (1,7) after v=6 names [866] below c=4 (c=4, e=5; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 123436 instances
+  OLDCHAIN: 0 CUT lines fail, 241666 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 98 CUT lines fail, 1413697 instances; first: T(37) t=5: (1,6) has I, child (866,3) not (c=4, e=5; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 1254521 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 98 CUT lines fail, 0 instances; first: T(37) t=6: (1340,5) has I, its live child 1338 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 1254521 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 26582 instances
+  GOODC: 0 CUT lines fail, 298597 instances
+  GIS-CASE2: 98 CUT lines fail, 1254521 instances; first: T(37) t=29: (10862,29), child 19908: no good version at or before it has 19908 live at its time (c=4, e=5)
+  GIS-CASE2 instances: 15657; of them the child made after e: 15657; the version put back at its record: 15657; the child gained by an entry after the node's last good time and up to t: 15657; the version names no version of the child: 15511; the child has no version at or after the reference: 0; the first such is the child's first version: 15657; the first such is good for its own record, at which the child is reachable: 13881
+## reclaim-r-maint-4
+TRACECAND reclaim/r-maint-4.trace: 94 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 4202 instances
+  POSTV: 6 CUT lines fail, 24188 instances; first: T(48): (872,22) after v=21 names [6154, 6156] below c=12 (c=12, e=20; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 111632 instances
+  OLDCHAIN: 0 CUT lines fail, 212976 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 94 CUT lines fail, 1268255 instances; first: T(36) t=5: (874,4) has I, child (866,3) not (c=4, e=5; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 1115863 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 94 CUT lines fail, 0 instances; first: T(36) t=6: (1476,5) has I, its live child 1474 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 1115863 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 24188 instances
+  GOODC: 0 CUT lines fail, 270643 instances
+  GIS-CASE2: 94 CUT lines fail, 1115863 instances; first: T(36) t=29: (11958,29), child 21972: no good version at or before it has 21972 live at its time (c=4, e=5)
+  GIS-CASE2 instances: 13706; of them the child made after e: 13706; the version put back at its record: 13706; the child gained by an entry after the node's last good time and up to t: 13706; the version names no version of the child: 13598; the child has no version at or after the reference: 0; the first such is the child's first version: 13706; the first such is good for its own record, at which the child is reachable: 11938
+## reclaim-r-maint-5
+TRACECAND reclaim/r-maint-5.trace: 96 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 4410 instances
+  POSTV: 15 CUT lines fail, 25701 instances; first: T(64): (5600,34) after v=33 names [10714] below c=21 (c=21, e=32; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 123585 instances
+  OLDCHAIN: 0 CUT lines fail, 221654 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 95 CUT lines fail, 1404958 instances; first: T(56) t=22: (5602,19) has I, child (5596,12) not (c=13, e=22; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 1237924 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 96 CUT lines fail, 0 instances; first: T(29) t=6: (1268,5) has I, its live child 1266 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 1237924 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 25701 instances
+  GOODC: 0 CUT lines fail, 280485 instances
+  GIS-CASE2: 96 CUT lines fail, 1237924 instances; first: T(29) t=19: (5606,19), child 10720: no good version at or before it has 10720 live at its time (c=4, e=5)
+  GIS-CASE2 instances: 16317; of them the child made after e: 16317; the version put back at its record: 16317; the child gained by an entry after the node's last good time and up to t: 16317; the version names no version of the child: 15774; the child has no version at or after the reference: 0; the first such is the child's first version: 16317; the first such is good for its own record, at which the child is reachable: 13350
+## reclaim-r-small-1
+TRACECAND reclaim/r-small-1.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 177 instances
+  POSTV: 0 CUT lines fail, 412 instances
+  PBORD: 0 CUT lines fail, 1710 instances
+  OLDCHAIN: 0 CUT lines fail, 2886 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 24362 instances; first: T(193) t=173: (71226,92) has I, child (90070,91) not (c=92, e=173; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 13323 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(193) t=174: (136116,134) has I, its live child 136114 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 13323 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 412 instances
+  GOODC: 0 CUT lines fail, 4240 instances
+  GIS-CASE2: 3 CUT lines fail, 13323 instances; first: T(193) t=179: (172110,179), child 183738: no good version at or before it has 183738 live at its time (c=92, e=173)
+  GIS-CASE2 instances: 127; of them the child made after e: 127; the version put back at its record: 127; the child gained by an entry after the node's last good time and up to t: 127; the version names no version of the child: 127; the child has no version at or after the reference: 0; the first such is the child's first version: 127; the first such is good for its own record, at which the child is reachable: 115
+## reclaim-r-small-2
+TRACECAND reclaim/r-small-2.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 174 instances
+  POSTV: 0 CUT lines fail, 436 instances
+  PBORD: 0 CUT lines fail, 1824 instances
+  OLDCHAIN: 0 CUT lines fail, 2981 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 30819 instances; first: T(192) t=172: (85836,96) has I, child (46530,53) not (c=96, e=172; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 16315 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(192) t=173: (137124,134) has I, its live child 137122 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 16315 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 436 instances
+  GOODC: 0 CUT lines fail, 4830 instances
+  GIS-CASE2: 3 CUT lines fail, 16315 instances; first: T(192) t=179: (172126,179), child 186384: no good version at or before it has 186384 live at its time (c=96, e=172)
+  GIS-CASE2 instances: 202; of them the child made after e: 202; the version put back at its record: 202; the child gained by an entry after the node's last good time and up to t: 202; the version names no version of the child: 202; the child has no version at or after the reference: 0; the first such is the child's first version: 202; the first such is good for its own record, at which the child is reachable: 163
+## reclaim-r-small-3
+TRACECAND reclaim/r-small-3.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 168 instances
+  POSTV: 0 CUT lines fail, 343 instances
+  PBORD: 0 CUT lines fail, 1734 instances
+  OLDCHAIN: 0 CUT lines fail, 2364 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 22300 instances; first: T(203) t=184: (83686,95) has I, child (90818,94) not (c=95, e=184; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10529 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(203) t=185: (136468,144) has I, its live child 136466 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10529 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 343 instances
+  GOODC: 0 CUT lines fail, 3466 instances
+  GIS-CASE2: 3 CUT lines fail, 10529 instances; first: T(203) t=190: (184150,190), child 185330: no good version at or before it has 185330 live at its time (c=95, e=184)
+  GIS-CASE2 instances: 133; of them the child made after e: 133; the version put back at its record: 133; the child gained by an entry after the node's last good time and up to t: 133; the version names no version of the child: 133; the child has no version at or after the reference: 0; the first such is the child's first version: 133; the first such is good for its own record, at which the child is reachable: 92
+## reclaim-r-small-4
+TRACECAND reclaim/r-small-4.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 177 instances
+  POSTV: 0 CUT lines fail, 383 instances
+  PBORD: 0 CUT lines fail, 1652 instances
+  OLDCHAIN: 0 CUT lines fail, 2719 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 22653 instances; first: T(201) t=178: (70794,99) has I, child (74504,85) not (c=99, e=178; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 12181 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(201) t=179: (134804,143) has I, its live child 134802 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 12181 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 383 instances
+  GOODC: 0 CUT lines fail, 3812 instances
+  GIS-CASE2: 3 CUT lines fail, 12181 instances; first: T(201) t=185: (183158,185), child 184036: no good version at or before it has 184036 live at its time (c=99, e=178)
+  GIS-CASE2 instances: 130; of them the child made after e: 130; the version put back at its record: 130; the child gained by an entry after the node's last good time and up to t: 130; the version names no version of the child: 130; the child has no version at or after the reference: 0; the first such is the child's first version: 130; the first such is good for its own record, at which the child is reachable: 94
+## reclaim-r-small-5
+TRACECAND reclaim/r-small-5.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 174 instances
+  POSTV: 0 CUT lines fail, 433 instances
+  PBORD: 0 CUT lines fail, 1803 instances
+  OLDCHAIN: 0 CUT lines fail, 2749 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 25239 instances; first: T(196) t=176: (84056,98) has I, child (71532,82) not (c=98, e=176; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 13560 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(196) t=177: (136908,140) has I, its live child 136906 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 13560 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 433 instances
+  GOODC: 0 CUT lines fail, 4115 instances
+  GIS-CASE2: 3 CUT lines fail, 13560 instances; first: T(196) t=182: (174250,182), child 185388: no good version at or before it has 185388 live at its time (c=98, e=176)
+  GIS-CASE2 instances: 153; of them the child made after e: 153; the version put back at its record: 153; the child gained by an entry after the node's last good time and up to t: 153; the version names no version of the child: 153; the child has no version at or after the reference: 0; the first such is the child's first version: 153; the first such is good for its own record, at which the child is reachable: 130
+## tree-reclaim-r-big-1
+TRACECAND tree-reclaim/r-big-1.trace: 27 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5404 instances
+  POSTV: 1 CUT lines fail, 8722 instances; first: T(182): (86214,158) after v=157 names [107898] below c=104 (c=104, e=156; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 48418 instances
+  OLDCHAIN: 0 CUT lines fail, 169932 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 27 CUT lines fail, 1000125 instances; first: T(132) t=100: (12450,48) has I, child (9906,18) not (c=48, e=100; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 725202 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 27 CUT lines fail, 0 instances; first: T(132) t=101: (92828,77) has I, its live child 95938 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 725202 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 8722 instances
+  GOODC: 0 CUT lines fail, 194936 instances
+  GIS-CASE2: 27 CUT lines fail, 725202 instances; first: T(132) t=102: (422,102), child 147020: no good version at or before it has 147020 live at its time (c=48, e=100)
+  GIS-CASE2 instances: 3770; of them the child made after e: 3770; the version put back at its record: 3770; the child gained by an entry after the node's last good time and up to t: 3770; the version names no version of the child: 3770; the child has no version at or after the reference: 0; the first such is the child's first version: 3770; the first such is good for its own record, at which the child is reachable: 3322
+## tree-reclaim-r-big-2
+TRACECAND tree-reclaim/r-big-2.trace: 28 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5696 instances
+  POSTV: 0 CUT lines fail, 9082 instances
+  PBORD: 0 CUT lines fail, 52678 instances
+  OLDCHAIN: 0 CUT lines fail, 180779 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 28 CUT lines fail, 1046602 instances; first: T(129) t=96: (34878,47) has I, child (19802,24) not (c=45, e=96; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 762488 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 28 CUT lines fail, 0 instances; first: T(129) t=97: (92196,76) has I, its live child 95554 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 762488 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 9082 instances
+  GOODC: 0 CUT lines fail, 203121 instances
+  GIS-CASE2: 28 CUT lines fail, 762488 instances; first: T(129) t=98: (422,98), child 148188: no good version at or before it has 148188 live at its time (c=45, e=96)
+  GIS-CASE2 instances: 3998; of them the child made after e: 3998; the version put back at its record: 3998; the child gained by an entry after the node's last good time and up to t: 3998; the version names no version of the child: 3993; the child has no version at or after the reference: 0; the first such is the child's first version: 3998; the first such is good for its own record, at which the child is reachable: 3609
+## tree-reclaim-r-big-3
+TRACECAND tree-reclaim/r-big-3.trace: 29 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 5744 instances
+  POSTV: 1 CUT lines fail, 9241 instances; first: T(681): (1258888,656) after v=655 names [1224272, 1213466] below c=604 (c=604, e=654; node reachable from e on at [], the children at [[], []]; node in D now false)
+  PBORD: 0 CUT lines fail, 50050 instances
+  OLDCHAIN: 0 CUT lines fail, 175450 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 29 CUT lines fail, 1080853 instances; first: T(129) t=76: (1412,8) has I, child (1402,5) not (c=7, e=76; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 800750 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 29 CUT lines fail, 0 instances; first: T(129) t=77: (2412,51) has I, its live child 50738 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 800750 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 9241 instances
+  GOODC: 0 CUT lines fail, 208925 instances
+  GIS-CASE2: 29 CUT lines fail, 800750 instances; first: T(129) t=77: (422,77), child 93540: no good version at or before it has 93540 live at its time (c=7, e=76)
+  GIS-CASE2 instances: 4807; of them the child made after e: 4807; the version put back at its record: 4807; the child gained by an entry after the node's last good time and up to t: 4807; the version names no version of the child: 4807; the child has no version at or after the reference: 0; the first such is the child's first version: 4807; the first such is good for its own record, at which the child is reachable: 4334
+## tree-reclaim-r-del-1
+TRACECAND tree-reclaim/r-del-1.trace: 12 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1591 instances
+  POSTV: 0 CUT lines fail, 2331 instances
+  PBORD: 0 CUT lines fail, 10751 instances
+  OLDCHAIN: 0 CUT lines fail, 32026 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 12 CUT lines fail, 212370 instances; first: T(182) t=134: (22774,56) has I, child (44684,55) not (c=56, e=134; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 149130 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 12 CUT lines fail, 0 instances; first: T(182) t=135: (91188,100) has I, its live child 91186 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 149130 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 2331 instances
+  GOODC: 0 CUT lines fail, 48726 instances
+  GIS-CASE2: 12 CUT lines fail, 149130 instances; first: T(182) t=144: (128554,144), child 146670: no good version at or before it has 146670 live at its time (c=56, e=134)
+  GIS-CASE2 instances: 1056; of them the child made after e: 1056; the version put back at its record: 1056; the child gained by an entry after the node's last good time and up to t: 1056; the version names no version of the child: 1056; the child has no version at or after the reference: 0; the first such is the child's first version: 1056; the first such is good for its own record, at which the child is reachable: 872
+## tree-reclaim-r-del-2
+TRACECAND tree-reclaim/r-del-2.trace: 7 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 867 instances
+  POSTV: 0 CUT lines fail, 731 instances
+  PBORD: 0 CUT lines fail, 5497 instances
+  OLDCHAIN: 0 CUT lines fail, 16784 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 7 CUT lines fail, 58119 instances; first: T(196) t=182: (83248,108) has I, child (32962,52) not (c=106, e=182; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 35352 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 7 CUT lines fail, 0 instances; first: T(196) t=183: (140868,149) has I, its live child 140866 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 35352 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 731 instances
+  GOODC: 0 CUT lines fail, 17000 instances
+  GIS-CASE2: 7 CUT lines fail, 35352 instances; first: T(196) t=189: (181932,189), child 194188: no good version at or before it has 194188 live at its time (c=106, e=182)
+  GIS-CASE2 instances: 179; of them the child made after e: 179; the version put back at its record: 179; the child gained by an entry after the node's last good time and up to t: 179; the version names no version of the child: 179; the child has no version at or after the reference: 0; the first such is the child's first version: 179; the first such is good for its own record, at which the child is reachable: 146
+## tree-reclaim-r-del-3
+TRACECAND tree-reclaim/r-del-3.trace: 9 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1105 instances
+  POSTV: 0 CUT lines fail, 1437 instances
+  PBORD: 0 CUT lines fail, 8212 instances
+  OLDCHAIN: 0 CUT lines fail, 23690 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 9 CUT lines fail, 130471 instances; first: T(197) t=181: (62028,104) has I, child (89122,103) not (c=104, e=181; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 89402 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 9 CUT lines fail, 0 instances; first: T(197) t=182: (138396,142) has I, its live child 138394 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 89402 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 1437 instances
+  GOODC: 0 CUT lines fail, 30709 instances
+  GIS-CASE2: 9 CUT lines fail, 89402 instances; first: T(197) t=187: (172778,187), child 188964: no good version at or before it has 188964 live at its time (c=104, e=181)
+  GIS-CASE2 instances: 507; of them the child made after e: 507; the version put back at its record: 507; the child gained by an entry after the node's last good time and up to t: 507; the version names no version of the child: 507; the child has no version at or after the reference: 0; the first such is the child's first version: 507; the first such is good for its own record, at which the child is reachable: 394
+## tree-reclaim-r-idle-1
+TRACECAND tree-reclaim/r-idle-1.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 264 instances
+  POSTV: 0 CUT lines fail, 284 instances
+  PBORD: 0 CUT lines fail, 1588 instances
+  OLDCHAIN: 0 CUT lines fail, 4447 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 23344 instances; first: T(296) t=274: (85062,159) has I, child (59450,110) not (c=155, e=274; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 13228 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(296) t=275: (138004,220) has I, its live child 138002 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 13228 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 284 instances
+  GOODC: 0 CUT lines fail, 5766 instances
+  GIS-CASE2: 3 CUT lines fail, 13228 instances; first: T(296) t=279: (167324,279), child 187560: no good version at or before it has 187560 live at its time (c=155, e=274)
+  GIS-CASE2 instances: 96; of them the child made after e: 96; the version put back at its record: 96; the child gained by an entry after the node's last good time and up to t: 96; the version names no version of the child: 96; the child has no version at or after the reference: 0; the first such is the child's first version: 96; the first such is good for its own record, at which the child is reachable: 78
+## tree-reclaim-r-idle-2
+TRACECAND tree-reclaim/r-idle-2.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 267 instances
+  POSTV: 0 CUT lines fail, 323 instances
+  PBORD: 0 CUT lines fail, 1507 instances
+  OLDCHAIN: 0 CUT lines fail, 4448 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 27915 instances; first: T(301) t=269: (67230,154) has I, child (55634,101) not (c=152, e=269; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 17106 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(301) t=270: (135844,208) has I, its live child 135842 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 17106 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 323 instances
+  GOODC: 0 CUT lines fail, 7340 instances
+  GIS-CASE2: 3 CUT lines fail, 17106 instances; first: T(301) t=276: (171048,276), child 185046: no good version at or before it has 185046 live at its time (c=152, e=269)
+  GIS-CASE2 instances: 118; of them the child made after e: 118; the version put back at its record: 118; the child gained by an entry after the node's last good time and up to t: 118; the version names no version of the child: 118; the child has no version at or after the reference: 0; the first such is the child's first version: 118; the first such is good for its own record, at which the child is reachable: 118
+## tree-reclaim-r-idle-3
+TRACECAND tree-reclaim/r-idle-3.trace: 2 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 176 instances
+  POSTV: 0 CUT lines fail, 232 instances
+  PBORD: 0 CUT lines fail, 877 instances
+  OLDCHAIN: 0 CUT lines fail, 2757 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 2 CUT lines fail, 20947 instances; first: T(319) t=291: (82942,160) has I, child (82938,149) not (c=158, e=291; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 12925 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 2 CUT lines fail, 0 instances; first: T(319) t=292: (136652,227) has I, its live child 136650 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 12925 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 232 instances
+  GOODC: 0 CUT lines fail, 5367 instances
+  GIS-CASE2: 2 CUT lines fail, 12925 instances; first: T(319) t=312: (194760,312), child 195004: no good version at or before it has 195004 live at its time (c=158, e=291)
+  GIS-CASE2 instances: 47; of them the child made after e: 47; the version put back at its record: 47; the child gained by an entry after the node's last good time and up to t: 47; the version names no version of the child: 47; the child has no version at or after the reference: 0; the first such is the child's first version: 47; the first such is good for its own record, at which the child is reachable: 47
+## tree-reclaim-r-long-1
+TRACECAND tree-reclaim/r-long-1.trace: 13 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1892 instances
+  POSTV: 2 CUT lines fail, 3469 instances; first: T(202): (149964,178) after v=177 names [131520] below c=116 (c=116, e=176; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 16734 instances
+  OLDCHAIN: 0 CUT lines fail, 46172 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 13 CUT lines fail, 323182 instances; first: T(157) t=112: (40320,57) has I, child (25954,31) not (c=48, e=112; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 282704 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 13 CUT lines fail, 0 instances; first: T(157) t=113: (88844,86) has I, its live child 91474 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 282704 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3469 instances
+  GOODC: 0 CUT lines fail, 81296 instances
+  GIS-CASE2: 13 CUT lines fail, 282704 instances; first: T(157) t=114: (422,114), child 139516: no good version at or before it has 139516 live at its time (c=48, e=112)
+  GIS-CASE2 instances: 1274; of them the child made after e: 1274; the version put back at its record: 1274; the child gained by an entry after the node's last good time and up to t: 1274; the version names no version of the child: 1137; the child has no version at or after the reference: 0; the first such is the child's first version: 1274; the first such is good for its own record, at which the child is reachable: 1178
+## tree-reclaim-r-long-2
+TRACECAND tree-reclaim/r-long-2.trace: 14 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1975 instances
+  POSTV: 0 CUT lines fail, 3536 instances
+  PBORD: 0 CUT lines fail, 17835 instances
+  OLDCHAIN: 0 CUT lines fail, 52311 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 14 CUT lines fail, 338537 instances; first: T(156) t=119: (26752,58) has I, child (23362,33) not (c=54, e=119; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 302006 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 14 CUT lines fail, 0 instances; first: T(156) t=120: (88084,89) has I, its live child 91330 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 302006 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3536 instances
+  GOODC: 0 CUT lines fail, 89826 instances
+  GIS-CASE2: 14 CUT lines fail, 302006 instances; first: T(156) t=121: (422,121), child 139828: no good version at or before it has 139828 live at its time (c=54, e=119)
+  GIS-CASE2 instances: 1466; of them the child made after e: 1466; the version put back at its record: 1466; the child gained by an entry after the node's last good time and up to t: 1466; the version names no version of the child: 1338; the child has no version at or after the reference: 0; the first such is the child's first version: 1466; the first such is good for its own record, at which the child is reachable: 1290
+## tree-reclaim-r-long-3
+TRACECAND tree-reclaim/r-long-3.trace: 14 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 1997 instances
+  POSTV: 2 CUT lines fail, 3700 instances; first: T(161): (27528,126) after v=125 names [13026] below c=57 (c=57, e=124; node reachable from e on at [], the children at [[]]; node in D now false)
+  PBORD: 0 CUT lines fail, 18204 instances
+  OLDCHAIN: 0 CUT lines fail, 51841 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 14 CUT lines fail, 344573 instances; first: T(161) t=124: (33338,61) has I, child (11298,22) not (c=57, e=124; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 302724 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 14 CUT lines fail, 0 instances; first: T(161) t=125: (88340,94) has I, its live child 91450 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 302724 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 3700 instances
+  GOODC: 0 CUT lines fail, 87105 instances
+  GIS-CASE2: 14 CUT lines fail, 302724 instances; first: T(161) t=126: (422,126), child 140036: no good version at or before it has 140036 live at its time (c=57, e=124)
+  GIS-CASE2 instances: 1859; of them the child made after e: 1859; the version put back at its record: 1859; the child gained by an entry after the node's last good time and up to t: 1859; the version names no version of the child: 1602; the child has no version at or after the reference: 0; the first such is the child's first version: 1859; the first such is good for its own record, at which the child is reachable: 1541
+## tree-reclaim-r-small-1
+TRACECAND tree-reclaim/r-small-1.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 177 instances
+  POSTV: 0 CUT lines fail, 412 instances
+  PBORD: 0 CUT lines fail, 1710 instances
+  OLDCHAIN: 0 CUT lines fail, 2886 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 24362 instances; first: T(193) t=173: (71226,92) has I, child (90070,91) not (c=92, e=173; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 13323 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(193) t=174: (136116,134) has I, its live child 136114 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 13323 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 412 instances
+  GOODC: 0 CUT lines fail, 4240 instances
+  GIS-CASE2: 3 CUT lines fail, 13323 instances; first: T(193) t=179: (172110,179), child 183738: no good version at or before it has 183738 live at its time (c=92, e=173)
+  GIS-CASE2 instances: 127; of them the child made after e: 127; the version put back at its record: 127; the child gained by an entry after the node's last good time and up to t: 127; the version names no version of the child: 127; the child has no version at or after the reference: 0; the first such is the child's first version: 127; the first such is good for its own record, at which the child is reachable: 115
+## tree-reclaim-r-small-2
+TRACECAND tree-reclaim/r-small-2.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 174 instances
+  POSTV: 0 CUT lines fail, 436 instances
+  PBORD: 0 CUT lines fail, 1824 instances
+  OLDCHAIN: 0 CUT lines fail, 2981 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 30819 instances; first: T(192) t=172: (85836,96) has I, child (46530,53) not (c=96, e=172; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 16315 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(192) t=173: (137124,134) has I, its live child 137122 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 16315 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 436 instances
+  GOODC: 0 CUT lines fail, 4830 instances
+  GIS-CASE2: 3 CUT lines fail, 16315 instances; first: T(192) t=179: (172126,179), child 186384: no good version at or before it has 186384 live at its time (c=96, e=172)
+  GIS-CASE2 instances: 202; of them the child made after e: 202; the version put back at its record: 202; the child gained by an entry after the node's last good time and up to t: 202; the version names no version of the child: 202; the child has no version at or after the reference: 0; the first such is the child's first version: 202; the first such is good for its own record, at which the child is reachable: 163
+## tree-reclaim-r-small-3
+TRACECAND tree-reclaim/r-small-3.trace: 3 CUT lines, with GIW
+  LNLK: 0 CUT lines fail, 168 instances
+  POSTV: 0 CUT lines fail, 343 instances
+  PBORD: 0 CUT lines fail, 1734 instances
+  OLDCHAIN: 0 CUT lines fail, 2364 instances
+  GIW(i): 0 CUT lines fail, 0 instances
+  GIW(ii): 3 CUT lines fail, 22300 instances; first: T(203) t=184: (83686,95) has I, child (90818,94) not (c=95, e=184; parent reachable at t: false, child: false, in T: false, false)
+  GIW(iii): 0 CUT lines fail, 0 instances
+  GIR(i): 0 CUT lines fail, 0 instances
+  GIR(ii): 0 CUT lines fail, 10529 instances
+  GIR(iii): 0 CUT lines fail, 0 instances
+  UNREACH(ii): 3 CUT lines fail, 0 instances; first: T(203) t=185: (136468,144) has I, its live child 136466 not reachable at t
+  GIS(i): 0 CUT lines fail, 0 instances
+  GIS(ii): 0 CUT lines fail, 10529 instances
+  GIS(iii): 0 CUT lines fail, 0 instances
+  GIS-J(i): 0 CUT lines fail, 0 instances
+  GIS-J(iii): 0 CUT lines fail, 0 instances
+  POSTV-R: 0 CUT lines fail, 343 instances
+  GOODC: 0 CUT lines fail, 3466 instances
+  GIS-CASE2: 3 CUT lines fail, 10529 instances; first: T(203) t=190: (184150,190), child 185330: no good version at or before it has 185330 live at its time (c=95, e=184)
+  GIS-CASE2 instances: 133; of them the child made after e: 133; the version put back at its record: 133; the child gained by an entry after the node's last good time and up to t: 133; the version names no version of the child: 133; the child has no version at or after the reference: 0; the first such is the child's first version: 133; the first such is good for its own record, at which the child is reachable: 92

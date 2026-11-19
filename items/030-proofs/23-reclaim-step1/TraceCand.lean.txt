@@ -1,0 +1,309 @@
+/-
+bergdb 030-23, step 3 on Java's traces: candidate invariants on superseded
+versions at every CUT line of a reclaim trace. A scratch program, not part of
+lean/: to run it, copy it to lean/TraceCand.lean, add to lean/lakefile.toml
+
+    [[lean_exe]]
+    name = "tracecand"
+    root = "TraceCand"
+
+and run `lake build tracecand && .lake/build/bin/tracecand TRACE [--giw]`.
+
+The state after each transaction is the trace's (the structure from its NEW and
+ADD lines, its records as the model's, Java's D), as in `tracecheck`, which
+checks that it is the model's. At a CUT line in TX i with cut c and first
+available time f (the iteration's end e: Java sets fa := tEnd), v the first
+record whose startup pos is at f or later, and T = [f, i], as in ReclaimL.lean
+(030-23): LNLK, POSTV, POSTV-R, PBORD, OLDCHAIN; with --giw also GIW, GIR, GIS
+and GIS-J's clauses (i), (ii), (iii), GOODC and the instances of GIS's (ii)
+outside case 1 (GIS-CASE2), as in ReclaimL.lean; (ii) over every version, not
+only those reached. UNREACH(ii) is a diagnostic: a version with GIR whose live
+child at t is not reachable at t. Each line gives the CUT lines where the
+candidate fails, its instances, and the first counterexample.
+-/
+import Check.Steps
+
+open SIS SIS.Check
+
+structure Cnt where
+  bad : Nat := 0
+  inst : Nat := 0
+  ex : String := ""
+
+def Cnt.add (c : Cnt) (n : Nat) (fails : List String) : Cnt :=
+  { bad := c.bad + (if fails.isEmpty then 0 else 1), inst := c.inst + n,
+    ex := if c.ex == "" then (fails.head?.getD "") else c.ex }
+
+def main (args : List String) : IO UInt32 := do
+  match args with
+  | [] => IO.println "usage: tracecand TRACE [--giw]"; return 2
+  | file :: rest =>
+  let giw := rest.contains "--giw"
+  let t := parseTrace (← IO.FS.readFile file)
+  if !t.bad.isEmpty then
+    IO.println s!"TRACECAND {file}: the trace could not be read"; return 1
+  let recs := t.recs
+  let lv := levelMap t
+  let chs := recs.map changesOf
+  let p0 := Struct.apply (V := BVal) [] 0 (chs.getD 0 { new := [], adds := [] })
+  let sp := bspec chs p0 true
+  let fas := faSeq recs
+  let jrecs := (recs.toList.zipIdx.map (fun (r, i) => toRecord lv (fas.getD i 0) r)).toArray
+  let sps := recs.toList.map (·.sp)
+  let r0 : Record BVal Nat := { trans := none, sp := 0, vers := [], gd := [], top := none }
+  let mut P := p0
+  -- versions so far: by (node, record); the records of each node, ascending
+  let mut verMap : Std.HashMap (NodeId × Nat) (Version BVal) :=
+    (jrecs.getD 0 r0).vers.foldl (fun m w => m.insert (w.node, 0) w) {}
+  let mut recsMap : Std.HashMap NodeId (Array Nat) :=
+    (jrecs.getD 0 r0).vers.foldl (fun m w => m.insert w.node #[0]) {}
+  let mut reachCache : Std.HashMap Nat (Std.HashSet NodeId) := {}
+  let names := ["LNLK", "POSTV", "PBORD", "OLDCHAIN", "GIW(i)", "GIW(ii)", "GIW(iii)",
+    "GIR(i)", "GIR(ii)", "GIR(iii)", "UNREACH(ii)", "GIS(i)", "GIS(ii)", "GIS(iii)", "GIS-J(i)", "GIS-J(iii)", "POSTV-R", "GOODC", "GIS-CASE2"]
+  let mut cnts : Array Cnt := (names.map (fun _ => ({} : Cnt))).toArray
+  let mut cuts := 0
+  let mut case2Total := 0
+  let mut c2New := 0
+  let mut c2PB := 0
+  let mut c2Gained := 0
+  let mut c2RefNone := 0
+  let mut c2Self := 0
+  let mut c2First := 0
+  let mut c2NoVer := 0
+  for i in [1:recs.size] do
+    let r := recs.getD i default
+    P := P.apply i (chs.getD i { new := [], adds := [] })
+    for w in (jrecs.getD i r0).vers do
+      verMap := verMap.insert (w.node, i) w
+      recsMap := recsMap.insert w.node ((recsMap.getD w.node #[]).push i)
+    match r.cut with
+    | none => pure ()
+    | some (c, f) =>
+      cuts := cuts + 1
+      let e := f
+      let D := r.dirty
+      let inD := fun (x : NodeId) => D.any (·.1 == x)
+      let v := (sps.take (i + 1)).findIdx? (fun s => decide (e ≤ s)) |>.getD i
+      let vers : List (Version BVal) := (List.range (i + 1)).flatMap (fun q => (jrecs.getD q r0).vers)
+      let rm := recsMap
+      let vm := verMap
+      let recsOf := fun (y : NodeId) => (rm.getD y #[]).toList
+      let nextVer := fun (y : NodeId) (q : Nat) => (recsOf y).find? (fun q' => decide (q < q'))
+      let lvRec := fun (y : NodeId) => (recsOf y).getLast?
+      let showV := fun (w : Version BVal) => s!"({w.node},{w.recNo})"
+      -- children live in w at some time from e on: at e and at each later entry
+      let liveFrom := fun (w : Version BVal) =>
+        let ts := e :: (w.hist.filter (fun en => decide (e < en.time))).map (·.time)
+        (ts.flatMap (fun tm => blive (w.hist.upTo tm))).eraseDups
+      -- reachability at a time, cached (a view at a time does not change later)
+      let mut rc := reachCache
+      let mut needT : List Nat := [i]
+      -- OLDCHAIN's times
+      let oldPrem := vers.flatMap (fun w => (pointees sp w.hist).filterMap (fun y =>
+        match w.ref? y with
+        | some r0' => match nextVer y r0' with
+          | some r1 => if decide (w.recNo < r1) && decide (r1 ≤ i) then some (w, y, r1) else none
+          | none => none
+        | none => none))
+      needT := needT ++ (oldPrem.map (·.2.2)).eraseDups ++ List.range' e (i + 1 - e)
+      for tm in needT do
+        if !rc.contains tm then
+          rc := rc.insert tm (Std.HashSet.ofList (reachList sp P tm))
+      reachCache := rc
+      let reachAt := fun (tm : Nat) (x : NodeId) => (rc.getD tm {}).contains x
+      -- LNLK
+      let rlk := (rc.getD i {}).toList
+      let lnlk := rlk.filterMap (fun x =>
+        if inD x then none else
+        match lvRec x with
+        | some q => match vm.get? (x, q) with
+          | some w => if (blive (w.hist.upTo i)).all (fun y => w.ref? y == lvRec y) then none
+              else some s!"T({i}): {showV w} not naming the latest of a live child"
+          | none => none
+        | none => none)
+      -- POSTV
+      let postvs := vers.filter (fun w => decide (v < w.recNo))
+      let postv := postvs.filterMap (fun w =>
+        let bad := (liveFrom w).filter (fun y => match w.ref? y with
+          | some q => decide (q < c)
+          | none => (recsOf y).any (fun q => decide (q < c)))
+        if bad.isEmpty then none else some s!"T({i}): {showV w} after v={v} names {bad} below c={c} (c={c}, e={e}; node reachable from e on at {((List.range' e (i + 1 - e)).filter (fun tm => reachAt tm w.node)).take 5}, the children at {bad.map (fun y => ((List.range' e (i + 1 - e)).filter (fun tm => reachAt tm y)).take 5)}; node in D now {inD w.node})")
+      -- PBORD
+      let pbVers := vers.filter (fun w =>
+        let Dr := (recs.getD w.recNo default).dirty
+        (pointees sp w.hist).any (fun y => Dr.any (·.1 == y)))
+      let pbord := pbVers.filterMap (fun w =>
+        let Dr := (recs.getD w.recNo default).dirty
+        let ys := (pointees sp w.hist).filter (fun y => Dr.any (·.1 == y))
+        if !Dr.contains (w.node, w.recNo) then some s!"T({i}): {showV w} with pointees {ys} in D, not put back" else
+        match nextVer w.node w.recNo with
+        | some r' => if ys.all (fun y => (nextVer y w.recNo).any (fun q => decide (q ≤ r'))) then none
+            else some s!"T({i}): {showV w} rewritten at {r'} before its pointees {ys}"
+        | none => if D.contains (w.node, w.recNo) then none
+            else some s!"T({i}): {showV w} latest, put back, not in D")
+      -- OLDCHAIN
+      let oldInst := oldPrem.filter (fun (w, y, r1) =>
+        match P.get? w.node with
+        | some nx => (blive (nx.hist.upTo r1)).contains y && reachAt r1 w.node
+        | none => false)
+      let oldchain := oldInst.filterMap (fun (w, y, r1) =>
+        if (nextVer w.node w.recNo).isSome || inD w.node then none
+        else some s!"T({i}): {showV w} names {y} before its version at {r1}, neither superseded nor in D")
+      cnts := cnts.modify 0 (·.add rlk.length lnlk)
+      cnts := cnts.modify 1 (·.add postvs.length postv)
+      -- POSTV-R (030-22's wording): a version after v names, for each child live in it
+      -- and reachable at a time from e up to its record, a version at c or later
+      let postvR := postvs.filterMap (fun w =>
+        let bad := (List.range' e (w.recNo + 1 - e)).flatMap (fun tm =>
+          (blive (w.hist.upTo tm)).filter (fun y => reachAt tm y && (match w.ref? y with
+            | some q => decide (q < c)
+            | none => (recsOf y).any (fun q => decide (q < c)))))
+        if bad.isEmpty then none else
+        some s!"T({i}): {showV w} after v={v} names {bad.eraseDups} below c={c} (node reachable from e on at {(List.range' e (i + 1 - e)).filter (fun tm => reachAt tm w.node)})")
+      cnts := cnts.modify 16 (·.add postvs.length postvR)
+      cnts := cnts.modify 2 (·.add pbVers.length pbord)
+      cnts := cnts.modify 3 (·.add oldInst.length oldchain)
+      if giw then
+        let Tm := List.range' e (i + 1 - e)
+        let byLevel := vers.mergeSort (fun a b => decide (a.level ≤ b.level))
+        -- the least record of a version good for some time of T, by node
+        let mut mgAny : Std.HashMap NodeId Nat := {}
+        let mut mgS : Std.HashMap NodeId Nat := {}
+        -- the good versions of reachable nodes: node -> (time, record)
+        let mut goodR : Std.HashMap NodeId (List (Nat × Nat)) := {}
+        for tm in Tm do
+          let rlt : Std.HashSet NodeId := Std.HashSet.ofList (reachList sp P tm)
+          let mut gm : Std.HashMap (NodeId × Nat) Bool := {}
+          for w in byLevel do
+            let ok := (match P.get? w.node with
+              | some n => w.hist.upTo tm == n.hist.upTo tm
+              | none => false) &&
+              (blive (w.hist.upTo tm)).all (fun y => match w.ref? y with
+                | none => false
+                | some q => match vm.get? (y, q) with
+                  | none => false
+                  | some u => decide (u.level < w.level) && gm.getD (y, q) false)
+            gm := gm.insert (w.node, w.recNo) ok
+            if ok then
+              mgAny := mgAny.insert w.node (min w.recNo (mgAny.getD w.node w.recNo))
+              if rlt.contains w.node then
+                mgS := mgS.insert w.node (min w.recNo (mgS.getD w.node w.recNo))
+                goodR := goodR.insert w.node ((tm, w.recNo) :: goodR.getD w.node [])
+        let mga := mgAny
+        let mgs := mgS
+        let IS := fun (w : Version BVal) => decide (c ≤ w.recNo) &&
+          (match mgs.get? w.node with | some q => decide (q ≤ w.recNo) | none => false)
+        let I0 := fun (w : Version BVal) => decide (c ≤ w.recNo) &&
+          (match mga.get? w.node with | some q => decide (q ≤ w.recNo) | none => false)
+        let reachT : Std.HashSet NodeId := Tm.foldl (fun s tm => (reachList sp P tm).foldl (·.insert ·) s) {}
+        let firstFrom := fun (y : NodeId) (q : Nat) => (recsOf y).find? (fun q' => decide (q ≤ q'))
+        let gr := goodR
+        -- GOODC: a version good for a time of T at which its node is reachable is at c or later
+        let goodc := gr.toList.flatMap (fun (x, l) => (l.filter (fun p => decide (p.2 < c))).map (fun p =>
+          s!"T({i}): ({x},{p.2}) good for {p.1}, reachable then, before c={c}"))
+        cnts := cnts.modify 17 (·.add (gr.toList.foldl (fun n q => n + q.2.length) 0) goodc)
+        -- CASE2: an instance of GIS(ii) where no good version g of x at or before p, for a
+        -- time t' of T at which x is reachable, has y live at t'
+        let mut case2 : List String := []
+        let mut nCase := 0
+        let mut nBad2 := 0
+        for tm in Tm do
+          for w in vers do
+            if IS w && !D.contains (w.node, w.recNo) then
+              for y in blive (w.hist.upTo tm) do
+                nCase := nCase + 1
+                let ok := (gr.getD w.node []).any (fun (t', rg) => decide (rg ≤ w.recNo) &&
+                  (match vm.get? (w.node, rg) with
+                   | some g => (blive (g.hist.upTo t')).contains y
+                   | none => false))
+                if !ok then
+                  nBad2 := nBad2 + 1
+                  -- the child made after e; the version put back at its record
+                  let born := ((P.get? y).bind (fun ny => ny.hist.head?)).map (·.time)
+                  if born.any (fun b => decide (e < b)) then c2New := c2New + 1
+                  if (recs.getD w.recNo default).dirty.contains (w.node, w.recNo) then c2PB := c2PB + 1
+                  -- the child gained by x after its last good version at or before p
+                  let lastG := ((gr.getD w.node []).filter (fun q => decide (q.2 ≤ w.recNo))).map (·.1) |>.max?
+                  let gained : Bool := match P.get? w.node, lastG with
+                    | some nx, some tg => (nx.hist.filter (fun en => decide (tg < en.time) && decide (en.time ≤ tm))).any
+                        (fun en => (bptrs en.val).contains y)
+                    | _, _ => false
+                  if gained then c2Gained := c2Gained + 1
+                  -- the child's first version at or after the reference: good for its own
+                  -- record, at which the child is reachable; the child's first version; no reference
+                  let ref := w.ref? y
+                  if ref.isNone then c2RefNone := c2RefNone + 1
+                  match (recsOf y).find? (fun q => decide (ref.getD 0 ≤ q)) with
+                  | some q =>
+                    if (gr.getD y []).contains (q, q) then c2Self := c2Self + 1
+                    if (recsOf y).head? == some q then c2First := c2First + 1
+                  | none => c2NoVer := c2NoVer + 1
+                if !ok && case2.length < 3 then
+                  case2 := case2 ++ [s!"T({i}) t={tm}: {showV w}, child {y}: no good version at or before it has {y} live at its time (c={c}, e={e})"]
+                else if !ok then case2 := case2
+        cnts := cnts.modify 18 (·.add nCase case2)
+        case2Total := case2Total + nBad2
+        for (I, base) in [(I0, 4), (fun w => I0 w && reachT.contains w.node, 7), (IS, 11)] do
+        let mut f1 : List String := []
+        let mut f2 : List String := []
+        let mut f3 : List String := []
+        let mut fu : List String := []
+        let mut f1' : List String := []
+        let mut f3J : List String := []
+        let mut n2 := 0
+        for tm in Tm do
+          let rlt : Std.HashSet NodeId := Std.HashSet.ofList (reachList sp P tm)
+          let rl := reachList sp P tm
+          let Srec := jrecs.toList.take (i + 1)
+          let mut js : Std.HashSet (NodeId × Nat) := {}
+          if base == 11 then
+            for w in byLevel do
+              if I w then js := js.insert (w.node, w.recNo)
+              else if D.contains (w.node, w.recNo) && decide (c ≤ w.recNo) &&
+                  (blive (w.hist.upTo tm)).all (fun y => match follow Srec r.sp true y (w.ref? y) with
+                    | some u => I u || js.contains (u.node, u.recNo)
+                    | none => true) then js := js.insert (w.node, w.recNo)
+            for w in byLevel do
+              if js.contains (w.node, w.recNo) && D.contains (w.node, w.recNo) then
+                for y in blive (w.hist.upTo tm) do
+                  match follow Srec r.sp true y (w.ref? y) with
+                  | some u => if !(I u || js.contains (u.node, u.recNo)) then
+                      f3J := f3J ++ [s!"T({i}) t={tm}: {showV w} has J, Rule R's {showV u} not"]
+                  | none => pure ()
+          for x in rl do
+            match lvRec x with
+            | some q => match vm.get? (x, q) with
+              | some w => if !I w then
+                  f1 := f1 ++ [s!"T({i}) t={tm}: latest {showV w} fails I"]
+                  if base == 11 && !js.contains (w.node, w.recNo) then
+                    f1' := f1' ++ [s!"T({i}) t={tm}: latest {showV w} fails J"]
+              | none => pure ()
+            | none => pure ()
+          for w in vers do
+            if I w then
+              for y in blive (w.hist.upTo tm) do
+                if D.contains (w.node, w.recNo) then
+                  match follow (jrecs.toList.take (i + 1)) r.sp true y (w.ref? y) with
+                  | some u => if !I u then f3 := f3 ++ [s!"T({i}) t={tm}: {showV w} in D, Rule R's {showV u} fails I"]
+                  | none => pure ()
+                else
+                  n2 := n2 + 1
+                  match firstFrom y ((w.ref? y).getD 0) with
+                  | some q => match vm.get? (y, q) with
+                    | some u =>
+                      if !I u then f2 := f2 ++ [s!"T({i}) t={tm}: {showV w} has I, child {showV u} not (c={c}, e={e}; parent reachable at t: {rlt.contains w.node}, child: {rlt.contains y}, in T: {reachT.contains w.node}, {reachT.contains y})"]
+                      if base == 7 && !rlt.contains y then fu := fu ++ [s!"T({i}) t={tm}: {showV w} has I, its live child {y} not reachable at t"]
+                    | none => pure ()
+                  | none => pure ()
+        cnts := cnts.modify base (·.add 0 f1)
+        cnts := cnts.modify (base + 1) (·.add n2 f2)
+        cnts := cnts.modify (base + 2) (·.add 0 f3)
+        if base == 7 then cnts := cnts.modify 10 (·.add 0 fu)
+        if base == 11 then
+          cnts := cnts.modify 14 (·.add 0 f1')
+          cnts := cnts.modify 15 (·.add 0 f3J)
+  IO.println s!"TRACECAND {file}: {cuts} CUT lines{if giw then ", with GIW" else ""}"
+  for (nm, c) in names.zip cnts.toList do
+    IO.println s!"  {nm}: {c.bad} CUT lines fail, {c.inst} instances{if c.ex == "" then "" else s!"; first: {c.ex}"}"
+  IO.println s!"  GIS-CASE2 instances: {case2Total}; of them the child made after e: {c2New}; the version put back at its record: {c2PB}; the child gained by an entry after the node's last good time and up to t: {c2Gained}; the version names no version of the child: {c2RefNone}; the child has no version at or after the reference: {c2NoVer}; the first such is the child's first version: {c2First}; the first such is good for its own record, at which the child is reachable: {c2Self}"
+  return 0

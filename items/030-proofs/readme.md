@@ -207,10 +207,23 @@ D6. Reclaim's safe cuts (T-SCHEME)
   at earlier times follow; an invariant on superseded versions); T-SCHEME
   with Java's exact waits held by running in the model. Not started in
   Lean.
-* **Next:** Frans decides when (030-22 recommends: the proof after
-  Monday's reset; tonight at most the first step, the Lean statement and
-  the invariant found by running).
-* **Items:** 030-22; 001-07, section 5; 024-07, section 4.
+* **State (2026-11-19, 030-23):** step 1 done. T-SCHEME stated in
+  lean/contract (`TScheme`, with RC as `RC`); the theorems after cuts
+  restated with RC in place of `CutOK` (`full_cut_rc`, `cut_keeps_top_rc`,
+  `cut_java_reads_rc`); proved under RC: `CutOK`'s parts 1, 3 and 4 and
+  part 2 for the latest versions (`rc_parts`; `rc_dref` for runs with A6'),
+  so the open half is part 2 alone (`TSchemeReads`). RC checked at every
+  CUT line by `tracecheck` (954 CUT lines of the reclaim traces, 0
+  failures). The invariant that gives part 2, found by running: GIS-J
+  (030-23, section 4), no failure in the model or on the traces; in Lean,
+  with the proof that it gives part 2 (`reads_of_gis`), so what is open is
+  that RC gives GIS-J's three clauses (`TSchemeGis`); of them proved: Lemma
+  G (`rc_goodc`), clause (i) up to the startup pos, clause (ii)'s case 1;
+  open: clause (ii)'s case 2 (a child made after e, seen only on Java's
+  traces) and Rule A's chains.
+* **Next:** `TSchemeGis` (030-23, section 5), then RC2 and RC3 for the
+  tree and the top theorem (030-22, steps 4 to 6); Frans decides when.
+* **Items:** 030-22; 030-23; 001-07, section 5; 024-07, section 4.
 
 Where the contract's checks run
 -------------------------------
@@ -424,6 +437,17 @@ Files
   checked by running in the model (0 failures); 4,000 to 9,000 lines, 2 to
   4 nights; the proof recommended after Monday's reset. Written
   2026-11-19. Status: open.
+* [030-23](23-reclaim-step1.md). Reclaim's proof, step 1: T-SCHEME stated
+  in Lean (`TScheme`, RC as `RC`) with the theorems after cuts restated
+  with RC (`full_cut_rc`, ...); proved under RC: `CutOK` but part 2's
+  versions besides the latest ones (`rc_parts`, `rc_dref`), so the open
+  half is part 2 alone (`TSchemeReads`); RC1 to RC4 in `tracecheck`, 954
+  CUT lines of the reclaim traces, 0 failures; the invariant found by
+  running, GIS-J, in Lean with the proof that it gives part 2
+  (`reads_of_gis`), so what is open is `TSchemeGis`, of which Lemma G, most
+  of clause (i) and clause (ii)'s case 1 are proved; the candidates
+  refuted, with counterexamples; 1,688 lines of Lean. Written 2026-11-19.
+  Status: done.
 
 Log
 ===
