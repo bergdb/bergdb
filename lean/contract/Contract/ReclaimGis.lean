@@ -346,6 +346,71 @@ theorem gis_clause2_case1 (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest 
   refine ⟨by omega, t', a, ga, het, htk, by rw [hun]; exact hyr, by rw [hun]; exact hga,
     by omega, hgga⟩
 
+/-- GIS-J's clause (i) at the times up to the startup pos (bergdb 030-23,
+section 5.2): under RC, with the marking, the latest version of every node
+reachable at a time from the first available time to the startup pos of
+record k has J. A node not in D, or in D with its latest version not put back
+at its record, has I (`gis_latest_clean`, `gis_latest_dirty`). A latest version
+put back at its record d is after the startup pos, so it holds the node's
+history up to t: its children live at t are live children of the node, so
+reachable at t, and Rule R leads from it to their latest versions
+(`putBack_follow`), which have J by induction on the level. -/
+theorem gis_clause1_le_sp (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) {c e k : Nat} (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ t x w, lastFa db.S ≤ t → t ≤ lastSp db.S → reachable sp db.P t x = true →
+      db.S.lv x = some w → GisJ sp db c e k t w := by
+  dsimp only
+  intro t x0 w0 hft hts hr0 hw0
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have hls : SIS.LiveSub sp := hok.1.liveSub
+  have hinvk := SIS.inv_st sp al ts hok hst k hk
+  have hsk : lastSp (SIS.st sp al ts k).S ≤ k := by
+    rcases hinvk.spLt with h | ⟨-, h⟩ <;> omega
+  change t ≤ lastSp (SIS.st sp al ts k).S at hts
+  suffices H : ∀ b x (n : SIS.Node V) w, n.level < b → (SIS.st sp al ts k).P.get? x = some n →
+      reachable sp (SIS.st sp al ts k).P t x = true → (SIS.st sp al ts k).S.lv x = some w →
+      GisJ sp (run sp al (ts.take k)) c e k t w by
+    obtain ⟨n, hn⟩ := Option.isSome_iff_exists.mp
+      (SIS.Reach.isSome ((SIS.reachable_iff _ _ _ _).mp hr0))
+    exact H (n.level + 1) x0 n w0 (by omega) hn hr0 hw0
+  intro b
+  induction b with
+  | zero => intro x n w h; omega
+  | succ b ih =>
+    intro x n w hb hn hr hw
+    cases hxD : inD (SIS.st sp al ts k).D x with
+    | false =>
+      exact GisJ.ofI w (gis_latest_clean hok hj hk hrc t x w hft (by omega) hr hxD hw)
+    | true =>
+      by_cases hwD : (x, w.recNo) ∈ (SIS.st sp al ts k).D
+      · -- Put back at its record, which is after the startup pos.
+        have hwa := hinvk.lv_at hw
+        obtain ⟨hwn, -, n1, hn1, hwh, -, -⟩ := hinvk.version_node hwa
+        rw [hn, Option.some.injEq] at hn1
+        subst hn1
+        have hcw := (rc_parts hok hj hmk hk hrc).2.2.1 x hxD w hw
+        have hsec : (x, w.recNo) ∈ SIS.sectionD (SIS.st sp al ts k).S := by
+          rw [← hinvk.inv1]; exact hwD
+        obtain ⟨hsd, -, -⟩ := SIS.sectionD_mem hsec
+        refine GisJ.putBack w (by rw [hwn]; exact hwD) hcw ?_
+        intro y hy u hu
+        have hyp : y ∈ SIS.pointees sp w.hist := SIS.mem_pointees_of_live hls hy
+        change SIS.follow (SIS.st sp al ts k).S (lastSp (SIS.st sp al ts k).S) true y (w.ref? y) =
+          some u at hu
+        rw [putBack_follow hok hst hk hwD hwa hyp] at hu
+        -- y is a live child of x at t, so reachable at t.
+        have hyn : y ∈ sp.live (n.hist.upTo t) := by
+          rw [hwh, SIS.upTo_upTo _ (by omega)] at hy
+          exact hy
+        obtain ⟨e', he', hye⟩ := hls _ _ hyn
+        obtain ⟨m, hm, hlt⟩ := hinvk.ptrs x n hn e' (SIS.mem_upTo.mp he').1 y hye
+        have hry : reachable sp (SIS.st sp al ts k).P t y = true := by
+          rw [SIS.reachable_iff] at hr ⊢
+          exact SIS.Reach.child hr hn hyn hm hlt
+        exact ih y m u (by omega) hm hry hu
+      · exact GisJ.ofI w (gis_latest_dirty hok hj hmk hk hrc x w hxD hw hwD)
+
 end
 
 end Contract

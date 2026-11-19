@@ -14,9 +14,15 @@ A node of D whose latest version was not put back at its record got dirty by
 the marking or the touch: it was reachable just before, and clean, so its
 latest version was good then, and stays good for that time later
 (`dirty_good`).
+
+A node of D whose latest version was put back at its record d, after the
+startup pos, wrote it in record d, naming the latest versions of its pointees
+then; Rule R from it leads to the latest version of each pointee now
+(`putBack_follow`).
 -/
 import SIS.ReclaimTheorems
 import SIS.Proof.CutHist
+import SIS.Proof.VRead
 import Contract.Proof.ReclaimScheme
 
 namespace Contract
@@ -225,6 +231,83 @@ theorem dirty_good (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
       · omega
     rw [hwr] at hwD
     exact hwD hd
+
+/-- A version w of a node x of D written in record d, x's index in D (put back
+by Rule A at d): Rule R from w along a pointee y leads to y's latest version.
+The step that wrote w named the latest versions of the pointees after T(d)
+(`step_taken_refs`); y's latest version now is its newest in the section, if
+it has one there, and otherwise it is the one after T(d), since d is after the
+startup pos. -/
+theorem putBack_follow (hok : RunOK sp al ts) (hst : AlgOK sp al) {k : Nat}
+    (hk : k ≤ ts.length) {x : NodeId} {d : Nat} (hd : (x, d) ∈ (st sp al ts k).D)
+    {w : Version V} (hw : (st sp al ts k).S.versionAt d x = some w) {y : NodeId}
+    (hy : y ∈ pointees sp w.hist) :
+    follow (st sp al ts k).S (lastSp (st sp al ts k).S) true y (w.ref? y) =
+      (st sp al ts k).S.lv y := by
+  have hinvk := inv_st sp al ts hok hst k hk
+  have hsec : (x, d) ∈ sectionD (st sp al ts k).S := by rw [← hinvk.inv1]; exact hd
+  obtain ⟨hsd, hdl, -⟩ := sectionD_mem hsec
+  have hlen := hinvk.len
+  have hxi : isIndex (st sp al ts k).P x = true := hinvk.dIndex _ hd
+  obtain ⟨j, rfl⟩ : ∃ j, d = j + 1 := ⟨d - 1, by omega⟩
+  have hjl : j < ts.length := by omega
+  have hjk : j + 1 ≤ k := by omega
+  have hinvj := inv_st sp al ts hok hst j (by omega)
+  have hinv1 := inv_st sp al ts hok hst (j + 1) (by omega)
+  have hstep : StepOK sp (st sp al ts j).P (j + 1) (parts sp al (st sp al ts j) ts[j]).c := by
+    have := hok.2 j hjl
+    rw [parts_c, hinvj.len]
+    simpa [st] using this
+  have hS : (st sp al ts (j + 1)).S = Snew sp al (st sp al ts j) ts[j] := by
+    rw [st_succ sp al ts hjl, step_S]
+  have hP : (st sp al ts (j + 1)).P = (parts sp al (st sp al ts j) ts[j]).P := by
+    rw [st_succ sp al ts hjl, step_eq_parts]
+  have hw1 : (st sp al ts (j + 1)).S.versionAt (j + 1) x = some w := by
+    rw [← versionAt_of_prefix (st_S_prefix sp al ts hjk hk) (by rw [hinv1.len]; omega)]
+    exact hw
+  have hw1' := hw1
+  rw [st_S_succ sp al ts hjl, ← hinvj.len, versionAt_snoc_self] at hw1'
+  obtain ⟨hmem, hnode⟩ := find?_node_spec hw1'
+  -- x, an index node written at j + 1, was taken then.
+  have htk : x ∈ (parts sp al (st sp al ts j) ts[j]).taken := by
+    rcases (step_written_iff sp al _ _ hinvj hstep x).mp ⟨w, hmem, hnode⟩ with hdat | ht
+    · exfalso
+      obtain ⟨-, n, hn, hdn⟩ := step_dataIds_spec sp al _ _ hinvj hstep hdat
+      have hg := st_grow sp al ts hok hst (j := j + 1) (j' := k) hjk hk
+      obtain ⟨n', hn', -, hd', -⟩ := hg x n (by rw [hP]; exact hn)
+      simp [isIndex, hn', hd', hdn] at hxi
+    · exact ht
+  obtain ⟨nx, hnx⟩ := Option.isSome_iff_exists.mp
+    (isSome_of_isIndex (step_taken_index sp al _ _ hinvj htk))
+  obtain ⟨v, hv, hvref⟩ := step_taken_refs sp al _ _ hok.1 hinvj hstep htk hnx
+  have hlvw : (st sp al ts (j + 1)).S.lv x = some w := by
+    rw [lv_eq_some_iff]
+    refine ⟨j + 1, hw1, fun r' hr' => versionAt_ge_length (by rw [hinv1.len]; omega) x⟩
+  rw [← hS, hlvw, Option.some.injEq] at hv
+  subst hv
+  obtain ⟨-, -, n1, hn1, hwh, -, -⟩ := hinv1.version_node hw1
+  rw [hP, hnx, Option.some.injEq] at hn1
+  subst hn1
+  have hyp : y ∈ pointees sp nx.hist := by
+    rw [hwh] at hy
+    obtain ⟨e', he', hye⟩ := (mem_pointees sp _ y).mp hy
+    exact (mem_pointees sp _ y).mpr ⟨e', (mem_upTo.mp he').1, hye⟩
+  have href := hvref y hyp
+  rw [← hS] at href
+  rw [href]
+  cases hn : newest (st sp al ts k).S (lastSp (st sp al ts k).S) y with
+  | some u => rw [follow_newest hn, newest_lv hn]
+  | none =>
+    have hnone := (newest_eq_none_iff _ _ _).mp hn
+    have hlv : (st sp al ts k).S.lv y = (st sp al ts (j + 1)).S.lv y := by
+      rw [st_S_take hok hst hjk hk, lv_take (fun r' hr' => hnone r' (by omega))]
+    rw [hlv]
+    cases hl : (st sp al ts (j + 1)).S.lv y with
+    | none => unfold follow; simp [hn]
+    | some u0 =>
+      simp only [Option.map_some]
+      rw [follow_old hn]
+      exact versionAt_prefix (st_S_prefix sp al ts hjk hk) (hinv1.lv_at hl)
 
 end
 

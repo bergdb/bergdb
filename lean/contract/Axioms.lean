@@ -168,3 +168,4 @@ open Contract
 #print axioms gis_latest_clean
 #print axioms gis_latest_dirty
 #print axioms gis_clause2_case1
+#print axioms gis_clause1_le_sp
