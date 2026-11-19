@@ -8,7 +8,7 @@ PeWriter.lean): for each transaction, a plan over the tree from the
 transaction's whole batch, then each decided node emitted once; node for
 node the trees of the model on the traces. The level scripts' oracle is
 then PE too. Frans, 2026-11-18, 21:42: "If you successfully prove it, feel
-free to do the Java implementation too. Opus high for that." By an agent of
+free to do the Java implementation too." By an agent of
 coord-1118, from 02:10 on 2026-11-19, on the branch `026-25-pe-java` in
 /Users/f/fl/bench/2026-11-19/pej/clone.
 
