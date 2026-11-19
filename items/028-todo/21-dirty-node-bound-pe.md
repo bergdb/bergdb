@@ -196,7 +196,14 @@ Tests
 Gates
 -----
 
-GATES
+On `a82d5d84` (main merged at `0cfc13bc`): `java/before-commit.sh`
+BEFORE COMMIT OK (168 s); `java/stress/level1.sh` LEVEL 1 OK;
+`java/stress/level2.sh` LEVEL 2 OK, its C-T8 (the Lean copy, fixed) with
+0 failures on the three tree sets: 58,337 key nodes marked against a
+summed bound of 264,232 (small), 59,137 against 415,399 (reclaim),
+215,107 against 5,567,134 (drain); C-T6 with 0 failures. `lake build` of
+lean/ (with `releaseFits8` to `releaseFits62` for the new
+`nodesALevel`) and `lake build treetest` built.
 
 
 State
@@ -210,3 +217,8 @@ Log
 
 2026-11-19. Registered by an agent of coord-1118 while bringing 027 up
 to date with PE (branch `027-pe`).
+
+2026-11-19. Taken by an agent of coord-1118 (branch `028-21-dirty-bound`,
+a clone): the bound walked against PE in a probe and in DagTester; three
+counterexamples found (Finding), the count fixed in Java and in its Lean
+copy, the argument written; done.
