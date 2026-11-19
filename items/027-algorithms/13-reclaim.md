@@ -291,14 +291,17 @@ pending, M1's condition holds, or the dead hand has more.
   before the cut. Proved in the model for a safe cut (`CutOK`; T8, T9);
   that Java's cuts are safe is T-SCHEME.
 * **REWRITES**: every value stored before pCut that a lookup from tEnd on
-  reads is rewritten. Argued (026-05, section 3.1): it was written by
-  tStart and its key had no write since, so the key was live from tStart
-  on and is at most E; the steps' ranges cover every key up to E, and the
-  step whose range holds it rewrote it.
-  Checked (C-CUT's part 2); gated (`testIterationRewritesAllOldValues`,
-  `testStepScansAtItsOwnTime`, `testEndKeyBoundsTheScan`).
-  In the contract's words `IterationOK` (030-24), from which, with
-  VAL-NEW, RC2 is proved (`rc2_of_iteration`).
+  reads is rewritten. In the contract's words `IterationOK` (030-24), from
+  which, with VAL-NEW, RC2 is proved (`rc2_of_iteration`). Proved since
+  030-25 for steps that follow a model of 1.4 (`StepsOK`, with any stops
+  before or after a KV), given VAL-NEW (`iterationOK_of_stepsOK`), by the
+  argument of 026-05, section 3.1: it was written by tStart and its key had
+  no write since, so the key was live from tStart on and is at most E; the
+  steps' ranges cover every key up to E, and the step whose range holds it
+  rewrote it. That Java's steps are the model's: checked through RC2
+  (C-CUT's part 2), not step by step; gated
+  (`testIterationRewritesAllOldValues`, `testStepScansAtItsOwnTime`,
+  `testEndKeyBoundsTheScan`).
 * **LIVEBELOW** (part 4): each index node a lookup reaches, but an empty
   space root, has a live key below it, and that key's last put (the
   user's at pCut or later, or a step's rewrite) made the node dirty; so
@@ -327,7 +330,9 @@ pending, M1's condition holds, or the dead hand has more.
   written again from the iteration's first step to tEnd) and VAL-NEW, which
   PE meets (`rc2_of_iteration`, `PE.pe_valNew`). So for every history PE
   writes, Java's reads after cuts are right given `IterationOK` and RC1
-  and RC4 at each cut (`PE.pe_reclaim_reads`).
+  and RC4 at each cut (`PE.pe_reclaim_reads`), and given steps that follow
+  the model of 1.4 in place of `IterationOK` (`PE.pe_reclaim_reads_steps`,
+  030-25).
 * **The touch on the paths** (`TouchOnPaths`): checked (C-A,
   `touchPath`); gated (`testStepDirtiesItsPathsOnly`). **No conflict in
   a step** (1.4): argued; no test.
@@ -412,8 +417,10 @@ pending, M1's condition holds, or the dead hand has more.
   `VirtLiveOK`, `PolicyCutOK`. REWRITES and LIVEBELOW are premises.
   **Proved** in lean/contract since 030-24: T-SCHEME for runs with A6'
   and its use, as above (Contract/ReclaimScheme.lean, ReclaimReads.lean,
-  ReclaimTree.lean). Also checked by running (`checkSchemeC` in
-  SIS/ReclaimExample.lean, `lake exe reclaimtest`; 024-07, section 4.3).
+  ReclaimTree.lean); since 030-25 REWRITES from a model of the steps,
+  with the scan and E (ReclaimSteps.lean). Also checked by running
+  (`checkSchemeC` in SIS/ReclaimExample.lean, `lake exe reclaimtest`;
+  024-07, section 4.3).
 * **Left out**: keys, the scan and E, R and the times, the table, the
   allowance and the step sizes, the durable wait, the storage's files,
   reads in flight, `maintain()` (its records are like any), the settings.
@@ -487,8 +494,9 @@ pending, M1's condition holds, or the dead hand has more.
 
 * T-SCHEME is proved for BergDB's tree, given RC at each cut (030-24);
   RC1 and RC4 (Java's arithmetic of the cut) are checked at every cut,
-  not proved; `IterationOK` (REWRITES, Java's steps) is argued and gated,
-  and its consequence RC2 is checked at every cut.
+  not proved; `IterationOK` (REWRITES) is proved from a model of the
+  steps (030-25); that Java's steps are the model's is gated, and its
+  consequence RC2 is checked at every cut.
   001-07's register rows M32, M33, M36, M41 and M48 are argued or checked.
   A step's commit without conflict is argued for Java.
 * 026-09, a keys-only scan (024-34, Q34-1, option b): registered for
@@ -555,3 +563,7 @@ By an agent of coord-1118, on the branch `027-pe`.
 2026-11-19. 1.4's 4b, the row stored again with the bytes of the nodes
 that PE made after it (028-26); sections 2, 4, 6, 7 and 10 with it. By
 an agent of coord-1118, on the branch `028-26-reclaim-charge`.
+
+2026-11-19. REWRITES proved from a model of 1.4's steps (030-25): section
+3's REWRITES and T-SCHEME, sections 5 and 9. By an agent of coord-1118, on
+the branch `030-25-iteration-ok`.
