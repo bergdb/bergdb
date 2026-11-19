@@ -102,7 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
-| [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done on its branch |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
@@ -113,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? No: three gaps, fixed | none | done | 2026-11-19 |
 | [028-20](20-harness-late-exit.md) | Fix | The kill-and-restart harness fails a late exit run | none | done | 2026-11-19 |
 | [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | done | 2026-11-19 |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | done (1b1001ee, 026c322a) | 2026-11-18 |
@@ -202,6 +202,12 @@ timing.sh) (Frans, 10:25 to 10:39), by an agent of coord-1118.
 new week.sh functional, a new timing.sh the only one that needs a quiet
 machine; 13 load-sensitive checks made robust; the user apps in
 java/stress/apps/, by an agent of coord-1118.
+
+2026-11-19. 028-21 done: `dirtyNodeBound` did not bound PE (a new
+segment tree cut into parts, a node cut into more parts than its
+overflows and one, a new root above a cut segment root); fixed, with
+the Lean copy and the argument for PE; by an agent of coord-1118 on the
+branch `028-21-dirty-bound`.
 
 2026-11-19. 028-24 registered (Frans, 10:40 and 10:42) and done on the
 branch `028-24-checkers-no-mathlib`: the contract checkers build without

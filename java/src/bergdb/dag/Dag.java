@@ -536,12 +536,55 @@ public class Dag {
      * </ul>
      * 
      * <p>The count above was argued for the writer of record formats 6 and 7, whose
-     * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), which
-     * writes each node once: a node of the paths, kept, appended or replaced by new nodes, a
-     * list of more than h entries cut into parts of at least m, and new roots above a cut
-     * root; the bound is kept as it was, and checked for PE by the tree checker on every
-     * traced transaction (its C-T8: the key nodes marked are at most this bound) and by
-     * DagTester's tests of the bound. An argument for PE's own counts is not written.</p>
+     * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), and the
+     * count is argued for it as follows (bergdb 028-21, which found it short in three ways and
+     * added them: a new segment tree of h + 1 entries or more, which PE cuts into parts where
+     * the old writer made one node, 18 to 28 keys at node size 30 counted as one node and made
+     * as three; a list cut into more parts than the overflows and one, 31 entries at node size
+     * 30 into three, whose parent got one klong too few; and the new root above a segment
+     * tree's root cut into parts, not counted). PE writes each node once. The key nodes a
+     * transaction makes dirty are the nodes of the paths that PE keeps with a node written
+     * below (keyNodeOnPath) or appends klongs to, every one walked here, and the nodes it
+     * makes, in these ways:</p>
+     * <ul>
+     * <li>a node of the paths replaced by new nodes (PeWriter.decide): one, or its final list
+     * cut into parts of at most the cut size (cutParts). Every entry that the node gets, new or
+     * repointed, is a klong counted for it: a put or a new segment tree one, a delete four
+     * (below), a child replaced as many as the child's count of parts, a segment tree's new
+     * root the overflows and one. PE appends to the node unless its size, a time klong, its
+     * entries got and a bitmap pass B, or the dead klongs theta, and the overflows count from
+     * size + k + 3 > B (the same with the k klongs, two to spare) and from dead + k > theta,
+     * so the node overflows here whenever PE replaces it. Its final list has at most size + k
+     * entries, so it is counted as max(overflows + 1, cutPartsBound(size + k)) new nodes, at
+     * most two more than its overflows, and its parent in its tree gets as many klongs;</li>
+     * <li>new roots above a root cut into parts (PeWriter.settleRoot), rootsAbove(parts), at
+     * least the overflows (the old count of the space root's new roots); a segment tree's new
+     * root is one klong in the segment leaf above, counted as the overflows and one;</li>
+     * <li>a new segment tree of n entries (freshTreeBound): its leaf's list cut into
+     * cutPartsBound(n) parts and the new roots above them, PE's count exactly, or the old
+     * count if it is more;</li>
+     * <li>joins (PeWriter.rebalance, joinAt) and the rebalance of a joined list one level
+     * down: a child is joined only if it was changed and holds fewer than m entries. Every
+     * key node but a root holds m or more (V1, the tree checker's C-T6 on every traced
+     * transaction), the parts of a cut hold at least (h + 1) / 2 >= m and a joined node m or
+     * more unless it is its parent's only child, so a child is small only with a delete below
+     * it, and two small children have different deletes below them. A joined group is its
+     * small children and at most one other node: an untouched neighbour of at most B - 1
+     * entries, at most two parts of c (B - 1 <= 2 c), or a node of the paths, whose own parts
+     * are counted above; as ceil((a + b) / c) <= ceil(a / c) + ceil(b / c), its parts are at
+     * most one for each small child and two more, or the other node's parts. So each delete's
+     * joins make at most three nodes a level, and give the parent at most three entries and a
+     * bitmap: the four nodes a level of a delete's path (two levels more as a margin) and the
+     * four klongs in each node of it cover them. A join one level down opens the nodes it
+     * joins, and its group replaces the one counted there;</li>
+     * <li>root collapse and an emptied root make no node, but for an empty space root a new
+     * empty segment leaf, which replaces the space root, walked.</li>
+     * </ul>
+     * <p>An argument, not a proof, given V1; checked by DagTester's tests of the bound
+     * (testDirtyNodeBoundOfPe, testDirtyNodeBoundOfDeletes) and by the tree checker on every
+     * traced transaction (C-T8, with the Lean model's copy of this count, SIS/Tree/Bound.lean).
+     * A delete's count is generous for PE (at least five times the nodes marked in 028-21's
+     * tests), a put's is tight: every node of its path is marked when it is appended to.</p>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
      *      changes nothing.
@@ -645,11 +688,17 @@ public class Dag {
             }
             final long overflows = overflows(w.klongs, w.node.size, w.deleteBelow, w.dead);
             if (overflows > 0) {
-                count += overflows + 1;
-                if (w.up != null) {
-                    w.up.klongs += overflows + 1;
+                // Its final list cut into parts (PE, bergdb 028-21; see above).
+                final long parts = Math.max(overflows + 1, cutPartsBound(w.node.size + w.klongs));
+                count += parts;
+                if (w.up != null && !w.up.node.isSegmentLeaf()) {
+                    w.up.klongs += parts;
                 } else {
-                    count += overflows;             // new roots
+                    // A tree's root: the new roots above its parts.
+                    count += Math.max(overflows, rootsAbove(parts));
+                    if (w.up != null) {
+                        w.up.klongs += overflows + 1;
+                    }
                 }
             }
         }
@@ -744,8 +793,9 @@ public class Dag {
     /**
      * The nodes of the new segment trees of 'keys', which share their segments before 'level'
      * and whose segment 'level' is in a new tree: its root, the in-place splits of its new
-     * nodes (one new node and one klong above a split), a new root for each level, and the
-     * trees below.
+     * nodes (one new node and one klong above a split), a new root for each level, or PE's
+     * count if it is more, the leaf's list cut into parts and the new roots above them (bergdb
+     * 028-21); and the trees below.
      */
     private long freshTreeBound(java.util.List<long[]> keys, int level) {
         //
@@ -779,14 +829,40 @@ public class Dag {
                     l.add(key);
                 }
             }
-            count += 1;
+            long splits = 1;
             for (long ov = overflows(klongs, 0, false); ov > 0; ov = overflows(ov, 1, false)) {
-                count += ov + 1;                    // the splits, and a new node above them
+                splits += ov + 1;                   // the splits, and a new node above them
             }
+            // PE (bergdb 028-21): the leaf's list cut into parts, and the new roots above them.
+            final long parts = cutPartsBound(klongs);
+            count += Math.max(splits, parts + rootsAbove(parts));
             for (java.util.List<long[]> l : below.values()) {
                 trees.add(l);
                 levels.add(treeLevel + 1);
             }
+        }
+        return count;
+    }
+    
+    /**
+     * At least the parts that PeWriter.cutParts cuts a list of n entries into: one if n is at
+     * most h, else at least two of at most the cut size (bergdb 028-21).
+     */
+    private long cutPartsBound(long n) {
+        final long cap = Math.max(1, cutSize(maxNodeSize));
+        return n <= splitAbove(maxNodeSize) ? 1 : Math.max(2, (n + cap - 1) / cap);
+    }
+    
+    /**
+     * The new roots that PeWriter.settleRoot puts above a root cut into 'parts' new nodes: a
+     * new root of their entries, itself cut if it holds more than h, and so on up to one
+     * node (bergdb 028-21).
+     */
+    private long rootsAbove(long parts) {
+        long count = 0;
+        for (long p = parts; p > 1; ) {
+            p = Math.min(p - 1, cutPartsBound(p));
+            count += p;
         }
         return count;
     }
