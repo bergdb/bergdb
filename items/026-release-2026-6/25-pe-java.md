@@ -156,7 +156,10 @@ against the copy's M / 2 must, and does, differ on traces of node size 30.
 **Results** (Java's traces of this branch, 2026-11-19): the small set (21
 traces, 2,151 transactions), the drain set (33, 4,203), the reclaim set
 (10, 5,789), the medium set (27 traces, 13,640 transactions,
-node sizes 8 to 62): the same trees at every transaction, PECMP OK. With
+node sizes 8 to 62): the same trees at every transaction, PECMP OK. Again
+on the traces of the gated commit d64e5638: small 14 traces, 1,434
+transactions; drain 22, 2,802; reclaim 10, 5,789; medium 27, 13,640; 0
+differ, PECMP OK. With
 the tree checker's TREE OK on the same traces (section 6), Java's writer
 makes the proved writer's trees, node for node.
 
@@ -238,7 +241,66 @@ the Log).
 
 # 6. Gates and results
 
-(Filled as the gates pass.)
+On d64e5638, the last commit that changes code (the later ones change
+items and lean/README.md), each gate in its own clone of the branch, on F53
+while other sessions ran Lean proofs (load up to 90; no timing there):
+
+- `java/before-commit.sh`: BEFORE COMMIT OK.
+- `java/stress/core-build.sh unit f`: CORE BUILD OK (unit, 68 f-tests).
+- `level1.sh`: LEVEL 1 OK; MEM 129 (at most 131), MEM10M 128.2, SEG
+  228.1, SS 1.53 (at most 1.54).
+- `level2.sh`: LEVEL 2 OK; the tree checker (PE, node for node) TREE OK on
+  small, drain and reclaim (7,170, 14,010 and 8,685 transactions, 0 nodes
+  made and replaced in one transaction); A2A3Check2's MARKING equal at
+  every transaction; joins in each draining configuration (1,841 to 8,642).
+- `level3.sh`: LEVEL 3 OK (reclaim, C-CUT 0 of 784, power loss).
+- `level4.sh`: LEVEL 4 OK (eviction; C-P and C-H 0 of 14,656).
+- `lean/contract/check.sh small drain reclaim` on the gate's fresh traces:
+  CONTRACT OK (the contract and the bridge, 0 failures).
+- The medium traces (`treeconf.sh medium`): TREE OK on m-big-1, m-long-1,
+  m-fifo-1, m-d62-1, m-d30-1; pecmp (section 3).
+- `transcheck.sh`: TRANSCHECK OK.
+- `kill-restart.sh 1000`: seed 20261120 KILLB; seed 20261119 failed once,
+  KILLA.
+
+**Performance, s1** (2 vCPUs, 3.8 GB; nothing else running; main at
+62cd36c4 against d64e5638, ABBA order; runner and summary in
+25-pe-java/s1/). CCBench (030-20; 1,000,000 keys of 100 bytes, in memory,
+the writer's CPU time), the median of 3 runs, PE / main a operation:
+
+- 1 operation a transaction: update 1.11, insert 1.09, delete 0.97,
+  mixed 1.00;
+- 10: update 1.19, insert 1.11, delete 0.97, mixed 1.24;
+- 100: update 1.07, insert 1.24, delete 0.98, mixed 1.08;
+- 500: update 1.01, insert 1.17, delete 0.93, mixed 1.03;
+- the load (transactions of 500 puts) 0.95 of main's puts a second; the
+  stream 1,687 MB against 1,703.
+
+Perf (performance-quick's scenarios, 2 runs each, PE / main):
+
+- w-uni-1k-inf (1 KB values, 1,000,000 puts, history kept): 0.99 of
+  main's commits a second (fsync-bound), p99 append 1.05, the load 0.88,
+  GC time 1.11, RSS 1.10;
+- w-uni-1k-fin (with reclaim, 11 cuts each): 0.94 of main's commits a
+  second, append mean 1.12, bytes appended 1.009, reclaim steps 1.04, GC
+  time 1.13, RSS 1.09;
+- read-1k: gets 0.97 to 1.00 of main's time, scans 0.96 to 1.11 (the
+  tree's shapes differ little; the reads did not change).
+
+On the first s1 run PE took about 2 times main's time an operation: it
+built every node's live list, each entry an object, and planned whole
+lists where the old writer appended a klong to the node it found. The ways
+by counts (section 2) brought it to the figures above. What is left, about
+8 % on average over CCBench's 16 cases and 6 % of w-uni-1k-fin's commits a
+second, is the plan's own cost: a transaction is walked twice (plan, then
+emit), and the plan's objects (a VN a node, the changes of a leaf) are
+garbage at its end, about 10 % more GC time and RSS. Deletes are faster
+(a delete's leaf decided by counts, without the old writer's merge). Not
+within a few per cent everywhere: **for Frans to decide** whether that is
+the price of the simpler, proved writer (the theme of 2026.6, simpler
+algorithms), or whether a later item takes the plan's allocations down
+further (the next steps: a leaf's changes in work arrays, VNs reused
+between transactions).
 
 
 # State
