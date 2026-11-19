@@ -15,6 +15,12 @@ result. Nothing in the product code was changed.
 
 Findings are U26-1, U26-2, ...
 
+Since 2026-11-19 (028-23) the apps are maintained in `java/stress/apps/`,
+run by `java/stress/apps.sh` (quick, soak N, kill N; its header says
+more); this file is the record as of the item. The item's copies of the
+sources and its `run.sh`, in `26-user-apps/`, were removed then (Git has
+them, as of `19166cbf`); the logs of section 3 were never in the item.
+
 
 ## 1. In short
 

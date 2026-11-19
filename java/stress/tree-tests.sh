@@ -16,8 +16,12 @@
 # program with lake. Its output goes to java/build/tree-tests/treetest.txt.
 # Prints one line per run and TREE TESTS OK, or TREE TESTS FAILED, and then
 # exits with status 1.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: functional"
 OUT=build/tree-tests
 LEAN=../lean
 mkdir -p $OUT || exit 1

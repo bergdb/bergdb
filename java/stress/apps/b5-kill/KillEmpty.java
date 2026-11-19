@@ -1,6 +1,8 @@
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.Trans;
+import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -13,8 +15,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * App 4 of 024-26: kills of a child JVM (SIGKILL) at random points during a delete-heavy
- * workload with reclaim on, then a check of the database against the oracle.
+ * B5 of 026-13, from app 4 of 024-26: kills of a child JVM (SIGKILL) at random points of a
+ * workload that loads keys, deletes them all (back to empty, bergdb 026-05, P8), and then
+ * drives the database with small transactions and maintain() calls while reclaim cuts; one
+ * transaction in seven is preceded by one whose value transformation throws, which must be
+ * refused and write nothing (bergdb 026-06). Then a check of the database against the oracle.
  *
  * The workload is a deterministic function of the seed and the transaction number i, and of
  * the state before it: transaction i writes the marker key 05 4d with the value i. A child
@@ -24,10 +29,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * child recovers at least the last synced transaction. A child that finds a difference
  * prints "FAIL ..." and exits 1. Every DBKILLS kills the parent starts a new database.
  *
- * Usage: java -cp bergdb-release.jar:out Kill parent SEED DIR KILLS [DBKILLS] [maxDelayMs]
- *        java -cp bergdb-release.jar:out Kill child SEED DIR NODESIZE RETAINMS [maxTx]
+ * Usage: java -cp bergdb-release.jar:out KillEmpty parent SEED DIR KILLS [DBKILLS] [maxDelayMs]
+ *        java -cp bergdb-release.jar:out KillEmpty child SEED DIR NODESIZE RETAINMS [maxTx]
  */
-public class Kill {
+public class KillEmpty {
     static final byte[] MARKER = {0x05, 0x4d};
 
     public static void main(String[] a) throws Exception {
@@ -52,13 +57,13 @@ public class Kill {
         while (done < kills) {
             dbs++;
             long dbSeed = seed * 1000 + dbs;
-            int nodeSize = new int[] {8, 14, 30, 62, 8, 30}[rnd.nextInt(6)];
-            int retainMs = rnd.nextBoolean() ? 1000 : rnd.nextBoolean() ? 3000 : 0;
+            int nodeSize = 30;  // 026-08: every database a user makes has the node size 30, and no public method sets another
+            int retainMs = rnd.nextInt(4) == 0 ? 3000 : 1000;
             Common.rmrf(dir);
             long maxSynced = -1, lastRecovered = -1;
             for (int k = 0; k < dbKills && done < kills; k++) {
                 boolean clean = rnd.nextInt(12) == 0;
-                List<String> cmd = new ArrayList<>(List.of(java, "-ea", "-Xmx1g", "-cp", cp, "Kill", "child", "" + dbSeed,
+                List<String> cmd = new ArrayList<>(List.of(java, "-ea", "-Xmx1g", "-cp", cp, "KillEmpty", "child", "" + dbSeed,
                         dir.getPath(), "" + nodeSize, "" + retainMs));
                 if (clean) cmd.add("" + (200 + rnd.nextInt(300)));
                 ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(true);
@@ -87,7 +92,7 @@ public class Kill {
                 if (kind == 0) { delay = rnd.nextInt(400); early++; }       // during the start or the check
                 else delay = 300 + rnd.nextInt(maxDelay);
                 boolean exited;
-                if (clean) exited = p.waitFor(120, TimeUnit.SECONDS);
+                if (clean) exited = p.waitFor(600, TimeUnit.SECONDS);   // a hang, not a speed: 120 s until 028-23, generous for a loaded machine
                 else if (kind == 0) exited = p.waitFor(delay, TimeUnit.MILLISECONDS);
                 else {
                     // Most kills count their delay from the child's "R" line, so that they land in the work.
@@ -96,7 +101,7 @@ public class Kill {
                     exited = p.waitFor(delay - 250, TimeUnit.MILLISECONDS);
                 }
                 if (!exited) {
-                    if (clean) { System.out.println("FAIL a clean child did not end in 120 s"); dumpTail(tail); p.destroyForcibly(); System.exit(1); }
+                    if (clean) { System.out.println("FAIL a clean child did not end in 600 s"); dumpTail(tail); p.destroyForcibly(); System.exit(1); }
                     p.destroyForcibly();
                     p.waitFor();
                 }
@@ -131,7 +136,7 @@ public class Kill {
                         + ", retain " + retainMs);
             }
             // A last start that checks the state, with no kill.
-            List<String> cmd = List.of(java, "-ea", "-Xmx1g", "-cp", cp, "Kill", "child", "" + dbSeed, dir.getPath(),
+            List<String> cmd = List.of(java, "-ea", "-Xmx1g", "-cp", cp, "KillEmpty", "child", "" + dbSeed, dir.getPath(),
                     "" + nodeSize, "" + retainMs, "0");
             Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
             String out = new String(p.getInputStream().readAllBytes());
@@ -141,7 +146,7 @@ public class Kill {
                 System.exit(1);
             }
         }
-        Common.log("OK Kill seed " + seed + ": " + done + " kills (" + early + " aimed at the start), " + cleanExits
+        Common.log("OK KillEmpty seed " + seed + ": " + done + " kills (" + early + " aimed at the start), " + cleanExits
                 + " clean exits, " + dbs + " databases, " + totalRecovered + " recoveries checked, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s");
     }
@@ -164,10 +169,6 @@ public class Kill {
         long maxTx = a.length > 5 ? Long.parseLong(a[5]) : Long.MAX_VALUE;
         dir.mkdirs();
         DbBuilder b = Db.builder().mainStream(new FileStream(dir, false)).startupDistance(300_000);
-        if (nodeSize == 8) b.maxNodeSize8();
-        else if (nodeSize == 14) b.maxNodeSize14();
-        else if (nodeSize == 62) b.maxNodeSize62();
-        else b.maxNodeSize30();
         b.cacheSizeIndicator(4_000_000);
         Db db = b.start();
         try {
@@ -208,6 +209,8 @@ public class Kill {
             long end = maxTx == Long.MAX_VALUE ? Long.MAX_VALUE : n + 1 + maxTx;
             for (long i = n + 1; i < end; i++) {
                 LinkedHashMap<Common.K, byte[]> ops = gen(i);
+                if (i % 7 == 3) poison(db, i);
+                if (phaseOf(i) == 2 && i % 5 == 0) for (int c = 0; c < 4 && db.maintain(); c++) { }
                 Trans.Builder tb = db.trans();
                 for (Map.Entry<Common.K, byte[]> e : ops.entrySet()) {
                     if (e.getValue() == Common.DELETED) tb.delete(e.getKey().b);
@@ -243,45 +246,56 @@ public class Kill {
         }
     }
 
+    /** The phase of transaction i: 0 load, 1 delete everything, 2 drive. */
+    static int phaseOf(long i) {
+        int p = (int) (i % 1500);
+        return p < 150 ? 0 : p < 260 ? 1 : 2;
+    }
+
+    /** A transaction whose value transformation throws, with puts over live keys: refused, nothing written. */
+    static void poison(Db db, long i) {
+        Random r = new Random(seed * 7 + i);
+        Trans.Builder b = db.trans();
+        int k = 0;
+        for (Common.K key : model.keySet()) { if (k++ > 20) break; b.put(key.b, new byte[] {0x66, 0x66}); }
+        b.put(new byte[] {0x07, (byte) i}, new byte[] {0x66});
+        b.put(Keys.toSegments(new byte[] {0x07, 0x7f}), null, new byte[] {1}, (tt, in, prev) -> {
+            if (r.nextInt(3) == 0) return new byte[Db.MAX_VALUE_BYTES + 1];
+            throw new IllegalStateException("poison " + i);
+        });
+        try {
+            db.execute(b.build());
+            fail("the poison transaction before " + i + " committed");
+        } catch (DbFailedException e) {
+            fail("the poison transaction before " + i + " failed the database: " + e + " cause " + e.getCause());
+        } catch (DbException e) {
+            // refused, as it must be
+        }
+    }
+
     /** Transaction i: a function of the seed, i and the model's state before it. */
     static LinkedHashMap<Common.K, byte[]> gen(long i) {
         Random r = new Random(seed * 1_000_003L + i);
         LinkedHashMap<Common.K, byte[]> ops = new LinkedHashMap<>();
-        int phase = (int) (i % 300);
-        if (phase < 60) {
+        int phase = phaseOf(i);
+        if (phase == 0) {
             int n = 100 + r.nextInt(400);
             for (int j = 0; j < n; j++) ops.put(new Common.K(key(r, i, j)), val(r));
-        } else if (phase < 140 && !model.isEmpty()) {
-            // scattered deletes: keys chosen from the model by random probes
-            int n = 50 + r.nextInt(450);
-            for (int j = 0; j < n; j++) {
-                byte[] probe = new byte[1 + r.nextInt(8)];
-                r.nextBytes(probe);
-                Common.K k = model.ceilingKey(new Common.K(probe));
-                if (k == null) k = model.firstKey();
-                ops.put(k, Common.DELETED);
-            }
-        } else if (phase < 170 && !model.isEmpty()) {
-            // a ranged delete in key order
-            byte[] probe = new byte[1 + r.nextInt(4)];
-            r.nextBytes(probe);
-            int n = 100 + r.nextInt(400);
-            for (Common.K k : model.tailMap(new Common.K(probe), true).keySet()) {
-                if (ops.size() >= n) break;
-                ops.put(k, Common.DELETED);
+        } else if (phase == 1) {
+            // everything, in key order, 499 a transaction, until empty
+            for (Common.K k : model.keySet()) {
+                if (ops.size() >= 499) break;
+                if (!k.equals(new Common.K(MARKER))) ops.put(k, Common.DELETED);
             }
         } else {
-            // churn: overwrites, deletes and re-puts of a hot range
-            int n = 1 + r.nextInt(60);
-            byte[] probe = {0x10, (byte) ((i / 50) % 256)};
-            List<Common.K> hot = new ArrayList<>();
-            for (Common.K k : model.tailMap(new Common.K(probe), true).keySet()) { if (hot.size() >= 300) break; hot.add(k); }
-            for (int j = 0; j < n; j++) {
-                if (hot.isEmpty() || r.nextInt(4) == 0) ops.put(new Common.K(key(r, i, j)), val(r));
-                else {
-                    Common.K k = hot.get(r.nextInt(hot.size()));
-                    ops.put(k, r.nextInt(3) == 0 ? Common.DELETED : val(r));
-                }
+            // the drive: an overwrite of one key, now and then a few more
+            byte[] v = new byte[200 + r.nextInt(1300)];
+            r.nextBytes(v);
+            ops.put(new Common.K(new byte[] {0x06, 0x01}), v);
+            if (r.nextInt(20) == 0) ops.put(new Common.K(key(r, i, 0)), val(r));
+            if (r.nextInt(20) == 0 && model.size() > 2) {
+                Common.K k = model.higherKey(new Common.K(new byte[] {0x06, 0x01}));
+                if (k != null && !k.equals(new Common.K(MARKER))) ops.put(k, Common.DELETED);
             }
         }
         ops.remove(new Common.K(MARKER));

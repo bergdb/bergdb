@@ -10,8 +10,12 @@
 #   WORK="uniform hot cold", SIZES="100 1000 10000", K="0 0.01 0.1 1 10": the grid;
 #   K=0 is the baseline. The baselines and runs with K >= 10 use a FileStream on disk.
 #   OUT=DIR  logs (default build/reclaimgrid).
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load: WE and SE are counts of bytes, not times.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

@@ -1524,8 +1524,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
         try {
             byte[] bytes = new byte[] { 1, 2 };
+            long tA = System.nanoTime();
             b.append(bytes, 0, bytes.length);
-            Assert.assertEquals(0, m.getLength());
+            long length = m.getLength();
+            // Checked unless this thread was stalled for most of the buffer time, as on a
+            // loaded machine (bergdb 028-23): the timer may have written the bytes by then.
+            if (System.nanoTime() - tA < 900L * 1000 * 1000) {
+                Assert.assertEquals(0, length);
+            }
             long t0 = System.nanoTime();
             while (m.getLength() == 0 && System.nanoTime() - t0 < 30L * 1000 * 1000 * 1000) {
                 Thread.sleep(1);

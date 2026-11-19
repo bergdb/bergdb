@@ -20,8 +20,12 @@
 # -Devictbudget=N, the capacity controller's budget in bytes, bergdb item 001, WP P4; Soak's
 # database is built with noEvict(), so without it nothing is evicted). Needs java/build
 # (java/build.sh).
+#
+# Kind: timing (bergdb 028-23): its rates and pauses are the result; run it on a quiet
+# machine.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: timing"
 JAVADIR=$(pwd)
 ROOT=$(cd .. && pwd)
 

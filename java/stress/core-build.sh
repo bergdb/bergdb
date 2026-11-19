@@ -20,9 +20,13 @@
 # Output in build/core-build/. Prints CORE BUILD OK, or CORE BUILD FAILED and
 # exits with status 1. Needs a JDK (javac, jar, jdeps, java; JAVA_HOME or
 # PATH) and python3. Does not use build.sh or build/bergdb.jar.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; the tests' time limits are hang guards, generous for a loaded machine.
 
 set -e
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 if [ -n "$JAVA_HOME" ]; then PATH=$JAVA_HOME/bin:$PATH; fi
 
 TEST_GROUPS=${*:-unit}

@@ -70,9 +70,14 @@
 #   nohup sh harness-soak.sh -j bergdb.jar -o soak -u 18:00 > soak.out 2>&1 &
 # and checked with one command:
 #   ssh HOST cat DIR/summary.txt
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; -t and the harnesses' bounds of a join or a cleanup are hang guards, the latter
+# scaled by harness.slow.
 
 ORIG=$(pwd)
 JAVADIR=$(cd "$(dirname "$0")/.." && pwd)
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

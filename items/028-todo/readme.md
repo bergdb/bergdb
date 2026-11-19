@@ -105,6 +105,7 @@ Open
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
+| [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | in progress |
 
 
 Closed
@@ -175,3 +176,7 @@ coord-1118.
 2026-11-19. 028-21 and 028-22 registered: dirtyNodeBound for PE, and the
 Java comments of the old writer; found by an agent of coord-1118 while
 bringing 027 up to date with PE (branch `027-pe`).
+
+2026-11-19. 028-23 registered and taken: the test scripts sorted by kind,
+functional (before-commit.sh, night.sh, a new week.sh) and timing (a new
+timing.sh) (Frans, 10:25 to 10:39), by an agent of coord-1118.

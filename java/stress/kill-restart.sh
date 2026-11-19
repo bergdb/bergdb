@@ -20,8 +20,13 @@
 # may run meanwhile. The output is in build/kill-restart/out.txt; a failure keeps its database
 # directory and journal there (the last lines say which). Exits with status 1 unless it
 # prints KILL RESTART OK.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; the harness's waits (for a child's phase, its exit, a job) are hang guards, and
+# LIMIT_S a budget.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: functional"
 
 if [ -n "${JAVA_HOME:-}" ]; then JAVA=$JAVA_HOME/bin/java; else JAVA=${JAVA:-java}; fi
 KILLS=${1:-1000}

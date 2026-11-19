@@ -30,8 +30,12 @@
 # Needs java/build (java/build.sh). Output: java/build/unlinkfuzz/, a file for each block.
 # Not a commit gate: before-commit.sh must stay fast, and a harness joins it only if it
 # adds a few seconds. night.sh runs it.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.." || exit 2
+echo "Kind: functional"
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 

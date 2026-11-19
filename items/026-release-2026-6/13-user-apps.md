@@ -19,6 +19,12 @@ changed.
 Findings are U13-1, U13-2, ...; cited from elsewhere as "026-13, U13-1"
 (020-24-13 also had findings named U13-n).
 
+Since 2026-11-19 (028-23) the apps are maintained in `java/stress/apps/`,
+run by `java/stress/apps.sh` (quick, soak N, kill N; its header says
+more); the files here are the record as of the item. The item's copies
+of the sources and its `run.sh` were removed then (Git has them, as of
+`19166cbf`); `13-user-apps/` keeps `results/` and `tools/`.
+
 
 ## 1. In short
 
