@@ -1,0 +1,158 @@
+/-
+bergdb 030-22, section 5.2: T-SCHEME by running with Java's exact waits, and
+diagnostics of the versions that reads reach. A scratch program, not part of
+lean/: to run it, copy it to lean/ReclaimK.lean, add to lean/lakefile.toml
+
+    [[lean_exe]]
+    name = "reclaimk"
+    root = "ReclaimK"
+
+and run `lake build reclaimk && .lake/build/bin/reclaimk SEEDS N` in lean/
+(20 seeds of 30 transactions: about 20 s; 2026-11-19, main c458bfea).
+
+`checkSchemeC` (SIS/ReclaimExample.lean) checks `CutOK` at pCut in the states
+k with j0 < sp(k), j0 the first state with tEnd < sp. Java's waits
+(Reclaim.markSafePositions, pretruncateIfPossible; 027-13, 1.5 and 1.6):
+pSafe is set in the first call whose startup pos is at pEnd or later (the
+record of the last step, e = tEnd), to the stream length after that call's
+records; the cut needs sp >= pSafe. In the model (one record a call): v the
+first state with tEnd <= sp(v), and the states k with v < sp(k). Weaker than
+checkSchemeC's when sp(v) = tEnd. `checkSchemeJ` returns (iterations with the
+conditions, states checked, states that checkSchemeC does not check,
+failures); `diagJ` and `diagK` count what section 5.2 reports.
+-/
+import SIS.ReclaimExample
+
+open SIS SIS.Example SIS.PhysExample SIS.ReclaimExample
+
+def checkSchemeJ (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) : Nat × Nat × Nat × Nat :=
+  let n := ts.length
+  let dbs := (List.range (n + 1)).map (fun j => run sp al (ts.take j))
+  let sps := dbs.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (acc : Nat × Nat × Nat × Nat) it =>
+    let (pStart, pCut, tEnd) := it
+    let (nCond, nStates, nExtra, nBad) := acc
+    if !(decide (pCut ≤ pStart) && rewritesB sp al ts pCut tEnd && coverB sp al ts pCut tEnd) then acc
+    else
+      match sps.findIdx? (fun s => decide (tEnd ≤ s)) with
+      | none => (nCond + 1, nStates, nExtra, nBad)
+      | some v =>
+        let j0 := (sps.findIdx? (fun s => decide (tEnd < s))).getD (n + 1)
+        let ks := (List.range (n + 1)).filter (fun k =>
+          decide (v < sps.getD k 0) && decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S))
+        let extra := (ks.filter (fun k => !decide (j0 < sps.getD k 0))).length
+        let bad := (ks.filter (fun k => !cutOKB sp pCut (dbs.getD k (init sp)) k)).length
+        (nCond + 1, nStates + ks.length, nExtra + extra, nBad + bad)) (0, 0, 0, 0)
+
+
+/-- Diagnostics for 030-22: for each iteration with the scheme's conditions,
+(states between the waits, sp(k) at e or later but at most v, with fa at e or
+later; of them those where `CutOK` fails; states past Java's waits; of them those
+where a read from fa on reaches a version that is not its node's latest; of
+them those where such a version is in a record from c to v). -/
+def diagJ (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) : List Nat :=
+  let n := ts.length
+  let dbs := (List.range (n + 1)).map (fun j => run sp al (ts.take j))
+  let sps := dbs.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (acc : List Nat) it =>
+    let (pStart, pCut, tEnd) := it
+    if !(decide (pCut ≤ pStart) && rewritesB sp al ts pCut tEnd && coverB sp al ts pCut tEnd) then acc
+    else
+      match sps.findIdx? (fun s => decide (tEnd ≤ s)) with
+      | none => acc
+      | some v =>
+        let fine := fun k => decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S)
+        let mid := (List.range (n + 1)).filter (fun k =>
+          decide (tEnd ≤ sps.getD k 0) && decide (sps.getD k 0 ≤ v) && fine k)
+        let midBad := (mid.filter (fun k => !cutOKB sp pCut (dbs.getD k (init sp)) k)).length
+        let past := (List.range (n + 1)).filter (fun k => decide (v < sps.getD k 0) && fine k)
+        let supers := past.map (fun k =>
+          let db := dbs.getD k (init sp)
+          let f := lastFa db.S
+          let rs := (List.range' f (k + 1 - f)).flatMap (fun t => readsPhysB sp db.S db.P db.D t)
+          let sup := rs.filter (fun p => (db.S.lv p.1).map (·.recNo) != some p.2)
+          (sup.length, (sup.filter (fun p => decide (pCut ≤ p.2) && decide (p.2 ≤ v))).length))
+        let s1 := (supers.filter (fun q => decide (0 < q.1))).length
+        let s2 := (supers.filter (fun q => decide (0 < q.2))).length
+        List.zipWith (· + ·) acc [mid.length, midBad, past.length, s1, s2]) [0, 0, 0, 0, 0]
+
+
+/-- More diagnostics for 030-22, in the states past Java's waits: (states with a
+dangerous version, one in a record from c to v that names, for a child live at
+a time from e on, a version before c; states where a node not in D and
+reachable at k has a latest version that, for a child live at k, names another
+version than the child's latest; the same for a node reachable at some time t
+from e on and a child live at t). -/
+def diagK (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) : List Nat :=
+  let n := ts.length
+  let dbs := (List.range (n + 1)).map (fun j => run sp al (ts.take j))
+  let sps := dbs.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (acc : List Nat) it =>
+    let (pStart, pCut, tEnd) := it
+    if !(decide (pCut ≤ pStart) && rewritesB sp al ts pCut tEnd && coverB sp al ts pCut tEnd) then acc
+    else
+      match sps.findIdx? (fun s => decide (tEnd ≤ s)) with
+      | none => acc
+      | some v =>
+        let past := (List.range (n + 1)).filter (fun k => decide (v < sps.getD k 0) &&
+          decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S))
+        let res := past.map (fun k =>
+          let db := dbs.getD k (init sp)
+          let S := db.S
+          let ts' := List.range' tEnd (k + 1 - tEnd)
+          let oldOf := fun (y : NodeId) => (List.range pCut).any (fun r => (S.versionAt r y).isSome)
+          let dang := (List.range' pCut (v + 1 - pCut)).any (fun r =>
+            match S[r]? with
+            | some R => R.vers.any (fun w => ts'.any (fun t =>
+                (sp.live (w.hist.upTo t)).any (fun y =>
+                  match w.ref? y with
+                  | some r0 => decide (r0 < pCut)
+                  | none => oldOf y)))
+            | none => false)
+          let lnlAt := fun (x : NodeId) (t : Nat) =>
+            if inD db.D x then true else
+            match S.lv x with
+            | some w => (sp.live (w.hist.upTo t)).all (fun y =>
+                w.ref? y == (S.lv y).map (·.recNo))
+            | none => true
+          let lnlK := (reachList sp db.P k).all (fun x => lnlAt x k)
+          let lnlT := ts'.all (fun t => (reachList sp db.P t).all (fun x => lnlAt x t))
+          (dang, lnlK, lnlT))
+        let c1 := (res.filter (fun q => q.1)).length
+        let c2 := (res.filter (fun q => !q.2.1)).length
+        let c3 := (res.filter (fun q => !q.2.2)).length
+        List.zipWith (· + ·) acc [past.length, c1, c2, c3]) [0, 0, 0, 0]
+
+def add4 (a b : Nat × Nat × Nat × Nat) : Nat × Nat × Nat × Nat :=
+  (a.1 + b.1, a.2.1 + b.2.1, a.2.2.1 + b.2.2.1, a.2.2.2 + b.2.2.2)
+
+def main (args : List String) : IO UInt32 := do
+  let seeds := (args[0]?.bind String.toNat?).getD 20
+  let n := (args[1]?.bind String.toNat?).getD 30
+  let mut bad := 0
+  for (pol, a) in policies4.zipIdx do
+    let al := algo4 pol
+    let mut cT : Nat × Nat × Nat × Nat := (0, 0, 0, 0)
+    let mut cN : Nat × Nat × Nat × Nat := (0, 0, 0, 0)
+    for seed in [1:seeds + 1] do
+      let ts := (randomTs4 seed n).map (·.1)
+      cT := add4 cT (checkSchemeJ spec4 al ts)
+      cN := add4 cN (checkSchemeJ spec4n al ts)
+    bad := bad + cT.2.2.2 + cN.2.2.2
+    let mut dT : List Nat := [0, 0, 0, 0, 0]
+    let mut dN : List Nat := [0, 0, 0, 0, 0]
+    for seed in [1:seeds + 1] do
+      let ts := (randomTs4 seed n).map (·.1)
+      dT := List.zipWith (· + ·) dT (diagJ spec4 al ts)
+      dN := List.zipWith (· + ·) dN (diagJ spec4n al ts)
+    let mut eT : List Nat := [0, 0, 0, 0]
+    let mut eN : List Nat := [0, 0, 0, 0]
+    for seed in [1:seeds + 1] do
+      let ts := (randomTs4 seed n).map (·.1)
+      eT := List.zipWith (· + ·) eT (diagK spec4 al ts)
+      eN := List.zipWith (· + ·) eN (diagK spec4n al ts)
+    IO.println s!"policy {a} diagK [past waits, with a dangerous version from c to v, clean current node not naming the latest (at k), the same at a time from e on]: with the touch {eT}; without {eN}"
+    IO.println s!"policy {a} diag [between waits, CutOK fails there, past waits, reaching a superseded version, one from c to v]: with the touch {dT}; without {dN}"
+    IO.println s!"policy {a}: with the touch: {cT.1} iterations, {cT.2.1} states past Java's waits ({cT.2.2.1} not in checkSchemeC's), {cT.2.2.2} fail; without any touch: {cN.1} iterations, {cN.2.1} states ({cN.2.2.1} not in checkSchemeC's), {cN.2.2.2} fail"
+  IO.println (if bad == 0 then "JAVA WAITS OK" else s!"JAVA WAITS FAILED: {bad}")
+  return (if bad == 0 then 0 else 1)
