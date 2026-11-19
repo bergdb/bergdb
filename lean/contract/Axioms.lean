@@ -186,3 +186,5 @@ open Contract
 #print axioms reclaim_java_reads
 #print axioms Contract.PE.pe_reclaim_reads_of_valNew
 #print axioms valNew_of_unique
+#print axioms Contract.PE.pe_valNew
+#print axioms Contract.PE.pe_reclaim_reads
