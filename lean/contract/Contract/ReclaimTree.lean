@@ -621,11 +621,59 @@ theorem cutsMeetRC_of_iter {p : Params} {h : BHist} {top : Nat → Top} (hm : Me
   exact ⟨by omega, hfa, rc2_of_tree hm hM al hen (rc2_of_iteration hm hM hv hiter),
     rc3_tree hm hM al hen hne, hrc4⟩
 
+/-- **Reclaim chooses only safe cuts, given VAL-NEW** (bergdb 030-24): for a
+history in the contract's words with VAL-NEW, Java's still-dirty test and the
+marking, policies that read no cut stream, and cuts whose iterations meet
+`IterationOK` (with a key live at each iteration's end, the end at most the
+first available time, and Java's two waits), Java's get and scan after the
+run with handles, evictions and restarts from the cut streams are right at
+every time from the first available time on. -/
+theorem reclaim_java_reads {p : Params} {h : BHist} {top : Nat → Top} {kind : Nat → Bool}
+    (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hkd : KindsOK kind h) (hv : ValNew h)
+    (al : SIS.Algo BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec) (hmk : al.mark = true)
+    (hpol : SIS.PolicyCutOK al) (cs : List (Nat × Option Nat × List SIS.HCacheOp))
+    (hcs : cs.map (·.1) = h.ts)
+    (hit : CutsMeetIter h al cs)
+    (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
+      SIS.HCacheOp.read t ∈ cs[j].2.2 →
+      SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)
+    {t : Nat} (hft : SIS.lastFa (SIS.run h.spec al h.ts).S ≤ t) (htn : t ≤ h.txs.length)
+    (mid : Bool) (s : Tree) (tp : Top) :
+    let V := SIS.view h.spec (SIS.runHandlesCut h.spec al cs).1.P t
+    HoldsView V (kindOf kind V) t s →
+      TopFrom (SIS.lastFa (SIS.run h.spec al h.ts).S) (top h.txs.length) tp →
+      JReadsRight s tp t mid (h.txs.map (·.ops)) :=
+  cut_java_reads_of_rc hm hM hkd al hj hmk hpol cs hcs (cutsMeetRC_of_iter hm hM hv al hcs hit)
+    hreads hft htn mid s tp
+
 end Contract
 
 namespace Contract.PE
 
 variable {cf : Cfg}
+
+/-- **Reclaim chooses only safe cuts, for PE, given VAL-NEW** (bergdb 030-24):
+`reclaim_java_reads` for every history PE writes (`pe_full`), with VAL-NEW as a
+premise until `pe_valNew` is proved. -/
+theorem pe_reclaim_reads_of_valNew (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62)
+    {txs : List (List Op)} {h : BHist} {top : Nat → Top} (hlen : txs.length < 2 ^ 48 - 1)
+    (hk : ∀ ops ∈ txs, (ops.map Op.key).Nodup) (hh : peHist cf txs = some (h, top))
+    (hM : 1 ≤ cf.params.M) (hv : ValNew h)
+    (al : SIS.Algo SIS.Check.BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec)
+    (hmk : al.mark = true) (hpol : SIS.PolicyCutOK al)
+    (cs : List (Nat × Option Nat × List SIS.HCacheOp)) (hcs : cs.map (·.1) = h.ts)
+    (hit : CutsMeetIter h al cs)
+    (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
+      SIS.HCacheOp.read t ∈ cs[j].2.2 →
+      SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)
+    {t : Nat} (hft : SIS.lastFa (SIS.run h.spec al h.ts).S ≤ t) (htn : t ≤ h.txs.length)
+    (mid : Bool) (s : Tree) (tp : Top) :
+    let V := SIS.view h.spec (SIS.runHandlesCut h.spec al cs).1.P t
+    HoldsView V (kindOf (peKind cf) V) t s →
+      TopFrom (SIS.lastFa (SIS.run h.spec al h.ts).S) (top h.txs.length) tp →
+      JReadsRight s tp t mid (h.txs.map (·.ops)) := by
+  obtain ⟨hm, hkd⟩ := pe_full hcf hcap hlen hk hh
+  exact reclaim_java_reads hm hM hkd hv al hj hmk hpol cs hcs hit hreads hft htn mid s tp
 
 /- Not yet proved (bergdb 030-24):
 /-- **PE meets VAL-NEW** (bergdb 030-24; 030-22, section 2.3): every history PE
