@@ -4,6 +4,15 @@
 Status: done. Kind: Fix. Frans: none.
 Created 2026-11-18 by Frans Lundberg.
 
+Note (2026-11-19): 028-18, option C, changed what this fix made. The
+creating start now syncs both records with one sync and writes
+`created.txt` after it (until then `created.txt` came after the
+primordial record's sync, and this record's sync followed); a start that
+finds the primordial record alone refuses it with
+`DatabaseNotCreatedException` instead of completing it. The test
+`DbTesterStream.testCreationDurableWhenStartReturns` is kept, with
+`testCreatedTxtAfterBothRecords` beside it.
+
 What: `java/night.sh` on `main` 1b1001ee (run 2026-11-18-1239), step 10,
 `java/stress/kill-restart.sh 1000`, seed 20261118, failed in its 14th
 database:

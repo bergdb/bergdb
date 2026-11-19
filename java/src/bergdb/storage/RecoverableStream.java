@@ -231,6 +231,63 @@ public class RecoverableStream {
         readRaw(length - 1, lastByte);
         return lastByte[0] == 0;
     }
+
+    /**
+     * Whether the stream holds a creation's first transaction, committed, and no committed
+     * transaction after it (2026-11-19, bergdb 028-18): a crash, as a power loss, after a
+     * database's first transaction was written and before its second was, when a creation
+     * writes two (Db: the primordial record and the record of the startup distance). That
+     * is: the stream is no longer than a meta block distance (no second meta block) and
+     * does not begin after 0; its first meta block is complete and valid and names no
+     * transaction; the transaction after it ends at 'creationLength' and is committed (its
+     * last byte not 0); and after it the stream ends, or a transaction follows that is cut
+     * by the end of the stream (its size too), or failed (its last byte 0) and ends the
+     * stream. A stream that this method or isIncompleteCreation() does not take holds a
+     * committed transaction after the first, or is not one that a creation and a crash
+     * leave. This method only reads. Caller must hold DB.writeLock.
+     *
+     * @param creationLength  The length of the first meta block and the first transaction.
+     * @throws StreamIoException
+     */
+    public boolean holdsFirstTransactionAlone(long creationLength) {
+        final long length = aos.getLength();
+        if (length < creationLength || length >= META_BLOCK_DISTANCE || aos.getFirstPos() > 0
+                || creationLength <= META_BLOCK_SIZE) {
+            return false;
+        }
+
+        byte[] block = new byte[META_BLOCK_SIZE];
+        readRaw(0, block);
+        if (!MetaBlock.beginsAsBlock(block)) {
+            return false;
+        }
+        MetaBlock first = new MetaBlock(block, 0);
+        if (!first.isValid() || first.getLastTransSpos() != Constants.SposNULL) {
+            return false;
+        }
+        byte[] sizeBytes = new byte[4];
+        readRaw(META_BLOCK_SIZE, sizeBytes);
+        if (Bytes.bytesToIntLE(sizeBytes, 0) != creationLength - META_BLOCK_SIZE) {
+            return false;
+        }
+        byte[] lastByte = new byte[1];
+        readRaw(creationLength - 1, lastByte);
+        if (lastByte[0] == 0) {
+            return false;       // Failed: isIncompleteCreation() takes it, if alone.
+        }
+
+        final long rest = length - creationLength;
+        if (rest < 4) {
+            return true;        // No second transaction, or a part of its size.
+        }
+        readRaw(creationLength, sizeBytes);
+        int transSize = Bytes.bytesToIntLE(sizeBytes, 0);
+        if (rest != transSize) {
+            return rest < transSize;    // Cut; else more bytes follow it.
+        }
+        readRaw(length - 1, lastByte);
+        return lastByte[0] == 0;
+    }
     
     /** Reads bytes of the underlying stream, meta blocks included. */
     private void readRaw(long pos, byte[] buffer) {
@@ -1354,6 +1411,74 @@ public class RecoverableStream {
                 r.append(transBytes(100, LAST_BYTE), 0, 50, false, -1);
                 Assert.assertFalse("last byte " + last, isIncompleteCreation(m, creation));
             }
+        }
+        
+        /**
+         * Bergdb 028-18: holdsFirstTransactionAlone(), which a start checks before recovery.
+         * The creation's first transaction of 144 bytes after the first meta block, as Db
+         * writes it, committed: alone it is one, and so with any cut of a second transaction
+         * of 192 bytes after it, or that transaction whole and failed. Not one: a cut in the
+         * first transaction or the first failed (isIncompleteCreation's), the second
+         * committed, bytes after the second, a first transaction of another size, a block
+         * that names a transaction, a stream that reaches the second meta block. The method
+         * only reads.
+         */
+        @Nano
+        public static void testHoldsFirstTransactionAlone() throws IOException {
+            final int creation = META_BLOCK_SIZE + 144;
+            MemoryStream created = new MemoryStream();
+            new RecoverableStream(created, new MetaBlock()).append(transBytes(144, LAST_BYTE), 0,
+                    144, true, -1);
+            Assert.assertTrue("alone", holdsFirstAlone(created, creation));
+            for (int cut = 0; cut < creation; cut++) {
+                MemoryStream m = created.copy();
+                m.truncate(cut);
+                Assert.assertFalse("cut at " + cut, holdsFirstAlone(m, creation));
+            }
+            MemoryStream failedFirst = created.copy();
+            MemoryStream.TestAccess.write(failedFirst, new byte[] {0}, creation - 1);
+            Assert.assertFalse("the first failed", holdsFirstAlone(failedFirst, creation));
+            Assert.assertFalse("another length", holdsFirstAlone(created, creation - 8));
+            
+            MemoryStream both = created.copy();
+            new RecoverableStream(both, new MetaBlock()).append(transBytes(192, LAST_BYTE), 0,
+                    192, true, -1);
+            for (int cut = creation; cut < creation + 192; cut++) {
+                MemoryStream m = both.copy();
+                m.truncate(cut);
+                Assert.assertTrue("cut at " + cut, holdsFirstAlone(m, creation));
+            }
+            Assert.assertFalse("the second committed", holdsFirstAlone(both, creation));
+            MemoryStream failed = both.copy();
+            MemoryStream.TestAccess.write(failed, new byte[] {0}, creation + 191);
+            Assert.assertTrue("the second failed", holdsFirstAlone(failed, creation));
+            for (MemoryStream m : new MemoryStream[] {both.copy(), failed.copy()}) {
+                new RecoverableStream(m, new MetaBlock()).append(transBytes(24, LAST_BYTE), 0,
+                        12, false, -1);
+                Assert.assertFalse("bytes after the second", holdsFirstAlone(m, creation));
+            }
+            
+            MemoryStream names = created.copy();
+            byte[] pos = new byte[8];
+            Bytes.longToBytesLE(META_BLOCK_SIZE, pos, 0);
+            MemoryStream.TestAccess.write(names, pos, 16);
+            Assert.assertFalse("a block that names a transaction",
+                    holdsFirstAlone(names, creation));
+            MemoryStream large = created.copy();
+            new RecoverableStream(large, new MetaBlock()).append(
+                    transBytes(META_BLOCK_DISTANCE + 1000, LAST_BYTE), 0,
+                    META_BLOCK_DISTANCE, false, -1);
+            Assert.assertFalse("past the second meta block", holdsFirstAlone(large, creation));
+        }
+        
+        /** holdsFirstTransactionAlone() on the stream m, which it must leave as it was. */
+        private static boolean holdsFirstAlone(MemoryStream m, long creationLength)
+                throws IOException {
+            byte[] before = bytesOf(m);
+            boolean result = new RecoverableStream(m, new MetaBlock())
+                    .holdsFirstTransactionAlone(creationLength);
+            Assert.assertArrayEquals("unchanged", before, bytesOf(m));
+            return result;
         }
         
         /** The bytes of a transaction of 'size' bytes: its size, zeros, and its last byte. */
