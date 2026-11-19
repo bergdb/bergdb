@@ -189,3 +189,12 @@ open Contract
 #print axioms valNew_of_unique
 #print axioms Contract.PE.pe_valNew
 #print axioms Contract.PE.pe_reclaim_reads
+#print axioms MeetsFull.made_once
+#print axioms iterationOK_of_stepsOK
+#print axioms iterationOK_steps
+#print axioms stepsOK_live
+#print axioms cutsMeetIter_of_steps
+#print axioms reclaim_java_reads_steps
+#print axioms Contract.PE.pe_reclaim_reads_steps
+#print axioms Contract.StepsExample.stepsOK
+#print axioms Contract.StepsExample.iterationOK
