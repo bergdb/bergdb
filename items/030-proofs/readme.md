@@ -187,10 +187,30 @@ D4. Bounded startup's premises
 D5. The rest
 ------------
 
-* The costs (TP20 to TP33), reclaim's scheme (T-SCHEME), the model's
-  scope (026-14): open, not started; 006-26, sections 6 and 8.
+* The costs (TP20 to TP33), the model's scope (026-14): open, not
+  started; 006-26, sections 6 and 8. Reclaim's scheme (T-SCHEME): D6.
 * Java against the model: tested only, by the trace checkers; it stays
   a test.
+
+D6. Reclaim's safe cuts (T-SCHEME)
+----------------------------------
+
+* **Goal:** the second part of the aim: reclaim chooses only safe cuts,
+  so that the reads after cuts (`full_cut`, `cut_java_reads`,
+  `cut_keeps_top`) rest on tested, local conditions instead of `CutOK`
+  (030-04, 3.5, assumption 11).
+* **State (2026-11-19):** written down in 030-22: reclaim's contract RC,
+  four conditions at each cut that a trace can test (the order, the
+  rewrites at the iteration's end, a value below every index node, Java's
+  two waits); RC gives `CutOK` is T-SCHEME in the model, half proved since
+  024-07 (`T_latest`), the other half open (the older versions that reads
+  at earlier times follow; an invariant on superseded versions); T-SCHEME
+  with Java's exact waits held by running in the model. Not started in
+  Lean.
+* **Next:** Frans decides when (030-22 recommends: the proof after
+  Monday's reset; tonight at most the first step, the Lean statement and
+  the invariant found by running).
+* **Items:** 030-22; 001-07, section 5; 024-07, section 4.
 
 Where the contract's checks run
 -------------------------------
@@ -394,6 +414,16 @@ Files
   acceptance (`pe_accepts`: every transaction whose puts' keys the tree can
   hold, if H leaves room and the fuel suffices). Left: Java. The night of
   18 November. Status: done.
+* [030-22](22-reclaim-contract.md). Reclaim's contract, written down: four
+  conditions at each cut that a trace can test (RC1 the order, RC2 the
+  rewrites at the iteration's end, RC3 a value below every index node, RC4
+  Java's two waits); that they give `CutOK` is T-SCHEME, half proved
+  (`T_latest`), the rest needing an invariant on superseded versions; RC3
+  from the writer's contract, RC2 from the iteration with one more writer
+  property (a put makes a new value node); T-SCHEME with Java's exact waits
+  checked by running in the model (0 failures); 4,000 to 9,000 lines, 2 to
+  4 nights; the proof recommended after Monday's reset. Written
+  2026-11-19. Status: open.
 
 Log
 ===
