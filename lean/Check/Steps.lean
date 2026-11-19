@@ -13,6 +13,7 @@ import SIS.Phys
 import SIS.Handle
 import SIS.Reclaim
 import Check.R4
+import Check.Tree
 import Std.Data.HashSet
 import Std.Data.HashMap
 
@@ -879,5 +880,198 @@ def topFailures (sp : Spec BVal Nat) (P : Struct BVal) (lv : List (NodeId × Nat
         else some s!"top {w.node}: no SKIPT line for slot {j}"
     | some _, none => some s!"top {w.node}: slot {j}'s target {z} has no entries")
   popFails ++ extra ++ targetFails ++ timeFails
+
+/-! ## Reclaim's steps (bergdb 030-27)
+
+C-STEP: each step of reclaim against the model of the steps of bergdb 030-25 (`StepsOK`,
+lean/contract's Contract/ReclaimSteps.lean; 027-13, section 1.4), on trace format 3 with
+STEP lines (the exporter's steps=1). Reads with the tree model (SIS/Tree/Read.lean). -/
+
+/-- The value node that a key names at time t, from segment root r: the tree model's
+`getFrom` with the node's id in place of its value. -/
+def valueNodeFrom (p : SIS.Tree.Params) (view : View BVal) (t : Time) :
+    List Nat → NodeId → Option NodeId
+  | [], _ => none
+  | [cv], r => (SIS.Tree.getEq p view t cv p.fuel r).filter (fun y => (view y).any (·.isData))
+  | cv :: rest, r =>
+    match SIS.Tree.getEq p view t cv p.fuel r with
+    | some y => if (SIS.Tree.knodeOf p view y).isSome then valueNodeFrom p view t rest y else none
+    | none => none
+
+/-- The live keys after transaction t, in key order, each with the value node it names
+(bergdb 030-24's `idContents`): the tree model's scan of every key, and `valueNodeFrom`. -/
+def liveKeysAt (p : SIS.Tree.Params) (view : View BVal) (t : Time) :
+    List (SIS.Tree.Key × Option NodeId) :=
+  match SIS.Tree.rootAt view t with
+  | none => []
+  | some r => (SIS.Tree.scan p view t {} 1000000000).map (fun kv =>
+      (kv.key, valueNodeFrom p view t kv.key r))
+
+/-- Key a at or before key b. -/
+def keyLe (a b : SIS.Tree.Key) : Bool := !SIS.Tree.keyLt b a
+
+def showKeyOpt : Option SIS.Tree.Key → String
+  | some k => s!"{k}"
+  | none => "-"
+
+/-- C-STEP for the STEP line s of T(i), at the step's state (bergdb 030-27; 030-25,
+section 5): prev is the STEP line before it in the trace; e the greatest key live after
+T(t0), E (`endKey`); live the live keys after T(i - 1), the state that the step's scan
+reads, with their value nodes; madeAt the record whose transaction made a node; ops the
+step's OP lines (true: a noop). The failures by name, and the number of old KVs that the
+step met (a value node made before c), each one it must put again:
+- STEP-chain: L is the L' of the iteration's step before (none for its first, `StepsFrom`),
+  with the same c; a new iteration comes after a step with eod, with a later t0;
+- STEP-c: c ≤ t0 + 1, and the step after T(t0);
+- STEP-range: L' is L (no KV met) or a key of the range, the live keys after L up to E;
+  with eod the range's last key (the scan met all of it);
+- STEP-puts: the step puts every KV of the range up to L' whose value node is old;
+- STEP-ops: its operations have distinct keys and a put. -/
+def reclaimStepFailures (i : Nat) (s : SIS.Check.Tree.TStep) (prev : Option SIS.Check.Tree.TStep)
+    (e : Option SIS.Tree.Key) (live : List (SIS.Tree.Key × Option NodeId))
+    (madeAt : NodeId → Option Nat) (ops : List (SIS.Tree.Op × Bool)) :
+    List (String × String) × Nat :=
+  let first := if s.last.isNone then [] else
+    [s!"the iteration's first step with lastKey {showKeyOpt s.last}"]
+  let chain : List String := match prev with
+    | some q =>
+      if q.t0 == s.t0 then
+        (if q.c == s.c then [] else [s!"c {s.c}, the iteration's step before has c {q.c}"]) ++
+        (if q.next == s.last then [] else
+          [s!"lastKey before {showKeyOpt s.last}, the step before left {showKeyOpt q.next}"])
+      else
+        (if q.eod then [] else
+          [s!"a new iteration (t0 {s.t0}) before a step with eod in the one of t0 {q.t0}"]) ++
+        (if q.t0 < s.t0 then [] else [s!"t0 {s.t0}, not after the iteration before's, {q.t0}"]) ++
+        first
+    | none => first
+  let cf := (if s.c ≤ s.t0 + 1 then [] else [s!"c {s.c} after t0 + 1 = {s.t0 + 1}"]) ++
+    (if s.t0 < i then [] else [s!"t0 {s.t0}, not before the step"])
+  let range := live.filter (fun (k, _) =>
+    s.last.all (fun l => SIS.Tree.keyLt l k) && e.any (fun e => keyLe k e))
+  let inRange := s.next == s.last || s.next.any (fun n => range.any (·.1 == n))
+  let lastOk := !s.eod || (match range.getLast? with
+    | some (k, _) => s.next == some k
+    | none => s.next == s.last)
+  let rf := (if inRange then [] else
+      [s!"lastKey after {showKeyOpt s.next}: not L, nor a key of the range after {showKeyOpt s.last} up to E = {showKeyOpt e}"]) ++
+    (if lastOk then [] else
+      [s!"eod, but lastKey after {showKeyOpt s.next} is not the range's last key, {showKeyOpt (range.getLast?.map (·.1))}"])
+  let met := if s.next == s.last then [] else match s.next with
+    | some n => range.filter (fun (k, _) => keyLe k n)
+    | none => []
+  let noNode := met.filter (·.2.isNone)
+  let old := met.filter (fun (_, y) => y.any (fun y => (madeAt y).all (· < s.c)))
+  let puts := ops.filterMap (fun (o, noop) => match o with
+    | .put k _ => if noop then none else some k
+    | .del _ => none)
+  let missing := old.filter (fun (k, _) => !puts.contains k)
+  let pf := (if noNode.isEmpty then [] else
+      [s!"keys met without a value node: {(noNode.map (·.1)).take 4}"]) ++
+    (if missing.isEmpty then [] else
+      [s!"{missing.length} of {old.length} old KVs met not put again: {(missing.map (fun (k, y) => s!"{k} (node {y.getD 0})")).take 4}"])
+  let keys := ops.map (·.1.key)
+  let of := (if keys.eraseDups.length == keys.length then [] else ["two operations of one key"]) ++
+    (if puts.isEmpty then ["no put"] else [])
+  (chain.map (fun m => ("STEP-chain", m)) ++ cf.map (fun m => ("STEP-c", m)) ++
+   rf.map (fun m => ("STEP-range", m)) ++ pf.map (fun m => ("STEP-puts", m)) ++
+   of.map (fun m => ("STEP-ops", m)), old.length)
+
+/- A step with keys [8] (old, node 5), [16] (new, node 7) and [24] (old, node 9) live, E =
+[24], c = 3: the first step meets [8] and [16] and puts [8]; a second step that left out
+[24], or a first step that claims eod after [16], fails. -/
+#guard (reclaimStepFailures 4 ⟨1, 2, none, some [16], false⟩ none (some [24])
+  [([8], some 5), ([16], some 7), ([24], some 9)] (fun y => if y == 7 then some 3 else some 1)
+  [(.put [8] 1, false), (.put [99] 2, false)]) == ([], 1)
+#guard ((reclaimStepFailures 6 ⟨1, 2, some [16], some [24], true⟩ (some ⟨1, 2, none, some [16], false⟩)
+  (some [24]) [([8], some 5), ([16], some 7), ([24], some 9)] (fun _ => some 1)
+  [(.put [99] 2, false)]).1.map (·.1)) == ["STEP-puts"]
+#guard ((reclaimStepFailures 4 ⟨1, 2, none, some [16], true⟩ none (some [24])
+  [([8], some 5), ([16], some 7), ([24], some 9)] (fun _ => some 1)
+  [(.put [8] 1, false), (.put [16] 1, false)]).1.map (·.1)) == ["STEP-range"]
+#guard ((reclaimStepFailures 4 ⟨1, 3, some [8], some [16], false⟩ none (some [24])
+  [([8], some 5), ([16], some 7)] (fun _ => some 1)
+  [(.put [16] 1, false), (.put [16] 1, false)]).1.map (·.1)) ==
+  ["STEP-chain", "STEP-c", "STEP-ops"]
+
+/-- The counts of C-STEP, and its failures, each with its record. -/
+structure StepReport where
+  /-- STEP lines checked. -/
+  steps : Nat := 0
+  /-- Iterations (STEP lines' t0), and those whose last step has eod. -/
+  iterations : Nat := 0
+  ended : Nat := 0
+  /-- The old KVs that the steps met, each checked put again. -/
+  old : Nat := 0
+  /-- CUT lines checked against their iteration's last step. -/
+  cuts : Nat := 0
+  fails : List (Nat × List (String × String)) := []
+
+/-- C-STEP over a trace with STEP lines (bergdb 030-27): `reclaimStepFailures` for every STEP line,
+on the tree model's reads of P after its record; STEP-line: a STEP line in every step of
+reclaim (a record with a TOUCH line) and in no other record, one a record; and CUT-steps:
+at every CUT line `CUT c f`, the iteration with that c has its last step, with eod, at f,
+the first available time (Java's fa := tEnd, the time of the step whose scan passed the
+end). -/
+def stepCheck (tr : Trace) (tt : SIS.Check.Tree.TTrace) : StepReport := Id.run do
+  match tt.tree with
+  | none => return { fails := [(0, [("STEP-form", "STEP lines without the TREE line of trace format 3")])] }
+  | some (p, _) =>
+    let recs := tr.recs
+    let madeMap : Std.HashMap NodeId Nat := recs.foldl (fun m r =>
+      r.new.foldl (fun m (x, _, _) => m.insert x r.idx) m) {}
+    -- The record of each iteration's last STEP line, by t0; the STEP line of each record.
+    let lastOf : Std.HashMap Nat Nat := tt.txs.foldl (fun m x =>
+      x.steps.foldl (fun m s => m.insert s.t0 x.idx) m) {}
+    let stepAt : Std.HashMap Nat SIS.Check.Tree.TStep := tt.txs.foldl (fun m x =>
+      match x.steps[0]? with
+      | some s => m.insert x.idx s
+      | none => m) {}
+    let mut rep : StepReport := {}
+    if tt.txs.size != recs.size || !tt.bad.isEmpty then
+      rep := { rep with fails := [(0, [("STEP-form",
+        s!"{recs.size} transactions, {tt.txs.size} with tree lines; bad lines: {tt.bad.toList.take 4}")])] }
+    let mut P : SIS.Check.Tree.PMap := {}
+    let mut prev : Option SIS.Check.Tree.TStep := none
+    let mut eOf : Option (Nat × Option SIS.Tree.Key) := none
+    for (r, x) in recs.toList.zip tt.txs.toList do
+      let after := SIS.Check.Tree.applyRec p P r
+      let mut f : List (String × String) := []
+      if x.idx != r.idx then f := f ++ [("STEP-form", s!"the tree lines of TX {x.idx} at TX {r.idx}")]
+      if x.steps.size > 1 then f := f ++ [("STEP-line", s!"{x.steps.size} STEP lines")]
+      let isStep := !r.touch.isEmpty
+      match x.steps[0]? with
+      | none =>
+        if isStep then f := f ++ [("STEP-line", "a step (a TOUCH line) without a STEP line")]
+      | some s =>
+        if !isStep then f := f ++ [("STEP-line", "a STEP line in a transaction without a TOUCH line")]
+        let view : View BVal := fun y => after[y]?
+        let e := match eOf with
+          | some (t0, e) => if t0 == s.t0 then e else ((liveKeysAt p view s.t0).getLast?.map (·.1))
+          | none => (liveKeysAt p view s.t0).getLast?.map (·.1)
+        eOf := some (s.t0, e)
+        let (sf, n) := reclaimStepFailures r.idx s prev e (liveKeysAt p view (r.idx - 1))
+          (fun y => madeMap[y]?) x.ops.toList
+        f := f ++ sf
+        if prev.all (·.t0 != s.t0) then rep := { rep with iterations := rep.iterations + 1 }
+        if s.eod && lastOf[s.t0]? == some r.idx then rep := { rep with ended := rep.ended + 1 }
+        rep := { rep with steps := rep.steps + 1, old := rep.old + n }
+        prev := some s
+      match r.cut with
+      | some (c, fa) =>
+        rep := { rep with cuts := rep.cuts + 1 }
+        match stepAt[fa]? with
+        | none => f := f ++ [("CUT-steps", s!"CUT {c} {fa}: no STEP line at R({fa}), the first available time")]
+        | some s =>
+          if s.c != c then
+            f := f ++ [("CUT-steps", s!"CUT {c} {fa}: the step at R({fa}) has c {s.c}")]
+          if !s.eod then
+            f := f ++ [("CUT-steps", s!"CUT {c} {fa}: the step at R({fa}) has no eod")]
+          if lastOf[s.t0]? != some fa then
+            f := f ++ [("CUT-steps", s!"CUT {c} {fa}: the iteration of t0 {s.t0} has a step after R({fa})")]
+      | none => pure ()
+      if !f.isEmpty then rep := { rep with fails := rep.fails ++ [(r.idx, f)] }
+      P := after
+    return rep
 
 end SIS.Check

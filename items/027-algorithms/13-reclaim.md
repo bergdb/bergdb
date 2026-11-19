@@ -298,8 +298,10 @@ pending, M1's condition holds, or the dead hand has more.
   argument of 026-05, section 3.1: it was written by tStart and its key had
   no write since, so the key was live from tStart on and is at most E; the
   steps' ranges cover every key up to E, and the step whose range holds it
-  rewrote it. That Java's steps are the model's: checked through RC2
-  (C-CUT's part 2), not step by step; gated
+  rewrote it. That Java's steps are the model's: checked step by step on
+  the reclaim traces since 030-27 (C-STEP, on 027-02's STEP lines: each
+  step against the model's step at its state, each cut against its
+  iteration's last step), and through RC2 (C-CUT's part 2); gated
   (`testIterationRewritesAllOldValues`, `testStepScansAtItsOwnTime`,
   `testEndKeyBoundsTheScan`).
 * **LIVEBELOW** (part 4): each index node a lookup reaches, but an empty
@@ -424,11 +426,13 @@ pending, M1's condition holds, or the dead hand has more.
 * **Left out**: keys, the scan and E, R and the times, the table, the
   allowance and the step sizes, the durable wait, the storage's files,
   reads in flight, `maintain()` (its records are like any), the settings.
-* **Conformance** (027-02's `TOUCH`, `FA`, `CUT`, `PHYSCUT`; Check/Steps
-  and TraceCheck.lean): C-A (TouchOK, `touchPath`), C-S (the model's
-  step against Java's records, D on the cut stream), C-CUT (`CutOK` at
-  every cut Java decides; `CUT-live`; RC, 030-23), C-L (the first touches after
-  restarts); C-P and C-H with eviction.
+* **Conformance** (027-02's `TOUCH`, `FA`, `CUT`, `PHYSCUT`, `STEP`;
+  Check/Steps and TraceCheck.lean): C-A (TouchOK, `touchPath`), C-S (the
+  model's step against Java's records, D on the cut stream), C-CUT
+  (`CutOK` at every cut Java decides; `CUT-live`; RC, 030-23), C-STEP
+  (each step of reclaim against the model of the steps, `StepsOK`, and
+  each cut against its iteration's last step; 030-27), C-L (the first
+  touches after restarts); C-P and C-H with eviction.
 
 
 ## 6. In Java
@@ -495,7 +499,8 @@ pending, M1's condition holds, or the dead hand has more.
 * T-SCHEME is proved for BergDB's tree, given RC at each cut (030-24);
   RC1 and RC4 (Java's arithmetic of the cut) are checked at every cut,
   not proved; `IterationOK` (REWRITES) is proved from a model of the
-  steps (030-25); that Java's steps are the model's is gated, and its
+  steps (030-25); that Java's steps are the model's is checked step by
+  step on the reclaim traces (C-STEP, 030-27) and gated, and its
   consequence RC2 is checked at every cut.
   001-07's register rows M32, M33, M36, M41 and M48 are argued or checked.
   A step's commit without conflict is argued for Java.
@@ -567,3 +572,6 @@ an agent of coord-1118, on the branch `028-26-reclaim-charge`.
 2026-11-19. REWRITES proved from a model of 1.4's steps (030-25): section
 3's REWRITES and T-SCHEME, sections 5 and 9. By an agent of coord-1118, on
 the branch `030-25-iteration-ok`.
+
+2026-11-19. Java's steps checked on the traces (030-27): section 3's
+REWRITES, sections 5 and 9.

@@ -46,8 +46,10 @@
 #      the small reclaim set (2 seeds quick, 5 full): each trace's every record
 #      against the model's step on the cut stream, CutOK at every cut Java
 #      decides, the touch assumptions, and the probes after restarts from the
-#      cut stream. It needs the checker (cd ../lean && lake build, Lean 4
-#      v4.34.1), which the step builds.
+#      cut stream; since bergdb 030-27 also each step of reclaim against the
+#      model of the steps (C-STEP, on STEP lines), after the check's own fault
+#      test (lean/test-traces/step-faults.sh). It needs the checker (cd ../lean
+#      && lake build, Lean 4 v4.34.1), which the step builds.
 #   9. InterruptStress (bergdb 005-46): a writer with syncs, readers, reclaim's
 #      cuts, eviction and restarts on a FileStream, while a thread interrupts
 #      them at random every 100 microseconds and the storage threads every
@@ -173,9 +175,13 @@ grep '^POWERLOSS OK' $LOG/powerloss.txt
 
 echo "8. Conformance with the Lean model, with reclaim"
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
+sh ../lean/test-traces/step-faults.sh > $LOG/step-faults.txt 2>&1
+grep -q '^STEP FAULTS OK' $LOG/step-faults.txt || fail "C-STEP's fault test, lean/test-traces/step-faults.sh" $LOG/step-faults.txt
+echo "   C-STEP's fault test: $(grep -c ': fails, ' $LOG/step-faults.txt) faults found, STEP FAULTS OK"
 sh stress/conformance.sh reclaim $CONF_SEEDS > $LOG/conformance.txt 2>&1
 grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh reclaim" $LOG/conformance.txt
 echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-CUT $(grep '^   C-CUT:' $LOG/conformance.txt | sed 's/^ *C-CUT: //')"
+echo "   C-STEP: $(grep '^   C-STEP:' $LOG/conformance.txt | sed 's/^ *C-STEP: //')"
 
 echo "9. InterruptStress, interrupts everywhere"
 $JAVA -ea -Xmx2g -cp $CP bergdb.core.InterruptStress $INTERRUPT_SEC build/level3/interruptstress \

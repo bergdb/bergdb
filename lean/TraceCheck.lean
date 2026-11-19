@@ -48,6 +48,17 @@ Checks, per transaction i (R(0) included):
        available time with its version at the cut or later; RC4-waits, the
        startup pos of R(i) after v, the first record whose startup pos
        reached the first available time (Java's two waits); RC3 is CUT-live
+  C-STEP with STEP lines (trace format 3 with the exporter's steps=1; bergdb 030-27):
+       Java's steps of reclaim are the model's steps of bergdb 030-25 (`StepsOK`), on
+       the tree model's reads: per STEP line, at the step's state, L is the L' of the
+       iteration's step before (none for its first), c <= t0 + 1, L' is L or a key of
+       the range (the live keys after L up to E, the greatest key live after T(t0)),
+       with eod the range's last, the step puts every KV of the range up to L' whose
+       value node was made before c, and its operations have distinct keys and a put
+       (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-ops); a STEP line in every
+       record with a TOUCH line and in no other (STEP-line); and per CUT line, the
+       iteration with its c has its last step, with eod, at the CUT's first available
+       time (CUT-steps)
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
        physical states (`slotFailures`; INV-SLOT of the design before handles,
        SIS/EvictExample.lean's `invSlotB`, which `TC_records` proved, until
@@ -130,7 +141,8 @@ def main (args : List String) : IO UInt32 := do
     return 2
   | file :: rest =>
     let o := parseOpts rest {}
-    let t := parseTrace (← IO.FS.readFile file)
+    let text ← IO.FS.readFile file
+    let t := parseTrace text
     IO.println s!"TRACECHECK {file}"
     IO.println s!"CONFIG {t.config}"
     IO.println s!"options: step3 {if o.mark then "mark" else "exact"}, step7 {if o.java7 then "java" else "exact"}, root {if o.virtual then "virtual" else "model"}{if o.inv then ", INV-2" else ""}"
@@ -139,6 +151,9 @@ def main (args : List String) : IO UInt32 := do
       IO.println "TRACECHECK FAILED: the trace could not be read"
       return 1
     let recs := t.recs
+    -- C-STEP (bergdb 030-27): with STEP lines, Java's steps of reclaim, on the tree lines.
+    let stepRep : Option StepReport := if t.stepLines == 0 then none
+      else some (stepCheck t (SIS.Check.Tree.parseTree text))
     if recs.isEmpty then
       IO.println "TRACECHECK FAILED: no transactions"
       return 1
@@ -384,6 +399,15 @@ def main (args : List String) : IO UInt32 := do
         (if ccut.byName.isEmpty then "" else s!" ({", ".intercalate (ccut.byName.map (fun p => s!"{p.1} {p.2}"))})"))
       for e in ccut.examples do IO.println s!"  {e}"
       IO.println s!"C-CUT RC (bergdb 030-23): RC1 to RC4 at {rcCount} CUT lines (RC3 is CUT-live); RC4's least margin, the startup pos past v: {rcMargin}, CUT lines with a margin of 1: {rcTight}"
+    let mut cstep : Tally := {}
+    match stepRep with
+    | some rep =>
+      for (i, f) in rep.fails do cstep := cstep.add i f
+      IO.println (s!"C-STEP reclaim's steps (bergdb 030-27): {cstep.failing} of {total} transactions fail" ++
+        (if cstep.byName.isEmpty then "" else s!" ({", ".intercalate (cstep.byName.map (fun p => s!"{p.1} {p.2}"))})") ++
+        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again, {rep.cuts} CUT lines with their iteration's last step")
+      for e in cstep.examples do IO.println s!"  {e}"
+    | none => pure ()
     diag.show "diagnostics" total
     let failed := (if ca.failing > 0 then ["C-A"] else []) ++ (if cs.failing > 0 then ["C-S"] else []) ++
       (if cv.failing > 0 then ["C-V"] else []) ++ (if probeFails.length > 0 then ["C-R"] else []) ++
@@ -391,6 +415,7 @@ def main (args : List String) : IO UInt32 := do
       (if cpt.failing > 0 then ["C-P"] else []) ++
       (if cht.failing > 0 then ["C-H"] else []) ++
       (if ccut.failing > 0 then ["C-CUT"] else []) ++
+      (if cstep.failing > 0 then ["C-STEP"] else []) ++
       (if t.errors.size > 0 then ["exporter"] else []) ++
       (if t.done != some (total - 1) then ["incomplete"] else [])
     if failed.isEmpty then

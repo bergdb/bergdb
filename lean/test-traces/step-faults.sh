@@ -1,0 +1,101 @@
+#!/bin/sh
+# The trace checker's C-STEP, its own test (bergdb 030-27): faults made by hand in
+# the STEP lines and OP lines of a good trace must each make `tracecheck` fail, by
+# the name of the check that finds them; the good trace must pass, with an
+# iteration of more than one step. The trace: TraceExport with reclaim, tree=1 and
+# steps=1 (027-02, section 4), seed 1, 300 transactions, 14 steps in 11 iterations.
+# The faults:
+#   noputs   the OP P lines of the first step with two puts or more left out: an
+#            old KV the step met is not put again (STEP-puts)
+#   nextkey  the first step that does not end its iteration (eod 0) leaves lastKey
+#            as it was: the next step's lastKey before is not it (STEP-chain)
+#   eod      that step with eod 1: its lastKey after is not the range's last key
+#            (STEP-range)
+#   first    the first step with a lastKey before (STEP-chain)
+#   cut      the first step with c = t0 + 2 (STEP-c)
+#   outside  the first step's lastKey after the key [8], before every key of the
+#            range (STEP-range)
+#   noeod    the step at the first CUT line's first available time with eod 0: the
+#            iteration of the cut has no last step with eod there (CUT-steps)
+#   nostep   the first STEP line left out (STEP-line)
+#   extra    a STEP line in TX 3, a user transaction (STEP-line)
+#   badline  a STEP line whose eod is 2 (STEP-form)
+#
+# Usage: lean/test-traces/step-faults.sh
+# Needs: the checker (cd lean && lake build tracecheck) and java/build (java/build.sh).
+# Prints one line per fault and STEP FAULTS OK or STEP FAULTS FAILED. About 1 minute.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
+cd "$(dirname "$0")/.."
+echo "Kind: functional"
+CHECK=$(pwd)/.lake/build/bin/tracecheck
+[ -x "$CHECK" ] || { echo "STEP FAULTS FAILED: no checker; run lake build in lean/"; exit 1; }
+JAVA=${JAVA:-java}
+if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
+CP=../java/build/bergdb.jar:../java/build/stress
+DIR=${TMPDIR:-/tmp}/step-faults.$$
+mkdir -p $DIR
+PROPS="-Dn=300 -Dkeys=200 -Dmaxnode=14 -Dsd=1000 -Dops=8 -Ddel=25 -Dretain=2 -Dtree=1 -Dsteps=1"
+$JAVA -ea $PROPS -cp $CP bergdb.core.TraceExport 1 $DIR/good.trace > $DIR/good.txt 2>&1 \
+    || { echo "STEP FAULTS FAILED: TraceExport: $(tail -1 $DIR/good.txt)"; exit 1; }
+G=$DIR/good.trace
+FAILED=0
+
+# expect NAME PASS|CHECK FILE: runs the checker on FILE; it must pass, or fail with
+# CHECK among C-STEP's failures.
+expect() {
+    "$CHECK" $3 > $DIR/$1.out 2>&1
+    status=$?
+    line=$(grep '^C-STEP' $DIR/$1.out)
+    if [ $2 = PASS ]; then
+        if [ $status = 0 ] && echo "$line" | grep -q ': 0 of '; then
+            echo "   $1: passes: $(echo "$line" | sed 's/.*fail; //')"
+            return
+        fi
+    elif [ $status != 0 ] && echo "$line" | grep -q "[(, ]$2 [0-9]"; then
+        echo "   $1: fails, $2: $(grep -A1 '^C-STEP' $DIR/$1.out | tail -1 | sed 's/^ *//' | cut -c1-110)"
+        return
+    fi
+    echo "   $1: WRONG, expected $2: $(echo "$line" | cut -c1-110) $(tail -1 $DIR/$1.out)"
+    FAILED=$((FAILED + 1))
+}
+
+# fault NAME CHECK AWK-PROGRAM [AWK-OPTIONS]: the good trace changed by the program must
+# fail with CHECK.
+fault() {
+    awk $4 "$3" $G > $DIR/$1.trace
+    cmp -s $G $DIR/$1.trace && { echo "   $1: WRONG, the fault changed nothing"; FAILED=$((FAILED + 1)); return; }
+    expect $1 $2 $DIR/$1.trace
+}
+
+expect good PASS $G
+# An iteration of more than one step: fewer iterations than STEP lines.
+grep '^C-STEP' $DIR/good.out | sed -E 's/.*; ([0-9]+) STEP lines, ([0-9]+) iterations.*/\1 \2/' \
+    | awk '{exit !($1 > $2)}' \
+    || { echo "   good: WRONG, no iteration of more than one step"; FAILED=$((FAILED + 1)); }
+
+fault noputs STEP-puts 'BEGIN {s = -1} /^TX /{tx = $2}
+    /kind=step/ && !d {split($4, a, "="); if (a[2] >= 2) {s = tx; d = 1}}
+    !(tx == s && /^OP P /) {print}'
+fault nextkey STEP-chain '/^STEP / && $4 == "-" && $NF == "0" && !d {print "STEP " $2 " " $3 " - - 0"; d = 1; next} {print}'
+fault eod STEP-range '/^STEP / && $4 == "-" && $NF == "0" && !d {$NF = "1"; d = 1} {print}'
+fault first STEP-chain '/^STEP / && $4 == "-" && !d {
+    lp = ""; for (i = 5; i < NF; i++) lp = lp " " $i
+    print "STEP " $2 " " $3 lp lp " " $NF; d = 1; next} {print}'
+fault cut STEP-c '/^STEP / && !d {$3 = $2 + 2; d = 1} {print}'
+fault outside STEP-range '/^STEP / && $4 == "-" && !d {print "STEP " $2 " " $3 " - 1 8 " $NF; d = 1; next} {print}'
+F=$(awk '/^CUT /{print $3; exit}' $G)
+fault noeod CUT-steps '/^TX /{tx = $2} /^STEP / && tx == f {$NF = "0"} {print}' "-v f=$F"
+fault nostep STEP-line '/^STEP / && !d {d = 1; next} {print}'
+S1=$(grep -m1 '^STEP ' $G)
+fault extra STEP-line '{print} /^TX 3$/{gsub(/_/, " ", s); print s}' "-v s=$(echo $S1 | tr ' ' '_')"
+fault badline STEP-form '/^STEP / && !d {$NF = "2"; d = 1} {print}'
+
+rm -rf $DIR
+if [ $FAILED -eq 0 ]; then
+    echo "STEP FAULTS OK"
+else
+    echo "STEP FAULTS FAILED: $FAILED"
+    exit 1
+fi

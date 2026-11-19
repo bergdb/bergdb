@@ -132,6 +132,8 @@ structure Trace where
   recs : Array TRec := #[]
   bad : Array String := #[]
   done : Option Nat := none
+  /-- The number of STEP lines (bergdb 030-27). -/
+  stepLines : Nat := 0
 
 def toks (line : String) : List String :=
   (line.splitOn " ").filter (fun s => !s.isEmpty)
@@ -180,6 +182,9 @@ def parseLine (t : Trace) (n : Nat) (line : String) : Trace :=
   | "KN" :: _ => t
   | "GET" :: _ => t
   | "SCAN" :: _ => t
+  -- A step of reclaim (bergdb 030-27), which Check/Tree.lean reads and Check/Steps.lean's
+  -- `stepCheck` checks; counted here.
+  | "STEP" :: _ => { t with stepLines := t.stepLines + 1 }
   | "CONFIG" :: r => { t with config := " ".intercalate r }
   | "ERROR" :: r => { t with errors := t.errors.push (" ".intercalate r) }
   | ["TX", i] => match i.toNat? with
