@@ -149,3 +149,10 @@ open Contract
 #print axioms Contract.PE.pe_accepts_step
 #print axioms Contract.PE.pe_extend
 #print axioms Contract.PE.AcceptExample.accepts
+#print axioms rc_latest
+#print axioms rc_parts
+#print axioms tscheme_of_open
+#print axioms hcut_of_rc
+#print axioms full_cut_rc
+#print axioms cut_keeps_top_rc
+#print axioms cut_java_reads_rc
