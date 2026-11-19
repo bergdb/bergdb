@@ -136,6 +136,8 @@ final class PeWriter {
      */
     static final class VN {
         final KeyNode base;
+        /** The base's live list (null: no base; or not made yet, for a sparse node: lb()). */
+        Live lb;
         final Tgt from;
         final int g, h;
         final boolean join;
@@ -149,10 +151,27 @@ final class PeWriter {
         /** Its decision is one new node because its base would hold more than theta dead
          *  klongs (option 2's compaction, bergdb 024-23): for the counts only. */
         boolean compact;
+        /**
+         * An inner node kept as it was, decided without its lists (NodeFrame's short way): es
+         * holds its planned children only, f is null, and its final list is its base's live
+         * list (entries() makes es whole when a join or a settle needs it).
+         */
+        boolean sparse;
+        /**
+         * A segment leaf kept or appended to, decided by counts (LeafFrame's short way): es and
+         * f are null, its changes over its base's live list are 'changes' (an entry set, or
+         * REMOVED), and its final list has nFinal entries.
+         */
+        ArrayList<Ent> changes;
+        int nFinal;
+        /** An inner node appended to, decided by counts (NodeFrame.appendedByCounts): es holds
+         *  its children planned only (sparse), f is null, its final list has nFinal entries. */
+        boolean counted;
 
-        VN(KeyNode base, Tgt from, int g, int h, boolean join, ArrayList<Ent> es,
+        VN(KeyNode base, Live lb, Tgt from, int g, int h, boolean join, ArrayList<Ent> es,
                 ArrayList<FEnt> f, int dec) {
             this.base = base;
+            this.lb = lb;
             this.from = from;
             this.g = g;
             this.h = h;
@@ -163,7 +182,21 @@ final class PeWriter {
         }
 
         int size() {
-            return f.size();
+            return f != null ? f.size() : changes != null || counted ? nFinal : lb().n;
+        }
+
+        /** Its final list is empty (VN.isEmpty). A sparse node kept as it was had a child
+         *  planned, so it is not; its live list is not made for this. */
+        boolean isEmpty() {
+            return !(sparse && dec == SAME) && size() == 0;
+        }
+
+        /** The base's live list, made when first needed. */
+        Live lb() {
+            if (lb == null && base != null) {
+                lb = live(base);
+            }
+            return lb;
         }
 
         boolean changed() {
@@ -180,6 +213,10 @@ final class PeWriter {
         final KeyNode root = dag.getTopDs().findRoot(tt, pd);      // marks the super root and it
         if (root == null) {
             throw new DbException("Found no root node at t=" + tt + ", cannot continue put.");
+        }
+        if (keys.length <= SHORT_OPS && shortWay(root)) {
+            Dag.statShort++;
+            return;
         }
         final Tgt rootTgt = new Tgt(root);
         final VN v = (VN) runFrames(new TreeFrame(rootTgt, 0, 0, keys.length, true));
@@ -198,6 +235,239 @@ final class PeWriter {
         final KeyNode newRoot = t.node != null ? (KeyNode) t.node : follow(t);
         dag.getTopDs().newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener,
                 pd.nodeChangeListener);
+    }
+
+    // ======== The short way of a small transaction ========
+    //
+    // A transaction of at most SHORT_OPS operations whose every segment leaf that it changes is
+    // appended to, keeps a live klong and, but a segment root, at least m (a decision of
+    // decideNode by counts, as LeafFrame's short way), and that makes no segment tree, keeps
+    // every other node of its paths as it was: an inner node whose children planned are kept,
+    // not empty and not joined, and whose first live klong is the empty key, is same (as
+    // NodeFrame's short way), and a root of two live klongs or more, or a segment leaf, is not
+    // settled away. So PE's plan writes exactly the klongs appended, and the values and delete
+    // nodes in key order, as here, with no frame and no list: the operations are found as a
+    // get finds a key, decided, and then written. Anything else: nothing is changed, and the
+    // plan runs. The tree checker compares both ways with the model on every traced
+    // transaction.
+    //
+
+    /** At most this many operations take the short way. */
+    private static final int SHORT_OPS = 8;
+
+    /** The live lists of the segment leaves that the short way read (null: none), which the
+     *  plan reads again if the short way is not taken: no node is written before the plan. */
+    private java.util.IdentityHashMap<KeyNode, Live> liveOf;
+
+    /**
+     * The short way (see above): true if taken, the transaction done; false if not, nothing
+     * changed or reported.
+     */
+    private boolean shortWay(KeyNode root) {
+        final int n = keys.length;
+        final KeyNode[] leafOf = new KeyNode[n];        // null: a noop
+        final boolean[] rootLeaf = new boolean[n];      // its leaf is a root of its tree
+        final java.util.ArrayList<KeyNode> path = new java.util.ArrayList<KeyNode>();
+        final int[] pathEnd = new int[n];               // op i's nodes: path[pathEnd[i-1], pathEnd[i])
+        final KlongWithPointer kwi = pd.kwi;
+        final Live[] lvOf = new Live[n];
+        for (int i = 0; i < n; i++) {
+            final long[] key = keys[i];
+            KeyNode node = root;
+            for (int g = 0; ; g++) {
+                boolean segRoot = true;
+                int depth = 0;
+                while (!node.isSegmentLeaf()) {
+                    final int idx = innerChild(node, key[g], segRoot);
+                    if (idx < 0 || ++depth > MAX_DEPTH) {
+                        return false;
+                    }
+                    path.add(node);
+                    node = follow(new Tgt(node, idx));
+                    segRoot = false;
+                }
+                if (g == key.length - 1) {
+                    leafOf[i] = node;
+                    rootLeaf[i] = segRoot;
+                    break;
+                }
+                node.searchEq(Long.MAX_VALUE, key[g], kwi);
+                if (kwi.klong == Klong.NULL) {
+                    if (values[i] != null) {
+                        return false;               // a new segment tree
+                    }
+                    break;                          // a delete of a key not there: a noop
+                }
+                path.add(node);
+                node = follow(new Tgt(node, kwi.pointerIndex));
+            }
+            pathEnd[i] = path.size();
+        }
+        // The leaves, each once: a leaf's operations need not be consecutive in key order (a
+        // segment leaf holds keys before and after the keys of a segment tree below it).
+        final KeyNode[] leaves = new KeyNode[n];
+        int nl = 0;
+        for (int i = 0; i < n; i++) {
+            if (leafOf[i] != null && indexOf(leaves, nl, leafOf[i]) < 0) {
+                leaves[nl++] = leafOf[i];
+            }
+        }
+        for (int l = 0; l < nl; l++) {
+            if (!shortLeaf(leaves[l], leafOf, rootLeaf, lvOf)) {
+                return false;
+            }
+        }
+        // Written: the values and delete nodes in key order, then each leaf's klongs.
+        final Tgt[] made = new Tgt[n];
+        for (int k = 0; k < n; k++) {
+            if (leafOf[k] == null) {
+                continue;
+            }
+            if (values[k] != null) {
+                final ValueNode vn = new ValueNode(values[k]);
+                pd.nodeChangeListener.valueNodeCreated(vn, keys[k]);
+                made[k] = new Tgt(vn);
+            } else if (inLive(lvOf[k], keys[k][keys[k].length - 1])) {
+                pd.nodeChangeListener.valueNodeCreated(ValueNode.createDelete(), keys[k]);
+            } else {
+                leafOf[k] = null;                   // a noop
+            }
+        }
+        for (int l = 0; l < nl; l++) {
+            final KeyNode leaf = leaves[l];
+            final ArrayList<Ent> ch = new ArrayList<Ent>(2);
+            for (int k = 0; k < n; k++) {
+                if (leafOf[k] == leaf) {
+                    ch.add(new Ent(keys[k][keys[k].length - 1], made[k] != null ? made[k] : REMOVED));
+                }
+            }
+            if (!ch.isEmpty()) {
+                appendChanges(leaf, null, ch);
+                Dag.statAppends++;
+            }
+        }
+        // The nodes on the paths of the operations that wrote, kept, with a node written below;
+        // each once (a few paths of a few nodes: a list, not a map).
+        final java.util.ArrayList<KeyNode> marked = new java.util.ArrayList<KeyNode>();
+        for (int k = 0; k < n; k++) {
+            if (leafOf[k] == null) {
+                continue;
+            }
+            for (int q = k == 0 ? 0 : pathEnd[k - 1]; q < pathEnd[k]; q++) {
+                final KeyNode x = path.get(q);
+                boolean seen = false;
+                for (int r = 0; r < marked.size() && !seen; r++) {
+                    seen = marked.get(r) == x;
+                }
+                if (!seen) {
+                    marked.add(x);
+                    pd.nodeChangeListener.keyNodeOnPath(x);
+                }
+            }
+        }
+        return true;
+    }
+
+    /** The index of x in a[0, n), or -1. */
+    private static int indexOf(KeyNode[] a, int n, KeyNode x) {
+        for (int i = 0; i < n; i++) {
+            if (a[i] == x) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * The short way's decision of segment leaf 'leaf', with the operations k whose leafOf[k] is
+     * it: appended to (or kept), with a live klong left and, but a root of its tree, at least
+     * m if changed, as decideNode decides by counts; false if not.
+     */
+    private boolean shortLeaf(KeyNode leaf, KeyNode[] leafOf, boolean[] rootLeaf, Live[] lvOf) {
+        final int i = 0;
+        final int e = leafOf.length;
+        boolean isRoot = false;
+        final Live lv = live(leaf);
+        if (liveOf == null) {
+            liveOf = new java.util.IdentityHashMap<KeyNode, Live>();
+        }
+        liveOf.put(leaf, lv);               // for the plan, if the short way is not taken
+        int nf = lv.n;
+        int removed = 0;
+        int added = 0;
+        int repointed = 0;
+        for (int k = i; k < e; k++) {
+            if (leafOf[k] != leaf) {
+                continue;
+            }
+            isRoot = rootLeaf[k];
+            final long cv = keys[k][keys[k].length - 1];
+            final boolean in = inLive(lv, cv);
+            if (values[k] != null) {
+                added++;
+                if (in) {
+                    repointed++;
+                } else {
+                    nf++;
+                }
+            } else if (in) {
+                removed++;
+                nf--;
+            }
+            lvOf[k] = lv;
+        }
+        if (added + removed == 0) {
+            return true;
+        }
+        final int extra = (removed > 0 ? 2 : 1) + added;
+        final int dead = (lv.keys - lv.n) + removed + repointed;
+        return !(nf < 1 || (!isRoot && merges && nf < m) || leaf.size + extra > maxNodeSize
+                || (theta != 0 && dead > theta));
+    }
+
+    /**
+     * The child of an inner node for compare value cv, as route finds it: the latest live klong
+     * of the greatest compare value at or below cv. -1 if the node's first live klong is not the
+     * empty key, or, for a root of its segment tree ('segRoot'), if it has fewer than two live
+     * klongs (settleRoot would collapse it): the short way is not taken.
+     */
+    private static int innerChild(KeyNode x, long cv, boolean segRoot) {
+        final int sz = x.size;
+        final long[] ks = x.klongs;
+        long del = Klong.DELETE_NONE_BITMAP;
+        boolean haveDel = false;
+        boolean empty = false;
+        long bestCv = -1;
+        int best = -1;
+        boolean other = false;              // a live compare value other than the empty key's
+        for (int i = sz - 1; i >= 0; i--) { // from the end, as live()
+            final long k = ks[i];
+            final int type = Klong.getIntType(k);
+            if (type == Klong.INT_TYPE_DELETE_BITMAP) {
+                if (!haveDel) {
+                    del = k;
+                    haveDel = true;
+                }
+                continue;
+            }
+            if (type != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                continue;
+            }
+            final long c = Klong.getCompareValue(k);
+            if (c == 0) {
+                empty = true;
+            } else {
+                other = true;
+            }
+            if (c <= cv && c > bestCv) {    // the latest klong of the best compare value
+                bestCv = c;
+                best = i;
+            }
+        }
+        if (!empty || (segRoot && !other)) {
+            return -1;
+        }
+        return best;
     }
 
     // ======== Plan: the walk with a stack of frames ========
@@ -257,7 +527,7 @@ final class PeWriter {
                     final KeyNode x = root.node != null ? (KeyNode) root.node : follow(root);
                     return planFrame(x, root, g, lo, hi, 0);
                 }
-                return new LeafFrame(null, null, g, lo, hi, new ArrayList<Ent>());
+                return new LeafFrame(null, null, null, g, lo, hi);
             }
             final VN v = (VN) r;
             if (space) {
@@ -297,23 +567,38 @@ final class PeWriter {
                     + ": the pointers make a cycle.");
         }
         if (x.isSegmentLeaf()) {
-            return new LeafFrame(x, from, g, lo, hi, liveEntries(x));
+            final Live cached = liveOf == null ? null : liveOf.get(x);
+            return new LeafFrame(x, from, cached != null ? cached : live(x), g, lo, hi);
         }
         return new NodeFrame(x, from, g, lo, hi, depth);
     }
+
+    /** At most this many operations an inner node routes by searches, not by its live list. */
+    private static final int SEARCH_ROUTE = 16;
 
     /**
      * plan of an inner node x (PeWriter.lean's plan, planKids): its operations divided among its
      * children by its live list (route), each child with operations planned one height down,
      * then rebalance, then mkNode.
+     *
+     * <p>The children of a few operations are found by searches (KeyNode.searchLte at the
+     * latest time: the live klong of the greatest compare value at or below the operation's,
+     * which is route's child when the first live klong is the empty key), not by the whole
+     * live list, which is made only if the node is not kept as it was.</p>
      */
     private final class NodeFrame extends Frame {
         final KeyNode x;
         final Tgt from;
         final int g, depth;
-        final Live lv;
-        final int[] start;          // the first operation of each child; start[n] = hi
-        final ArrayList<Ent> kids = new ArrayList<Ent>();
+        Live lv;
+        // The children with operations, in order: their compare values, klong indexes, and
+        // first operations (cStart[nc] = hi).
+        long[] cCv;
+        int[] cIdx;
+        int[] cStart;
+        int nc;
+        boolean emptyKeyFirst;
+        final ArrayList<Ent> planned = new ArrayList<Ent>(2);     // the children planned
         int j = 0;
         int hk = -1;                // the children's height, from a planned child
         boolean waiting;
@@ -323,12 +608,95 @@ final class PeWriter {
             this.from = from;
             this.g = g;
             this.depth = depth;
-            this.lv = live(x);
+            if (hi - lo > SEARCH_ROUTE || !routeBySearch(lo, hi)) {
+                nc = 0;
+                emptyKeyFirst = false;
+                routeByList(lo, hi);
+            }
+        }
+
+        /**
+         * The children of the operations by a scan of the node (as KeyNode.searchLte at the
+         * latest time for each, in one pass): for each operation, the live klong of the greatest
+         * compare value at or below its, the latest of that compare value; and whether the
+         * smallest live compare value is the empty key's. False if one finds none.
+         */
+        private boolean routeBySearch(int lo, int hi) {
+            final int sz = x.size;
+            final long[] ks = x.klongs;
+            final int k = hi - lo;
+            final long[] bestCv = new long[k];
+            final int[] bestIdx = new int[k];
+            java.util.Arrays.fill(bestIdx, -1);
+            long del = Klong.DELETE_NONE_BITMAP;
+            boolean haveDel = false;
+            for (int i = sz - 1; i >= 0; i--) {     // from the end, as live()
+                final long klong = ks[i];
+                final int type = Klong.getIntType(klong);
+                if (type == Klong.INT_TYPE_DELETE_BITMAP) {
+                    if (!haveDel) {
+                        del = klong;
+                        haveDel = true;
+                    }
+                    continue;
+                }
+                if (type != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+                    continue;
+                }
+                final long cv = Klong.getCompareValue(klong);
+                if (cv == 0) {
+                    emptyKeyFirst = true;
+                }
+                for (int o = 0; o < k; o++) {
+                    if (cv <= keys[lo + o][g] && (bestIdx[o] < 0 || cv > bestCv[o])) {
+                        bestCv[o] = cv;
+                        bestIdx[o] = i;
+                    }
+                }
+            }
+            if (!emptyKeyFirst) {
+                return false;
+            }
+            cCv = new long[k];
+            cIdx = new int[k];
+            cStart = new int[k + 1];
+            for (int o = 0; o < k; o++) {
+                if (bestIdx[o] < 0) {
+                    return false;
+                }
+                if (nc == 0 || cIdx[nc - 1] != bestIdx[o]) {
+                    cCv[nc] = bestCv[o];
+                    cIdx[nc] = bestIdx[o];
+                    cStart[nc] = lo + o;
+                    nc++;
+                }
+            }
+            cStart[nc] = hi;
+            return true;
+        }
+
+        /** The children of the operations by the live list (route). */
+        private void routeByList(int lo, int hi) {
+            lv = live(x);
             if (lv.n == 0) {
                 throw new DbException("Key node " + x.getId() + ", not a segment leaf, has no "
                         + "live klong at time " + tt + ": corrupt data.");
             }
-            this.start = route(lv, g, lo, hi);
+            emptyKeyFirst = lv.cv[0] == 0;
+            final int[] start = route(lv, g, lo, hi);
+            cCv = new long[lv.n];
+            cIdx = new int[lv.n];
+            cStart = new int[lv.n + 1];
+            nc = 0;
+            for (int k = 0; k < lv.n; k++) {
+                if (start[k] < start[k + 1]) {
+                    cCv[nc] = lv.cv[k];
+                    cIdx[nc] = lv.idx[k];
+                    cStart[nc] = start[k];
+                    nc++;
+                    cStart[nc] = start[k + 1];
+                }
+            }
         }
 
         Frame step(Object r) {
@@ -336,26 +704,81 @@ final class PeWriter {
                 waiting = false;
                 final VN v = (VN) r;
                 hk = v.h;
-                kids.add(new Ent(lv.cv[j], v));
+                planned.add(new Ent(cCv[j], v));
                 j++;
             }
-            while (j < lv.n) {
-                if (start[j] == start[j + 1]) {
-                    kids.add(new Ent(lv.cv[j], new Tgt(x, lv.idx[j])));
-                    j++;
-                    continue;
-                }
-                final Tgt t = new Tgt(x, lv.idx[j]);
+            if (j < nc) {
+                final Tgt t = new Tgt(x, cIdx[j]);
                 waiting = true;
-                return planFrame(follow(t), t, g, start[j], start[j + 1], depth + 1);
+                return planFrame(follow(t), t, g, cStart[j], cStart[j + 1], depth + 1);
             }
             if (hk < 0) {
                 throw new Bug("PE at " + tt + ": inner key node " + x.getId()
                         + " planned no child.");
             }
-            final ArrayList<Ent> es2 = rebalance(g, hk, kids);
-            result = mkNode(x, from, g, hk + 1, false, es2);
+            // The short way: every child planned keeps its base, is not empty, and is not one
+            // that rebalance joins; and the list starts with the empty key. Then the final list
+            // is the live list, and the decision same, as mkNode would find.
+            boolean keep = emptyKeyFirst;
+            for (int i = 0; i < planned.size() && keep; i++) {
+                final VN v = (VN) planned.get(i).ch;
+                keep = v.dec < 1 && !v.isEmpty() && !(merges && v.changed() && v.size() < m);
+            }
+            if (keep) {
+                final VN v = new VN(x, lv, from, g, hk + 1, false, planned, null, SAME);
+                v.sparse = true;
+                result = v;
+                return null;
+            }
+            if (lv == null) {
+                lv = live(x);
+            }
+            final VN a = appendedByCounts();
+            if (a != null) {
+                result = a;
+                return null;
+            }
+            final ArrayList<Ent> es2 = rebalance(g, hk, entries(x, lv, planned));
+            result = mkNode(x, lv, from, g, hk + 1, false, es2);
             return null;
+        }
+
+        /**
+         * The node appended to, decided by counts (as LeafFrame's short way), or null: when no
+         * child planned is empty or joined, and the list starts with the empty key, rebalance
+         * changes nothing, and the final list is the live list with each child planned that is
+         * not kept replaced by its entries (ents: its new nodes); decideNode's counts follow.
+         * Its klongs are written by emit (appendPlanned).
+         */
+        private VN appendedByCounts() {
+            if (!emptyKeyFirst) {
+                return null;
+            }
+            int nf = lv.n;
+            int added = 0;
+            int repointed = 0;
+            for (Ent e : planned) {
+                final VN v = (VN) e.ch;
+                if (v.isEmpty() || (merges && v.changed() && v.size() < m)) {
+                    return null;
+                }
+                if (v.dec >= 1) {
+                    final int k = v.dec >= 2 ? v.dec : 1;
+                    added += k;
+                    repointed++;
+                    nf += k - 1;
+                }
+            }
+            final int extra = 1 + added;
+            final int dead = (lv.keys - lv.n) + repointed;
+            if (x.size + extra > maxNodeSize || (theta != 0 && dead > theta)) {
+                return null;
+            }
+            final VN v = new VN(x, lv, from, g, hk + 1, false, planned, null, APPEND);
+            v.sparse = true;
+            v.nFinal = nf;
+            v.counted = true;
+            return v;
         }
     }
 
@@ -363,36 +786,42 @@ final class PeWriter {
      * A segment leaf's entries with the operations applied (PeWriter.lean's applyGroups), by
      * compare value: a put of a key that ends here sets a new value, a delete removes the entry,
      * and the operations of keys with more segments go to the next segment's tree (a
-     * TreeFrame), whose new root, or none, is the entry. Then mkNode. 'x' null: a new tree's
-     * leaf.
+     * TreeFrame), whose new root, or none, is the entry. Then the decision. 'x' null: a new
+     * tree's leaf.
+     *
+     * <p>The entries are kept as changes over the leaf's live list ('ch', in increasing order
+     * of compare value: an entry set, or REMOVED), so that a leaf kept or appended to is decided
+     * by counts, as decideNode decides it, without its lists (the short way); a leaf cut or
+     * replaced, or a new tree's, gets its whole list, merged, and mkNode.</p>
      */
     private final class LeafFrame extends Frame {
         final KeyNode x;
         final Tgt from;
+        final Live lv;
         final int g, hi;
-        final ArrayList<Ent> es;
+        final ArrayList<Ent> ch = new ArrayList<Ent>(4);
         int pos;
         long pendingCv;
         boolean waiting;
         boolean subWrote;
 
-        LeafFrame(KeyNode x, Tgt from, int g, int lo, int hi, ArrayList<Ent> es) {
+        LeafFrame(KeyNode x, Tgt from, Live lv, int g, int lo, int hi) {
             this.x = x;
             this.from = from;
+            this.lv = lv;
             this.g = g;
             this.pos = lo;
             this.hi = hi;
-            this.es = es;
         }
 
         Frame step(Object r) {
             if (waiting) {
                 waiting = false;
                 if (r != null) {
-                    setEntry(es, pendingCv, ((Sub) r).root);
+                    setChange(x, lv, ch, pendingCv, ((Sub) r).root);
                     subWrote |= ((Sub) r).wrote;
-                } else {
-                    removeEntry(es, pendingCv);
+                } else if (current(x, lv, ch, pendingCv) != null) {
+                    setChange(x, lv, ch, pendingCv, REMOVED);
                 }
             }
             while (pos < hi) {
@@ -410,15 +839,14 @@ final class PeWriter {
                     if (values[i] != null) {
                         final ValueNode vn = new ValueNode(values[i]);
                         pd.nodeChangeListener.valueNodeCreated(vn, keys[i]);
-                        setEntry(es, cv, new Tgt(vn));
-                    } else if (find(es, cv) >= 0) {
+                        setChange(x, lv, ch, cv, new Tgt(vn));
+                    } else if (current(x, lv, ch, cv) != null) {
                         pd.nodeChangeListener.valueNodeCreated(ValueNode.createDelete(), keys[i]);
-                        removeEntry(es, cv);
+                        setChange(x, lv, ch, cv, REMOVED);
                     }
                 }
                 if (subLo < end) {
-                    final int at = find(es, cv);
-                    final Tgt old = at < 0 ? null : (Tgt) es.get(at).ch;
+                    final Tgt old = current(x, lv, ch, cv);
                     pendingCv = cv;
                     waiting = true;
                     final int subHi = end;
@@ -427,11 +855,137 @@ final class PeWriter {
                 }
                 pos = end;
             }
-            final VN v = mkNode(x, from, g, 0, false, es);
-            v.subWrote = subWrote;
-            result = v;
+            result = leafNode();
             return null;
         }
+
+        /** The leaf's planned node: by counts if kept or appended to, else by its list. */
+        private VN leafNode() {
+            if (x != null) {
+                int n = lv.n;
+                int removed = 0;
+                int added = 0;
+                int repointed = 0;
+                for (Ent e : ch) {
+                    final boolean inLive = inLive(lv, e.cv);
+                    if (e.ch == REMOVED) {
+                        n--;
+                        removed++;
+                    } else {
+                        added++;
+                        if (inLive) {
+                            repointed++;
+                        } else {
+                            n++;
+                        }
+                    }
+                }
+                // decideNode with the counts: same, or append if it fits and leaves at most
+                // theta dead klongs (as decide()).
+                final boolean same = ch.isEmpty();
+                final int extra = (removed > 0 ? 2 : 1) + added;
+                final int dead = (lv.keys - lv.n) + removed + repointed;
+                if (same || (x.size + extra <= maxNodeSize && !(theta != 0 && dead > theta))) {
+                    final VN v = new VN(x, lv, from, g, 0, false, null, null, same ? SAME : APPEND);
+                    v.changes = ch;
+                    v.nFinal = n;
+                    v.subWrote = subWrote;
+                    return v;
+                }
+            }
+            final VN v = mkNode(x, lv, from, g, 0, false, merged(x, lv, ch));
+            v.subWrote = subWrote;
+            return v;
+        }
+    }
+
+    /** A removed entry among a leaf's changes. */
+    private static final Object REMOVED = new Object();
+
+    /** The entry of compare value cv of a leaf with changes ch over its live list lv (x null:
+     *  a new tree's leaf, no list), or null. */
+    private static Tgt current(KeyNode x, Live lv, List<Ent> ch, long cv) {
+        final int k = findSorted(ch, cv);
+        if (k >= 0) {
+            final Object c = ch.get(k).ch;
+            return c == REMOVED ? null : (Tgt) c;
+        }
+        if (lv == null) {
+            return null;
+        }
+        final int j = java.util.Arrays.binarySearch(lv.cv, 0, lv.n, cv);
+        return j < 0 ? null : new Tgt(x, lv.idx[j]);
+    }
+
+    /** Sets the change of compare value cv to c, a Tgt or REMOVED; a Tgt that is the live
+     *  list's own entry leaves no change. */
+    private static void setChange(KeyNode x, Live lv, ArrayList<Ent> ch, long cv, Object c) {
+        int j = lv == null ? -1 : java.util.Arrays.binarySearch(lv.cv, 0, lv.n, cv);
+        final boolean original = c instanceof Tgt && j >= 0 && ((Tgt) c).src == x
+                && ((Tgt) c).idx == lv.idx[j];
+        final boolean absent = c == REMOVED && j < 0;
+        int k = findSorted(ch, cv);
+        if (original || absent) {
+            if (k >= 0) {
+                ch.remove(k);
+            }
+            return;
+        }
+        if (k >= 0) {
+            ch.set(k, new Ent(cv, c));
+            return;
+        }
+        k = 0;
+        while (k < ch.size() && ch.get(k).cv < cv) {
+            k++;
+        }
+        ch.add(k, new Ent(cv, c));
+    }
+
+    /** The index of cv in a list in increasing order of compare values, or -1. */
+    private static int findSorted(List<Ent> ch, long cv) {
+        for (int k = 0; k < ch.size(); k++) {
+            final long c = ch.get(k).cv;
+            if (c == cv) {
+                return k;
+            }
+            if (c > cv) {
+                break;
+            }
+        }
+        return -1;
+    }
+
+    /** A leaf's whole list: its live list with the changes ch, each child an old pointer or
+     *  a node made. */
+    private static ArrayList<Ent> merged(KeyNode x, Live lv, List<Ent> ch) {
+        final int n0 = lv == null ? 0 : lv.n;
+        final ArrayList<Ent> es = new ArrayList<Ent>(n0 + ch.size());
+        int k = 0;
+        for (int j = 0; j < n0; j++) {
+            final long cv = lv.cv[j];
+            while (k < ch.size() && ch.get(k).cv < cv) {
+                final Ent e = ch.get(k++);
+                if (e.ch != REMOVED) {
+                    es.add(e);
+                }
+            }
+            if (k < ch.size() && ch.get(k).cv == cv) {
+                final Ent e = ch.get(k++);
+                if (e.ch != REMOVED) {
+                    es.add(e);
+                }
+                continue;
+            }
+            es.add(new Ent(cv, new Tgt(x, lv.idx[j])));
+        }
+        while (k < ch.size()) {
+            final Ent e = ch.get(k++);
+            if (e.ch != REMOVED) {
+                es.add(e);
+            }
+        }
+        return es;
     }
 
     /** The first operation of [lo, hi) whose key goes on after segment g (sorted: a key that
@@ -447,11 +1001,15 @@ final class PeWriter {
 
     // ======== Lists ========
 
-    /** The live klongs of a key node, in compare order: compare values and klong indexes. */
+    /**
+     * The live klongs of a key node, in compare order: compare values and klong indexes; and
+     * the number of its key klongs.
+     */
     static final class Live {
         final long[] cv;
         final int[] idx;
         int n;
+        int keys;
 
         Live(int size) {
             cv = new long[size];
@@ -464,29 +1022,50 @@ final class PeWriter {
      * delete, the last such klong; in increasing order of the compare values.
      */
     static Live live(KeyNode node) {
+        // One pass from the end: a key klong after the last bitmap is not deleted by it, and
+        // the first klong of a compare value met is its latest.
         final int sz = node.size;
         final long[] ks = node.klongs;
-        final long del = lastBitmap(ks, sz);
         final Live lv = new Live(sz);
-        for (int i = 0; i < sz; i++) {
+        long del = Klong.DELETE_NONE_BITMAP;
+        boolean haveDel = false;
+        for (int i = sz - 1; i >= 0; i--) {
             final long k = ks[i];
-            if (Klong.getIntType(k) != Klong.INT_TYPE_KEY || Klong.isDeleted(del, i)) {
+            final int type = Klong.getIntType(k);
+            if (type == Klong.INT_TYPE_DELETE_BITMAP) {
+                if (!haveDel) {
+                    del = k;
+                    haveDel = true;
+                }
+                continue;
+            }
+            if (type != Klong.INT_TYPE_KEY) {
+                continue;
+            }
+            lv.keys++;
+            if (Klong.isDeleted(del, i)) {
                 continue;
             }
             final long cv = Klong.getCompareValue(k);
-            int j = 0;
-            while (j < lv.n && lv.cv[j] < cv) {
+            // The list is kept at the arrays' end, [b, sz), in increasing order: met from the
+            // end, the klongs of a node mostly come in decreasing order, each at the front.
+            final int b = sz - lv.n;
+            int j = b;
+            while (j < sz && lv.cv[j] < cv) {
                 j++;
             }
-            if (j < lv.n && lv.cv[j] == cv) {
-                lv.idx[j] = i;
-                continue;
+            if (j < sz && lv.cv[j] == cv) {
+                continue;                       // an earlier klong of it: shadowed
             }
-            System.arraycopy(lv.cv, j, lv.cv, j + 1, lv.n - j);
-            System.arraycopy(lv.idx, j, lv.idx, j + 1, lv.n - j);
-            lv.cv[j] = cv;
-            lv.idx[j] = i;
+            System.arraycopy(lv.cv, b, lv.cv, b - 1, j - b);
+            System.arraycopy(lv.idx, b, lv.idx, b - 1, j - b);
+            lv.cv[j - 1] = cv;
+            lv.idx[j - 1] = i;
             lv.n++;
+        }
+        if (lv.n < sz) {
+            System.arraycopy(lv.cv, sz - lv.n, lv.cv, 0, lv.n);
+            System.arraycopy(lv.idx, sz - lv.n, lv.idx, 0, lv.n);
         }
         return lv;
     }
@@ -502,45 +1081,25 @@ final class PeWriter {
         return del;
     }
 
-    /** A segment leaf's live list, each child an old pointer. */
-    private static ArrayList<Ent> liveEntries(KeyNode x) {
-        final Live lv = live(x);
-        final ArrayList<Ent> es = new ArrayList<Ent>(lv.n + 4);
+    /** An inner node's entries: its live list, the children planned in their places (by
+     *  compare value), the others old pointers. */
+    private static ArrayList<Ent> entries(KeyNode x, Live lv, List<Ent> planned) {
+        final ArrayList<Ent> es = new ArrayList<Ent>(lv.n);
+        int k = 0;
         for (int j = 0; j < lv.n; j++) {
-            es.add(new Ent(lv.cv[j], new Tgt(x, lv.idx[j])));
+            if (k < planned.size() && planned.get(k).cv == lv.cv[j]) {
+                es.add(planned.get(k++));
+            } else {
+                es.add(new Ent(lv.cv[j], new Tgt(x, lv.idx[j])));
+            }
         }
         return es;
     }
 
-    /** The index of the entry of compare value cv, or -1. */
-    private static int find(List<Ent> es, long cv) {
-        for (int i = 0; i < es.size(); i++) {
-            if (es.get(i).cv == cv) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    /** setEntry: the entry of compare value cv set, in compare order. */
-    private static void setEntry(ArrayList<Ent> es, long cv, Object ch) {
-        int i = 0;
-        while (i < es.size() && es.get(i).cv < cv) {
-            i++;
-        }
-        if (i < es.size() && es.get(i).cv == cv) {
-            es.set(i, new Ent(cv, ch));
-        } else {
-            es.add(i, new Ent(cv, ch));
-        }
-    }
-
-    /** removeEntry. */
-    private static void removeEntry(ArrayList<Ent> es, long cv) {
-        final int i = find(es, cv);
-        if (i >= 0) {
-            es.remove(i);
-        }
+    /** A planned node's entries, made whole for a sparse one or a leaf by counts. */
+    private static ArrayList<Ent> entries(VN v) {
+        return v.sparse ? entries(v.base, v.lb(), v.es)
+                : v.changes != null ? merged(v.base, v.lb, v.changes) : v.es;
     }
 
     /**
@@ -611,7 +1170,8 @@ final class PeWriter {
 
     /** mkNode: a virtual node from its entries (an inner node's first entry gets the empty
      *  key): its final list and its decision. */
-    private VN mkNode(KeyNode base, Tgt from, int g, int ht, boolean join, ArrayList<Ent> es0) {
+    private VN mkNode(KeyNode base, Live lb, Tgt from, int g, int ht, boolean join,
+            ArrayList<Ent> es0) {
         final ArrayList<Ent> es = es0;
         if (ht != 0 && !es.isEmpty() && es.get(0).cv != 0) {
             es.set(0, new Ent(0, es.get(0).ch));
@@ -624,7 +1184,7 @@ final class PeWriter {
             f.set(0, new FEnt(0, f.get(0).t));
         }
         compacted = false;
-        final VN v = new VN(base, from, g, ht, join, es, f, decide(base, join, f));
+        final VN v = new VN(base, lb, from, g, ht, join, es, f, decide(base, lb, join, f));
         v.compact = compacted;
         return v;
     }
@@ -634,34 +1194,50 @@ final class PeWriter {
         if (e.t == null || e.t.src != base) {
             return false;
         }
-        for (int j = 0; j < lb.n; j++) {
-            if (lb.cv[j] == e.cv) {
-                return lb.idx[j] == e.t.idx;
-            }
-        }
-        return false;
+        final int j = java.util.Arrays.binarySearch(lb.cv, 0, lb.n, e.cv);
+        return j >= 0 && lb.idx[j] == e.t.idx;
     }
 
-    /** F holds a compare value. */
-    private static boolean hasCv(List<FEnt> f, long cv) {
-        for (FEnt e : f) {
-            if (e.cv == cv) {
-                return true;
+    /**
+     * The compare values of lb that F leaves out (removedCvs), in increasing order: both lists
+     * are in increasing order of their compare values.
+     */
+    private static long[] removedCvs(Live lb, List<FEnt> f) {
+        long[] r = null;
+        int nr = 0;
+        int k = 0;
+        for (int j = 0; j < lb.n; j++) {
+            final long cv = lb.cv[j];
+            while (k < f.size() && f.get(k).cv < cv) {
+                k++;
             }
+            if (k < f.size() && f.get(k).cv == cv) {
+                continue;
+            }
+            if (r == null) {
+                r = new long[lb.n - j];
+            }
+            r[nr++] = cv;
         }
-        return false;
+        return r == null ? NONE : java.util.Arrays.copyOf(r, nr);
+    }
+
+    private static final long[] NONE = new long[0];
+
+    /** The entry e of F has a compare value that lb has (a repointed entry, not a new one). */
+    private static boolean inLive(Live lb, long cv) {
+        return java.util.Arrays.binarySearch(lb.cv, 0, lb.n, cv) >= 0;
     }
 
     /** Set by decide(): its decision was by the dead klongs (VN.compact). */
     private boolean compacted;
 
     /** decideNode: same (F is the base's live list), append, or k new nodes. */
-    private int decide(KeyNode base, boolean join, ArrayList<FEnt> f) {
+    private int decide(KeyNode base, Live lb, boolean join, ArrayList<FEnt> f) {
         final int n = f.size();
         if (base == null) {
             return join ? nParts(c, n) : cutParts(n);
         }
-        final Live lb = live(base);
         if (n == lb.n) {
             boolean same = true;
             for (int j = 0; j < n && same; j++) {
@@ -673,19 +1249,24 @@ final class PeWriter {
         }
         // The klongs that emit appends (appendKsO): a time klong, a bitmap if a compare value
         // left, and a key klong for each entry new or repointed.
-        boolean removed = false;
-        for (int j = 0; j < lb.n && !removed; j++) {
-            removed = !hasCv(f, lb.cv[j]);
-        }
+        final long[] removed = removedCvs(lb, f);
         int added = 0;
+        int repointed = 0;
         for (FEnt e : f) {
             if (!kept(base, lb, e)) {
                 added++;
+                if (inLive(lb, e.cv)) {
+                    repointed++;
+                }
             }
         }
-        final int extra = (removed ? 2 : 1) + added;
+        final int extra = (removed.length > 0 ? 2 : 1) + added;
         if (base.size + extra <= maxNodeSize) {
-            if (theta != 0 && deadAfter(base, lb, f, removed, added) > theta) {
+            // deadOver: the dead klongs of the base with them, the key klongs that are not live
+            // now and the live ones that the bitmap deletes or a klong added shadows (an added
+            // klong is live: F has one entry a compare value).
+            final int dead = (lb.keys - lb.n) + removed.length + repointed;
+            if (theta != 0 && dead > theta) {
                 compacted = true;
                 return n + 1 <= maxNodeSize ? 1 : cutParts(n);
             }
@@ -694,68 +1275,19 @@ final class PeWriter {
         return cutParts(n);
     }
 
-    /** The dead klongs of the base with emit's klongs appended (deadOver's count). */
-    private static int deadAfter(KeyNode base, Live lb, List<FEnt> f, boolean removed,
-            int added) {
-        final int sz = base.size;
-        final long[] ks = new long[sz + (removed ? 2 : 1) + added];
-        System.arraycopy(base.klongs, 0, ks, 0, sz);
-        int k = sz;
-        ks[k++] = Klong.createTime(Klong.MAX_TIME);
-        if (removed) {
-            ks[k++] = emitBits(base, lb, f);
-        }
-        for (FEnt e : f) {
-            if (!kept(base, lb, e)) {
-                ks[k++] = Klong.compareValueToKeyKlong(e.cv);
-            }
-        }
-        return deadCount(ks, k);
-    }
-
     /** emitBits: the last bitmap and the bits of every key klong of the compare values that
-     *  F leaves out. */
-    private static long emitBits(KeyNode base, Live lb, List<FEnt> f) {
+     *  F leaves out ('removed', in increasing order). */
+    private static long emitBits(KeyNode base, long[] removed) {
         final int sz = base.size;
         final long[] ks = base.klongs;
         long del = lastBitmap(ks, sz);
-        for (int j = 0; j < lb.n; j++) {
-            if (hasCv(f, lb.cv[j])) {
-                continue;
-            }
-            for (int i = 0; i < sz; i++) {
-                if (Klong.getIntType(ks[i]) == Klong.INT_TYPE_KEY
-                        && Klong.getCompareValue(ks[i]) == lb.cv[j]) {
-                    del = Klong.delete(del, i);
-                }
+        for (int i = 0; i < sz; i++) {
+            if (Klong.getIntType(ks[i]) == Klong.INT_TYPE_KEY
+                    && java.util.Arrays.binarySearch(removed, Klong.getCompareValue(ks[i])) >= 0) {
+                del = Klong.delete(del, i);
             }
         }
         return del;
-    }
-
-    /** Contract's deadCount: the key klongs deleted by the last bitmap, or followed by a later
-     *  key klong of the same compare value; each once. */
-    static int deadCount(long[] ks, int sz) {
-        final long del = lastBitmap(ks, sz);
-        int dead = 0;
-        A: for (int i = 0; i < sz; i++) {
-            if (Klong.getIntType(ks[i]) != Klong.INT_TYPE_KEY) {
-                continue;
-            }
-            if (Klong.isDeleted(del, i)) {
-                dead++;
-                continue;
-            }
-            final long cv = Klong.getCompareValue(ks[i]);
-            for (int j = i + 1; j < sz; j++) {
-                if (Klong.getIntType(ks[j]) == Klong.INT_TYPE_KEY
-                        && Klong.getCompareValue(ks[j]) == cv) {
-                    dead++;
-                    continue A;
-                }
-            }
-        }
-        return dead;
     }
 
     // ======== Rebalance (PeWriter.lean's openEs, cntOf, findSmall, joinAt, rebalance) ========
@@ -768,7 +1300,7 @@ final class PeWriter {
             if (v.base != null) {
                 replaced(v.base);
             }
-            return new ArrayList<Ent>(v.es);
+            return new ArrayList<Ent>(entries(v));
         }
         final KeyNode y = follow((Tgt) ch);
         replaced(y);
@@ -824,7 +1356,7 @@ final class PeWriter {
         }
         j.addAll(esR);
         final ArrayList<Ent> j2 = ht == 0 ? j : rebalance(g, ht - 1, j);
-        final VN v = mkNode(null, null, g, ht, true, j2);
+        final VN v = mkNode(null, null, null, g, ht, true, j2);
         Dag.statJoins++;
         final ArrayList<Ent> out = new ArrayList<Ent>(es.size() - 1);
         for (int i = 0; i < il; i++) {
@@ -842,7 +1374,7 @@ final class PeWriter {
     private ArrayList<Ent> rebalance(int g, int ht, ArrayList<Ent> es0) {
         ArrayList<Ent> es = new ArrayList<Ent>(es0.size());
         for (Ent e : es0) {
-            if (e.ch instanceof VN && ((VN) e.ch).f.isEmpty()) {
+            if (e.ch instanceof VN && ((VN) e.ch).isEmpty()) {
                 dropped((VN) e.ch);
                 continue;
             }
@@ -887,7 +1419,7 @@ final class PeWriter {
                 return v;
             }
             final VN n = (VN) v;
-            if (n.f.isEmpty()) {
+            if (n.isEmpty()) {
                 if (!space) {
                     dropped(n);
                     return null;
@@ -896,25 +1428,26 @@ final class PeWriter {
                     return v;
                 }
                 dropped(n);
-                return mkNode(null, null, g, 0, false, new ArrayList<Ent>());
+                return mkNode(null, null, null, g, 0, false, new ArrayList<Ent>());
             }
-            if (n.h != 0 && n.f.size() == 1) {
-                if (n.es.size() != 1) {
+            if (n.h != 0 && n.size() == 1) {
+                final ArrayList<Ent> es = entries(n);
+                if (es.size() != 1) {
                     throw new Bug("PE at " + tt + ": a root of one entry from "
-                            + n.es.size() + " children.");
+                            + es.size() + " children.");
                 }
                 if (n.base != null) {
                     replaced(n.base);
                 }
                 Dag.statCollapses++;
-                v = n.es.get(0).ch;
+                v = es.get(0).ch;
                 continue;
             }
             if (n.dec >= 2) {
                 final ArrayList<Ent> one = new ArrayList<Ent>(1);
                 one.add(new Ent(0, n));
                 Dag.statNewRoots++;
-                v = mkNode(null, null, g, n.h + 1, false, one);
+                v = mkNode(null, null, null, g, n.h + 1, false, one);
                 continue;
             }
             return v;
@@ -935,22 +1468,18 @@ final class PeWriter {
             return one;
         }
         final VN v = (VN) ch;
-        final ArrayList<FEnt> f = new ArrayList<FEnt>(v.f.size());
-        boolean wroteBelow = false;
-        for (Ent e : v.es) {
-            final List<FEnt> sub = emit(e.ch);
-            if (e.ch instanceof VN && ((VN) e.ch).wrote) {
-                wroteBelow = true;
-            }
-            for (int i = 0; i < sub.size(); i++) {
-                f.add(i == 0 ? new FEnt(e.cv, sub.get(0).t) : sub.get(i));
-            }
-        }
-        if (v.h != 0 && !f.isEmpty() && f.get(0).cv != 0) {
-            f.set(0, new FEnt(0, f.get(0).t));
-        }
         final ArrayList<FEnt> out = new ArrayList<FEnt>(1);
         if (v.dec == SAME) {
+            // Kept: its children planned emitted, its list not made (it is the base's).
+            boolean wroteBelow = false;
+            if (v.es != null) {
+                for (Ent e : v.es) {
+                    if (e.ch instanceof VN) {
+                        emit(e.ch);
+                        wroteBelow |= ((VN) e.ch).wrote;
+                    }
+                }
+            }
             v.wrote = wroteBelow || v.subWrote;
             if (v.wrote) {
                 pd.nodeChangeListener.keyNodeOnPath(v.base);
@@ -959,8 +1488,36 @@ final class PeWriter {
             return out;
         }
         v.wrote = true;
+        if (v.counted) {
+            appendPlanned(v);
+            Dag.statAppends++;
+            out.add(new FEnt(0, v.from));
+            return out;
+        }
+        if (v.dec == APPEND && v.changes != null) {
+            appendChanges(v.base, v.lb, v.changes);
+            Dag.statAppends++;
+            out.add(new FEnt(0, v.from));
+            return out;
+        }
+        final List<FEnt> f;
+        if (v.h == 0) {
+            f = v.f;            // a segment leaf's entries are old pointers or nodes made
+        } else {
+            final ArrayList<FEnt> fi = new ArrayList<FEnt>(v.f.size());
+            for (Ent e : v.es) {
+                final List<FEnt> sub = emit(e.ch);
+                for (int i = 0; i < sub.size(); i++) {
+                    fi.add(i == 0 ? new FEnt(e.cv, sub.get(0).t) : sub.get(i));
+                }
+            }
+            if (!fi.isEmpty() && fi.get(0).cv != 0) {
+                fi.set(0, new FEnt(0, fi.get(0).t));
+            }
+            f = fi;
+        }
         if (v.dec == APPEND) {
-            append(v.base, f);
+            append(v.base, v.lb, f);
             Dag.statAppends++;
             out.add(new FEnt(0, v.from));
             return out;
@@ -1001,18 +1558,61 @@ final class PeWriter {
 
     /** emitKs: the klongs that make the base hold F: a time klong, a bitmap if a compare
      *  value left, and a key klong for each entry new or repointed. */
-    private void append(KeyNode base, List<FEnt> f) {
-        final Live lb = live(base);
-        boolean removed = false;
-        for (int j = 0; j < lb.n && !removed; j++) {
-            removed = !hasCv(f, lb.cv[j]);
-        }
-        if (removed) {
-            base.addDeleteKlong(tt, emitBits(base, lb, f));
+    private void append(KeyNode base, Live lb, List<FEnt> f) {
+        final long[] removed = removedCvs(lb, f);
+        if (removed.length > 0) {
+            base.addDeleteKlong(tt, emitBits(base, removed));
         }
         for (FEnt e : f) {
             if (!kept(base, lb, e)) {
                 addEntry(base, e.cv, e.t, true);
+            }
+        }
+        pd.nodeChangeListener.keyNodeChanged(base);
+    }
+
+    /**
+     * emitKs for an inner node by counts (appendedByCounts): its children planned emitted, in
+     * order; a key klong for each entry of a child that is not kept (its new nodes, the first
+     * with the child's compare value), in increasing order of compare value (F's order); no
+     * bitmap, as no compare value leaves.
+     */
+    private void appendPlanned(VN v) {
+        for (Ent e : v.es) {
+            final VN c = (VN) e.ch;
+            final List<FEnt> sub = emit(c);
+            if (c.dec < 1) {
+                continue;                       // kept: its entry is the live one
+            }
+            for (int i = 0; i < sub.size(); i++) {
+                addEntry(v.base, i == 0 ? e.cv : sub.get(i).cv, sub.get(i).t, true);
+            }
+        }
+        pd.nodeChangeListener.keyNodeChanged(v.base);
+    }
+
+    /** emitKs for a leaf by counts: the bitmap of the entries removed, then a key klong for
+     *  each entry set, in increasing order of compare value (F's order). */
+    private void appendChanges(KeyNode base, Live lb, List<Ent> ch) {
+        int nr = 0;
+        for (Ent e : ch) {
+            if (e.ch == REMOVED) {
+                nr++;
+            }
+        }
+        if (nr > 0) {
+            final long[] removed = new long[nr];
+            int k = 0;
+            for (Ent e : ch) {
+                if (e.ch == REMOVED) {
+                    removed[k++] = e.cv;
+                }
+            }
+            base.addDeleteKlong(tt, emitBits(base, removed));
+        }
+        for (Ent e : ch) {
+            if (e.ch != REMOVED) {
+                addEntry(base, e.cv, (Tgt) e.ch, true);
             }
         }
         pd.nodeChangeListener.keyNodeChanged(base);

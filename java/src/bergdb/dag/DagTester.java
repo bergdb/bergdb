@@ -670,6 +670,52 @@ public class DagTester {
     }
     
     /**
+     * A segment leaf whose keys in a transaction come before and after the keys of a segment
+     * tree below it (bergdb 026-25): the operations of /a and /c end in the space root, a
+     * segment leaf, and /bbbbbbbX's second segment in the tree below its entry, so in key order
+     * the leaf's operations are not consecutive. The writer's short way decided and appended
+     * to the leaf once for each run of them, a node written twice in a transaction and, in
+     * PubPromiseTester, a node of 31 klongs at node size 30. Every key node is written at
+     * most once a transaction (one time klong of each time, and after it one key klong of a
+     * compare value), and the values are right.
+     */
+    @Nano
+    public static void testShortWayLeafAroundASegmentTree() {
+        Dag dag = emptyDag(0);
+        PutData pd = pd(dag);
+        final long short0 = Dag.statShort;
+        for (int t = 1; t <= 12; t++) {
+            pd.tt = 10 * t;
+            batchOf(dag, pd, "/a", "a" + t, "/bbbbbbbX", "b" + t, "/c", "c" + t);
+            GetData gd = gd(dag);
+            for (String k : new String[] {"/a", "/bbbbbbbX", "/c"}) {
+                Assert.assertEquals(k.substring(1, 2) + t,
+                        StringUtil.toString(dag.getOne(pd.tt, Keys.toSegments(k), gd)));
+            }
+            for (Node x : reachableAt(dag, pd.tt)) {
+                if (!(x instanceof KeyNode)) continue;
+                KeyNode k = (KeyNode) x;
+                Assert.assertTrue("at most M klongs: " + k.size, k.size <= dag.getMaxNodeSize());
+                // One time klong of a time, and after it one key klong of a compare value: a
+                // node written twice in a transaction has two.
+                Set<Long> times = new java.util.HashSet<Long>();
+                Set<Long> cvs = new java.util.HashSet<Long>();
+                for (int i = 0; i < k.size; i++) {
+                    if (Klong.isTime(k.klongs[i])) {
+                        Assert.assertTrue("one time klong of " + Klong.getTime(k.klongs[i]),
+                                times.add(Klong.getTime(k.klongs[i])));
+                        cvs.clear();
+                    } else if (Klong.isKey(k.klongs[i])) {
+                        Assert.assertTrue("one klong of a compare value at a time",
+                                cvs.add(Klong.getCompareValue(k.klongs[i])));
+                    }
+                }
+            }
+        }
+        Assert.assertTrue("the short way taken", Dag.statShort > short0);
+    }
+    
+    /**
      * 62 is the largest node size (bergdb 024-19, Q6): a Dag of 63 or more is refused when it
      * is made, by both constructors, with a message that names 62; 62 is taken.
      */

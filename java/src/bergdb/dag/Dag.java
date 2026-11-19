@@ -880,10 +880,10 @@ public class Dag {
      * (PeWriter): transactions; nodes that got klongs appended; nodes replaced by one new node,
      * by their size or (compactions) by their dead klongs, or cut into two or more; joins of
      * two children (the merges); root collapses; new roots above a root cut; planned nodes
-     * dropped empty.
+     * dropped empty; transactions that took the short way (PeWriter.shortWay).
      */
     public static volatile long statTransactions, statAppends, statReplaces, statCompactions,
-            statCuts, statJoins, statCollapses, statNewRoots, statDropped;
+            statCuts, statJoins, statCollapses, statNewRoots, statDropped, statShort;
     
     /**
      * <p>Applies a transaction's operations to the graph at the time pd.tt: for each i, a put

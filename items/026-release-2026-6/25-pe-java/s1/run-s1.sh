@@ -1,0 +1,60 @@
+#!/bin/sh
+# bergdb 026-25: the writer PE against main's writer on s1 (the Linux VPS of 007-05 and 030-20:
+# 2 vCPUs, 3.8 GB). Written 2026-11-19, from 030-20's run-s1.sh. Run from F53, in this
+# directory, after java/build.sh in both clones.
+#
+#   sh run-s1.sh copy           compiles CCBench (030-20's, copied here) against each build's
+#                               jar and copies each build (bergdb.jar, build/stress, CCBench's
+#                               classes) to s1:REMOTE/BUILD, BUILD main and pe, with s1-run.sh
+#                               and the jobs files
+#   sh run-s1.sh start JOBS...  starts s1-run.sh on s1 in the background (nohup), each jobs
+#                               file in turn
+#   sh run-s1.sh fetch          copies s1:REMOTE/out to OUT
+#   sh run-s1.sh clean          deletes REMOTE on s1
+#
+# Environment: HOST (the ssh destination of s1; required), MAIN (main's clone, its java/
+# built), PE (this branch's clone, default ../../../.. from here), REMOTE (default
+# /opt/bergdb-bench/026-25), OUT (default /Users/f/fl/bench/2026-11-19/pej/s1-out),
+# JAVA_HOME (default /opt/homebrew/opt/openjdk).
+
+set -eu
+T=$(cd "$(dirname "$0")" && pwd)
+PE=${PE:-$(cd "$T/../../../.." && pwd)}
+MAIN=${MAIN:?MAIN: a clone of main with java/build.sh run}
+HOST=${HOST:?HOST: the ssh destination of s1}
+REMOTE=${REMOTE:-/opt/bergdb-bench/026-25}
+OUT=${OUT:-/Users/f/fl/bench/2026-11-19/pej/s1-out}
+JH=${JAVA_HOME:-/opt/homebrew/opt/openjdk}
+
+case ${1:-} in
+copy)
+    ssh "$HOST" "mkdir -p $REMOTE"
+    for b in main pe; do
+        if [ $b = main ]; then J=$MAIN/java; else J=$PE/java; fi
+        rm -rf "$J/build/cc"
+        mkdir -p "$J/build/cc"
+        "$JH/bin/javac" --release 17 -Xlint:-options -encoding UTF-8 \
+            -cp "$J/build/stress:$J/build/bergdb.jar" -d "$J/build/cc" "$T/CCBench.java"
+        ssh "$HOST" "rm -rf $REMOTE/$b && mkdir -p $REMOTE/$b"
+        COPYFILE_DISABLE=1 tar --no-xattrs -C "$J/build" -cf - bergdb.jar stress cc \
+            | ssh "$HOST" "tar -C $REMOTE/$b -xf -"
+    done
+    COPYFILE_DISABLE=1 tar --no-xattrs -C "$T" -cf - s1-run.sh jobs-cc.txt jobs-perf.txt \
+        | ssh "$HOST" "tar -C $REMOTE -xf -"
+    ;;
+start)
+    shift
+    cmd=""
+    for j in "$@"; do cmd="$cmd sh s1-run.sh $REMOTE/$j $REMOTE/out;"; done
+    ssh "$HOST" "cd $REMOTE && nohup sh -c '$cmd' > $REMOTE/nohup.log 2>&1 < /dev/null &" < /dev/null
+    ;;
+fetch)
+    mkdir -p "$OUT"
+    ssh "$HOST" "tar -C $REMOTE -cf - out" | tar -C "$OUT" --strip-components=1 -xf -
+    ;;
+clean)
+    ssh "$HOST" "rm -rf $REMOTE"
+    ;;
+*)
+    echo "usage: sh run-s1.sh copy|start JOBS|fetch|clean"; exit 1 ;;
+esac

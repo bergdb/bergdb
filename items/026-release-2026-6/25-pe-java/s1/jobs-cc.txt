@@ -1,0 +1,8 @@
+# bergdb 026-25: CCBench (030-20), 1,000,000 keys of 100 bytes, transactions of 1, 10, 100
+# and 500 operations, update, insert, delete, mixed; main and pe in ABBA order, three each.
+cc-main-r1a main 2g CCBench
+cc-pe-r1b pe 2g CCBench
+cc-pe-r2a pe 2g CCBench
+cc-main-r2b main 2g CCBench
+cc-main-r3a main 2g CCBench
+cc-pe-r3b pe 2g CCBench

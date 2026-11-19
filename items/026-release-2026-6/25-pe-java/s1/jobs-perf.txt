@@ -1,0 +1,14 @@
+# bergdb 026-25: the write and read scenarios of performance-quick.suite, Perf on s1 as
+# 030-20 ran them; main and pe in ABBA order, two each.
+w-uni-1k-inf-main-r1a main 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-pe-r1b pe 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-pe-r2a pe 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-inf-main-r2b main 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=inf -Dperf.ops=1000000
+w-uni-1k-fin-main-r1a main 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-pe-r1b pe 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-pe-r2a pe 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+w-uni-1k-fin-main-r2b main 2g Perf write -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.work=uniform -Dperf.retain=1 -Dperf.mincuts=6 -Dperf.ops=1000000 -Dperf.maxops=6000000
+read-1k-main-r1a main 2g Perf read -Dperf.n=200000 -Dperf.nlong=20000 -Dperf.valsize=1000 -Dperf.history=200000
+read-1k-pe-r1b pe 2g Perf read -Dperf.n=200000 -Dperf.nlong=20000 -Dperf.valsize=1000 -Dperf.history=200000
+read-1k-pe-r2a pe 2g Perf read -Dperf.n=200000 -Dperf.nlong=20000 -Dperf.valsize=1000 -Dperf.history=200000
+read-1k-main-r2b main 2g Perf read -Dperf.n=200000 -Dperf.nlong=20000 -Dperf.valsize=1000 -Dperf.history=200000
