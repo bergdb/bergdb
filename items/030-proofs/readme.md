@@ -94,10 +94,11 @@ D0. The contract approach, a fresh start
 * **PE's writer proved** (030-21, 2026-11-19): PE (026-24) as total
   functions on the contract's tree, the trial's tree on all 288 traces;
   every history it writes from the empty tree meets `MeetsTop`
-  (`Contract.PE.pe_meetsTop_start`), the standard axioms only. Left for the
-  writer's part of the aim: `MeetsFull` for PE (its record in the model's
-  words: recovery, restarts, eviction, cuts), PE's acceptance (tested),
-  Java.
+  (`Contract.PE.pe_meetsTop_start`) and `MeetsFull` (`pe_full`: recovery,
+  restarts, eviction, cuts), the standard axioms only; and PE accepts every
+  transaction but a put of a key the tree cannot hold, within named bounds
+  of H and of the fuel (`pe_accepts`). Left for the writer's part of the
+  aim: Java.
 * **What it changes here:** D1 is paused; D3's goal moves to 030-04's
   step 4. "The aim" above is as written on 16 November; D0's aim is its
   goal. The rules above hold for `lean/` as before; the new package's
@@ -388,9 +389,11 @@ Files
   of 288 traces; `pe_step` (a transaction PE accepts meets the contract,
   TREE and the top's clauses, and PE keeps its state), `pe_meetsTop` and
   `pe_meetsTop_start` (every history PE writes from the empty tree meets
-  `MeetsTop`); 15,003 lines, the standard axioms only, gated. Left:
-  `MeetsFull` for PE, its acceptance (tested), Java. The night of 18
-  November. Status: done.
+  `MeetsTop`); 15,003 lines, the standard axioms only, gated. Part 2:
+  `MeetsFull` for PE (`pe_full`, `pe_crash_reads`). Part 3: PE's
+  acceptance (`pe_accepts`: every transaction whose puts' keys the tree can
+  hold, if H leaves room and the fuel suffices). Left: Java. The night of
+  18 November. Status: done.
 
 Log
 ===

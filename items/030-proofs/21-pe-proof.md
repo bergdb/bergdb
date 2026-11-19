@@ -1,7 +1,8 @@
 # 030-21. The PE writer meets the writer's contract: the proof
 
 Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-19): part 1,
-the contract, TREE and the top; part 2, `MeetsFull` for PE (section 5).
+the contract, TREE and the top; part 2, `MeetsFull` for PE (section 5);
+part 3, PE's acceptance (section 6).
 
 The complete proof that PE's writer, "plan, then emit" (026-23, section
 1.2; the trial 026-24), meets the writer's contract (030-04), so that the
@@ -53,12 +54,18 @@ plain map gives (030-05, 030-08). Lean's three standard axioms only, no
   `PeHist`), with the program, PeDefs.lean (`Cfg.Ok`, `Shaped`) and
   PeTop.lean (`TopInv`), pinned in statements.pin; no existing statement
   changed.
+- **PE's acceptance proved** (part 3, section 6): `Contract.PE.pe_accepts`:
+  from a state PE keeps, PE accepts every transaction whose puts' keys the
+  tree can hold (well formed, at most G + 1 segments), if H leaves room
+  (`Room`: 2^(H - e) more than the tree's nodes plus the operations, at
+  the height e of every node; h and cap at least 2) and the program's fuel
+  suffices (`FuelOk`). A put of a key the tree cannot hold is refused
+  (`pe_refuses`). So the theorems' premise "a transaction PE accepts" is
+  discharged but for these named limits (`pe_accepts_step`, `pe_extend`).
 - **Left**:
-  1. That PE accepts every transaction but a put of a key the tree cannot
-     hold (not well formed, or more than G + 1 segments) and a tree that
-     would grow past H. Tested (no refusal on the 288 traces), shown for one
-     history in Lean, not proved. The theorems speak of the transactions PE
-     accepts; a refused one changes nothing.
+  1. ~~PE's acceptance~~: done in part 3 (section 6). The height and the
+     fuel premises are bounds that suffice, not the program's exact
+     limits.
   2. ~~`MeetsFull`~~: done in part 2 (section 5): every history PE writes
      from the empty tree meets `MeetsFull` and K-LEVEL (`pe_full`), so
      recovery, restarts, lazy reading, eviction with handles and reclaim's
@@ -69,6 +76,8 @@ plain map gives (030-05, 030-08). Lean's three standard axioms only, no
   3. Java: PE is the model's writer; Java's write half is not PE yet
      (026-24's recommendation, step 2). Java against the model stays
      tested, by design.
+- **Size of part 3**: about 1,640 lines (PeAccept 1,227, PeAccSize 327,
+  the statement 41, an example 43).
 - **Size**: 15,003 lines in lean/contract (the program 705, the
   statements 56, an example 55; 026-24's lemmas of emit, settle and the
   abstract tree, 3,600, copied and kept; new tonight about 10,600). 026-24
@@ -268,17 +277,86 @@ allows, PE's acceptance. On the branch `030-21-full`.
   PeAdopt 1,046, PeProv 2,580, PeFull 970, PeFullProved 38, examples 72.
 
 
+
+# 6. Part 3: PE's acceptance
+
+The coordinator, 2026-11-19, 04:43, within Frans's go: PE accepts every
+transaction it should, so that the theorems' premise "a transaction PE
+accepts" is discharged but for named, user-visible limits. By an agent of
+coord-1118 and one sub-agent of it, on the branch `030-21-accept` in
+/Users/f/fl/bench/2026-11-19/acc/clone.
+
+- **The theorem**, `Contract.PE.pe_accepts` (Contract/Proof/PeAccept.lean;
+  the premises' definitions in Contract/PeAcceptStatement.lean, pinned):
+  from a state PE keeps (`Inv`, at any time), for parameters with `Cfg.Ok`,
+  PE's transaction gives a state (`peTx` is not none) if
+  - every put's key is one the tree can hold (`keyOk`: well formed, at most
+    G + 1 segments); a delete of another key is dropped as the noop it is;
+  - H leaves room (`Room`): h and cap at least 2, and 2^(H - e) more than
+    the tree's nodes (TREE's list) plus the operations, for the height e of
+    every node of the tree; so H at least e + log2(nodes + operations) + 1
+    for the highest node;
+  - the program's fuel suffices (`FuelOk`): (G + 1)(H + 1)(M + p + 2H + 6)
+    at most 2^40 for p operations (at M = 30, G = 3, H = 15: p up to about
+    17 billion).
+- **The refusals of the program** (each a none in PeWriter.lean): a put's
+  key (`opsOk`); a recursion out of fuel; a node not one of PE's (`getKey`,
+  `openEs`, a decision to keep or append without a base, a root's single
+  child that is no entry, a planned list shorter than its children's
+  routes); a new node outside the level bounds (`mkNode`: a joined node, a
+  new segment's leaf, a new root above a cut root); emit giving a root of
+  more than one entry. From `Inv` none happens but the first, a new root
+  above H, and the fuel.
+- **Exact or sufficient**: the key premise is exact: a transaction with a
+  put of a key the tree cannot hold is refused (`pe_refuses`). The other
+  two are bounds that suffice, not the program's exact limits. The program
+  refuses for the height only where a root at height H would be cut into
+  parts. Why `Room` suffices: a root cut into k parts gets a new root of k
+  entries, cut again into at most half as many when h and cap are at least
+  2 (`cutParts_next`), so the new roots above a root at height e stay
+  within H when k - 1 < 2^(H - e) (`settle_up`); and a root a transaction
+  plans holds at most the nodes reached from the old root plus the
+  operations (`plan_size_le`, PeAccSize.lean). With h or cap at 1 a cut
+  root gets new roots up to H and is refused: such parameters refuse every
+  transaction that cuts a root, and `Room` leaves them out (Java's
+  thresholds, h = c = cap = 17 M / 30, are at least 2 from M = 4).
+- **Corollaries**: `pe_accepts_step` (with `pe_step`: such a transaction
+  is accepted, meets the contract, TREE and the top's clauses, and PE keeps
+  its state); `pe_extend` (every history PE writes from the empty tree goes
+  on by such a transaction). Not vacuous: `Contract.PE.AcceptExample.accepts`
+  (Java's thresholds at node size 30, G = 3, H = 15: from the empty tree PE
+  accepts every transaction of at most 1,000 operations whose puts' keys
+  the tree can hold).
+- **The proof** (the file's header): the root settled alone (`settle_acc`,
+  `settle_up`: an old root's single children are key nodes; a planned root's
+  single child is its one entry; the new roots within H); emit (`emit_some`,
+  `emit_one`: a decision to keep or append has a base; a root of one node
+  gives one entry); rebalance (`rebalance_acc`: a child to join has a
+  neighbour, an untouched one opened is a key node, a joined node within
+  the level bounds); plan (`acc_all`: an induction on the fuel over plan, a
+  segment leaf's groups and a segment's tree, `PlanAcc`, `GroupsAcc`,
+  `TreeAcc`; a long compare value's entry is the next segment's root, a key
+  that goes on stays within G, a level uses at most M + p + 2H + 6 of the
+  fuel); the size of a planned root (PeAccSize.lean, by the sub-agent:
+  `VOk.size_le`, `Plan.length_le`, `content_view_le_R`).
+- **Pinned**: Axioms.lean (`pe_accepts`, `pe_refuses`, `pe_accepts_step`,
+  `pe_extend` and the example added), the new PeAcceptStatement.lean and
+  PeAccept.lean; no existing statement changed.
+- **Size of part 3**: PeAccept 1,227 lines, PeAccSize 327, PeAcceptStatement
+  41, PeAcceptExample 43.
+
+
 # State
 
-2026-11-19, 04:43. **Done.** Part 1 on main (b15f4b1b). **Part 2,
-`MeetsFull` for PE, proved**, GATED: 06d03970 on the branch
-`030-21-prov-land` in /Users/f/fl/bench/2026-11-18/pw/clone (one commit on
-main d035643c; the history on `030-21-full` and `030-21-adopt`, the same
-tree; `gate.sh d035643c` GATE OK, 137 theorems, the standard axioms only;
-the pinned files changed: Axioms.lean, with `pe_full` and `pe_crash_reads`
-added, PeAdopt.lean, its header only, and the new PeFullProved.lean; no
-existing statement changed). No run going. Left (Result): PE's acceptance
-(tested), Java.
+2026-11-19, 05:25. **Done.** Parts 1 and 2 on main (ca51029f). **Part 3,
+PE's acceptance, proved**: `pe_accepts`, `pe_refuses`, `pe_accepts_step`,
+`pe_extend` and the example, in Axioms.lean; `gate.sh` GATE OK, 142
+theorems, the standard axioms only; the pinned files changed: Axioms.lean,
+and the new PeAcceptStatement.lean and PeAccept.lean; no existing statement
+changed. The work on the branch `030-21-accept`, landed as one commit on
+main on the branch `030-21-accept-land`, both in
+/Users/f/fl/bench/2026-11-19/acc/clone (the landing commit's hash in the
+coordinator's report). No run going. Left (Result): Java.
 
 # Log
 
@@ -311,3 +389,11 @@ K-LEVEL and the whole given `Prov` (03:55 to 04:10); `Prov` started (a
 sub-agent, 03:55) and proved (04:37: emit, rebalance, plan, settle, the
 runs, a segment's step, the transaction); `pe_full`, `pe_crash_reads`
 (04:40).
+
+2026-11-19. Part 3 (the coordinator, 04:43): the clone at main 4a8f7616,
+branch `030-21-accept` (04:45); the refusals of the program read off, the
+premises chosen (04:55); the size of a planned root, PeAccSize.lean (a
+sub-agent, 05:00 to 05:04); settle, emit and rebalance (05:05 to 05:12);
+plan's induction on the fuel and the transaction, `pe_accepts` (05:12 to
+05:19); the converse for the keys, the corollaries, the example (05:20);
+the gate (05:21).

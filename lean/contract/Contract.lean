@@ -74,3 +74,7 @@ import Contract.PeAdoptExample
 import Contract.Proof.PeFull
 import Contract.Proof.PeFullProved
 import Contract.PeFullExample
+import Contract.PeAcceptStatement
+import Contract.Proof.PeAccSize
+import Contract.Proof.PeAccept
+import Contract.PeAcceptExample

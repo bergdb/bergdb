@@ -144,3 +144,8 @@ open Contract
 #print axioms Contract.PE.pe_full
 #print axioms Contract.PE.pe_crash_reads
 #print axioms Contract.PE.FullExample.full
+#print axioms Contract.PE.pe_accepts
+#print axioms Contract.PE.pe_refuses
+#print axioms Contract.PE.pe_accepts_step
+#print axioms Contract.PE.pe_extend
+#print axioms Contract.PE.AcceptExample.accepts
