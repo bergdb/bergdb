@@ -97,6 +97,16 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     }
 
     /**
+     * Whether the stream holds the primordial record, committed, and no committed record
+     * after it (bergdb 028-18); see RecoverableStream.holdsFirstTransactionAlone(). The
+     * caller must hold DB.writeLock.
+     */
+    boolean holdsPrimordialRecordAlone(long creationLength) {
+        assert Thread.holdsLock(writeLock);
+        return rstream.holdsFirstTransactionAlone(creationLength);
+    }
+
+    /**
      * Returns the length of the underlying stream. The caller must hold DB.writeLock.
      */
     final long getLength() {

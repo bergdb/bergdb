@@ -55,12 +55,21 @@ refusal has written nothing:
    028-15) and the
    primordial record, a super root and an empty key node: 272 bytes
    (`Db.CREATION_LENGTH`, asserted at the creation; 264 until 024-25,
-   26c21000). With `created.txt` (the Pub
-   API) the creation is synced first (015-01).
+   26c21000). The creation's second record, the startup distance's, is
+   written at the end of the start (1.9); with `created.txt` (the Pub
+   API) both are synced then, and `created.txt` written after the sync
+   (015-01, 028-18; until 028-18 the primordial record was synced and
+   `created.txt` written here).
 2. **An incomplete creation** is refused (`DatabaseNotCreatedException`,
    005-33): a stream not cut and not longer than the creation, whose
    bytes begin as a meta block of this version; its block, if complete,
    valid and naming no record; its record, if begun, cut, or failed.
+   Since 028-18 (option C), on a start that did not create the stream at
+   step 1, also the primordial record committed and alone: a stream not
+   cut and shorter than a meta block distance, its first block valid and
+   naming no record, its first record of the creation's length and
+   committed, and after it nothing, a part of a record, or one record
+   failed that ends the stream (`RecoverableStream.holdsFirstTransactionAlone`).
 3. **The last valid meta block** B: of the blocks complete in the
    stream, from the last down to the first at or after the first
    position, the first whose last byte is 10. Each block read must have
@@ -237,15 +246,17 @@ cut back ends (M22); Rule R stays. The STM's first time is the last
 record's (after the validation, 005-75); `created.txt` is written if
 missing (015-01); the database is active; sd is read from its KV
 (`Db.readStartupDistanceKv`, 028-15: 4 bytes, 10 to 10^9, else an
-`InternalDataException`; no KV is an SFE unless the stream holds the
-primordial record alone, when the builder's sd is kept); reclaim reads
+`InternalDataException`; no KV is an SFE unless this start created the
+stream, when the builder's sd is kept); reclaim reads
 its settings and table, and makes a cut that a crash left pending
 (027-13, section 1.9); eviction takes in what the start made resident
-(015-68, 019-47). A stream of the primordial record alone (a creation,
-or a crash before the creating start's next record) gets that record
-now: an internal transaction that puts the builder's sd at the KV, the
-writer's first (027-03, section 14.2), synced before the start returns
-when the creation is (`created.txt`; 028-17). The
+(015-68, 019-47). The creating start writes the creation's second
+record now: an internal transaction that puts the builder's sd at the
+KV, the writer's first (027-03, section 14.2); with `created.txt` both
+records are synced, and `created.txt` written, before the start returns
+(028-17, 028-18). A crash before that leaves a stream that the next
+start refuses (1.2, step 2); from 028-15 to 028-18 such a start wrote
+the record itself, with its own builder's sd. The
 start returns s as stored, sd, ts, the records read and R(k)'s last
 position (`StartInfo`). A start that throws closes the storage before
 the exception leaves (005-32).
@@ -570,3 +581,8 @@ tests, section 9 the outcomes, 1.11 `level1.sh`'s corrected header.
 2026-11-18. 028-15 (agent sdkv of coord-1118): sd is a KV read at the end
 of a start (1.1, 1.4, 1.9); meta version 155, a block without the node
 size damaged (1.2); the creating start's record of sd (1.9).
+
+2026-11-19. 028-18, option C (an agent of coord-1118): the primordial
+record alone refused as a creation that did not complete (1.2); the
+creating start writes the second record and, with `created.txt`, syncs
+both before `created.txt` (1.2, 1.9).

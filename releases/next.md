@@ -38,6 +38,15 @@ release is made"; 029). The notes say so where they list the files.
   later than before. The stream's bytes changed for every configuration
   of StreamDigest (a record after the primordial one, and no dummy
   value).
+* **A crash while a database is created gives `DatabaseNotCreatedException`,
+  also between the creation's two records** (bergdb 028-18, option C;
+  Frans, 2026-11-19, 09:53). A creation now writes two records, the empty
+  database and the startup distance; a start that finds the first
+  without the second refuses the database as not created and writes
+  nothing, as for a crash earlier in the creation: remove the files and
+  start again (`DatabaseNotCreatedException`'s Javadoc). So a database is
+  created whole or not at all. With the Pub API, `created.txt` is written
+  after both records are synced, before `start()` returns.
 
 ### Pub API
 

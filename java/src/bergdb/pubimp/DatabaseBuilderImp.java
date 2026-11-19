@@ -336,8 +336,9 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     /**
      * Refuses a directory that held a database and has no stream byte (2026-11-03, bergdb
-     * 015-01): it has created.txt, which a creation writes once its first bytes are durable
-     * (Db.handleEmptyStream), and no *.bergdb file with a byte (FileStream.hasStreamBytes).
+     * 015-01): it has created.txt, which a creation writes once its records are durable
+     * (Db.startInner; bergdb 028-18), and no *.bergdb file with a byte
+     * (FileStream.hasStreamBytes).
      * Before the directory is opened, so that the start opens, creates and writes nothing;
      * safe without the directory's lock, as a running database always has a stream file
      * with bytes. A directory without created.txt, also an empty or a missing one, is a new

@@ -3,8 +3,9 @@ package bergdb.pub.util;
 /**
  * <p>Thrown by a start when the database's creation did not complete (bergdb 005-33): a
  * crash, as a power loss, while the database was created left a part of what a
- * creation writes, its first meta block and its first transaction, and no committed
- * transaction. The database holds no data, and the start has written nothing.</p>
+ * creation writes, its first meta block and its first two records (the empty database's,
+ * and the startup distance's; bergdb 028-18), and no committed transaction. The database
+ * holds no data, and the start has written nothing.</p>
  *
  * <p>To create the database, remove its files and start it again: in its directory, the
  * stream's files (*.bergdb) and created.txt. A stream that holds a committed transaction
