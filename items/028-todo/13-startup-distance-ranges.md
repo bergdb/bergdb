@@ -3,7 +3,7 @@
 
 Status: done (decided 2026-11-19: the builders' methods go; gated on the
 branch `028-13-startup-distance-setter`). Kind: Decide. Frans: decided
-(2026-11-19, 11:06 and 11:10).
+(2026-11-19).
 Created 2026-11-14 by Frans Lundberg.
 
 What: the Core API sets the startup distance in two places, with
@@ -48,24 +48,20 @@ pass.
 The decision
 ------------
 
-Frans, 2026-11-19, 11:06: "I am leaning towards removing the startup
-distance from the builder. I don't think this is required. The default is
-fine for a newly started database. A change is just one method call. Can
-be run immediately after a database has started." And 11:10: "Yes, do
-this. Start it. Yes, the Pub builder's method go too. I just wonder about
-the range and the clamp. I like the range and the clamp. So we can test
-the whole range."
-
-So the startup distance is set only by the running database's setter, and
-the builders' methods go. This replaces the options A, B and C above: with
+Frans decided (2026-11-19): the startup distance is set only by the
+running database's setter, and the builders' methods go, in Core and in
+the Pub layer. The reasons: the default suits a new database, and a
+change is one call of the setter right after the start. The setters keep
+their ranges and clamp to them, so that tests can use the whole range. This replaces the options A, B and C above: with
 one method there is one rule.
 
-**The range and the clamp, as coord-1118 read them** (to be confirmed by
-Frans): the Core setter clamps to the database's whole range, 10 bytes to
+**The range and the clamp** (confirmed by Frans, 2026-11-19): the Core
+setter clamps to the database's whole range, 10 bytes to
 10^9, the range of the KV `/#i/-sd` that a start reads (028-15), so that
 tests can use every value of it; it refuses a value below 1 with
-`IllegalArgumentException`; the Pub setter keeps its user range, clamped to
-5 to 1,000 MB.
+`IllegalArgumentException`; it returns the value now in force (`int`). The
+Pub setter keeps its user range, clamped to 5 to 1,000 MB, and stays
+`void`.
 
 
 What was made
@@ -231,18 +227,16 @@ State
 
 2026-11-19, 13:40. Done and gated on the branch
 `028-13-startup-distance-setter` (GATED `014d9bfc`, then this item's
-commit), not merged to `main`, not pushed. For Frans to confirm: the
-coordinator's reading of the range and the clamp (The decision, above);
-the Core setter's return value (`int`, the value set; the Pub setter
-stays `void`).
+commit). Frans confirmed the range, the clamp and the Core setter's
+`int` (2026-11-19); merged into `main` by coord-1118.
 
 
 Log
 ---
 
-2026-11-14. Registered by coord-1114 from 028-12's landing (Frans, 12:18:
-"Yes" to "pick A today and register a 028 entry").
+2026-11-14. Registered by coord-1114 from 028-12's landing; A chosen for
+now (Frans).
 
-2026-11-19. Frans decided (11:06, 11:10): the builders' methods go, the
-setters remain. Made and gated on the branch
+2026-11-19. Frans decided: the builders' methods go, the setters remain;
+he confirmed the range, the clamp and the Core setter's `int`. Made and gated on the branch
 `028-13-startup-distance-setter` by an agent of coord-1118.
