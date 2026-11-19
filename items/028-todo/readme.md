@@ -105,6 +105,7 @@ Open
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done on its branch |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
+| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | A (Frans) | done |
 
 
 Closed
@@ -212,3 +213,11 @@ branch `028-21-dirty-bound`.
 2026-11-19. 028-24 registered (Frans, 10:40 and 10:42) and done on the
 branch `028-24-checkers-no-mathlib`: the contract checkers build without
 Mathlib in `lean/contractcheck/`, by an agent of coord-1118.
+
+2026-11-19. 028-26 registered by coord-1118 from Codex's review of PE
+(finding 1) and taken by an agent of coord-1118: reclaim's charge omits
+the index nodes that PE makes.
+
+2026-11-19. 028-26 done: Frans chose option A (13:30), the row stored
+again after a step with the bytes its batch made dirty after the row;
+landed by coord-1118, regated on the merged tree.

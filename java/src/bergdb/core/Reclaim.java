@@ -938,7 +938,10 @@ public class Reclaim implements Db.TransactionListener {
         // values only, about 100 bytes each for the index; the index nodes the step makes
         // dirty, by its puts and its touch, were not counted, so reclaim wrote more than
         // internalFraction. Their size is known during the step only (Trans.dirtiedBytes),
-        // so the row is stored by a value transformation.
+        // so the row is stored by a value transformation. It runs before the writer gets the
+        // step's operations as one batch (Db.putKvs; record format 8, PE), so it sees the
+        // bytes of the nodes that the touch made dirty only; those of the nodes that the batch
+        // then makes dirty (PE's new nodes) are added after the commit, below (bergdb 028-26).
         
         b.putCore(currentKey, null, new byte[0], new ValueTransformation() {
             public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
@@ -987,8 +990,9 @@ public class Reclaim implements Db.TransactionListener {
             st.recordBytes += t.nextPos - t.tpos;
             st.tableBytes += tableBytes[0].length;
             st.dirtiedNodes += t.dirtiedNodes;
-            st.dirtiedStored += dirtiedStored[0];
+            st.dirtiedStored += t.dirtiedBytes;     // in the step's row, or in the row below
             st.dirtiedBytes += t.dirtiedBytes;
+            st.dirtiedAfterRow += t.dirtiedBytes - dirtiedStored[0];
             st.maxStepDirtied = Math.max(st.maxStepDirtied, t.dirtiedNodes);
             st.loads += maintenance.loads();
             st.loadBytes += maintenance.loadBytes();
@@ -1002,7 +1006,21 @@ public class Reclaim implements Db.TransactionListener {
             }
         }
         
+        // bergdb 028-26 (Codex's review of the writer PE, 2026-11-19, finding 1): the index
+        // nodes that the step's batch made dirty after its row was made, PE's new nodes
+        // (replacements, cuts, joins, a new top node), are charged too, as the row could not
+        // store them: their bytes are added to rewritten, and the row is stored again, in an
+        // internal transaction of its own, or, after the last step, with the table below.
+        // So the row in the stream is the row in memory after every call, and a restart
+        // resumes with the same charge (INV-RESTART). Until 028-26 they were charged
+        // nowhere.
+        final long afterRow = t.dirtiedBytes - dirtiedStored[0];
+        next.rewritten += afterRow;
         it.set(next);
+        if (afterRow > 0 && !eod[0]) {
+            storeCurrent(it);
+            if (st != null) st.rowRecords++;
+        }
         
         if (eod[0]) {
             // 2026-10-13: eod() set done at once, so when the rewrite got a
@@ -1068,7 +1086,8 @@ public class Reclaim implements Db.TransactionListener {
             String s = StringUtil.toString(value);
             table.parse(s);  // throws InternalDataException
             
-            // The progress of the iteration in progress, stored by its last step.
+            // The progress of the iteration in progress, stored by its last step (and again
+            // after it, with the bytes of the nodes its batch made dirty; bergdb 028-26).
             byte[] current = db.getOne(Long.MAX_VALUE, currentKey, g);
             if (current != null) {
                 IterationInfo c = new IterationInfo();
@@ -1200,6 +1219,25 @@ public class Reclaim implements Db.TransactionListener {
         }
     }
     
+    /**
+     * Stores the row of the iteration in progress, 'it', at CURRENT_KEY_NAME, in an internal
+     * transaction of its own: after a step whose batch made index nodes dirty after the
+     * step's row was made (step(); bergdb 028-26).
+     */
+    private void storeCurrent(IterationInfo it) {
+        final byte[] rowBytes = StringUtil.toBytes(it.serialize());
+        if (stats != null) {
+            stats.tableBytes += rowBytes.length;
+        }
+        Trans t = db.trans().putCore(currentKey, rowBytes).build();
+        t.isInternal = true;
+        try {
+            db.execute(t);
+        } catch (RerunException e) {
+            throw new Bug("RerunException for write-only trans unexpected, " + e.getMessage());
+        }
+    }
+
     /** Stores the iteration table in an internal transaction. */
     private void storeTable() {
         byte[] tableBytes = StringUtil.toBytes(table.serialize());
@@ -1332,6 +1370,9 @@ public class Reclaim implements Db.TransactionListener {
             long dirtiedBytes;          // Their size in the stream then.
             long maxStepDirtied;        // Most index nodes one step made dirty.
             long dirtiedStored;         // Bytes of them counted in the allowance.
+            long dirtiedAfterRow;       // Of dirtiedBytes, those made dirty after the row
+                                        // was made: PE's new nodes (bergdb 028-26).
+            long rowRecords;            // The rows stored again for them (028-26).
             long loads;                 // Versions the steps loaded from the stream (WP J6).
             long loadBytes;             // Their memory size.
             long valueLoads;            // Of the loads, values (bergdb 024-34).
@@ -2698,6 +2739,81 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         /**
+         * bergdb 028-26 (Codex's review of the writer PE, 2026-11-19, finding 1): the row of
+         * a reclaim step is made before the writer gets the step's operations as one batch
+         * (record format 8), so it holds only the bytes of the nodes that the step's touch
+         * made dirty; the nodes that the batch then makes (replacements, cuts, joins) were
+         * charged nowhere, in the row or in memory. The workload of
+         * testAllowanceCountsIndexNodes with keys that sort before the row's key (/!k/ before
+         * /#i/), whose new nodes the old writer, applying the operations one by one, still
+         * counted in the row: the first iteration's row charged 90,832 of 301,856 bytes too
+         * few at node size 8, 49,824 of 211,520 at node size 30. Now the charge, in memory
+         * after each user transaction, in the row stored then, and in the row stored done,
+         * is every byte that the steps made dirty.
+         */
+        @Nano
+        public static void testAllowanceCountsNodesMadeAfterTheRow() {
+            for (int nodeSize : new int[] {8, 30}) {
+                CoreTestClock clock = new CoreTestClock();
+                long time = Clock.UNITS_PER_SEC;
+                clock.setTime(time);
+                DbBuilder builder = Db.builder().testSetup().clock(clock).startupDistance(2000);
+                if (nodeSize == 8) {
+                    builder.maxNodeSize8();
+                } else {
+                    builder.maxNodeSize30();
+                }
+                Db db = builder.start();
+                try {
+                    Reclaim reclaim = db.internal().reclaim();
+                    Stats stats = reclaim.enableStats();
+                    for (int i = 0; i < 3000; i += 100) {
+                        time += Clock.UNITS_PER_SEC / 20;
+                        clock.setTime(time);
+                        Trans.Builder b = db.trans();
+                        for (int j = i; j < i + 100; j++) {
+                            b.put("/!k/" + j, new byte[10]);
+                        }
+                        db.execute(b.build());
+                    }
+                    db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                    java.util.Random r = new java.util.Random(6);
+                    final long[] currentKey = Keys.toSegments(CURRENT_KEY_NAME);
+                    
+                    for (int i = 0; i < 5000 && reclaim.getIterationCount() == 0; i++) {
+                        time += Clock.UNITS_PER_SEC / 20;
+                        clock.setTime(time);
+                        db.execute(db.trans().put("/!k/" + r.nextInt(3000), new byte[10])
+                                .build());
+                        IterationInfo cur = reclaim.currentIteration();
+                        if (cur == null || cur.lastKey == null) {
+                            continue;       // no step yet
+                        }
+                        Stats.Iteration st = stats.iterations.get(0);
+                        Assert.assertEquals("M=" + nodeSize + ", charged in memory",
+                                st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes,
+                                cur.rewritten);
+                        byte[] stored = db.getOne(Long.MAX_VALUE, currentKey, db.newGetData());
+                        Assert.assertEquals("M=" + nodeSize + ", the row stored",
+                                cur.serialize(), StringUtil.toString(stored));
+                    }
+                    
+                    Assert.assertTrue("no iteration done", reclaim.getIterationCount() > 0);
+                    IterationInfo row = reclaim.lastDoneRow();
+                    Stats.Iteration st = stats.iterations.get(0);
+                    Assert.assertTrue("M=" + nodeSize + ", steps " + st.steps, st.steps >= 2);
+                    Assert.assertTrue("M=" + nodeSize + ", no node made after a row",
+                            st.dirtiedAfterRow > 0);
+                    Assert.assertEquals("M=" + nodeSize + ", the row stored done",
+                            st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes,
+                            row.rewritten);
+                } finally {
+                    db.stop();
+                }
+            }
+        }
+        
+        /**
          * The cut point of an iteration is the pStart of the one before (pCut, 2026-10-13,
          * bergdb 011-04, "Level 3 cost"): values stored between the two are not
          * rewritten, and every live value is stored at pCut or later when it is done.
@@ -3444,9 +3560,10 @@ public class Reclaim implements Db.TransactionListener {
          * the stream was never cut, with no exception: the fault of a queue of about 100M
          * keys at the real limit, 2 GB (024-07, section 3). Now the startup pos passes the
          * last step within 100 transactions. 200 kB since the merges at the delete (bergdb
-         * 024-21): Dag.dirtyNodeBound counts up to 922 index nodes, 179 kB, for the user's
+         * 024-21): Dag.dirtyNodeBound counted up to 922 index nodes, 179 kB, for the user's
          * transactions of 8 puts and 8 deletes at node size 8, and a limit of 100 kB refused
-         * them. At 200 kB the test still has its fault: with the touch of a key range back
+         * them; since record format 8 (PE) and bergdb 028-21's bound, up to 902, 175 kB
+         * (bergdb 028-26, a probe of these transactions). At 200 kB the test still has its fault: with the touch of a key range back
          * (Db.touchRange before 024-07) it fails, the startup pos 252,408 bytes behind after
          * 100 transactions (024-21's review, R5).
          */

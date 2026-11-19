@@ -143,6 +143,16 @@ to confirm** (the smallest choice; the touch covers the paths of all the
 step's keys, the puts' new nodes are left out, which was already true of
 the puts that sort after the row).
 
+**Corrected by 028-26** (2026-11-19): the statement above holds for the
+row's value transformation, but leaving the puts' new nodes out was a
+defect, not a choice to keep. Codex's review of PE (finding 1) showed
+that PE's new nodes (replacements, cuts, joins) were charged nowhere, in
+the row or in memory: in its probe the first iteration charged 90,832 of
+301,856 dirtied bytes too few at node size 8, where the old writer
+omitted 2,304. Since 028-26 a step adds them to the row after its commit
+and stores the row again in an internal transaction of its own (027-13,
+section 1.4, 4b).
+
 
 # 3. The oracle
 

@@ -48,6 +48,20 @@ release is made"; 029). The notes say so where they list the files.
   created whole or not at all. With the Pub API, `created.txt` is written
   after both records are synced, before `start()` returns.
 
+* **Reclaim charges every index node that its steps make dirty** (bergdb
+  028-26). With a finite retain duration (`setRetainDuration`), a
+  reclaim step's internal transaction counts toward reclaim's allowance,
+  a fraction of the stream's growth, the bytes of the index nodes that
+  it makes dirty; since record format 8 and its writer it counted only
+  those on its keys' paths, not the nodes that the writer makes (found
+  by a review of the writer). It now counts them too, and stores its
+  progress again in a small internal transaction of its own after most
+  steps, so a restart resumes with the same count. Reclaim so keeps
+  closer to its fraction: in a test workload with reclaim the stream
+  grew 1.5 to 7.8 % less. The stream's bytes changed for StreamDigest's
+  l3-* configurations (reclaim on), not for the l2-* ones; the digests
+  before and after are in 028-26.
+
 ### Pub API
 
 * **`bergdb.pub.Limits`: the limits as constants, and a check of a key
