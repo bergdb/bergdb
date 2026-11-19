@@ -388,6 +388,13 @@ public class DbStarter {
                 keys[k] = node.getKey();
                 values[k] = node.getNode().getValue();
                 valueBytes += StoredValueNode.getByteSizeLong(values[k], keys[k]);
+                if (keys[k].length == 0
+                        || (k > 0 && Keys.compareArrays(keys[k - 1], keys[k]) >= 0)) {
+                    // A writer stores one KV a key, in key order (Db.putKvs): a damaged record.
+                    throw new StreamFormatException("The record of time " + storedTrans.tt
+                            + " at " + storedTrans.tpos + " holds its KVs out of key order, or"
+                            + " a key twice or empty, at KV " + k + ".");
+                }
                 k++;
             }
         }

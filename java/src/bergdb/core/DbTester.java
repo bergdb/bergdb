@@ -2175,8 +2175,11 @@ public class DbTester {
         // 116 commits with the cap of the share's factor at 2 (bergdb 024-31), which makes
         // the catch-up longer and its records smaller; below 60 before it. 154 since the
         // call's record is small (bergdb 028-15): its 200 kB dummy value, gone, was stream
-        // that the take paced and the section's span counted.
-        assertTrue("below 2 sd after " + below, below >= 0 && below < 200);
+        // that the take paced and the section's span counted. 246 with the writer of record
+        // format 8 (bergdb 026-25; 192 with format 7's on 2026-11-19): the section's span at
+        // the call is 1.93 MB, against 1.74 MB, both within the pace's band at 2 MB, and it
+        // shrinks by about 4.4 kB a commit with either writer.
+        assertTrue("below 2 sd after " + below, below >= 0 && below < 300);
     }
     
     /** The nodes of D: the nodes that got dirty in the transactions of TransSeq. */
@@ -2251,9 +2254,14 @@ public class DbTester {
         assertTrue("old root clean before", !oldRoot.isDirty());
         assertTrue("old top node clean before", !oldTop.isDirty());
         
-        // Two more keys in one transaction: the root key node, full, is replaced.
+        // Seven more keys in one transaction: the root key node, full, is replaced. (Two until
+        // record format 8, whose writer appends them where they fit; bergdb 026-25.)
         clock.setTime(time++);
-        db.execute(db.trans().put("/k/" + getKey(10), "v10").put("/k/" + getKey(11), "v11").build());
+        Trans.Builder more = db.trans();
+        for (int i = 10; i < 17; i++) {
+            more.put("/k/" + getKey(i), "v" + i);
+        }
+        db.execute(more.build());
         
         assertTrue("a new super root", db.internal().superRoot() != oldTop);
         assertTrue("a new root key node", db.internal().superRoot().getPointerNode(0) != oldRoot);
@@ -2263,7 +2271,7 @@ public class DbTester {
             assertTrue("old root in D", n != oldRoot);
             assertTrue("old top node in D", n != oldTop);
         }
-        for (int i : new int[]{0, 1, 2, 10, 11}) {
+        for (int i : new int[]{0, 1, 2, 10, 11, 12, 13, 14, 15, 16}) {
             Assert.assertArrayEquals("i=" + i, StringUtil.toBytes("v" + i),
                     DbUtil.get(db, Long.MAX_VALUE, "/k/" + getKey(i)));
         }

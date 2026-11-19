@@ -977,12 +977,17 @@ final class PeWriter {
         final int[] sizes = partSizes(f.size(), v.dec, v.join);
         int off = 0;
         for (int s : sizes) {
+            // The node filled first, then reported made (its id, and its bytes counted with
+            // what it holds, Residents.added), then its pointers, then changed.
             final KeyNode nn = new KeyNode(v.h == 0);
-            pd.nodeChangeListener.keyNodeCreated(nn);
             nn.addToEnd(Klong.createTime(tt), null, Spos.NULL);
             for (int i = off; i < off + s; i++) {
                 final FEnt e = f.get(i);
-                addEntry(nn, v.h != 0 && i == off ? 0 : e.cv, e.t);
+                addEntry(nn, v.h != 0 && i == off ? 0 : e.cv, e.t, false);
+            }
+            pd.nodeChangeListener.keyNodeCreated(nn);
+            for (int i = 1; i < nn.size; i++) {
+                reportPointer(nn, i);
             }
             pd.nodeChangeListener.keyNodeChanged(nn);
             out.add(new FEnt(s == 0 ? 0 : f.get(off).cv, new Tgt(nn)));
@@ -1007,14 +1012,15 @@ final class PeWriter {
         }
         for (FEnt e : f) {
             if (!kept(base, lb, e)) {
-                addEntry(base, e.cv, e.t);
+                addEntry(base, e.cv, e.t, true);
             }
         }
         pd.nodeChangeListener.keyNodeChanged(base);
     }
 
-    /** A key klong of compare value cv added to 'dest', naming what t names. */
-    private void addEntry(KeyNode dest, long cv, Tgt t) {
+    /** A key klong of compare value cv added to 'dest', naming what t names; its pointer
+     *  reported if 'report'. */
+    private void addEntry(KeyNode dest, long cv, Tgt t, boolean report) {
         final long klong = Klong.compareValueToKeyKlong(cv);
         final int i;
         if (t.node != null) {
@@ -1023,9 +1029,16 @@ final class PeWriter {
         } else {
             i = dest.addKlongCopyPointer(tt, klong, t.src, t.idx);
         }
-        final Node pointee = dest.getPointerNode(i);
+        if (report) {
+            reportPointer(dest, i);
+        }
+    }
+
+    /** Pointer i of 'node' made: reported if it names a node or a value in memory. */
+    private void reportPointer(KeyNode node, int i) {
+        final Node pointee = node.getPointerNode(i);
         if (pointee != null) {
-            pd.pointerCreatedListener.pointerCreated(dest, i, pointee);
+            pd.pointerCreatedListener.pointerCreated(node, i, pointee);
         }
     }
 
