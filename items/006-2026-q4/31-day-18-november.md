@@ -278,6 +278,22 @@ The decisions, as recorded here:
   contract; every history goes on (`pe_extend`). GATE OK (142 theorems),
   no existing statement changed; LANDED d3e14ccc. The PE writer's proof
   is complete.
+* 07:25 to 08:52 (19 November) Frans gave F53 and s1 for timing (07:25):
+  PE on quiet machines (026-25, section 7): CORE's set 11 to 18 % slower,
+  not 3 times (that was load); at 10M keys within a few per cent, the
+  load up to 10 % slower; with reclaim more cuts and 6.8 % more bytes a
+  put, not explained. Landed ef02ec41.
+* 09:25 Frans asked whether PE can be made as fast as the old writer, and
+  whether the first transaction's design depends on PE: room for both
+  same-tree optimizations (no proof work) and tree changes (proof work);
+  the creation is independent of PE, best decided after the merge, now
+  with C recommended (the primordial record kept special).
+* 09:32 Frans: "Yes, do it. As recommended including the follow-up."
+  026-25 merged in the land clone (9bcbeea8), gated again on the merged
+  tree before it is pushed; 028-19 registered (the follow-up).
+* 09:48 The merged tree gated: BEFORE COMMIT OK, GATE OK (the contract),
+  LEVEL 2 OK (the PE oracle, conformance, the contract checks); 026-25
+  LANDED 9bcbeea8. Java's writer is PE on `main`.
 
 
 ## 4b. Unattended, 13:48 to 07:00
