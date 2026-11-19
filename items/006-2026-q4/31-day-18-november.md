@@ -294,6 +294,15 @@ The decisions, as recorded here:
 * 09:48 The merged tree gated: BEFORE COMMIT OK, GATE OK (the contract),
   LEVEL 2 OK (the PE oracle, conformance, the contract checks); 026-25
   LANDED 9bcbeea8. Java's writer is PE on `main`.
+* 09:49 `night.sh` started on c458bfea (PE merged).
+* 09:41 Agent rc started: reclaim's contract written down (030-22), due
+  11:45 (Frans: "Yes, start it.").
+* 09:53 Frans on 028-18: "Option C seems like the way forward." On what
+  the first record after the primordial one could hold besides the
+  startup distance (09:53), added to 026-12 as SF12 (09:59: "Yes."). 09:59:
+  "Can you start option C now? I want it. We may add things to this first
+  non-primordial transaction later. But start with this." Agent optc
+  started 10:00.
 
 
 ## 4b. Unattended, 13:48 to 07:00

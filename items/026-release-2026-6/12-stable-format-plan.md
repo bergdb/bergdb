@@ -652,6 +652,52 @@ iteration orders; C copies Java's `HashMap` order today
 **Depends on.** SF8 and SF10 (the final bytes). A checklist, last.
 
 
+### SF12. What a database holds from its creation
+
+Added 2026-11-19 by coord-1118 at Frans's word (09:59: "Yes."), from his
+question of 09:53: "Should we add more to the first non-primordial
+transaction. Startup distance is necessary for the database to run. We
+could add auxilliary info. Like what we have in created.txt. When
+database was created, on what machine. Perhaps some info on the
+meta-block that we want to be able to read through the core API. [...]
+When we start to settle stream format, this becomes more important."
+
+**The question.** What record 1 (the creating start's transaction, right
+after the primordial record; since 028-18's option C the creation is
+these two records, all or nothing) holds besides `/#i/-sd`, and what the
+meta block keeps.
+
+**Why it matters.** Every database holds it from its creation: added
+later, older databases lack it, and "absent means older" comes back
+(SF5). It is also where the format's feature flags could live (027-03,
+section 21, V-D), readable by any reader that reads the tree.
+
+**The coordinator's proposal (2026-11-19, for the walk-through):**
+
+* **The meta block keeps only what a start needs before it can read the
+  tree:** the magic, the version, the node size, the last record, the
+  database ID if encryption needs it first, the validity byte. These
+  cannot be KVs.
+* **Record 1 holds write-once facts that layers and tools read through
+  the Core API** (`getMany` under `/#i/`), in their own key, such as
+  `/#i/-created`, apart from `/#i/-sd` (which changes): the release that
+  created the database, and later the feature flags. Written once;
+  a caller's put there refused, as at `/#i/-sd`.
+* **No copies of meta-block fields** (the database ID, the creation
+  time) in KVs: two copies can disagree. If tools need them, a small read
+  API on `Db` (such as `getDatabaseId()`, `getCreationTime()`) gives them
+  from the meta block.
+* **No machine name by default:** database files are shared, and a host
+  name in the stream says where and by whom it was made; it also makes
+  streams differ between machines for the same input (the C clone and
+  the trace tools rely on fixed bytes from fixed inputs). If wanted, a
+  setting of the builder, off by default.
+* `created.txt` stays the Pub API's side file (outside the stream).
+
+**Depends on.** SF5 (unknown keys), SF3 (the compatibility rule), 028-18
+(option C, the two records).
+
+
 ## 3. The order
 
 | SF   | Depends on | Decided                                     | Measurement |
@@ -667,6 +713,7 @@ iteration orders; C copies Java's `HashMap` order today
 | SF9  | SF1, SF4  | now; done last                              | -      |
 | SF10 | SF3; M1   | after M1                                    | M1     |
 | SF11 | SF8, SF10 | texts now; the numbers last, a checklist    | -      |
+| SF12 | SF3, SF5  | with the format work                        | -      |
 
 **Decided now**, in this order, one at a time: SF1, SF2, SF3, SF4, SF5,
 SF6, SF7 (a), SF8's QC2, QC4 and QC5, SF9, and SF11's texts (Q9). No
@@ -765,3 +812,6 @@ format for the stream. I decide to not focus on this for this
 release."): SF4 is open again. SF7 (a) done in 028-15 (the KV, meta
 version 155, 2026.5's databases refused). The other questions as they
 were.
+
+2026-11-19. SF12 added: what a database holds from its creation (Frans,
+09:53 and 09:59); 028-18 takes option C.
