@@ -9,8 +9,7 @@ read set and the STM check; the key and value transformations; the KVs in
 key order, one a key, given to the writer as one batch (record format 8,
 026-25), after every value transformation of the transaction has run;
 the limits L1 to L6 and the check of the dirty nodes (`dirtyNodeBound`,
-argued for format 7's writer, checked for PE; 027-03, section 8.3;
-028-21); the go point (R1: a refused call changes nothing) and the steps
+argued for PE since 028-21; 027-03, section 8.3); the go point (R1: a refused call changes nothing) and the steps
 after it (statistics, eviction, reclaim's work); one writer and readers
 without locks; why a rerun gives the same record (P2, P8).
 
@@ -27,3 +26,6 @@ recommended").
 2026-11-19. The batch of record format 8 (026-25) and the status of
 `dirtyNodeBound` with PE. By an agent of coord-1118, on the branch
 `027-pe`.
+
+2026-11-19. 028-21: `dirtyNodeBound` argued for PE. By an agent of
+coord-1118, on the branch `028-21-dirty-bound`.
