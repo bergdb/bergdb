@@ -63,8 +63,8 @@ Sources: 026-25 (sections 2 and 5), 027-08, 027-03 section 8.3, 024-11
 Finding
 -------
 
-The bound did not hold for PE. Two counterexamples, each a transaction of
-puts only, whose key nodes made dirty passed `dirtyNodeBound` (each a
+The bound did not hold for PE. Three counterexamples, each a transaction
+of puts only, whose key nodes made dirty passed `dirtyNodeBound` (each a
 failing case of `DagTester.testDirtyNodeBoundOfPe` before the fix):
 
 * **A new segment tree of h + 1 to B - 3 entries.** The count of a new
@@ -88,15 +88,21 @@ failing case of `DagTester.testDirtyNodeBoundOfPe` before the fix):
   cut, while the count kept it: 12 key nodes marked, bound 10 (the case
   is built step by step in the test, and checks that PE cut the three
   leaves and the root).
+* **A new root above a cut segment root.** The same cut into three of
+  a segment tree's root, a leaf of 21 klongs (19 live) that gets 12 new
+  keys: PE puts a new root above the three parts (settleRoot), which the
+  old count did not count for a segment tree (only for the space root):
+  5 key nodes marked, bound 4.
 
 Deletes were not short. PE's joins make more nodes than the old merges
 (three at node size 30, 7 + 29 entries), and a join of two inner nodes
 rebalances one level down, but a child is joined only if a delete below
 it left it under m entries, and a delete's four nodes a level and two
-levels more are generous: over about 1,500 transactions of deletes only
-on thinned trees (single deletes, most keys of runs, every k-th key) the
-bound was at least 5.9 times the nodes marked at node size 30 (6.3 at 62,
-7.6 at 14, 9.8 at 8). A put's count is tight: a put's walked nodes are
+levels more are generous: over 1,100 transactions of deletes only at
+each of node sizes 8, 14, 30 and 62, on thinned trees (single deletes,
+most keys of runs, every k-th key, scattered deletes), the bound was at
+least 5.7 times the nodes marked at node size 30 (6.3 at 62, 7.6 at 14,
+9.8 at 8). A put's count is tight: a put's walked nodes are
 all marked when PE appends to them, and margin 0 is common.
 
 Why the traces did not show it: C-T8 checks the Lean copy of the same
@@ -174,13 +180,17 @@ Tests
   case at 30; (3) random histories and transactions of runs of puts, new
   keys and deletes at the four sizes; (4) deletes of most keys under
   several inner nodes of trees thinned towards m, with joins (at least 10
-  a case) on several levels. Before the fix (1) failed (node size 14,
-  8 keys: 12 marked, bound 10) and so did (2) alone (12, bound 10).
-* The exploration (a probe outside the repository, against the jar):
-  new trees of up to 700 keys, about 3,000 random transactions of puts
-  and deletes, 1,200 of deletes only, 600 of runs of new keys into
-  appended leaves, at node sizes 6 to 62: no case above the bound after
-  the fix; before it, the cases above.
+  a case) on several levels; and (2b) the segment root's case. Before the
+  fix (1) failed (node size 14, 8 keys: 12 marked, bound 10), and so did
+  (2) alone (12, bound 10) and (2b) alone (5, bound 4).
+* The exploration (a probe outside the repository, against the jar, in
+  the manner of the test): at each of node sizes 8, 14, 30 and 62 (and
+  6 for the first two), new segment trees of 1 to 700 keys, 2,100 random
+  histories each with a transaction of runs of puts and deletes, 1,100
+  transactions of deletes only, 450 of runs of new keys into appended
+  leaves: after the fix no transaction above the bound; before it, the
+  cases above. Puts are often at the bound exactly (every walked node
+  appended to); deletes at least 5.7 times under it.
 
 
 Gates

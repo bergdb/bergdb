@@ -993,7 +993,8 @@ public class DagTester {
      * one); (2) a parent whose children are each cut into three parts, one more than their
      * overflows and one, at node size 30: the root, 21 klongs and 18 live, gets three klongs
      * a child where the count gave two, and is cut (until 028-21, 12 key nodes and a bound
-     * of 10); (3) random histories and a transaction of runs of puts, new keys and deletes;
+     * of 10); (2b) a segment tree's root cut into three parts, and a new root above them
+     * (until 028-21, 5 key nodes and a bound of 4); (3) random histories and a transaction of runs of puts, new keys and deletes;
      * (4) deletes of most keys under several inner nodes of trees thinned towards m, so that
      * joins happen on several levels, one level down too.
      */
@@ -1030,6 +1031,24 @@ public class DagTester {
         long cuts0 = Dag.statCuts;
         c.run(ks, null, true);
         Assert.assertEquals("three leaves and the root cut", 4, Dag.statCuts - cuts0);
+        
+        // (2b) A segment tree's root, a leaf of 21 klongs (19 live), gets 12 new keys: three
+        // parts and a new root above them, which the segment leaf above names (until 028-21,
+        // five key nodes and a bound of 4: the new root was not counted).
+        c = new BoundCase(30);
+        ks.clear();
+        for (int i = 0; i < 15; i++) ks.add(String.format("/p00001x%04d", i * 100));
+        ks.add("/p00000x0000");
+        ks.add("/p00002x0000");
+        c.run(ks, null, false);
+        ks.clear();
+        for (int j = 1; j <= 4; j++) ks.add(String.format("/p00001x%04d", j));
+        c.run(ks, null, false);
+        ks.clear();
+        for (int j = 10; j < 22; j++) ks.add(String.format("/p00001x%04d", j));
+        long newRoots0 = Dag.statNewRoots;
+        c.run(ks, null, true);
+        Assert.assertEquals("a new root of the segment tree", 1, Dag.statNewRoots - newRoots0);
         
         // (3) Random histories, then runs of puts, new keys and deletes.
         Random r = new Random(28021);

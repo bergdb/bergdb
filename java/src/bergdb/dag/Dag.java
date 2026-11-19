@@ -537,14 +537,15 @@ public class Dag {
      * 
      * <p>The count above was argued for the writer of record formats 6 and 7, whose
      * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), and the
-     * count is argued for it as follows (bergdb 028-21, which found it short by two kinds of
-     * nodes and added them: a new segment tree of h + 1 entries or more, which PE cuts into
-     * parts where the old writer made one node, 18 to 28 keys at node size 30 counted as one
-     * node and made as three; and a list cut into more parts than the overflows and one, 31
-     * entries at node size 30 into three, whose parent got one klong too few). PE writes each
-     * node once. The key nodes a transaction makes dirty are the nodes of the paths that PE
-     * keeps with a node written below (keyNodeOnPath) or appends klongs to, every one walked
-     * here, and the nodes it makes, in these ways:</p>
+     * count is argued for it as follows (bergdb 028-21, which found it short in three ways and
+     * added them: a new segment tree of h + 1 entries or more, which PE cuts into parts where
+     * the old writer made one node, 18 to 28 keys at node size 30 counted as one node and made
+     * as three; a list cut into more parts than the overflows and one, 31 entries at node size
+     * 30 into three, whose parent got one klong too few; and the new root above a segment
+     * tree's root cut into parts, not counted). PE writes each node once. The key nodes a
+     * transaction makes dirty are the nodes of the paths that PE keeps with a node written
+     * below (keyNodeOnPath) or appends klongs to, every one walked here, and the nodes it
+     * makes, in these ways:</p>
      * <ul>
      * <li>a node of the paths replaced by new nodes (PeWriter.decide): one, or its final list
      * cut into parts of at most the cut size (cutParts). Every entry that the node gets, new or

@@ -585,12 +585,13 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
   of the limit (`valueLimit`, :76), index nodes at most 15/16
   (`dirtyLimit`, :86). `dirtyNodeBound` was argued for the writer of
   formats 6 and 7; for PE it is argued in its Javadoc since 028-21,
-  which found the old count short for PE in two ways and added them: a
+  which found the old count short for PE in three ways and added them: a
   new segment tree of more than h entries, which PE cuts into parts (18
-  keys at node size 30 made three nodes, counted as one); and a node
-  cut into more parts than its overflows and one (31 entries at node
-  size 30 into three), whose parent got a klong too few and could be cut
-  while counted as kept. Since then a node that overflows counts at least
+  keys at node size 30 made three nodes, counted as one); a node cut
+  into more parts than its overflows and one (31 entries at node size 30
+  into three), whose parent got a klong too few and could be cut while
+  counted as kept; and the new root above a segment tree's root cut into
+  parts. Since then a node that overflows counts at least
   PE's parts of its list, `cutPartsBound(size + k)` for its k klongs, as
   new nodes and as klongs in its parent, and a root the new roots above
   them (`rootsAbove`); a new segment tree PE's parts and roots. Joins
@@ -1777,6 +1778,6 @@ with `created.txt` both records are synced with one sync before
 `created.txt` is written. Sections 7, 14.2 (steps 1, 6, 8) and 15. By an
 agent of coord-1118, on the branch `028-18-option-c`.
 
-2026-11-19. 028-21: 8.3, `dirtyNodeBound` argued for PE and its two
+2026-11-19. 028-21: 8.3, `dirtyNodeBound` argued for PE and its three
 gaps closed. By an agent of coord-1118, on the branch
 `028-21-dirty-bound`.
