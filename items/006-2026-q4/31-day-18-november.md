@@ -241,6 +241,22 @@ The decisions, as recorded here:
   acceptance (tested), Java.
 * 02:10 Agent pw resumed for `MeetsFull` for PE, then acceptance; agent
   pej started: Java's writer as PE (026-25, Opus high; Frans, 21:42).
+* 04:13 030-21 part 2 (agent pw): `MeetsFull` for PE proved but for one
+  named premise, `Prov` (an old node a written node names was a live
+  child before; it holds on all 221,142 traced transactions; a sub-prover
+  is on it); with it, recovery, restarts, lazy reading, eviction and safe
+  cuts hold for PE (`pe_full_of_prov`). Premises besides: distinct keys a
+  transaction, fewer than 2^48 - 1 transactions. GATE OK, no statement
+  changed; LANDED d035643c.
+* 04:42 `Prov` proved (a sub-prover of agent pw): `MeetsFull` for PE with
+  no premise of provenance: `pe_full` (every history PE writes from the
+  empty tree meets `MeetsFull` and K-LEVEL) and `pe_crash_reads`; so
+  recovery, restarts, lazy reading, eviction with handles and reclaim's
+  safe cuts hold for PE. Premises: `Cfg.Ok`, the top's level at most
+  2^62, fewer than 2^48 - 1 transactions, each transaction's keys
+  distinct. GATE OK (137 theorems), no existing statement changed;
+  LANDED ca51029f. Left: PE's acceptance (tested), Java (026-25, under
+  way).
 
 
 ## 4b. Unattended, 13:48 to 07:00
