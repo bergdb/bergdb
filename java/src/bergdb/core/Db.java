@@ -3481,7 +3481,9 @@ public class Db implements AutoCloseable {
         // a key. Since record format 8 the Dag gets the transaction's operations as one batch
         // (Dag.putKvs, the writer PE; bergdb 026-25), so a value transformation runs before any
         // operation is applied: a reclaim step's row stores the bytes that the step's touch made
-        // dirty (Trans.dirtiedBytes), and no longer those of the puts that sort before the row.
+        // dirty (Trans.dirtiedBytes); those of the nodes that the batch makes dirty after it
+        // Reclaim.step charges after the commit and stores with the next step's row (bergdb
+        // 028-26).
         // The record holds the KVs put, and the startup's rerun gives them to the Dag in their
         // stored order, this order, and does not sort.
         final long[][] keys = new long[kvs.length][];
@@ -3693,8 +3695,8 @@ public class Db implements AutoCloseable {
      * the stream is the same.
      * 
      * <p>Not for reclaim's internal transactions, whose transformations run in putKvs(): the
-     * row of a reclaim step stores the bytes of the index nodes that the step's touch and puts
-     * made dirty (Reclaim.step, Trans.dirtiedBytes), known only there; a step keeps its
+     * row of a reclaim step stores the bytes of the index nodes that the step's touch made
+     * dirty (Reclaim.step, Trans.dirtiedBytes), known only there; a step keeps its
      * values within the limits itself.</p>
      * 
      * <p>A transformation that throws a RuntimeException, a value over MAX_VALUE_BYTES (L4),
