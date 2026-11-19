@@ -307,6 +307,25 @@ The decisions, as recorded here:
   logging, really. [...] Perhaps added when needed, not now. I want
   encryption and replication in too. At some time. That is harder. Can
   come first." Written into 026-12, SF12.
+* 10:14 Frans: a Codex review of Java's PE ("Yes, good idea. Do it."),
+  027 for PE ("Yes, good."), the kill-restart harness's false failure
+  fixed ("Go ahead and fix the test tool."). Started 10:16 to 10:17: the
+  Codex review, the user apps of 024-26 and 026-13 against PE, agents
+  d027 and kr2 (028-20).
+* 10:22 030-22 done: reclaim's contract (RC1 to RC4 at each cut), the
+  route to its proof, 2 to 4 nights; recommended after Monday's reset.
+  Landed a18c9808.
+* 10:27 027 describes PE (landed 19166cbf); 028-21 (does
+  `dirtyNodeBound` bound PE?) and 028-22 registered; agent dnb started on
+  028-21 (stability).
+* 10:30 `night.sh`'s level 2 failed on a network error while fetching
+  Mathlib (the main tree had no Lake cache for `lean/contract`; now
+  copied in, not tracked); rerun. The 024-26 apps do not compile on
+  2026.6 (026-08); the 026-13 apps' quick round passed against PE.
+* 10:25 to 10:39 Frans on the test scripts: "Functional testing in
+  before-commit.sh, night.sh, week.sh. Timing in timing.sh, only this
+  script requires a quite machine. Good structure." Agent tiers (028-23)
+  started 10:39.
 
 
 ## 4b. Unattended, 13:48 to 07:00
