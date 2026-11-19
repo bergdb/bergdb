@@ -440,7 +440,11 @@ for a failed one, made only by recovery's fill.
   264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
   `Db.refuseIncompleteCreation` (:1290): `DatabaseNotCreatedException`,
-  nothing written.
+  nothing written. Since 028-18 (option C) also the primordial record
+  whole and alone, or followed by a part of the creation's second record
+  (the startup distance's, section 14.2) or by that record failed:
+  `RecoverableStream.holdsFirstTransactionAlone`, the same exception, on
+  any start but the creating one.
 * The order of a start's checks: `Db.startInner` (:888), as 012-02,
   section 4.6, says.
 
@@ -1048,8 +1052,9 @@ be below the stream's first position after a cut.
 
 The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 
-1. The checks before any write: an incomplete creation, the meta
-   version, the node size (sections 6 and 7).
+1. The checks before any write: an incomplete creation (the primordial
+   record in part, or alone without the creation's second record; 005-33,
+   028-18), the meta version, the node size (sections 6 and 7).
 2. Recovery (section 7).
 3. The startup position (`Db.readStartupPos`;
    `getStartupPosFromLastTransaction`, :1000): from the record that the
@@ -1092,25 +1097,29 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
      vpos.
 6. The startup distance, from its KV (`Db.readStartupDistanceKv`;
    section 15; 028-15), before the writer's first transaction: only the
-   writer uses it. A stream of the primordial record alone has no KV yet,
-   and the start keeps the builder's setting; any other stream without
-   the KV is refused as damaged (an SFE).
+   writer uses it. The creating start finds no KV yet, and keeps the
+   builder's setting; any other stream without the KV is refused as
+   damaged (an SFE). A stream of the primordial record alone was refused
+   at step 1 (028-18).
 7. Reclaim's table, current row and settings (`Reclaim.initFromDb`;
    section 15).
-8. A stream of the primordial record alone: the start's first
-   transaction, internal, puts the builder's startup distance at its KV
-   (`Db.putStartupDistanceKv`; 028-15). So the creating start writes two
-   records, the primordial one (with the first meta block, the creation
-   of `Db.CREATION_LENGTH`, 272 bytes) and this one; a crash between them,
-   or inside the second, leaves a stream that the next start completes
-   the same way, with that start's builder's setting. With `created.txt`
-   (the Pub API) the start syncs this record before it returns, as the
-   primordial one (`Db.syncCreation`; 028-17), so that only a crash
-   inside the creating start leaves the primordial record alone; until
-   028-17 the record waited in the write buffer, and a crash after the
-   start returned, before any write of the buffer, left it alone too: the
-   next start then put the KV at its own time, after the times of the
-   transactions the crash lost, and with its own builder's setting.
+8. The creating start (the stream was empty; `Db.handleEmptyStream`
+   wrote the primordial record): its first transaction, internal, puts
+   the builder's startup distance at its KV (`Db.putStartupDistanceKv`;
+   028-15). So a creation is two records, the primordial one (with the
+   first meta block, `Db.CREATION_LENGTH`, 272 bytes) and this one. With
+   `created.txt` (the Pub API) the start then syncs both with one sync
+   (`Db.syncCreation`, rule D1) and writes `created.txt` after it, before
+   it returns (015-01, 028-17, 028-18). A crash before the second record
+   is durable, or inside it, leaves the primordial record alone (or with
+   a part of the second, or the second failed), and the next start
+   refuses it with `DatabaseNotCreatedException` at step 1, writing
+   nothing (028-18, option C): a creation is whole or not there. From
+   028-15 to 028-18 such a start wrote the KV itself, at its own time and
+   with its own builder's setting; until 028-17 the second record also
+   waited in the write buffer after the start returned, and from 015-01
+   to 028-18 `created.txt` was written after the primordial record's sync
+   alone.
 
 A descent or scan that comes back to a node it passed is an SFE
 (`OpData.descentFrom`, `dag/OpData.java`:62, Brent's cycle check;
@@ -1121,9 +1130,8 @@ invariants they rely on (INV-1: each node at most once in D;
 docs/sis-model.md, section 8); what s may be (any record at or before
 the last, or only one that the take wrote, 015-73); the bound of the
 startup section (T3, 007-08), which is a writer's promise, not a
-reader's check; what a start appends (nothing but the creation, the
-creating start's record of the startup distance, and recovery's fill;
-012-02, section 8.14).
+reader's check; what a start appends (nothing but the creation, its two
+records, and recovery's fill; 012-02, section 8.14).
 
 **Tests.** UT: `DbStarter`, `TransSeq` (17), `DbTesterRestart`
 (`testCorruptStartupPosRefused`). Level 2's scripts and the Lean
@@ -1180,7 +1188,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   (`Db.readStartupDistanceKv`): other bytes are refused with
   `InternalDataException` ("Bad value of /#i/-sd"), and the
   start fails; no KV in a stream with more than the primordial record is
-  an SFE. A crash inside the setter's record starts with the old setting,
+  an SFE, and a stream of the primordial record alone (a creation that
+  did not complete) is refused before, with `DatabaseNotCreatedException`
+  (section 14.2, step 1; 028-18). A crash inside the setter's record starts with the old setting,
   one after its end with the new (until 028-15, with the setting in the
   meta block that the record held, either; 028-08). Until 028-15 sd was
   the meta block's (bytes 40 to 43), and `Db.setStartupDistance` put
@@ -1238,7 +1248,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 * The creation's primordial record holds no KV: an empty root key node
   and the first top node (`Db.writePrimordialTransaction`; 012-02,
   section 8.2, with its 264 bytes at format 5; 272 since 024-25). The
-  creating start's next record puts the startup distance (section 14.2).
+  creating start's next record puts the startup distance (section 14.2);
+  a creation is both records, and a start refuses the first alone
+  (028-18).
 
 **Tests.** UT: `DbTesterRestart` (554 to 867,
 `testMalformedSettingsRefusedAtStart`, :817), `StringMap`. C:
@@ -1755,6 +1767,15 @@ not argued, for PE; 8.4 and 14.2, the rerun's batch and its refusal of
 KVs out of key order, with G11, G12 and Q22; Q1 and Q2 as taken; 11.3's
 empty key first, bitmap, bound on n and theta. By an agent of
 coord-1118, on the branch `027-pe`.
+
+2026-11-19. 028-18, option C (Frans, 09:53 and 09:59): a creation is
+whole or not there. A start refuses the primordial record alone, or
+with a part of the creation's second record or that record failed, with
+`DatabaseNotCreatedException` (`RecoverableStream.holdsFirstTransactionAlone`),
+writing nothing; the path in which a start wrote the KV itself is gone;
+with `created.txt` both records are synced with one sync before
+`created.txt` is written. Sections 7, 14.2 (steps 1, 6, 8) and 15. By an
+agent of coord-1118, on the branch `028-18-option-c`.
 
 2026-11-19. 028-21: 8.3, `dirtyNodeBound` argued for PE and its two
 gaps closed. By an agent of coord-1118, on the branch

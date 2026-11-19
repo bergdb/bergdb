@@ -3236,7 +3236,9 @@ public class PubTester {
     /**
      * Bergdb 005-33: a crash while the database is created, through the Pub API, with and
      * without a crypto key. At each cut of the creation the start throws a
-     * DatabaseNotCreatedException and writes nothing; the whole creation starts. A stream of
+     * DatabaseNotCreatedException and writes nothing; the whole creation starts. Since
+     * bergdb 028-18 (option C) also at the primordial record alone and at a cut in the
+     * creation's second record, the startup distance's. A stream of
      * zero bytes, as a power loss can leave, gives a StreamFormatException (BadCryptoKey until
      * 2026.4, bergdb 020-28) whose message names a wrong key only when a key is used; until
      * 2026-10-25, also without one.
@@ -3246,12 +3248,15 @@ public class PubTester {
         for (CryptoKey key : new CryptoKey[] {null, CryptoKey.generate()}) {
             MemoryStream m = new MemoryStream();
             ((DatabaseImp) builderOn(m, key).start()).getDb().close();
-            // The creation, Db.CREATION_LENGTH: the first meta block and the primordial record;
-            // the creating start's record of the startup distance follows (bergdb 028-15).
+            // The creation's first record, Db.CREATION_LENGTH: the first meta block and the
+            // primordial record; the creating start's record of the startup distance follows
+            // (bergdb 028-15), and a cut anywhere before its end is refused (bergdb 028-18).
             final long length = 272;
-            Assert.assertTrue("the creating start's record", m.getLength() > length);
+            final long whole = m.getLength();
+            Assert.assertTrue("the creating start's record", whole > length + 8);
             
-            for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1}) {
+            for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1, length,
+                    length + 1, length + 8, whole - 1}) {
                 MemoryStream m2 = m.copy();
                 m2.truncate(cut);
                 try {

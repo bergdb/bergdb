@@ -459,7 +459,8 @@ public class DbTesterStream {
      * transaction's. Until 028-17 the second record waited in the write buffer: the copy
      * held the primordial record alone, and its start put the KV with its own builder's
      * setting at its own time, after the lost transaction's (night.sh's kill-restart.sh,
-     * 2026-11-18).
+     * 2026-11-18). Since 028-18 such a copy is refused (DatabaseNotCreatedException);
+     * testCreatedTxtAfterBothRecords checks the order of the sync and created.txt.
      */
     @Nano
     private static void testCreationDurableWhenStartReturns(TestEnvironment env)
@@ -499,6 +500,61 @@ public class DbTesterStream {
             if (again != null) {
                 again.close();
             }
+        }
+    }
+    
+    /**
+     * Bergdb 028-18 (option C; Frans, 2026-11-19, 09:53): with created.txt, a creation's two
+     * records, the primordial one and the creating start's record of the startup distance,
+     * are forced to the file before created.txt is written, and created.txt is there when
+     * start() returns. Every force of the start is recorded with the file's length and
+     * whether created.txt existed: one force covers the whole stream as start() leaves it,
+     * more than the primordial record, without created.txt; until 028-18 created.txt was
+     * written after the primordial record's force alone. A restart and a change of the
+     * startup distance follow.
+     */
+    @Nano
+    private static void testCreatedTxtAfterBothRecords(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        final File dir = env.createTempDir();
+        final File txt = new File(dir, "created.txt");
+        final java.util.List<long[]> forces =
+                java.util.Collections.synchronizedList(new java.util.ArrayList<long[]>());
+        FileStreamIo io = new FileStreamIo() {
+            protected void forceFile(File file, RandomAccessFile handle) throws IOException {
+                super.forceFile(file, handle);
+                forces.add(new long[] {handle.length(), txt.exists() ? 1 : 0});
+            }
+        };
+        CoreTestClock clock = new CoreTestClock();
+        long length;
+        try (Db db = Db.builder().testSetup(new FileStream(dir, io)).clock(clock)
+                .createdTxt(dir).startupDistance(5000000).start()) {
+            length = db.getStreamLength();
+            Assert.assertTrue("created.txt when start() returns", txt.isFile());
+            Assert.assertTrue("both records, " + length, length > Db.CREATION_LENGTH);
+            boolean covered = false;
+            synchronized (forces) {
+                for (long[] f : forces) {
+                    Assert.assertEquals("created.txt at a force of the start", 0, f[1]);
+                    covered |= f[0] >= length;
+                }
+            }
+            Assert.assertTrue("a force of both records, of " + forces.size(), covered);
+        }
+        clock.setTime(1000);
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).createdTxt(dir)
+                .startupDistance(2000000).start()) {
+            Assert.assertEquals("the creator's", 5000000, db.getStartupDistance());
+            db.setStartupDistance(3000000);
+        }
+        clock.setTime(2000);
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).createdTxt(dir)
+                .start()) {
+            Assert.assertEquals("the changed setting", 3000000, db.getStartupDistance());
         }
     }
     
