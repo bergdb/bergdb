@@ -1,6 +1,7 @@
 # 006-31 Day work, 18 November 2026
 
-Created 2026-11-18 by Frans Lundberg. Status: started. The plan for the
+Created 2026-11-18 by Frans Lundberg. Status: the outcome written
+(2026-11-19, 06:10); open until Frans's answers. The plan for the
 coordinator's day of 2026-11-18 (coord-1118), a Wednesday: the progress
 and the outcome. The way of working is 013-02's (the coordinator).
 
@@ -302,4 +303,72 @@ PE proof, then Java if it is proved (21:42).
 
 ## 5. Outcome
 
-Not yet.
+Written 2026-11-19, 06:10, by coord-1118. The week went from 58 % (06:35)
+to 77 % (06:08); the stop was 85 %.
+
+**Done, in `main`** (67 commits, 52459c9d to fe2e34a0):
+
+- **The PE writer is proved** (030-21; parts b15f4b1b, d035643c,
+  ca51029f, d3e14ccc): every history that PE's writer ("plan, then emit")
+  writes from the empty tree meets the writer's contract with TREE and
+  the top (`pe_meetsTop_start`) and the full contract (`pe_full`), so
+  gets and scans at every time, recovery, restarts, lazy reading,
+  eviction with handles and reclaim's safe cuts hold for it; PE accepts
+  every transaction whose keys the tree can hold, within the height and
+  fuel bounds (`pe_accepts`, `pe_refuses`). Premises: the node-size
+  parameters, the top's level at most 2^62, fewer than 2^48 - 1
+  transactions, distinct keys in a transaction. About 23,000 lines in
+  `lean/contract/`, Lean's three standard axioms only, GATE OK (142
+  theorems, checked again by the coordinator after each landing), no
+  existing statement changed.
+- **The way there:** 026-20 (step times and net change, written down),
+  026-21 (step times: simpler, but 1.12 times the bytes, 1.41 on sorted
+  loads; Frans: not worth it), 026-22 (MT against the contract: fails
+  only on empty leaves), 026-23 (a second opinion, Fable: PE first),
+  026-24 (the PE trial: go; bytes 0.96 to 0.99 of today's).
+- **The aim of the proofs** (030's readme, Frans 13:12): "the core
+  algorithms are proved": the writer (done for PE) and reclaim's safe
+  cuts (T-SCHEME, open).
+- **Old proofs:** the writer proof of today's writer off main (tag
+  `writer-proof-2026-11-18`), the old proof line deleted (030-18; `lean/`
+  337,483 to 84,556 lines before tonight's PE proof).
+- **The startup distance** in the internal KV `/#i/-sd`, meta version
+  155, 2026.5's streams refused (028-15, 1b1001ee, 026c322a); a new
+  database's creation durable when `start()` returns (028-17, 32e72560,
+  a bug from 028-15 found by `night.sh`).
+- **Smaller:** Codex review 3's three points (030-19, e0a723b6); 013-02:
+  only the day's coordinator pushes `main` (D3); 026-08's answers
+  (f2d034e1); the commit check's note and its cost (030-20: 3.5 to 6
+  times an in-memory commit; too costly always on as written).
+
+**The night:** `night.sh` on 1b1001ee failed core-build and kill-restart,
+both from 028-15, both fixed the same afternoon. 028-18 (one startup
+record) stopped at the rule on pinned statements, with options. Java's
+PE (026-25) was made and gated on its branch; not merged (below).
+
+**For Frans to decide:**
+
+1. **Java's writer as PE** (026-25, State; branch `026-25-pe-java`,
+   gated d64e5638): merge it, with record format 8? About 8 % slower in
+   CCBench (0.93 to 1.24 of main's time), 0.99 of main's commits a second
+   with history kept, 0.94 with reclaim; GC time and memory about 10 %
+   higher; reads unchanged. Recommended: merge, and a 028 entry to cut
+   the plan's allocations and to time it at 10M keys before the release.
+2. **Reclaim's row** (026-25, section 2): a reclaim step's row now stores
+   only the bytes its touch made dirty. Recommended: confirm.
+3. **One startup record** (028-18, "For Frans"): A (the contract's start
+   holds the creation's key; changes the pinned `Start`), B (a record its
+   own startup position; changes the model's step 4) or C (two records,
+   a lone primordial record refused). Recommended: A; PE's history
+   theorem already holds from any start tree, so only its corollary from
+   the empty tree changes; the prepared Java (`028-18-prepared`) must be
+   moved onto PE's Java if 1 is merged.
+4. **The kill-restart harness** counts a late but normal exit as a
+   failure (026-25, gates). Recommended: a 028 entry.
+5. **Next for the proofs: reclaim's safe cuts** (030's aim; T-SCHEME,
+   030-04 assumption 11). Recommended: reclaim's contract written down
+   first (a note, an hour or two), then its proof.
+
+**Left:** the format work (026-01's compact nodes, the versioning rule)
+after the algorithms settle (Frans, 12:39); CC as a test switch, a fast
+check designed later (030-20); the C clone follows a release.
