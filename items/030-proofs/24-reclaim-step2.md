@@ -83,16 +83,66 @@ the `_of_rc` ones.
 
 # 3. RC2 and RC3 for the key tree
 
-RC3-RC2
+RC is in the model's words. RC1 and RC4 are Java's arithmetic at each cut
+and stay tested (030-22, section 4.3; `tracecheck` checks them at every
+cut since 030-23). RC2 and RC3 are about the tree, and are stated and
+proved in the contract's words in Contract/ReclaimTree.lean:
+
+- **RC3** (`rc3_tree`): if some key is live after the iteration's end e
+  (its last step puts its row), every written index node that a read at e
+  reaches has a value below it. From the writer's contract alone: the
+  invariants at e say that each key node a live klong names has a live
+  klong, and a segment leaf's live klong names a value or a non-empty key
+  node (030-22, section 4.1).
+- **RC2 in the contract's words** (`RC2Tree`): every value node that a live
+  key names after e was made by a transaction from c on. `idContents` is
+  `contents` with the value nodes by id. `rc2_of_tree` carries it to the
+  model's RC2.
+- **The iteration** (`IterationOK`, c ≤ s ≤ e): every key live before the
+  iteration's first step s whose value node was made before c is written,
+  put again or deleted, by a transaction from s to e. Java's iteration does
+  this: each step scans the live keys of its range at its own time and puts
+  again those whose value is before pCut, and the ranges cover every key up
+  to E, the largest key live when the iteration began (027-13, section 1.4;
+  REWRITES, 027-13, section 3, argued and tested); a key the user wrote
+  first is written.
+- **VAL-NEW** (`ValNew`, 030-22, section 2.3): in each transaction, a put
+  makes a new value node, which the key names after it, and a key that the
+  transaction does not write keeps its value node. The writer's contract
+  does not say this (it compares values by hash); PE does it
+  (`PE.pe_valNew`).
+- **RC2 from the iteration** (`rc2_of_iteration`): with VAL-NEW, a key live
+  at e was either last written in [s, e] by a put, which made its value
+  node then, at s or later, so at c or later; or not written in [s, e], so
+  it was live before s with the same value node, which `IterationOK` says
+  was made at c or later.
+- **The cuts of a run** (`CutsMeetIter`): at each cut mark, the cut is at
+  or after the earlier ones, and some iteration with that cut meets
+  `IterationOK`, some key is live at its end, its end is at most the first
+  available time, and RC4 holds; with VAL-NEW this gives `CutsMeetRC`
+  (`cutsMeetRC_of_iter`).
+- **The top theorem for PE** (`PE.pe_reclaim_reads`): for every history PE
+  writes, with cuts that meet `CutsMeetIter`, Java's reads after the run
+  with handles, evictions and restarts from the cut streams are right at
+  every time from the first available time on.
+
+STATE-RC
 
 
 # State
 
-2026-11-19, 14:06. The read half proved (b529e9e6, section 1); `TScheme`
-shown false without A6' in Lean (c6f08672, section 2). The sub-prover works
-on RC2 and RC3 for the key tree and the top theorem for PE (section 3):
-statements written in Contract/ReclaimTree.lean (not yet committed: they
-are committed with their proofs), deadline 22:00.
+2026-11-19, 14:35. **Proved:** the read half (b529e9e6, section 1);
+`TScheme` false without A6' (c6f08672, section 2); RC3 and RC2 for the key
+tree (`rc3_tree`, `rc2_of_tree`, `rc2_of_iteration`, `cutsMeetRC_of_iter`;
+merged as a77506e9); the top theorems with VAL-NEW as a premise
+(`reclaim_java_reads`, `PE.pe_reclaim_reads_of_valNew`; c2f4b3fb, GATE OK,
+178 theorems). **Left:** `PE.pe_valNew`, that PE meets VAL-NEW: PE's proofs
+(030-21) speak of contents by value hash, and VAL-NEW is about value node
+ids (a rewrite puts the same hash), so it needs a new proof: an id-level
+copy of PE's contents induction (1,000 lines or more), or a simulation that
+PE's run does not read hashes, so that a run with each put given its own
+label pins each id (600 to 900 lines). The sub-prover tries the second
+from 14:40; until then VAL-NEW is a named premise (`ValNew`).
 
 
 # Log
@@ -107,3 +157,8 @@ GATE OK at b529e9e6.
 
 2026-11-19, 14:05. `tscheme_false` proved by the sub-prover (c6f08672,
 GATE OK, 172 theorems). RC2 and RC3 for the tree given to it.
+
+2026-11-19, 14:30. RC3, RC2 from the contract's words and from the
+iteration, and `CutsMeetRC` from `CutsMeetIter`, proved by the sub-prover
+(115a0290, cabec0cc, f046f30f; 997 lines); `pe_valNew` not: see State.
+The top theorems with VAL-NEW as a premise added (c2f4b3fb).
