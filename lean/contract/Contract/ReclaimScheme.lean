@@ -194,9 +194,35 @@ theorem cutOK_of_reads (hok : RunOK sp al ts) (hev : SIS.EvictRunOK sp al ts)
     CutOK sp c (run sp al (ts.take k)) k := by
   obtain ⟨p1, -, p3, p4⟩ := rc_parts hok hj hmk hk hrc
   have hd := rc_dref hok hev hj hmk hk hrc
-  exact ⟨p1, h2, fun x hx v hv => ⟨p3 x hx v hv, fun y r hr hrc' => (hd x hx v hv y r hr hrc').1⟩, p4⟩
+  exact ⟨p1, h2, fun x hx v hv => ⟨p3 x hx v hv, fun y r hr hrc' => (hd x hx v hv y r hr hrc').1⟩,
+    p4⟩
 
 end
+
+/-- The open half of T-SCHEME as it stands since `rc_dref` (bergdb 030-23): for
+a run with TREE and A6' (`EvictRunOK`, which the bridge gives for BergDB's key
+tree), under RC, every version that a read at a time from the first available
+time on may follow is at c or later (`CutOK`'s part 2). -/
+def TSchemeReads (sp : Spec V T) (al : Algo V T) : Prop :=
+  al.stillDirty = javaTest sp → al.mark = true →
+  ∀ ts : List T, RunOK sp al ts → SIS.EvictRunOK sp al ts → ∀ c e k, k ≤ ts.length →
+    RC sp al ts c e k →
+    let db := run sp al (ts.take k)
+    ∀ t w, lastFa db.S ≤ t → t ≤ k → ReadsPhys sp db.S db.P db.D t w → c ≤ w.recNo
+
+/-- `TSchemeReads` and RC at every cut mark give `hcut`, for a run with A6'. -/
+theorem hcut_of_reads {sp : Spec V T} {al : Algo V T} (hts : TSchemeReads sp al)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true)
+    {cs : List (T × Option Nat × List SIS.HCacheOp)} (hok : RunOK sp al (cs.map (·.1)))
+    (hev : SIS.EvictRunOK sp al (cs.map (·.1))) (hrc : CutsMeetRC sp al cs) :
+    ∀ j (hjl : j < cs.length) c, cs[j].2.1 = some c →
+      CutOK sp (cutMax ((cs.take (j + 1)).map (·.2.1))) (run sp al ((cs.map (·.1)).take (j + 1)))
+        (j + 1) := by
+  intro j hjl c hc
+  obtain ⟨hle, e, hrc'⟩ := hrc j hjl c hc
+  rw [cutMax_take_of_le cs hjl hc hle]
+  have hk : j + 1 ≤ (cs.map (·.1)).length := by simp only [List.length_map]; omega
+  exact cutOK_of_reads hok hev hj hmk hk hrc' (hts hj hmk _ hok hev c e (j + 1) hk hrc')
 
 /-- T-SCHEME and RC at every cut mark give the premise `hcut` of the theorems
 after cuts: `CutOK` at the largest cut so far. -/
@@ -279,6 +305,73 @@ theorem cut_java_reads_rc (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hkd : Kinds
   exact cut_java_reads hm hM hkd al hj hmk hpol cs hcs (hcut_of_rc hts hj hmk hok hrc) hreads
     hft htn mid s tp
 
+
+/-- `full_cut` with `TSchemeReads` and RC at every cut mark in place of `CutOK`. -/
+theorem full_cut_reads (hm : MeetsFull p h top) (al : SIS.Algo BVal Nat)
+    (hj : al.stillDirty = SIS.javaTest h.spec) (hmk : al.mark = true)
+    (hts : TSchemeReads h.spec al)
+    (hpol : SIS.PolicyCutOK al) (cs : List (Nat × Option Nat × List SIS.HCacheOp))
+    (hcs : cs.map (·.1) = h.ts)
+    (hrc : CutsMeetRC h.spec al cs)
+    (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
+      SIS.HCacheOp.read t ∈ cs[j].2.2 →
+      SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1) :
+    let db := (SIS.runHandlesCut h.spec al cs).1
+    let r := SIS.run h.spec al (cs.map (·.1))
+    db.S = SIS.cutStream (SIS.cutMax (cs.map (·.2.1))) r.S ∧ db.D = r.D ∧
+      SIS.SameFrom h.spec (SIS.lastFa r.S) cs.length db.P r.P := by
+  have hok : SIS.RunOK h.spec al (cs.map (·.1)) := by rw [hcs]; exact hm.meetsBridge.runOK al
+  have hev : SIS.EvictRunOK h.spec al (cs.map (·.1)) := by
+    rw [hcs]; exact bridge_evictRunOK hm.meetsBridge hm.meetsEvict al
+  exact full_cut hm al hj hmk hpol cs hcs (hcut_of_reads hts hj hmk hok hev hrc) hreads
+
+/-- `cut_keeps_top` with `TSchemeReads` and RC at every cut mark in place of
+`CutOK`: after the run with handles, reads from the first available time on,
+evictions, and restarts from cut streams whose cuts meet RC, the cut stream
+keeps the top nodes that Java's search reads. -/
+theorem cut_keeps_top_reads (hm : MeetsFull p h top)
+    (al : SIS.Algo BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec) (hmk : al.mark = true)
+    (hts : TSchemeReads h.spec al)
+    (hpol : SIS.PolicyCutOK al) (cs : List (Nat × Option Nat × List SIS.HCacheOp))
+    (hcs : cs.map (·.1) = h.ts)
+    (hrc : CutsMeetRC h.spec al cs)
+    (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
+      SIS.HCacheOp.read t ∈ cs[j].2.2 →
+      SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)
+    {t : Nat} (hft : SIS.lastFa (SIS.run h.spec al h.ts).S ≤ t) (htn : t ≤ h.txs.length)
+    {zn : NodeId × TopNode} (hz : topAt (top h.txs.length) t = some zn) :
+    let P' := (SIS.runHandlesCut h.spec al cs).1.P
+    viewTop (SIS.view h.spec P' t) = some zn.1 ∧
+      ∃ nz, SIS.view h.spec P' t zn.1 = some nz ∧ nz.hist = topEntries zn.2 := by
+  have hok : SIS.RunOK h.spec al (cs.map (·.1)) := by rw [hcs]; exact hm.meetsBridge.runOK al
+  have hev : SIS.EvictRunOK h.spec al (cs.map (·.1)) := by
+    rw [hcs]; exact bridge_evictRunOK hm.meetsBridge hm.meetsEvict al
+  exact cut_keeps_top hm al hj hmk hpol cs hcs (hcut_of_reads hts hj hmk hok hev hrc) hreads hft htn hz
+
+/-- `cut_java_reads` with `TSchemeReads` and RC at every cut mark in place of
+`CutOK`: after the run with handles, reads from the first available time on,
+evictions, and restarts from cut streams whose cuts meet RC, Java's get and
+scan at a time from the first available time on are right. -/
+theorem cut_java_reads_reads (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hkd : KindsOK kind h)
+    (al : SIS.Algo BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec) (hmk : al.mark = true)
+    (hts : TSchemeReads h.spec al)
+    (hpol : SIS.PolicyCutOK al) (cs : List (Nat × Option Nat × List SIS.HCacheOp))
+    (hcs : cs.map (·.1) = h.ts)
+    (hrc : CutsMeetRC h.spec al cs)
+    (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
+      SIS.HCacheOp.read t ∈ cs[j].2.2 →
+      SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)
+    {t : Nat} (hft : SIS.lastFa (SIS.run h.spec al h.ts).S ≤ t) (htn : t ≤ h.txs.length)
+    (mid : Bool) (s : Tree) (tp : Top) :
+    let V := SIS.view h.spec (SIS.runHandlesCut h.spec al cs).1.P t
+    HoldsView V (kindOf kind V) t s →
+      TopFrom (SIS.lastFa (SIS.run h.spec al h.ts).S) (top h.txs.length) tp →
+      JReadsRight s tp t mid (h.txs.map (·.ops)) := by
+  have hok : SIS.RunOK h.spec al (cs.map (·.1)) := by rw [hcs]; exact hm.meetsBridge.runOK al
+  have hev : SIS.EvictRunOK h.spec al (cs.map (·.1)) := by
+    rw [hcs]; exact bridge_evictRunOK hm.meetsBridge hm.meetsEvict al
+  exact cut_java_reads hm hM hkd al hj hmk hpol cs hcs (hcut_of_reads hts hj hmk hok hev hrc) hreads
+    hft htn mid s tp
 end
 
 end Contract
