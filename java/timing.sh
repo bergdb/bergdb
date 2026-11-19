@@ -2,9 +2,15 @@
 # The timing run (bergdb 028-23): the tests whose number is the result, the speed of this
 # tree against the last release's. Frans, 2026-11-19, 10:39: "Functional testing in
 # before-commit.sh, night.sh, week.sh. Timing in timing.sh, only this script requires a
-# quite machine." Run it before every release, on a commit near it, as week.sh (minor
-# changes after are acceptable), and when a change may cost speed. Not a gate: a slower
-# figure is an alert to look at, not a fault.
+# quite machine." Run it before every release, on a commit near it, as night.sh and
+# week.sh (minor changes after are acceptable), and when a change may cost speed. Not a
+# gate: a slower figure is an alert to look at, not a fault.
+#
+# night.sh, week.sh and this script are disjoint sets of tests (Frans decided,
+# 2026-11-19; bergdb 028-27): none of this script's steps runs in the other two. One
+# overlap is left: night.sh's level1.sh runs CORE (bergdb.dev.props.Core) once and prints
+# its figure as information, checked against nothing; here CORE is measured, ABBA against
+# the last release.
 #
 # Kind: timing. The only script that needs a quiet machine: it checks the CPU itself, as
 # performance.sh does, and refuses to start when the machine is busy (less than MINIDLE %

@@ -68,18 +68,24 @@ a snapshot of the former `docs/` of 2026-11-12.
   timing, where the number is the result. Functional testing is in three
   scripts: `java/before-commit.sh` (each commit), `java/night.sh` (about
   once a day while there is development, about 2.5 hours) and
-  `java/week.sh` (on demand, about 11 hours: night's steps, the large
-  conformance set, the user apps of `java/stress/apps.sh`, more kills and
-  fuzzing). They may run while someone works on the machine, night.sh and
-  week.sh also at a low priority (`nice`, `taskpolicy -b`). Timing is in
+  `java/week.sh` (on demand, about 9 hours: the large conformance set, the
+  user apps of `java/stress/apps.sh`, more kills and fuzzing, the Android
+  tests of `java/stress/android.sh`, which need the Android SDK in
+  `ANDROID_SDK`). They may run while someone works on the machine, night.sh
+  and week.sh also at a low priority (`nice`, `taskpolicy -b`). Timing is in
   `java/timing.sh` (CORE, the pause probe, `performance.sh ab` against the
   last release at 1M and 10M keys), the only one of the four that needs a
   quiet machine: it checks the load itself and refuses a busy one. Keep
   timing out of the functional scripts: a figure of time may be printed
   there, never decide a pass.
-- Before every release, `java/week.sh` and `java/timing.sh` run on a
-  commit near it, not necessarily the one that ships; a minor change after
-  it is acceptable (Frans, 2026-11-19).
+- `java/night.sh`, `java/week.sh` and `java/timing.sh` are disjoint sets
+  of tests: no step runs in two of them; night.sh and week.sh may run
+  `java/before-commit.sh` first, to fail quickly. week.sh does not run
+  night.sh. Where one harness runs in two of them, it runs with other
+  seeds, sizes or durations (Frans, 2026-11-19; 028-27 lists each pair).
+- Before every release, `java/night.sh`, `java/week.sh` and
+  `java/timing.sh` run on a commit near it, not necessarily the one that
+  ships; a minor change after it is acceptable (Frans, 2026-11-19).
 - Some tasks need more testing than before-commit.sh, depending on the
   job: work on performance runs `java/timing.sh` or the performance tests
   (`java/stress/performance.sh` with a suite, or `java/perf.sh`), on a
@@ -89,8 +95,6 @@ a snapshot of the former `docs/` of 2026-11-12.
   their reports are in `java/build/night/` and `java/build/week/`. They
   have no fixed time: the day's coordinator (013-02) starts them as a step
   of its plan, or Frans by hand (the commands are in their headers).
-  `java/night.sh large` adds the large conformance set, which week.sh
-  includes.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
 ## News

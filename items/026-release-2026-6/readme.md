@@ -110,6 +110,10 @@ the changes of the public repository (029; Frans, 2026-11-17, 11:40):
   before a release. Near a release, at least. Not necessarily on the exact
   version that ships in the release. Minor change after can be
   acceptable."
+  Since 2026-11-19 (028-27), week.sh no longer runs night's steps, and it
+  runs the Android tests (`java/stress/android.sh`, with `ANDROID_SDK`
+  set): `java/night.sh`, `java/week.sh` and `java/timing.sh`, disjoint
+  sets of tests, all run before the release, on a commit near commit A.
 
 
 Proposed for 2026.6, not decided

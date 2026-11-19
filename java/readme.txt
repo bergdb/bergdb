@@ -47,8 +47,7 @@ are not on the path. level2.sh to level4.sh and the proofs need Lean (elan).
     java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
     java/javadoc-pub.sh            # the Pub API's Javadoc, in build/javadoc-pub/
     java/night.sh                  # the night run: the checks below, on a clone of HEAD (about 2.5 hours)
-    java/night.sh large            # the same and the large conformance set (about 7 hours)
-    java/week.sh                   # night's checks, conformance large, the apps, more kills and fuzzing (about 11 hours)
+    java/week.sh                   # the week run: conformance large, the apps, more kills and fuzzing, Android (about 9 hours)
     java/timing.sh                 # the timing run: CORE, pauses, performance.sh ab against the last release (quiet machine)
     java/night.sh tests            # only the night tests (about 4.5 minutes)
     java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
@@ -60,13 +59,13 @@ are not on the path. level2.sh to level4.sh and the proofs need Lean (elan).
     java/stress/fuzz.sh            # fuzzing of the readers of bytes
     java/stress/kill-restart.sh    # the Pub layer under kills of its JVM (1,000 kills: about 26 minutes)
     java/stress/apps.sh            # the user apps of 024-26 and 026-13 (quick: 6 minutes; soak N, kill N)
-    java/stress/android.sh         # the unit tests and demos on an Android emulator (ANDROID_SDK)
+    java/stress/android.sh         # the unit tests and demos on an Android emulator (ANDROID_SDK; week.sh runs it)
     cd lean && lake build          # checks all proofs
 
 before-commit.sh must print BEFORE COMMIT OK before a change to the Java code
 is committed; it is the only requirement. The level scripts print LEVEL n OK;
-they are deeper checks, not commit gates. night.sh is not a gate either; its
-report is in build/night/.
+they are deeper checks, not commit gates. night.sh and week.sh are not gates
+either; their reports are in build/night/ and build/week/.
 
 Each script says its kind in its header and prints it first (bergdb 028-23):
 functional (the result does not depend on the machine's speed or load; time
@@ -76,9 +75,13 @@ functional testing is in three scripts: before-commit.sh before each commit
 week.sh on demand and before every release. They may run while someone works
 on the machine, night.sh and week.sh also at a low priority. Timing is in
 timing.sh, the only one of them that needs a quiet machine: it checks the load
-itself and refuses when the machine is busy. week.sh and timing.sh run before
-every release, on a commit near it; minor changes after are acceptable. The
-other timing scripts (perf.sh, props.sh for CORE, stress/performance.sh,
+itself and refuses when the machine is busy. night.sh, week.sh and timing.sh
+are disjoint sets of tests (bergdb 028-27): no step runs in two of them,
+except before-commit.sh, which night.sh and week.sh run first; week.sh does
+not run night.sh, and it runs the Android tests (stress/android.sh, with
+ANDROID_SDK set). night.sh, week.sh and timing.sh run before every release,
+on a commit near it; minor changes after are acceptable. The other timing
+scripts (perf.sh, props.sh for CORE, stress/performance.sh,
 stress/objectbench.sh, stress/soak.sh) also need a quiet machine.
 
 
