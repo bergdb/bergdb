@@ -393,8 +393,9 @@ to run it). 20 seeds of 30 transactions, the four startup pos policies:
   exist in 28,710 (25,243). LNL at k: 0 failures; at the earlier times:
   18,669 (17,533). Between the waits `CutOK` fails in 0 of 2,915 (18 of
   2,766): the second wait matters, without the touch.
-- **100 seeds of 100 transactions** (the T-SCHEME check only): see the
-  Log.
+- **100 seeds of 100 transactions:** started, and stopped after 23
+  minutes with no result, the machine being busy (load 60, `night.sh`);
+  the run of 50 seeds of 60 stands. It is for step 2 (section 6) to run.
 
 So a proof attempt starts from evidence: the statement survives running
 in the model with Java's exact waits, including the superseded versions it
@@ -515,3 +516,6 @@ superseded versions.
 
 2026-11-19, 10:09. 50 seeds of 60 transactions: 0 failures in 72,730
 states past Java's waits (section 5.2).
+
+2026-11-19, 10:22. The run of 100 seeds of 100 transactions stopped
+unfinished (the machine at load 60 with `night.sh`).
