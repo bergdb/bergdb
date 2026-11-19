@@ -304,3 +304,11 @@ headers are estimates until then).
 2026-11-19. Main merged again (028-20, kill-restart.sh's late-exit
 self-test): BEFORE COMMIT OK (150 s) and `kill-restart.sh 10` KILL RESTART
 OK on the merge, `c2376f74`, by an agent of coord-1118.
+
+2026-11-19. Since 028-27 (Frans's decision of 2026-11-19), week.sh no
+longer includes night.sh's steps: night.sh, week.sh and timing.sh are
+disjoint sets of tests, each of the first two runs before-commit.sh first,
+night.sh has no `large` and `week` modes (conformance-large is week.sh's),
+and week.sh runs the Android tests (`stress/android.sh`, with the SDK in
+its environment). Sections 2 and 5 above describe week.sh as it was made
+here; 028-27, sections 2 and 3, have the steps since then.
