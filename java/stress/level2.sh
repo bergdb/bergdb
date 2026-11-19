@@ -83,8 +83,12 @@
 # needs javac too. Steps 7, 8 and 8b need Lean (elan, with the toolchain of
 # ../lean/lean-toolchain and ../lean/contract/lean-toolchain); they build the
 # checkers with lake.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; its time limits are hang guards, generous for a loaded machine.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

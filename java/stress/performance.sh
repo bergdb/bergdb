@@ -41,7 +41,8 @@
 #   OSCACHE=warm|cold  warm (default): the OS file cache is not touched, and a restart reads
 #                 files that were just written. cold: `purge` before the restart (needs root:
 #                 sudo -n purge); the run stops if it cannot.
-#   SUITE=principal|grid|smoke|FILE  The scenarios (default principal; smoke sets smoke).
+#   SUITE=principal|grid|smoke|quick|release|FILE  The scenarios (default principal; smoke sets
+#                 smoke; release: 1M and 10M keys, timing.sh's, bergdb 028-23).
 #   FORCE=1       Run although the machine is not quiet (under 90% idle CPU); the results are then
 #                 not a reference.    DISKMIN_GB=N  Free disk space needed (default 30).
 #   KEEPDATA=1    Keep the data directories (java/build/perf/data/, deleted after each run otherwise).
@@ -57,8 +58,12 @@
 # effective workload parameters. Sessions are in java/build/perf/runs/COMMIT-TIME-SUITE-GC-HEAP/
 # (ignored by Git); raw logs, histograms and GC logs stay there. A correctness failure stops
 # everything at once.
+#
+# Kind: timing (bergdb 028-23): the figures are the result; it checks that the machine is
+# quiet itself. timing.sh runs its ab with the release suite.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: timing"
 JAVADIR=$(pwd)
 ROOT=$(cd .. && pwd)
 PERF=$JAVADIR/build/perf
@@ -380,6 +385,7 @@ suite_file() {
         grid) echo "$JAVADIR/stress/performance-grid.suite" ;;
         smoke) echo "$JAVADIR/stress/performance-smoke.suite" ;;
         quick) echo "$JAVADIR/stress/performance-quick.suite" ;;
+        release) echo "$JAVADIR/stress/performance-release.suite" ;;
         *) [ -f "$SUITE" ] && echo "$SUITE" || die "unknown SUITE $SUITE" ;;
     esac
 }

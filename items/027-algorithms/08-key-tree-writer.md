@@ -582,21 +582,32 @@ the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
     dead is the node's dead-klong count, or -1 for a new tree;
   * o = least if K <= R, else 1 + (K - R - 1) / q.
 
-  For o > 0 it adds o + 1 nodes and o + 1 klongs to the parent; at the
-  space root it adds o new roots instead of parent klongs. New segment
-  trees are counted by `freshTreeBound`: one root, its k entries counted
-  by `overflows` at size 0, then each o as the next root's k at size 1,
-  adding o + 1 nodes until o = 0; the same for trees below it. Deletes
-  also add four nodes for each level of their path and two more levels
-  per delete (the old writer's merges);
+  For o > 0 it adds n = max(o + 1, `cutPartsBound(size + k)`) nodes,
+  at least PE's parts of the node's list (`cutPartsBound`: one part for
+  at most h entries, else at least two of at most the cut size). An
+  inner node's parent gets n klongs. A tree's root (the space root or a
+  segment tree's root) adds the new roots above its parts, max(o,
+  `rootsAbove(n)`), and the segment leaf above it, if any, o + 1
+  klongs. New segment trees are counted by `freshTreeBound`, each tree
+  as the larger of the old count (one root, its k entries counted by
+  `overflows` at size 0, then each o as the next root's k at size 1,
+  adding o + 1 nodes until o = 0) and PE's (`cutPartsBound(k)` parts and
+  the roots above them); the same for trees below it. Deletes also add
+  four nodes for each level of their path and two more levels per
+  delete (the old writer's merges);
 * each node at 32 + 16 (B + 1) + 16 bytes, and two top nodes.
 
-The count was argued for the writer of formats 6 and 7, whose mechanisms
-it names (its Javadoc); for PE it is kept as it was and is checked, not
-argued: C-T8 (the key nodes the transaction marks are at most the bound,
-every traced transaction) and DagTester's `testDirtyNodeBoundOfDeletes`,
-`testDirtyNodeBoundSumsCollapsesOverTrees`. Open: 028-21 (a join cut
-into three parts, a join rebalanced one level down). Reclaim's internal
+The count was argued for the writer of formats 6 and 7; for PE it is
+argued in its Javadoc since 028-21, which found it short in three ways
+and added them (a new segment tree of more than h entries cut into
+parts; a node cut into more parts than its overflows and one, its
+parent a klong short; the new root above a cut segment root). Joins are
+covered by a delete's four nodes a level, as a child is joined only if a
+delete below it left it under m entries (V1). Checked by C-T8 (the key
+nodes the transaction marks are at most the bound, every traced
+transaction, with the Lean copy) and DagTester's
+`testDirtyNodeBoundOfPe`, `testDirtyNodeBoundOfDeletes`,
+`testDirtyNodeBoundSumsCollapsesOverTrees`. Reclaim's internal
 transactions are not checked (027-13, 1.4).
 
 
@@ -728,7 +739,7 @@ transactions are not checked (027-13, 1.4).
 
 ## 9. Limits and open work
 
-* **dirtyNodeBound** is not argued for PE (4.2): 028-21.
+* **dirtyNodeBound** is argued for PE since 028-21 (4.2), given V1.
 * **The order of the marks** differs between the short way and the plan
   (1.10); the model checks D as a set: 028-25 (keep both orders as
   described here, or make the short way report in emit's order).
@@ -873,3 +884,17 @@ and 027-03; the worked example run on `Dag.putKvs` by a probe. Found: the
 short way and the plan mark D's nodes in different orders (1.10),
 registered as 028-25. By an agent of coord-1118, on the branch
 `027-08-writer`.
+
+2026-11-19. 028-21: 4.2 and 9, `dirtyNodeBound` argued for PE and its
+three gaps closed. By an agent of coord-1118, on the branch
+`028-21-dirty-bound`.
+
+2026-11-19. Corrected after an independent review against the code at
+a0a76461 (Frans, 11:11), 14 points, each checked against Java and Lean
+with probes: collapse tests the final list (1.6); a new top node, like a
+new key node, is stored by a later take, `topPos` the newest written top
+(1.11); unchanged leaves take the short way (1.10); the overflow guards
+and the compaction minimum; the mark and serialization orders apart;
+ids, reachability, settle's reads, frames, Room, the estimates, the key
+checks, the readers' locks and the bitmap count. 4.2 merged with 028-21's
+counts for PE. No code bug found beyond 028-21 and 028-25. By coord-1118.

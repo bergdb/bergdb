@@ -287,7 +287,8 @@ Files
 * 26-user-apps.md. 024-26, AI-as-the-user apps against 2026.5's new
   algorithms (merges, option 2, CRC32C, the limits): no bug; Javadoc
   findings U26-1 to U26-8 (U26-5 decided 2026-11-12: a refused call
-  spoils the builder).
+  spoils the builder). The apps maintained in java/stress/apps/ since
+  2026-11-19 (028-23).
 * 27-refusal-and-node-rules.md. 024-27, Frans's decisions of
   2026-11-12 made: a refused call spoils the builder (024-26, U26-5),
   the Javadoc of U26-1 to U26-4 and U26-8, theta at least 2 and 62 the

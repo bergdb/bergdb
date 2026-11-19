@@ -72,7 +72,8 @@ for the night:
 | Frans's own sessions | Work he wants to follow. They use scratch clones, report finished files to the coordinator, and ask it before heavy runs. |
 | The watchdog | A shell script outside the session, started for unattended mode: keeps the Mac awake, logs whether the session lives and the network works, and writes `news.md` if the session is gone (section 8). |
 | The conductor | 013-01's script for the night's timed steps. |
-| `night.sh` | The night test run, about 50 minutes, at no fixed time: a step of the coordinator's plan, like the other heavy runs (section 6). |
+| `night.sh` | The night test run, about 2.5 hours, at no fixed time: a step of the coordinator's plan, like the other heavy runs (section 6). |
+| `week.sh`, `timing.sh` | The week run (about 11 hours, on demand and before every release) and the timing run (CORE, pauses, `performance.sh ab`; before every release, and after work on speed), steps of the plan too (028-23). |
 
 2026-11-06: `night.sh` no longer runs at 02:10 from launchd. Frans, 11:21:
 "I think we should remove the fixed-time scheduling of night.sh. You can
@@ -84,6 +85,21 @@ the main tree when the machine has room for it, typically after the day's
 landings and outside quiet blocks; it clones the committed code itself:
 
     nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
+
+Since 2026-11-19 (028-23; Frans, 10:39: "Functional testing in
+before-commit.sh, night.sh, week.sh. Timing in timing.sh, only this
+script requires a quite machine. Good structure.") the tests are of two
+kinds. `before-commit.sh`, `night.sh` and `week.sh` are functional: they
+may run while Frans or the sessions work on the machine, beside other
+runs (up to the heavy runs' limit), `night.sh` and `week.sh` also at a
+low priority (`nice -n 10`, or `taskpolicy -b`, which makes them several
+times longer). `week.sh` is started the same way as `night.sh`, on demand
+and before every release (Frans, 10:25: "It would always run before a
+release. Near a release, at least."). `timing.sh` is the only one that
+needs a quiet machine: the coordinator plans it in a quiet block of F53,
+or on s1, with nothing else heavy beside it; it refuses to start on a busy
+machine (`WAIT=MINUTES` makes it wait), and runs before every release on
+a commit near it.
 
 
 ## 3. The day

@@ -1,0 +1,16 @@
+# The release suite of java/stress/performance.sh (bergdb 028-23): timing.sh's comparison
+# of this tree with the last release's build (performance.sh ab), at 1M and 10M keys
+# (BergDB is optimized for large databases first). Same format as performance.suite. The
+# 1M scenarios are the principal suite's of 100-byte values; the 10M ones are the Perf
+# runs of 026-25, section 7 (8-byte values; with reclaim until a physical cut), which need
+# a heap of about 8 GB: on a smaller machine (s1) leave them out with ONLY='^(read|w|r)-'.
+# The times are estimates of 2026-11-19, not yet measured: about 60 minutes for the 1M
+# scenarios and 40 for the 10M ones on F53, both builds.
+
+read-100        read     3   n=1000000 nlong=100000 valsize=100 history=1000000
+w-uni-100-inf   write    3   n=1000000 valsize=100 work=uniform retain=inf ops=4500000
+w-uni-100-fin   write    3   n=1000000 valsize=100 work=uniform retain=1 mincuts=6 ops=4500000 maxops=12000000
+r-100-fin       restart  3   n=1000000 valsize=100 work=uniform retain=1 mincuts=6 ops=4500000 maxops=12000000 halt=1 firstgets=300000 mixops=300000
+
+w10m-inf        write    2   n=10000000 valsize=8 work=uniform warmup=200000 retain=inf ops=1000000
+w10m-fin        write    2   n=10000000 valsize=8 work=uniform warmup=200000 retain=0.1 mincuts=1 ops=2000000 maxops=4000000

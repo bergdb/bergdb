@@ -39,8 +39,12 @@
 #      2,000,000 keys, 50 MB, -Xmx768m.
 # Logs go to build/level4/. Set JAVA_HOME or PATH for the JDK; the build needs
 # javac too.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; its time limits are hang guards, generous for a loaded machine.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

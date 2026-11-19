@@ -23,8 +23,11 @@
 # not quiet is marked so (a measurement for the record needs a quiet machine: nothing else
 # running, other sessions' QUIET-BLOCK markers and ps checked first). Set JAVA_HOME or PATH
 # for the JDK (java, javac and jar).
+#
+# Kind: timing (bergdb 028-23): the figures are the result; run it on a quiet machine.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: timing"
 REF=$1
 MODE=${2:-quick}
 if [ -z "$REF" ] || [ ! -f "$REF/build/bergdb.jar" ]; then

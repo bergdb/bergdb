@@ -34,8 +34,12 @@
 # Environment: ANDROID_SDK, the SDK's directory (required; ANDROID_HOME if it is not set);
 # ANDROID_USER_HOME (default user/ beside the SDK), whose avd/ holds the AVD; ANDROID_AVD
 # (default bergdb34); API (default 34, the floor of objects); PORT (default 5580); JAVA_HOME.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; its time limits are hang guards, generous for a loaded machine.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 HERE=$(pwd)
 SDK=${ANDROID_SDK:-$ANDROID_HOME}
 if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then

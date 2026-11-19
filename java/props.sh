@@ -13,8 +13,13 @@
 # copy in build/test/props.txt. Exits with status 1 unless the output has
 # the MEM, CORE and SS lines. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too.
+#
+# Kind: timing (bergdb 028-23) for CORE, whose figure means something only on a quiet
+# machine (timing.sh compares it with the last release's); MEM and SS do not depend on
+# speed (level1.sh checks them).
 
 cd "$(dirname "$0")"
+echo "Kind: timing"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

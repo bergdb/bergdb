@@ -1700,9 +1700,12 @@ public class DbTesterFailure {
         }
     }
 
-    /** Waits, up to 10 s, until the main storage has failed, as after a failed flush. */
+    /**
+     * Waits, up to 30 s (10 s until bergdb 028-23), until the main storage has failed, as
+     * after a failed flush.
+     */
     private static void waitForStorageError(Db db) {
-        final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+        final long end = System.nanoTime() + 30L * 1000 * 1000 * 1000;
         while (!db.internal().storageFailed()) {
             if (System.nanoTime() > end) {
                 throw new AssertionError("the storage did not fail");
@@ -1850,8 +1853,12 @@ public class DbTesterFailure {
         }
     }
     
-    /** Runs r in a daemon thread for up to ms; returns what it threw, null, or HUNG. */
+    /**
+     * Runs r in a daemon thread for up to ms, and at least 30 s, a hang guard that load does
+     * not pass (bergdb 028-23); returns what it threw, null, or HUNG.
+     */
     static Throwable within(int ms, final Runnable r) throws InterruptedException {
+        ms = Math.max(ms, 30 * 1000);
         final Throwable[] thrown = new Throwable[1];
         Thread th = new Thread() {
             public void run() {

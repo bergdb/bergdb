@@ -3,6 +3,7 @@ import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.pub.*;
+import bergdb.pub.Limits;      // not 024-26's app Limits, compiled beside it since 028-23
 import bergdb.stream.FileStream;
 
 import java.io.File;

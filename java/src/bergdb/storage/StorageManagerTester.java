@@ -62,18 +62,23 @@ public class StorageManagerTester {
     public static void testWait1() throws IOException, InterruptedException {
         // Tests a call to sync() that should return immediately.
         
-        MemoryStream m = new MemoryStream();
-        final StorageManager manager = new StorageManager.Builder().stream(m).build();
-        
-        long t = System.nanoTime();
-        manager.sync(0);
-        t = System.nanoTime() - t;
-        double time = t * 1e-9;
         // Under the 500 ms of the sync's wait for its next check; not 50 ms, which load
-        // could pass (bergdb 021-28).
-        Assert.assertTrue("time = " + time, time < 0.4);
-        
-        manager.stop();
+        // could pass (bergdb 021-28). Three tries: a sync that waits is slow every time, a
+        // stalled thread on a loaded machine now and then (bergdb 028-23).
+        double time = 0;
+        for (int k = 0; k < 3; k++) {
+            MemoryStream m = new MemoryStream();
+            final StorageManager manager = new StorageManager.Builder().stream(m).build();
+            long t = System.nanoTime();
+            manager.sync(0);
+            t = System.nanoTime() - t;
+            manager.stop();
+            time = t * 1e-9;
+            if (time < 0.4) {
+                return;
+            }
+        }
+        Assert.assertTrue("time = " + time + " s, three times", false);
     }
     
     @Nano
@@ -161,6 +166,20 @@ public class StorageManagerTester {
      */
     @Nano
     public static void testSyncWokenByAFailure() throws Exception {
+        // A late throw on a loaded machine is tried again: a sync that is not woken throws
+        // about 500 ms late every time, a stalled test thread now and then (bergdb 028-23).
+        long ms = 0;
+        for (int k = 0; k < 3; k++) {
+            ms = syncWokenByAFailure();
+            if (ms < 250) {
+                return;
+            }
+        }
+        Assert.assertTrue("the sync threw " + ms + " ms after the failure, three times", false);
+    }
+
+    /** One run of testSyncWokenByAFailure: the ms from the failure to the sync's throw. */
+    private static long syncWokenByAFailure() throws Exception {
         final java.util.concurrent.CountDownLatch entered =
                 new java.util.concurrent.CountDownLatch(1);
         final java.util.concurrent.CountDownLatch release =
@@ -203,8 +222,8 @@ public class StorageManagerTester {
             long ms = (thrownAt[0] - t0) / 1000000;
             // The release comes as the sync begins to wait, so its next check comes about
             // 500 ms later: 250 ms tells a wake from a check, and leaves room for load (bergdb
-            // 021-28: 50 ms).
-            Assert.assertTrue("the sync threw " + ms + " ms after the failure", ms < 250);
+            // 021-28: 50 ms); the caller tries again above it (bergdb 028-23).
+            return ms;
         } finally {
             release.countDown();
             syncer.join(30 * 1000);
