@@ -162,3 +162,5 @@ open Contract
 #print axioms full_cut_reads
 #print axioms cut_keeps_top_reads
 #print axioms cut_java_reads_reads
+#print axioms reads_of_gis
+#print axioms tschemeReads_of_gis
