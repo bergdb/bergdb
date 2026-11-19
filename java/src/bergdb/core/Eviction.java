@@ -1196,10 +1196,11 @@ public final class Eviction {
             // A small startup distance, so that index nodes are written soon and leave D,
             // and eviction takes them too.
             DbBuilder b = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                    .startupDistance(300).evictionSchedule(sch, seed)
+                    .evictionSchedule(sch, seed)
                     .audit(sch == Schedule.NONE ? 0 : 1);
             if (sch != Schedule.NONE && budget > 0) b.cacheSizeIndicator(budget);
             Db db = b.start();
+            db.setStartupDistance(300);      // nothing written if in force (bergdb 028-13)
             if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
             return db;
         }
@@ -1635,8 +1636,9 @@ public final class Eviction {
         CoreTestClock clock = new CoreTestClock();
         long time = 1000 * STEP;
         clock.setTime(time);
-        Db db = Db.builder().testSetup().clock(clock).testId().startupDistance(300)
+        Db db = Db.builder().testSetup().clock(clock).testId()
                 .evictionSchedule(Schedule.BUDGET, 1).cacheSizeIndicator(1L << 30).start();
+        db.setStartupDistance(300);
         db.internal().eviction().deadBatch = 256;
         db.setRetainDuration(bergdb.pub.util.Clock.UNITS_PER_SEC);
         for (int i = 0; i < 3000; i += 100) {
@@ -1744,7 +1746,8 @@ public final class Eviction {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(200).evictionSchedule(Schedule.EVERY, 1).start();
+                .evictionSchedule(Schedule.EVERY, 1).start();
+        db.setStartupDistance(200);
         long time = 100 * STEP;
         for (int i = 0; i < 30; i++) {
             time += STEP;
@@ -1821,8 +1824,9 @@ public final class Eviction {
             MemoryStream s = new MemoryStream();
             CoreTestClock clock = new CoreTestClock();
             Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                    .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                    .cacheSizeIndicator(4 * 1000)
                     .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+            db.setStartupDistance(200);
             long time = 100 * STEP;
             for (int i = 0; i < 300; i++) {
                 time += STEP;
@@ -1886,7 +1890,8 @@ public final class Eviction {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000).start();
+                .start();
+        db0.setStartupDistance(2000);
         long time = 100 * STEP;
         for (int i = 0; i < n; i += 50) {
             time += STEP;
@@ -1898,8 +1903,9 @@ public final class Eviction {
         db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         final Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000).cacheSizeIndicator(50 * 1000)
+                .cacheSizeIndicator(50 * 1000)
                 .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        db.setStartupDistance(2000);
         final java.util.concurrent.CyclicBarrier go = new java.util.concurrent.CyclicBarrier(readers + 1);
         final java.util.concurrent.CyclicBarrier done = new java.util.concurrent.CyclicBarrier(readers + 1);
         final java.util.concurrent.ConcurrentLinkedQueue<String> wrong =
@@ -2061,8 +2067,9 @@ public final class Eviction {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                .cacheSizeIndicator(4 * 1000)
                 .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        db.setStartupDistance(200);
         long time = 100 * STEP;
         for (int i = 0; i < 300; i++) {
             time += STEP;
@@ -2115,7 +2122,8 @@ public final class Eviction {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000).start();
+                .start();
+        db0.setStartupDistance(2000);
         long time = 100 * STEP;
         for (int i = 0; i < n; i += 50) {
             time += STEP;
@@ -2127,8 +2135,9 @@ public final class Eviction {
         db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000).cacheSizeIndicator(100L * 1000 * 1000)
+                .cacheSizeIndicator(100L * 1000 * 1000)
                 .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        db.setStartupDistance(2000);
         boolean ok = false;
         try {
             for (int round = 0; round < 2; round++) {
@@ -2540,8 +2549,9 @@ public final class Eviction {
         byte[] value = new byte[1200 * 1024];
         for (int extra = 0; extra < 2; extra++) {
             MemoryStream s = new MemoryStream();
-            Db db0 = Db.builder().testSetup(s).clock(clock).testId().startupDistance(200)
+            Db db0 = Db.builder().testSetup(s).clock(clock).testId()
                     .audit(0).start();
+            db0.setStartupDistance(200);
             try {
                 clock.setTime(clock.getTime() + 100 * STEP);
                 db0.execute(db0.trans().put("a", value).put("b", "small").build());
@@ -2553,9 +2563,10 @@ public final class Eviction {
                 db0.close();
             }
             long auditFailures = Audit.failures();
-            Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().startupDistance(200)
+            Db db = Db.builder().testSetup(s.copy()).clock(clock).testId()
                     .cacheSizeIndicator(100L * 1000 * 1000).evictionSchedule(Schedule.BUDGET, 1)
                     .audit(1).start();
+            db.setStartupDistance(200);
             try {
                 Assert.assertEquals("resident pointers to values over 1 MiB after the start ("
                         + extra + " more)", 0, largeResident(db));
@@ -2619,7 +2630,7 @@ public final class Eviction {
 
     /**
      * A lowered budget is reached when the pins of the hand's last round have fallen since
-     * (bergdb 015-70; 016-06, R4-F5): 570 transactions of one key, nodes of at most 8
+     * (bergdb 015-70; 016-06, R4-F5): 550 transactions of one key, nodes of at most 8
      * entries, and a startup distance of 2,000 bytes, so that much of the tree is dirty
      * (pinned); the budget lowered to 1 byte, so that the hand's rounds count the pinned
      * bytes (pinnedOfLastRound, P0); the budget raised, and a transaction that writes the
@@ -2637,19 +2648,22 @@ public final class Eviction {
      * object above the pins, so the state was not reached; with 520 it is. 550 since theta 2
      * at node size 8, 024-19, Q4: 520 left no detachable object above the budget; of 480 to
      * 600 by tens, 550 and 600 reach the state. 570 since every database has the startup
-     * distance's KV, bergdb 028-15: of 480 to 600 by tens, 510 and 570 reach it.)
+     * distance's KV, bergdb 028-15: of 480 to 600 by tens, 510 and 570 reach it. 550 since
+     * the startup distance is set after the start, a record of its own, bergdb 028-13: of
+     * 480 to 600 by tens, 490 to 520 and 550 reach it.)
      */
     @Nano
     public static void testLoweredBudgetAfterPinsFell() throws InterruptedException {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
-                .maxNodeSize8().startupDistance(2000).evictionSchedule(Schedule.BUDGET, 1)
+                .maxNodeSize8().evictionSchedule(Schedule.BUDGET, 1)
                 .audit(0).start();
+        db.setStartupDistance(2000);
         try {
             Db.Internal in = db.internal();
             Eviction e = in.eviction();
             long time = 100 * STEP;
-            for (int i = 0; i < 570; i++) {
+            for (int i = 0; i < 550; i++) {
                 clock.setTime(time += STEP);
                 db.execute(db.trans().put("k" + i, new byte[100]).build());
             }

@@ -102,10 +102,10 @@ public class ReclaimReaderTester {
 
     /** With a budget of the capacity controller if budget > 0, else none (noEvict). */
     static Db start(AppendOnlyStream stream, CoreTestClock clock, long budget) {
-        DbBuilder b = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                .startupDistance(2000);
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock).maxNodeSize8();
         if (budget > 0) b.cacheSizeIndicator(budget);
         Db db = b.start();
+        db.setStartupDistance(2000);      // nothing written if in force (bergdb 028-13)
         db.setRetainDuration(1 * SEC);
         return db;
     }
@@ -537,7 +537,8 @@ public class ReclaimReaderTester {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(time);
         MemoryStream ms = new MemoryStream();
-        Db db = Db.builder().testSetup(ms).clock(clock).startupDistance(2000).start();
+        Db db = Db.builder().testSetup(ms).clock(clock).start();
+        db.setStartupDistance(2000);
         Random r = new Random(1);
         try {
             db.execute(db.trans().put("/old/x", new byte[100]).build());
@@ -557,8 +558,9 @@ public class ReclaimReaderTester {
         clock.setTime(time);
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        final Db db2 = b.stream("main", hs, 100 * 1000, 10).clock(clock).startupDistance(2000)
+        final Db db2 = b.stream("main", hs, 100 * 1000, 10).clock(clock)
                 .start();
+        db2.setStartupDistance(2000);
         final AtomicReference<Throwable> thrown = new AtomicReference<Throwable>();
         Thread w = new Thread(new Runnable() {
             public void run() {

@@ -24,7 +24,8 @@ public class Bug141109 {
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(2);
         
-        Db db = Db.builder().mainStream(stream).clock(clock).startupDistance(10*1000).start();
+        Db db = Db.builder().mainStream(stream).clock(clock).start();
+        db.setStartupDistance(10*1000);
         int valueSize = 1000;
         
         for (int i = 0; i < 20; i++) {

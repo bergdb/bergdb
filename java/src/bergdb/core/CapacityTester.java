@@ -27,10 +27,18 @@ public class CapacityTester {
     private static final long STEP = bergdb.pub.util.Clock.UNITS_PER_SEC / 100;
 
     private static DbBuilder builder(MemoryStream s, CoreTestClock clock, long budget) {
-        DbBuilder b = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000);
+        DbBuilder b = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8();
         if (budget > 0) b.cacheSizeIndicator(budget).evictionSchedule(Eviction.Schedule.BUDGET, 1);
         return b;
+    }
+
+    /**
+     * The tests' startup distance, 2000 bytes, set right after the start (bergdb 028-13: no
+     * builder sets it); a restart's call writes nothing, as the setting is in force.
+     */
+    private static Db sd(Db db) {
+        db.setStartupDistance(2000);
+        return db;
     }
 
     private static String value(int k, int version, int size) {
@@ -101,11 +109,11 @@ public class CapacityTester {
     private static void readsWithoutWrites(int n, int updates, long budget) {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = builder(s, clock, 0).start();
+        Db db = sd(builder(s, clock, 0).start());
         String[] last = load(db, clock, n, updates, 300);
         db.sync(SyncLevel.ORDINARY);
         db.stop();
-        db = builder(s.copy(), clock, budget).start();
+        db = sd(builder(s.copy(), clock, budget).start());
         Random r = new Random(2);
         long max = 0;
         for (int round = 0; round < 3; round++) {
@@ -125,11 +133,11 @@ public class CapacityTester {
     private static Db readAll(int n, long budget) {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = builder(s, clock, 0).start();
+        Db db = sd(builder(s, clock, 0).start());
         String[] last = load(db, clock, n, 0, 300);
         db.sync(SyncLevel.ORDINARY);
         db.stop();
-        db = builder(s.copy(), clock, budget).start();
+        db = sd(builder(s.copy(), clock, budget).start());
         for (int k = 0; k < n; k++) {
             Assert.assertEquals(last[k], new String(DbUtil.get(db, "k" + k)));
         }
@@ -214,11 +222,11 @@ public class CapacityTester {
     public static void testWarmupDoesNotWait() throws InterruptedException {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db0 = builder(s, clock, 0).start();
+        Db db0 = sd(builder(s, clock, 0).start());
         load(db0, clock, 3000, 0, 300);
         db0.sync(SyncLevel.ORDINARY);
         db0.stop();
-        final Db db = builder(s.copy(), clock, 10 * 1000 * 1000).start();
+        final Db db = sd(builder(s.copy(), clock, 10 * 1000 * 1000).start());
         Thread writer = null;
         try {
             for (int k = 0; k < 1000; k++) DbUtil.get(db, "k" + k);
@@ -307,13 +315,13 @@ public class CapacityTester {
     public static void testSweepsStopNearLow() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = builder(s, clock, 0).start();
+        Db db = sd(builder(s, clock, 0).start());
         int n = 6000;
         String[] last = load(db, clock, n, 0, 100);
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         long budget = 60 * 1000;
-        db = builder(s.copy(), clock, budget).start();
+        db = sd(builder(s.copy(), clock, budget).start());
         GetMany g = db.newGetMany();
         g.stopCondition = new GetMany.StopCondition() {
             public int handleKvt(Kvt kvt) {
@@ -347,13 +355,13 @@ public class CapacityTester {
     public static void testScans() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = builder(s, clock, 0).start();
+        Db db = sd(builder(s, clock, 0).start());
         int n = 4000;
         String[] last = load(db, clock, n, 0, 300);
         db.sync(SyncLevel.ORDINARY);
         db.stop();
         final long budget = 200 * 1000;
-        final Db db2 = builder(s.copy(), clock, budget).start();
+        final Db db2 = sd(builder(s.copy(), clock, budget).start());
         final long[] max = new long[1];
         for (int round = 0; round < 2; round++) {
             GetMany g = db2.newGetMany();
@@ -390,7 +398,7 @@ public class CapacityTester {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         long budget = 4 * 1000 * 1000;
-        Db db = builder(s, clock, budget).start();
+        Db db = sd(builder(s, clock, budget).start());
         byte[][] values = new byte[12][];
         long time = 100 * STEP;
         for (int i = 0; i < 12; i++) {
@@ -419,13 +427,13 @@ public class CapacityTester {
     public static void testStalledReaders() throws Exception {
         MemoryStream s = new MemoryStream();
         final CoreTestClock clock = new CoreTestClock();
-        Db db0 = builder(s, clock, 0).start();
+        Db db0 = sd(builder(s, clock, 0).start());
         final int n = 2000;
         final String[] base = load(db0, clock, n, 0, 300);
         db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         final long budget = 150 * 1000;
-        final Db db = builder(s.copy(), clock, budget).start();
+        final Db db = sd(builder(s.copy(), clock, budget).start());
         final long t0 = db.lookupTime(Long.MAX_VALUE);
         final ConcurrentLinkedQueue<String> problems = new ConcurrentLinkedQueue<String>();
         final AtomicLong scanned = new AtomicLong();
@@ -493,10 +501,12 @@ public class CapacityTester {
         MemoryStream s1 = new MemoryStream(), s2 = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db ref = Db.builder().testSetup(s1).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000 * 1000).start();
+                .start();
+        ref.setStartupDistance(2000 * 1000);
         Db db = Db.builder().testSetup(s2).clock(clock).testId().maxNodeSize8()
-                .startupDistance(2000 * 1000).cacheSizeIndicator(20 * 1000)
+                .cacheSizeIndicator(20 * 1000)
                 .evictionSchedule(Eviction.Schedule.BUDGET, 1).audit(1).start();
+        db.setStartupDistance(2000 * 1000);
         long auditFailures = Audit.failures();
         Random r = new Random(4);
         long time = 100 * STEP;
@@ -541,7 +551,7 @@ public class CapacityTester {
     public static void testBudgetThroughJmx() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = builder(s, clock, 1000L * 1000 * 1000).start();
+        Db db = sd(builder(s, clock, 1000L * 1000 * 1000).start());
         load(db, clock, 2000, 0, 300);
         Jmx.DbMonitor monitor = new Jmx.DbMonitor(db);
         Assert.assertEquals(bytes(db), monitor.getCacheTotalSize());
@@ -572,8 +582,8 @@ public class CapacityTester {
     private static void sameRecordsAsWithoutEviction(int n) {
         MemoryStream s1 = new MemoryStream(), s2 = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db ref = builder(s1, clock, 0).start();
-        Db db = builder(s2, clock, 60 * 1000).audit(1).start();
+        Db ref = sd(builder(s1, clock, 0).start());
+        Db db = sd(builder(s2, clock, 60 * 1000).audit(1).start());
         long auditFailures = Audit.failures();
         Random r = new Random(5);
         List<Long> times = new ArrayList<Long>();
@@ -599,7 +609,7 @@ public class CapacityTester {
                 db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s2 = s2.copy();
-                db = builder(s2, clock, 60 * 1000).audit(1).start();
+                db = sd(builder(s2, clock, 60 * 1000).audit(1).start());
             }
         }
         ref.sync(SyncLevel.ORDINARY);
@@ -634,7 +644,8 @@ public class CapacityTester {
     public static void testBatchOnPinnedLeaf() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
-                .startupDistance(100 * 1000).start();
+                .start();
+        db.setStartupDistance(100 * 1000);
         try {
             Db.Internal in = db.internal();
             StringBuilder big = new StringBuilder();

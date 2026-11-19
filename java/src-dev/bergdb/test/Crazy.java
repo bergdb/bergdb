@@ -36,7 +36,8 @@ public class Crazy {
         
         out.println("---- Crazy.run ----");
         
-        Db db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s).start();
+        Db db = Db.builder().clock(clock).mainStream(s).start();
+        db.setStartupDistance(10*1000000);
         
         // Creates some KVs, 0 - 999.
         
@@ -162,7 +163,7 @@ public class Crazy {
             // Makes sure we do not use the closed stream: a closed MemoryStream refuses appends.
         
         out.println("Restarting database");
-        db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s).build();
+        db = Db.builder().clock(clock).mainStream(s).build();
         long t = System.nanoTime();
         db.start();
         t = System.nanoTime() - t;

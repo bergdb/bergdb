@@ -257,8 +257,16 @@ public class DatabaseImp implements Database {
     }
 
     public void setStartupDistanceInMb(int startupDistanceInMb) {
-        int mb = DatabaseBuilderImp.clampStartupDistanceInMb(startupDistanceInMb);
+        int mb = clampStartupDistanceInMb(startupDistanceInMb);
         db.setStartupDistance(mb * 1000000);
+    }
+    
+    /**
+     * The startup distance in MB, clamped to 5 to 1000, the Pub API's range (bergdb 028-13:
+     * until then also the builder's).
+     */
+    static int clampStartupDistanceInMb(int startupDistanceInMb) {
+        return Math.max(5, Math.min(1000, startupDistanceInMb));
     }
 
     public int getCacheSizeInMb() {

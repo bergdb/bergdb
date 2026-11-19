@@ -38,8 +38,9 @@ public class DbTesterDelete {
     }
     
     private static Db start(MemoryStream stream, int startupDistance) {
-        return Db.builder().testSetup(stream).maxNodeSize8().startupDistance(startupDistance)
-                .start();
+        Db db = Db.builder().testSetup(stream).maxNodeSize8().start();
+        db.setStartupDistance(startupDistance);      // nothing written if in force (bergdb 028-13)
+        return db;
     }
     
     private static void assertValue(String about, String expected, String actual) {

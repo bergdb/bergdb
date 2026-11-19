@@ -32,7 +32,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     private final DbBuilder dbBuilder;
     private CryptoKey cryptoKey = null;
     private int cacheSizeInMb;         // cache size indicator from user
-    private int startupDistanceInMb;
     
     /** The directory of create() or open(), opened by start() (bergdb 005-66), or null. */
     private File dir = null;
@@ -62,7 +61,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder = Db.builder();
         
         cacheSizeInMb = defaultCacheSizeInMb(Runtime.getRuntime().maxMemory());
-        startupDistanceInMb = 50;      // Was 20 (2026-10-13).
     }
     
     /**
@@ -163,24 +161,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
-    public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb) {
-        this.startupDistanceInMb = clampStartupDistanceInMb(startupDistanceInMb);
-        return this;
-    }
-    
-    /** The startup distance in MB, clamped to 5 to 1000; also Database's setter's. */
-    static int clampStartupDistanceInMb(int startupDistanceInMb) {
-        if (startupDistanceInMb < 5) {
-            startupDistanceInMb = 5;
-        }
-        
-        if (startupDistanceInMb > 1000) {
-            startupDistanceInMb = 1000;
-        }
-        
-        return startupDistanceInMb;
-    }
-    
     public DatabaseBuilder cacheSizeInMb(int cacheSizeInMb) {
         this.cacheSizeInMb = clampCacheSizeInMb(cacheSizeInMb);
         return this;
@@ -207,9 +187,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         // int times int, which overflowed for more than 2,147 MB, so with heaps above about
         // 10.7 GB by default). It is the capacity controller's budget (core/Eviction.java).
         long cacheSizeIndicator = this.cacheSizeInMb * 1000000L;
-        int startupDistance = this.startupDistanceInMb * 1000000;
         
-        dbBuilder.startupDistance(startupDistance);
         dbBuilder.cacheSizeIndicator(cacheSizeIndicator);
         
         if (dir == null && !dbBuilder.hasStream()) {
@@ -520,13 +498,20 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     // ======== Testing ========
     
+    /**
+     * A new database has 50 MB; Database.setStartupDistanceInMb() sets another right after
+     * the start (bergdb 028-13: the builder's startupDistanceInMb() was removed).
+     */
     @Nano private static void testStartupDistance1() {
         DatabaseBuilderImp b = new DatabaseBuilderImp();
-        b.startupDistanceInMb(7).memory();
+        b.memory();
         Database database = b.start();
+        long before = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.setStartupDistanceInMb(7);
         long startupDistance = ((DatabaseImp) database).getDb().getStartupDistance();
         database.stop();
         
+        Assert.assertEquals("the default", 50*1000000, before);
         Assert.assertEquals(7*1000000, startupDistance);
     }
     
@@ -589,16 +574,21 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         Assert.assertTrue("IllegalArgumentException for clock(null)", e != null);
     }
     
+    /** The setter clamps to 5 to 1000 MB (bergdb 028-13: as the builder's method did). */
     @Nano private static void testStartupDistance2() {
-        //
-        // Tests clamping to minimum startup distance.
-        //
         DatabaseBuilderImp b = new DatabaseBuilderImp();
-        b.startupDistanceInMb(1).memory();
+        b.memory();
         Database database = b.start();
-        long startupDistance = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.setStartupDistanceInMb(1);
+        long low = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.setStartupDistanceInMb(5000);
+        long high = ((DatabaseImp) database).getDb().getStartupDistance();
+        database.setStartupDistanceInMb(Integer.MIN_VALUE);
+        int mb = database.getStartupDistanceInMb();
         database.stop();
         
-        Assert.assertEquals(5*1000000, startupDistance);
+        Assert.assertEquals(5*1000000, low);
+        Assert.assertEquals(1000*1000000, high);
+        Assert.assertEquals(5, mb);
     }
 }

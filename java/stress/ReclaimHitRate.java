@@ -27,8 +27,10 @@ public class ReclaimHitRate {
     static final int READS = Integer.getInteger("reads", 20000);
 
     static Db start(MemoryStream s, CoreTestClock clock) {
-        return Db.builder().testSetup(s).clock(clock).startupDistance(200 * 1000)
+        Db db = Db.builder().testSetup(s).clock(clock)
                 .cacheSizeIndicator(BUDGET).evictionSchedule(Eviction.Schedule.BUDGET, 1).start();
+        db.setStartupDistance(200 * 1000);      // nothing written if in force (bergdb 028-13)
+        return db;
     }
 
     /** Loads per hot read, over READS reads of the hot set. */

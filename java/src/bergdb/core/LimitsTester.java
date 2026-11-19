@@ -68,14 +68,20 @@ public class LimitsTester {
     /** The record limits a run takes, one per run: 240 kB leaves setStartupDistance's 200 kB. */
     static final long[] RECORD_LIMITS = {240 * 1000, 300 * 1000, 1000 * 1000};
 
-    /** The builder's startup distances: its least, 10, and around the call's range. */
+    /**
+     * The first startup distances, set right after the creation (bergdb 028-13; the
+     * builder's until then): the least, 10, and others.
+     */
     static final int[] STARTUP_DISTANCES = {10, 2000, 400 * 1000, 2000 * 1000};
 
     /** Cache size indicators: none evicted, the least, small, larger. */
     static final long[] CACHE_SIZES = {Long.MAX_VALUE, 1, 300 * 1000, 3000 * 1000};
 
-    /** Arguments of setStartupDistance, at and around its clamp (bergdb 015-76). */
-    static final int[] SD_ARGS = {-1, 0, 10, 399999, 400000, 400001, 2000 * 1000,
+    /**
+     * Arguments of setStartupDistance, at and around its clamp (bergdb 015-76; 028-13: 10
+     * to 10^9, and below 1 refused).
+     */
+    static final int[] SD_ARGS = {-1, 0, 9, 10, 399999, 400000, 2000 * 1000,
             1000 * 1000 * 1000, 1000 * 1000 * 1000 + 1, Integer.MAX_VALUE};
 
     /** Arguments of setRetainDuration: below its least (refused), its least, forever. */
@@ -182,8 +188,7 @@ public class LimitsTester {
         // ======== Starting and stopping ========
 
         Db start(CutStream s) {
-            DbBuilder b = Db.builder().testSetup(s).clock(clock).startupDistance(builderDistance)
-                    .cacheSizeIndicator(cacheSize);
+            DbBuilder b = Db.builder().testSetup(s).clock(clock).cacheSizeIndicator(cacheSize);
             if (smallNodes) {
                 b.maxNodeSize8();
             }
@@ -198,14 +203,13 @@ public class LimitsTester {
         }
 
         void startFirst() {
-            try {
-                Db.builder().startupDistance(9);
-                fail("DbBuilder.startupDistance(9) was not refused", null);
-            } catch (IllegalArgumentException e) {
-                // Its least is 10.
-            }
             stream = new CutStream();
             db = start(stream);
+            check(db.getStartupDistance() == Db.DEFAULT_STARTUP_DISTANCE, "a new database's "
+                    + "startup distance: " + db.getStartupDistance());
+            // The first setting, right after the creation (bergdb 028-13).
+            check(db.setStartupDistance(builderDistance) == builderDistance,
+                    "setStartupDistance(" + builderDistance + ") did not return it");
             startupDistance = db.getStartupDistance();
             note("start: record limit " + recordLimit + ", value limit " + valueLimit()
                     + ", startup distance " + builderDistance + ", cache " + cacheSize
@@ -743,22 +747,23 @@ public class LimitsTester {
         }
 
         /**
-         * Db.setStartupDistance's Javadoc (bergdb 015-76): the value is clamped to 400,000
-         * to 10^9, the clamped value is set; a call whose clamped value is in force writes
-         * nothing, others write; a negative value is refused and changes nothing.
+         * Db.setStartupDistance's Javadoc (bergdb 015-76, 028-13): the value is clamped to 10
+         * to 10^9, the clamped value is set and returned; a call whose clamped value is in
+         * force writes nothing, others write; a value below 1 is refused and changes nothing.
          */
         void setStartupDistance() {
             int v = SD_ARGS[r.nextInt(SD_ARGS.length)];
             if (r.nextInt(4) == 0) {
                 v = startupDistance;
             }
-            int clamped = Math.max(400 * 1000, Math.min(1000 * 1000 * 1000, v));
+            int clamped = Math.max(10, Math.min(1000 * 1000 * 1000, v));
             long length = db.getStreamLength();
             note("setStartupDistance(" + v + "), in force " + startupDistance);
+            int returned = -1;
             try {
-                db.setStartupDistance(v);
+                returned = db.setStartupDistance(v);
             } catch (IllegalArgumentException e) {
-                check(v < 0, "setStartupDistance(" + v + ") refused: " + e);
+                check(v < 1, "setStartupDistance(" + v + ") refused: " + e);
                 check(db.getStartupDistance() == startupDistance, "a refused "
                         + "setStartupDistance changed the setting");
                 return;
@@ -772,7 +777,8 @@ public class LimitsTester {
                 result.refusedTime++;
                 return;
             }
-            check(v >= 0, "setStartupDistance(" + v + ") was not refused");
+            check(v >= 1, "setStartupDistance(" + v + ") was not refused");
+            check(returned == clamped, "setStartupDistance(" + v + ") returned " + returned);
             check(db.getStartupDistance() == clamped, "setStartupDistance(" + v
                     + "): expected the setting " + clamped + ", got " + db.getStartupDistance());
             long after = db.getStreamLength();

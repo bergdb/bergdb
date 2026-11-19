@@ -1099,15 +1099,19 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 6. The startup distance, from its KV (`Db.readStartupDistanceKv`;
    section 15; 028-15), before the writer's first transaction: only the
    writer uses it. The creating start finds no KV yet, and keeps the
-   builder's setting; any other stream without the KV is refused as
+   default, 50 MB (`Db.DEFAULT_STARTUP_DISTANCE`; the builder's setting
+   until 028-13); any other stream without the KV is refused as
    damaged (an SFE). A stream of the primordial record alone was refused
    at step 1 (028-18).
 7. Reclaim's table, current row and settings (`Reclaim.initFromDb`;
    section 15).
 8. The creating start (the stream was empty; `Db.handleEmptyStream`
    wrote the primordial record): its first transaction, internal, puts
-   the builder's startup distance at its KV (`Db.putStartupDistanceKv`;
-   028-15). So a creation is two records, the primordial one (with the
+   the default startup distance, 50 MB, at its KV
+   (`Db.putStartupDistanceKv`; 028-15; the builder's setting until
+   028-13, when `DbBuilder.startupDistance` was removed: an application
+   sets another with `Db.setStartupDistance` right after the start, a
+   record of its own). So a creation is two records, the primordial one (with the
    first meta block, `Db.CREATION_LENGTH`, 272 bytes) and this one. With
    `created.txt` (the Pub API) the start then syncs both with one sync
    (`Db.syncCreation`, rule D1) and writes `created.txt` after it, before
@@ -1180,10 +1184,12 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   21 bytes and four segments, until Frans's rename of 2026-11-18, 12:45):
   the startup
   distance in force, sd, in stream bytes, 4 bytes, an `i32`
-  little-endian, from 10 to 10^9 (`DbBuilder.MAX_STARTUP_DISTANCE`).
-  Put by the creating start's first transaction (an internal one, with
-  the builder's setting; section 14.2) and by `Db.setStartupDistance` (a
-  transaction of its own, the clamped value, 400,000 to 10^9); every
+  little-endian, from 10 to 10^9 (`Db.MIN_STARTUP_DISTANCE`,
+  `Db.MAX_STARTUP_DISTANCE`). Put by the creating start's first
+  transaction (an internal one, with the default, 50 MB; section 14.2;
+  the builder's setting until 028-13) and by `Db.setStartupDistance` (a
+  transaction of its own, the clamped value, 10 to 10^9 since 028-13,
+  400,000 to 10^9 before; a value below 1 refused); every
   database has it from its creation on, live, and reclaim copies it
   forward as any live KV. Read at the end of a start
   (`Db.readStartupDistanceKv`): other bytes are refused with

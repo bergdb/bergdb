@@ -168,9 +168,10 @@ public class KillEmpty {
         int retainMs = Integer.parseInt(a[4]);
         long maxTx = a.length > 5 ? Long.parseLong(a[5]) : Long.MAX_VALUE;
         dir.mkdirs();
-        DbBuilder b = Db.builder().mainStream(new FileStream(dir, false)).startupDistance(300_000);
+        DbBuilder b = Db.builder().mainStream(new FileStream(dir, false));
         b.cacheSizeIndicator(4_000_000);
         Db db = b.start();
+        db.setStartupDistance(300_000);     // after the start since bergdb 028-13; nothing written if in force
         try {
             // Recover: the marker, the replay, the check.
             GetData gd = db.newGetData();

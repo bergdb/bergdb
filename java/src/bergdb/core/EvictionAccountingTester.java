@@ -137,9 +137,14 @@ public final class EvictionAccountingTester {
         Db start(long budget) {
             int sd = 200 + rnd.nextInt(20000);
             log("start: budget " + budget + ", startup distance " + sd);
-            return Db.builder().testSetup(stream).clock(clock).testId().maxNodeSize8()
-                    .startupDistance(sd).cacheSizeIndicator(budget)
+            boolean creating = stream.getLength() == 0;
+            Db db = Db.builder().testSetup(stream).clock(clock).testId().maxNodeSize8()
+                    .cacheSizeIndicator(budget)
                     .evictionSchedule(Eviction.Schedule.BUDGET, seed).audit(1 << 30).start();
+            // At the creation only, as the builder's setting was until bergdb 028-13: a
+            // restart keeps the stream's.
+            if (creating) db.setStartupDistance(sd);
+            return db;
         }
 
         void log(String s) {

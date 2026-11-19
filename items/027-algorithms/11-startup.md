@@ -247,12 +247,15 @@ record's (after the validation, 005-75); `created.txt` is written if
 missing (015-01); the database is active; sd is read from its KV
 (`Db.readStartupDistanceKv`, 028-15: 4 bytes, 10 to 10^9, else an
 `InternalDataException`; no KV is an SFE unless this start created the
-stream, when the builder's sd is kept); reclaim reads
+stream, when the default sd, 50 MB, is kept); reclaim reads
 its settings and table, and makes a cut that a crash left pending
 (027-13, section 1.9); eviction takes in what the start made resident
 (015-68, 019-47). The creating start writes the creation's second
-record now: an internal transaction that puts the builder's sd at the
-KV, the writer's first (027-03, section 14.2); with `created.txt` both
+record now: an internal transaction that puts the default sd, 50 MB
+(`Db.DEFAULT_STARTUP_DISTANCE`), at the KV, the writer's first (027-03,
+section 14.2; the builder's sd until 028-13, when
+`DbBuilder.startupDistance` was removed: another sd is set by
+`Db.setStartupDistance` after the start); with `created.txt` both
 records are synced, and `created.txt` written, before the start returns
 (028-17, 028-18). A crash before that leaves a stream that the next
 start refuses (1.2, step 2); from 028-15 to 028-18 such a start wrote

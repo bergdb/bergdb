@@ -54,10 +54,10 @@ public class Issue150420 {
         MemoryStream stream = new MemoryStream();
         Db db1 = Db.builder()
                 .clock(new TestClock())
-                .startupDistance(100*1000)
                 .mainStream(stream)
                 .noEvict()
                 .start();
+        db1.setStartupDistance(100*1000);
         
         for (String key : keys) {
             if (index % 10 == 0) env.out().print(".");

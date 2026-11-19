@@ -26,8 +26,9 @@ public class WorstCase {
             Common.rmrf(dir);
             Common.Model m = new Common.Model();
             Random r = new Random(ns);
-            DbBuilder b = TestNodeSize.builder(ns).mainStream(new FileStream(dir, false)).startupDistance(400_000);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
+            DbBuilder b = TestNodeSize.builder(ns).mainStream(new FileStream(dir, false));  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
             try (Db db = b.start()) {
+                db.setStartupDistance(400_000);     // after the start since bergdb 028-13
                 // Background: keys of 111 bytes, random, so that paths are deep and disjoint.
                 List<Common.K> all = new ArrayList<>();
                 for (int i = 0; i < before; i += 500) {

@@ -169,7 +169,7 @@ background close of stop() then.</li>
 <li>Each started database holds a write buffer of heap until it closes: 64 KiB at the start,
 whatever its size, up to 10 MB while it writes faster than the storage takes the writes, and
 back to 64 KiB after 2 seconds with nothing to write; a small file database holds about 0.7 MB
-of heap in all ({@link DatabaseBuilder#startupDistanceInMb(int)}). What many databases open in
+of heap in all ({@link Database#setStartupDistanceInMb(int)}). What many databases open in
 one JVM must set is the cache budget: by default each database's cache may grow to a fifth of
 the JVM's maximum heap, so give each a budget that leaves room for the others
 ({@link DatabaseBuilder#cacheSizeInMb(int)}).</li>

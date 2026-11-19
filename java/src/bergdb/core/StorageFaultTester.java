@@ -567,6 +567,9 @@ public class StorageFaultTester {
             public void run() {
                 dbs[0] = builder(clock, s, run.evict).build();
                 dbs[0].start();
+                // The tests' startup distance, part of the start since bergdb 028-13 took it
+                // from the builder; nothing written if in force.
+                dbs[0].setStartupDistance(1000);
             }
         });
         final Db db = dbs[0];
@@ -667,7 +670,7 @@ public class StorageFaultTester {
             boolean evict) {
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        b.clock(clock).stream("main", s, BUFFER, 10).maxNodeSize8().startupDistance(1000);
+        b.clock(clock).stream("main", s, BUFFER, 10).maxNodeSize8();
         if (evict) {
             b.evictionSchedule(Eviction.Schedule.EVERY, 1);
         }
@@ -682,6 +685,7 @@ public class StorageFaultTester {
         try {
             Db db = builder(clock, new FileStream(dir, new NoForceIo(), false), run.evict)
                     .start();
+            db.setStartupDistance(1000);       // bergdb 028-13
             db.setRetainDuration(SEC);
             for (int i = 0; i < TRANSACTIONS / 2; i++) {
                 clock.setTime(clock.getTime() + SEC / 4);
@@ -796,8 +800,9 @@ public class StorageFaultTester {
         try {
             CoreTestClock clock = new CoreTestClock();
             clock.setTime(1000 * SEC);
-            db = Db.builder().testSetup(fs).clock(clock).maxNodeSize8().startupDistance(1000)
+            db = Db.builder().testSetup(fs).clock(clock).maxNodeSize8()
                     .start();
+            db.setStartupDistance(1000);
             boolean allReturned = run.failure == null && !run.closeThrew;
             int gapAt = -1;
             for (int i = 0; i < run.made; i++) {

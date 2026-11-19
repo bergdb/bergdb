@@ -560,7 +560,8 @@ public final class Residents {
     public static void testReplacedNodeCounted() {
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(new bergdb.stream.MemoryStream()).clock(clock).testId()
-                .maxNodeSize8().startupDistance(200).audit(0).start();
+                .maxNodeSize8().audit(0).start();
+        db.setStartupDistance(200);
         try {
             java.util.Random rnd = new java.util.Random(1);
             long time = 100 * STEP;
@@ -593,7 +594,8 @@ public final class Residents {
         CoreTestClock clock = new CoreTestClock();
         bergdb.stream.MemoryStream s = new bergdb.stream.MemoryStream();
         Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(3000).audit(0).start();
+                .audit(0).start();
+        db0.setStartupDistance(3000);
         long time = 100 * STEP;
         try {
             java.util.Random rnd = new java.util.Random(1);
@@ -609,7 +611,8 @@ public final class Residents {
             db0.close();
         }
         Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
-                .startupDistance(3000).audit(0).start();
+                .audit(0).start();
+        db.setStartupDistance(3000);
         try {
             synchronized (db.internal().getWriteLock()) {
                 String m = misCounted(db);
@@ -634,7 +637,8 @@ public final class Residents {
         CoreTestClock clock = new CoreTestClock();
         bergdb.stream.MemoryStream s = new bergdb.stream.MemoryStream();
         Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
-                .startupDistance(30000).audit(0).start();
+                .audit(0).start();
+        db0.setStartupDistance(30000);
         long time = 100 * STEP;
         try {
             java.util.Random rnd = new java.util.Random(1);
@@ -650,7 +654,8 @@ public final class Residents {
             db0.close();
         }
         Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
-                .startupDistance(30000).audit(0).start();
+                .audit(0).start();
+        db.setStartupDistance(30000);
         try {
             synchronized (db.internal().getWriteLock()) {
                 String m = misCounted(db, true);

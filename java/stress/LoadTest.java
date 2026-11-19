@@ -157,8 +157,6 @@ public class LoadTest {
         }
         DbBuilder b = Db.builder().stream("main", fileStream)
                 .clock(clock).noEvict().testId();
-        if (sdProp > 0) b.startupDistance(sdProp);
-        if (sdProp < 0) b.startupDistance(2000 * 1000 * 1000);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
@@ -207,6 +205,10 @@ public class LoadTest {
                 + " sd=" + sdProp + " maxnode=" + maxNode + " sync=" + syncEach);
         db = start(true);
         db.start();
+        // Kept in the stream, as the restarts below find it (bergdb 028-13); sd < 0: the
+        // largest, 10^9.
+        if (sdProp > 0) db.setStartupDistance(sdProp);
+        if (sdProp < 0) db.setStartupDistance(1000 * 1000 * 1000);
         // Kept in the stream (bergdb 015-87): the restarts below do not set it again.
         if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
         Db.testHooks = new Db.TestHooks() {

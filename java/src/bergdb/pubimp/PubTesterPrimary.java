@@ -991,8 +991,9 @@ public class PubTesterPrimary {
     public static void testScanBehindCut() {
         TestClock clock = new TestClock();
         Db core = TestNodeSize.builder(8).testSetup(new CutStream()).clock(clock)
-                .startupDistance(2000).build();
+                .build();
         Database d = DatabaseImp.createAndStart(core);
+        core.setStartupDistance(2000);
         try {
             d.setRetainDuration(Duration.seconds(1));
             Connection c = d.connection();

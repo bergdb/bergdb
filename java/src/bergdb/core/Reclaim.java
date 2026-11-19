@@ -1839,7 +1839,8 @@ public class Reclaim implements Db.TransactionListener {
             int size = 40;
             
             Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                    .startupDistance(100*1000).start();
+                    .start();
+            db.setStartupDistance(100*1000);
             
             for (int i = 0; i < size; i++) {
                 long time = 1000 + i * 10;
@@ -1876,8 +1877,8 @@ public class Reclaim implements Db.TransactionListener {
             byte[] value = new byte[100000];
             int size = 40;      // Was 20; the cut now waits until the nodes are rewritten.
             
-            Db db = Db.builder().testSetup().mainStream(stream).clock(clock)
-                    .startupDistance(100*1000).start();
+            Db db = Db.builder().testSetup().mainStream(stream).clock(clock).start();
+            db.setStartupDistance(100*1000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             
             for (int i = 0; i < size; i++) {
@@ -1907,7 +1908,8 @@ public class Reclaim implements Db.TransactionListener {
          * not the stream's that Db.start() reads, nor a later setStartupDistance(). A
          * database made at 2000 bytes and restarted with the builder's default (50 MB)
          * then nearly stopped reclaiming. Restarted with the default or with 2000, it must
-         * reclaim the same, as at its own distance.
+         * reclaim the same, as at its own distance. Since bergdb 028-13 no builder sets the
+         * startup distance: both runs start the same way, and must reclaim the same.
          */
         @Nano
         public static void testIterationsFollowTheStreamsStartupDistance() {
@@ -1915,7 +1917,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             clock.setTime(time[0]);
             MemoryStream stream = new MemoryStream();
-            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup(stream).clock(clock).start();
+            db.setStartupDistance(2000);
             distancePuts(db, clock, time, 2000);
             db.sync(SyncLevel.ORDINARY);
             db.close();
@@ -1927,11 +1930,7 @@ public class Reclaim implements Db.TransactionListener {
                 time[0] = t0;
                 CoreTestClock c = new CoreTestClock();
                 c.setTime(time[0]);
-                DbBuilder b = Db.builder().testSetup(stream.copy()).clock(c);
-                if (run == 0) {
-                    b.startupDistance(2000);
-                }
-                Db d = b.start();
+                Db d = Db.builder().testSetup(stream.copy()).clock(c).start();
                 Assert.assertEquals(2000, d.getStartupDistance());
                 iterations[run] = distancePuts(d, c, time, 2000);
                 length[run] = d.getStreamLength() - d.getFirstAvailablePos();
@@ -1953,7 +1952,8 @@ public class Reclaim implements Db.TransactionListener {
             long[] time = {Clock.UNITS_PER_SEC};
             CoreTestClock clock = new CoreTestClock();
             clock.setTime(time[0]);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             Assert.assertTrue(distancePuts(db, clock, time, 1000) >= 5);
             
             db.setStartupDistance(bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE * 2);
@@ -2008,7 +2008,8 @@ public class Reclaim implements Db.TransactionListener {
                     return now[0];
                 }
             };
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             try {
                 db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
                 Reclaim rc = db.internal().reclaim();
@@ -2068,7 +2069,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             Reclaim reclaim = db.internal().reclaim();
             Stats stats = reclaim.enableStats();
             byte[] v = new byte[100];
@@ -2123,7 +2125,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             Reclaim reclaim = db.internal().reclaim();
             Stats stats = reclaim.enableStats();
             byte[] v = new byte[100];
@@ -2200,7 +2203,8 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
             
             java.util.Random r = new java.util.Random(1);
@@ -2485,7 +2489,8 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             CutStream stream = new CutStream();
-            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup(stream).clock(clock).start();
+            db.setStartupDistance(2000);
             try {
                 stepWithinValueLimit(db, stream, clock, time, limit, slack);
             } finally {
@@ -2560,7 +2565,8 @@ public class Reclaim implements Db.TransactionListener {
                 long time = Clock.UNITS_PER_SEC;
                 clock.setTime(time);
                 CutStream stream = new CutStream();
-                Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(10000).start();
+                Db db = Db.builder().testSetup(stream).clock(clock).start();
+                db.setStartupDistance(10000);
                 db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
                 java.util.Random r = new java.util.Random(seed);
                 long cut = 0;
@@ -2577,8 +2583,9 @@ public class Reclaim implements Db.TransactionListener {
                         stream = stream.copy();
                         clock = new CoreTestClock();
                         clock.setTime(time);
-                        db = Db.builder().testSetup(stream).clock(clock).startupDistance(10000)
+                        db = Db.builder().testSetup(stream).clock(clock)
                                 .start();
+                        db.setStartupDistance(10000);
                         db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
                     }
                 }
@@ -2683,14 +2690,16 @@ public class Reclaim implements Db.TransactionListener {
             DbBuilder b = Db.builder();
             b.testSetupExceptStream();
             Db db = b.stream("main", stream, 100 * 1000, 60 * 1000).clock(clock)
-                    .maxNodeSize8().startupDistance(2000).start();
+                    .maxNodeSize8().start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             return db;
         }
         
         private static Db startForCutTest(CutStream stream, CoreTestClock clock) {
             Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             return db;
         }
@@ -2706,7 +2715,8 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             Reclaim reclaim = db.internal().reclaim();
             Stats stats = reclaim.enableStats();
             for (int i = 0; i < 3000; i += 100) {
@@ -2824,7 +2834,8 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1000 * Clock.UNITS_PER_SEC);    // Iterations, but no cut.
             Reclaim reclaim = db.internal().reclaim();
             java.util.Random r = new java.util.Random(5);
@@ -2877,7 +2888,8 @@ public class Reclaim implements Db.TransactionListener {
             clock.setTime(time);
             CutStream stream = new CutStream();
             Db db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                    .startupDistance(2000).start();
+                    .start();
+            db.setStartupDistance(2000);
             final long retain = 20 * Clock.UNITS_PER_SEC;
             db.setRetainDuration(retain);
             Reclaim reclaim = db.internal().reclaim();
@@ -3084,9 +3096,10 @@ public class Reclaim implements Db.TransactionListener {
                 clock.setTime(time);
                 CutStream stream = new CutStream();
                 DbBuilder builder = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                        .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1);
+                        .evictionSchedule(Eviction.Schedule.EVERY, 1);
                 if (small) builder.reclaimStepReserve(4 * (80 + 48 * 8));
                 Db db = builder.start();
+                db.setStartupDistance(2000);
                 db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
                 Reclaim reclaim = db.internal().reclaim();
                 Stats stats = reclaim.enableStats();
@@ -3127,7 +3140,8 @@ public class Reclaim implements Db.TransactionListener {
                 clock = new CoreTestClock();
                 clock.setTime(time);
                 db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                        .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                        .evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                db.setStartupDistance(2000);
                 long first = db.getFirstAvailableLookupTime();
                 for (long lt = first; lt <= time; lt += Clock.UNITS_PER_SEC / 4) {
                     for (String key : model.keySet()) {
@@ -3157,7 +3171,8 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
-                    .startupDistance(2000).evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                    .evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             try {
                 Stats stats = db.internal().reclaim().enableStats();
@@ -3260,7 +3275,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             Reclaim reclaim = db.internal().reclaim();
             Stats stats = reclaim.enableStats();
@@ -3323,7 +3339,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             clock.setTime(time);
             MemoryStream ms = new MemoryStream();
-            final Db db = Db.builder().testSetup(ms).clock(clock).startupDistance(2000).start();
+            final Db db = Db.builder().testSetup(ms).clock(clock).start();
+            db.setStartupDistance(2000);
             db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
             final Reclaim rc = db.internal().reclaim();
             final boolean[] armed = {false};
@@ -3390,7 +3407,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             Reclaim reclaim = db.internal().reclaim();
             byte[] v = new byte[100];
             int head = 100000, next = 100000;
@@ -3433,7 +3451,8 @@ public class Reclaim implements Db.TransactionListener {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
-            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            Db db = Db.builder().testSetup().clock(clock).start();
+            db.setStartupDistance(2000);
             Reclaim reclaim = db.internal().reclaim();
             byte[] v = new byte[100];
             for (int i = 0; i < 500; i += 20) {
@@ -3490,7 +3509,8 @@ public class Reclaim implements Db.TransactionListener {
                 long time = Clock.UNITS_PER_SEC;
                 clock.setTime(time);
                 Db db = Db.builder().testSetup().clock(clock).maxNodeSize8()
-                        .startupDistance(2000).start();
+                        .start();
+                db.setStartupDistance(2000);
                 Reclaim reclaim = db.internal().reclaim();
                 byte[] v = new byte[100];
                 int head = 0, next = 0;
@@ -3577,7 +3597,8 @@ public class Reclaim implements Db.TransactionListener {
                 long time = Clock.UNITS_PER_SEC;
                 clock.setTime(time);
                 db = Db.builder().testSetup().clock(clock).maxNodeSize8()
-                        .startupDistance(2000).start();
+                        .start();
+                db.setStartupDistance(2000);
                 Reclaim reclaim = db.internal().reclaim();
                 byte[] v = new byte[100];
                 int head = 0, next = 0;

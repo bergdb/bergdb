@@ -33,8 +33,9 @@ public class Huge {
         System.out.println("Creating DB of size " + (1e-6 * n) + "M to dir " + dirname + ".");
         
         FileStream stream = new FileStream(new File(dirname));
-        Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).build();
+        Db db = Db.builder().mainStream(stream).build();
         db.start();
+        db.setStartupDistance(40*1000000);
         
         db.execute(db.trans().put("n", "" + n).build());
         System.out.println("Wrote n = " + n + " to database.");
@@ -102,7 +103,7 @@ public class Huge {
     
     public void n(String dirname) throws IOException {
         FileStream stream = new FileStream(new File(dirname));
-        Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).build();
+        Db db = Db.builder().mainStream(stream).build();
         
         long nanos = System.nanoTime();
         db.start();
@@ -118,7 +119,7 @@ public class Huge {
     
     public void runGetOps(String dirname, IntFactory intFactory) throws IOException {
         FileStream stream = new FileStream(new File(dirname));
-        Db db = Db.builder().mainStream(stream).startupDistance(40*1000000).build();
+        Db db = Db.builder().mainStream(stream).build();
         
         long nanos = System.nanoTime();
         db.start();

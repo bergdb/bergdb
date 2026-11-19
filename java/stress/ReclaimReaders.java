@@ -125,13 +125,13 @@ public class ReclaimReaders {
         clock = new CoreTestClock();
         clock.setTime(time);
         DbBuilder b = Db.builder().testSetup(stream).clock(clock);
-        b.startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.build();
         db.start();
+        db.setStartupDistance(startupDistance);    // nothing written if in force (bergdb 028-13)
         db.setRetainDuration(retainSec * SEC);
         return db;
     }

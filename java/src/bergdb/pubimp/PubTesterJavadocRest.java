@@ -533,7 +533,8 @@ public class PubTesterJavadocRest {
      * DatabaseBuilder: create(null), open(null) and clock(null) throw
      * IllegalArgumentException; start() without create(), open() or memory() throws
      * IllegalStateException; an existing database keeps the startup distance stored in its
-     * stream, whatever the builder's.
+     * stream, as setStartupDistanceInMb() set it (the builder has no setting since bergdb
+     * 028-13).
      */
     @Nano
     public static void testDatabaseBuilderRules() {
@@ -552,12 +553,13 @@ public class PubTesterJavadocRest {
 
         MemoryStream m = new MemoryStream();
         try (Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m)
-                .startupDistanceInMb(100).start()) {
+                .start()) {
+            d.setStartupDistanceInMb(100);
             Assert.assertEquals(100, d.getStartupDistanceInMb());
             d.connection().put("/a.txt", "a");
         }
         try (Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy())
-                .startupDistanceInMb(7).start()) {
+                .start()) {
             Assert.assertEquals("the stream's", 100, d.getStartupDistanceInMb());
         }
     }

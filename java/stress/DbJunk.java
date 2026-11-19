@@ -68,12 +68,13 @@ public class DbJunk {
         Random rnd = new Random(SEED);
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(SD);
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock);
         if (MAXNODE == 8) b.maxNodeSize8();
         if (MAXNODE == 14) b.maxNodeSize14();
         if (MAXNODE == 30) b.maxNodeSize30();
         if (MAXNODE == 62) b.maxNodeSize62();
         final Db db = b.start();
+        db.setStartupDistance(SD);
 
         long nodes = 0, kvs = 0, sumD = 0, maxD = 0, sumDead = 0, maxDead = 0, samples = 0;
         long time = 10;

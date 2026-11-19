@@ -64,6 +64,17 @@ release is made"; 029). The notes say so where they list the files.
 
 ### Pub API
 
+* **`DatabaseBuilder.startupDistanceInMb` removed: set the startup distance
+  with `Database.setStartupDistanceInMb` after `start()`** (bergdb 028-13;
+  Frans, 2026-11-19, 11:06 and 11:10). A new database has 50 MB, as the
+  builder's default was; a program that set another calls the setter
+  right after `start()`, also the start that creates the database. The
+  setter clamps to 5 to 1,000 MB, as the builder's method did, and the
+  stream keeps the setting over restarts, as before. The facts of the
+  builder's Javadoc (start time, heap, the write buffer) are now the
+  setter's. On a new database the call writes a small transaction of the
+  database's own after the creation.
+
 * **`bergdb.pub.Limits`: the limits as constants, and a check of a key
   before a call, a new class** (bergdb 026-02, option A; Frans,
   2026-11-13, 09:11, QK1 to QK4). `Limits.MAX_KEY_BYTES` and the other
@@ -85,6 +96,17 @@ release is made"; 029). The notes say so where they list the files.
 
 
 ### Core API
+
+* **`DbBuilder.startupDistance` removed; `Db.setStartupDistance` takes the
+  whole range, 10 bytes to 10^9, and returns the value set** (bergdb
+  028-13; Frans, 2026-11-19, 11:06 and 11:10). A new database has 50 MB;
+  another is set with the setter after `start()`. The setter clamps to 10
+  to 10^9 bytes (400,000 to 10^9 until now, a floor that served the
+  200 kB dummy value that 028-15 removed), so that tests can use any value
+  of the range; it returns the clamped value, the setting in force, which
+  `getStartupDistance()` gives too (it returned nothing until now). A
+  value below 1 is refused with `IllegalArgumentException` (0 was clamped
+  until now). The builder took 10 to 10^9 and refused values outside.
 
 * **A value transformation that throws or passes 8 MiB refuses its
   transaction; the database goes on** (bergdb 026-06; 010-04, R5; Frans,

@@ -1048,13 +1048,15 @@ public class PubTesterJavadoc {
             Assert.assertEquals(50, db.getStartupDistanceInMb());
             Assert.assertEquals(cache, db.getCacheSizeInMb());
         }
-        try (Database db = Factory.database().memory().startupDistanceInMb(1).cacheSizeInMb(1)
+        try (Database db = Factory.database().memory().cacheSizeInMb(1)
                 .start()) {
+            db.setStartupDistanceInMb(1);
             Assert.assertEquals(5, db.getStartupDistanceInMb());
             Assert.assertEquals(4, db.getCacheSizeInMb());
         }
-        try (Database db = Factory.database().memory().startupDistanceInMb(5000)
+        try (Database db = Factory.database().memory()
                 .cacheSizeInMb(Integer.MAX_VALUE).start()) {
+            db.setStartupDistanceInMb(5000);
             Assert.assertEquals(1000, db.getStartupDistanceInMb());
             Assert.assertEquals(100000, db.getCacheSizeInMb());
         }
@@ -1133,8 +1135,9 @@ public class PubTesterJavadoc {
     public static void testIndexScanBehindCut() {
         TestClock clock = new TestClock();
         Db core = TestNodeSize.builder(8).testSetup(new CutStream())
-                .clock(clock).startupDistance(2000).build();
+                .clock(clock).build();
         final Database d = DatabaseImp.createAndStart(core);
+        core.setStartupDistance(2000);
         try {
             d.setRetainDuration(Duration.seconds(1));
             final Connection c = d.connection();
@@ -2357,8 +2360,9 @@ public class PubTesterJavadoc {
     public static void testReclaimCutsLater() {
         final TestClock clock = new TestClock();
         clock.setTime(Time.utc("2026-01-01"));
-        final Database db = Factory.database().memory().clock(clock).startupDistanceInMb(5)
+        final Database db = Factory.database().memory().clock(clock)
                 .start();
+        db.setStartupDistanceInMb(5);
         try {
             final Connection c = db.connection();
             db.setRetainDuration(Duration.seconds(1));
@@ -2412,7 +2416,8 @@ public class PubTesterJavadoc {
     public static void testSettingsUndoneByACrashBeforeSync() {
         final MemoryStream m = new MemoryStream();
         Database db = ((DatabaseBuilderImp) Factory.database()).mainStream(m)
-                .startupDistanceInMb(5).start();
+                .start();
+        db.setStartupDistanceInMb(5);
         final long synced;
         try {
             db.setRetainDuration(Duration.seconds(3));

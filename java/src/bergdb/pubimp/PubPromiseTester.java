@@ -300,9 +300,12 @@ public class PubPromiseTester {
             b = Factory.database().create(dir);
         }
         if (small) {
-            b.startupDistanceInMb(5).cacheSizeInMb(4);
+            b.cacheSizeInMb(4);
         }
         db = b.clock(clock).start();
+        if (small) {
+            db.setStartupDistanceInMb(5);       // nothing written if in force (bergdb 028-13)
+        }
         if (ref.lastTime == -1) {
             // The time of the new database's own transaction, which a read before the
             // harness's first transaction reads at, and freezes (getLookupTime(), bergdb

@@ -8,7 +8,9 @@ import bergdb.pub.util.DbException;
 /**
  * A DatabaseBuilder is used to create a Database.
  * Use the settings methods (create or open, memory, clock, ...) and then 
- * call start() to create and start the database.
+ * call start() to create and start the database. The startup distance is not the
+ * builder's: a new database has 50 MB, and Database.setStartupDistanceInMb() changes it,
+ * also right after the start that creates the database (bergdb 028-13).
  * 
  * @see Database
  * @author Frans Lundberg
@@ -73,58 +75,6 @@ public interface DatabaseBuilder {
     public DatabaseBuilder clock(Clock clock);
     
     /**
-     * Sets the startup distance to a non-default value.
-     * A small startup distance can decrease database startup time; while a larger
-     * startup distance can improve the overall database performance.
-     * For a low-end PC with 0.5 GB of RAM, a value of 5 is reasonable, while a
-     * database of 10 million keys or more may use 200 to 1000 (bergdb 005-38). The
-     * default is 50: startup then took about 0.6 s with 100,000 keys of 1000-byte values
-     * and 1.4 s with 1 million keys of 100-byte values, written by single puts, with the
-     * stream in the operating system's file cache, on a fast SSD (measured 2026-10-13, before
-     * eviction; bergdb 011-04). A start's time grows with the transactions it reruns and the
-     * index nodes it reads, so with more keys: with 10 to 50 million keys of small values, a
-     * warm start takes about 62 to 104 ms a megabyte of its startup section, 3 to 5 s at 50
-     * (bergdb 006-19, 007-05); measure a start with your own data. A start reruns each
-     * transaction of its startup section whole, so a transaction larger than the startup
-     * distance makes every start read all of it, also after small transactions after it,
-     * until about twice the startup distance has been written after it: at a startup
-     * distance of 5, after one transaction of 200 MB a start took 2.7 to 3.1 s, and 0.07 s
-     * once 10 MB more had been written (bergdb 020-24-13, U13-7). Existing databases keep
-     * the startup distance stored in their stream; Database.setStartupDistanceInMb()
-     * changes it while the database runs, and the stream keeps the new value (bergdb
-     * 005-53). The value is clamped to 5 to 1000.
-     * With a finite retain duration, the startup distance also paces reclaim: an iteration
-     * begins after at least twice it of stream, so a larger distance cuts later and keeps
-     * more on disk (Database.setRetainDuration(); bergdb 020-24-06, U6-2).
-     * 
-     * <p>The startup distance, not the cache budget (cacheSizeInMb()), sets the heap that a
-     * database needs. What the database must keep in memory, the index nodes changed since
-     * its startup position, which eviction never takes, is about 2 to 3 times the startup
-     * distance of heap (bergdb 006-19), and a start needs about twice the startup distance
-     * of heap above what the running database needs, whatever the budget (bergdb 019-45). A
-     * new user's catalogue of 2 million objects, 4.9 GB of stream, with a budget of 4 MB
-     * (bergdb 020-24-04, U4-2): at the default 50, the heap held 110 to 160 MB after a
-     * start; the start failed with an OutOfMemoryError in a heap of 256 MB and ran in 384 MB.
-     * At 5, it held 21 to 42 MB and ran in 96 MB. So for a small heap set a small startup
-     * distance; the budget comes on top of what must be kept.</p>
-     * 
-     * <p>Every started database also holds its write buffer, from its start until it closes
-     * (Database.stop()): 64 KiB at the start, whatever its data, startup distance and budget.
-     * The buffer grows with the write rate, up to 10 MB, when writes come faster than the
-     * storage takes them, and shrinks back to 64 KiB after 2 seconds with nothing to write
-     * (bergdb 026-07). So a small started database holds about 0.7 MB of heap (a file
-     * database; a memory database about 1.7 MB, its stream included), one thread and three
-     * open files, and up to 10 MB more while it writes fast. Until release 2026.6 the buffer
-     * was 10 MB from the start: a small file database held about 11 MB of heap, and 48 small
-     * ones filled a heap of 512 MB (bergdb 020-24-10, U10-2). A closed database releases its
-     * buffer (Database.close()).</p>
-     * 
-     * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
-     *                               Value should be between 5 and 1000.
-     */
-    public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb);
-    
-    /**
      * Sets a cache size indicator in MB.
      * A small value will leave more available memory for the rest of the JVM application,
      * while a larger value likely improves database performance.
@@ -145,11 +95,11 @@ public interface DatabaseBuilder {
      * thread, at most 2 ms a load, whenever the loads outrun it; so while anything is
      * written, reads go at the pace of eviction. What must be kept follows the startup
      * distance, not the budget: about 2 to 3 times the startup distance of heap
-     * (startupDistanceInMb()). In a new user's catalogue of 2 million objects at the default
-     * startup distance, 50, the heap held 110 to 160 MB after a start with a budget of 4 MB,
-     * and gets were several times fewer than with a budget of 200 MB while a writer wrote
-     * (bergdb 020-24-04, U4-1 and U4-2). So give a budget well above what must be kept; for
-     * a small heap, make the startup distance small, not the budget.</p>
+     * (Database.setStartupDistanceInMb()). In a new user's catalogue of 2 million objects at
+     * the default startup distance, 50, the heap held 110 to 160 MB after a start with a
+     * budget of 4 MB, and gets were several times fewer than with a budget of 200 MB while a
+     * writer wrote (bergdb 020-24-04, U4-1 and U4-2). So give a budget well above what must
+     * be kept; for a small heap, make the startup distance small, not the budget.</p>
      * 
      * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */

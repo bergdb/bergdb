@@ -172,12 +172,13 @@ public class StreamDigest {
     /** Starts the database; sets the retain duration of the configuration if 'setRetain'. */
     Db start(MemoryStream stream, CoreTestClock clock, boolean setRetain) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock);
-        if (startupDistance > 0) b.startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.start();
+        // Nothing written if in force (bergdb 028-13).
+        if (startupDistance > 0) db.setStartupDistance(startupDistance);
         if (setRetain && retain > 0) db.setRetainDuration(retain * Clock.UNITS_PER_SEC);
         return db;
     }

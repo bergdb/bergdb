@@ -884,9 +884,6 @@ public final class KillRestartHarness {
             };
             long t0 = System.nanoTime();
             DatabaseBuilder b = Factory.database().create(dir.getPath());
-            if (settings.startupDistanceMb > 0) {
-                b.startupDistanceInMb(settings.startupDistanceMb);
-            }
             if (settings.cacheMb > 0) {
                 b.cacheSizeInMb(settings.cacheMb);
             }
@@ -913,6 +910,11 @@ public final class KillRestartHarness {
             im = dbi.getIndexManager();
             if (stepValues > 0) {
                 im.testStepValues = stepValues;
+            }
+            if (settings.startupDistanceMb > 0) {
+                // A transaction of the database's own, in the first run; nothing after
+                // (bergdb 028-13: the builder's setting until then).
+                db.setStartupDistanceInMb(settings.startupDistanceMb);
             }
             if (settings.retainSeconds > 0) {
                 // A transaction of the database's own, in the first run; nothing after.

@@ -36,9 +36,9 @@ public class StartupDistanceTester {
         out = c.out();
         random = new Random(0);
         stream = new MemoryStream();
-        db = Db.builder().mainStream(stream).startupDistance(500*1000)
-                .build();
+        db = Db.builder().mainStream(stream).build();
         db.start();
+        db.setStartupDistance(500*1000);
         createAccounts();
         
         long posZero = trans.lastPos;

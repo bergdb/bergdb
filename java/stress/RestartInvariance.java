@@ -214,12 +214,13 @@ public class RestartInvariance {
     /** Starts the database; sets the retain duration only if 'first' (bergdb 015-87). */
     Db start(MemoryStream stream, CoreTestClock clock, boolean first) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock);
-        if (startupDistance > 0) b.startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.start();
+        // Nothing written if in force (bergdb 028-13).
+        if (startupDistance > 0) db.setStartupDistance(startupDistance);
         if (first && retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
         return db;
     }
