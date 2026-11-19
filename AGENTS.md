@@ -17,6 +17,13 @@ a snapshot of the former `docs/` of 2026-11-12.
   and keys, private notes.
 - Commits are Frans's, with no AI attribution: no `Co-Authored-By` or
   similar lines in commit messages.
+- Committed text (items, day plans, commit messages, comments) records
+  decisions, their reasons and conclusions, as facts with a date: "Frans
+  chose A (2026-11-19)". Not the discussion behind them: no quotes from
+  the conversation with Frans, no thinking aloud or uncertainty ("I am
+  leaning towards"), no personal remarks ("I will soon have lunch"); those
+  stay between Frans and the session. Quote Frans only for text he wrote
+  to be published, or when he asks for it (Frans, 2026-11-19).
 - The history was rewritten when the repository went public (029): a
   commit hash of before 2026-11-17 cited outside this repository, in
   notes, reports or old clones, does not resolve here. The hashes cited
@@ -71,9 +78,8 @@ a snapshot of the former `docs/` of 2026-11-12.
   timing out of the functional scripts: a figure of time may be printed
   there, never decide a pass.
 - Before every release, `java/week.sh` and `java/timing.sh` run on a
-  commit near it. Frans, 2026-11-19, 10:25: "It would always run before a
-  release. Near a release, at least. Not necessarily on the exact version
-  that ships in the release. Minor change after can be acceptable."
+  commit near it, not necessarily the one that ships; a minor change after
+  it is acceptable (Frans, 2026-11-19).
 - Some tasks need more testing than before-commit.sh, depending on the
   job: work on performance runs `java/timing.sh` or the performance tests
   (`java/stress/performance.sh` with a suite, or `java/perf.sh`), on a

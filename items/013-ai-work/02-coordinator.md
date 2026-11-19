@@ -153,8 +153,8 @@ The mode is written in the state file. Check-ins read it there.
 Before he goes, the coordinator:
 
 1. asks the questions that would otherwise stop the work (013-01,
-   section 3, step 4), in one round, and quotes the answers in the day's
-   plan;
+   section 3, step 4), in one round, and records the decisions in the
+   day's plan;
 2. writes in the plan what will run while he is away, and when;
 3. starts the watchdog until his return (section 8);
 4. sets the unattended check-in, every 20 minutes;
@@ -265,10 +265,11 @@ Two places:
 
 * **The day's plan** is a subitem of the quarter's item, such as 006-10.
   It is made when the first task is delegated. Its sections follow
-  013-01, section 3, step 3: the requests, quoted, with Frans's answers;
+  013-01, section 3, step 3: the requests and Frans's decisions;
   the ground rules; the tasks; the timeline; the progress, with times
   from `date`; and the Outcome. This is the record. It is committed, and
-  so public: nothing private goes into it (AGENTS.md, "Public
+  so public: nothing private goes into it, and it records decisions,
+  reasons and conclusions, not the conversation (AGENTS.md, "Public
   repository"); what is private stays out of the repository.
 * **The state file**, `/Users/f/fl/bench/coord/YYYY-MM-DD/state.md`
   (from the skill's template). It is not in a repository. It holds what
