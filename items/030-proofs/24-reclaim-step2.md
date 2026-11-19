@@ -203,9 +203,12 @@ done (section 5).
   proofs 903, the statements of the read half 208, the counterexample 495,
   RC2, RC3 and the top theorems 1,660, PE's VAL-NEW (PeSim) 725; Axioms.lean
   lists 182 theorems (162 on `main` before).
-- **Gate:** `lean/contract/gate.sh 1f25b044` at 64eac0d8, the last change
-  of Lean: GATE OK (182 theorems, the standard axioms only; 84 files of the
-  closure, 98 pinned); the later commits change only items. Java and
+- **Gate:** `lean/contract/gate.sh 1f25b044` at 64eac0d8: GATE OK (182
+  theorems, the standard axioms only; 84 files of the closure, 98 pinned).
+  At the head (9d49fbfe, which changes the headers of the search's files,
+  and the items after it): steps 1 to 3 and 5 pass, and step 4 lists only
+  items/027-algorithms/13-reclaim.md, which the gate does not allow by
+  design; `gate.sh` without a base: GATE OK. Java and
   lean/ outside lean/contract did not change; the checkers' package
   (lean/contractcheck) builds only what the checkers import, none of these
   files.
@@ -231,7 +234,7 @@ done (section 5).
 every history PE writes, given the tested assumptions (Result; section 3):
 RC gives `CutOK` (the read half by the independent search's invariant),
 RC2 and RC3 for the key tree, PE's VAL-NEW, and the top theorem
-`PE.pe_reclaim_reads`. 64eac0d8 is the last change of Lean, GATE OK.
+`PE.pe_reclaim_reads`. Gated at 64eac0d8 and at the head (section 4).
 Possible next steps are in section 5.
 
 
