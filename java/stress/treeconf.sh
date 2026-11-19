@@ -35,8 +35,12 @@
 # Traces and outputs go to java/build/traces/tree-SET/. Prints one line per
 # trace, then what the traces reached, summed, and TREECONF OK or TREECONF
 # FAILED. Set JAVA_HOME or PATH for the JDK.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 CP=build/bergdb.jar:build/stress

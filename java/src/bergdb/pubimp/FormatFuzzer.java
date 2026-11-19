@@ -110,6 +110,8 @@ public final class FormatFuzzer {
     static final class Stats {
         long iterations, inputs, accepted, refused, refusedOther, lookups, expected,
                 maxNanos, maxAlloc, corpus;
+        /** Checks above the time bound and below five times it (bergdb 028-23). */
+        long slow;
         final long[] byCode = new long[20];
         final java.util.TreeMap<String, Long> counts = new java.util.TreeMap<>();
 
@@ -121,7 +123,9 @@ public final class FormatFuzzer {
             return iterations + " iterations, " + inputs + " inputs (" + accepted + " accepted, "
                     + refused + " refused, " + refusedOther + " by Ref for another code, "
                     + expected + " with a known verdict), " + lookups + " lookups, max "
-                    + maxNanos / 1000 + " us and " + maxAlloc + " bytes a check; " + counts;
+                    + maxNanos / 1000 + " us and " + maxAlloc + " bytes a check"
+                    + (slow > 0 ? ", " + slow + " above the time bound (load)" : "") + "; "
+                    + counts;
         }
     }
 
@@ -280,12 +284,15 @@ public final class FormatFuzzer {
     /**
      * The full check's time and allocation on 'm': within a bound linear in its length, and
      * no allocation but a refusal's (020-07, section 7.1: nothing allocated for a count or a
-     * length read). Measured again, the least of three, before a time is called too long.
+     * length read). Measured again, the least of up to ten, before a time is called too long.
+     * Since bergdb 028-23 a time above the bound fails only at five times the bound, where
+     * a check that is not linear lands; between the two it is counted (stats.slow) and
+     * printed: a stalled thread or a collector's pause on a loaded machine.
      */
     void measure(byte[] m, boolean accepted, String where) {
         long best = Long.MAX_VALUE;
         long alloc = Long.MAX_VALUE;
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < 10; k++) {
             long a0 = allocated();
             long t0 = System.nanoTime();
             try {
@@ -302,9 +309,12 @@ public final class FormatFuzzer {
         }
         stats.maxNanos = Math.max(stats.maxNanos, best);
         stats.maxAlloc = Math.max(stats.maxAlloc, alloc);
-        if (best >= 20_000_000L + 200L * m.length) {
+        if (best >= 5 * (20_000_000L + 200L * m.length)) {
             throw fail(where, "the full check took " + best / 1000 + " us for " + m.length
                     + " bytes", m, null);
+        }
+        if (best >= 20_000_000L + 200L * m.length) {
+            stats.slow++;
         }
         if (alloc > (accepted ? 4096 : 65536)) {
             throw fail(where, "the full check allocated " + alloc + " bytes for " + m.length

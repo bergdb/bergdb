@@ -6,16 +6,28 @@
 # coordinator session (013-02) when the machine has room for it, from the
 # main tree:
 #     nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
-# caffeinate -i keeps the Mac awake. Run it at normal priority: throttled,
-# as launchd's job was before ProcessType Interactive (2026-10-22) or a
-# background process is (nice, taskpolicy -b), the timing tests fail.
+# caffeinate -i keeps the Mac awake.
 #
-# Usage: java/night.sh          the night run, about 100 minutes on F53 before
-#                               bergdb 030-13, which adds about 30 to 35
+# Kind: functional (bergdb 028-23): no step's result depends on the machine's speed or
+# load; the time limits inside are hang guards, generous for a loaded machine, and a
+# number of time that a step prints (level1.sh's CORE) is information, never a pass or a
+# fail. So it may run while someone works on the machine, beside other work, and at a
+# low priority: `nice -n 10 sh java/night.sh`, or on macOS `taskpolicy -b sh
+# java/night.sh` (a background process: CPU and disk throttled hard, the run takes
+# several times longer). Timing has its own script, timing.sh, the only one that needs a
+# quiet machine. The three functional scripts: before-commit.sh before each commit, this
+# one about once a day while there is development, week.sh on demand and before every
+# release.
+#
+# Usage: java/night.sh          the night run, about 2.5 hours on F53 (100 minutes
+#                               before bergdb 030-13, which adds about 30 to 35)
 #        java/night.sh large    the same and the large conformance set,
-#                               about 6 hours; by hand
+#                               about 7 hours; by hand (week.sh includes it)
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #                               only the night tests, here, about 4.5 minutes
+#        java/night.sh week [short]
+#                               week.sh's run (bergdb 028-23): run it as java/week.sh,
+#                               whose header lists its steps
 #
 # The night tests (bergdb.dev.Night, the Nano test group "night") are the
 # long-running tests of 2013 to 2015, with assertions on (-ea); with "tests",
@@ -78,9 +90,11 @@
 # line, result and time, and NIGHT OK or NIGHT FAILED), each step's output in
 # STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and
 # its databases. Exits with status 1 if a step failed. Set JAVA_HOME or PATH
-# for the JDK; the build needs javac too, and the Lean steps elan.
+# for the JDK; the build needs javac too, and the Lean steps elan. With "week",
+# the same in build/week/RUN/, WEEK OK or WEEK FAILED.
 
 cd "$(dirname "$0")" || exit 1
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
@@ -95,17 +109,27 @@ if [ "$1" = tests ]; then
     exit 0
 fi
 
+# KIND: night, or week (week.sh's run); SHORT: week.sh short, its own steps small and
+# night's steps left out, a trial of the script.
+KIND=night
 LARGE=0
+SHORT=0
 if [ "$1" = large ]; then LARGE=1; fi
+if [ "$1" = week ]; then
+    KIND=week
+    LARGE=1
+    if [ "$2" = short ]; then SHORT=1; fi
+fi
+if [ $KIND = week ]; then NAME=WEEK; else NAME=NIGHT; fi
 
-REPO=$(git rev-parse --show-toplevel) || { echo "NIGHT FAILED: not in git"; exit 1; }
-RUN=$(pwd)/build/night/$(date +%Y-%m-%d-%H%M)
+REPO=$(git rev-parse --show-toplevel) || { echo "$NAME FAILED: not in git"; exit 1; }
+RUN=$(pwd)/build/$KIND/$(date +%Y-%m-%d-%H%M)
 SRC=$RUN/repo
 REPORT=$RUN/report.txt
 START=$(date +%s)
 
 mkdir -p $RUN || exit 1
-git clone -q "$REPO" $SRC || { echo "NIGHT FAILED: clone" | tee $REPORT; exit 1; }
+git clone -q "$REPO" $SRC || { echo "$NAME FAILED: clone" | tee $REPORT; exit 1; }
 if [ -d "$REPO/lean/.lake" ]; then
     cp -R "$REPO/lean/.lake" $SRC/lean/ 2>/dev/null
 fi
@@ -114,7 +138,12 @@ if [ -d "$REPO/lean/contractcheck/.lake" ]; then
     cp -R "$REPO/lean/contractcheck/.lake" $SRC/lean/contractcheck/ 2>/dev/null
 fi
 {
-    echo "Night run $(basename $RUN) on $(hostname -s)"
+    if [ $KIND = week ]; then
+        echo "Week run $(basename $RUN) on $(hostname -s)$([ $SHORT = 1 ] && echo ", short")"
+    else
+        echo "Night run $(basename $RUN) on $(hostname -s)"
+    fi
+    echo "Kind: functional"
     echo "Commit: $(git -C $SRC log -1 --format='%h %ad %s' --date=format:'%Y-%m-%d %H:%M')"
     echo "JDK: $($JAVA -version 2>&1 | head -1)"
     echo
@@ -141,6 +170,28 @@ night_tests() {
     grep -q '^SUCCESS' build/test/night.txt
 }
 
+# kill_seeds KILLS SEED...: kill-restart.sh with each seed in turn, KILLS kills each; stops
+# at the first failure, whose database stays in build/kill-restart/ (the next run would
+# delete it).
+kill_seeds() {
+    kills=$1; shift
+    for seed in "$@"; do
+        sh stress/kill-restart.sh $kills $seed || return 1
+    done
+}
+
+# week.sh short's conformance: the checker built first, as the level scripts do for theirs.
+conformance_small() {
+    (cd ../lean && lake build) > build/lake-week.txt 2>&1 \
+        || { echo "CONFORMANCE FAILED: lake build (log: java/build/lake-week.txt)"; return 1; }
+    sh stress/conformance.sh small 1
+}
+
+# The day's number (days since 1970), for week.sh's seeds: other seeds each day, and
+# other than night.sh's of the same day.
+DAY=$(( $(date +%s) / 86400 ))
+
+if [ $SHORT = 0 ]; then
 step before-commit sh before-commit.sh
 step core-build sh stress/core-build.sh unit f
 step transcheck sh stress/transcheck.sh
@@ -161,7 +212,29 @@ step kill-restart sh stress/kill-restart.sh 1000
 step conformance-medium sh stress/conformance.sh medium
 # The writer's contract and the bridge on the medium tree set (bergdb 030-13).
 step contract-medium sh stress/contractconf.sh medium
-if [ $LARGE = 1 ]; then
+fi
+# week.sh's own steps (its header has them; bergdb 028-23), after night's, the
+# longest last.
+if [ $KIND = week ] && [ $SHORT = 0 ]; then
+    step apps-quick sh stress/apps.sh quick
+    step apps-soak sh stress/apps.sh soak $DAY
+    step apps-kill sh stress/apps.sh kill $DAY
+    step kill-restart-week kill_seeds 1000 $((DAY * 10 + 1)) $((DAY * 10 + 2)) $((DAY * 10 + 3))
+    step fuzz-week sh stress/fuzz.sh 60 $((DAY * 1000 + 100))
+    step unlinkfuzz-week sh stress/unlinkfuzz.sh $((DAY * 1000 + 500))
+    step harness-soak-week sh stress/harness-soak.sh -r 10 -b $((DAY * 1000 + 100)) \
+        -o build/harness-soak-week
+elif [ $KIND = week ]; then
+    step apps-quick sh stress/apps.sh quick
+    step kill-restart-week kill_seeds 10 $((DAY * 10 + 1)) $((DAY * 10 + 2))
+    step fuzz-week sh stress/fuzz.sh 1 $((DAY * 1000 + 100))
+    step unlinkfuzz-week sh stress/unlinkfuzz.sh $((DAY * 1000 + 500))
+    step harness-soak-week sh stress/harness-soak.sh -r 1 -b $((DAY * 1000 + 100)) \
+        -o build/harness-soak-week
+fi
+if [ $SHORT = 1 ]; then
+    step conformance-small conformance_small
+elif [ $LARGE = 1 ]; then
     step conformance-large sh stress/conformance.sh large
 fi
 
@@ -174,9 +247,9 @@ rm -rf $SRC
 
 echo >> $REPORT
 if [ -z "$FAILED" ]; then
-    echo "NIGHT OK ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
+    echo "$NAME OK ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
 else
-    echo "NIGHT FAILED:$FAILED ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
+    echo "$NAME FAILED:$FAILED ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
 fi
 cat $REPORT
 
@@ -184,8 +257,8 @@ cat $REPORT
 # track (AGENTS.md, "News"; tools/news.sh).
 if [ -f "$REPO/tools/news.sh" ]; then
     if [ -z "$FAILED" ]; then st=OK; else st=FAILED; fi
-    sh "$REPO/tools/news.sh" "$st" night.sh \
-        "$(tail -1 $REPORT) on $(sed -n 's/^Commit: \([0-9a-f]*\) .*/\1/p' $REPORT). Report: java/build/night/$(basename $RUN)/report.txt" \
-        || echo "night.sh: news.sh failed"
+    sh "$REPO/tools/news.sh" "$st" $KIND.sh \
+        "$(tail -1 $REPORT) on $(sed -n 's/^Commit: \([0-9a-f]*\) .*/\1/p' $REPORT). Report: java/build/$KIND/$(basename $RUN)/report.txt" \
+        || echo "$KIND.sh: news.sh failed"
 fi
 [ -z "$FAILED" ]

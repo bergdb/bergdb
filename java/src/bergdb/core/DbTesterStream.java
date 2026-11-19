@@ -846,7 +846,9 @@ public class DbTesterStream {
             db.sync(SyncLevel.ORDINARY);
             long ms = (System.nanoTime() - t0) / 1000000;
             Assert.assertEquals("forces during the sync", 1, io.forces.get() - forces);
-            Assert.assertTrue("the sync took " + ms + " ms", ms >= 50 && ms < 5000);
+            // At least the force's 50 ms; the upper bound only a hang guard (bergdb 028-23:
+            // 60 s, 5 s until then).
+            Assert.assertTrue("the sync took " + ms + " ms", ms >= 50 && ms < 60000);
         } finally {
             io.sleepMs = 0;
             db.close();

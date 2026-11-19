@@ -23,8 +23,12 @@
 # fails when its exit code is not 0 (it then prints "N failures") or its last
 # line is not "all checks pass". Prints one line per program and LEAN TESTS OK,
 # or LEAN TESTS FAILED with the programs that failed, and exits with status 1.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: functional"
 OUT=build/lean-tests
 LEAN=../lean
 mkdir -p $OUT || exit 1

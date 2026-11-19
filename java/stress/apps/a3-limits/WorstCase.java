@@ -1,5 +1,6 @@
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
+import bergdb.core.TestNodeSize;
 import bergdb.core.Trans;
 import bergdb.stream.FileStream;
 
@@ -25,8 +26,7 @@ public class WorstCase {
             Common.rmrf(dir);
             Common.Model m = new Common.Model();
             Random r = new Random(ns);
-            DbBuilder b = Db.builder().mainStream(new FileStream(dir, false)).startupDistance(400_000);
-            if (ns == 8) b.maxNodeSize8(); else if (ns == 14) b.maxNodeSize14(); else if (ns == 62) b.maxNodeSize62(); else b.maxNodeSize30();
+            DbBuilder b = TestNodeSize.builder(ns).mainStream(new FileStream(dir, false)).startupDistance(400_000);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
             try (Db db = b.start()) {
                 // Background: keys of 111 bytes, random, so that paths are deep and disjoint.
                 List<Common.K> all = new ArrayList<>();
@@ -64,8 +64,7 @@ public class WorstCase {
                 Common.verifyFull(db, m, Long.MAX_VALUE, "node " + ns + " after restart");
             } catch (Exception e) {
                 // the restart's builder has no node size: a database of another size is refused (005-50)
-                DbBuilder b2 = Db.builder().mainStream(new FileStream(dir, false));
-                if (ns == 8) b2.maxNodeSize8(); else if (ns == 14) b2.maxNodeSize14(); else if (ns == 62) b2.maxNodeSize62(); else b2.maxNodeSize30();
+                DbBuilder b2 = TestNodeSize.builder(ns).mainStream(new FileStream(dir, false));
                 try (Db db = b2.start()) { Common.verifyFull(db, m, Long.MAX_VALUE, "node " + ns + " after restart"); }
             }
             Common.rmrf(dir);
