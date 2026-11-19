@@ -300,3 +300,7 @@ on every changed script. Not run: a full week.sh (the coordinator starts
 the first tonight) and timing.sh on a quiet machine (its times in the
 headers are estimates until then).
 
+
+2026-11-19. Main merged again (028-20, kill-restart.sh's late-exit
+self-test): BEFORE COMMIT OK (150 s) and `kill-restart.sh 10` KILL RESTART
+OK on the merge, `c2376f74`, by an agent of coord-1118.
