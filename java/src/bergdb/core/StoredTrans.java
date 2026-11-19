@@ -1426,7 +1426,9 @@ public class StoredTrans {
                     s.findNode(1001 + 2L * i) == null);
         }
         final long ms = (System.nanoTime() - t0) / 1000000;
-        Assert.assertTrue("200,000 lookups took " + ms + " ms", ms < 2000);
+        // A scan of the 100,000 nodes a lookup takes minutes; 20 s leaves room for load
+        // (bergdb 028-23; 2 s until then).
+        Assert.assertTrue("200,000 lookups took " + ms + " ms", ms < 20000);
         
         s.nodes = new StoredNode[] {StoredValueNode.create(twin, Keys.toSegments("twin"))};
         Assert.assertTrue("the new array's node", s.findNode(1000) == twin);

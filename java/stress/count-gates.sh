@@ -26,8 +26,13 @@
 #   the arguments go to CountGates (its class comment lists the properties).
 # Output in java/build/count-gates/count-gates.txt. Prints the gate lines and
 # COUNT GATES OK, or COUNT GATES FAILED and exits with status 1.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load: its gates are counts (bytes, nodes, objects, the heap), and the heap is measured
+# after the write buffer's shrink, waited for up to 60 s more on a loaded machine.
 
 cd "$(dirname "$0")/.." || exit 1
+echo "Kind: functional"
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 OUT=build/count-gates

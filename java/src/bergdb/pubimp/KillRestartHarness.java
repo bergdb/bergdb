@@ -142,7 +142,10 @@ import bergdb.pubimp.IndexReference.Write;
  * database passed). Prints KILL RESTART OK and the counts at the end, or KILL RESTART FAILED.
  * The script java/stress/kill-restart.sh runs it. For a probe of one phase, the parent's
  * system properties killrestart.phase (a name of PHASES) and killrestart.delay (the longest
- * delay, ms; default 100) aim every second kill there.</p>
+ * delay, ms; default 100) aim every second kill there; killrestart.late (ms, default 8000)
+ * sets the time after which a kill aimed after a creation, a deletion, a close or a stop is
+ * made late. KillRestartHarness lateexit BASE SEED checks that a late run aimed at exit whose
+ * JVM ends by itself is an exit (bergdb 028-20).</p>
  *
  * @author Frans Lundberg
  */
@@ -1984,18 +1987,35 @@ public final class KillRestartHarness {
      * in the schedule right after a creation (its build runs) or a deletion (its cleanup
      * runs), and during or after a close() that the schedule makes after a random time; and
      * "exit", no kill: the schedule calls stop() and returns from main, and the JVM must end
-     * with status 0 within 60 s. A kill aimed at build, cleanup or close that sees no such line
-     * in 8 s after the schedule began is made then, and counted as "late".
+     * with status 0 within 60 s. A kill aimed at build, cleanup, close or exit that sees no
+     * such line in 8 s (lateMs) after the schedule began is aimed then, after its delay, and
+     * counted as "late"; a run aimed at exit whose JVM ends by itself with status 0 in that
+     * delay, after "P exit", is an exit all the same (bergdb 028-20).
      */
     static final String[] PHASES = {"open", "started", "verified", "running", "build",
             "cleanup", "late", "close", "exit"};
+
+    /**
+     * The time after "P running" when a kill aimed at build, cleanup, close or exit that has
+     * seen no line of its phase is made late, ms: 8000, or the parent's system property
+     * killrestart.late (the check lateexit sets it lower).
+     */
+    static long lateMs = Long.getLong("killrestart.late", 8000);
 
     /** A child's run: its output, whether it failed, its INFO counts. */
     static final class ChildRun {
         final StringBuilder out = new StringBuilder();
         String failure;
-        /** A kill aimed after a creation or a deletion, made without one. */
+        /**
+         * A kill aimed at build, cleanup, close or exit, aimed when no line of its phase had
+         * come in lateMs after "P running".
+         */
         boolean late;
+        /**
+         * A run aimed at exit whose JVM ended by itself with status 0 after "P exit": no kill,
+         * PX in the journal (also when it was late).
+         */
+        boolean exited;
         final Map<String, Long> info = new TreeMap<String, Long>();
     }
 
@@ -2031,26 +2051,27 @@ public final class KillRestartHarness {
         boolean eof = false;
         while (!found && !eof) {
             String line = lines.poll(100, TimeUnit.MILLISECONDS);
-            if (line == null) {
-                if (!last && phase >= 4 && running > 0
-                        && System.currentTimeMillis() - running > 8000) {
-                    found = true;
-                    cr.late = true;
-                } else if (System.currentTimeMillis() > deadline) {
-                    cr.failure = "no \"" + want + "\" in 300 s: a hang";
-                    break;
-                }
-                continue;
-            }
-            if (line.equals("\u0000EOF")) {
+            if (line != null && line.equals("\u0000EOF")) {
                 eof = true;
                 break;
             }
-            cr.out.append(line).append('\n');
-            if (line.equals("P running")) {
-                running = System.currentTimeMillis();
+            if (line != null) {
+                cr.out.append(line).append('\n');
+                if (line.equals("P running")) {
+                    running = System.currentTimeMillis();
+                }
+                found = line.equals(want);
             }
-            found = line.equals(want);
+            // Checked after every line too, so that a child whose "P build" and "P cleanup"
+            // lines come more often than every 100 ms is late as well.
+            if (!found && !last && phase >= 4 && running > 0
+                    && System.currentTimeMillis() - running > lateMs) {
+                found = true;
+                cr.late = true;
+            } else if (!found && System.currentTimeMillis() > deadline) {
+                cr.failure = "no \"" + want + "\" in 300 s: a hang";
+                break;
+            }
         }
         if (found && !last && phase == 8 && !cr.late) {
             // stop() and a return from main: the JVM ends by itself, with status 0.
@@ -2059,21 +2080,19 @@ public final class KillRestartHarness {
             } else if (p.exitValue() != 0) {
                 cr.failure = "stop() and a return from main: the JVM ended with status "
                         + p.exitValue();
-            } else {
-                new Journal(journalOf(dir)).line("PX", run);
             }
         } else if (found && !last) {
             long end = System.currentTimeMillis() + delay;
             while (System.currentTimeMillis() < end && p.isAlive()) {
                 Thread.sleep(Math.max(1, Math.min(10, end - System.currentTimeMillis())));
             }
-            if (!p.isAlive()) {
-                cr.failure = "the child ended before its kill, with status " + p.exitValue();
-            }
         }
         if (last) {
             p.waitFor(60, TimeUnit.SECONDS);
         }
+        // Whether the child ended by itself, before its kill: then, or with status 0 (a JVM
+        // killed with SIGKILL never ends with status 0, also when it ends as it is killed).
+        boolean ended = !p.isAlive();
         p.destroyForcibly();
         p.waitFor();
         reader.join(10000);
@@ -2093,6 +2112,21 @@ public final class KillRestartHarness {
                         cr.info.put(kv.substring(0, eq), Long.parseLong(kv.substring(eq + 1)));
                     }
                 }
+            }
+        }
+        ended = ended || p.exitValue() == 0;
+        if (cr.failure == null && found && !last && ended) {
+            if (phase == 8 && p.exitValue() == 0
+                    && ("\n" + cr.out).contains("\nP exit\n")) {
+                // An exit: stop() and a return from main, the JVM ended by itself with
+                // status 0. Also when it was late (no "P exit" in lateMs after "P running",
+                // as on a loaded machine) and ended in the delay of the kill aimed then:
+                // the kill had nothing to kill (bergdb 028-20). The next start checks that
+                // every transaction that returned is there.
+                cr.exited = true;
+                new Journal(journalOf(dir)).line("PX", run);
+            } else {
+                cr.failure = "the child ended before its kill, with status " + p.exitValue();
             }
         }
         if (cr.failure == null && last && (!found || p.exitValue() != 0)) {
@@ -2191,9 +2225,9 @@ public final class KillRestartHarness {
                 if (last) {
                     break;
                 }
-                byPhase[cr.late ? 6 : phase]++;
+                byPhase[cr.exited ? 8 : cr.late ? 6 : phase]++;
                 dbKills++;
-                if (phase == 8 && !cr.late) {
+                if (cr.exited) {
                     exits++;            // Not a kill: the JVM ended by itself.
                     continue;
                 }
@@ -2245,6 +2279,47 @@ public final class KillRestartHarness {
         return 0;
     }
 
+    /**
+     * The check of bergdb 028-20: a run aimed at exit whose "P exit" comes after the late
+     * time (here 200 ms, its stop() after 1.5 s), so that the parent aims a kill after a
+     * delay (here up to 60 s) and the child stops and ends by itself first, with status 0.
+     * That is an exit, not a failure: PX in the journal, and the next start checks that every
+     * transaction that returned is there (exitedRuns 1). Returns the exit status.
+     */
+    static int lateExitCheck(File base, long seed) throws IOException, InterruptedException {
+        String java = System.getProperty("java.home") + "/bin/java";
+        String cp = System.getProperty("java.class.path");
+        File dir = new File(base, "db");
+        deleteTree(dir);
+        journalOf(dir).delete();
+        dir.getParentFile().mkdirs();
+        long dbSeed = mix(seed, 0);
+        Settings settings = Settings.random(new Random(mix(dbSeed, 5)));
+        lateMs = 200;
+        int exit = Arrays.asList(PHASES).indexOf("exit");
+        ChildRun cr = runChild(java, cp, dir, dbSeed, 1, false, settings, -1500, exit, 60000);
+        String why = cr.failure != null ? cr.failure
+                : !cr.late ? "the run was not late" : !cr.exited ? "the run was not an exit"
+                : null;
+        if (why == null) {
+            cr = runChild(java, cp, dir, dbSeed, 2, true, settings, 0, 0, 0);
+            Long n = cr.info.get("exitedRuns");
+            why = cr.failure != null ? "the start after it: " + cr.failure
+                    : n == null || n != 1 ? "the start after it did not check an exit, "
+                    + "exitedRuns " + n : null;
+        }
+        if (why != null) {
+            System.out.println(cr.out);
+            System.out.println("LATE EXIT FAILED: " + why + "; kept: " + dir + " and "
+                    + journalOf(dir));
+            return 1;
+        }
+        deleteTree(dir);
+        journalOf(dir).delete();
+        System.out.println("LATE EXIT OK: a late exit is an exit, its data checked");
+        return 0;
+    }
+
     public static void main(String[] args) throws Exception {
         if (args.length > 0 && args[0].equals("child")) {
             child(args);
@@ -2252,9 +2327,11 @@ public final class KillRestartHarness {
             System.exit(parent(args));
         } else if (args.length >= 3 && args[0].equals("selfcheck")) {
             System.exit(selfCheck(new File(args[1]), Long.parseLong(args[2])));
+        } else if (args.length >= 3 && args[0].equals("lateexit")) {
+            System.exit(lateExitCheck(new File(args[1]), Long.parseLong(args[2])));
         } else {
             System.out.println("Usage: KillRestartHarness parent BASE SEED KILLS [PER_DB "
-                    + "[SECONDS]] | selfcheck BASE SEED");
+                    + "[SECONDS]] | selfcheck BASE SEED | lateexit BASE SEED");
             System.exit(2);
         }
     }

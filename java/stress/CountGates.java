@@ -508,6 +508,13 @@ public class CountGates {
         return rt.totalMemory() - rt.freeMemory();
     }
 
+    /** The capacity of a BufferedStream's buffer now, read under its lock. */
+    static int bufferCapacity(Object bufferedStream) throws ReflectiveOperationException {
+        synchronized (bufferedStream) {
+            return (Integer) field(bufferedStream, "bufferCapacity");
+        }
+    }
+
     static Object field(Object o, String name) throws ReflectiveOperationException {
         java.lang.reflect.Field f = o.getClass().getDeclaredField(name);
         f.setAccessible(true);
@@ -608,8 +615,18 @@ public class CountGates {
         // 026-10 the gates compared each heap plus 10 MB: the emptied database kept up to
         // 100,000 node ids by position (NodeCollection.idOf) and 128,000 key hashes
         // (KeyModSet) from before the cut, which a cut forgets since 026-10 (Db.cutDecided).
+        // Under load the shrink can come later than the wait: then up to 60 s more, until the
+        // buffer is back at its first capacity (bergdb 028-23).
         try {
             Thread.sleep(Long.getLong("g4heapwait", 3000));
+            Object main = r.db.internal().getMainStream();
+            if (main instanceof bergdb.storage.BufferedStream) {
+                long end = System.nanoTime() + 60L * 1000 * 1000 * 1000;
+                while (bufferCapacity(main) > bergdb.storage.BufferedStream.INITIAL_CAPACITY
+                        && System.nanoTime() < end) {
+                    Thread.sleep(100);
+                }
+            }
         } catch (InterruptedException e) {
             throw new AssertionError(e);
         }

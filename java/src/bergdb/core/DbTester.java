@@ -3029,7 +3029,9 @@ public class DbTester {
         Set<Thread> before = closeThreads();
         long t0 = System.nanoTime();
         db.stop();
-        Assert.assertTrue("stop() returns at once", System.nanoTime() - t0 < 1000L * 1000 * 1000);
+        // "At once": within 10 s, room for load (bergdb 028-23; 1 s until then); a stop that
+        // waited for the writer would wait until the join below gives up.
+        Assert.assertTrue("stop() returns at once", System.nanoTime() - t0 < 10L * 1000 * 1000 * 1000);
         w.join(30 * 1000);
         Assert.assertFalse("the transaction has ended", w.isAlive());
         joinNew(before);

@@ -452,6 +452,12 @@ public final class IndexJobsHarness {
         /** The generation whose cleanup a RuntimeException ended: its marker stays. */
         volatile long stuckMarker;
         volatile boolean deletedDuringBuild;
+        /**
+         * The deletion during build 1 has begun: set before its call, as the build's thread
+         * may reach its third step before start() has returned to the run's thread (bergdb
+         * 028-23: a loaded machine).
+         */
+        volatile boolean deletingDuringBuild;
         /** The database failed (a read threw DbFailedException); its failure. */
         volatile boolean failed;
         volatile Throwable failure;
@@ -620,6 +626,7 @@ public final class IndexJobsHarness {
             }
             if (cfg.deleteDuringBuild && b == 1 && k == 3) {
                 helper("a deletion during build 1", () -> {
+                    deletingDuringBuild = true;
                     if (deleteCall("a deletion during build 1")) {
                         deletedDuringBuild = true;
                     }
@@ -804,7 +811,10 @@ public final class IndexJobsHarness {
             snapshot(b, "after start()");
             IndexDefinition d = manager(db).definition(NAME);
             if (d == null) {
-                if (alive(what)) {
+                // No finding when the deletion during build 1 has begun: the build's thread
+                // can reach it before this thread looks, on a loaded machine (bergdb 028-23);
+                // the deletion's call checks the rest.
+                if (alive(what) && !(b == 1 && deletingDuringBuild)) {
                     finding("call made its change", what + " returned, and memory has no "
                             + "definition");
                 }
