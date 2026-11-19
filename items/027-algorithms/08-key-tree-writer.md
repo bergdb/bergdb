@@ -523,19 +523,26 @@ the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
   it can get (one a put and a new segment below, the overflows of its
   children, four on a delete's path) and its overflows, 1 + (k - r - 1) /
   q for k klongs and r free, q = max(2, min(B / 2, B - h, B - c) - 3)
-  (10 at B = 30), each a new node and klongs in the parent, a new root
-  above the space root; the new segment trees, counted alike; for the
+  (10 at B = 30); a node that overflows counts at least PE's parts of its
+  list, `cutPartsBound(size + k)`, as new nodes and as klongs in its
+  parent, and a root the new roots above them (`rootsAbove`); the new
+  segment trees PE's parts and roots, or the old count if more; for the
   deletes, the root collapses below each segment leaf and four nodes for
   each level of the path and two more levels (the old writer's merges);
   a node over theta dead klongs overflows at least once;
 * each node at 32 + 16 (B + 1) + 16 bytes, and two top nodes.
 
-The count was argued for the writer of formats 6 and 7, whose mechanisms
-it names (its Javadoc); for PE it is kept as it was and is checked, not
-argued: C-T8 (the key nodes the transaction marks are at most the bound,
-every traced transaction) and DagTester's `testDirtyNodeBoundOfDeletes`,
-`testDirtyNodeBoundSumsCollapsesOverTrees`. Open: 028-21 (a join cut
-into three parts, a join rebalanced one level down). Reclaim's internal
+The count was argued for the writer of formats 6 and 7; for PE it is
+argued in its Javadoc since 028-21, which found it short in three ways
+and added them (a new segment tree of more than h entries cut into
+parts; a node cut into more parts than its overflows and one, its
+parent a klong short; the new root above a cut segment root). Joins are
+covered by a delete's four nodes a level, as a child is joined only if a
+delete below it left it under m entries (V1). Checked by C-T8 (the key
+nodes the transaction marks are at most the bound, every traced
+transaction, with the Lean copy) and DagTester's
+`testDirtyNodeBoundOfPe`, `testDirtyNodeBoundOfDeletes`,
+`testDirtyNodeBoundSumsCollapsesOverTrees`. Reclaim's internal
 transactions are not checked (027-13, 1.4).
 
 
@@ -664,7 +671,7 @@ transactions are not checked (027-13, 1.4).
 
 ## 9. Limits and open work
 
-* **dirtyNodeBound** is not argued for PE (4.2): 028-21.
+* **dirtyNodeBound** is argued for PE since 028-21 (4.2), given V1.
 * **The order of the marks** differs between the short way and the plan
   (1.10); the model checks D as a set: 028-25 (keep both orders as
   described here, or make the short way report in emit's order).
@@ -808,3 +815,7 @@ and 027-03; the worked example run on `Dag.putKvs` by a probe. Found: the
 short way and the plan mark D's nodes in different orders (1.10),
 registered as 028-25. By an agent of coord-1118, on the branch
 `027-08-writer`.
+
+2026-11-19. 028-21: 4.2 and 9, `dirtyNodeBound` argued for PE and its
+three gaps closed. By an agent of coord-1118, on the branch
+`028-21-dirty-bound`.

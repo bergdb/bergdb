@@ -1,7 +1,7 @@
 028-21. Investigate: does dirtyNodeBound bound the writer PE?
 ===========================================================
 
-Status: open. Kind: Investigate. Frans: none.
+Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: `Dag.dirtyNodeBound` (`java/src/bergdb/dag/Dag.java`, its
@@ -60,8 +60,165 @@ Sources: 026-25 (sections 2 and 5), 027-08, 027-03 section 8.3, 024-11
 (CB1, CB2, TU8), 023-07 section 5.4 (K4).
 
 
+Finding
+-------
+
+The bound did not hold for PE. Three counterexamples, each a transaction
+of puts only, whose key nodes made dirty passed `dirtyNodeBound` (each a
+failing case of `DagTester.testDirtyNodeBoundOfPe` before the fix):
+
+* **A new segment tree of h + 1 to B - 3 entries.** The count of a new
+  tree (`freshTreeBound`) was the old writer's: one node until the
+  node overflows, at B - 2 klongs. PE cuts every new list of more than h
+  entries into parts of at most the cut size and puts a new root above
+  them. At node size 30, 18 keys `/p00005/x00000` to `/x00017` under a
+  segment leaf that has no `/p00005`: three key nodes made (two leaves of
+  nine and a root), counted as one; the transaction marked 22 key nodes,
+  bound 20. At node size 14 from 8 keys (12 marked, bound 10); at 62 a
+  random transaction of 385 puts (418, bound 416).
+* **A node cut into more parts than its overflows and one.** The count
+  of a node that overflows was the old writer's splits, one more node
+  each q klongs (10 at node size 30), so a node of 31 entries was counted
+  as two new nodes and two klongs in its parent; PE cuts it into
+  `cutParts(31)` = 3 parts of at most 15, three entries in the parent.
+  The walked node's own count covers the third part, but the parent gets
+  one klong a child more than counted: at node size 30, a root of 21
+  klongs (18 live, one dead) whose three leaves of 21 klongs (19 live)
+  each get 12 new keys has nine klongs for three counted as six, and is
+  cut, while the count kept it: 12 key nodes marked, bound 10 (the case
+  is built step by step in the test, and checks that PE cut the three
+  leaves and the root).
+* **A new root above a cut segment root.** The same cut into three of
+  a segment tree's root, a leaf of 21 klongs (19 live) that gets 12 new
+  keys: PE puts a new root above the three parts (settleRoot), which the
+  old count did not count for a segment tree (only for the space root):
+  5 key nodes marked, bound 4.
+
+Deletes were not short. PE's joins make more nodes than the old merges
+(three at node size 30, 7 + 29 entries), and a join of two inner nodes
+rebalances one level down, but a child is joined only if a delete below
+it left it under m entries, and a delete's four nodes a level and two
+levels more are generous: over 1,100 transactions of deletes only at
+each of node sizes 8, 14, 30 and 62, on thinned trees (single deletes,
+most keys of runs, every k-th key, scattered deletes), the bound was at
+least 5.7 times the nodes marked at node size 30 (6.3 at 62, 7.6 at 14,
+9.8 at 8). A put's count is tight: a put's walked nodes are
+all marked when PE appends to them, and margin 0 is common.
+
+Why the traces did not show it: C-T8 checks the Lean copy of the same
+count, which had the same gaps, and the level scripts' traces rarely put
+more than h keys under one new segment in one transaction, or cut three
+children of a node at the edge. In `Db` the walk runs only after the
+cheap test (three nodes a level a put) fails, for transactions near the
+record limit; there a transaction with many such shapes could pass the
+check and make a record above the limit after the go point.
+
+
+The fix
+-------
+
+`Dag.dirtyNodeBound` (and its copy in lean/SIS/Tree/Bound.lean, line for
+line, which C-T8 uses), conservatively: the bound only grows.
+
+* A node that overflows counts `max(overflows + 1, cutPartsBound(size +
+  k))` new nodes, k the klongs counted for it, and its parent in its tree
+  gets as many klongs (until now overflows + 1). `cutPartsBound(n)`: one
+  if n is at most h, else max(2, ceil(n / (B / 2))), PeWriter.cutParts.
+* A root of a tree (the space root, or a node below a segment leaf) that
+  overflows counts the new roots above its parts, `rootsAbove(parts)`
+  (PeWriter.settleRoot: a new root of the parts, cut again if it holds
+  more than h), at least the overflows; the segment leaf above gets the
+  overflows and one klongs as before.
+* A new segment tree of n entries counts the most of the old count and
+  PE's: `cutPartsBound(n)` and the roots above them, exact for PE.
+* `Params.nodesALevel` (TP26, the user's limits bound the count), the
+  count a level from q, raised for the new count: 8 + (3 q + 4) / (q - 1),
+  one more at q = 2 (19 a level at node size 8, 13 at 14, 11 at 30 and
+  62, was 14, 9, 8, 8); `ReleaseFits` still holds at every node size (the
+  four theorems, by `decide`): at node size 8, 1,998,975,872 bytes of
+  the limit's 2,013,265,912.
+
+
+The argument for PE
+-------------------
+
+In `Dag.dirtyNodeBound`'s Javadoc and 027-03, section 8.3. In short: the
+nodes PE makes dirty are the nodes of the paths it keeps with a node
+written below, or appends to, all walked, and the nodes it makes:
+
+* a node of the paths replaced or cut: every entry it gets is a klong
+  counted for it, so the count's overflow test (size + k + 3 > B, or the
+  dead klongs above theta) holds whenever PE's decide does not append
+  (size, a time klong, the entries and a bitmap above B, or the dead
+  klongs above theta); its list has at most size + k entries, so at most
+  `cutPartsBound(size + k)` parts, at most two more than the overflows
+  (q < B / 2);
+* new roots above a cut root: `rootsAbove`;
+* a new segment tree: PE's count, exactly;
+* joins: every key node but a root holds m or more (V1, C-T6), the parts
+  of a cut at least (h + 1) / 2 >= m, so a child is small only with a
+  delete below it; a joined group is its small children and at most one
+  other node, and as ceil((a + b) / c) <= ceil(a / c) + ceil(b / c) its
+  parts are at most one a small child and two more, or the other node's
+  own parts: three nodes a level a delete, and three entries and a bitmap
+  in the parent, within a delete's four nodes a level and four klongs a
+  node. A join one level down replaces a group counted there.
+* root collapse and an emptied root make no node but the space root's
+  empty leaf, which replaces the walked root.
+
+It is an argument given V1, not a proof. `Db.checkDirtyNodes`'s cheap
+test, three nodes a level a put and 20 a delete, is above PE's own count
+(a put makes at most two nodes a level and a new root a segment tree), so
+it was not changed.
+
+
+Tests
+-----
+
+* `DagTester.testDirtyNodeBoundOfPe` (about 1 s): (1) new segment trees
+  of 1 to 2 B + 2 keys at node sizes 8, 14, 30 and 62; (2) the parent
+  case at 30; (3) random histories and transactions of runs of puts, new
+  keys and deletes at the four sizes; (4) deletes of most keys under
+  several inner nodes of trees thinned towards m, with joins (at least 10
+  a case) on several levels; and (2b) the segment root's case. Before the
+  fix (1) failed (node size 14, 8 keys: 12 marked, bound 10), and so did
+  (2) alone (12, bound 10) and (2b) alone (5, bound 4).
+* The exploration (a probe outside the repository, against the jar, in
+  the manner of the test): at each of node sizes 8, 14, 30 and 62 (and
+  6 for the first two), new segment trees of 1 to 700 keys, 2,100 random
+  histories each with a transaction of runs of puts and deletes, 1,100
+  transactions of deletes only, 450 of runs of new keys into appended
+  leaves: after the fix no transaction above the bound; before it, the
+  cases above. Puts are often at the bound exactly (every walked node
+  appended to); deletes at least 5.7 times under it.
+
+
+Gates
+-----
+
+On `a82d5d84` (main merged at `0cfc13bc`): `java/before-commit.sh`
+BEFORE COMMIT OK (168 s); `java/stress/level1.sh` LEVEL 1 OK;
+`java/stress/level2.sh` LEVEL 2 OK, its C-T8 (the Lean copy, fixed) with
+0 failures on the three tree sets: 58,337 key nodes marked against a
+summed bound of 264,232 (small), 59,137 against 415,399 (reclaim),
+215,107 against 5,567,134 (drain); C-T6 with 0 failures. `lake build` of
+lean/ (with `releaseFits8` to `releaseFits62` for the new
+`nodesALevel`) and `lake build treetest` built.
+
+
+State
+-----
+
+Done on the branch `028-21-dirty-bound`; nothing left.
+
+
 Log
 ---
 
 2026-11-19. Registered by an agent of coord-1118 while bringing 027 up
 to date with PE (branch `027-pe`).
+
+2026-11-19. Taken by an agent of coord-1118 (branch `028-21-dirty-bound`,
+a clone): the bound walked against PE in a probe and in DagTester; three
+counterexamples found (Finding), the count fixed in Java and in its Lean
+copy, the argument written; done.

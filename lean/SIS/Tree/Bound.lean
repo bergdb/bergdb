@@ -82,9 +82,28 @@ def freshSplits (m q : Nat) : Nat → Nat → Nat
   | 0, _ => 0
   | f + 1, ov => if ov == 0 then 0 else ov + 1 + freshSplits m q f (overflows m q ov 1)
 
+/-- `Dag.cutPartsBound`: at least the parts that the writer PE cuts a list of n
+entries into (Java's `PeWriter.cutParts`, `Pe.lean`'s cut): one if n is at most
+h, else at least two of at most the cut size M / 2 (bergdb 028-21). -/
+def Params.cutPartsBound (p : Params) (n : Nat) : Nat :=
+  let cap := max 1 (p.M / 2)
+  if n ≤ p.splitAbove then 1 else max 2 ((n + cap - 1) / cap)
+
+/-- `Dag.rootsAbove`: the new roots that PE's settleRoot puts above a root cut
+into `parts` new nodes, up to one node (bergdb 028-21); `fuel` at least
+`parts`, as each level has fewer. -/
+def Params.rootsAbove (p : Params) : Nat → Nat → Nat
+  | 0, _ => 0
+  | f + 1, parts =>
+    if parts ≤ 1 then 0 else
+      let n := min (parts - 1) (p.cutPartsBound parts)
+      n + p.rootsAbove f n
+
 /-- `Dag.freshTreeBound`: the nodes of the new segment trees of `keys`, which
-share their segments before `level` and whose segment `level` is in a new tree. -/
-def freshTreeBound (m q : Nat) : Nat → List Key → Nat → Nat
+share their segments before `level` and whose segment `level` is in a new tree:
+for each, the most of the splits of an overflowing new node and PE's count, its
+list cut into parts and the new roots above them (bergdb 028-21). -/
+def freshTreeBound (p : Params) (m q : Nat) : Nat → List Key → Nat → Nat
   | 0, _, _ => 0
   | f + 1, keys, level =>
     let r := keys.foldl (fun (acc : Nat × List (Nat × List Key)) key =>
@@ -96,8 +115,9 @@ def freshTreeBound (m q : Nat) : Nat → List Key → Nat → Nat
           else (acc.1 + 1, acc.2 ++ [(c, [key])])
         | none => acc) (0, [])
     let ov := overflows m q r.1 0
-    1 + freshSplits m q (ov + 1) ov +
-      (r.2.map (fun e => freshTreeBound m q f e.2 (level + 1))).foldl (· + ·) 0
+    let parts := p.cutPartsBound r.1
+    max (1 + freshSplits m q (ov + 1) ov) (parts + p.rootsAbove parts parts) +
+      (r.2.map (fun e => freshTreeBound p m q f e.2 (level + 1))).foldl (· + ·) 0
 
 /-- The climb of a delete in the count: `add` klongs for every node from x up
 to the space root (two; four with the merges of record format 7, bergdb
@@ -204,13 +224,21 @@ def dirtyNodeBound (p : Params) (view : View BVal) (t : Time) (ops : List Op) : 
         | none => acc
         | some w =>
           let count := acc.2 + (w.fresh.map (fun q =>
-            freshTreeBound p.M p.roomAfterReplacement (p.G + 2) q.2 (w.freshLevel + 1))).foldl
+            freshTreeBound p p.M p.roomAfterReplacement (p.G + 2) q.2 (w.freshLevel + 1))).foldl
               (· + ·) 0
           let ov := overflows p.M p.roomAfterReplacement w.klongs w.size w.deleteBelow p.theta w.dead
           if ov == 0 then (acc.1, count) else
+            -- PE (bergdb 028-21): its list cut into parts; a parent in its tree gets an
+            -- entry for each, a tree's root the new roots above them.
+            let parts := max (ov + 1) (p.cutPartsBound (w.size + w.klongs))
+            let roots := max ov (p.rootsAbove parts parts)
             match w.up with
-            | some u => (acc.1.modify u (fun v => { v with klongs := v.klongs + ov + 1 }), count + ov + 1)
-            | none => (acc.1, count + ov + 1 + ov)) (ws, ws.length)).2 +
+            | some u =>
+              if ((acc.1.get? u).map (·.leaf)).getD false then
+                (acc.1.modify u (fun v => { v with klongs := v.klongs + ov + 1 }),
+                  count + parts + roots)
+              else (acc.1.modify u (fun v => { v with klongs := v.klongs + parts }), count + parts)
+            | none => (acc.1, count + parts + roots)) (ws, ws.length)).2 +
         (if p.format7 && st.2 then 4 * mergeLevels else 0)
 
 /-- The key nodes of the tree at time t that have a node of `changed` at or
@@ -294,10 +322,18 @@ most x = 2 + (4 + x) / q times, x = 2 (q + 2) / (q - 1), rounded up. At q = 2
 (node size 8, and the model's test sizes) one more, for the root collapses,
 H / (q - 1) klongs a segment, which weigh there (024-17, 5.2a: Java's count of
 one delete on a full path, 13,685 nodes at 16 segments and H = 61, is over 13 a
-level). So 14 a level at node size 8, 9 at 14, 8 at 30 and 62. -/
+level). So 14 a level at node size 8, 9 at 14, 8 at 30 and 62, until bergdb
+028-21. Since 028-21 the count of the writer PE: a node's list is cut into
+parts (`cutPartsBound`), at most two more than its overflows with the klongs it
+gets, and its parent gets a klong for each part, so a node gets four klongs
+and at most x + 2 of the child below, and overflows at most x = 2 + (6 + x) / q
+times, x = (2 q + 6) / (q - 1), rounded up, (3 q + 4) / (q - 1); its parts are at
+most x + 2, and the new roots above a cut root of a segment tree are counted
+as one more a level. So 8 + (3 q + 4) / (q - 1), one more at q = 2: 19 a level
+at node size 8, 13 at 14, 11 at 30 and 62. -/
 def Params.nodesALevel (p : Params) : Nat :=
   let q := p.roomAfterReplacement
-  5 + (3 * q + 2) / (q - 1) + (if q ≤ 2 then 1 else 0)
+  8 + (3 * q + 4) / (q - 1) + (if q ≤ 2 then 1 else 0)
 
 /-- The index nodes that a transaction within the limits can make dirty or
 create, from the limits and the tree's height bound alone, as a sum over its
