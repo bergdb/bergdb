@@ -448,6 +448,9 @@ Files
   of clause (i) and clause (ii)'s case 1 are proved; the candidates
   refuted, with counterexamples; 1,688 lines of Lean. Written 2026-11-19.
   Status: done.
+* [030-24](24-reclaim-step2.md). Reclaim's proof, step 2: from 030-23's
+  open part to the reads after cuts given only RC at each cut. Started
+  2026-11-19. Status: open.
 
 Log
 ===
