@@ -34,32 +34,11 @@ bergdb 030-21, part 2: A6' and A-COPY for PE (BridgeTop.lean: `adoptOk`,
   shows `pe_adopt_hist` not vacuous (a history of three transactions, its
   `Prov` computed by the kernel).
 
-What is left: `Prov` for PE's transaction, a fact of the plan, not of the
-tree. Computed, it holds at all 221,142 transactions of 026-21's 288 traces,
-with A-COPY, A6' and `InvA` (bergdb 030-21, runs/adopt.txt: 1,515,744 old
-nodes moved, each a live child before of a node not written). The proof it
-needs, in three parts:
-
-1. Emit (PeEmitSpec.lean): the old nodes emit writes are the bases of the
-   planned nodes it emits with the decision `append`, and these with the
-   bases of the parts it emits (`parts k`) are a sub-multiset of `Ui`; the
-   live list of a node written is its planned node's entries as emit gives
-   them, whose old ids are a child's `.old y` or the base of a child decided
-   `same` or `append` (`ents`).
-2. Plan (PeOwn.lean): the nodes the plan consumes (a node opened by a join,
-   a root collapsed by `settleRoot`, an emptied child), with the accounting
-   (`cost` and the consumed nodes together a sub-multiset of `R s x`); and the
-   provenance: every old id among a planned node's entries is a live child,
-   before, of its base or of a consumed node (`planKids`: x's children;
-   `applyGroups`: x's entries, a next segment's root kept, a collapsed root's
-   child; `joinAt`: an opened node's children; `settleRoot`: a collapsed
-   node's child).
-3. The segments (PeSeg.lean): a run's writes and consumed nodes are within
-   the old part of its payload (`oldPart`, disjoint by `own`).
-
-Then `Prov`: a node's id a child before of the node itself (an appended
-base), or of a base cut into parts (not appended: the bases are distinct), or
-of a consumed node (in no planned node's `Ui`, so not written).
+`Prov` for PE's transaction is proved in PeProv.lean (`pe_prov`,
+`pe_prov_hist`; the theorems without the premise: `pe_adopt_copy`,
+`pe_adopt_hist_full`). Computed, it holds at all 221,142 transactions of
+026-21's 288 traces, with A-COPY, A6' and `InvA` (bergdb 030-21,
+runs/adopt.txt).
 -/
 import Contract.Proof.PeBridge
 import Contract.Proof.BridgeTree

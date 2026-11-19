@@ -1,7 +1,7 @@
 # 030-21. The PE writer meets the writer's contract: the proof
 
-Created 2026-11-18 by Frans Lundberg. Status: open (part 2, `MeetsFull`,
-under way; part 1, the contract, TREE and the top, done 2026-11-19).
+Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-19): part 1,
+the contract, TREE and the top; part 2, `MeetsFull` for PE (section 5).
 
 The complete proof that PE's writer, "plan, then emit" (026-23, section
 1.2; the trial 026-24), meets the writer's contract (030-04), so that the
@@ -59,13 +59,13 @@ plain map gives (030-05, 030-08). Lean's three standard axioms only, no
      would grow past H. Tested (no refusal on the 288 traces), shown for one
      history in Lean, not proved. The theorems speak of the transactions PE
      accepts; a refused one changes nothing.
-  2. `MeetsFull` (030-07, 030-14, 030-17): recovery, restarts, lazy reading,
-     eviction with handles and reclaim's safe cuts are proved for histories
-     that meet it. It adds to `MeetsTop` the clauses about the record in the
-     model's words (each transaction's change and its new nodes, the touch,
-     A-COPY, A6'). PE's record is not yet stated in the model's words, so
-     these are not proved for PE. That is the next step of the writer's
-     part of "the core algorithms are proved".
+  2. ~~`MeetsFull`~~: done in part 2 (section 5): every history PE writes
+     from the empty tree meets `MeetsFull` and K-LEVEL (`pe_full`), so
+     recovery, restarts, lazy reading, eviction with handles and reclaim's
+     safe cuts (030-07, 030-14, 030-17) hold for PE, and the reads after a
+     crash are right (`pe_crash_reads`). Premises: `Cfg.Ok`, the top
+     nodes' level at most 2^62, fewer than 2^48 - 1 transactions, each
+     transaction's keys distinct (Java's Dag keeps one operation a key).
   3. Java: PE is the model's writer; Java's write half is not PE yet
      (026-24's recommendation, step 2). Java against the model stays
      tested, by design.
@@ -241,16 +241,31 @@ allows, PE's acceptance. On the branch `030-21-full`.
 - **The start** (`pe_start`: `StartB`, `topStartOk`), **the touch** (PE
   touches nothing: `pe_touch_hist`).
 - **A6' and A-COPY** (`Contract/Proof/PeAdopt.lean`, `pe_adopt_hist`; by a
-  sub-agent): proved from one named premise, `Prov` (every old node that a
-  written node names by a live klong was before a live child of it, or of an
-  old node reached and not written), which holds on all 221,142
-  transactions of the 288 traces (21-pe-proof/runs/adopt.txt) and is being
-  proved.
+  sub-agent): proved from `Prov` (every old node that a written node names by
+  a live klong was before a live child of it, or of an old node reached and
+  not written), with an invariant `InvA` (A6' without "below x": every key
+  klong names a live child, a value, or a node not reached), and TREE before
+  and after; `Prov` holds on all 221,142 transactions of the 288 traces
+  (21-pe-proof/runs/adopt.txt).
+- **`Prov` proved** (`Contract/Proof/PeProv.lean`, `pe_prov`,
+  `pe_prov_hist`; the same sub-agent): emit writes only bases decided
+  `append`, and a node written names fresh ids or kept children of its own
+  planned node (`emit_prov`); the plan's kept children are children before
+  of their node's base, of a node the plan consumed (opened by a join,
+  collapsed by the root's settle: in no planned node's old nodes, so not
+  written), or of a node below the segment that a run moved
+  (`rebalance_step`, `plan_prov`, `settle_prov`); the runs, by an induction
+  over the fuel with the next segment's trees (`fp_all`), each run's writes
+  the only ones on its old part; a segment's step (`seg_prov_some`).
+  Without the premise: `pe_adopt_copy`, `pe_adopt_hist_full`.
 - **K-LEVEL** (`pe_kinds`: every key node's kind is its level's, `peKind`),
   which the reads after a crash ask besides `MeetsFull`.
 - **The whole**: `pe_meetsFull_of_prov`, `pe_full_of_prov` (`MeetsFull`
   and K-LEVEL) and `pe_crash_reads_of_prov` (reads after a crash for PE),
-  given `Prov`.
+  given `Prov`; with `Prov` proved, `pe_full` and `pe_crash_reads`
+  (`Contract/Proof/PeFullProved.lean`), in Axioms.lean.
+- **Size of part 2**: PeRecord 104, PeBridge and PeBridgeKs about 1,000,
+  PeAdopt 1,046, PeProv 2,580, PeFull 970, PeFullProved 38, examples 72.
 
 
 # State
@@ -294,4 +309,6 @@ program (23:02 to 23:20): the trial's tree at all 221,142 transactions.
 words (02:15), the bridge's computed clauses (a sub-agent, 02:20 to 03:00),
 A6' and A-COPY from `Prov` (a sub-agent, 03:10 to 03:50), TB, the start,
 K-LEVEL and the whole given `Prov` (03:55 to 04:10); `Prov` started (a
-sub-agent, 03:55).
+sub-agent, 03:55) and proved (04:37: emit, rebalance, plan, settle, the
+runs, a segment's step, the transaction); `pe_full`, `pe_crash_reads`
+(04:40).
