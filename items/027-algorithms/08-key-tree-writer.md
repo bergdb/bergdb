@@ -1,8 +1,7 @@
 # 027-08. The key tree: the writer
 
 Created 2026-11-13 by Frans Lundberg. Status: written (2026-11-19), for
-Frans to read; not yet reviewed against the code by a second agent
-(027-04, section 5.2).
+Frans to read; reviewed against Java and Lean (027-04, section 5.2).
 
 Part 4 of 027 (027-04, section 2.3; Level 0): what a transaction's puts
 and deletes do to the key tree. Since record format 8 (026-25) the writer
@@ -30,9 +29,10 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
 
 ### 1.1. Terms, settings and constants
 
-* **B**, the node size: the most klongs of a key node, 8, 14, 30 (the
-  default) or 62 (`DbBuilder`), kept in the stream (027-03, section 6).
-  Sizes below 8 exist for the Dag's own tests only.
+* **B**, the node size: the most klongs of a key node, kept in the stream
+  (027-03, section 6). Every database a user makes has B = 30;
+  `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. Sizes below
+  8 exist for the Dag's own tests only.
 * **The thresholds**, functions of B by integer division, rules of record
   format 8 (a start's rerun uses them, so a change of any is a change of
   the format; `Dag.splitAbove`, `minFill`, `mergeCap`, `theta`,
@@ -84,10 +84,12 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
 ### 1.2. Who calls it and when
 
 * **A transaction** (027-09): `Db.putKvs`, after the go point, under the
-  write lock, with the transaction's time tt. Before the go point: the
-  limits and the dirty-node check (section 4.2), the key transformations
-  and the refusal of a transaction that they leave with two KVs at one
-  key, and a user transaction's value transformations (005-01, 024-16,
+  write lock, with a new transaction time tt, strictly later than the
+  previous transaction's. One `Dag.putKvs` call is the whole transaction;
+  repeated `putKv` calls at the same time are not allowed. Before the go
+  point: the limits and the dirty-node check (section 4.2), the key
+  transformations and the refusal of a transaction that they leave with
+  two KVs at one key, and a user transaction's value transformations (005-01, 024-16,
   026-06). The KVs reach the writer as **one batch**, one operation a
   key, in strictly increasing key order: a put of a key with a value, or
   a delete (a null value). A reclaim step's touch, and its row (an
@@ -95,17 +97,23 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
   the batch reaches the writer, so the row reads every value as it was
   before the transaction (027-13, 1.4).
 * **One writer**: at most one transaction writes at a time; readers read
-  at lookup times before tt without locks and see nothing of it, since a
-  writer only appends klongs after a time klong of tt and makes new
-  nodes (part 3).
+  at lookup times before tt without taking the transaction write lock
+  and see nothing of it, since a writer only appends klongs after a time
+  klong of tt and makes new nodes. The clock and the key node's size
+  publish the writes; pointer loads can take node and handle monitors
+  (`NodeCollection.followPointer`; part 3).
 * **The writer refuses nothing**: every refusal is before the go point
   (R1). An exception in the writer fails the database (005-01): a cycle
   of a damaged stream (a descent of more than 1,000 key nodes in one
   segment tree, `PeWriter.MAX_DEPTH`), a pointer where a key node is
   expected that names a value or nothing, an inner node without a live
-  klong. `Dag.putKvs` refuses an empty key or keys not strictly
-  increasing with an `IllegalArgumentException` (a bug of the caller,
-  never a user's input); an empty batch changes nothing.
+  klong. `Dag.putKvs` refuses a null segmented key, one with zero
+  segments, or keys not strictly increasing, with an
+  `IllegalArgumentException` (a bug of the caller, never a user's input).
+  The caller supplies correctly encoded, nonempty Core keys; Dag does
+  not check all segment encodings or the byte-key restriction. The empty
+  byte key encodes as one segment, cv 0, and passes Dag's check. An empty
+  batch changes nothing.
 * **The start's rerun** (027-11, 1.7) gives the writer a record's KVs in
   their stored order, at the record's time; a record whose KVs are not
   strictly increasing is refused there, an SFE (1.12).
@@ -250,8 +258,10 @@ segment 0's), repeated until it stops:
   (1.4); the base is not reachable after. The space root: a segment leaf
   stays the root with its decision; an inner node gives way to a new
   empty segment leaf (no base, parts 1: a node of one time klong).
-* **A planned inner node with one entry**: its base is not reachable
-  after, and settle goes on with that entry's child (**collapse**).
+* **A planned inner node with one final entry** (height > 0 and |F| = 1):
+  its base is not reachable after, and settle goes on with the child of
+  its sole pre-cut entry in es (**collapse**). Java checks that es has
+  just one entry too.
 * **A planned node decided parts k, k >= 2**: a **new root** above it,
   mkNode(no base, height + 1, [(0, v)]), whose F is the k parts' entries
   and whose decision is cutParts(k); settle goes on with it (so a very
@@ -310,8 +320,8 @@ gives the same, 027-11, 1.7). So the ids follow the order of the reports:
    and left to right, each part of a cut left to right.
 3. **The top node**, last, if the space root changed.
 
-Since format 8 a record's ids have no gaps: every id names a node of the
-record (027-03, section 5; until format 8 the take-back left gaps).
+Since format 8 the ids a transaction assigns have no gaps: every id names
+a node it made (027-03, section 5; until format 8 the take-back left gaps).
 
 ### 1.9. The dirty set
 
@@ -328,13 +338,24 @@ after; the super root that a new top node replaces) leaves the got-dirty
 list and is clean again if it joined it in this transaction, unless a
 reclaim step's touch made it dirty (027-13, 1.4).
 
+Inside PE, pointer follows in the plan, the short-way trial, neighbour
+counts and settle suppress the normal pointer listener. They do not mark
+nodes; root discovery and the reports above supply the writer's marks.
+
 So D gains the nodes the transaction made or changed and their current
 ancestors: the Lean model's marking of step 3 (`SIS/Algorithm.lean`,
 `marked`; T13), checked (C-T9 and A2A3Check2's MARKING, equal at every
-traced transaction, 026-25, section 6). The order of the got-dirty list
-is the record's (its got-dirty pairs) and the order in which later takes
-write the nodes (027-03, section 8.4); the model compares the list as a
-set. The short way marks in another order than the plan (1.10, 028-25).
+traced transaction, 026-25, section 6). These are the writer's marks.
+Store then takes older dirty nodes, resolves their pointers and cleans
+them. Repeated passes re-mark taken nodes with dirty children and append
+them to the got-dirty list (part 6, the take and Rule A). The record holds
+this completed list, each node's id and its spos after serialization
+preparation.
+
+A take visits the got-dirty lists in order. Serialization writes all top
+nodes before all key nodes, keeping the gathered order within each kind
+(027-03, section 8.4). The model compares the list as a set. The short
+way marks in another order than the plan (1.10, 028-25).
 
 ### 1.10. The same decisions by counts
 
@@ -352,28 +373,32 @@ rest by their lists (`PeWriter`'s class comment and 026-25, section 2):
     root of a segment tree has no live cv but the empty key (mkNode or
     settle would change it);
   * a put needs a new segment tree (a delete there is a noop);
-  * a segment leaf reached, with n' the entries after its operations,
-    has n' < 1; or is not a root of its tree, m >= 2 and n' < m; or its
-    klongs plus 1 (a time klong), plus 1 if a cv is removed (a bitmap),
+  * a segment leaf with actual changes (a put or a delete of a cv it
+    has), with n' the entries after its operations, has n' < 1; or is
+    not a root of its tree, m >= 2 and n' < m; or its klongs plus 1
+    (a time klong), plus 1 if a cv is removed (a bitmap),
     plus one for each put, are more than B; or theta > 0 and its dead
     klongs plus the cvs removed plus the puts of cvs it has are more than
     theta;
   * a descent passes 1,000 nodes in one segment tree.
 
   If it is taken: (1) the value and delete nodes are made in key order
-  (their ids), the noops make nothing; (2) each segment leaf reached, in
-  the order of its first operation, gets its klongs as append writes them
-  (a time klong, a bitmap of the cvs removed, a key klong for each put in
-  cv order) and is reported changed; (3) for each operation that wrote,
-  in key order, the nodes of its path above its leaf (the inner nodes of
+  (their ids), the noops make nothing; (2) each segment leaf with actual
+  changes, in the order of its first operation, gets its klongs as append
+  writes them (a time klong, a bitmap of the cvs removed, a key klong for
+  each put in cv order) and is reported changed; (3) for each operation
+  that wrote, in key order, the nodes of its path above its leaf (the inner nodes of
   each segment tree from the space root down, and the segment leaves of
   the segments before), each once, are reported on the path. For such a
-  transaction PE's plan decides each leaf append and every node above it
-  same, joins and settles nothing, and so writes exactly these klongs
-  and ids: argued in `PeWriter`'s comment; checked (the tree checker
-  compares both ways with the model on every traced transaction).
+  transaction PE's plan decides each changed leaf append, each unchanged
+  leaf and every node above them same, joins and settles nothing, and so
+  writes exactly these klongs and ids: argued in `PeWriter`'s comment;
+  checked (the tree checker compares both ways with the model on every
+  traced transaction).
   `DagTester.testShortWayLeafAroundASegmentTree` gates a leaf whose
   operations come before and after a segment tree's.
+  An unchanged leaf passes before the fill, fit and dead-klong tests; it
+  gets no time klong and no report.
 * **In the plan**: a segment leaf kept or appended to is decided by
   counts over its changes (`LeafFrame.leafNode`); an inner node whose
   planned children are all kept, none empty or to be joined, with the
@@ -397,20 +422,25 @@ both orders. 028-25 asks whether to keep this or make one order.
 
 ### 1.11. What the record holds of it
 
-The writer's part of a record (027-03, section 8): the value and delete
-nodes, one for each operation that is not a noop, in key order; the top
-node if one was made; the got-dirty list (1.9). The key nodes made and
-changed are dirty and are written by the takes of this or later records
-(part 6), not by the writer. A noop leaves nothing in the record.
+The writer's immediate stored nodes (027-03, section 8) are the value and
+delete nodes, one for each operation that is not a noop, in key order.
+The record also holds the completed got-dirty list (1.9). New top nodes
+and new key nodes are dirty index nodes, written by later takes (part 6).
+An old key node changed now can be taken now if it was already queued.
+The record's topPos names the newest written top, which need not be the
+current super root. Primordial creation stores its top and space root
+directly. A noop leaves nothing in the record.
 
 ### 1.12. The rerun
 
 A start reruns each transaction of the startup section with its record's
 value and delete nodes (027-11, 1.7): the same batch, without the noops,
-at the same time, on the same tree, with the same B. PE is a function of
-these alone: of the tree's klongs, the operations, tt and B (no clock, no
-cache, no state between transactions). So the rerun makes the same nodes
-with the same ids: argued; gated (the restart tests, `RestartInvariance`,
+at the same time, on the same tree, with the same B. The structural
+decisions depend only on the tree's klongs, the operations, tt and B
+(no clock or cache). The same top state and fresh-id seed are also
+needed for the same top and absolute ids. Rerun uses the original stored
+record position for that seed (1.8). So it makes the same nodes with the
+same ids: argued; gated (the restart tests, `RestartInvariance`,
 kill-restart; C-T9 runs the model's whole run with its own records). The
 noops do not change a plan; without them a rerun may take the short way
 where the run took the plan, which changes only the order of the marks
@@ -423,14 +453,19 @@ make another tree under PE (027-03, section 8.2).
 * No node is written twice in a transaction, and no klong is written to
   a node that the transaction does not keep (030-21: `PeOwn`, emit's
   lemma; TransCheck fails a node made or changed and then replaced).
-* No node is made and left out: every node made is reachable after the
-  transaction (no take-back; `made.unnamed` 0 in 026-24's trial; C-T1).
+* Every key node made and every put value is reachable at the
+  transaction's time, with one operation a key (no take-back;
+  `made.unnamed` 0 for key nodes in 026-24's trial; C-T1). Delete nodes
+  are stored operation records, absent from the live tree.
 * No klong is changed in place, and no klong is written before a time
   klong of tt: a reader at an earlier time reads every node as before
   (the contract's clause 3; proved for the model, 030-21).
 * Nodes off the operations' paths are not read or written, but for the
-  neighbours that M1 reads for a count and that a join opens (1.5); an
-  opened neighbour becomes unreachable, it is not written.
+  neighbours that M1 reads for a count and that a join opens (1.5), and
+  untouched surviving roots that settle inspects after a collapse
+  (1.6). An opened neighbour becomes unreachable, it is not written.
+  Settle can pass over several untouched singleton roots; only those
+  passed over are replaced, and none inspected is appended to.
 
 
 ## 2. State
@@ -446,13 +481,18 @@ make another tree under PE (027-03, section 8.2).
 
 ## 3. Invariants
 
+For `pe_step`, the frame's D is the transaction's write footprint
+(`Out.D`, the ids in `Out.ws`): the key nodes written and new put values, without
+unchanged ancestors. It is distinct from the accumulated dirty index set
+of 1.9; values are not in that set.
+
 * **The writer's contract** (030-04; 030-05): after a transaction (1) the
   tree meets the invariants at tt (well-formed nodes and klongs, W1 to
   W4, the key order, the kinds of children, a live klong in every node
   but an empty space root); (2) its contents at tt are those at tt - 1
   with the operations applied to a plain map; (3) the frame: every node
   stays, keeps its level, kind and klongs, gets klongs only after a time
-  klong of tt, a node not in D is unchanged, a node made is in D, space
+  klong of tt, a node not in D is unchanged, a new key node is in D, space
   roots are only added; with **TREE** (no node reached twice from a space
   root) and the top's clauses. Proved for `Contract.PE.peTx` (030-21:
   `pe_step`, `pe_meetsTop_start`, and `MeetsFull` with K-LEVEL,
@@ -482,7 +522,9 @@ make another tree under PE (027-03, section 8.2).
 * **At most B klongs a node**, and at most 62 (a bitmap's bits): by
   decide; proved for the model (`Holds`, 030-21); checked.
 * **One bitmap a node and transaction**, holding every bit of the
-  bitmap before it (W3): by emit; proved (W2 to W4 in clause 1).
+  bitmap before it (W3): by emit; the count is proved by `emitKs_del`
+  and emit's single-write result (`emit_spec_w`, `WOk.nodup`); cumulative
+  contents by `emitKs_wf` (W3 in clause 1). New nodes have no bitmap.
 
 
 ## 4. Costs and bounds
@@ -491,18 +533,23 @@ make another tree under PE (027-03, section 8.2).
 
 * **Each node decided once and written at most once**; a transaction
   reads the paths of its operations and, for each join, the neighbour M1
-  counts and the one it opens: argued (1.13). P1: at most 500 operations
-  a user transaction (L1), so the work of one is bounded by its paths
-  and their neighbours.
+  counts and the one it opens, and any surviving-root descent in settle:
+  argued (1.13). P1: at most 500 operations a user transaction (L1), so
+  the work of one is bounded by its paths, their neighbours and those
+  descents.
 * **Time**: measured (026-25, section 7). CORE's set test (one put a
   transaction, 100,000 keys in memory) 11 to 18 % slower than format 7's
   writer, mostly the short way's live list of the leaf; at 10M keys
   CCBench within a few per cent (1.03), the load (transactions of 100 or
   500 puts) 0.90 to 0.97 of format 7's puts a second. Open: 028-19.
-* **Bytes**: measured on the model (026-24, section 2.3): new key nodes'
-  bytes 0.962, all changed nodes' 0.992 of format 7's writer over 288
-  traces; with reclaim on, Java's databases 1.05 to 1.07 times the bytes
-  a put (reclaim's pace, 026-25, section 7; 028-19).
+* **Bytes**: the model's historical stand-ins with cap = h (026-24,
+  sections 2.1 and 2.3), over 288 traces: B-new 0.962, B-all 0.992 of
+  format 7's writer. Both count records, values, delete nodes and top
+  nodes; B-new adds key nodes made, B-all every key node changed, each
+  whole. With cap = B / 2, as in Java, only own (6 traces) and medium
+  (27) were run: own 0.964, 0.983; medium 0.973, 0.993 (026-24, section
+  2.6). With reclaim on, Java's databases measured 1.05 to 1.07 times
+  the bytes a put (reclaim's pace, 026-25, section 7; 028-19).
 * **Stack**: the walk over the segments is a loop with a stack of frames
   (a key of BergDB's own may have 8,193 segments, 024-17's L3); within a
   segment tree the recursions are bounded by its height: gated
@@ -515,19 +562,33 @@ can make dirty or create could pass the record's index limit, 15/16 of
 the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
 
 * a cheap test first: a put counts 3 nodes a level, a delete 20, of a
-  path of `height` levels a segment, plus 3, `height` = 2 + log2(the
-  stream's length / 48); a transaction under the limit by it is let
-  through;
-* else `Dag.dirtyNodeBound` walks the keys' paths at the latest state
-  and counts: the distinct key nodes on them; for each node, the klongs
-  it can get (one a put and a new segment below, the overflows of its
-  children, four on a delete's path) and its overflows, 1 + (k - r - 1) /
-  q for k klongs and r free, q = max(2, min(B / 2, B - h, B - c) - 3)
-  (10 at B = 30), each a new node and klongs in the parent, a new root
-  above the space root; the new segment trees, counted alike; for the
-  deletes, the root collapses below each segment leaf and four nodes for
-  each level of the path and two more levels (the old writer's merges);
-  a node over theta dead klongs overflows at least once;
+  path of `height` levels a segment, plus 3 per key. A value
+  transformation counts as a potential delete. `height` =
+  2 + floor(log2(max(1, streamLength / 48))), with integer division.
+  A transaction at or under the limit by this count is let through;
+* else keys with a key transformation still get the cheap count. Known
+  keys go to `Dag.dirtyNodeBound` at the latest state; a value
+  transformation sends its key both as a put and as a delete;
+* `Dag.dirtyNodeBound` counts the distinct key nodes on those paths. For
+  each it counts k klongs: one a put or a new segment tree below, the
+  klongs from its children's overflows, four on a delete's path, and
+  the root collapses below each segment leaf. Deepest nodes first, its
+  `overflows` helper gives o:
+  * k = 0: o = 0;
+  * otherwise K = k + 1, q = max(2, min(B / 2, B - h, B - c) - 3)
+    (10 at B = 30), R = max(0, B - 2 - size), where size is the node's
+    klong count; on a delete's path, R := min(R, q);
+  * least = 1 if theta > 0, dead >= 0 and dead + k > theta, else 0;
+    dead is the node's dead-klong count, or -1 for a new tree;
+  * o = least if K <= R, else 1 + (K - R - 1) / q.
+
+  For o > 0 it adds o + 1 nodes and o + 1 klongs to the parent; at the
+  space root it adds o new roots instead of parent klongs. New segment
+  trees are counted by `freshTreeBound`: one root, its k entries counted
+  by `overflows` at size 0, then each o as the next root's k at size 1,
+  adding o + 1 nodes until o = 0; the same for trees below it. Deletes
+  also add four nodes for each level of their path and two more levels
+  per delete (the old writer's merges);
 * each node at 32 + 16 (B + 1) + 16 bytes, and two top nodes.
 
 The count was argued for the writer of formats 6 and 7, whose mechanisms
@@ -570,14 +631,16 @@ transactions are not checked (027-13, 1.4).
     accepts every transaction whose puts' keys the tree can hold, if the
     height leaves room and the fuel suffices (below).
 
-  For any cut size from 1 to B - 1 and h and c alike (`Cfg.Ok`).
+  Safety for accepted runs holds for any cut size from 1 to B - 1 and
+  h and c alike (`Cfg.Ok`). Acceptance also needs `Room` below.
 * **The limits at which the model refuses** (030-21, part 3):
   * a put of a key that is not well formed or has more than G + 1
     segments (`keyOk`): exact; a delete of such a key is a noop
     (`dropNoops`);
-  * the height (`Room`): every node's height e leaves 2^(H - e) more
-    than the tree's nodes plus the operations; sufficient, not exact
-    (refused only where a root at height H would be cut);
+  * the height (`Room`): h >= 2 and cap >= 2, and every node's height e
+    leaves 2^(H - e) more than the tree's nodes plus the operations;
+    sufficient, not exact (refused only where a root at height H would
+    be cut);
   * the fuel (`FuelOk`): (G + 1)(H + 1)(B + p + 2H + 6) at most 2^40 for
     p operations; sufficient.
 
@@ -648,10 +711,11 @@ transactions are not checked (027-13, 1.4).
 ## 8. Principles and rules
 
 * **P1**, no stop-the-world: a transaction's work is its paths and its
-  joins' neighbours, at most 500 operations (L1).
+  joins' neighbours and settle's surviving-root descents, at most 500
+  operations (L1).
 * **P2**, a deterministic stream: the writer is a function of the tree,
-  the batch, tt and B (1.12); the order of its reports, and so of D, is
-  fixed for each transaction (1.10).
+  the batch, tt, B, the top state and the fresh-id seed (1.12); the order
+  of its reports, and so of D, is fixed for each transaction (1.10).
 * **P11 and P13**, simple before optimal: the theme of release 2026.6;
   PE replaced the per-operation writer, its five splits, the take-back
   and the merges at the delete, about 8 % slower in CCBench (026-25,
@@ -718,7 +782,7 @@ n0 are replaced, so they do not stay in T1's got-dirty list.
 Five operations: the short way is tried and not taken (n13 would hold
 one entry, fewer than m). Plan:
 
-* n15 routes a to c to n12, d and e to n13, k and x to n14.
+* n15 routes c to n12 (range a to c), d and e to n13, k and x to n14.
 * n12: c repointed to the value n17; append fits (4 + 2 klongs) with 1
   dead klong: append.
 * n13: delete nodes n18 (d) and n19 (e); F = [f]: append (a time klong
@@ -764,7 +828,8 @@ replaced.
 **T5**: delete g, h, i, j, k. Not the short way (n14 would be empty).
 Plan: the delete nodes n27 to n31; n14's F is empty. Rebalance at n25
 drops n14; n25's F = [('' n24)]. Settle: an inner root with one entry
-collapses to its child, the untouched n24, a segment leaf: the root.
+collapses to its child, the untouched n24; settle reads its live list
+and keeps it, a segment leaf, as the root.
 Emit writes no key node; n14 and n25 are not reachable; a new top node
 n32 names n24, the space root from T5 on. Marked: n26, n25, n32; n26 and
 n25 are replaced, so of these only n32 stays in T5's got-dirty list.
