@@ -1,12 +1,29 @@
 Self-indexed streams in Lean
 ============================
 
-**Work in progress.** This directory is for developers of BergDB. It is
-not part of what a user of BergDB relies on, and not a feature. It holds
-the executable model of BergDB's algorithm that Java's runs are checked
+This directory is for developers of BergDB: the Lean model of BergDB's
+algorithm and its proofs. **BergDB's core algorithms are proved, given
+tested assumptions** (bergdb 030, the aim and the state in
+[030's readme](../items/030-proofs/readme.md)): the writer PE meets the
+writer's contract (030-21), so every get and scan at every time is right,
+and so are recovery, restarts, lazy reading, eviction and reclaim's cuts,
+for every history PE writes; and reclaim chooses only safe cuts (030-24,
+030-25). The assumptions are each tested, not proved (030-04, section
+3.5). Java itself is not proved: it is checked against the model on
+traces by the level scripts. The tree checker's writer,
+lean/SIS/Tree/Pe.lean, is a copy of the proved writer, which the tree
+checker compares with Java node for node; `level2.sh` (so `night.sh`)
+compares the copy with the proved writer on every transaction of its tree
+sets (`pecmp`, bergdb 030-28), so on those traces Java writes what the
+proved writer writes.
+
+The directory holds the executable model that Java's runs are checked
 against (the trace checkers of `level2.sh` to `level4.sh` and `night.sh`),
-the model's test programs, and the parts of the abstract model's proofs
-that the contract package uses.
+the model's test programs, the parts of the abstract model's proofs that
+the contract package uses, and three Lake packages beside this one:
+`contract/` (the proofs, with Mathlib), `contractcheck/` (its checkers,
+without Mathlib) and `pecmp/` (the comparison of the two writers, without
+Mathlib).
 
 Since 2026-11-18 (bergdb 030-18, Frans's decision of that day, 006-31,
 section 1) the old proof line is gone from this directory: the key tree's
@@ -268,6 +285,18 @@ need no Mathlib:
     cd lean/contractcheck
     lake build              # contractcheck and bridgecheck, about 30 s
     ../contract/check.sh small drain   # with the traces of treeconf.sh
+
+The files that a reader of the proofs must trust are pinned with their
+SHA-256 in `contract/statements.pin` (`contract/pin.sh` writes it; bergdb
+030-15), and with them, though no statement, the tree checker's writer
+SIS/Tree/Pe.lean and `pecmp/` (bergdb 030-28). `contract/gate.sh` checks
+the pins with the build; `contract/pins.sh` checks the hashes alone, with
+no build, as a step of `level2.sh`. `pecmp/` builds the proved writer's
+files from `contract/` without Mathlib, as `contractcheck/` does:
+
+    cd lean/pecmp
+    lake build              # pecmp
+    ./check.sh small drain reclaim     # with the traces of treeconf.sh
 
 
 Reading Lean
