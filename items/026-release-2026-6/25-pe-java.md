@@ -243,9 +243,15 @@ the Log).
 
 # State
 
-2026-11-19, 02:45. Started. The oracle written (lean/SIS/Tree/Pe.lean, wired
-into Check/Tree.lean, Check/TreeRun.lean, TreeCheck.lean; on today's Java it
-reports the expected differences). Next: PeWriter.java.
+2026-11-19, 04:25. The writer done, the old write half removed, record
+format 8, the oracle PE (pecmp: 0 differences). Gates running on
+d64e5638 (the last code change; later commits are items and lean/README.md
+only): TRANSCHECK OK, CORE BUILD OK (unit, f), medium tree checks TREE OK
+so far; level1 to level4, kill-restart (two seeds), the contract's
+check.sh still running. s1: CCBench PE/main 0.93 to 1.24 an operation,
+Perf's writes at 0.99 of main's commits a second (fsync-bound), its load
+0.88. For Frans: the reclaim row's bytes (section 2), the residual cost
+of plan-then-emit (section 6), format 8 (section 4).
 
 
 # Log
