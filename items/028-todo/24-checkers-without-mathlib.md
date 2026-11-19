@@ -117,3 +117,20 @@ Log
 
 2026-11-19. Registered and taken by an agent of coord-1118 (Frans, 10:40
 and 10:42), in a clone of the repository.
+
+2026-11-19. Done, by an agent of coord-1118. Gated on the branch
+`028-24-checkers-no-mathlib` at 89d06681 (main merged, with 028-18,
+028-20, 028-21 and 028-23): `lean/contract/gate.sh` GATE OK (142
+theorems, the standard axioms; 80 files of the closure, 94 pinned);
+`java/before-commit.sh` BEFORE COMMIT OK; `java/stress/level2.sh` (full)
+LEVEL 2 OK with no `lean/contract/.lake` in the clone and a fresh
+`lean/contractcheck/.lake` (the checkers built in about 30 s, step 8b no
+failures); `lean/contract/check.sh small drain reclaim` CONTRACT OK (with
+faults.sh, faults-top.sh and bridge-faults.sh), on the branch before the
+merges, whose `lean/` files are those of 89d06681 but Bound.lean
+(028-21), outside the checkers' closure. One run of before-commit.sh on
+the tree merged with 028-23 failed once in
+`IndexJobsHarness.testEveryPointAndFault` ("after the start, memory has
+index "j" ... building, the stream ... active", STOP at CLEANUP_STEP 2,
+seed 1), at a load of about 80; the rerun passed. The branch changes no
+Java; a load-sensitive case of that harness, for 028-23's follow-up.
