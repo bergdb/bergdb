@@ -1,6 +1,6 @@
 # 030-24. Reclaim's proof, step 2
 
-Created 2026-11-19 by Frans Lundberg. Status: open.
+Created 2026-11-19 by Frans Lundberg. Status: done.
 
 The next step of reclaim's proof after 030-23: from `TSchemeGis`, or a
 shorter route, to the reads after cuts given only RC at each cut, and if
@@ -14,7 +14,42 @@ sub-prover, on the branch `030-24-reclaim-step2`.
 
 # Result
 
-RESULT
+For Frans, in plain words. Details in sections 1 to 3.
+
+- **Reclaim chooses only safe cuts: proved, given local conditions.** For
+  BergDB's key tree (runs with A6'), a cut that meets reclaim's contract RC
+  is safe (`cutOK_of_rc`), so recovery, restarts, eviction and Java's reads
+  after cuts need only RC at each cut (`full_cut_of_rc`,
+  `cut_keeps_top_of_rc`, `cut_java_reads_of_rc`; for every history PE
+  writes, `PE.pe_cut_java_reads`).
+- **The open half of 030-23 is closed by another route.** The independent
+  search made beside 030-23 found an invariant that 030-23's search did not:
+  every version a read can follow, if written before the startup pos, is
+  good at the read's time clamped to the startup pos. It proved it from the
+  model's take and Rule A alone, in a scratch study; its proof is taken over
+  (section 1). With it, part 2 of `CutOK` needs only Java's first wait;
+  the second wait is needed for D's references. 030-23's GIS-J and its open
+  case 2 are no longer needed.
+- **`TScheme` as 030-23 stated it is false** (section 2): it speaks of every
+  run with RunOK, and a run that moves a child to another parent while the
+  old parent keeps a pointer to it (no A6') breaks D's references. Proved
+  in Lean; BergDB's tree meets A6', so nothing for BergDB changes.
+- **RC2 and RC3 for the key tree: proved** (section 3). RC3 from the
+  writer's contract, given a live key at the iteration's end (its row).
+  RC2 from the iteration in the contract's words (`IterationOK`: every
+  key whose value predates the cut is written again during the iteration)
+  and VAL-NEW (a put makes a new value node; other keys keep theirs).
+- **The top theorem: proved** (`PE.pe_reclaim_reads`): for every history
+  PE writes, with cuts whose iterations meet `IterationOK`, a key live at
+  each iteration's end, and Java's arithmetic of the cut (RC1, RC4), Java's
+  get and scan after the run with handles, evictions and restarts from the
+  cut streams are right at every time from the first available time on.
+  PE meets VAL-NEW (`PE.pe_valNew`): PE's writer reads no value hash, so a
+  run whose puts each get their own label pins each value node to its put.
+- **What stays tested, not proved:** Java's arithmetic of the cut (RC1, the
+  order and the first available time; RC4, the two waits), Java's iteration
+  against `IterationOK`, and, as for every theorem of the contract, that
+  Java's writer is PE and Java's records are the model's.
 
 
 # 1. The read half, by the independent search's invariant
@@ -39,8 +74,9 @@ RESULT
   `index_exists_at_startup`). Then by induction on `ReadsPhys`
   (`oldReadsGood_st`).
 - **Part 2 from it** (`reads_ge_cut`, `rc_reads`; restated as `rc_part2`
-  and, with the first wait alone, `rc_part2_first_wait`): a version a read follows
-  that is written after s is after the cut (s ≥ e ≥ c by the first wait);
+  and, with the first wait alone, `rc_part2_first_wait`): a version a read
+  follows that is written after s is after the cut (s ≥ e ≥ c by the first
+  wait);
   one written at or before s is good at a time from e on at which its node
   is reachable, so at the cut or later (030-23's Lemma G, which the search
   proved the same way). Only the first wait is used; the second is needed
@@ -62,12 +98,13 @@ RESULT
 independent search found a run of six transactions of a small structure
 (its Adoption example) that meets RunOK, RC with c = 1, e = 3, k = 6 and
 both waits, and fails `CutOK`'s part 3: transaction 1 moves leaf 3 from its
-current parent 1 to the sibling 2, in place of leaf 4, while 1 keeps a dead
-pointer to it (A6' fails), so after T(6) node 1 is in D with its latest version 1@2 naming
-3@0, while 3's latest version is 3@4. The read half holds there; only D's
-references fail. BergDB's key tree meets A6' (the bridge, `bridge_evictRunOK`;
-PE through `pe_full`), and the theorems after cuts use the run's own
-EvictRunOK (`cutOK_of_rc`), so nothing proved for the tree is affected.
+current parent 1 to the sibling 2, in place of leaf 4, while 1 keeps a
+dead pointer to it (A6' fails), so after T(6) node 1 is in D with its
+latest version 1@2 naming 3@0, while 3's latest version is 3@4. The read
+half holds there; only D's references fail. BergDB's key tree meets A6'
+(the bridge, `bridge_evictRunOK`; PE through `pe_full`), and the theorems
+after cuts use the run's own EvictRunOK (`cutOK_of_rc`), so nothing proved
+for the tree is affected.
 In Lean: `Contract.AdoptionExample.tscheme_false : ¬ TScheme sp al`
 (Contract/ReclaimSchemeFalse.lean, commit c6f08672, 495 lines; an example,
 so not pinned). The kernel evaluates the run (`decide +kernel`) in a form
@@ -127,23 +164,75 @@ proved in the contract's words in Contract/ReclaimTree.lean:
   with handles, evictions and restarts from the cut streams are right at
   every time from the first available time on.
 
-STATE-RC
+All proved (section 4 lists the commits): `rc3_tree`, `rc2_of_tree`,
+`rc2_of_iteration`, `cutsMeetRC_of_iter`, `PE.pe_valNew` (with
+`valNew_of_unique`: VAL-NEW for any history in the contract's words whose
+puts have distinct hashes and whose transactions make value nodes only with
+hashes they put; and Contract/Proof/PeSim.lean: PE's run on operations
+whose hashes are mapped is the image of its run, so its trees by id do not
+depend on the hashes), `reclaim_java_reads` and `PE.pe_reclaim_reads`.
+
+What is not proved, and is tested: RC1 and RC4 at each cut (Java's
+arithmetic, `tracecheck` since 030-23), `IterationOK` (REWRITES: argued,
+gated by the reclaim tests; its consequence RC2 is checked at every cut),
+and, as for every theorem of the contract, that Java's writer is PE
+(026-25) and that Java's records are the model's (the trace checkers). A
+model of the iteration's steps (each scans the live keys of its range at
+its own time and puts again those older than pCut; the ranges cover every
+key up to E) would make `IterationOK` a theorem about Java's steps; not
+done (section 5).
+
+
+# 4. Files and gates
+
+- **The branch** `030-24-reclaim-step2`, from `main` 1f25b044, in
+  lean/contract only but for this item, 030's readme and 027-13:
+  - b529e9e6: the read half (Contract/ReclaimReads.lean, and the
+    independent search's proofs in Contract/Proof/OldReads*.lean);
+  - c6f08672: `tscheme_false` (Contract/ReclaimSchemeFalse.lean);
+  - 115a0290, cabec0cc, f046f30f, merged as a77506e9: RC3, RC2 and the
+    cuts with the iteration (Contract/ReclaimTree.lean,
+    Contract/Proof/ReclaimTree.lean);
+  - c2f4b3fb: the top theorems with VAL-NEW as a premise; 34a3b19d:
+    `rc_part2_first_wait`;
+  - 47f3e32f, e38945f1, merged as 64eac0d8: `valNew_of_unique`,
+    `PE.pe_valNew` (Contract/Proof/PeSim.lean) and `PE.pe_reclaim_reads`.
+  The sub-prover's commits were made on its branches `030-24-prover`,
+  `030-24-tree` and `030-24-valnew` and taken over unchanged.
+- **Lean added:** 3,991 lines in 11 new files: the independent search's
+  proofs 903, the statements of the read half 208, the counterexample 495,
+  RC2, RC3 and the top theorems 1,660, PE's VAL-NEW (PeSim) 725; Axioms.lean
+  lists 182 theorems (162 on `main` before).
+- **Gate:** `lean/contract/gate.sh 1f25b044` at 64eac0d8, the last change
+  of Lean: GATE OK (182 theorems, the standard axioms only; 84 files of the
+  closure, 98 pinned); the later commits change only items. Java and
+  lean/ outside lean/contract did not change; the checkers' package
+  (lean/contractcheck) builds only what the checkers import, none of these
+  files.
+
+
+# 5. What is next
+
+- Reclaim's part of 030's aim is proved, given the tested assumptions
+  above. Possible next steps, none needed for the aim: a model of the
+  iteration's steps that gives `IterationOK` (Java's steps against it
+  stay tested, now per step); a check of `IterationOK` itself in
+  `tracecheck` (the trace has the cut c and tEnd but not the iteration's
+  first step s; with VAL-NEW, `IterationOK` from s gives it from c + 1
+  when c < s, and that the trace has); and the cost side (030-22, section
+  8).
+
+
 
 
 # State
 
-2026-11-19, 14:35. **Proved:** the read half (b529e9e6, section 1);
-`TScheme` false without A6' (c6f08672, section 2); RC3 and RC2 for the key
-tree (`rc3_tree`, `rc2_of_tree`, `rc2_of_iteration`, `cutsMeetRC_of_iter`;
-merged as a77506e9); the top theorems with VAL-NEW as a premise
-(`reclaim_java_reads`, `PE.pe_reclaim_reads_of_valNew`; c2f4b3fb, GATE OK,
-178 theorems). **Left:** `PE.pe_valNew`, that PE meets VAL-NEW: PE's proofs
-(030-21) speak of contents by value hash, and VAL-NEW is about value node
-ids (a rewrite puts the same hash), so it needs a new proof: an id-level
-copy of PE's contents induction (1,000 lines or more), or a simulation that
-PE's run does not read hashes, so that a run with each put given its own
-label pins each id (600 to 900 lines). The sub-prover tries the second
-from 14:40; until then VAL-NEW is a named premise (`ValNew`).
+2026-11-19, 15:05. **Done.** Reclaim's part of 030's aim is proved for
+every history PE writes, given the tested assumptions (Result; section 3):
+RC gives `CutOK` (the read half by the independent search's invariant),
+RC2 and RC3 for the key tree, PE's VAL-NEW, and the top theorem
+`PE.pe_reclaim_reads`. 64eac0d8 is the last change of Lean, GATE OK.
+Possible next steps are in section 5.
 
 
 # Log
@@ -163,3 +252,8 @@ GATE OK, 172 theorems). RC2 and RC3 for the tree given to it.
 iteration, and `CutsMeetRC` from `CutsMeetIter`, proved by the sub-prover
 (115a0290, cabec0cc, f046f30f; 997 lines); `pe_valNew` not: see State.
 The top theorems with VAL-NEW as a premise added (c2f4b3fb).
+
+2026-11-19, 14:53. `PE.pe_valNew` proved by the sub-prover, by
+relabelling (47f3e32f, e38945f1; 1,359 lines), and `PE.pe_reclaim_reads`
+with it; merged as 64eac0d8, GATE OK, 182 theorems. 027-13 updated (the
+proved state of T-SCHEME, REWRITES and LIVEBELOW).

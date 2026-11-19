@@ -229,12 +229,13 @@ D6. Reclaim's safe cuts (T-SCHEME)
   `PE.pe_cut_java_reads`). `TScheme` as stated (RunOK alone) is false, in
   Lean (`AdoptionExample.tscheme_false`). RC3 and RC2 for the key tree
   proved (`rc3_tree`; `rc2_of_iteration` from `IterationOK`, the iteration
-  in the contract's words, and VAL-NEW); the top theorem for PE with
-  VAL-NEW as a premise (`PE.pe_reclaim_reads_of_valNew`). Left:
-  `PE.pe_valNew`.
-* **Next:** `PE.pe_valNew` (030-24, State). Tested, not proved: RC1 and
-  RC4 (Java's arithmetic), `IterationOK` (Java's iteration against its
-  model).
+  in the contract's words, and VAL-NEW, which PE meets, `PE.pe_valNew`);
+  so for every history PE writes, Java's reads after reclaim's cuts are
+  right (`PE.pe_reclaim_reads`). **Reclaim's part of the aim is proved**,
+  given the tested assumptions: RC1 and RC4 at each cut (Java's
+  arithmetic) and `IterationOK` (Java's steps; its consequence RC2 is
+  checked at every cut).
+* **Next:** none needed for the aim; 030-24, section 5 lists options.
 * **Items:** 030-22; 030-23; 030-24; 001-07, section 5; 024-07, section 4.
 
 Where the contract's checks run
@@ -463,8 +464,9 @@ Files
 * [030-24](24-reclaim-step2.md). Reclaim's proof, step 2: RC gives
   `CutOK` (the read half by the independent search's invariant), so the
   reads after cuts need only RC at each cut; `TScheme` without A6' false,
-  in Lean; RC2 and RC3 for the key tree, from the iteration and VAL-NEW;
-  the top theorem for PE given VAL-NEW. Started 2026-11-19. Status: open.
+  in Lean; RC2 and RC3 for the key tree, from the iteration and VAL-NEW,
+  which PE meets; the top theorem for PE (`PE.pe_reclaim_reads`); 3,991
+  lines of Lean. Written 2026-11-19. Status: done.
 
 Log
 ===

@@ -274,6 +274,8 @@ pending, M1's condition holds, or the dead hand has more.
   step whose range holds it rewrote it.
   Checked (C-CUT's part 2); gated (`testIterationRewritesAllOldValues`,
   `testStepScansAtItsOwnTime`, `testEndKeyBoundsTheScan`).
+  In the contract's words `IterationOK` (030-24), from which, with
+  VAL-NEW, RC2 is proved (`rc2_of_iteration`).
 * **LIVEBELOW** (part 4): each index node a lookup reaches, but an empty
   space root, has a live key below it, and that key's last put (the
   user's at pCut or later, or a step's rewrite) made the node dirty; so
@@ -284,16 +286,25 @@ pending, M1's condition holds, or the dead hand has more.
   026-25), as the upward unlink and root collapse did in formats 6 and 7.
   Checked at every cut (C-CUT, `CUT-live`); gated (UnlinkFuzz,
   `testEmptiedSubtreesAfterCut`, `testDeletedKeysAfterCut`).
+  Proved from the writer's contract, given a live key at tEnd
+  (`rc3_tree`, 030-24).
 * **COVER**, **LATEST**: with REWRITES and LIVEBELOW, every node
   reachable from tEnd on has its latest version at pCut or later once sp
   >= pEnd. Proved in the model (`T_cover`, `T_latest`).
 * **T-SCHEME**: Java's waits (1.5, 1.6) give `CutOK`. Checked: C-CUT at
   every cut of every reclaim trace (026-05: 0 of 794 failing in level3's
-  set, 0 of 479 in its own), and `checkSchemeC`. Since 030-23 stated
-  (`TScheme`, lean/contract/Contract/ReclaimScheme.lean) for cuts that
-  meet reclaim's contract RC (030-22): half proved (`rc_parts`), the
-  rest open (`TSchemeOpen`); C-CUT checks RC at every cut too
-  (`RC1-order`, `RC2-rewrites`, `RC4-waits`; RC3 is `CUT-live`).
+  set, 0 of 479 in its own), and `checkSchemeC`; C-CUT checks reclaim's
+  contract RC (030-22) at every cut too (`RC1-order`, `RC2-rewrites`,
+  `RC4-waits`; RC3 is `CUT-live`; 030-23). Proved since 030-24 for runs
+  with A6' (BergDB's tree): RC gives `CutOK` (`cutOK_of_rc`; part 2 needs
+  only the first wait, part 3 the second). `TScheme` as 030-23 stated it,
+  for every run with RunOK, is false (`AdoptionExample.tscheme_false`).
+  RC3 for the key tree from the writer's contract (`rc3_tree`); RC2 from
+  the iteration (`IterationOK`: every key whose value node predates pCut is
+  written again from the iteration's first step to tEnd) and VAL-NEW, which
+  PE meets (`rc2_of_iteration`, `PE.pe_valNew`). So for every history PE
+  writes, Java's reads after cuts are right given `IterationOK` and RC1
+  and RC4 at each cut (`PE.pe_reclaim_reads`).
 * **The touch on the paths** (`TouchOnPaths`): checked (C-A,
   `touchPath`); gated (`testStepDirtiesItsPathsOnly`). **No conflict in
   a step** (1.4): argued; no test.
@@ -376,13 +387,10 @@ pending, M1's condition holds, or the dead hand has more.
 * **Assumptions**: `RunOK` (A2 to A5, TREE), Java's still-dirty test and
   marking, `LiveAppend`, `EvictRunOK`; for T8 and T12 `ExecRootOK`,
   `VirtLiveOK`, `PolicyCutOK`. REWRITES and LIVEBELOW are premises.
-  **Stated, not proved**: T-SCHEME, in lean/contract (030-23):
-  `TScheme`, for cuts that meet RC; its proved half `rc_parts` (`CutOK`'s
-  parts 1, 3's first half and 4, and part 2 for the latest versions),
-  its open half `TSchemeOpen`; `full_cut_rc`, `cut_keeps_top_rc` and
-  `cut_java_reads_rc` take T-SCHEME and RC in place of `CutOK`. Also
-  checked by running (`checkSchemeC` in SIS/ReclaimExample.lean, `lake
-  exe reclaimtest`; 024-07, section 4.3).
+  **Proved** in lean/contract since 030-24: T-SCHEME for runs with A6'
+  and its use, as above (Contract/ReclaimScheme.lean, ReclaimReads.lean,
+  ReclaimTree.lean). Also checked by running (`checkSchemeC` in
+  SIS/ReclaimExample.lean, `lake exe reclaimtest`; 024-07, section 4.3).
 * **Left out**: keys, the scan and E, R and the times, the table, the
   allowance and the step sizes, the durable wait, the storage's files,
   reads in flight, `maintain()` (its records are like any), the settings.
@@ -452,10 +460,12 @@ pending, M1's condition holds, or the dead hand has more.
 
 ## 9. Limits and open work
 
-* T-SCHEME is checked, not proved; 001-07's register rows M32, M33, M36,
-  M41 and M48 are argued or checked. REWRITES, LIVEBELOW and a step's
-  commit without conflict are argued for Java; the tree model (024-12)
-  could make the first two theorems.
+* T-SCHEME is proved for BergDB's tree, given RC at each cut (030-24);
+  RC1 and RC4 (Java's arithmetic of the cut) are checked at every cut,
+  not proved; `IterationOK` (REWRITES, Java's steps) is argued and gated,
+  and its consequence RC2 is checked at every cut.
+  001-07's register rows M32, M33, M36, M41 and M48 are argued or checked.
+  A step's commit without conflict is argued for Java.
 * 026-09, a keys-only scan (024-34, Q34-1, option b): registered for
   2026.6, not on `main`; today a step loads the value of every KV it
   walks (43 percent of its loads not rewritten, 1M keys, 20 MB cache).
