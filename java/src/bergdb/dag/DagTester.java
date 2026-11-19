@@ -716,6 +716,103 @@ public class DagTester {
     }
     
     /**
+     * Both ways report and mark in emit's order (bergdb 028-25). At B = 8, 256 keys make
+     * three inner levels in one segment tree. Both inner nodes below the space root are
+     * clean before one overwrite that appends to its leaf and takes the short way.
+     */
+    @Nano
+    public static void testShortWayMarksInEmitOrder() {
+        List<String> keys = new ArrayList<String>();
+        for (int i = 0; i < 256; i++) keys.add(String.format("%04d", i));
+        MarkRun fast = new MarkRun(keys), plan = new MarkRun(keys);
+        KeyNode node = fast.dag.getTopDs().findRoot(1, gd(fast.dag));
+        int inner = 0;
+        while (!node.isSegmentLeaf()) {
+            Assert.assertTrue("inner node clean", !node.isDirty());
+            inner++;
+            node.searchEq(1, 0, fast.pd.kwi);
+            node = (KeyNode) node.getPointerNode(fast.pd.kwi.pointerIndex);
+        }
+        Assert.assertEquals("three inner levels", 3, inner);
+        compareShortMarks(fast, plan, "0000", "new");
+        // Siblings and shared ancestors: the parent follows every changed child.
+        compareShortMarks(new MarkRun(keys), new MarkRun(keys),
+                "0000", "a", "0040", "b", "0255", "c");
+        // Later-segment trees precede the entire first tree, including a changed leaf.
+        List<String> segmented = java.util.Arrays.asList(
+                "/a", "/bbbbbbbX", "/dddddddX", "/dddddddYYYYYYYZ");
+        compareShortMarks(new MarkRun(segmented), new MarkRun(segmented),
+                "/a", "a", "/bbbbbbbX", "b", "/dddddddYYYYYYYZ", "d");
+        // A missing delete reports nothing, even when another operation shares its path.
+        compareShortMarks(new MarkRun(keys), new MarkRun(keys),
+                "0000", "a", "0000x", null, "0255x", null);
+    }
+
+    private static void compareShortMarks(MarkRun fast, MarkRun plan, String... ops) {
+        plan.pd.forcePePlan = true;
+        long short0 = Dag.statShort;
+        fast.pd.tt = plan.pd.tt = 2;
+        batchOf(fast.dag, fast.pd, ops);
+        Assert.assertEquals("short way taken", short0 + 1, Dag.statShort);
+        batchOf(plan.dag, plan.pd, ops);
+        Assert.assertEquals("plan forced", short0 + 1, Dag.statShort);
+        Assert.assertEquals("listener reports in emit order", plan.reports, fast.reports);
+        Assert.assertEquals("marks in emit order", plan.marks, fast.marks);
+        Assert.assertEquals("got-dirty order", plan.dirty, fast.dirty);
+    }
+
+    /** Listener ids and marks as Db assigns them; every reachable node starts clean. */
+    private static final class MarkRun {
+        final Dag dag = Dag.createEmpty(0, 8, DUMMY_POINTER_FOLLOWER,
+                Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        final PutData pd = pd(dag);
+        final List<String> reports = new ArrayList<String>();
+        final List<Long> marks = new ArrayList<Long>();
+        final List<Long> dirty = new ArrayList<Long>();
+        long nextId = 3;
+
+        MarkRun(List<String> keys) {
+            TopNode top = dag.getTopDs().findSuperRootAtTime(0, gd(dag));
+            top.setId(1);
+            top.getPointerNode(0).setId(2);
+            pd.pointerListener = new Dag.PointerListener() {
+                public void superRootAccessed(TopNode node) { mark(node); }
+                public void pointerFollowed(Node from, int i, Node to, int type) {
+                    if (to instanceof KeyNode || to instanceof TopNode) mark(to);
+                }
+            };
+            pd.nodeChangeListener = new Dag.NodeChangeListener() {
+                public void topNodeCreated(TopNode node) { node.setId(nextId++); mark(node); }
+                public void keyNodeCreated(KeyNode node) { node.setId(nextId++); mark(node); }
+                public void valueNodeCreated(ValueNode node, long[] key) { node.setId(nextId++); }
+                public void keyNodeChanged(KeyNode node) { report("changed", node); }
+                public void keyNodeOnPath(KeyNode node) { report("path", node); }
+            };
+            pd.tt = 1;
+            List<byte[]> values = new ArrayList<byte[]>();
+            for (String key : keys) values.add(StringUtil.toBytes("old"));
+            batch(dag, pd, keys, values);
+            for (Node node : reachableAt(dag, 1)) node.setDirty(false);
+            reports.clear();
+            marks.clear();
+            dirty.clear();
+        }
+
+        void report(String kind, KeyNode node) {
+            reports.add(kind + " " + node.getId());
+            mark(node);
+        }
+
+        void mark(Node node) {
+            if (!marks.contains(node.getId())) marks.add(node.getId());
+            if (!node.isDirty()) {
+                node.setDirty(true);
+                dirty.add(node.getId());
+            }
+        }
+    }
+
+    /**
      * 62 is the largest node size (bergdb 024-19, Q6): a Dag of 63 or more is refused when it
      * is made, by both constructors, with a message that names 62; 62 is taken.
      */
