@@ -88,7 +88,9 @@ The files and their lines (2026-11-18; the old line had 747 files and
   proofs. It imports nothing of SIS.
 * SIS.lean, Check.lean and BergDB.lean import their libraries' files, so
   that `lake build` checks them all; test-traces/ holds the traces of the
-  trace checker's own tests (`test-traces/run.sh`).
+  trace checker's own tests (`test-traces/run.sh`), and the fault test of
+  its C-STEP (`test-traces/step-faults.sh`, a step of level 3; bergdb
+  030-27).
 
 
 Build and run

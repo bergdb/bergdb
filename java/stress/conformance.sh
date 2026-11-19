@@ -13,7 +13,11 @@
 #   (2026-10-17, bergdb item 001, K3): Level 3, the small reclaim set of
 #   reclaimtraces.sh, reclaim on, with the checker's reclaim checks (the touch,
 #   the steps on the cut stream, CutOK at every cut, the probes after restarts
-#   from the cut stream); a trace without a cut fails. evict (2026-10-18, bergdb
+#   from the cut stream); a trace without a cut fails. Since bergdb 030-27 its traces
+#   are of format 3 with STEP lines (TraceExport's tree=1 and steps=1), and the
+#   checker's C-STEP checks each step of reclaim against the model of the steps
+#   (030-25) and each cut against its iteration's last step; a trace without a STEP
+#   line fails. evict (2026-10-18, bergdb
 #   item 001, WP J4): Level 4, configurations of the small, medium and reclaim
 #   sets with run E (TraceExport's rune: run A's workload with a forced eviction
 #   schedule, or the capacity controller with a small budget, since J7), whose
@@ -175,6 +179,8 @@ large() {
 # small traces).
 one_trace() {
     set_name=$1; name=$2; s=$3; props=$4
+    # The reclaim set: format 3 with STEP lines, for C-STEP (bergdb 030-27).
+    if [ $set_name = reclaim ]; then props="$props -Dtree=1 -Dsteps=1"; fi
     dir=build/traces/$set_name
     t=$dir/$name-$s.trace
     timed $dir/$name-$s.export.time \
@@ -247,6 +253,7 @@ summary() {
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
     if [ $1 = reclaim ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
+        echo "   C-STEP: $(grep -h '^C-STEP' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail.*; ([0-9]+) STEP lines, ([0-9]+) iterations \(([0-9]+) ended.*, ([0-9]+) old KVs.*, ([0-9]+) CUT lines.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; s+=$3; i+=$4; e+=$5; o+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " s+0 " STEP lines, " i+0 " iterations (" e+0 " ended by a step with eod), " o+0 " old KVs met and checked put again, " c+0 " CUT lines with their iteration'"'"'s last step"}'); traces without a STEP line: $(grep -L '^STEP ' $dir/*.trace | wc -l | tr -d ' ')"
     fi
     if [ $1 = evict ]; then
         echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
@@ -291,6 +298,10 @@ for set_name in $RAN; do
     fi
     if [ $set_name = reclaim ] && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a cut"
+        exit 1
+    fi
+    if [ $set_name = reclaim ] && grep -L '^STEP ' build/traces/$set_name/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: a reclaim trace without a STEP line"
         exit 1
     fi
     if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name/*.trace | grep -q .; then

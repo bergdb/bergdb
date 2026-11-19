@@ -23,6 +23,18 @@ structure TScan where
   results : List (Key × Nat)
   deriving Inhabited
 
+/-- A STEP line (bergdb 030-27; 027-02, section 4): a step of reclaim, from its
+iteration's row in Java's memory: t0, the record of the iteration's tStart; c, the first
+record at or after its pCut; lastKey before the step and after it (none: `-`); and eod,
+whether the step's scan passed the end and ended the iteration. -/
+structure TStep where
+  t0 : Nat
+  c : Nat
+  last : Option Key
+  next : Option Key
+  eod : Bool
+  deriving BEq, Repr, Inhabited
+
 /-- The tree lines of one transaction, `TX i` to `END i`. -/
 structure TTx where
   idx : Nat
@@ -35,6 +47,8 @@ structure TTx where
   gets : Array (Nat × Key × Option Nat) := #[]
   /-- SCAN lines. -/
   scans : Array TScan := #[]
+  /-- STEP lines (bergdb 030-27): one in a step of reclaim, with the exporter's steps=1. -/
+  steps : Array TStep := #[]
   deriving Inhabited
 
 /-- The tree lines of a trace. -/
@@ -175,6 +189,13 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
   | "SCAN" :: r => match parseScan r with
     | some sc => modTx t (fun x => { x with scans := x.scans.push sc })
     | none => bad "bad SCAN"
+  | "STEP" :: t0 :: c :: r => match t0.toNat?, c.toNat?, takeKeyOpt r with
+    | some t0, some c, some (l, r) => match takeKeyOpt r with
+      | some (l', [e]) =>
+        if e != "0" && e != "1" then bad "bad STEP"
+        else modTx t (fun x => { x with steps := x.steps.push ⟨t0, c, l, l', e == "1"⟩ })
+      | _ => bad "bad STEP"
+    | _, _, _ => bad "bad STEP"
   | _ => t
 
 def parseTree (s : String) : TTrace :=

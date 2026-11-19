@@ -374,6 +374,35 @@ the tree model's `touchOf` of those keys must give the TOUCH line. (Until
 024-07 the touch was a key range, and format 3 had its bounds as RANGEF and
 RANGET lines, on 2026-11-11 only.)
 
+Since bergdb 030-27 (2026-11-19) the exporter's property `steps=1`, with
+reclaim and `tree=1`, adds one line to each step of reclaim, from its
+iteration's row in Java's memory (`Reclaim.IterationInfo`):
+
+    STEP t0 c L L' eod           in TX i, a step of reclaim (a record with a
+                                 TOUCH line), after CUT and before PHYSCUT:
+                                 t0, the record of the iteration's tStart
+                                 (the state at pStart); c, the first record
+                                 at or after its pCut, as on a CUT line; L
+                                 and L', lastKey before the step and after
+                                 it, keys or `-` for none; eod 1 if the
+                                 step's scan passed the end and ended the
+                                 iteration (the row done, its tEnd the
+                                 step's time), else 0
+
+`tracecheck`'s C-STEP checks them against the model of the steps (bergdb
+030-25, `StepsOK`), on the tree model's reads (lean/Check/Steps.lean,
+`stepCheck`): per STEP line, at the step's state, L is the L' of the
+iteration's step before (none for its first), c ≤ t0 + 1, L' is L or a key
+of the range (the live keys after L up to E, the greatest key live after
+T(t0)), with eod the range's last key, the step puts again (OP P) every KV
+of the range up to L' whose value node was made before c, and its
+operations have distinct keys and a put; a STEP line in every record with
+a TOUCH line and in no other; and per CUT line, the iteration with its c
+has its last step, with eod, at the CUT's first available time. The STEP
+line is not part of the grammar that the contract's checkers read
+(`lineKinds`), so their traces (`treeconf.sh`) have none; the traces of
+`conformance.sh reclaim` have them.
+
 The reads of the GET and SCAN lines are at random times from the first
 available time on, of keys of the workload, `gets=N` GET lines and one
 SCAN line a transaction (default 4; with `gets=0` none), from a generator
