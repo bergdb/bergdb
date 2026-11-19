@@ -1,8 +1,8 @@
 028-13. Decide: the startup distance's two ranges disagree
 ==========================================================
 
-Status: in progress (decided 2026-11-19: the builders' methods go; made on
-the branch `028-13-startup-distance-setter`). Kind: Decide. Frans: decided
+Status: done (decided 2026-11-19: the builders' methods go; gated on the
+branch `028-13-startup-distance-setter`). Kind: Decide. Frans: decided
 (2026-11-19, 11:06 and 11:10).
 Created 2026-11-14 by Frans Lundberg.
 
@@ -195,8 +195,54 @@ Tests
   the setter's record, and the workload begins at R(3) (027-02).
 
 
+
+Gates
+-----
+
+On the branch after `main` was merged twice (at 12:00, 028-20 and 028-23;
+at 13:05, 028-21 and 027-08's corrections), the code at `014d9bfc`,
+2026-11-19, 13:05 to 13:35, with other agents' runs beside them (none a
+timing run):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (139 s).
+* `sh java/stress/core-build.sh unit f`: CORE BUILD OK.
+* `java/stress/level1.sh`: LEVEL 1 OK (Props' SS 1.53, at most 1.54).
+* `java/stress/level2.sh` full: LEVEL 2 OK (the contract and the bridge
+  with their fault tests among its steps).
+* `java/stress/kill-restart.sh 1000 20261119`: KILL RESTART OK (1,000 kills and 50 exits in
+  1,483 s, on a copy of the same tree).
+* Not a gate of the task: `java/stress/apps.sh quick` APPS OK (on
+  `0e4f0d4e`, before the second merge, which brought no app change).
+
+On the way: the unit tests failed in 13 tests (CST's seven found cases, the
+creation tests, the eviction count, scenario107, and one leak that followed
+a failure), all from the setter's record after the creation, none a fault
+of the change (Tests, above); `level2.sh quick` failed in
+`bridge-faults.sh` (the faults in TX 3, now TX 4); `apps.sh quick`
+failed once in `Kill`: a kill inside the creating start left the
+primordial record alone, which 028-18 refuses with
+`DatabaseNotCreatedException`; the app now removes the files and starts
+again, as the exception says (not caused by this change: the kill's time
+fell there).
+
+
+State
+-----
+
+2026-11-19, 13:40. Done and gated on the branch
+`028-13-startup-distance-setter` (GATED `014d9bfc`, then this item's
+commit), not merged to `main`, not pushed. For Frans to confirm: the
+coordinator's reading of the range and the clamp (The decision, above);
+the Core setter's return value (`int`, the value set; the Pub setter
+stays `void`).
+
+
 Log
 ---
 
 2026-11-14. Registered by coord-1114 from 028-12's landing (Frans, 12:18:
 "Yes" to "pick A today and register a 028 entry").
+
+2026-11-19. Frans decided (11:06, 11:10): the builders' methods go, the
+setters remain. Made and gated on the branch
+`028-13-startup-distance-setter` by an agent of coord-1118.

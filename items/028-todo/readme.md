@@ -100,7 +100,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
-| [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
@@ -111,6 +110,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-13](13-startup-distance-ranges.md) | Decide | The startup distance: the builders' methods go | decided (11:10) | done | 2026-11-19 |
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? No: three gaps, fixed | none | done | 2026-11-19 |
 | [028-20](20-harness-late-exit.md) | Fix | The kill-and-restart harness fails a late exit run | none | done | 2026-11-19 |
 | [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | done | 2026-11-19 |
@@ -207,3 +207,9 @@ segment tree cut into parts, a node cut into more parts than its
 overflows and one, a new root above a cut segment root); fixed, with
 the Lean copy and the argument for PE; by an agent of coord-1118 on the
 branch `028-21-dirty-bound`.
+
+2026-11-19. 028-13 done: the startup distance set only by the running
+database's setter (Frans, 11:06 and 11:10); `DbBuilder.startupDistance`
+and `DatabaseBuilder.startupDistanceInMb` removed; the Core setter clamps
+to 10 to 10^9 and returns the value set; gated on the branch
+`028-13-startup-distance-setter`, by an agent of coord-1118.
