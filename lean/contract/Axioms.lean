@@ -179,3 +179,4 @@ open Contract
 #print axioms cut_java_reads_of_rc
 #print axioms Contract.PE.pe_cut_java_reads
 #print axioms Contract.AdoptionExample.tscheme_false
+#print axioms rc3_tree
