@@ -112,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-20](20-harness-late-exit.md) | Fix | The kill-and-restart harness fails a late exit run | none | done | 2026-11-19 |
 | [028-23](23-test-kinds.md) | Change | The test scripts sorted by kind: functional and timing | decided (10:39) | done | 2026-11-19 |
 | [028-15](15-startup-distance-in-a-kv.md) | Change | The startup distance out of the meta block, into an internal KV | A (10:50) | done (1b1001ee, 026c322a) | 2026-11-18 |
 | [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the creation whole (option C) | C (09:53) | done | 2026-11-19 |
@@ -174,6 +175,9 @@ coord-1118.
 
 2026-11-19. 028-19 registered: PE's speed and reclaim's pace (Frans, 09:32).
 
+2026-11-19. 028-20 registered and taken: kill-restart's false failure of a
+late exit run (026-25, section 6; Frans, 10:14), by an agent of coord-1118.
+
 2026-11-19. 028-21 and 028-22 registered: dirtyNodeBound for PE, and the
 Java comments of the old writer; found by an agent of coord-1118 while
 bringing 027 up to date with PE (branch `027-pe`).
@@ -183,6 +187,11 @@ branch `028-18-option-c` by an agent of coord-1118.
 
 2026-11-19. 028-18 done: option C gated (KILL RESTART OK with seeds 20261118,
 20261119 and 20261120) and landed.
+
+2026-11-19. 028-20 done: a late exit run whose JVM ends by itself with
+status 0 is an exit; the check `lateexit` fails before the fix and passes
+after it; gated on its branch (KILL RESTART OK with seeds 20261119 and
+20261121), by an agent of coord-1118.
 
 2026-11-19. 028-23 registered and taken: the test scripts sorted by kind,
 functional (before-commit.sh, night.sh, a new week.sh) and timing (a new

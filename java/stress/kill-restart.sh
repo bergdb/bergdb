@@ -11,8 +11,9 @@
 #
 # Usage: java/stress/kill-restart.sh [KILLS [SEED]]
 #   First the harness's self-check (each of four planted faults must be found; about 10
-#   seconds), then KILLS kills (default 1000; 0: the self-check only), from SEED (default:
-#   the date, YYYYMMDD; printed). About 20 minutes for 1,000 kills on F53 (2026-11-09).
+#   seconds) and its check of a late exit (bergdb 028-20; about 3 seconds), then KILLS kills
+#   (default 1000; 0: the checks only), from SEED (default: the date, YYYYMMDD; printed).
+#   About 20 minutes for 1,000 kills on F53 (2026-11-09).
 #
 # Environment: JAVA_HOME (the JDK; the PATH's otherwise), PER_DB (kills per database,
 # default 40), LIMIT_S (a time limit for the kills, in seconds; default none). Builds with
@@ -42,7 +43,7 @@ fail() {
 
 ./build.sh > /dev/null || { echo "KILL RESTART FAILED: build"; exit 1; }
 mkdir -p $LOG
-rm -rf $LOG/dbs $LOG/selfcheck
+rm -rf $LOG/dbs $LOG/selfcheck $LOG/lateexit
 rm -f $LOG/out.txt
 cp build/bergdb.jar $LOG/bergdb.jar
 CP=$LOG/bergdb.jar
@@ -52,11 +53,14 @@ echo "Kill-restart harness: seed $SEED, $KILLS kills, a new database every $PER_
 $JAVA -cp $CP bergdb.pubimp.KillRestartHarness selfcheck $LOG/selfcheck $SEED >> $LOG/out.txt 2>&1
 grep '^The planted\|^SELF-CHECK' $LOG/out.txt
 grep -q '^SELF-CHECK OK' $LOG/out.txt || fail "self-check"
+$JAVA -cp $CP bergdb.pubimp.KillRestartHarness lateexit $LOG/lateexit $SEED >> $LOG/out.txt 2>&1
+grep '^LATE EXIT' $LOG/out.txt
+grep -q '^LATE EXIT OK' $LOG/out.txt || fail "late exit"
 if [ "$KILLS" -gt 0 ]; then
     $JAVA -cp $CP bergdb.pubimp.KillRestartHarness parent $LOG/dbs $SEED $KILLS $PER_DB \
         $LIMIT_S >> $LOG/out.txt 2>&1
     grep '^Kills by phase\|^Counts\|^KILL RESTART' $LOG/out.txt
     grep -q '^KILL RESTART OK' $LOG/out.txt || fail "kills"
 else
-    echo "KILL RESTART OK: self-check only"
+    echo "KILL RESTART OK: the checks only"
 fi
