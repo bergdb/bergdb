@@ -139,8 +139,10 @@ public class Churn {
     static void start() throws Exception {
         DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false)).clock(clock);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         if (cacheBytes > 0) b.cacheSizeIndicator(cacheBytes);
-        b.startupDistance(startupDistance);
         db = b.start();
+        // After the start since bergdb 028-13 (the builder's until then, ignored by a restart):
+        // until the run sets another, a call with the setting in force writes nothing.
+        if (startupDistanceSet < 0) db.setStartupDistance(startupDistance);
     }
 
     static void restart() throws Exception {

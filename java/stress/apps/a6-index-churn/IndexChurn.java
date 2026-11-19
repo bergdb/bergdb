@@ -102,8 +102,9 @@ public class IndexChurn {
     }
 
     static void open(boolean create) {
-        DatabaseBuilder b = Factory.database().clock(clock).startupDistanceInMb(1).cacheSizeInMb(8);
+        DatabaseBuilder b = Factory.database().clock(clock).cacheSizeInMb(8);
         db = (create ? b.create(dir.getPath()) : b.open(dir.getPath())).start();
+        db.setStartupDistanceInMb(1);       // after the start since bergdb 028-13 (5 MB, clamped)
         c = db.connection();
     }
 

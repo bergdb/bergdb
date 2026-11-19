@@ -164,9 +164,10 @@ public class Kill {
         int retainMs = Integer.parseInt(a[4]);
         long maxTx = a.length > 5 ? Long.parseLong(a[5]) : Long.MAX_VALUE;
         dir.mkdirs();
-        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false)).startupDistance(300_000);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
+        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false));  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         b.cacheSizeIndicator(4_000_000);
         Db db = b.start();
+        db.setStartupDistance(300_000);     // after the start since bergdb 028-13; nothing written if in force
         try {
             // Recover: the marker, the replay, the check.
             GetData gd = db.newGetData();

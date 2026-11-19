@@ -61,7 +61,7 @@ public class SlowDrive {
     }
 
     static Db open(Clock c, int sd) {
-        Db db = Db.builder().mainStream(new MemoryStream()).clock(c).startupDistance(sd).start();
+        Db db = Db.builder().mainStream(new MemoryStream()).clock(c).start();
         db.setRetainDuration(Clock.UNITS_PER_SEC);
         db.setStartupDistance(sd);
         return db;

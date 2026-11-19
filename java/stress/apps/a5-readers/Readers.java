@@ -40,9 +40,10 @@ public class Readers {
         long retainMs = a.length > 6 ? Long.parseLong(a[6]) : 0;
         retain = retainMs * 10_000L;
         Common.rmrf(dir);
-        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false)).startupDistance(400_000);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
+        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false));  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         if (seed % 2 == 0) b.cacheSizeIndicator(3_000_000);
         db = b.start();
+        db.setStartupDistance(400_000);     // after the start since bergdb 028-13
         if (retain > 0) db.setRetainDuration(retain);
         long t0 = System.currentTimeMillis();
         Thread w = new Thread(() -> writer(seed, keys), "writer");

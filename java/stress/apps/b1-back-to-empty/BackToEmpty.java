@@ -92,9 +92,11 @@ public class BackToEmpty {
     }
 
     static Db open(File d, Clock c) throws Exception {
-        DbBuilder b = Db.builder().mainStream(new FileStream(d, false)).clock(c).startupDistance(sd);
+        DbBuilder b = Db.builder().mainStream(new FileStream(d, false)).clock(c);
         if (cacheBytes > 0) b.cacheSizeIndicator(cacheBytes);
-        return b.start();
+        Db db = b.start();
+        db.setStartupDistance(sd);      // after the start since bergdb 028-13; nothing written if in force
+        return db;
     }
 
     static void restart() throws Exception {
@@ -231,7 +233,7 @@ public class BackToEmpty {
         int dt = new int[] {1, 2, 5}[dr.nextInt(3)];             // ms a drive transaction
         int R = 1000 / dt;                                        // the retain duration in drive transactions
         // 8 R, and at least 6 startup distances of stream (values of 850 bytes on average): commits begin
-        // a reclaim iteration after twice the startup distance of stream (DatabaseBuilder.startupDistanceInMb),
+        // a reclaim iteration after twice the startup distance of stream (Db.setStartupDistance),
         // so a shorter drive need not give the space back (U13-4; seed 145 of soak 1, sd 1 MB, R = 200)
         drive = Math.min(drive, Math.max(8 * R, 6 * db.getStartupDistance() / 850));   // in force: 200 kB asked is 400 kB
         long[] keptMain = new long[drive], keptTwin = new long[drive];
