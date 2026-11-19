@@ -1219,7 +1219,6 @@ public class Reclaim implements Db.TransactionListener {
         }
     }
     
-    /** Stores the iteration table in an internal transaction. */
     /**
      * Stores the row of the iteration in progress, 'it', at CURRENT_KEY_NAME, in an internal
      * transaction of its own: after a step whose batch made index nodes dirty after the
@@ -1239,6 +1238,7 @@ public class Reclaim implements Db.TransactionListener {
         }
     }
 
+    /** Stores the iteration table in an internal transaction. */
     private void storeTable() {
         byte[] tableBytes = StringUtil.toBytes(table.serialize());
         if (stats != null) {
