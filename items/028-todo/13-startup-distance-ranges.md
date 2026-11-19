@@ -155,6 +155,42 @@ uses the distance today, checked in the code:
 So nothing needs a floor above 10, the KV's own least (028-15).
 
 
+
+Tests
+-----
+
+* Rewritten for the setter: `DbTester.testSetStartupDistanceClamped` (every
+  value of 10, 11, 100, 2,000, 399,999, 400,000, 50 MB and 10^9 taken and
+  returned, each a record; above 10^9 and 1 to 9 clamped, the clamped value
+  returned, nothing written if in force; 0, -1 and `Integer.MIN_VALUE`
+  refused, nothing written; the smallest kept over a restart and the
+  database written and read at 10 bytes); `DbTesterJavadoc.
+  testSetStartupDistanceRange` (was `testBuilderStartupDistanceLimit`);
+  `DbTester.testStartInfoReportsEffectiveDistance`, `testStartupDistance1`
+  and `2`, `testSetStartupDistanceInForceOrRefused`; `DatabaseBuilderImp`'s
+  `testStartupDistance1` (50 MB by default, then 7) and `2` (the Pub clamp,
+  1 to 5 MB, 5,000 to 1,000 MB); `LimitsTester` (its first setting by the
+  setter, its arguments around the new clamp, the returned value checked);
+  `DbTesterRestart`'s tests of the KV (the restarts that showed the builder
+  ignored now start without a setting); `Reclaim`'s
+  `testIterationsFollowTheStreamsStartupDistance` (both runs start the same
+  way now).
+* Changed because the setter's call is a record of its own after the
+  creation: `CorruptStreamTester`'s seven found cases re-located in the new
+  streams (the same kinds of damage, refused or failing a read as before;
+  seeds changed in three: 729001 to 729020, 20766 to 20774, 20765 to 20769;
+  each test's Javadoc names the new places); `DbTester.testStartupPos1` (the
+  first record's startup pos is the setter's record); `DbTesterStream`'s
+  two creation tests (the creation's setting is the default; the setter's
+  record after the force checks); `Eviction.testLoweredBudgetAfterPinsFell`
+  (550 transactions, from a sweep of 480 to 600: 490 to 520 and 550 reach
+  the state); `ScenarioTester.scenario107` (100 kB, not 10 kB, so that the
+  whole stream stays the startup section and `DagComparison`, which cannot
+  follow stream pointers, works as before).
+* `TraceExport` sets the run's sd right after the start: R(2) of a trace is
+  the setter's record, and the workload begins at R(3) (027-02).
+
+
 Log
 ---
 
