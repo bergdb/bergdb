@@ -1,6 +1,6 @@
 name = "contract"
 version = "0.1.0"
-defaultTargets = ["Contract", "contractcheck", "bridgecheck"]
+defaultTargets = ["Contract"]
 
 [[require]]
 name = "mathlib"
@@ -14,10 +14,6 @@ path = ".."
 [[lean_lib]]
 name = "Contract"
 
-[[lean_exe]]
-name = "contractcheck"
-root = "ContractCheck"
-
-[[lean_exe]]
-name = "bridgecheck"
-root = "BridgeCheck"
+# The checkers contractcheck and bridgecheck (ContractCheck.lean,
+# BridgeCheck.lean) are built from these files by the package ../contractcheck/,
+# without Mathlib (bergdb 028-24).

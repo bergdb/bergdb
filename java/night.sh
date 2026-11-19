@@ -24,7 +24,7 @@
 # output is printed and kept in build/test/night.txt.
 #
 # The night run clones HEAD of this repository into build/night/RUN/repo (RUN
-# is the date and time; lean/.lake and lean/contract/.lake are copied in, so
+# is the date and time; lean/.lake and lean/contractcheck/.lake are copied in, so
 # that lake builds only what changed) and runs there, one after another, going
 # on after a failure:
 #   1. before-commit.sh: the unit and f-tests.
@@ -109,11 +109,9 @@ git clone -q "$REPO" $SRC || { echo "NIGHT FAILED: clone" | tee $REPORT; exit 1;
 if [ -d "$REPO/lean/.lake" ]; then
     cp -R "$REPO/lean/.lake" $SRC/lean/ 2>/dev/null
 fi
-# The contract package's .lake, with Mathlib (about 8 GB): cloned on APFS (cp -c,
-# about 30 s, no disk space), so that lake neither fetches Mathlib nor builds it.
-if [ -d "$REPO/lean/contract/.lake" ]; then
-    cp -cR "$REPO/lean/contract/.lake" $SRC/lean/contract/ 2>/dev/null \
-        || cp -R "$REPO/lean/contract/.lake" $SRC/lean/contract/ 2>/dev/null
+# The contract checkers' .lake (lean/contractcheck/, no Mathlib, bergdb 028-24).
+if [ -d "$REPO/lean/contractcheck/.lake" ]; then
+    cp -R "$REPO/lean/contractcheck/.lake" $SRC/lean/contractcheck/ 2>/dev/null
 fi
 {
     echo "Night run $(basename $RUN) on $(hostname -s)"

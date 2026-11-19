@@ -47,6 +47,7 @@ import Contract.Proof.RecoverModel
 import Contract.RecoverTheorems
 import Contract.RecoverExample
 import Contract.RecoverCheck
+import Contract.RecoverCheckTheorems
 import Contract.RecoverJava
 import Contract.Proof.RecoverJava
 import Contract.RecoverLeafGap

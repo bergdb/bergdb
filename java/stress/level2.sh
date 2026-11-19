@@ -52,9 +52,8 @@
 #      and lean/contract/bridge-check.sh on the same sets (bridgecheck: the
 #      bridge's clauses to the abstract model, bergdb 030-07; first its fault
 #      test, bridge-faults.sh, on a small and a reclaim trace). About 80 s.
-#      It builds the contract package (lean/contract/, a Lake project with
-#      Mathlib); if its .lake has no Mathlib, lake exe cache get fetches the
-#      Mathlib cache first (about 5 GB; minutes, with the network).
+#      It builds the checkers in lean/contractcheck/, a Lake package without
+#      Mathlib that builds them from lean/contract/'s files (bergdb 028-24).
 #   7. Conformance with the Lean model (bergdb 011-11, 12):
 #      A2A3Check2 (a transaction meets the model's A2, A3 and A5, and Db
 #      marks what the model marks; and, since bergdb 005-04, TREE, A6' and
@@ -81,7 +80,7 @@
 #      and dither those of the model's shareFp and ditherFp.
 # Logs go to build/level2/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too. Steps 7, 8 and 8b need Lean (elan, with the toolchain of
-# ../lean/lean-toolchain and ../lean/contract/lean-toolchain); they build the
+# ../lean/lean-toolchain and ../lean/contractcheck/lean-toolchain); they build the
 # checkers with lake.
 
 cd "$(dirname "$0")/.."
@@ -201,14 +200,9 @@ for set in small drain reclaim; do
 done
 
 echo "8b. The writer's contract and the bridge on the tree traces (bergdb 030-13)"
-# The contract package (lean/contract/, with Mathlib): its Mathlib cache is fetched
-# once if it is missing (lake exe cache get, about 5 GB), then it is built.
-if [ ! -d ../lean/contract/.lake/packages/mathlib ]; then
-    (cd ../lean/contract && lake exe cache get) > $LOG/lake-contract-cache.txt 2>&1 \
-        || fail "the contract package, lake exe cache get" $LOG/lake-contract-cache.txt
-fi
-(cd ../lean/contract && lake build) > $LOG/lake-contract.txt 2>&1 \
-    || fail "the contract package, lake build" $LOG/lake-contract.txt
+# The checkers, built without Mathlib (lean/contractcheck/, bergdb 028-24).
+(cd ../lean/contractcheck && lake build) > $LOG/lake-contract.txt 2>&1 \
+    || fail "the contract checkers, lake build in lean/contractcheck" $LOG/lake-contract.txt
 sh ../lean/contract/check.sh small drain > $LOG/contract.txt 2>&1
 grep -q '^CONTRACT OK' $LOG/contract.txt || fail "lean/contract/check.sh small drain" $LOG/contract.txt
 grep '^tree-' $LOG/contract.txt | sed 's/^/   contract, /' | cut -c1-150

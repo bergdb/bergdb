@@ -104,6 +104,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? | none | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
+| [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done on its branch |
 | [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
 
 
@@ -175,3 +176,7 @@ coord-1118.
 2026-11-19. 028-21 and 028-22 registered: dirtyNodeBound for PE, and the
 Java comments of the old writer; found by an agent of coord-1118 while
 bringing 027 up to date with PE (branch `027-pe`).
+
+2026-11-19. 028-24 registered (Frans, 10:40 and 10:42) and done on the
+branch `028-24-checkers-no-mathlib`: the contract checkers build without
+Mathlib in `lean/contractcheck/`, by an agent of coord-1118.

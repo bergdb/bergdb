@@ -15,7 +15,9 @@ start, and the rest of the proofs that nothing kept here uses. They are
 at the tag `proofs-2026-11-17`, with this file as it was then, which
 describes every file and the status of every theorem. The new proofs are
 written from scratch in the Lake package `contract/` (bergdb 030-04),
-which imports the files of this package that it needs.
+which imports the files of this package that it needs. Its trace checkers,
+`contractcheck` and `bridgecheck`, are built from its files by a third
+package, `contractcheck/`, without Mathlib (bergdb 028-24).
 
 The model is that of sis-model.md (bergdb 027-01,
 [sis-model.md](../items/027-algorithms/01-docs-2026-11-12/sis-model.md));
@@ -94,7 +96,8 @@ Build and run
 
 Needs elan (`brew install elan-init`). The toolchain version is in
 `lean-toolchain`; elan downloads it on first use. No Mathlib (the
-contract package, `contract/`, has it).
+contract package's proofs, `contract/`, have it; its checkers build
+without it, `contractcheck/`).
 
     cd lean
     lake build              # checks every file but the test programs, runs the #guard tests
@@ -253,7 +256,16 @@ TP13 and TP15 are proved (`specOKTree`, `liveAppendTree`,
 Check/TreeLive.lean).
 
 What the contract package proves, and from what, is bergdb 030-04 and the
-030 items; its gate is `contract/gate.sh`.
+030 items; its gate is `contract/gate.sh`. Its checkers are built without
+Mathlib in `contractcheck/` (bergdb 028-24), from `contract/`'s own files
+(the package's `srcDir`): `ContractCheck.lean`, `BridgeCheck.lean` and the
+files they import, none of which imports Mathlib; a build there fails if
+one ever does. The level scripts and `night.sh` build them there, so they
+need no Mathlib:
+
+    cd lean/contractcheck
+    lake build              # contractcheck and bridgecheck, about 30 s
+    ../contract/check.sh small drain   # with the traces of treeconf.sh
 
 
 Reading Lean

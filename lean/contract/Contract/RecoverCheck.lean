@@ -3,13 +3,12 @@ The contract package (bergdb 030-14): K-LEVEL on a trace, computed, for the
 bridge checker (BridgeCheck.lean). The kind function of a trace is the TREE
 line's (`kindOfHeight h`, Recover.lean). The verdict on a whole trace
 (`kindsHistoryOk`) gives the clause for the history that the checker builds
-from the trace's lines (`kindsHistoryOk_meets`), the history that
-`fullHistoryOk_meets` speaks of.
+from the trace's lines (`kindsHistoryOk_meets`, RecoverCheckTheorems.lean),
+the history that `fullHistoryOk_meets` speaks of. No Mathlib: the checkers
+build without it (bergdb 028-24).
 -/
-import Mathlib.Tactic
 import Contract.Recover
 import Contract.BridgeHeap
-import Contract.Proof.BridgeInv
 
 namespace Contract
 
@@ -26,26 +25,5 @@ def kindsStepsOk (kind : Nat → Bool) (steps : List TStep) : Bool :=
 /-- K-LEVEL on a whole trace. -/
 def kindsHistoryOk (kind : Nat → Bool) (h0 : Heap) (steps : List TStep) : Bool :=
   startKindsOk kind h0 && kindsStepsOk kind steps
-
-/-- The verdict gives the clause for the trace's history. -/
-theorem kindsHistoryOk_meets (kind : Nat → Bool) (h0 : Heap) (c0 : SIS.Changes SIS.Check.BVal)
-    (steps : List TStep) (hc : kindsHistoryOk kind h0 steps = true) :
-    KindsOK kind (histOf h0 c0 steps) := by
-  simp only [kindsHistoryOk, Bool.and_eq_true] at hc
-  obtain ⟨h1, h2⟩ := hc
-  constructor
-  · intro x n hx
-    have hm : (x, Obj.key n) ∈ h0.objs.toList :=
-      Std.HashMap.mem_toList_iff_getElem?_eq_some.mpr hx
-    have := List.all_eq_true.mp h1 _ hm
-    simpa using this
-  · intro j hj
-    have hj' : j < steps.length := by simpa [histOf] using hj
-    have := List.all_eq_true.mp h2 steps[j] (List.getElem_mem hj')
-    have ht : (histOf h0 c0 steps).tree (j + 1) = steps[j].heap.tree := by
-      rw [BHist.tree_succ _ hj]
-      simp [histOf]
-    rw [ht]
-    simpa [histOf] using this
 
 end Contract

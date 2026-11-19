@@ -24,12 +24,12 @@
 # SCAN line of one transaction).
 #
 # Usage: lean/contract/bridge-faults.sh
-# Needs: the checker (cd lean/contract && lake build bridgecheck) and the traces
+# Needs: the checker (cd lean/contractcheck && lake build bridgecheck) and the traces
 # of the small and the reclaim set (java/stress/treeconf.sh small, reclaim).
 # Prints one line per fault and BRIDGE FAULTS OK or BRIDGE FAULTS FAILED.
 cd "$(dirname "$0")"
-CHECK=$(pwd)/.lake/build/bin/bridgecheck
-[ -x "$CHECK" ] || { echo "BRIDGE FAULTS FAILED: no checker; run lake build in lean/contract/"; exit 1; }
+CHECK=$(pwd)/../contractcheck/.lake/build/bin/bridgecheck
+[ -x "$CHECK" ] || { echo "BRIDGE FAULTS FAILED: no checker; run lake build in lean/contractcheck/"; exit 1; }
 G=../../java/build/traces/tree-small/mixed-1.trace
 R=../../java/build/traces/tree-reclaim/r-del-1.trace
 [ -f "$G" ] && [ -f "$R" ] || { echo "BRIDGE FAULTS FAILED: no traces (treeconf.sh small, reclaim)"; exit 1; }
