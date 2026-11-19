@@ -60,6 +60,51 @@ def idContents (s : Tree) : List (Key × NodeId) :=
   | some r => idListAt s (s.fuel r) r
   | none => []
 
+/-- A value that the walk from a sound key node reaches is named by a live key
+of what the node holds, by id. -/
+theorem Good.mem_idListAt {s : Tree} : ∀ (f : Nat) {x : NodeId} {lo : Nat} {hi : Option Nat}
+    {n : KNode}, Good s x lo hi → s.obj x = some (.key n) → n.level < f →
+    ∀ v w, v ∈ reachAt s f x → s.obj v = some (.val w) → ∃ k, (k, v) ∈ idListAt s f x
+  | 0, _, _, _, _, _, _, hf, _, _, _, _ => absurd hf (Nat.not_lt_zero _)
+  | f + 1, x, lo, hi, n, hg, hobj, hf, v, w, hv, hvw => by
+    simp only [reachAt, hobj, List.mem_cons, List.mem_flatMap] at hv
+    rcases hv with rfl | ⟨⟨c, y⟩, hm, hvy⟩
+    · rw [hobj] at hvw; cases hvw
+    · simp only [idListAt, hobj, List.mem_flatMap]
+      by_cases hk : n.leaf = true → isLong c = true
+      · obtain ⟨m, lo', hi', hm1, hm2, _, hgy⟩ := hg.child hobj hm hk
+        obtain ⟨k, hk'⟩ := Good.mem_idListAt f hgy hm1 (by omega) v w hvy hvw
+        cases hl : n.leaf with
+        | false =>
+          exact ⟨k, (c, y), hm, by simp only [idKlongList, Bool.false_eq_true, ite_false]; exact hk'⟩
+        | true =>
+          refine ⟨c :: k, (c, y), hm, ?_⟩
+          simp only [idKlongList, hk hl, ite_true, List.mem_map, Prod.mk.injEq]
+          exact ⟨(k, v), hk', rfl, rfl⟩
+      · have hl : n.leaf = true := by
+          by_contra hl
+          exact hk (fun h => absurd h hl)
+        have hs : isLong c = false := by
+          cases hc : isLong c with
+          | false => rfl
+          | true => exact absurd (fun _ => hc) hk
+        cases hg with
+        | mk _ _ _ n' hobj' _ _ _ hval _ _ _ =>
+          rw [hobj] at hobj'
+          obtain rfl : n = n' := by injection hobj' with h1; injection h1
+          obtain ⟨w', hw'⟩ := hval hl c y hm hs
+          have hvy' : v = y := by
+            cases f with
+            | zero => simpa [reachAt] using hvy
+            | succ f =>
+              simp only [reachAt, hw', List.mem_cons] at hvy
+              rcases hvy with h | h
+              · exact h
+              · simp at h
+          subst hvy'
+          refine ⟨[c], (c, v), hm, ?_⟩
+          simp [idKlongList, hl, hs, hw']
+
 /-- Transaction i of the history made node y (the trace's NEW lines; 0 is the
 start's change). -/
 def madeAt (h : BHist) (i : Nat) (y : NodeId) : Bool :=
@@ -142,14 +187,94 @@ after transaction e was made by a transaction from c to e. -/
 def RC2Tree (h : BHist) (c e : Nat) : Prop :=
   ∀ k y, (k, y) ∈ idContents ((h.tree e).at e) → ∃ i, c ≤ i ∧ i ≤ e ∧ madeAt h i y = true
 
-/- Not yet proved (bergdb 030-24):
 /-- RC2 in the contract's words gives the model's RC2. -/
 theorem rc2_of_tree {p : Params} {h : BHist} {top : Nat → Top} (hm : MeetsFull p h top)
     (hM : 1 ≤ p.M) (al : SIS.Algo BVal Nat) {c e : Nat} (he : e ≤ h.txs.length)
     (h2 : RC2Tree h c e) :
     RC2 h.spec (SIS.run h.spec al (h.ts.take e)) e c := by
-  (proof to come)
--/
+  have hb := hm.meetsBridge
+  obtain ⟨hi, ti⟩ := hm.meetsBridgeTop.inv e he
+  intro d m hd hmd hr
+  rw [run_P h al e he] at hd hr
+  obtain ⟨n0, z, nz, y, ny, h0, hl0, hz, hlz, hly, hroot, hy, hny, -, -⟩ := hi.link
+  obtain ⟨n, hn, hgr, -⟩ := hm.root_good hM he hroot
+  rw [hy] at hn
+  obtain rfl : ny = n := by injection hn with h1; injection h1
+  -- d is a value of the tree.
+  obtain ⟨w, hw⟩ : ∃ w, (h.tree e).obj d = some (.val w) := by
+    cases ho : (h.tree e).obj d with
+    | none =>
+      exfalso
+      rcases ti.other d m hd ho with rfl | ⟨tn, htn⟩
+      · rw [ti.rootNode] at hd
+        injection hd with hd
+        rw [← hd] at hmd
+        cases hmd
+      · rw [(ti.topNode _ htn).1] at hd
+        injection hd with hd
+        rw [← hd] at hmd
+        cases hmd
+    | some o =>
+      cases o with
+      | val w => exact ⟨w, rfl⟩
+      | key kn =>
+        exfalso
+        have := hi.rep.rep d _ ho
+        simp only at this
+        rw [this] at hd
+        injection hd with hd
+        rw [← hd] at hmd
+        cases hmd
+  -- So the walk reaches it, and a live key names it.
+  have hreach : d ∈ reach (h.tree e) := by
+    rcases hi.model_reach_cases hr with rfl | h1 | h1
+    · rw [ti.s0] at hw; cases hw
+    · rw [hw] at h1; cases h1
+    · exact h1
+  unfold reach at hreach
+  rw [hroot] at hreach
+  have hfuel : (h.tree e).fuel y = ny.level + 1 := by simp [Tree.fuel, hy]
+  obtain ⟨k, hk⟩ := Good.mem_idListAt _ hgr hy (by rw [hfuel]; omega) d w hreach hw
+  have hk' : (k, d) ∈ idContents ((h.tree e).at e) := by
+    rw [hi.timely.at_eq]
+    unfold idContents
+    rw [hroot]
+    exact hk
+  obtain ⟨i, hci, hie, hmade⟩ := h2 k d hk'
+  cases i with
+  | zero =>
+    -- The start makes no data node.
+    exfalso
+    have hd0 : d ∈ h.c0.new.map (·.id) := by
+      simp only [madeAt, BHist.chs, Array.getD_eq_getD_getElem?,
+        List.getElem?_toArray, List.getElem?_cons_zero, Option.getD_some, List.any_eq_true,
+        beq_iff_eq] at hmade
+      obtain ⟨nn, hnn, hid⟩ := hmade
+      exact List.mem_map.mpr ⟨nn, hnn, hid⟩
+    obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp hd0
+    have h0d : ((h.P 0).get? d).isSome = true := by
+      change ((SIS.Struct.apply [] 0 h.c0).get? d).isSome = true
+      rw [SIS.get?_apply]
+      simp only [SIS.Struct.get?, List.lookup_nil, Option.none_or, Option.isSome_map]
+      unfold SIS.newNodeOf
+      simp only [SIS.Struct.get?, List.lookup_isSome_iff, List.mem_map]
+      exact ⟨_, ⟨nn, hnn, rfl⟩, by simp [hid]⟩
+    obtain ⟨n1, hn1⟩ := Option.isSome_iff_exists.mp h0d
+    obtain ⟨n2, hn2, hd2⟩ := h.P_isData hn1 e (Nat.zero_le _) he
+    rw [hd, Option.some.injEq] at hn2
+    subst hn2
+    rw [hd2, hm.start.p0_index hn1] at hmd
+    cases hmd
+  | succ j =>
+    have hj : j < h.txs.length := by omega
+    have hd' : d ∈ h.txs[j].c.new.map (·.id) := by
+      have : (h.chs.getD (j + 1) { new := [], adds := [] }) = h.txs[j].c := by
+        simp [BHist.chs, hj]
+      simp only [madeAt, this, List.any_eq_true, beq_iff_eq] at hmade
+      obtain ⟨nn, hnn, hid⟩ := hmade
+      exact List.mem_map.mpr ⟨nn, hnn, hid⟩
+    obtain ⟨u, hu, hle⟩ := hb.data_version al hj hie he hd' hd hmd
+    exact ⟨u, hu, by omega⟩
 
 /-- **VAL-NEW** (bergdb 030-22, section 2.3): in each transaction, a put makes
 a new value node, which the key names after it, and a key that the
