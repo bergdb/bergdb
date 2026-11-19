@@ -102,7 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance's two ranges disagree | decision | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
-| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the startup distance in the primordial record | decided (21:37); A, B or C | open, waits for Frans |
+| [028-18](18-one-startup-transaction.md) | Change | One startup transaction: the creation whole (option C) | C (09:53) | in progress: made, gates but kill-restart OK |
 
 
 Closed
@@ -169,3 +169,6 @@ coord-1118.
 028-18 registered: one startup transaction (Frans, 21:30 and 21:37).
 
 2026-11-19. 028-19 registered: PE's speed and reclaim's pace (Frans, 09:32).
+
+2026-11-19. 028-18: Frans chose option C (09:53, 09:59); made on the
+branch `028-18-option-c` by an agent of coord-1118.
