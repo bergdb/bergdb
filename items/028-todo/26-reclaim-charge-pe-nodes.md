@@ -265,7 +265,13 @@ kept as a control (no change expected: no reclaim).
 State
 -----
 
-STATE
+2026-11-19, 13:12. **GATED e27141f4** (the code; later commits change
+items only), on the branch `028-26-reclaim-charge` in
+/Users/f/fl/bench/2026-11-19/rch/clone, with main 5bdb6773 (028-20,
+028-23) and 028-21's branch 94ecce18 merged: BEFORE COMMIT OK (152 s),
+LEVEL 1 OK, LEVEL 3 OK, LEVEL 2 OK (full), KILL RESTART OK (1,000 kills
+and 50 exits, seed 20261126). Not merged into main, not pushed: the
+landing waits for Frans's choice in Decision (A recommended).
 
 
 Log
@@ -281,3 +287,6 @@ stopped at coord-1118's word to merge main (028-20, 028-23) and 028-21's
 branch (94ecce18) first. `testLastStepWithinRecordLimit`'s comment
 brought to 028-21's bound (a probe of its user transactions: at most 902
 index nodes, 175 kB; 866 with the bound before 028-21, on PE's trees).
+Gated on e27141f4 from 11:59 to 13:11 (State). The Decision section
+at coord-1118's word: option A changes the stream and adds a mechanism,
+so the landing waits for Frans.
