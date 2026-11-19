@@ -5,8 +5,9 @@ import java.util.*;
 import bergdb.common.StringUtil;
 
 /**
- * A randomized test of the delete (the upward unlink of bergdb 023-05, P1, P4, and the merges
- * of 024-21), on the Dag alone, all in memory, as DagFuzz: random transactions of puts and
+ * A randomized test of the delete (until record format 8 the upward unlink of bergdb 023-05,
+ * P1, P4, and the merges of 024-21; since then the writer PE's joins, cuts and root collapse,
+ * bergdb 026-25), on the Dag alone, all in memory, as DagFuzz: random transactions of puts and
  * deletes, keys sorted in each transaction as Db sorts them. After each transaction it checks,
  * against a model of every key's history:
  *
@@ -14,8 +15,7 @@ import bergdb.common.StringUtil;
  *   scans at every time: forward and backward, of every key, and from random start keys,
  *       inclusive and not, with a limit, at most 'scans' of them a time;
  *   the tree at the latest time: every key node reachable then has a live klong, but the
- *       space root when it is a segment leaf and the leaves the climb kept because a node
- *       above was made by the transaction (Dag.statKeptNew); every inner node's smallest live
+ *       space root when it is a segment leaf; every inner node's smallest live
  *       klong is the empty key (023-04, LE-b; 023-05, P4); every live key of a segment leaf is
  *       in the range its parents' klongs give it, at or after the klong that leads to it and
  *       before the next one, as every reader assumes; and the keys reachable are the model's
@@ -37,7 +37,9 @@ import bergdb.common.StringUtil;
  * of a transaction's keys, a second operation on the key later in the transaction (a delete
  * after a put, a put after a delete), as two keys that a KeyTransformation makes one, and
  * then keeps one operation a key, the last one, at the key's first place, so that the Dag
- * gets one operation a key, as from Db. Since bergdb 024-16 Db refuses such a transaction
+ * gets one operation a key, as from Db. Since record format 8 (bergdb 026-25) the Dag gets a
+ * transaction's operations as one batch in key order (Dag.putKvs), as Db sorts them, so
+ * neither changes what the Dag gets. Since bergdb 024-16 Db refuses such a transaction
  * (Db.transformKeys); from 2026-11-10 it kept the last operation (024-10), until release
  * 2026.4 the put (bergdb 023-08, review C, fault 12 and X5 (c), and section 7). Until
  * 2026-11-10 both reached the Dag, the last giving the value.
@@ -80,18 +82,13 @@ public class UnlinkFuzz {
     final TreeMap<String, TreeMap<Long, String>> model = new TreeMap<String, TreeMap<Long, String>>(BYTES);
     final List<String> log = new ArrayList<String>();
     int fifoNext = 0, fifoFirst = 0;
-    long keptBefore;
     static long fillChecks;
     static long deadMax;
-    /** Nodes made and reported replaced in one transaction: taken back, never written. */
-    final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-    final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
 
     UnlinkFuzz(long seed) {
         this.seed = seed;
         this.rnd = new Random(seed);
         this.dag = Dag.createEmpty(0, MAX_NODE, FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
-        this.keptBefore = Dag.statKeptNew;
     }
 
     String key(int i) {
@@ -112,12 +109,9 @@ public class UnlinkFuzz {
         pd.pointerFollower = FOLLOWER;
         pd.nodeChangeListener = new Dag.NodeChangeListener() {
             public void topNodeCreated(TopNode node) {}
-            public void keyNodeCreated(KeyNode node) { madeNow.add(node); }
+            public void keyNodeCreated(KeyNode node) {}
             public void valueNodeCreated(ValueNode node, long[] key) {}
             public void keyNodeChanged(KeyNode node) {}
-            public void keyNodeReplaced(KeyNode node) {
-                if (madeNow.contains(node)) takenBack.add(node);
-            }
         };
         GetData gd = dag.newGetData();
         gd.pointerFollower = FOLLOWER;
@@ -169,10 +163,20 @@ public class UnlinkFuzz {
                     it.remove();
                 }
             }
+            // The Dag gets the transaction as one batch in key order (Db.putKvs).
+            TreeMap<String, String> batch = new TreeMap<String, String>(BYTES);
+            for (String[] e : list) batch.put(e[0], e[1]);
+            final long[][] keys = new long[batch.size()][];
+            final byte[][] values = new byte[batch.size()][];
+            int k = 0;
+            for (Map.Entry<String, String> e : batch.entrySet()) {
+                keys[k] = Keys.toSegments(e.getKey());
+                values[k++] = e.getValue() == null ? null : StringUtil.toBytes(e.getValue());
+            }
+            dag.putKvs(keys, values, pd);
+            pd.clearFast();
             for (String[] e : list) {
                 String value = e[1];
-                dag.putKv(Keys.toSegments(e[0]), value == null ? null : StringUtil.toBytes(value), pd);
-                pd.clearFast();
                 TreeMap<Long, String> m = model.get(e[0]);
                 if (m == null) {
                     m = new TreeMap<Long, String>();
@@ -182,13 +186,11 @@ public class UnlinkFuzz {
                 sb.append(value == null ? " del " : " put ").append(e[0]);
             }
             pd.clear();
-            madeNow.clear();
             log.add(sb.toString());
 
             String err = checkGets(tt, gd);
             if (err == null) err = checkScans(tt);
             if (err == null) err = checkTree(tt);
-            if (err == null) err = checkTakenBack(tt);
             if (err == null) {
                 Dag.Fill fill = dag.checkFill(tt, gd);
                 err = fill.error;
@@ -196,38 +198,6 @@ public class UnlinkFuzz {
                 deadMax = Math.max(deadMax, fill.deadMax);
             }
             if (err != null) return "after T" + i + ": " + err;
-        }
-        return null;
-    }
-
-    /**
-     * No pointer of a node reachable at any time, deleted or shadowed klongs too, names a node
-     * that a transaction took back: such a node is never written, so a written pointer to it
-     * would have no position (bergdb 023-05, P5; 023-07, section 5.1).
-     */
-    String checkTakenBack(long tt) {
-        Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-        ArrayDeque<KeyNode> todo = new ArrayDeque<KeyNode>();
-        for (long t = 0; t <= tt; t += 10) {
-            GetData gd = dag.newGetData();
-            gd.pointerFollower = FOLLOWER;
-            KeyNode root = dag.getTopDs().findRoot(t, gd);
-            if (root != null && seen.add(root)) todo.add(root);
-        }
-        while (!todo.isEmpty()) {
-            KeyNode n = todo.poll();
-            if (takenBack.contains(n)) return "taken-back key node " + System.identityHashCode(n) + " reachable";
-            int sz = n.getSize();
-            for (int i = 0; i < sz; i++) {
-                if (!Klong.isKey(n.getKlong(i))) continue;
-                Node c = n.getPointerNode(i);
-                if (c == null) continue;
-                if (takenBack.contains(c)) {
-                    return "key node " + System.identityHashCode(n) + " klong " + i
-                            + " points to taken-back node " + System.identityHashCode(c);
-                }
-                if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
-            }
         }
         return null;
     }
@@ -310,9 +280,7 @@ public class UnlinkFuzz {
         gd.pointerFollower = FOLLOWER;
         KeyNode root = dag.getTopDs().findRoot(tt, gd);
         int[] liveKeys = new int[1];
-        long kept = Dag.statKeptNew - keptBefore;
-        String err = walk(root, tt, -1, Long.MAX_VALUE, true, liveKeys,
-                new int[] {(int) Math.min(1000, kept)});
+        String err = walk(root, tt, -1, Long.MAX_VALUE, true, liveKeys, new int[] {0});
         if (err != null) return err;
         int expected = 0;
         for (String key : model.keySet()) if (valueAt(key, tt) != null) expected++;
@@ -383,7 +351,6 @@ public class UnlinkFuzz {
         long first = Long.parseLong(args[0]);
         int rounds = Integer.parseInt(args[1]);
         int fails = 0;
-        long unlinked0 = Dag.statUnlinked, relabels0 = Dag.statRelabels;
         for (long seed = first; seed < first + rounds; seed++) {
             UnlinkFuzz f = new UnlinkFuzz(seed);
             String error;
@@ -403,19 +370,10 @@ public class UnlinkFuzz {
                 break;
             }
         }
-        System.out.println("unlinked " + (Dag.statUnlinked - unlinked0) + ", climbs " + Dag.statClimbs
-                + ", empty keys pointed to the next child " + (Dag.statRelabels - relabels0)
-                + ", empty space roots kept " + Dag.statKeptNew
-                + ", collapses " + Dag.statCollapses);
-        System.out.println("nodes taken back by the climb " + Dag.statTakenBack
-                + " (roots " + Dag.statRootsTakenBack + ")");
-        System.out.println("merges " + Dag.statMerges + " (two nodes " + Dag.statMergesTwo
-                + ", leaves " + Dag.statMergeLeaves + ", taken back " + Dag.statMergeTaken
-                + "), sibling follows "
-                + Dag.statSiblingFollows + ", descents " + Dag.statMergeDescents
-                + "; with two klongs of one compare value in the parent " + Dag.statMergeDup
-                + ", a left node made by the transaction " + Dag.statMergeMadeL
-                + ", a right one " + Dag.statMergeMadeR + "; BU1 checked after "
+        System.out.println("the writer: " + Dag.statTransactions + " transactions, appends "
+                + Dag.statAppends + ", nodes replaced " + Dag.statReplaces + ", cuts " + Dag.statCuts
+                + ", joins " + Dag.statJoins + ", collapses " + Dag.statCollapses + ", new roots "
+                + Dag.statNewRoots + ", dropped " + Dag.statDropped + "; BU1 checked after "
                 + fillChecks + " transactions (m = " + Dag.minFill(MAX_NODE) + ")");
         System.out.println("compactions of option 2 " + Dag.statCompactions + " (theta = "
                 + Dag.theta(MAX_NODE) + "), at most " + deadMax

@@ -43,13 +43,14 @@ import bergdb.common.StringUtil;
  *
  * Properties: maxnode (8), keys (200), n (300), ops (max ops per transaction, 4),
  * exact=1 (exactly ops ops), del (percent deletes, 0), long=1 (two segments for half
- * the keys), unsorted=1 (do not sort the ops), seeds (10), debugA6=1.
+ * the keys), unsorted=1 (until record format 8: the ops in their random order; since then the
+ * Dag gets a transaction as one batch in key order, bergdb 026-25), seeds (10), debugA6=1.
  *
  * shape=long (bergdb 024-09, step A1) takes the keys from UnlinkFuzz's long shape instead
  * (longShapeKey: 'keys' distinct keys of 1 to 5 segments that share prefixes; long is then
- * not used): many small segment trees that come and go, so that a transaction makes a
- * segment root, splits it in place and empties it again. That is where a klong to a node
- * taken back was left (fault 12 of bergdb 023-08, review C), which A-COPY counts as a
+ * not used): many small segment trees that come and go. Until record format 8 a transaction
+ * made a segment root, split it in place and emptied it again; that is where a klong to a
+ * node taken back was left (fault 12 of bergdb 023-08, review C), which A-COPY counts as a
  * failure: the node is not made by the transaction, once taken back, nor on the writer's
  * paths.
  */
@@ -98,7 +99,7 @@ public class A2A3Check2 {
     static long trans, transA2, transA3, transA5, transDead;
     static long created, createdKey, createdTop, createdValue, notCurrentCreated, notCurrentCreatedValue;
     static long changed, changedNotCurrent, preexistingChangedNotCurrent;
-    static long marked, markedDead, markedDeadPreexisting, resurrected, takenBack;
+    static long marked, markedDead, markedDeadPreexisting, resurrected, takenBack, joins;
     // Net effect: nodes with a klong at tt that are not current (the model's A2); the step-3
     // set of Db (marks of ops that change something, minus replaced nodes)
     // compared with the model's marked set.
@@ -384,6 +385,7 @@ public class A2A3Check2 {
             public void keyNodeChanged(KeyNode node) { ch.add(node); opMarks.add(node); opChanged[0] = true; }
             public void keyNodeReplaced(KeyNode node) { rp.add(node); }
             public void topNodeReplaced(TopNode node) { rp.add(node); }
+            public void keyNodeOnPath(KeyNode node) { mk.add(node); opMarks.add(node); }
         };
         final Dag.PointerListener inner = pd.pointerListener;
         pd.pointerListener = new Dag.PointerListener() {
@@ -421,23 +423,28 @@ public class A2A3Check2 {
                 order = new ArrayList<long[]>(sorted.keySet());
             }
             cr.clear(); ch.clear(); mk.clear(); crValue.clear(); rp.clear(); javaMarked.clear();
-            for (long[] seg : order) {
-                String value = sorted.get(seg);
-                opMarks.clear();
-                opChanged[0] = false;
-                dag.putKv(seg, value == null ? null : StringUtil.toBytes(value), pd);
-                pd.clearFast();
-                if (opChanged[0]) javaMarked.addAll(opMarks);
+            // Since record format 8 the Dag gets the transaction as one batch in key order, as
+            // Db gives it, whatever 'order' is (Dag.putKvs; bergdb 026-25).
+            long[][] keys = sorted.keySet().toArray(new long[0][]);
+            byte[][] values = new byte[keys.length][];
+            for (int k = 0; k < keys.length; k++) {
+                String value = sorted.get(keys[k]);
+                values[k] = value == null ? null : StringUtil.toBytes(value);
             }
+            opMarks.clear();
+            opChanged[0] = false;
+            long joins0 = Dag.statJoins;
+            dag.putKvs(keys, values, pd);
+            joins += Dag.statJoins - joins0;
+            pd.clearFast();
+            if (opChanged[0]) javaMarked.addAll(opMarks);
             pd.clear();
-            // A node made by the transaction and taken back in it (bergdb 023-05, P1; Dag.takeBack)
-            // is reported as made and as replaced: nothing points to it and it is never
-            // written, so it is not part of the transaction's net effect.
+            // Until record format 8 a node made by the transaction and taken back in it (bergdb
+            // 023-05, P1; Dag.takeBack) was reported as made and as replaced: it was left out
+            // of the net effect. The writer of format 8 makes no such node.
             for (Node x : rp) {
-                if (cr.remove(x)) {
+                if (cr.contains(x)) {
                     takenBack++;
-                    ch.remove(x);
-                    mk.remove(x);
                 }
             }
 
@@ -567,7 +574,9 @@ public class A2A3Check2 {
         System.out.println("  created index nodes " + created + " (key " + createdKey + ", top "
                 + createdTop + "), not current at the end " + notCurrentCreated
                 + "; created value nodes " + createdValue + ", not current " + notCurrentCreatedValue);
-        System.out.println("  taken back (made and emptied in a transaction, bergdb 023-05) " + takenBack);
+        System.out.println("  made and replaced in a transaction (taken back until record format 8, "
+                + "bergdb 023-05; none since, 026-25) " + takenBack);
+        System.out.println("  joins (merges) of the writer " + joins);
         System.out.println("  changed key nodes " + changed + ", not current at the end "
                 + changedNotCurrent + " (pre-existing " + preexistingChangedNotCurrent + ")");
         System.out.println("  marked index nodes (followed, created, changed) " + marked

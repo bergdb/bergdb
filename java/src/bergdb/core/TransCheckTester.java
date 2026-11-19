@@ -22,6 +22,9 @@ public class TransCheckTester {
         void make(KeyNode root);
     }
 
+    /** The time of the transaction in which the fault is made. */
+    private static long faultTime;
+
     /**
      * Puts /a, /b and /c, then puts 'keys' in one transaction, with 'fault' made in the space
      * root just before the Dag gets key 'at'; returns the check's message.
@@ -40,7 +43,10 @@ public class TransCheckTester {
                 public void nodeTouched(Node node) {}
                 public void nodeReplaced(Node node) {}
                 public void kvApplied(long[] key, byte[] value) {
-                    if (n++ == at) fault.make(root);
+                    if (n++ == at) {
+                        faultTime = db.internal().x().putData.tt;
+                        fault.make(root);
+                    }
                 }
             };
             TransCheck.faultTest = true;
@@ -120,7 +126,9 @@ public class TransCheckTester {
 
     /**
      * A bitmap at the transaction's time deletes the klong of /a, a key the transaction does
-     * not change: the contents.
+     * not change: the contents. The fault adds the transaction's time klong first: since record
+     * format 8 the Dag gets the transaction's keys as one batch, after the hook of each
+     * (bergdb 026-25), so no klong of the transaction is there yet.
      */
     @Nano
     public static void testOtherKeyDeleted() {
@@ -128,6 +136,7 @@ public class TransCheckTester {
         assertFound(failure(new String[] {"/d", "/e"}, 1, new Fault() {
             public void make(KeyNode root) {
                 long bitmap = Klong.delete(Klong.createDelete(), firstKey(root));
+                root.addToEnd(Klong.createTime(faultTime), null, -1);
                 root.addToEnd(bitmap, null, -1);
             }
         }), "is lost or changed");

@@ -1,7 +1,7 @@
 /-
 The tree checker, the whole run (bergdb 024-12, section 5.5): the model's
 `init` and `step` (SIS/Algorithm.lean), with the tree's `exec`
-(SIS/Tree/Spec.lean) for the change of every transaction, run from R(0) over a
+(since record format 8 PE's, SIS/Tree/Pe.lean; until then SIS/Tree/Spec.lean's) for the change of every transaction, run from R(0) over a
 trace's transactions; its records and D compared with Java's. The model then
 has, of Java's run, only the operations of each transaction, the id of the
 first node it makes, the startup pos Java chose and the first available time:
@@ -77,7 +77,7 @@ def wholeRun (p : Params) (tr : Trace) (tt : TTrace) : List String × Nat := Id.
     let r := recs.getD i default
     -- The tree's change, from the model's own P (as P@(i-1): TP19).
     let pm := SIS.Fast.nodeMap db.P
-    let c := SIS.Tree.exec p (txs.getD i default) i (fun x => pm[x]?)
+    let c := SIS.Tree.Pe.exec p (txs.getD i default) i (fun x => pm[x]?)
     let spi : Spec BVal Nat := { base with exec := fun _ _ _ => c }
     db := step spi al db i
     match db.S.getLast?, jrecs[i]? with

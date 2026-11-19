@@ -1478,10 +1478,8 @@ public class Db implements AutoCloseable {
                 }
             }
             
-            public void keyNodeTakenBack(KeyNode node) {
-                if (transCheck != null) transCheck.takenBack(node);
-                keyNodeReplaced(node);
-                takenBackInTrans.add(node);
+            public void keyNodeOnPath(KeyNode node) {
+                markAtEndOfOp(node);
             }
             
             public void topNodeReplaced(TopNode node) {
@@ -1798,12 +1796,15 @@ public class Db implements AutoCloseable {
 
     // ======== Marking: step 3 of a transaction ========
     //
-    // The index nodes that an operation (one put or delete of the transaction) follows,
-    // creates or changes get dirty when the operation ends, and only if it changed something:
-    // a delete of a key that does not exist marks nothing. At the end of the transaction, a
-    // node that the transaction replaced (Dag.handleFullNode, TopDs.newSuperRoot) is no longer
-    // current; if it got dirty in the transaction, it is clean again and leaves D, since its
-    // latest version is still good for every earlier time. So step 3 marks exactly the nodes
+    // The index nodes that an operation creates or changes, or that are on its path (the
+    // space root and the super root that it follows, and the nodes the writer reports on the
+    // path of its change, keyNodeOnPath), get dirty when the operation ends, and only if it
+    // changed something: a delete of a key that does not exist marks nothing. Since record
+    // format 8 the operation is the transaction's whole batch (Dag.putKvs; bergdb 026-25);
+    // until then each put or delete. At the end of the transaction, a node that the
+    // transaction replaced (PeWriter, TopDs.newSuperRoot) is no longer current; if it got
+    // dirty in the transaction, it is clean again and leaves D, since its latest version is
+    // still good for every earlier time. So step 3 marks exactly the nodes
     // that the Lean model marks: the index nodes current at the transaction time with a node
     // created or changed by the transaction below them (T13 in lean/; bergdb 011-11,
     // M2). Before 2026-10-16, every such node got dirty at once, also on the path of a delete
@@ -1818,9 +1819,6 @@ public class Db implements AutoCloseable {
     
     /** Whether the current operation changed the Dag. */
     private boolean opChanged = false;
-    
-    /** The nodes that the current transaction made and took back (bergdb 023-05, P4). */
-    private final ArrayList<Node> takenBackInTrans = new ArrayList<Node>();
     
     /** The nodes that the current transaction replaced. */
     private final Set<Node> replacedInTrans = 
@@ -1872,12 +1870,6 @@ public class Db implements AutoCloseable {
         }
         replacedInTrans.clear();
         touchMarks = 0;
-        // Nodes the transaction made and took back (bergdb 023-05, P4, as P2), out of D above,
-        // leave the node table: never written, and no node names them.
-        for (Node n : takenBackInTrans) {
-            cache.dropNode(n);
-        }
-        takenBackInTrans.clear();
     }
 
     /**
@@ -3437,7 +3429,6 @@ public class Db implements AutoCloseable {
         opMarks.clear();
         opChanged = false;
         replacedInTrans.clear();
-        takenBackInTrans.clear();
         touchMarks = 0;
         if (transCheck != null) transCheck.begin(dag.getTopDs().getSuperRoot(), x.trans.tt);
 
@@ -3460,9 +3451,16 @@ public class Db implements AutoCloseable {
         // with the same operations run the same and write the same stream. A user
         // transaction's value transformations ran before the go point, in this order
         // (transformValues(), bergdb 026-06); an internal transaction's, the row of a reclaim
-        // step, run in the put loop: each reads the previous value at tt, as before.
-        // The record holds the KVs put, and the startup's rerun applies them in their stored
-        // order, this order, and does not sort.
+        // step, run here, before the Dag gets the operations: each reads the previous value at
+        // tt, which is the value before the transaction, as the transaction has one operation
+        // a key. Since record format 8 the Dag gets the transaction's operations as one batch
+        // (Dag.putKvs, the writer PE; bergdb 026-25), so a value transformation runs before any
+        // operation is applied: a reclaim step's row stores the bytes that the step's touch made
+        // dirty (Trans.dirtiedBytes), and no longer those of the puts that sort before the row.
+        // The record holds the KVs put, and the startup's rerun gives them to the Dag in their
+        // stored order, this order, and does not sort.
+        final long[][] keys = new long[kvs.length][];
+        final byte[][] values = new byte[kvs.length][];
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
@@ -3475,11 +3473,12 @@ public class Db implements AutoCloseable {
             if (kvHooks != null) {
                 kvHooks.kvApplied(kv.getKey(), kv.getValue());
             }
-            dag.putKv(kv.getKey(), kv.getValue(), x.putData);
-            endOfOp(false);
-            
-            x.putData.clearFast();
+            keys[i] = kv.getKey();
+            values[i] = kv.getValue();
         }
+        dag.putKvs(keys, values, x.putData);
+        endOfOp(false);
+        x.putData.clearFast();
         
         endOfTrans();
         if (transCheck != null) transCheck.end(dag.getTopDs().getSuperRoot(), kvs);
@@ -3811,7 +3810,8 @@ public class Db implements AutoCloseable {
      * 772,454 nodes in one transaction, pinned at once and then written in one record of 206
      * MB (bergdb 024-07, section 2). The range was walked for
      * the nodes that held deleted keys only, which no put reaches; since format 6 a delete
-     * unlinks the nodes it empties (Dag.deleteUpward), so every index node that a lookup
+     * unlinks the nodes it empties (since format 8 PeWriter drops them; until then
+     * Dag.deleteUpward), so every index node that a lookup
      * reaches, but an empty space root, has a live key below it, and the put of that key, the
      * user's or a step's rewrite, makes the node dirty (024-07, section 4; the Lean model's
      * T_cover).</p>
@@ -4108,7 +4108,6 @@ public class Db implements AutoCloseable {
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
             x.nextVpos = nodeStream.getNextPos() + 1;
-            x.putData.spaceSplitCount = 0;
         }
         
         /**
@@ -4188,9 +4187,12 @@ public class Db implements AutoCloseable {
 
         /**
          * The transaction being executed is about to give the Dag this operation (Db.putKvs,
-         * before Dag.putKv): the key, and the value after its transformation, null for a
+         * before Dag.putKvs): the key, and the value after its transformation, null for a
          * delete; in the order the Dag gets them. A delete that changes nothing is told here
          * too, and makes no value node (bergdb 024-12, section 2.6: the trace's OP lines).
+         * Since record format 8 (bergdb 026-25) the Dag gets them as one batch: every
+         * operation is told before the first value node is made (valueNodeCreated, with its
+         * key).
          */
         public default void kvApplied(long[] key, byte[] value) {}
 

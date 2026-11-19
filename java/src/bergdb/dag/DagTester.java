@@ -125,11 +125,7 @@ public class DagTester {
         PutData pd = pd(dag);
         pd.tt = 10;
         
-        dag.putKv(Keys.toSegments("/longerKey1"), StringUtil.toBytes("value"), pd);
-        
-        pd.keyAccessPath.clear();
-        
-        dag.putKv(Keys.toSegments("/longerKey2"), StringUtil.toBytes("value"), pd);
+        batchOf(dag, pd, "/longerKey1", "value", "/longerKey2", "value");
         
         GetData gd = gd(dag);
         byte[] value = dag.getOne(20, Keys.toSegments("/longerKey1"), gd);
@@ -153,10 +149,7 @@ public class DagTester {
         Dag dag = emptyDag(0);
         PutData pd = pd(dag);
         pd.tt = 10;
-        dag.putKv(Keys.toSegments("/a"), StringUtil.toBytes("value"), pd);
-        pd.clearFast();
-        dag.putKv(Keys.toSegments("/abcdefXX"), StringUtil.toBytes("value"), pd);
-        pd.clearFast();
+        batchOf(dag, pd, "/a", "value", "/abcdefXX", "value");
 
         final ArrayList<String> changes = new ArrayList<String>();
         pd.nodeChangeListener = new Dag.NodeChangeListener() {
@@ -213,16 +206,18 @@ public class DagTester {
                 keys.add("/k/" + rnd.nextInt(keyCount));
             }
             
+            List<String> ks = new ArrayList<String>();
+            List<byte[]> vs = new ArrayList<byte[]>();
             for (String key : keys) {
                 String value = rnd.nextInt(4) == 0 ? null : "v" + tt + key;
-                dag.putKv(Keys.toSegments(key), value == null ? null : StringUtil.toBytes(value), pd);
-                pd.clearFast();
+                ks.add(key);
+                vs.add(value == null ? null : StringUtil.toBytes(value));
                 if (!model.containsKey(key)) {
                     model.put(key, new TreeMap<Long, String>());
                 }
                 model.get(key).put(tt, value);
             }
-            pd.clear();
+            batch(dag, pd, ks, vs);
         }
         
         for (String key : model.keySet()) {
@@ -242,20 +237,22 @@ public class DagTester {
         // Splits space root node. New super root node (top node) needed.
         
         String[] kvs = new String[] {
-                "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0"
+                "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0", "/k5", "v5"
         };
         Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
         PutData pd = pd(dag);
         pd.tt = 10;
         
-        for (int i = 0; i < kvs.length; i += 2) {
-            dag.putKv(Keys.toSegments(kvs[i]), StringUtil.toBytes(kvs[i + 1]), pd);
-            pd.clearFast();
-        }
-        pd.clear();
+        final TopNode top0 = dag.getTopDs().getSuperRoot();
+        batchOf(dag, pd, kvs);
         
-        Assert.assertEquals(1, pd.spaceSplitCount);
+        // Since record format 8 the transaction's six keys, more than h = 3 and more than the
+        // node with its time klong holds, are cut into two leaves under a new root, which a
+        // new top node names (bergdb 026-25). Five keys fill the empty root.
+        Assert.assertTrue("a new super root", dag.getTopDs().getSuperRoot() != top0);
+        Assert.assertTrue("an inner space root",
+                !dag.getTopDs().findRoot(10, gd(dag)).isSegmentLeaf());
         GetData gd = gd(dag);
         for (int i = 0; i < kvs.length; i += 2) {
             byte[] value = dag.getOne(10, Keys.toSegments(kvs[i]), gd);
@@ -268,12 +265,16 @@ public class DagTester {
         }
     }
     
+    /**
+     * A key put again and again, one transaction a time, at node size 6: its segment leaf
+     * fills with dead klongs and is replaced by one new node, its live list (until record
+     * format 8 a time split, "time-split-1"); every value at its time.
+     */
     @Nano
     public static void testTimeSplit1a() {
-        // Tests a time-split-1.
-
         Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         PutData pd = pd(dag);
+        final long replaced0 = Dag.statReplaces + Dag.statCompactions;
         
         for (int i = 0; i < 4; i++) {
             String keyString = "account-id-0";
@@ -282,13 +283,12 @@ public class DagTester {
             pd.clearFast();
         }
         
-        Assert.assertEquals(1, pd.timeSplitCount);
-        
-        KeyNode node = (KeyNode) dag.findNode(new int[]{0, 3}, gd(dag));
-        KlongWithPointer kwi = new KlongWithPointer();
-        node.searchEq(Long.MAX_VALUE, Klong.createCompareValue(Keys.toBytes("-id-0")), kwi);
-        
-        Assert.assertEquals(4, kwi.klongTime);
+        Assert.assertTrue("a node replaced by one", Dag.statReplaces + Dag.statCompactions > replaced0);
+        GetData gd = gd(dag);
+        for (int t = 1; t <= 4; t++) {
+            Assert.assertEquals("v at " + t, StringUtil.toString(
+                    dag.getOne(t, Keys.toSegments("account-id-0"), gd)));
+        }
     }
     
     @Nano
@@ -313,9 +313,7 @@ public class DagTester {
         PutData pd = pd(dag);
         pd.tt = 20;
         
-        for (int i = 0; i < 4; i++) {
-            dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
-        }
+        batchOf(dag, pd, "/prefix-0", "v0", "/prefix-1", "v1", "/prefix-2", "v2", "/prefix-3", "v3");
         
         StatsNodeVisitor v = new StatsNodeVisitor();
         dag.visitMemoryNodes(v);
@@ -339,15 +337,21 @@ public class DagTester {
         PutData pd = pd(dag);
         pd.tt = 20;
         Random random = new Random(21016);
+        List<String> ks = new ArrayList<String>();
+        List<byte[]> vs = new ArrayList<byte[]>();
         for (int i = 0; i < 400; i++) {
             String key = "/k" + random.nextInt(40) + "/" + random.nextInt(4);
             byte[] value = random.nextInt(8) == 0 ? null : StringUtil.toBytes("v" + i);
-            dag.putKv(Keys.toSegments(key), value, pd);
-            pd.clearFast();
+            ks.add(key);
+            vs.add(value);
             if (i % 7 == 6) {
+                batch(dag, pd, ks, vs);
+                ks.clear();
+                vs.clear();
                 pd.tt += 10;
             }
         }
+        batch(dag, pd, ks, vs);
         final Node superRoot = dag.getTopDs().getSuperRoot();
         
         final List<Node> visited = new ArrayList<Node>();
@@ -461,9 +465,15 @@ public class DagTester {
         pd.tt = 20;
         byte[] longKey = new byte[400 * 1000];
         java.util.Arrays.fill(longKey, (byte) 'k');
-        dag.putKv(Keys.toSegments(longKey), StringUtil.toBytes("long"), pd);
-        pd.clearFast();
-        dag.putKv(Keys.toSegments("/a"), StringUtil.toBytes("short"), pd);
+        long[][] keys = {Keys.toSegments("/a"), Keys.toSegments(longKey)};
+        if (Keys.compareArrays(keys[0], keys[1]) > 0) {
+            keys = new long[][] {keys[1], keys[0]};
+        }
+        byte[][] values = new byte[2][];
+        for (int i = 0; i < 2; i++) {
+            values[i] = StringUtil.toBytes(keys[i].length == 1 ? "short" : "long");
+        }
+        dag.putKvs(keys, values, pd);
         pd.clearFast();
         
         StatsNodeVisitor v = new StatsNodeVisitor();
@@ -558,10 +568,15 @@ public class DagTester {
             }
         };
         
+        List<String> ks = new ArrayList<String>();
+        List<byte[]> vs = new ArrayList<byte[]>();
         for (int i = 0; i < n; i++) {
-            dag.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
-            pd.clearFast();         // as Db after each put: the key access path of one put
-            if (i % 10 == 9) {
+            ks.add("/prefix-" + i);
+            vs.add(StringUtil.toBytes("v" + i));
+            if (i % 10 == 9 || i == n - 1) {
+                batch(dag, pd, ks, vs);
+                ks.clear();
+                vs.clear();
                 pd.tt += 10;
                 now[0] = pd.tt;
             }
@@ -617,12 +632,14 @@ public class DagTester {
             replaced.clear();
             topNodes[0] = 0;
             pd.tt = 20 + 10 * round;
+            List<String> ks = new ArrayList<String>();
+            List<byte[]> vs = new ArrayList<byte[]>();
             for (int i = 0; i < 40; i++) {
                 String key = "/k/" + (1000 + 2 * i + round);
-                dag.putKv(Keys.toSegments(key), StringUtil.toBytes("v" + key), pd);
-                pd.clearFast();
+                ks.add(key);
+                vs.add(StringUtil.toBytes("v" + key));
             }
-            pd.clear();
+            batch(dag, pd, ks, vs);
             
             Set<Node> now = reachableAt(dag, pd.tt);
             for (Node x : created) {
@@ -653,17 +670,51 @@ public class DagTester {
     }
     
     /**
-     * Fault 12 (bergdb 023-08, review C; the check of it, sections 3 and 4, ShadowProbe mode
-     * 2): one transaction puts z keys after a history of b keys in one segment tree, then
-     * deletes every b key, in that order, out of key order, as a Core KeyTransformation could
-     * give them to the Dag before Db sorted the transformed keys (023-08, section 7). One
-     * operation a key: until 2026-11-10 some z keys were deleted again too (mode 0).
-     * The segment root that the transaction made is split in place under a new root, and the
-     * deletes empty and take it back. No klong of a node reachable at any time, live, deleted
-     * or shadowed, may name a node taken back: such a node is never written. Failed in the
-     * first iterations without the in-place repoint of Dag.spaceSplitInPlace, the segment
-     * leaf's second klong of tt to the new root shadowing the one that still named the root.
+     * A segment leaf whose keys in a transaction come before and after the keys of a segment
+     * tree below it (bergdb 026-25): the operations of /a and /c end in the space root, a
+     * segment leaf, and /bbbbbbbX's second segment in the tree below its entry, so in key order
+     * the leaf's operations are not consecutive. The writer's short way decided and appended
+     * to the leaf once for each run of them, a node written twice in a transaction and, in
+     * PubPromiseTester, a node of 31 klongs at node size 30. Every key node is written at
+     * most once a transaction (one time klong of each time, and after it one key klong of a
+     * compare value), and the values are right.
      */
+    @Nano
+    public static void testShortWayLeafAroundASegmentTree() {
+        Dag dag = emptyDag(0);
+        PutData pd = pd(dag);
+        final long short0 = Dag.statShort;
+        for (int t = 1; t <= 12; t++) {
+            pd.tt = 10 * t;
+            batchOf(dag, pd, "/a", "a" + t, "/bbbbbbbX", "b" + t, "/c", "c" + t);
+            GetData gd = gd(dag);
+            for (String k : new String[] {"/a", "/bbbbbbbX", "/c"}) {
+                Assert.assertEquals(k.substring(1, 2) + t,
+                        StringUtil.toString(dag.getOne(pd.tt, Keys.toSegments(k), gd)));
+            }
+            for (Node x : reachableAt(dag, pd.tt)) {
+                if (!(x instanceof KeyNode)) continue;
+                KeyNode k = (KeyNode) x;
+                Assert.assertTrue("at most M klongs: " + k.size, k.size <= dag.getMaxNodeSize());
+                // One time klong of a time, and after it one key klong of a compare value: a
+                // node written twice in a transaction has two.
+                Set<Long> times = new java.util.HashSet<Long>();
+                Set<Long> cvs = new java.util.HashSet<Long>();
+                for (int i = 0; i < k.size; i++) {
+                    if (Klong.isTime(k.klongs[i])) {
+                        Assert.assertTrue("one time klong of " + Klong.getTime(k.klongs[i]),
+                                times.add(Klong.getTime(k.klongs[i])));
+                        cvs.clear();
+                    } else if (Klong.isKey(k.klongs[i])) {
+                        Assert.assertTrue("one klong of a compare value at a time",
+                                cvs.add(Klong.getCompareValue(k.klongs[i])));
+                    }
+                }
+            }
+        }
+        Assert.assertTrue("the short way taken", Dag.statShort > short0);
+    }
+    
     /**
      * 62 is the largest node size (bergdb 024-19, Q6): a Dag of 63 or more is refused when it
      * is made, by both constructors, with a message that names 62; 62 is taken.
@@ -691,6 +742,18 @@ public class DagTester {
         }
     }
     
+    /**
+     * Fault 12 (bergdb 023-08, review C; the check of it, sections 3 and 4, ShadowProbe mode
+     * 2): one transaction puts z keys after a history of b keys in one segment tree, and
+     * deletes every b key. Until record format 8 the Dag got them in that order, out of key
+     * order, as a Core KeyTransformation could give them before Db sorted the transformed
+     * keys (023-08, section 7): the segment root that the transaction made was split in place
+     * under a new root, and the deletes emptied it and took it back, and no klong of a node
+     * reachable at any time could name a node taken back (failed without the in-place repoint
+     * of the old writer's spaceSplitInPlace). Since format 8 the Dag gets them as one batch in
+     * key order (bergdb 026-25) and takes nothing back: every key node that the transaction
+     * makes is reachable at its time, and the gets are right.
+     */
     @Nano
     public static void testNoKlongNamesATakenBackNode() {
         Random r = new Random(1);
@@ -699,13 +762,12 @@ public class DagTester {
             Dag dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
                     Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
             PutData pd = pd(dag);
-            final Set<Node> takenBack = identitySet();
+            final Set<Node> made = identitySet();
             pd.nodeChangeListener = new Dag.NodeChangeListener() {
                 public void topNodeCreated(TopNode node) {}
-                public void keyNodeCreated(KeyNode node) {}
+                public void keyNodeCreated(KeyNode node) { made.add(node); }
                 public void valueNodeCreated(ValueNode node, long[] key) {}
                 public void keyNodeChanged(KeyNode node) {}
-                public void keyNodeTakenBack(KeyNode node) { takenBack.add(node); }
             };
             int nb = 1 + r.nextInt(60);
             int hist = 1 + r.nextInt(4);
@@ -728,26 +790,14 @@ public class DagTester {
             int nz = 1 + r.nextInt(120);
             for (int i = 0; i < nz; i++) { keys.add(prefixKey("z", i)); deletes.add(false); }
             for (int i = 0; i < nb; i++) { keys.add(prefixKey("b", i)); deletes.add(true); }
+            made.clear();
             putAll(dag, pd, t, keys, deletes);
             
             String at = "iter " + iter + ", b " + b + ", nb " + nb + ", hist " + hist + ", nz "
                     + nz + ": ";
-            Set<Node> seen = identitySet();
-            Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
-            for (long u = 0; u <= t; u++) {
-                KeyNode root = dag.getTopDs().findRoot(u, gd(dag));
-                if (root != null && seen.add(root)) todo.add(root);
-            }
-            while (!todo.isEmpty()) {
-                KeyNode n = todo.poll();
-                Assert.assertTrue(at + "a taken-back node is reachable", !takenBack.contains(n));
-                for (int i = 0; i < n.size; i++) {
-                    if (!Klong.isKey(n.klongs[i])) continue;
-                    Node c = n.getPointerNode(i);
-                    Assert.assertTrue(at + "klong " + i + " names a taken-back node:\n" + n.print(),
-                            c == null || !takenBack.contains(c));
-                    if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
-                }
+            Set<Node> now = reachableAt(dag, t);
+            for (Node x : made) {
+                Assert.assertTrue(at + "a key node made and not reachable", now.contains(x));
             }
             GetData gd = gd(dag);
             for (int i = 0; i < keys.size(); i++) {
@@ -769,7 +819,7 @@ public class DagTester {
      */
     @Nano
     public static void testDeleteEveryKeyAfterTheRootSplit() {
-        final long collapses0 = Dag.statCollapses;
+        final long collapses0 = Dag.statCollapses + Dag.statDropped;
         for (int b : new int[] {4, 8}) {
             for (String prefix : new String[] {"/k", "/key/prefix/"}) {
                 String at = "b " + b + ", prefix " + prefix + ": ";
@@ -812,7 +862,9 @@ public class DagTester {
                 }
             }
         }
-        Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
+        // Since record format 8 an emptied inner space root is dropped for an empty segment
+        // leaf (PeWriter.settleRoot; bergdb 026-25).
+        Assert.assertTrue("root collapses", Dag.statCollapses + Dag.statDropped > collapses0);
     }
     
     /**
@@ -975,7 +1027,9 @@ public class DagTester {
         long collapses0 = Dag.statCollapses;
         c.run(new ArrayList<String>(), firsts, true);
         long collapses = Dag.statCollapses - collapses0;
-        Assert.assertEquals("collapses, eight in each tree", 16L, collapses);
+        // Eight levels in each tree until record format 8; six since, whose writer cuts the
+        // 1,024 keys put in one transaction into fuller nodes (bergdb 026-25).
+        Assert.assertTrue("collapses, four or more in each tree: " + collapses, collapses >= 8);
         Assert.assertTrue("klongs counted for the space root: " + klongs.get(leaf),
                 klongs.get(leaf) >= collapses + 2 * 2);
     }
@@ -1005,6 +1059,7 @@ public class DagTester {
                 public void valueNodeCreated(ValueNode node, long[] key) {}
                 public void keyNodeChanged(KeyNode node) { dirty.add(node); }
                 public void keyNodeReplaced(KeyNode node) { dirty.remove(node); }
+                public void keyNodeOnPath(KeyNode node) { dirty.add(node); }
             };
         }
         
@@ -1034,12 +1089,11 @@ public class DagTester {
             }
             dirty.clear();
             pd.tt = t;
+            List<byte[]> vs = new ArrayList<byte[]>();
             for (int i = 0; i < ks.size(); i++) {
-                byte[] v = delSet.contains(ks.get(i)) ? null : StringUtil.toBytes("v" + t);
-                dag.putKv(Keys.toSegments(ks.get(i)), v, pd);
-                pd.clearFast();
+                vs.add(delSet.contains(ks.get(i)) ? null : StringUtil.toBytes("v" + t));
             }
-            pd.clear();
+            batch(dag, pd, ks, vs);
             if (check) {
                 Assert.assertTrue("t " + t + ", " + puts.size() + " puts, " + ks.size() + " keys: "
                         + dirty.size() + " dirty key nodes, bound " + bound, dirty.size() <= bound);
@@ -1055,12 +1109,46 @@ public class DagTester {
     private static void putAll(Dag dag, PutData pd, long tt, List<String> keys,
             List<Boolean> deletes) {
         pd.tt = tt;
+        List<byte[]> vs = new ArrayList<byte[]>();
         for (int i = 0; i < keys.size(); i++) {
-            String k = keys.get(i);
-            dag.putKv(Keys.toSegments(k), deletes.get(i) ? null : StringUtil.toBytes("v" + tt + k), pd);
-            pd.clearFast();
+            vs.add(deletes.get(i) ? null : StringUtil.toBytes("v" + tt + keys.get(i)));
         }
+        batch(dag, pd, keys, vs);
+    }
+    
+    /**
+     * One transaction at pd.tt, as Db gives it to the Dag (since record format 8 as one batch,
+     * Dag.putKvs; bergdb 026-25): the operations in key order, one a key, the last one of a
+     * key; a null value a delete.
+     */
+    static void batch(Dag dag, PutData pd, List<String> keys, List<byte[]> values) {
+        java.util.TreeMap<long[], byte[]> ops = new java.util.TreeMap<long[], byte[]>(
+                new java.util.Comparator<long[]>() {
+                    public int compare(long[] a, long[] b) { return Keys.compareArrays(a, b); }
+                });
+        for (int i = 0; i < keys.size(); i++) {
+            ops.put(Keys.toSegments(keys.get(i)), values.get(i));
+        }
+        long[][] k = new long[ops.size()][];
+        byte[][] v = new byte[ops.size()][];
+        int i = 0;
+        for (java.util.Map.Entry<long[], byte[]> e : ops.entrySet()) {
+            k[i] = e.getKey();
+            v[i++] = e.getValue();
+        }
+        dag.putKvs(k, v, pd);
         pd.clear();
+    }
+    
+    /** batch() of string values. */
+    static void batchOf(Dag dag, PutData pd, String... kvs) {
+        List<String> keys = new ArrayList<String>();
+        List<byte[]> values = new ArrayList<byte[]>();
+        for (int i = 0; i < kvs.length; i += 2) {
+            keys.add(kvs[i]);
+            values.add(kvs[i + 1] == null ? null : StringUtil.toBytes(kvs[i + 1]));
+        }
+        batch(dag, pd, keys, values);
     }
     
     private static Set<Node> identitySet() {
@@ -1113,8 +1201,7 @@ public class DagTester {
         PutData pd = g.newPutData();
         pd.tt = 20;
         
-        g.putKv(Keys.toSegments("/-k1"), StringUtil.toBytes("v1"), pd);
-        g.putKv(Keys.toSegments("/-k2"), StringUtil.toBytes("v2"), pd);
+        batchOf(g, pd, "/-k1", "v1", "/-k2", "v2");
         
         g.printGraph(System.out);
     }

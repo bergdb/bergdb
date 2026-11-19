@@ -95,9 +95,14 @@ public class DagExamples {
         PutData pd = g.newPutData();
         pd.tt = 20;
         
+        // One transaction: its keys in key order (Dag.putKvs; bergdb 026-25).
+        long[][] keys = new long[3][];
+        byte[][] values = new byte[3][];
         for (int i = 0; i < 3; i++) {
-            g.putKv(Keys.toSegments("/k" + i), StringUtil.toBytes("v" + i), pd);
+            keys[i] = Keys.toSegments("/k" + i);
+            values[i] = StringUtil.toBytes("v" + i);
         }
+        g.putKvs(keys, values, pd);
         
         g.printGraph(System.out);
     }
@@ -107,9 +112,15 @@ public class DagExamples {
         PutData pd = g.newPutData();
         pd.tt = 20;
         
-        for (int i = 2; i >= 0; i--) {
-            g.putKv(Keys.toSegments("/k" + i), StringUtil.toBytes("v" + i), pd);
+        // The keys given in key order, as Db gives them, whatever their order in the
+        // transaction (Dag.putKvs; bergdb 026-25): the same graph as severalKeys1's.
+        long[][] keys = new long[3][];
+        byte[][] values = new byte[3][];
+        for (int i = 0; i < 3; i++) {
+            keys[i] = Keys.toSegments("/k" + i);
+            values[i] = StringUtil.toBytes("v" + i);
         }
+        g.putKvs(keys, values, pd);
         
         g.printGraph(System.out);
     }
@@ -120,9 +131,13 @@ public class DagExamples {
         PutData pd = g.newPutData();
         pd.tt = 20;
         
+        long[][] keys = new long[4][];
+        byte[][] values = new byte[4][];
         for (int i = 0; i < 4; i++) {
-            g.putKv(Keys.toSegments("/prefix-" + i), StringUtil.toBytes("v" + i), pd);
+            keys[i] = Keys.toSegments("/prefix-" + i);
+            values[i] = StringUtil.toBytes("v" + i);
         }
+        g.putKvs(keys, values, pd);
         
         g.printGraph(System.out);
     }

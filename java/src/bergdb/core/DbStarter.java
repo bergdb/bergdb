@@ -378,11 +378,27 @@ public class DbStarter {
         PutData pd = createPutData();
         long valueBytes = 0;
         
-        for (StoredValueNode node : valueNodes) {
-            long[] key = node.getKey();
-            byte[] value = node.getNode().getValue();
-            valueBytes += StoredValueNode.getByteSizeLong(value, key);
-            
+        // The record's KVs, in their stored order, given to the Dag as one batch, as the
+        // transaction gave them (Db.putKvs; record format 8, bergdb 026-25).
+        final long[][] keys = new long[valueNodes.size()][];
+        final byte[][] values = new byte[valueNodes.size()][];
+        {
+            int k = 0;
+            for (StoredValueNode node : valueNodes) {
+                keys[k] = node.getKey();
+                values[k] = node.getNode().getValue();
+                valueBytes += StoredValueNode.getByteSizeLong(values[k], keys[k]);
+                if (keys[k].length == 0
+                        || (k > 0 && Keys.compareArrays(keys[k - 1], keys[k]) >= 0)) {
+                    // A writer stores one KV a key, in key order (Db.putKvs): a damaged record.
+                    throw new StreamFormatException("The record of time " + storedTrans.tt
+                            + " at " + storedTrans.tpos + " holds its KVs out of key order, or"
+                            + " a key twice or empty, at KV " + k + ".");
+                }
+                k++;
+            }
+        }
+        {
             pd.tt = storedTrans.tt;
             pd.nodeChangeListener = new Dag.NodeChangeListener() {
                 public void topNodeCreated(TopNode node) {
@@ -398,12 +414,6 @@ public class DbStarter {
                 }
 
                 public void keyNodeChanged(KeyNode node) {}
-                
-                public void keyNodeTakenBack(KeyNode node) {
-                    // bergdb 023-05, P4 (as P2): made and taken back by the transaction, never
-                    // written.
-                    db.internal().cache().dropNode(node);
-                }
                 
                 private void nodeCreated(Node node) {
                     long id = vpos[0];
@@ -442,7 +452,7 @@ public class DbStarter {
                 }
             };
             
-            dag.putKv(key, value, pd);
+            dag.putKvs(keys, values, pd);
             
             pd.clearFast();
         }

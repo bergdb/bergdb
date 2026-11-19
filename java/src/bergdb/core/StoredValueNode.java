@@ -191,8 +191,9 @@ public class StoredValueNode implements StoredNode {
      * True if 'segments' is a key as Keys.toSegments makes it (2026-11-06, bergdb 019-32):
      * each segment a compare value (Klong.getCompareValue: bits 0 to 2, 62 and 63 zero), all
      * but the last of length 7, the last shorter. A start reruns a value node's key into the
-     * graph (Dag.putKv), whose segments it takes for this; a key with a type bit set was taken,
-     * and the rerun met an assert of the Core (Dag.setValue).
+     * graph (Dag.putKvs; until record format 8 Dag.putKv), whose segments it takes for this; a
+     * key with a type bit set was taken, and the rerun met an assert of the Core (the old
+     * writer's Dag.setValue).
      */
     static boolean isKey(long[] segments) {
         for (int i = 0; i < segments.length; i++) {

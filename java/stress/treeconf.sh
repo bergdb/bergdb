@@ -2,7 +2,8 @@
 # The tree model against Java (bergdb 024-12, section 2.7): runs TraceExport
 # with tree=1 (trace format 3) on a set of configurations, and checks each
 # trace with the Lean tree checker (lean/, lake exe treecheck): the model's
-# Tree.exec gives Java's change and Java's klongs, transaction by transaction,
+# writer (PE since record format 8, lean/SIS/Tree/Pe.lean; bergdb 026-25) gives
+# Java's change and Java's klongs, transaction by transaction,
 # the model's get and scan give Java's answers, its touch is Java's, the
 # model's invariants hold on Java's tree, and the model's own run from R(0),
 # the tree with the model's step, writes Java's records (the checks C-T1 to
@@ -10,9 +11,11 @@
 #
 # Usage: java/stress/treeconf.sh [small|drain|reclaim|all|medium|large] [seeds]
 #   small (default): conformance.sh's small set, with tree=1.
-#   drain: draining workloads, which reach the upward unlink, LE-b, root
-#   collapse and the take-back: batches with many deletes, UnlinkFuzz's shapes
-#   (fifo, long3, random with 40 percent deletes), bulk loads deleted again.
+#   drain: draining workloads, which reach the joins (merges) and root
+#   collapse (until record format 8, bergdb 026-25: the upward unlink, LE-b,
+#   root collapse and the take-back): batches with many deletes, UnlinkFuzz's
+#   shapes (fifo, long3, random with 40 percent deletes), bulk loads deleted
+#   again.
 #   reclaim: conformance.sh's reclaim set, with tree=1 (the steps' puts).
 #   all: the three. medium: conformance.sh's medium set and larger draining
 #   runs, node sizes 8 to 62, 500 transactions. large: conformance.sh's large

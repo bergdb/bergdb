@@ -64,16 +64,17 @@
 #      full): every transaction must be a step of the model that meets its
 #      assumptions, every restart invisible.
 #      Since bergdb 024-09 (step A1) also the draining configurations, which
-#      reach the delete path's take-back (a node that a transaction makes
-#      and empties again is taken back, never written; bergdb 023-05): the
-#      three above take back no node. A2A3Check2 on seven of them, five
-#      with its own keys and two with shape=long, UnlinkFuzz's long keys,
-#      where a transaction makes a segment root, splits it in place and
-#      empties it (a klong left to a node taken back, fault 12 of bergdb
-#      023-08, fails A-COPY there); and the trace checker on
-#      conformance.sh's drain set (2 seeds quick, 10 full). A draining
-#      configuration that takes back no node fails the step: it no longer
-#      reaches the mechanism.
+#      reach the delete path's joins (merges) and root collapse: A2A3Check2
+#      on seven of them, five with its own keys and two with shape=long,
+#      UnlinkFuzz's long keys, where segment trees come and go; and the
+#      trace checker on conformance.sh's drain set (2 seeds quick, 10 full).
+#      A draining configuration whose writer joins no node fails the step:
+#      it no longer reaches the mechanism. Until record format 8 (bergdb
+#      026-25) the mechanism was the take-back (a node that a transaction
+#      made and emptied again was taken back, never written; bergdb 023-05),
+#      and a klong left to a node taken back (fault 12 of bergdb 023-08)
+#      failed A-COPY; the writer of format 8 makes no such node, and
+#      A2A3Check2 counts any node made and replaced in a transaction.
 #      And TakeCheck check (bergdb 024-09, step A4): Java's take gives, on 300
 #      generated cases, the numbers that lake build compares with the
 #      model's javaTake (lean/SIS/BoundExample.lean), and its integer share
@@ -267,10 +268,12 @@ for cfg in "-Dops=40 -Dexact=1 -Dn=200 -Dkeys=300 -Ddel=60 -Dlong=1" \
     $JAVA -ea $cfg -cp $CP bergdb.dag.A2A3Check2 > $F 2>&1
     R=$(a2a3_failing $F)
     [ -z "$R" ] || fail "A2A3Check2, draining configuration $n ($cfg): $R" $F
-    TB=$(sed -n 's/^  taken back (made and emptied in a transaction, bergdb 023-05) //p' $F)
-    [ "${TB:-0}" -gt 0 ] || fail "A2A3Check2, draining configuration $n ($cfg) takes back no node: it does not reach the take-back" $F
+    TB=$(sed -n 's/^  made and replaced in a transaction .* \([0-9]*\)$/\1/p' $F)
+    [ "${TB:-1}" -eq 0 ] || fail "A2A3Check2, draining configuration $n ($cfg): nodes made and replaced in a transaction: ${TB:-none counted}" $F
+    JN=$(sed -n 's/^  joins (merges) of the writer //p' $F)
+    [ "${JN:-0}" -gt 0 ] || fail "A2A3Check2, draining configuration $n ($cfg) joins no node: it does not reach the merges" $F
     echo "   a2a3-drain-$n: $(grep -o '^  transactions [0-9]*' $F | sed 's/^ *//'): A2, A3, A5, marking," \
-        "TREE, A6 and A-COPY OK; nodes taken back $TB"
+        "TREE, A6 and A-COPY OK; joins $JN"
 done
 (cd ../lean && lake build) > $LOG/lake.txt 2>&1 || fail "the Lean checker, lake build" $LOG/lake.txt
 sh stress/conformance.sh small $CONF_SEEDS > $LOG/conformance.txt 2>&1

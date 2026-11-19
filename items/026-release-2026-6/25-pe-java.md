@@ -1,8 +1,8 @@
 # 026-25. Java's writer as PE, "plan, then emit"
 
-Created 2026-11-19 by Frans Lundberg. Status: open: made and gated on the
-branch `026-25-pe-java` (d64e5638), not on `main`; it waits for Frans's
-word on the format and the performance (State).
+Created 2026-11-19 by Frans Lundberg. Status: done: merged into `main`
+2026-11-19 (Frans, 09:32: "Yes, do it. As recommended including the
+follow-up."), with record format 8; the follow-up is 028-19.
 
 Java's write half replaced by PE, the writer that 030-21 proved to meet
 the writer's contract (`Contract.PE.peTx`, lean/contract/Contract/

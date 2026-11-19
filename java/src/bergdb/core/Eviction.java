@@ -2108,7 +2108,8 @@ public final class Eviction {
      * and no pinned key node holds a resident value (the reads load some into the leaves of D,
      * and a batch would take them whatever their bits: the test takes them first, as
      * unswizzleValues does). Checks that a batch cannot take a round of the hand (more
-     * detachable objects than BATCH).
+     * detachable objects than BATCH). Its callers' 12,000 keys were 10,000 until record format
+     * 8, whose fuller nodes made 3,712 detachable objects of 10,000 keys (bergdb 026-25).
      */
     private static Db everyKeyReadTwice(int n) {
         MemoryStream s = new MemoryStream();
@@ -2174,7 +2175,7 @@ public final class Eviction {
      */
     @Nano
     public static void testLoweredBudgetAfterReads() throws InterruptedException {
-        Db db = everyKeyReadTwice(10000);
+        Db db = everyKeyReadTwice(12000);
         try {
             Db.Internal in = db.internal();
             Eviction e = in.eviction();
@@ -2210,7 +2211,7 @@ public final class Eviction {
      */
     @Nano
     public static void testNothingToFree() throws InterruptedException {
-        Db db = everyKeyReadTwice(10000);
+        Db db = everyKeyReadTwice(12000);
         List<Handle> held = new ArrayList<Handle>();
         try {
             Db.Internal in = db.internal();

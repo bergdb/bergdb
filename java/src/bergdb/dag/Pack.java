@@ -8,7 +8,6 @@ public class Pack implements IPack {
         GetData.class,
         DagTester.class,
         DeadKlongTester.class,
-        KeyAccessPath.class,
         Klong.class,
         KlongIter.class,
         KlongWithPointer.class,

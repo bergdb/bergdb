@@ -790,9 +790,16 @@ public class TraceExport {
             public void valueNodeCreated(ValueNode node, long[] key) {
                 initR0.run();
                 created.add(node);
-                // The operation that Db.putKvs gave the Dag last changed it: a put, or a
-                // delete that deleted (bergdb 024-12, section 2.6).
-                if (!treeOps.isEmpty()) treeOps.get(treeOps.size() - 1)[2] = Boolean.TRUE;
+                // The operation of this key changed the Dag: a put, or a delete that deleted
+                // (bergdb 024-12, section 2.6). Since record format 8 the Dag gets the
+                // transaction's operations as one batch, after kvApplied of each (bergdb
+                // 026-25), so the operation is found by its key.
+                for (int i = treeOps.size() - 1; i >= 0; i--) {
+                    if (java.util.Arrays.equals((long[]) treeOps.get(i)[0], key)) {
+                        treeOps.get(i)[2] = Boolean.TRUE;
+                        break;
+                    }
+                }
             }
             public void kvApplied(long[] key, byte[] value) {
                 initR0.run();
@@ -1758,10 +1765,12 @@ public class TraceExport {
 
     /** The Dag's counters of this JVM, in one line (see the class comment). */
     static String dagCounters() {
-        return "Dag counters: unlinked " + bergdb.dag.Dag.statUnlinked + ", taken back "
-                + bergdb.dag.Dag.statTakenBack + ", roots taken back "
-                + bergdb.dag.Dag.statRootsTakenBack + ", collapses " + bergdb.dag.Dag.statCollapses
-                + ", empty keys pointed to the next child " + bergdb.dag.Dag.statRelabels;
+        return "Dag counters: transactions " + bergdb.dag.Dag.statTransactions + ", appends "
+                + bergdb.dag.Dag.statAppends + ", replaced " + bergdb.dag.Dag.statReplaces
+                + ", compactions " + bergdb.dag.Dag.statCompactions + ", cuts "
+                + bergdb.dag.Dag.statCuts + ", joins " + bergdb.dag.Dag.statJoins + ", collapses "
+                + bergdb.dag.Dag.statCollapses + ", new roots " + bergdb.dag.Dag.statNewRoots
+                + ", dropped " + bergdb.dag.Dag.statDropped;
     }
 
     public static void main(String[] args) throws IOException {

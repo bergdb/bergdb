@@ -495,8 +495,9 @@ public class GetMany {
          * compareValue, P, are a lower bound of every key below the klong: in a segment leaf,
          * the key itself (a value node) or the prefix of every key of the next segment's tree (a
          * klong of Klong.MAX_SIZE bytes); above the leaf, a key node's klong is the lower bound
-         * of its child (the first child's the empty key, Dag.spaceSplit), as a put follows the
-         * last klong at or before its segment (Dag.putKv, searchLte). The keys after it, in the
+         * of its child (the first child's the empty key; PeWriter's mkNode, until record format
+         * 8 Dag.spaceSplit), as a writer routes a key to the last klong at or before its
+         * segment (PeWriter's route; Dag.putKv's searchLte until then). The keys after it, in the
          * scan's order, are greater. So the scan may end if P is after the end, or at it when
          * the end is not inclusive. P is compared as Keys.compareKeys compares keys, without
          * making the array.
