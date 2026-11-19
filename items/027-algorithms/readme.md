@@ -117,7 +117,8 @@ The parts, in reading order (027-04; stubs until written):
 * [05-overview.md](05-overview.md). 027-05, part 1: overview, what BergDB is and what it promises.
 * [06-terms.md](06-terms.md). 027-06, part 2: terms.
 * [07-key-tree-reads.md](07-key-tree-reads.md). 027-07, part 3: the key tree, structure and reads.
-* [08-key-tree-writer.md](08-key-tree-writer.md). 027-08, part 4: the key tree, the writer.
+* [08-key-tree-writer.md](08-key-tree-writer.md). 027-08, part 4: the key tree, the writer;
+  written (2026-11-19), PE of record format 8, for Frans to read.
 * [09-transactions.md](09-transactions.md). 027-09, part 5: transactions.
 * [10-self-indexed-stream.md](10-self-indexed-stream.md). 027-10, part 6: the self-indexed stream.
 * [11-startup.md](11-startup.md). 027-11, part 7: startup; reviewed, for Frans to read.
@@ -169,6 +170,11 @@ decision record) are history and not changed. Registered: 028-21
 describe the old writer as today's). By an agent of coord-1118, on the
 branch `027-pe`.
 
+2026-11-19. 027-08 written in full (Frans, 10:54: "Write it for me."),
+from the code at ba81b104 and the proved program; 028-25 registered (the
+short way and the plan mark D's nodes in different orders). By an agent
+of coord-1118, on the branch `027-08-writer`.
+
 
 State
 =====
@@ -188,3 +194,9 @@ whether the code does what it should.
 2026-11-19. Up to date with PE (record format 8, 026-25). Open from it:
 028-21 (`dirtyNodeBound` for PE), 028-22 (stale Java comments); part 4
 (027-08) is still a stub, with a summary of PE until it is written.
+
+2026-11-19. Part 4 (027-08) written: the writer PE, from the batch to
+the dirty set, with its ways by counts, the rerun, the bounds, the model
+and a worked example run on the code; not yet reviewed by a second agent
+(027-04, section 5.2). Open from it: 028-25 (the order of the marks of
+the short way and the plan).
