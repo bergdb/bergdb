@@ -269,6 +269,14 @@ The decisions, as recorded here:
   (history kept) and 0.94 (reclaim). Gated on the branch `026-25-pe-java`
   (d64e5638), not merged: it waits for Frans's word (026-25, State); the
   item landed 7db68696.
+* 05:23 030-21 part 3 done (agent acc): PE's acceptance proved
+  (`pe_accepts`): from any state PE keeps, PE accepts every transaction
+  whose puts' keys the tree can hold (exact: `pe_refuses`), if the height
+  bound leaves room and the program's fuel suffices (at node size 30
+  about 17 billion operations); with `pe_step`, accepted and meeting the
+  contract; every history goes on (`pe_extend`). GATE OK (142 theorems),
+  no existing statement changed; LANDED d3e14ccc. The PE writer's proof
+  is complete.
 
 
 ## 4b. Unattended, 13:48 to 07:00
