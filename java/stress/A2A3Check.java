@@ -111,6 +111,7 @@ public class A2A3Check {
                 if (!node.isDelete()) crValue.add(node);
             }
             public void keyNodeChanged(KeyNode node) { ch.add(node); }
+            public void keyNodeOnPath(KeyNode node) { mk.add(node); }
         };
         final Dag.PointerListener inner = pd.pointerListener;
         pd.pointerListener = new Dag.PointerListener() {
@@ -147,11 +148,15 @@ public class A2A3Check {
                 order = new ArrayList<long[]>(sorted.keySet());
             }
             cr.clear(); ch.clear(); mk.clear(); crValue.clear();
-            for (long[] seg : order) {
-                String value = sorted.get(seg);
-                dag.putKv(seg, value == null ? null : StringUtil.toBytes(value), pd);
-                pd.clearFast();
+            // Since record format 8 the Dag gets the transaction as one batch in key order
+            // (Dag.putKvs; bergdb 026-25), whatever 'order' is.
+            long[][] keys = sorted.keySet().toArray(new long[0][]);
+            byte[][] values = new byte[keys.length][];
+            for (int k = 0; k < keys.length; k++) {
+                String value = sorted.get(keys[k]);
+                values[k] = value == null ? null : StringUtil.toBytes(value);
             }
+            dag.putKvs(keys, values, pd);
             pd.clear();
 
             Set<Node> now = reachable(dag, tt);

@@ -36,6 +36,12 @@ import bergdb.storage.VersioningStreamException;
 public class StoredTrans {
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
+     * 8 since 2026-11-19 (bergdb 026-25), for release 2026.6: format 7's layout, and a
+     * record's KVs are rerun as one batch by the writer PE, "plan, then emit" (Dag.putKvs,
+     * PeWriter; bergdb 030-21 proves it in the model), which writes each node once, so a
+     * record means another tree than in format 7, and its nodes have other ids; a stream of
+     * format 7 is of release 2026.5, whose meta block's version (154) 2026.6 refuses first
+     * (bergdb 028-15), or of a build of 2026.6 before 026-25, refused here.
      * 7 since 2026-11-11 (bergdb 024-21), for release 2026.5: format 6's layout, and a
      * record's deletes are rerun with the merges of underfull key nodes (Dag.mergeAfterDelete;
      * 024-11, section 5), so a record of deletes means another tree than in format 6;
@@ -67,7 +73,7 @@ public class StoredTrans {
      * it writes (the rule proposed in bergdb 026-12, SF3); a stream of version 154, of
      * release 2026.5 or earlier, is refused by its meta block, before a record is read.</p>
      */
-    public final static byte RECORD_FORMAT = 7;
+    public final static byte RECORD_FORMAT = 8;
     
     /**
      * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
@@ -254,7 +260,8 @@ public class StoredTrans {
         return s + "A smaller number is a database written by an older version of BergDB, "
                 + "which this version cannot open; or the stream is damaged, as the meta "
                 + "block's version of a database of release 2026.5 or earlier refuses it "
-                + "before (bergdb 028-15).";
+                + "before (bergdb 028-15). Format 7 is also a database of a development "
+                + "build of 2026.6 before its writer PE (bergdb 026-25).";
     }
     
     public String toString() {
@@ -1194,25 +1201,29 @@ public class StoredTrans {
     }
     
     /**
-     * A transaction of format 6 is refused as one of an older BergDB (bergdb 024-21: format
-     * 7's deletes merge underfull key nodes, so a record of format 6 means another tree).
-     * The message named release 2026.4 until bergdb 028-15: a database of a release before
-     * 2026.6 is refused by its meta block's version, before a record is read.
+     * Transactions of formats 6 and 7 are refused as ones of an older BergDB (bergdb 024-21:
+     * format 7's deletes merge underfull key nodes, so a record of format 6 means another
+     * tree; bergdb 026-25: format 8's KVs are rerun as one batch by the writer PE, so a record
+     * of format 7 means another tree). The message named release 2026.4 until bergdb 028-15:
+     * a database of a release before 2026.6 is refused by its meta block's version, before a
+     * record is read.
      */
     @Nano
     private static void testRefusesFormat6() {
         Serializer serializer = new Serializer();
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
-        byte[] buffer = serializer.getTransBuffer().clone();
-        assertEquals(7, buffer[4]);
-        buffer[4] = 6;
-        try {
-            new Parser().parse(200, buffer);
-            throw new AssertionError("no exception for format 6");
-        } catch (VersioningStreamException e) {
-            String m = e.getMessage();
-            Assert.assertTrue(m, m.contains("format version 6;"));
-            Assert.assertTrue(m, m.contains("older version"));
+        for (int format : new int[] {6, 7}) {
+            byte[] buffer = serializer.getTransBuffer().clone();
+            assertEquals(8, buffer[4]);
+            buffer[4] = (byte) format;
+            try {
+                new Parser().parse(200, buffer);
+                throw new AssertionError("no exception for format " + format);
+            } catch (VersioningStreamException e) {
+                String m = e.getMessage();
+                Assert.assertTrue(m, m.contains("format version " + format + ";"));
+                Assert.assertTrue(m, m.contains("older version"));
+            }
         }
     }
     

@@ -35,13 +35,14 @@
 #   trace of every set: the gates require A6 everywhere.
 #   drain (2026-11-11, bergdb 024-09, step A1): configurations that drain
 #   trees (50 to 65 percent deletes, few keys), so that the delete path's
-#   upward unlink, root collapse and take-back (bergdb 023-05) are in the
-#   traces; three of them with long=2, UnlinkFuzz's long keys, whose small
-#   segment trees a transaction makes and empties. The reclaim set has one
-#   such configuration (r-drain) and the evict set two (e-drain, e-r-drain).
-#   A configuration whose name contains "drain" must take back a node in
-#   one of its seeds at least (TraceExport's last output line, the Dag's
-#   counters): else its traces no longer reach the take-back, and the run
+#   joins (merges) and root collapse are in the traces (until record format
+#   8, bergdb 026-25: the upward unlink, root collapse and take-back of
+#   bergdb 023-05); three of them with long=2, UnlinkFuzz's long keys, whose
+#   small segment trees a transaction makes and empties. The reclaim set has
+#   one such configuration (r-drain) and the evict set two (e-drain,
+#   e-r-drain). A configuration whose name contains "drain" must join a node
+#   in one of its seeds at least (TraceExport's last output line, the Dag's
+#   counters): else its traces no longer reach the merges, and the run
 #   fails. Every set's summary has the sum of those counters.
 #   seeds: per configuration (default 10 small, 3 medium, 2 large, 5 reclaim, 3
 #   evict, 3 drain). The checker computes
@@ -143,15 +144,16 @@ evict() {
 
 drain() {
     # Trees drained and refilled (bergdb 023-05, P4's traces; 024-09, step A1): mostly
-    # deletes on few keys. long=2 is UnlinkFuzz's long key shape, with which a trace takes
-    # back segment roots too, not only nodes below them.
+    # deletes on few keys. long=2 is UnlinkFuzz's long key shape, with which segment trees
+    # come and go (until record format 8 a trace took back segment roots too).
     echo "drain      -Dn=300 -Dkeys=25 -Dmaxnode=8 -Dsd=200 -Dops=10 -Ddel=65 -Dprobe=10 -Dlive=1"
     echo "drainlong  -Dn=200 -Dkeys=60 -Dmaxnode=8 -Dsd=300 -Dops=20 -Dexact=1 -Ddel=60 -Dlong=1 -Dprobe=10"
     echo "drainbig   -Dn=100 -Dkeys=80 -Dmaxnode=8 -Dsd=1000 -Dops=40 -Dexact=1 -Ddel=60 -Dlong=2 -Dprobe=10"
     echo "drain14    -Dn=300 -Dkeys=200 -Dmaxnode=14 -Dsd=500 -Dops=30 -Dexact=1 -Ddel=60 -Dlong=2 -Dprobe=20"
-    # Most of the keys in every transaction: a transaction makes a segment root, splits it in
-    # place and empties it again. A klong left to a node taken back (fault 12 of bergdb
-    # 023-08, review C) fails here: the writer's assertion on the pointer, or C-A's A-COPY.
+    # Most of the keys in every transaction. Until record format 8 (bergdb 026-25) a
+    # transaction made a segment root, split it in place and emptied it again, and a klong
+    # left to a node taken back (fault 12 of bergdb 023-08, review C) failed here: the
+    # writer's assertion on the pointer, or C-A's A-COPY.
     echo "drainroots -Dn=60 -Dkeys=90 -Dmaxnode=8 -Dsd=300 -Dops=120 -Dexact=1 -Ddel=50 -Dlong=2 -Dprobe=10"
 }
 
@@ -215,17 +217,18 @@ run_set() {
 }
 
 # The Dag's counters of the exports of set $1, summed (TraceExport's last output line, so
-# each trace's runs A, B and E together): how far the set's traces reach the delete path's
-# upward unlink, root collapse and take-back (bergdb 024-06, section 4.4).
+# each trace's runs A, B and E together): how far the set's traces reach the writer's
+# decisions (PeWriter, bergdb 026-25; until record format 8 the delete path's upward unlink,
+# root collapse and take-back, bergdb 024-06, section 4.4).
 dag_counters() {
-    cat build/traces/$1/*.export.txt | sed -nE 's/^Dag counters: unlinked ([0-9]+), taken back ([0-9]+), roots taken back ([0-9]+), collapses ([0-9]+), empty keys pointed to the next child ([0-9]+)$/\1 \2 \3 \4 \5/p' \
-        | awk '{n++; u+=$1; t+=$2; r+=$3; c+=$4; e+=$5; if ($1 > 0) nu++; if ($2 > 0) nt++; if ($4 > 0) nc++}
-            END {print "   Dag counters (the exports, each with its runs A, B and E): unlinked " u+0 ", taken back " t+0 " (roots " r+0 "), collapses " c+0 ", empty keys pointed to the next child " e+0 "; of " n+0 " traces " nu+0 " unlink a node, " nt+0 " take one back, " nc+0 " collapse a root"}'
+    cat build/traces/$1/*.export.txt | sed -nE 's/^Dag counters: transactions ([0-9]+), appends ([0-9]+), replaced ([0-9]+), compactions ([0-9]+), cuts ([0-9]+), joins ([0-9]+), collapses ([0-9]+), new roots ([0-9]+), dropped ([0-9]+)$/\1 \2 \3 \4 \5 \6 \7 \8 \9/p' \
+        | awk '{n++; a+=$2; r+=$3; p+=$4; u+=$5; j+=$6; c+=$7; w+=$8; d+=$9; if ($6 > 0) nj++; if ($7 > 0) nc++}
+            END {print "   Dag counters (the exports, each with its runs A, B and E): appends " a+0 ", replaced " r+0 ", compactions " p+0 ", cuts " u+0 ", joins " j+0 ", collapses " c+0 ", new roots " w+0 ", dropped " d+0 "; of " n+0 " traces " nj+0 " join a node, " nc+0 " collapse a root"}'
 }
 
-# The nodes taken back by the exports of configuration $2 of set $1, over its seeds.
-taken_back() {
-    cat build/traces/$1/$2-*.export.txt | sed -nE 's/^Dag counters: .*, taken back ([0-9]+), .*/\1/p' \
+# The joins of the exports of configuration $2 of set $1, over its seeds.
+joins() {
+    cat build/traces/$1/$2-*.export.txt | sed -nE 's/^Dag counters: .*, joins ([0-9]+), .*/\1/p' \
         | awk '{s+=$1} END {print s+0}'
 }
 
@@ -301,10 +304,11 @@ for set_name in $RAN; do
             exit 1
         fi
     done
-    # A draining configuration must reach the take-back (bergdb 024-09, step A1).
+    # A draining configuration must reach the merges (bergdb 024-09, step A1; until record
+    # format 8 the take-back, bergdb 026-25).
     for name in $(sed -n 's/^\([^ ]*drain[^ ]*\) .*/\1/p' build/traces/$set_name/configs.txt); do
-        if [ "$(taken_back $set_name $name)" = 0 ]; then
-            echo "CONFORMANCE FAILED: the draining configuration $name of set $set_name takes back no node in its seeds: its traces do not reach the take-back (the Dag counters in build/traces/$set_name/$name-*.export.txt)"
+        if [ "$(joins $set_name $name)" = 0 ]; then
+            echo "CONFORMANCE FAILED: the draining configuration $name of set $set_name joins no node in its seeds: its traces do not reach the merges (the Dag counters in build/traces/$set_name/$name-*.export.txt)"
             exit 1
         fi
     done

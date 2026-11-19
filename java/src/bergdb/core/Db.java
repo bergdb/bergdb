@@ -1478,12 +1478,6 @@ public class Db implements AutoCloseable {
                 }
             }
             
-            public void keyNodeTakenBack(KeyNode node) {
-                if (transCheck != null) transCheck.takenBack(node);
-                keyNodeReplaced(node);
-                takenBackInTrans.add(node);
-            }
-            
             public void keyNodeOnPath(KeyNode node) {
                 markAtEndOfOp(node);
             }
@@ -1802,12 +1796,15 @@ public class Db implements AutoCloseable {
 
     // ======== Marking: step 3 of a transaction ========
     //
-    // The index nodes that an operation (one put or delete of the transaction) follows,
-    // creates or changes get dirty when the operation ends, and only if it changed something:
-    // a delete of a key that does not exist marks nothing. At the end of the transaction, a
-    // node that the transaction replaced (Dag.handleFullNode, TopDs.newSuperRoot) is no longer
-    // current; if it got dirty in the transaction, it is clean again and leaves D, since its
-    // latest version is still good for every earlier time. So step 3 marks exactly the nodes
+    // The index nodes that an operation creates or changes, or that are on its path (the
+    // space root and the super root that it follows, and the nodes the writer reports on the
+    // path of its change, keyNodeOnPath), get dirty when the operation ends, and only if it
+    // changed something: a delete of a key that does not exist marks nothing. Since record
+    // format 8 the operation is the transaction's whole batch (Dag.putKvs; bergdb 026-25);
+    // until then each put or delete. At the end of the transaction, a node that the
+    // transaction replaced (PeWriter, TopDs.newSuperRoot) is no longer current; if it got
+    // dirty in the transaction, it is clean again and leaves D, since its latest version is
+    // still good for every earlier time. So step 3 marks exactly the nodes
     // that the Lean model marks: the index nodes current at the transaction time with a node
     // created or changed by the transaction below them (T13 in lean/; bergdb 011-11,
     // M2). Before 2026-10-16, every such node got dirty at once, also on the path of a delete
@@ -1822,9 +1819,6 @@ public class Db implements AutoCloseable {
     
     /** Whether the current operation changed the Dag. */
     private boolean opChanged = false;
-    
-    /** The nodes that the current transaction made and took back (bergdb 023-05, P4). */
-    private final ArrayList<Node> takenBackInTrans = new ArrayList<Node>();
     
     /** The nodes that the current transaction replaced. */
     private final Set<Node> replacedInTrans = 
@@ -1876,12 +1870,6 @@ public class Db implements AutoCloseable {
         }
         replacedInTrans.clear();
         touchMarks = 0;
-        // Nodes the transaction made and took back (bergdb 023-05, P4, as P2), out of D above,
-        // leave the node table: never written, and no node names them.
-        for (Node n : takenBackInTrans) {
-            cache.dropNode(n);
-        }
-        takenBackInTrans.clear();
     }
 
     /**
@@ -3441,7 +3429,6 @@ public class Db implements AutoCloseable {
         opMarks.clear();
         opChanged = false;
         replacedInTrans.clear();
-        takenBackInTrans.clear();
         touchMarks = 0;
         if (transCheck != null) transCheck.begin(dag.getTopDs().getSuperRoot(), x.trans.tt);
 
@@ -4120,7 +4107,6 @@ public class Db implements AutoCloseable {
             this.trans = trans;
             transInfo = new TransSeq.TransInfo();
             x.nextVpos = nodeStream.getNextPos() + 1;
-            x.putData.spaceSplitCount = 0;
         }
         
         /**

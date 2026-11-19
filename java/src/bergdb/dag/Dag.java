@@ -40,8 +40,6 @@ import bergdb.pub.util.DbException;
  * @author Frans Lundberg
  */
 public class Dag {
-    /** Empty array of KlongWithPointer (new KlongWithPointer[0]). */
-    private static final KlongWithPointer[] ZERO_LONG_KWP = new KlongWithPointer[0];    
     private final TopDs topDs;
     private final int maxNodeSize;
     
@@ -317,45 +315,8 @@ public class Dag {
      * Use Db.newPutData() instead if you want to use the PutData object as a 
      * parameter with methods of Db. The caller sets its pointerFollower, as Db does.
      */
-    public PutData newPutData() {        
-        final PutData p = new PutData();
-        
-        p.pointerListener = new Dag.PointerListener() {
-            public void pointerFollowed(
-                    Node predecessor, int pointerIndex, Node result, int pointerType) { 
-                if (result != null) {
-                    if (result.getType() == Node.TYPE_KEY_NODE) {
-                        if (predecessor.getType() == Node.TYPE_TOP_NODE) {
-                            p.keyAccessPath.add(Klong.NULL, (KeyNode) result); 
-                        } else if (predecessor.getType() == Node.TYPE_KEY_NODE) {
-                            KeyNode pre = (KeyNode) predecessor;
-                            KeyNode res = (KeyNode) result;
-                            p.keyAccessPath.add(pre.getKlong(pointerIndex), res);
-                        }
-                    }
-                }
-            }
-
-            public void superRootAccessed(TopNode superRoot) {}
-        };
-        
-        p.splitListener = new SplitListener() {
-            public void nodeSplit(int splitType) {
-                switch (splitType) {
-                case TIME_SPLIT_1:
-                case TIME_SPLIT_2:
-                    p.timeSplitCount += 1;
-                    break;
-                case SPACE_SPLIT_1:
-                case SPACE_SPLIT_2:
-                case SPACE_SPLIT_3:
-                    p.spaceSplitCount += 1;
-                    break;
-                }
-            }
-        };
-        
-        return p;
+    public PutData newPutData() {
+        return new PutData();
     }
     
     // ==== getOne() with helpers ========
@@ -1408,10 +1369,11 @@ public class Dag {
         public void keyNodeChanged(KeyNode node);
         
         /**
-         * Reports that a KeyNode that existed before the current transaction was replaced by
-         * a split, or unlinked by a delete (bergdb 023-05, P1): it is no longer current, and it
-         * has no klongs of the transaction (Dag.handleFullNode, Dag.unlink). Added 2026-10-16;
-         * does nothing by default.
+         * Reports that a KeyNode that existed before the current transaction is no longer
+         * current: replaced by new nodes, joined with a sibling, emptied, or collapsed (since
+         * record format 8, PeWriter; until then replaced by a split, or unlinked by a delete,
+         * bergdb 023-05, P1). It has no klongs of the transaction. Added 2026-10-16; does
+         * nothing by default.
          */
         public default void keyNodeReplaced(KeyNode node) {}
         
@@ -1423,16 +1385,6 @@ public class Dag {
          * keyNodeCreated or keyNodeChanged says so. Does nothing by default.
          */
         public default void keyNodeOnPath(KeyNode node) {}
-        
-        /**
-         * Reports that a KeyNode that the current transaction made was taken back (bergdb
-         * 023-05, P4, as P2's keyNodeDropped: Dag.takeBack, Dag.takeBackRoot): no node names
-         * it, and it is never written. As keyNodeReplaced, and its object leaves the node
-         * table. Calls keyNodeReplaced by default.
-         */
-        public default void keyNodeTakenBack(KeyNode node) {
-            keyNodeReplaced(node);
-        }
         
         /**
          * Reports that the super root, which existed before the current transaction, was
@@ -1447,24 +1399,5 @@ public class Dag {
         public void keyNodeCreated(KeyNode node) {}
         public void keyNodeChanged(KeyNode node) {}
         public void valueNodeCreated(ValueNode node, long[] key) {}
-    };
-    
-    
-    
-    public static final int TIME_SPLIT_1 = 1;
-    public static final int TIME_SPLIT_2 = 2;
-    public static final int SPACE_SPLIT_1 = 11;
-    public static final int SPACE_SPLIT_2 = 12;
-    public static final int SPACE_SPLIT_3 = 13;
-    
-    /**
-     * Used to listen to node split events.
-     */
-    public static interface SplitListener {
-        public void nodeSplit(int splitType);
-    }
-    
-    public static final SplitListener DO_NOTHING_SPLIT_LISTENER = new SplitListener() {
-        public void nodeSplit(int splitType) {}
     };
 }

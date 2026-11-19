@@ -415,12 +415,6 @@ public class DbStarter {
 
                 public void keyNodeChanged(KeyNode node) {}
                 
-                public void keyNodeTakenBack(KeyNode node) {
-                    // bergdb 023-05, P4 (as P2): made and taken back by the transaction, never
-                    // written.
-                    db.internal().cache().dropNode(node);
-                }
-                
                 private void nodeCreated(Node node) {
                     long id = vpos[0];
                     vpos[0] = Spos.nextVpos(vpos[0]);

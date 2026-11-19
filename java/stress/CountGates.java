@@ -51,8 +51,8 @@ import bergdb.stream.FileStream;
  *      the fill and the deletes: kept (the most in the last R), the reachable key nodes,
  *      their dead KEY klongs, the resident index objects, the live handles, the cache
  *      tables' slots (ST6; counted since its fix, 024-33) and the heap after a GC, each
- *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) are
- *      printed, not gated. Needs --add-opens java.base/java.util (the slots are
+ *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) were printed, not
+ *      gated, until record format 8, whose writer has none (bergdb 026-25). Needs --add-opens java.base/java.util (the slots are
  *      HashMap's table lengths). The lag: the first drive transaction from which kept
  *      stays at most twice the twin's M1 (the most in its last R), at most 2 R (bergdb
  *      026-11).
@@ -489,7 +489,6 @@ public class CountGates {
     /** G4's measures of one database at the end of its drive. */
     static final class G4M {
         long keptMax, reach, klongs, dead, objects, handles, slots, heap, userKeys;
-        int pathKlongs, pathNodes;
         long firstCut = -1, lag = -1, kept4R = -1;     // drive transactions; kept at 4 R
         // G5: the last call that returned true, the calls that wrote, the most bytes and
         // records of a call, the bytes of the drive.
@@ -497,8 +496,8 @@ public class CountGates {
 
         String line() {
             return String.format("keptMax=%d reach=%d klongs=%d dead=%d objects=%d handles=%d "
-                    + "slots=%d heap=%d pathKlongs=%d pathNodes=%d userKeys=%d", keptMax, reach,
-                    klongs, dead, objects, handles, slots, heap, pathKlongs, pathNodes, userKeys);
+                    + "slots=%d heap=%d userKeys=%d", keptMax, reach,
+                    klongs, dead, objects, handles, slots, heap, userKeys);
         }
     }
 
@@ -599,9 +598,6 @@ public class CountGates {
                 Object[] table = (Object[]) field(field(t, "map"), "table");
                 if (table != null) m.slots += table.length;
             }
-            Object path = r.db.internal().x().putData.keyAccessPath;
-            m.pathKlongs = ((long[]) field(path, "klongs")).length;
-            m.pathNodes = ((Object[]) field(path, "nodes")).length;
         }
         // The write buffer grows with use and shrinks after 2 s with nothing to write
         // (2026-11-13, bergdb 026-07): the heap is measured after the shrink, so that the
@@ -627,9 +623,6 @@ public class CountGates {
     void g4() throws ReflectiveOperationException {
         G4M t = g4Run("g4-twin", 0, usedHeap(), 0);
         G4M e = g4Run("g4-emptied", n, usedHeap(), t.keptMax);
-        out(String.format("  G4 ST7, not gated (closed as negligible by Frans, 2026-11-12): "
-                + "KeyAccessPath arrays %d klongs, %d nodes; the twin's %d, %d", e.pathKlongs,
-                e.pathNodes, t.pathKlongs, t.pathNodes));
         g4Gate("M1 kept, most in the last R", e.keptMax, t.keptMax, d("g4kept", 2));
         // The lag (bergdb 026-11; Frans, 2026-11-13, 09:41, "Yes" to 026-05's Q4): the first
         // drive transaction from which kept stays at most twice the twin's M1, over R =

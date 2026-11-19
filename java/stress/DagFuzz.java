@@ -70,13 +70,19 @@ public class DagFuzz {
             }
             StringBuilder sb = new StringBuilder("T" + i + " t=" + tt + ":");
 
+            // One transaction, its keys in key order, as Db gives them (Dag.putKvs; record
+            // format 8, bergdb 026-25).
+            TreeMap<long[], byte[]> batch = new TreeMap<long[], byte[]>(new Comparator<long[]>() {
+                public int compare(long[] a, long[] b) { return Keys.compareArrays(a, b); }
+            });
             for (String key : keys) {
                 String value = DEL && rnd.nextInt(4) == 0 ? null : "v" + tt + key;
-                dag.putKv(Keys.toSegments(key), value == null ? null : StringUtil.toBytes(value), pd);
-                pd.clearFast();
+                batch.put(Keys.toSegments(key), value == null ? null : StringUtil.toBytes(value));
                 model(key).put(tt, value);
                 sb.append(value == null ? " del " + key : " put " + key);
             }
+            dag.putKvs(batch.keySet().toArray(new long[0][]), batch.values().toArray(new byte[0][]),
+                    pd);
             pd.clear();
             log.add(sb.toString());
             if (PRINT) {

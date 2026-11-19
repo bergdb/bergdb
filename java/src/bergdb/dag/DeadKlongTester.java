@@ -54,10 +54,14 @@ public class DeadKlongTester {
         void trans(TreeMap<String, String> ops) {
             t += 10;
             pd.tt = t;
+            java.util.List<String> keys = new java.util.ArrayList<String>(ops.keySet());
+            java.util.List<byte[]> values = new java.util.ArrayList<byte[]>();
+            for (String v : ops.values()) {
+                values.add(v == null ? null : StringUtil.toBytes(v));
+            }
+            DagTester.batch(dag, pd, keys, values);
             for (Map.Entry<String, String> e : ops.entrySet()) {
                 String v = e.getValue();
-                dag.putKv(Keys.toSegments(e.getKey()), v == null ? null : StringUtil.toBytes(v), pd);
-                pd.clearFast();
                 TreeMap<Long, String> h = model.get(e.getKey());
                 if (h == null) {
                     h = new TreeMap<Long, String>();

@@ -21,7 +21,8 @@ import bergdb.dag.ValueNode;
  * system property transcheck=1, off by default; the unit tests and the f-tests run with it
  * (before-commit.sh, unit.sh, f.sh). Db calls it at the start and at the end of each
  * transaction's puts (Db.putKvs), under the write lock, and tells it the key nodes the
- * transaction made, changed, replaced and took back (Dag.NodeChangeListener). It checks what
+ * transaction made, changed and replaced (Dag.NodeChangeListener; until record format 8 also
+ * the nodes it took back). It checks what
  * can be checked on those nodes and their neighbours, without a read of the stream: a pointer
  * to a node that is not in memory ends the check there. Nothing is changed.
  *
@@ -44,9 +45,9 @@ import bergdb.dag.ValueNode;
  * value at tt - 1 and at tt.</li>
  * <li><b>Clause 3, the frame</b>, on each node it has seen before (after an earlier
  * transaction): the node keeps its klongs, and the klongs added after them start with a time
- * klong of tt; a node replaced keeps them all. A node made or changed is dirty (in D), unless
- * replaced or taken back. Beyond the contract (030-06, finding 4): every time klong of a node
- * made is of tt.</li>
+ * klong of tt; a node replaced keeps them all. A node made or changed is dirty (in D), and not
+ * replaced (since record format 8, bergdb 026-25: the writer writes each node once). Beyond
+ * the contract (030-06, finding 4): every time klong of a node made is of tt.</li>
  * <li><b>The search</b>: in each node made or changed, KeyNode.searchEq of each live compare
  * value at tt finds the klong that the contract's live klongs name (Contract/Tree.lean,
  * live).</li>
@@ -95,7 +96,6 @@ final class TransCheck {
     private final IdentityHashMap<KeyNode, Boolean> madeNodes = new IdentityHashMap<KeyNode, Boolean>();
     private final IdentityHashMap<KeyNode, Boolean> changed = new IdentityHashMap<KeyNode, Boolean>();
     private final IdentityHashMap<KeyNode, Boolean> replaced = new IdentityHashMap<KeyNode, Boolean>();
-    private final IdentityHashMap<KeyNode, Boolean> takenBack = new IdentityHashMap<KeyNode, Boolean>();
     private final KlongWithPointer kwi = new KlongWithPointer();
     private KeyNode rootBefore;
     private long tt;
@@ -116,16 +116,11 @@ final class TransCheck {
         replaced.put(x, Boolean.TRUE);
     }
 
-    void takenBack(KeyNode x) {
-        takenBack.put(x, Boolean.TRUE);
-    }
-
     /** Before the puts of the transaction at time tt; superRoot, the super root then. */
     void begin(TopNode superRoot, long tt) {
         madeNodes.clear();
         changed.clear();
         replaced.clear();
-        takenBack.clear();
         this.tt = tt;
         rootBefore = rootOf(superRoot);
     }
@@ -181,14 +176,15 @@ final class TransCheck {
         for (KeyNode x : before.visited.keySet()) frame(x);
         for (KeyNode x : changed.keySet()) frame(x);
         for (KeyNode x : replaced.keySet()) {
-            if (takenBack.containsKey(x)) continue;
             frame(x);
             long[] s = seen.get(x);
             if (s != null && x.size != s[0]) fail(name(x) + " was replaced, and has klongs added");
         }
         long count = 0;
         for (KeyNode x : madeNodes.keySet()) {
-            if (takenBack.containsKey(x) || replaced.containsKey(x)) continue;
+            // Since record format 8 the writer writes each node once (PeWriter; bergdb 026-25):
+            // a node it makes is never replaced in the same transaction, nor taken back.
+            if (replaced.containsKey(x)) fail(name(x) + " was made and replaced in one transaction");
             count++;
             if (!x.isDirty()) fail(name(x) + " was made, and is not dirty (not in D)");
             for (int i = 0; i < x.size; i++) {
@@ -200,12 +196,11 @@ final class TransCheck {
         }
         long notReached = 0;
         for (KeyNode x : changed.keySet()) {
-            if (takenBack.containsKey(x) || replaced.containsKey(x)) continue;
+            if (replaced.containsKey(x)) fail(name(x) + " was changed and replaced in one transaction");
             if (!x.isDirty()) fail(name(x) + " was changed, and is not dirty (not in D)");
             if (!after.visited.containsKey(x)) notReached++;
         }
         for (KeyNode x : madeNodes.keySet()) {
-            if (takenBack.containsKey(x) || replaced.containsKey(x)) continue;
             if (!after.visited.containsKey(x) && !changed.containsKey(x)) notReached++;
         }
 
@@ -258,7 +253,6 @@ final class TransCheck {
     }
 
     private void snapshot(KeyNode x) {
-        if (takenBack.containsKey(x)) return;
         seen.put(x, new long[] {x.size, hash(x, x.size)});
     }
 
