@@ -282,6 +282,12 @@ Files
   to 9,500 lines. The evidence in 24-pe-trial/, the branch
   `026-24-pe-trial`.
 
+* 25-pe-java.md. 026-25, Java's writer as PE, "plan, then emit", the writer
+  that 030-21 proved (Frans, 2026-11-18, 21:42: "feel free to do the Java
+  implementation too"): Java's write half replaced by PeWriter.lean's
+  program, the tree checker's oracle made PE, the record format, the old
+  writer's code removed. Open; the branch `026-25-pe-java`.
+
 
 Log
 ===

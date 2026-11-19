@@ -6,7 +6,8 @@ bergdb 027-02, section 4).
 Usage: lake exe treecheck TRACE [--norun] [--hplus | --hplus=K]
 
 Checks, per transaction i of the trace, from Java's structure before it:
-  C-T1  the change: the model's `Tree.exec` of the transaction's operations gives
+  C-T1  the change: the model's writer of the transaction's operations (since record
+        format 8 PE, SIS/Tree/Pe.lean, bergdb 026-25; until then `Tree.exec`) gives
         the trace's change: every node made, with its id, level and kind, and
         every entry added (NEW and ADD lines), as lists
   C-T2  the klongs: each KN line is the model's node, klong by klong (the size,
@@ -85,7 +86,7 @@ def hplusTx (p q : Params) (P Q : PMap) (i : Time) (x : TTx) : HPlusTx :=
   | none => {}
   | some base =>
     let ops := x.ops.toList.map (·.1)
-    match runOps p base ops i (fun y => P[y]?), runOps q base ops i (fun y => Q[y]?) with
+    match SIS.Tree.Pe.runOps p base ops i (fun y => P[y]?), SIS.Tree.Pe.runOps q base ops i (fun y => Q[y]?) with
     | .ok (f0, w0), .ok (f1, w1) =>
       let kinds := fun (w : W) => w.made.map (fun n => (n.id, n.isData))
       let same := [("noops", f0 == f1), ("nodes", w0.nodes == w1.nodes),

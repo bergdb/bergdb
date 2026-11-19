@@ -45,6 +45,7 @@ import SIS.Tree.Bound
 import SIS.Tree.Top
 import SIS.Tree.MergeProps
 import SIS.Tree.DeadProps
+import SIS.Tree.Pe
 import SIS.Proof.TreeInit
 import SIS.Proof.Base
 import SIS.Proof.Basic

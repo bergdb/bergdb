@@ -7,6 +7,7 @@ only says how a trace becomes the model's objects, and what is compared.
 import Check.Trace
 import SIS.Tree.DeadProps
 import SIS.Tree.Top
+import SIS.Tree.Pe
 import Std.Data.HashMap
 
 namespace SIS.Check.Tree
@@ -262,7 +263,8 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
   | none => res := { res with errors := res.errors ++ [s!"T({i}): no BASE line"] }
   | some base =>
     let view : View BVal := fun y => P[y]?
-    match runOps p base (ops.map (·.1)) i view with
+    -- The writer since record format 8: PE (SIS/Tree/Pe.lean; bergdb 026-25).
+    match SIS.Tree.Pe.runOps p base (ops.map (·.1)) i view with
     | .error e => res := { res with errors := res.errors ++ [s!"T({i}): the model's error: {e}"] }
     | .ok (flags, w) =>
       -- C-T3: the noops.
