@@ -51,7 +51,8 @@ a specification, which may refuse what the code accepts.
   (11), the value and delete nodes (12); the file names and sizes (4); the
   internal keys and their texts (15); the version numbers and refusals
   (21.1). **To be written**: the writer's rules (what a record must hold:
-  the take, the got-dirty list, format 6's tree rules), the start's rules
+  the take, the got-dirty list, the tree rules of format 8's writer, PE,
+  section 8.2 and 027-08), the start's rules
   in full (14), the directory rules, the encryption and Pub sections.
 * **Gaps found** (section 19): 21 places where the code accepts what a
   specification should refuse, among them the time klong's bits 56 to 61
@@ -134,22 +135,24 @@ version number. From the bottom up:
 | The files of a directory         | `stream/FileStream`                      | 4       | none     |
 | Encryption (not in 2026.4's API) | `stream/SalsaStream`                     | 16      | none     |
 | The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 155 |
-| The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 6 |
-| The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 2, 2, 4  |
-| The tree a record means          | `dag/Dag`, `dag/KeyNode`, `DbStarter`    | 11, 14  | record 6 |
+| The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 8 |
+| The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 3, 3, 5  |
+| The tree a record means          | `dag/PeWriter`, `dag/Dag`, `DbStarter`   | 11, 14  | record 8 |
 | The Core's internal keys         | `core/Reclaim`, `DbConstants`            | 15      | none     |
 | The Pub layer's keys             | `pubimp/IndexKeys`, `PubKeys`            | 17      | none     |
 | The Pub layer's objects          | `pubimp/ObjectFormat`, `pub/DbObject`    | 17      | 0x82     |
 
-The five numbers in the stream (012-02, section 1, with 2026.4's values):
+The five numbers in the stream (012-02, section 1), with today's values
+(2026.4's: meta 154, record 6, nodes 2, 2, 4; the line numbers are the
+tag's, section 2):
 
 | Number             | Value | Where in the bytes       | Defined by                       |
 |---|---|---|---|
 | Meta block version | 155 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`     |
-| Record format      | 6   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
-| Top node format    | 2   | node byte 5              | `StoredTopNode.toLongs`, :203    |
-| Key node format    | 2   | node byte 5              | `StoredKeyNode.toLongs`, :55     |
-| Value node format  | 4   | node byte 5, both types  | `StoredValueNode.toBytes`, :222  |
+| Record format      | 8   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
+| Top node format    | 3   | node byte 5              | `StoredTopNode.toLongs`, :203    |
+| Key node format    | 3   | node byte 5              | `StoredKeyNode.toLongs`, :55     |
+| Value node format  | 5   | node byte 5, both types  | `StoredValueNode.toBytes`, :222  |
 
 What each covers, and how another value is refused, is section 21.1.
 The internal keys' texts and the Pub layer's keys have no version of
@@ -317,9 +320,14 @@ size; `Dag` refuses one when it is made (`Dag.MAX_NODE_SIZE`,
 `DagTester.testNodeSizeAbove62Refused`); and a start refuses a meta
 block that gives one as damaged, before any write
 (`Db.refuseOtherNodeSize`, `DbTesterRestart.testNodeSizeAbove62Refused`).
-The writer's rules of record format 8 (format 7's but the cut size) are
-functions of B, so that a start's rerun of a record makes the same
-nodes: the thresholds m, h and c (024-14); theta, the most dead key
+The writer's rules of record format 8 are functions of B, so that a
+start's rerun of a record makes the same nodes; format 8 keeps format
+7's thresholds and adds the cut size, and PE gives them their roles
+(027-08): the thresholds m, h and c (024-14; 8, 17 and 17 at 30): a key
+node that a transaction changes, not a root, with fewer than m live
+entries is joined with a neighbour, a joined list of more than c entries
+is cut into parts of at most c, and a list of at most h entries that its
+node cannot take is one new node, a longer one cut; theta, the most dead key
 klongs a key node holds after a write: 7 B / 30 by integer division, at
 least 2, so 2, 3, 7 and 14 at 8, 14, 30 and 62 (`Dag.theta`, the Lean
 model's `Params.thetaFor`; 024-23; the floor 2, not 1, by 024-19, Q4);
@@ -432,7 +440,11 @@ for a failed one, made only by recovery's fill.
   264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
   `Db.refuseIncompleteCreation` (:1290): `DatabaseNotCreatedException`,
-  nothing written.
+  nothing written. Since 028-18 (option C) also the primordial record
+  whole and alone, or followed by a part of the creation's second record
+  (the startup distance's, section 14.2) or by that record failed:
+  `RecoverableStream.holdsFirstTransactionAlone`, the same exception, on
+  any start but the creating one.
 * The order of a start's checks: `Db.startInner` (:888), as 012-02,
   section 4.6, says.
 
@@ -475,7 +487,7 @@ A record at a position that is a multiple of 8; offsets in record bytes
 | Off | Size | Type  | Field           | Value and range                           |
 |---|---|---|---|---|
 | 0   | 4    | `i32` | size            | record bytes, a multiple of 8, 48 or more |
-| 4   | 1    | `u8`  | format          | 7                                         |
+| 4   | 1    | `u8`  | format          | 8                                         |
 | 5   | 3    | zero  | (unused)        | the upper bytes of the `i32` at 4         |
 | 8   | 8    | `i64` | time            | the transaction's time tt, 0 to 2^56 − 1  |
 | 16  | 8    | `i64` | startupPos      | 0, or a record's position at or before it |
@@ -571,7 +583,11 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
 * The checks before the go point (`Db.checkSize`, user transactions only;
   `Db.checkDirtyNodes` with `Dag.dirtyNodeBound`): value nodes at most 7/8
   of the limit (`valueLimit`, :76), index nodes at most 15/16
-  (`dirtyLimit`, :86).
+  (`dirtyLimit`, :86). `dirtyNodeBound` was argued for the writer of
+  formats 6 and 7 and is kept as it was since format 8: for PE it is
+  checked, not argued (the tree checker's C-T8 on every traced
+  transaction, `DagTester`'s tests of the bound; its Javadoc; 026-25); an
+  argument for PE is 028-21.
 * `recordLimit` (:69) is `static volatile`; tests lower it.
 
 The limit is a writer's rule; a reader refuses only a size beyond the
@@ -586,7 +602,9 @@ stream or the buffer.
   builder's (`Trans.Builder.build`, a `TreeMap` in key order), or, when a
   key transformation ran, `Db.sortByKey` (`Db.java`:2998), one KV a key
   (023-08, section 7). The rerun applies them in stored order
-  (`DbStarter.rerunTransaction`, :373).
+  (`DbStarter.rerunTransaction`, :373); since format 8 as one batch, the
+  writer PE's (section 8.2), and a record whose KVs are not in strictly
+  increasing key order, one a key, is refused there, an SFE (026-25).
 * **The got-dirty list**: the index nodes that got dirty in this
   transaction and the record's nodes still dirty (012-02, section 8.6).
   **To be written**: its order and its rules, from `Db.store` and
@@ -610,9 +628,10 @@ got-dirty entries. SD: every byte. C: `serial.c`, `strans.c`,
   (`Db.checkStartupPos`'s Javadoc; 017-08); the node checksums cover only
   the nodes. The parser accepts the nodes in any order of types (to check
   whether a start depends on the order); two value nodes of one key in one
-  record are not refused (to check); startupPos is not checked to be
-  non-decreasing from record to record, nor to be a record that the take
-  reached (015-73).
+  record are not refused by the parser, but since format 8 by the start's
+  rerun of the startup section, as KVs out of key order (section 8.4;
+  026-25); startupPos is not checked to be non-decreasing from record to
+  record, nor to be a record that the take reached (015-73).
 * J4. The limit is Java's array limit, not a property of the bytes: a
   specification should state the largest size as a number, and whether a
   reader must accept every size up to it.
@@ -823,7 +842,7 @@ A klong is an `i64`; its type is bits 62 and 63 (`Klong`'s class comment,
 ### 11.3. What a node holds: to be written
 
 **To be written**, from 012-02, section 6.3.1, and 023-07, sections 5.1
-to 5.3, with the code of `Dag` and `KeyNode`:
+to 5.3, with the code of `PeWriter`, `Dag` and `KeyNode`:
 
 * the history: a time klong begins the entries of its time; a later key
   klong with the same compare value replaces an earlier one; a reader at
@@ -835,18 +854,33 @@ to 5.3, with the code of `Dag` and `KeyNode`:
   segment's B-tree; in an inner node, a key klong names a child;
 * **the empty key first** (format 6, 023-07, section 5.2, "LE-b"): an
   inner node's smallest live klong is `EMPTY_KEY`, and the empty key
-  never gets a delete bit: a split's second half begins with it
-  (`KeyNode.firstAndSecond`, :1348), and when the child it names empties,
-  the next live child gets a new empty-key klong
-  (`Dag.emptyKeyNext`, :1491);
-* a delete bitmap of the klongs whose compare values a write removes
-  (formats 6 and 7: the stop node's of the upward unlink, root collapse
-  and the take-back; section 8.2);
-* the bound on n: at most the maximum node size, + 1 transiently
-  (`KeyNode.check`, :1633), and at most 62 klongs that a bitmap can
-  name (62 the largest node size, section 6);
-* at most theta dead key klongs after every write (section 6; a
-  writer's rule, not checked on reading).
+  never gets a delete bit. Since format 8 PE gives an inner node's first
+  entry the empty key whenever it decides a list (`PeWriter.mkNode`): each
+  new node of an inner list, every part of a cut included, begins with an
+  empty-key klong, and its parent gets the part's first compare value
+  (`PeWriter.emit`); when the child that the empty key names is dropped,
+  a node appended to gets a new empty-key klong that names the next
+  child, and that child's own compare value a delete bit (formats 6 and
+  7: `KeyNode.firstAndSecond` at a split, `Dag.emptyKeyNext` at a
+  delete);
+* a delete bitmap of the klongs whose compare values a transaction
+  removes from the node: since format 8 at most one a transaction and
+  node, written by PE's emit when it appends to a node whose final list
+  leaves out a compare value of its live list (section 11.2; formats 6
+  and 7: the stop node's of the upward unlink, root collapse and the
+  take-back, section 8.2);
+* the bound on n: at most the maximum node size, B. Since format 8 the
+  writer never makes more: it appends only klongs that fit, and a node it
+  makes holds a time klong and at most B − 1 entries (a part of a cut at
+  most B / 2, a joined part at most c, a list of at most h, or a
+  compacted live list that fits; `PeWriter.decide`); `KeyNode.check`
+  (:1633) still allows B + 1, the old writer's node overfull for a
+  moment before its split. At most 62 klongs, which a bitmap can name (62
+  the largest node size, section 6);
+* at most theta dead key klongs after every transaction (section 6; a
+  writer's rule, not checked on reading): since format 8 PE replaces a
+  node by one new node of its live list, or cuts it, when the klongs it
+  would append leave more than theta (`PeWriter.decide`, 026-25).
 
 **Tests.** UT: `StoredKeyNode` (`testRefusesKeyCountBeyondTheNode`,
 `testRefusesBadKlongs`, `testRefusesBadTimeKlong`), `Klong` (18), `KeyNodeTester`
@@ -942,8 +976,10 @@ and 63 zero; every segment but the last of length 7, the last shorter;
   to give some record position. A segment's bytes past its length are not
   checked to be zero (G2).
 * Two value or delete nodes of one key in one record are not refused at
-  parse (to check whether the rerun refuses them); since 023 a writer
-  writes one a key (section 8.4).
+  parse; since 023 a writer writes one a key (section 8.4), and since
+  record format 8 a start's rerun refuses a record of the startup section
+  whose KVs are not in
+  strictly increasing key order (`DbStarter.rerunTransaction`; 026-25).
 
 
 ## 13. Keys and segments
@@ -1006,8 +1042,9 @@ be below the stream's first position after a cut.
 
 The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 
-1. The checks before any write: an incomplete creation, the meta
-   version, the node size (sections 6 and 7).
+1. The checks before any write: an incomplete creation (the primordial
+   record in part, or alone without the creation's second record; 005-33,
+   028-18), the meta version, the node size (sections 6 and 7).
 2. Recovery (section 7).
 3. The startup position (`Db.readStartupPos`;
    `getStartupPosFromLastTransaction`, :1000): from the record that the
@@ -1030,7 +1067,9 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
      of its top node.
    * **The rerun** of the section's transactions after the one at s
      (`rerunTransactions`, :358; `rerunTransaction`, :373), each at its own
-     time, with the same ids, in stored order; and D, the dirty set, from
+     time, with the same ids, in stored order, a record's KVs given to the
+     writer as one batch since format 8 (section 8.2; 027-11, section
+     1.7); and D, the dirty set, from
      the stored got-dirty pairs (`canonicalNode`, :494: the id must be the
      node at its position).
    * **Rule 4 by position** (`NodeCollection.linkToCanonical`, :771):
@@ -1048,25 +1087,29 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
      vpos.
 6. The startup distance, from its KV (`Db.readStartupDistanceKv`;
    section 15; 028-15), before the writer's first transaction: only the
-   writer uses it. A stream of the primordial record alone has no KV yet,
-   and the start keeps the builder's setting; any other stream without
-   the KV is refused as damaged (an SFE).
+   writer uses it. The creating start finds no KV yet, and keeps the
+   builder's setting; any other stream without the KV is refused as
+   damaged (an SFE). A stream of the primordial record alone was refused
+   at step 1 (028-18).
 7. Reclaim's table, current row and settings (`Reclaim.initFromDb`;
    section 15).
-8. A stream of the primordial record alone: the start's first
-   transaction, internal, puts the builder's startup distance at its KV
-   (`Db.putStartupDistanceKv`; 028-15). So the creating start writes two
-   records, the primordial one (with the first meta block, the creation
-   of `Db.CREATION_LENGTH`, 272 bytes) and this one; a crash between them,
-   or inside the second, leaves a stream that the next start completes
-   the same way, with that start's builder's setting. With `created.txt`
-   (the Pub API) the start syncs this record before it returns, as the
-   primordial one (`Db.syncCreation`; 028-17), so that only a crash
-   inside the creating start leaves the primordial record alone; until
-   028-17 the record waited in the write buffer, and a crash after the
-   start returned, before any write of the buffer, left it alone too: the
-   next start then put the KV at its own time, after the times of the
-   transactions the crash lost, and with its own builder's setting.
+8. The creating start (the stream was empty; `Db.handleEmptyStream`
+   wrote the primordial record): its first transaction, internal, puts
+   the builder's startup distance at its KV (`Db.putStartupDistanceKv`;
+   028-15). So a creation is two records, the primordial one (with the
+   first meta block, `Db.CREATION_LENGTH`, 272 bytes) and this one. With
+   `created.txt` (the Pub API) the start then syncs both with one sync
+   (`Db.syncCreation`, rule D1) and writes `created.txt` after it, before
+   it returns (015-01, 028-17, 028-18). A crash before the second record
+   is durable, or inside it, leaves the primordial record alone (or with
+   a part of the second, or the second failed), and the next start
+   refuses it with `DatabaseNotCreatedException` at step 1, writing
+   nothing (028-18, option C): a creation is whole or not there. From
+   028-15 to 028-18 such a start wrote the KV itself, at its own time and
+   with its own builder's setting; until 028-17 the second record also
+   waited in the write buffer after the start returned, and from 015-01
+   to 028-18 `created.txt` was written after the primordial record's sync
+   alone.
 
 A descent or scan that comes back to a node it passed is an SFE
 (`OpData.descentFrom`, `dag/OpData.java`:62, Brent's cycle check;
@@ -1077,9 +1120,8 @@ invariants they rely on (INV-1: each node at most once in D;
 docs/sis-model.md, section 8); what s may be (any record at or before
 the last, or only one that the take wrote, 015-73); the bound of the
 startup section (T3, 007-08), which is a writer's promise, not a
-reader's check; what a start appends (nothing but the creation, the
-creating start's record of the startup distance, and recovery's fill;
-012-02, section 8.14).
+reader's check; what a start appends (nothing but the creation, its two
+records, and recovery's fill; 012-02, section 8.14).
 
 **Tests.** UT: `DbStarter`, `TransSeq` (17), `DbTesterRestart`
 (`testCorruptStartupPosRefused`). Level 2's scripts and the Lean
@@ -1136,7 +1178,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   (`Db.readStartupDistanceKv`): other bytes are refused with
   `InternalDataException` ("Bad value of /#i/-sd"), and the
   start fails; no KV in a stream with more than the primordial record is
-  an SFE. A crash inside the setter's record starts with the old setting,
+  an SFE, and a stream of the primordial record alone (a creation that
+  did not complete) is refused before, with `DatabaseNotCreatedException`
+  (section 14.2, step 1; 028-18). A crash inside the setter's record starts with the old setting,
   one after its end with the new (until 028-15, with the setting in the
   meta block that the record held, either; 028-08). Until 028-15 sd was
   the meta block's (bytes 40 to 43), and `Db.setStartupDistance` put
@@ -1194,7 +1238,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 * The creation's primordial record holds no KV: an empty root key node
   and the first top node (`Db.writePrimordialTransaction`; 012-02,
   section 8.2, with its 264 bytes at format 5; 272 since 024-25). The
-  creating start's next record puts the startup distance (section 14.2).
+  creating start's next record puts the startup distance (section 14.2);
+  a creation is both records, and a start refuses the first alone
+  (028-18).
 
 **Tests.** UT: `DbTesterRestart` (554 to 867,
 `testMalformedSettingsRefusedAtStart`, :817), `StringMap`. C:
@@ -1424,9 +1470,14 @@ which bytes stay free, so it cannot wait.
   compatibility rule keeps each format's rerun path, switched by each
   record's format byte (option V-B, 21.3), as review C proposed and 024's
   readme plans ("switched on by the record's format"); else it must be in
-  the frozen format or never.
+  the frozen format or never. Taken: merges in format 7 (024-21), and
+  since format 8 the joins of PE's plan, in any transaction, not only at
+  a delete (026-25; 027-08).
 * **Q2, CL4** (4.4). Compaction at the delete (DC) changes the rerun as
-  Q1; RB with Q1. The same answer.
+  Q1; RB with Q1. The same answer. Taken at the write, not the delete:
+  option 2 in format 7 (024-23), and since format 8 PE's decision to
+  replace a node whose klongs appended would leave more than theta dead
+  klongs (`PeWriter.decide`; 026-25).
 * **Q3, PF2** (9.2). A compact key node encoding (about 35 to 40 % fewer
   index bytes, estimated) is a key node format 3; delta writes a new node
   type with chains to read. Later if the rule lets a reader take several
@@ -1511,7 +1562,10 @@ found here:
   additive.
 * **Q22.** A record's nodes in their order (top, key, value) and one value
   or delete node a key, refused otherwise (G12). Later and additive, if no
-  writer writes otherwise (CA1 makes it so for the builder).
+  writer writes otherwise (CA1 makes it so for the builder). Since record
+  format 8 a start refuses a rerun record's value and delete nodes that
+  are not in strictly increasing key order, at the rerun, not at parse
+  (section 8.4; 026-25); the order of the node types is not refused.
 * **Q23.** startupPos non-decreasing from record to record, and a record
   that the take reached (015-73). Later and additive for the first; the
   second needs a way to tell, maybe Q12's link.
@@ -1694,3 +1748,21 @@ version 155, 154 refused with a message that names 2026.5; a reclaim
 row without endKey and a meta block without the node size refused as
 damaged. Sections 3, 6, 14.2, 15, 19 (G9), 20 (Q4) and 21.1. By agent
 sdkv of coord-1118, on the branch `028-15-sd-kv`.
+
+2026-11-19. 027 brought up to date with PE (026-25), from the code at
+`b03dcea7`: section 1's list of what is to be written; section 3's
+version tables (record 8, nodes 3, 3, 5); section 6's thresholds in
+their roles in PE; 8.1's format byte 8; 8.3, `dirtyNodeBound` checked,
+not argued, for PE; 8.4 and 14.2, the rerun's batch and its refusal of
+KVs out of key order, with G11, G12 and Q22; Q1 and Q2 as taken; 11.3's
+empty key first, bitmap, bound on n and theta. By an agent of
+coord-1118, on the branch `027-pe`.
+
+2026-11-19. 028-18, option C (Frans, 09:53 and 09:59): a creation is
+whole or not there. A start refuses the primordial record alone, or
+with a part of the creation's second record or that record failed, with
+`DatabaseNotCreatedException` (`RecoverableStream.holdsFirstTransactionAlone`),
+writing nothing; the path in which a start wrote the KV itself is gone;
+with `created.txt` both records are synced with one sync before
+`created.txt` is written. Sections 7, 14.2 (steps 1, 6, 8) and 15. By an
+agent of coord-1118, on the branch `028-18-option-c`.

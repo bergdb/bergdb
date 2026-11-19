@@ -26,6 +26,7 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.SyncLevel;
@@ -374,35 +375,59 @@ public class DbTesterRestart {
     }
 
     /**
-     * Bergdb 028-15: a crash inside the creating start's record of the startup distance, or
-     * before it, after the primordial record: recovery cuts the record off, and the start,
-     * which finds the primordial record alone and no KV, takes its builder's setting, which
-     * it puts; a later start keeps that one. The whole record keeps the creation's setting,
-     * whatever the builder of a later start says.
+     * Bergdb 028-18 (option C; Frans, 2026-11-19, 09:53): a crash inside the creating start's
+     * record of the startup distance, or before it, after the primordial record, leaves a
+     * creation that did not complete. A start on the primordial record alone, on it and a
+     * part of the second record (a cut at every 8th byte), or on it and the second record
+     * failed (its last byte 0, as recovery's zero fill leaves it) throws a
+     * DatabaseNotCreatedException and leaves the stream as it was, also at a second try; a
+     * Core API start, without created.txt. The whole creation keeps the creator's setting,
+     * whatever the builder of a later start says, with the counters 0. From 028-15 to 028-18
+     * such a start completed the creation with its own builder's setting.
      */
     @Nano
-    public static void testCrashInCreatingStartsKv() throws IOException {
+    public static void testCrashInCreationsSecondRecord() throws IOException {
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db.builder().testSetup(stream).clock(clock).startupDistance(1000000).start().close();
         final long end = stream.getLength();
         Assert.assertTrue("a record after the creation", end > Db.CREATION_LENGTH);
         
-        for (long cut = Db.CREATION_LENGTH; cut <= end; cut += cut + 8 < end ? 8 : 1) {
+        List<MemoryStream> refused = new ArrayList<MemoryStream>();
+        for (long cut = Db.CREATION_LENGTH; cut < end; cut += cut + 8 < end ? 8 : 1) {
             MemoryStream m = stream.copy();
             m.truncate(cut);
-            int expected = cut == end ? 1000000 : 2000000;
+            refused.add(m);
+        }
+        MemoryStream failed = stream.copy();
+        MemoryStream.TestAccess.write(failed, new byte[] {0}, end - 1);
+        refused.add(failed);
+        for (MemoryStream m : refused) {
+            byte[] before = bytesOf(m);
             for (int start = 0; start < 2; start++) {
-                try (Db db = Db.builder().testSetup(m).clock(clock)
-                        .startupDistance(start == 0 ? 2000000 : 3000000).start()) {
-                    String at = "cut at " + cut + ", start " + start;
-                    Assert.assertEquals(at, expected, db.getStartupDistance());
-                    byte[] kv = db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, db.newGetData());
-                    Assert.assertEquals(at, expected, Db.parseStartupDistance(kv));
-                    Assert.assertEquals(at + ", the counters", 0, db.getTransactionCount());
+                String at = "length " + before.length + ", start " + start;
+                MemoryStream copy = m.copy();
+                try (Db db = Db.builder().testSetup(copy).clock(clock)
+                        .startupDistance(2000000).start()) {
+                    throw new AssertionError("started, " + at);
+                } catch (DatabaseNotCreatedException e) {
+                    Assert.assertTrue(at + ": " + e.getMessage(),
+                            e.getMessage().contains("028-18"));
                 }
-                m = m.copy();       // a closed MemoryStream refuses appends
+                Assert.assertArrayEquals("the stream as it was, " + at, before, bytesOf(copy));
             }
+        }
+        
+        for (int start = 0; start < 2; start++) {
+            MemoryStream m = stream.copy();
+            try (Db db = Db.builder().testSetup(m).clock(clock)
+                    .startupDistance(2000000 + start).start()) {
+                Assert.assertEquals("start " + start, 1000000, db.getStartupDistance());
+                byte[] kv = db.getOne(Long.MAX_VALUE, DbConstants.SD_KEY, db.newGetData());
+                Assert.assertEquals("start " + start, 1000000, Db.parseStartupDistance(kv));
+                Assert.assertEquals("the counters", 0, db.getTransactionCount());
+            }
+            stream = m.copy();      // a closed MemoryStream refuses appends
         }
     }
     

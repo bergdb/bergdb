@@ -134,13 +134,17 @@ step(it, W) is one internal transaction, at its own time ts:
      each.
    * **The row**, at `-current.txt`, in its place in key order: it with
      the new lastKey, kvCount and rewritten, plus the dirty bytes: the
-     stored size of each index node that the transaction made dirty
-     before the row's put (by the touch, or by the rewrites of keys before
-     the row's key), each at its size at the end of the operation that
-     made it dirty, also if a later put replaces it. Nodes dirty before
-     the step, and those that later puts make dirty, are not counted. The
-     row is the last call on its key: it replaces a rewrite of that key,
-     whose bytes stay counted.
+     stored size of each index node that the step's touch made dirty, each
+     at its size when it got dirty, also if a put then replaces it
+     (`Trans.dirtiedBytes`, read by the row's value transformation). The
+     transformation runs before the writer applies any of the
+     transaction's operations, which it gets as one batch (record format
+     8, 026-25), so nodes dirty before the step, and those that the puts
+     make dirty, are not counted. Until format 8 the operations were
+     applied one by one in key order, and the bytes of the nodes that the
+     rewrites of keys before the row's key made dirty were counted too.
+     The row is the last call on its key: it replaces a rewrite of that
+     key, whose bytes stay counted.
 4. **Commit.** A step cannot conflict: the scan and the commit hold the
    write lock, so no key is written after the scan's time (argued; no
    test). A step that conflicted would be dropped, to come again at a
@@ -274,8 +278,12 @@ pending, M1's condition holds, or the dead hand has more.
   space root, has a live key below it, and that key's last put (the
   user's at pCut or later, or a step's rewrite) made the node dirty; so
   no key range needs a touch, and the space root is on every step's
-  row's path (024-07, section 4). Checked at every cut (C-CUT,
-  `CUT-live`); gated (UnlinkFuzz).
+  row's path (024-07, section 4). It rests on the writer: since record
+  format 8 PE drops every child left empty and every empty segment tree,
+  and collapses a root of one entry (`PeWriter.rebalance`, `settleRoot`;
+  026-25), as the upward unlink and root collapse did in formats 6 and 7.
+  Checked at every cut (C-CUT, `CUT-live`); gated (UnlinkFuzz,
+  `testEmptiedSubtreesAfterCut`, `testDeletedKeysAfterCut`).
 * **COVER**, **LATEST**: with REWRITES and LIVEBELOW, every node
   reachable from tEnd on has its latest version at pCut or later once sp
   >= pEnd. Proved in the model (`T_cover`, `T_latest`).
@@ -493,3 +501,9 @@ the pilot is accepted as the template for the other parts (027-04,
 section 5.1).
 
 2026-11-13. The comments fixed in Java (028-02).
+
+2026-11-19. Brought up to date with PE (026-25), from the code at
+`b03dcea7`: 1.4's row counts the bytes of the touch's nodes only, as
+the writer gets the step's operations as one batch after the row's
+value transformation; LIVEBELOW's premise now PE's drops and collapses.
+By an agent of coord-1118, on the branch `027-pe`.
