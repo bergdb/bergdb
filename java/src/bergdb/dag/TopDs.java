@@ -62,8 +62,10 @@ public class TopDs {
             Dag.PointerCreatedListener pointerCreationListener, Dag.NodeChangeListener nodeChangeListener) {
 
         if (time == superRoot.rootTime) {
-            // A second new space root in the same transaction, for example a time split
-            // of the root followed by a space split. Top node times must be strictly
+            // Until record format 8 a time split of the root followed by a space split
+            // could make a second space root in one transaction. PE calls newSuperRoot only
+            // once a transaction, after settling its root, so it does not reach this branch.
+            // The same-time case is retained for direct callers. Top node times must be strictly
             // increasing; findSuperRootAtTime() can return the wrong one of two top nodes
             // with the same time. The super root was created by this transaction, so it
             // is not yet written and no reader uses its root pointer (readers have

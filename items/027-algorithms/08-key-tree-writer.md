@@ -354,8 +354,8 @@ preparation.
 
 A take visits the got-dirty lists in order. Serialization writes all top
 nodes before all key nodes, keeping the gathered order within each kind
-(027-03, section 8.4). The model compares the list as a set. The short
-way marks in another order than the plan (1.10, 028-25).
+(027-03, section 8.4). The model compares the list as a set. Both ways
+report in emit's order (1.10; 028-25, option B).
 
 ### 1.10. The same decisions by counts
 
@@ -383,22 +383,25 @@ rest by their lists (`PeWriter`'s class comment and 026-25, section 2):
   * a descent passes 1,000 nodes in one segment tree.
 
   If it is taken: (1) the value and delete nodes are made in key order
-  (their ids), the noops make nothing; (2) each segment leaf with actual
-  changes, in the order of its first operation, gets its klongs as append
-  writes them (a time klong, a bitmap of the cvs removed, a key klong for
-  each put in cv order) and is reported changed; (3) for each operation
-  that wrote, in key order, the nodes of its path above its leaf (the inner nodes of
-  each segment tree from the space root down, and the segment leaves of
-  the segments before), each once, are reported on the path. For such a
+  (their ids), the noops make nothing; (2) the changed leaves and kept
+  ancestors of operations that wrote are visited once in emit's order:
+  each later-segment tree in key order, recursively its trees below
+  first, before the space root's tree; within each tree, post-order,
+  children in key order before their parent. A changed leaf gets its
+  klongs as append writes them (a time klong, a bitmap of the cvs removed,
+  a key klong for each put in cv order) and is reported changed; a kept
+  ancestor is reported on the path after the nodes below it. For such a
   transaction PE's plan decides each changed leaf append, each unchanged
   leaf and every node above them same, joins and settles nothing, and so
   writes exactly these klongs and ids: argued in `PeWriter`'s comment;
   checked (the tree checker compares both ways with the model on every
   traced transaction).
   `DagTester.testShortWayLeafAroundASegmentTree` gates a leaf whose
-  operations come before and after a segment tree's.
-  An unchanged leaf passes before the fill, fit and dead-klong tests; it
-  gets no time klong and no report.
+  operations come before and after a segment tree's;
+  `testShortWayMarksInEmitOrder` compares both ways' reports, marks and
+  got-dirty order with clean ancestors, siblings and nested segment trees.
+  A leaf with no changes gets no time klong; if a tree below it wrote,
+  it is reported on the path, otherwise it gets no report.
 * **In the plan**: a segment leaf kept or appended to is decided by
   counts over its changes (`LeafFrame.leafNode`); an inner node whose
   planned children are all kept, none empty or to be joined, with the
@@ -409,16 +412,15 @@ rest by their lists (`PeWriter`'s class comment and 026-25, section 2):
   operations finds their children by one scan of its klongs
   (`routeBySearch`), not by its live list.
 
-**The order of the marks differs between the two ways.** The plan
-reports bottom-up (a node on the path after the nodes below it); the
-short way reports the leaves first and then each path top-down. For a
-path of two or more inner nodes below the space root that are not dirty
-yet, the got-dirty list's order differs from the plan's (the super root
-and the space root come first in both, 1.9). The trees, the ids and the
-set D are the same; the record's got-dirty pairs and the order of later
-takes follow the way Java took. Both are deterministic, so the stream is
-too (P2); a second implementation that wants Java's bytes must follow
-both orders. 028-25 asks whether to keep this or make one order.
+**One order of the marks for both ways** (028-25, option B,
+2026-11-19): the super root and space root come first in both (1.9),
+then reports in emit's order. A second implementation can follow the
+plan's order alone to match Java's got-dirty pairs and later takes.
+Until this change the short way reported leaves in first-operation
+order, then each path top-down. New streams can have different bytes,
+but record format 8 keeps its meaning: the tree and fresh ids are the
+same, and startup rebuilds D in the stored got-dirty order, independently
+of the rerun's marks (027-11, section 1.7).
 
 ### 1.11. What the record holds of it
 
@@ -698,8 +700,9 @@ transactions are not checked (027-13, 1.4).
 
 ## 7. Tests
 
-* **Gated by `before-commit.sh`**: DagTester (22 tests, among them
+* **Gated by `before-commit.sh`**: DagTester (23 tests, among them
   `testTwoNewRootsInOneTransaction`, `testShortWayLeafAroundASegmentTree`,
+  `testShortWayMarksInEmitOrder`,
   `testTransactionLeavesNoUnreachableNode`,
   `testDeleteEveryKeyAfterTheRootSplit`, the two of the bound), MergeTester
   (6, `testFillAfterEveryTransaction`, `testNoChainOfSingleChildren`,
@@ -740,9 +743,8 @@ transactions are not checked (027-13, 1.4).
 ## 9. Limits and open work
 
 * **dirtyNodeBound** is argued for PE since 028-21 (4.2), given V1.
-* **The order of the marks** differs between the short way and the plan
-  (1.10); the model checks D as a set: 028-25 (keep both orders as
-  described here, or make the short way report in emit's order).
+* **The model's order of the marks** is not checked: D is compared as a
+  set. Both Java ways use emit's order (1.10; 028-25).
 * **Speed**: PE's set test 11 to 18 % slower than format 7's writer, the
   load up to 10 %; reclaim's pace with PE: 028-19.
 * **Java against the model**: tested node for node on the traces, not
@@ -755,7 +757,6 @@ transactions are not checked (027-13, 1.4).
 * **Startup**: the rerun's reads of M1's neighbours are not in the
   cold-read bounds, and `DropStep` was not examined against PE's cuts,
   joins and collapses (027-11, sections 5 and 9).
-* **Stale comments** of the old writer in Java: 028-22.
 
 
 ## 10. A worked example
@@ -898,3 +899,9 @@ and the compaction minimum; the mark and serialization orders apart;
 ids, reachability, settle's reads, frames, Room, the estimates, the key
 checks, the readers' locks and the bitmap count. 4.2 merged with 028-21's
 counts for PE. No code bug found beyond 028-21 and 028-25. By coord-1118.
+
+2026-11-19. 028-25 option B: the short way reports in emit's order,
+including later-segment trees before the space root's tree. Sections 1.9,
+1.10, 7 and 9 updated; the new regression compares reports and marks
+with the plan forced by a package-private test hook. 028-22 corrected
+Java's remaining comments about the old writer.

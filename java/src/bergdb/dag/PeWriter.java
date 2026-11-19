@@ -214,7 +214,7 @@ final class PeWriter {
         if (root == null) {
             throw new DbException("Found no root node at t=" + tt + ", cannot continue put.");
         }
-        if (keys.length <= SHORT_OPS && shortWay(root)) {
+        if (!pd.forcePePlan && keys.length <= SHORT_OPS && shortWay(root)) {
             Dag.statShort++;
             return;
         }
@@ -235,6 +235,31 @@ final class PeWriter {
         final KeyNode newRoot = t.node != null ? (KeyNode) t.node : follow(t);
         dag.getTopDs().newSuperRoot(tt, newRoot, pd.accessData, pd.pointerCreatedListener,
                 pd.nodeChangeListener);
+    }
+
+    /** One report in the short way: its segment tree, depth, and last operation that wrote. */
+    private static final class ShortMark {
+        final KeyNode node;
+        final int segment, depth;
+        int lastOp;
+
+        ShortMark(KeyNode node, int lastOp, int segment, int depth) {
+            this.node = node;
+            this.lastOp = lastOp;
+            this.segment = segment;
+            this.depth = depth;
+        }
+    }
+
+    private static void shortMark(ArrayList<ShortMark> order, KeyNode node, int op,
+            int segment, int depth) {
+        for (ShortMark mark : order) {
+            if (mark.node == node) {
+                mark.lastOp = op;
+                return;
+            }
+        }
+        order.add(new ShortMark(node, op, segment, depth));
     }
 
     // ======== The short way of a small transaction ========
@@ -333,36 +358,45 @@ final class PeWriter {
                 leafOf[k] = null;                   // a noop
             }
         }
-        for (int l = 0; l < nl; l++) {
-            final KeyNode leaf = leaves[l];
+        // Emit reports a segment tree after the trees below its leaves, then its own nodes
+        // in post-order. A node follows the last operation through it and its deeper nodes.
+        // Keep only paths that wrote; a missing delete supplies no mark.
+        final ArrayList<ShortMark> order = new ArrayList<ShortMark>();
+        for (int k = 0; k < n; k++) {
+            if (leafOf[k] == null) continue;
+            final int start = k == 0 ? 0 : pathEnd[k - 1];
+            int g = 0;
+            for (int q = start; q < pathEnd[k]; q++) {
+                final KeyNode x = path.get(q);
+                shortMark(order, x, k, g, q - start);
+                if (x.isSegmentLeaf()) g++;
+            }
+            shortMark(order, leafOf[k], k, g, pathEnd[k] - start);
+        }
+        order.sort((a, b) -> {
+            // A tree is named by the segments before it: sibling trees in key order,
+            // a descendant tree before its ancestor tree (the space root's tree last).
+            for (int g = 0; g < Math.min(a.segment, b.segment); g++) {
+                int cmp = Long.compareUnsigned(keys[a.lastOp][g], keys[b.lastOp][g]);
+                if (cmp != 0) return cmp;
+            }
+            if (a.segment != b.segment) return Integer.compare(b.segment, a.segment);
+            int cmp = Integer.compare(a.lastOp, b.lastOp);
+            return cmp != 0 ? cmp : Integer.compare(b.depth, a.depth);
+        });
+        for (ShortMark mark : order) {
+            final KeyNode x = mark.node;
             final ArrayList<Ent> ch = new ArrayList<Ent>(2);
             for (int k = 0; k < n; k++) {
-                if (leafOf[k] == leaf) {
+                if (leafOf[k] == x) {
                     ch.add(new Ent(keys[k][keys[k].length - 1], made[k] != null ? made[k] : REMOVED));
                 }
             }
             if (!ch.isEmpty()) {
-                appendChanges(leaf, null, ch);
+                appendChanges(x, null, ch);
                 Dag.statAppends++;
-            }
-        }
-        // The nodes on the paths of the operations that wrote, kept, with a node written below;
-        // each once (a few paths of a few nodes: a list, not a map).
-        final java.util.ArrayList<KeyNode> marked = new java.util.ArrayList<KeyNode>();
-        for (int k = 0; k < n; k++) {
-            if (leafOf[k] == null) {
-                continue;
-            }
-            for (int q = k == 0 ? 0 : pathEnd[k - 1]; q < pathEnd[k]; q++) {
-                final KeyNode x = path.get(q);
-                boolean seen = false;
-                for (int r = 0; r < marked.size() && !seen; r++) {
-                    seen = marked.get(r) == x;
-                }
-                if (!seen) {
-                    marked.add(x);
-                    pd.nodeChangeListener.keyNodeOnPath(x);
-                }
+            } else {
+                pd.nodeChangeListener.keyNodeOnPath(mark.node);
             }
         }
         return true;

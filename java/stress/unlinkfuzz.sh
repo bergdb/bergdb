@@ -1,7 +1,7 @@
 #!/bin/sh
-# UnlinkFuzz, the fuzzer of the Dag's delete path (the upward unlink, the root collapse and
-# the take-back of bergdb 023-05), on a fixed list of configurations (bergdb 024-09, step
-# A1). Until then it ran by hand only, and a branch with a klong left to a node taken back
+# UnlinkFuzz, the fuzzer of the Dag's delete path (PE's drops, joins and root settling since
+# record format 8; until then the upward unlink, root collapse and take-back of bergdb
+# 023-05), on a fixed list of configurations (bergdb 024-09, step A1). Until then it ran by hand only, and a branch with a klong left to a node taken back
 # (fault 12 of bergdb 023-08, review C) passed before-commit.sh and level1.sh to level4.sh;
 # UnlinkFuzz finds that fault in seconds, in the "big-long" configurations below.
 #
