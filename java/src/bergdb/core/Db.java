@@ -3263,11 +3263,11 @@ public class Db implements AutoCloseable {
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
-            // A delete: with the upward unlink and the merges four klongs in every node of its
-            // path, the klongs of root collapse in the segment leaves above, and four nodes a
-            // level and two levels more for the merges (Dag.dirtyNodeBound; bergdb 023-07,
-            // section 5.4; 024-21): 20 nodes a level, over the walk's count of a delete with
-            // its path's overflows at node size 8 (2026.4: 7); a put 3. A value
+            // A delete: 20 nodes a level, a put 3. Since record format 8 PE writes a node
+            // once, cuts its final list, joins small neighbours and settles roots; the count
+            // covers those nodes (Dag.dirtyNodeBound; bergdb 028-21; 027-08, section 4.2).
+            // Until format 8 the allowance covered the upward unlink and the merges at each
+            // delete, including intermediate replacements and root collapses. A value
             // transformation may give null, a delete (bergdb 023-11, review B, B2).
             final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
             cheap += (delete ? 20 : 3) * height * kv.getKey().length + 3;

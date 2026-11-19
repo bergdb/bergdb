@@ -12,8 +12,10 @@ import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**
- * Deletes through Db: the upward unlink, the take-back and root collapse at the delete
- * (bergdb 023-07, sections 5.1 to 5.3; 023-09), with restarts that rerun the records.
+ * Deletes through Db: PE drops empty children, joins small neighbours and settles roots
+ * after planning the batch (bergdb 027-08), with restarts that rerun the records. Until
+ * record format 8 these exercised the upward unlink, the take-back and root collapse at
+ * each delete (bergdb 023-07, sections 5.1 to 5.3; 023-09).
  *
  * @author Frans Lundberg
  */
@@ -125,12 +127,11 @@ public class DbTesterDelete {
     }
     
     /**
-     * Every key deleted (bergdb 023-08, review C, 5.3, item 3): the climbs reach the space
-     * root, which root collapse lowers as it loses its children, down to a segment leaf that
-     * stays, empty. In one transaction after the fill, and over several transactions, then
+     * Every key deleted (bergdb 023-08, review C, 5.3, item 3): PE drops empty children and
+     * settles the space root to an empty segment leaf when the tree is empty. In one transaction after the fill, and over several transactions, then
      * puts again, at startup distances that rerun little and all; gets after each step and
-     * after restarts. An inner space root is never emptied in one delete: Dag.deleteUpward
-     * throws Bug for it (bergdb 023-11, review A, S1). Transactions of at most
+     * after restarts. Until record format 8 an inner space root was never emptied in one
+     * delete: Dag.deleteUpward threw Bug for it (bergdb 023-11, review A, S1). Transactions of at most
      * Db.MAX_OPERATIONS (L1, bergdb 024-24): 2,000 keys are deleted in four of 500, not in one,
      * and put again in batches of 500; 500 keys, a deeper tree than 100, are still deleted in
      * one transaction (review rev24, R12).

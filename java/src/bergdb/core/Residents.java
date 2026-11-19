@@ -547,12 +547,13 @@ public final class Residents {
     }
 
     /**
-     * A key node that a transaction changes and then replaces is counted with its bytes
-     * after the transaction (bergdb 019-20; found by harness 6.5, 018-05): transactions of
-     * three keys of 50, nodes of at most 8 entries. The writer adds a key to a written leaf
-     * (KeyNode.addKlong grows its arrays), a later key of the transaction finds it full and
-     * replaces it (Dag.handleFullNode), and toPreviousState cuts it back to its written
-     * version; the transaction's end makes it clean again (Db.endOfTrans). Until 019-20 it
+     * A key node is counted with its bytes after the transaction (bergdb 019-20; found by harness 6.5, 018-05): transactions of
+     * three keys of 50, nodes of at most 8 entries. PE plans before writing, so a replaced
+     * base keeps its arrays; appended nodes can grow and must be counted at their new size.
+     * Until record format 8 the writer added a key to a written leaf
+     * (KeyNode.addKlong grew its arrays), a later key of the transaction found it full and
+     * replaced it (Dag.handleFullNode), and toPreviousState cut it back to its written
+     * version; the transaction's end made it clean again (Db.endOfTrans). Until 019-20 it
      * stayed counted with its bytes of before the growth, below its bytes, until it was
      * evicted: after transaction 10, 747 bytes against 939.
      */

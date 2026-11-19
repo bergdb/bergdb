@@ -5,9 +5,9 @@ import java.util.*;
 import bergdb.common.StringUtil;
 
 /**
- * A2A3Check for the Dag since 2026-10-16 (WP D1 of F1-008-11; Dag.handleFullNode, Db's
- * marking): also checks the net effect (no node with a klong at tt is unreachable at tt)
- * and compares Db's marking (the marks of operations that change something, minus the nodes
+ * A2A3Check for the Dag since 2026-10-16 (WP D1 of F1-008-11; until record format 8,
+ * Dag.handleFullNode; since then PE, bergdb 026-25; Db's marking): also checks the net
+ * effect (no node with a klong at tt is unreachable at tt) and compares Db's marking (the marks of operations that change something, minus the nodes
  * the transaction replaced; Db.endOfOp, Db.endOfTrans) with the Lean model's marked set.
  * Written for F1-008-10, 2026-10-15, on its prototype; part of the Java tier of the Level 2
  * conformance checks (bergdb 011-11).

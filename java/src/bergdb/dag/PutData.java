@@ -13,6 +13,9 @@ public class PutData extends OpData {
     
     public Dag.NodeChangeListener nodeChangeListener;
     public Dag.PointerCreatedListener pointerCreatedListener;
+
+    /** Test hook: run PE's plan even when the transaction qualifies for the short way. */
+    boolean forcePePlan;
     
     // ==== Output ====
     

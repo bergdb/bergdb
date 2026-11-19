@@ -62,7 +62,8 @@ public class DagExamples {
      * Minimal dag that is not a tree.
      */
     private void notATree() {
-        // Causes one space split of type 2 (space-split-2).
+        // Until record format 8 this caused one space split of type 2 (space-split-2).
+        // PE now plans the batch and cuts a full leaf's live list into new nodes.
         TestClock clock = new TestClock();
         Db db = TestNodeSize.builder(8).clock(clock).mainStream(new MemoryStream()).start();
         for (int i = 0; i < 5; i++) {

@@ -87,11 +87,10 @@ import bergdb.stream.MemoryStream;
  *              (bergdb 024-09, step A1); the trace's CONFIG line says long=false for it
  *
  * The last line on stdout (not in the trace; bergdb 024-09, step A1) has the Dag's counters of
- * this JVM, so of runs A, B and E together, a rerun at a start included: nodes unlinked by a
- * delete's climb (Dag.statUnlinked), nodes that a transaction made and took back
- * (statTakenBack) and the segment roots among them (statRootsTakenBack), root collapses
- * (statCollapses) and empty keys pointed to the next child (statRelabels). conformance.sh
- * sums them over a set's traces, and requires a take-back of its draining configurations.
+ * this JVM, so of runs A, B and E together, a rerun at a start included: PE's appends,
+ * replacements, compactions, cuts, joins, collapses, new roots and dropped empty nodes.
+ * conformance.sh sums them over a set's traces and requires a join in each draining
+ * configuration (bergdb 026-25).
  *
  * With reclaim (bergdb item 001, WP R2; bergdb 001-07, 2.7) every executed
  * transaction is a record, reclaim's steps and table stores too: run A records each through
@@ -1648,8 +1647,9 @@ public class TraceExport {
         for (PNode pn : nodes.values()) {
             if (pn.obj instanceof KeyNode) {
                 if (!segment.containsKey(pn.id)) {
-                    // A node that a later key of its transaction replaced (M1): the checker
-                    // reports it as an A3 failure. Its level: as if in the first segment.
+                    // PE makes no unreachable nodes. Until record format 8 a later key of
+                    // the transaction could replace one (M1). The checker reports an A3
+                    // failure; assign its level as if it were in the first segment.
                     unreached.add(pn.id);
                     segment.put(pn.id, 0);
                 }
@@ -1712,9 +1712,9 @@ public class TraceExport {
             KeyNode first = topNodes.isEmpty() ? null : (KeyNode) topNodes.get(0).getPointerNode(0);
             out.println("TREE " + maxNode + " " + bounds[0] + " " + bounds[1] + " "
                     + (first == null ? -1 : mid(first.getId()))
-                    // the writer's thresholds of format 7 (bergdb 024-21; 024-22, J2 and J9):
-                    // m, c and rule O's h; m is 1 below node size 8, where nothing merges;
-                    // and option 2's theta (bergdb 024-23), 0 below node size 8
+                    // PE's thresholds (bergdb 027-02, section 4): minimum fill m, joined
+                    // part cap c, replacement threshold h, and dead-klong cap theta.
+                    // Below node size 8, m is 1 (no joins) and theta is 0 (no compaction).
                     + " " + Dag.minFill(maxNode) + " " + Dag.mergeCap(maxNode) + " "
                     + Dag.splitAbove(maxNode) + " " + Dag.theta(maxNode));
         }

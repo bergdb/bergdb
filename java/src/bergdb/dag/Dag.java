@@ -1067,15 +1067,16 @@ public class Dag {
      */
     static final int MIN_FILL_30 = 8;
 
-    /** c at node size 30: the most live klongs that a merge puts in one new node; more make
-     *  two new nodes of about half each (a redistribution). */
+    /** c at node size 30: the most entries in one new node of a joined list. Since record
+     *  format 8 PE cuts it into ceil(n / c) parts, as evenly as possible; there can be more
+     *  than two (PeWriter.nParts, partSizes; bergdb 027-08, sections 1.4 and 1.7). */
     static final int MERGE_CAP_30 = 17;
 
     /**
-     * The smallest node size with merges. Below it a space split's halves can hold fewer
-     * than 2 live klongs (h / 2 < 2), so V1 cannot hold with m = 2: m is 1 there, and no node
-     * is merged, as in 2026.4. A database has node size 8, 14, 30 or 62 (DbBuilder); smaller
-     * ones are for Dag's own tests.
+     * The smallest node size with joins. Below it PE's cuts can make parts with fewer than
+     * 2 entries, so V1 cannot hold with m = 2: m is 1 there and no node is joined. Until
+     * record format 8 this was the limit for a space split's halves (h / 2 < 2).
+     * A database has node size 8, 14, 30 or 62 (DbBuilder); smaller ones are for Dag's tests.
      */
     static final int MERGE_MIN_NODE_SIZE = 8;
 
@@ -1108,10 +1109,14 @@ public class Dag {
     }
 
     /**
-     * The room for more klongs that a node made by rule O or by a merge has at least, less a
-     * margin of 3, and at least 2: q = max(2, min(B / 2, B - h, B - c) - 3), 10 at node size
-     * 30. A time split's last version holds at most h klongs, a space split's half at most B /
-     * 2, a merged node at most c + 1 (dirtyNodeBound; bergdb 024-14's count for its sets).
+     * The replacement allowance in dirtyNodeBound: q = max(2, min(B / 2, B - h, B - c) - 3),
+     * 10 at node size 30. PE's ordinary replacements have at most h entries, cuts at most
+     * B / 2, and joined parts at most c. This is not a lower bound on every PE node's free
+     * room: a compaction can hold B - 1 entries. The count also checks dead-klong overflow
+     * (bergdb 028-21; 027-08, section 4.2).
+     * Until record format 8 this counted the room after rule O or a merge, less a margin
+     * of 3: a time split held at most h klongs, a space split's half at most B / 2, a merged
+     * node at most c + 1 (bergdb 024-14's count for its sets).
      */
     private int roomAfterReplacement() {
         final int b = maxNodeSize;

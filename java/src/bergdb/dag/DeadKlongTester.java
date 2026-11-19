@@ -10,9 +10,9 @@ import bergdb.nanotest.Nano;
 
 /**
  * Option 2 of dead klongs, compaction at the write (bergdb 024-23; 024-18, section 4), on the
- * Dag alone, in memory: a write that would leave a key node with more than theta dead KEY
- * klongs finds it full, and rule O replaces it by its last version with the write applied,
- * one node; so every node holds at most theta dead klongs after every write (TP39). The
+ * Dag alone, in memory: PE replaces a node whose append would leave more than theta dead
+ * KEY klongs by its final live list, in one node if it fits, else cut into parts. Every node
+ * holds at most theta dead klongs after every transaction (TP39; bergdb 027-08). The
  * restarts that rerun the compactions are DbTesterMerge's.
  *
  * @author Frans Lundberg
@@ -162,10 +162,10 @@ public class DeadKlongTester {
     }
 
     /**
-     * A compaction is one node, a time split, also of a last version above h: a leaf of 18
+     * PE's compaction makes one node when the live list fits, even above h: a leaf of 18
      * keys (19 klongs; h = 17 at node size 30) gets 7 overwrites in one transaction (27
      * klongs, 7 dead), then one more: it had room, so it is compacted to one leaf of 19
-     * klongs, where rule O of a full node would space split it.
+     * klongs. Until record format 8 rule O of a full node would space split it instead.
      */
     @Nano
     public static void testCompactionIsOneNode() {
