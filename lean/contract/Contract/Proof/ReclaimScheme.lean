@@ -15,6 +15,10 @@ to s.
 -/
 import SIS.ReclaimTheorems
 import SIS.Proof.HandleCutT12
+import SIS.Proof.EvLogic
+import SIS.Proof.PhysStart
+import SIS.Proof.BoundT4Debt
+import SIS.Proof.BoundT4
 
 namespace Contract
 
@@ -159,6 +163,278 @@ theorem inD_lv_ge (hok : RunOK sp al ts) (hst : AlgOK sp al) (hmk : al.mark = tr
       exact find?_node_of_mem (step_vs_nodup sp al _ _ hinvj hstep) hw hwx
     have := st_lv_ge hok hst hjk hk hver hv
     omega
+
+end
+
+/-! ## The references of D's nodes below the cut -/
+
+section
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- A node with a version in a record r after J, with the startup pos of the
+state after T(k), r ≤ k, at J or before, was taken at r: it is in D after T(J)
+with an index at most s(r), if it is an index node after T(k) or exists after
+T(J) (a data node is written only when created). -/
+theorem written_inD (hok : RunOK sp al ts) (hst : AlgOK sp al) {J k r : Nat} (hk : k ≤ ts.length)
+    (hsJ : lastSp (st sp al ts k).S ≤ J) (hJr : J < r) (hrk : r ≤ k) {y : NodeId}
+    {u : Version V} (hu : (st sp al ts k).S.versionAt r y = some u)
+    (hy : isIndex (st sp al ts k).P y = true ∨ ((st sp al ts J).P.get? y).isSome) :
+    ∃ d, (y, d) ∈ (st sp al ts J).D ∧ d ≤ lastSp (st sp al ts r).S := by
+  obtain ⟨i, rfl⟩ : ∃ i, r = i + 1 := ⟨r - 1, by omega⟩
+  have hi : i < ts.length := by omega
+  have hinvi := inv_st sp al ts hok hst i (by omega)
+  have hlen := hinvi.len
+  have hstep : StepOK sp (st sp al ts i).P (i + 1) (parts sp al (st sp al ts i) ts[i]).c := by
+    have := hok.2 i hi
+    rw [parts_c, hlen]
+    simpa [st] using this
+  have hinv1 := inv_st sp al ts hok hst (i + 1) (by omega)
+  have hu' : (st sp al ts (i + 1)).S.versionAt (i + 1) y = some u := by
+    rw [← versionAt_of_prefix (st_S_prefix sp al ts hrk hk) (by rw [hinv1.len]; omega)]
+    exact hu
+  rw [st_S_succ sp al ts hi, ← hlen, versionAt_snoc_self] at hu'
+  obtain ⟨hmem, hnode⟩ := find?_node_spec hu'
+  rcases (step_written_iff sp al _ _ hinvi hstep y).mp ⟨u, hmem, hnode⟩ with hd | ht
+  · -- A data node created at r.
+    exfalso
+    obtain ⟨hnone, n, hn, hdat⟩ := step_dataIds_spec sp al _ _ hinvi hstep hd
+    rcases hy with hy | hy
+    · have hP : (st sp al ts (i + 1)).P = (parts sp al (st sp al ts i) ts[i]).P := by
+        rw [st_succ sp al ts hi, step_eq_parts]
+      have hg := st_grow sp al ts hok hst (j := i + 1) (j' := k) hrk hk
+      obtain ⟨n', hn', -, hd', -⟩ := hg y n (by rw [hP]; exact hn)
+      simp [isIndex, hn', hd', hdat] at hy
+    · have hg := st_grow sp al ts hok hst (j := J) (j' := i) (by omega) (by omega)
+      obtain ⟨n, hn⟩ := Option.isSome_iff_exists.mp hy
+      obtain ⟨n', hn', -⟩ := hg y n hn
+      rw [hnone] at hn'
+      cases hn'
+  · -- Taken at r: in D before the step, with an index at most s(r).
+    obtain ⟨d, hd1, hds⟩ := (step_taken_mem sp al _ _ y).mp ht
+    have hs : (parts sp al (st sp al ts i) ts[i]).s = lastSp (st sp al ts (i + 1)).S := by
+      rw [st_succ sp al ts hi, step_S, step_lastSp]
+    rw [hs] at hds
+    have hsk := lastSp_st_mono hok hst (i := i + 1) (j := k) hrk hk
+    rcases (step_D1_mem sp al _ _ hlen _).mp hd1 with h | ⟨h, -⟩
+    · refine ⟨d, ?_, hds⟩
+      have hsec : (y, d) ∈ sectionD (st sp al ts i).S := by rw [← hinvi.inv1]; exact h
+      obtain ⟨h1, -, R, hR, hyR⟩ := sectionD_mem hsec
+      have hinvJ := inv_st sp al ts hok hst J (by omega)
+      have hspJ := lastSp_st_mono hok hst (i := J) (j := i) (by omega) (by omega)
+      rw [hinvJ.inv1]
+      have hdJ : d < (st sp al ts J).S.length := by rw [hinvJ.len]; omega
+      refine mem_sectionD_of (by omega) hdJ ?_ hyR
+      obtain ⟨l, hl⟩ := st_S_prefix sp al ts (j := J) (j' := i) (by omega) (by omega)
+      rw [← hl, List.getElem?_append_left hdJ] at hR
+      exact hR
+    · simp only at h
+      omega
+
+/-- The references below c of the latest versions of D's nodes, given that the
+nodes of D have their latest versions at c or later in every state from the
+startup pos of the state after T(k) to k (RC gives it: `inD_lv_ge`). Let x be
+in D after T(k), with index d > s(k), and its latest version w name record r0
+< c for a pointee y. Then there is a state J from s(k) to k in which y is not
+in D and y's latest version is at r0:
+
+* x got dirty at d by marking or the touch: J = d - 1. x is not written after
+  J (it would have been in D then), so w is x's latest version then, x is
+  reachable then and not in D, and with A6' (`EvLogic.clean`) y is not in D
+  then and w names y's latest version then.
+* x was put back by Rule A at d: J = d. w is x's version written at d, which
+  names the latest versions of its pointees after T(d) (`step_taken_refs`); y
+  is not in D then, since its latest version is below c.
+
+As s(k) ≤ J, y is not written after J (`written_inD`): its latest version after
+T(k) is at r0, so it is not in D after T(k) either. -/
+theorem dref_lv (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true)
+    (hev : EvictRunOK sp al ts) {c k : Nat} (hk : k ≤ ts.length)
+    (hD : ∀ K, lastSp (run sp al (ts.take k)).S ≤ K → K ≤ k →
+      ∀ x, inD (run sp al (ts.take K)).D x = true → ∀ v, (run sp al (ts.take K)).S.lv x = some v →
+        c ≤ v.recNo) :
+    ∀ x, inD (run sp al (ts.take k)).D x = true → ∀ v, (run sp al (ts.take k)).S.lv x = some v →
+      ∀ y r, v.ref? y = some r → r < c →
+        ((run sp al (ts.take k)).S.lv y).map (·.recNo) = some r ∧
+          inD (run sp al (ts.take k)).D y = false := by
+  intro x hx w hw y r0 hr0 hrc
+  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
+  have hinvk := inv_st sp al ts hok hst k hk
+  change inD (st sp al ts k).D x = true at hx
+  change (st sp al ts k).S.lv x = some w at hw
+  change ((st sp al ts k).S.lv y).map (·.recNo) = some r0 ∧ inD (st sp al ts k).D y = false
+  obtain ⟨dx, hdx⟩ := (inD_iff _ _).mp hx
+  have hsec : (x, dx) ∈ sectionD (st sp al ts k).S := by rw [← hinvk.inv1]; exact hdx
+  obtain ⟨hsd, hdl, R, hR, hxR⟩ := sectionD_mem hsec
+  have hlen := hinvk.len
+  have hxi : isIndex (st sp al ts k).P x = true := hinvk.dIndex _ hdx
+  obtain ⟨j, rfl⟩ : ∃ j, dx = j + 1 := ⟨dx - 1, by omega⟩
+  have hjl : j < ts.length := by omega
+  have hjk : j + 1 ≤ k := by omega
+  have hinvj := inv_st sp al ts hok hst j (by omega)
+  have hinv1 := inv_st sp al ts hok hst (j + 1) (by omega)
+  have hstep : StepOK sp (st sp al ts j).P (j + 1) (parts sp al (st sp al ts j) ts[j]).c := by
+    have := hok.2 j hjl
+    rw [parts_c, hinvj.len]
+    simpa [st] using this
+  have hRj := st_record hjl hjk hk hinvj.len hR
+  subst hRj
+  have hgd : (parts sp al (st sp al ts j) ts[j]).R.gd =
+      (parts sp al (st sp al ts j) ts[j]).gd3 ++ (parts sp al (st sp al ts j) ts[j]).r7.2 := rfl
+  rw [hgd] at hxR
+  have hvk : ∀ {z : NodeId} {r' : Nat} {u : Version V},
+      (st sp al ts k).S.versionAt r' z = some u → r' ≤ k := by
+    intro z r' u h
+    obtain ⟨R', hR', -⟩ := versionAt_spec h
+    have := (List.getElem?_eq_some_iff.mp hR').1
+    omega
+  -- A state J from s(k) on in which y is not in D and its latest version is at r0.
+  have key : ∃ J, lastSp (st sp al ts k).S ≤ J ∧ J ≤ k ∧ inD (st sp al ts J).D y = false ∧
+      ((st sp al ts J).P.get? y).isSome ∧ ((st sp al ts J).S.lv y).map (·.recNo) = some r0 := by
+    rcases List.mem_append.mp hxR with hg | hr7
+    · -- x got dirty at j + 1 by marking or the touch: J = j.
+      have hxD : inD (st sp al ts j).D x = false := step_gd3_not_inD sp al _ _ hg
+      have hxw : written sp x = true := step_gd3_written sp al _ _ x hg
+      have hxnone : ∀ r', j + 1 ≤ r' → (st sp al ts k).S.versionAt r' x = none := by
+        intro r' hr'
+        cases hv : (st sp al ts k).S.versionAt r' x with
+        | none => rfl
+        | some u =>
+          exfalso
+          obtain ⟨d, hd, -⟩ := written_inD hok hst hk (J := j) (by omega) (by omega) (hvk hv) hv
+            (Or.inl hxi)
+          have : inD (st sp al ts j).D x = true := (inD_iff _ _).mpr ⟨d, hd⟩
+          rw [hxD] at this
+          cases this
+      have hlvj : (st sp al ts j).S.lv x = some w := by
+        rw [st_S_take hok hst (j := j) (k := k) (by omega) hk, lv_take hxnone]
+        exact hw
+      have hwj := hinvj.lv_at hlvj
+      obtain ⟨-, -, n, hn, hwh, -, -⟩ := hinvj.version_node hwj
+      have hcase : marked sp (parts sp al (st sp al ts j) ts[j]).P
+          (parts sp al (st sp al ts j) ts[j]).c (j + 1) x = true ∨
+          x ∈ (parts sp al (st sp al ts j) ts[j]).c.touch := by
+        rw [parts_gd3, hinvj.len, List.mem_filter, List.mem_append] at hg
+        rcases hg.1 with h1 | h1
+        · simp only [hmk, ↓reduceIte, markOf, List.mem_mergeSort, List.mem_filter, mem_allIds,
+            Bool.and_eq_true] at h1
+          exact Or.inl h1.2.2
+        · exact Or.inr (mem_touchOf.mp h1).1
+      have hre : reachable sp (st sp al ts j).P j x = true := by
+        rcases hcase with hm | ht
+        · have hre1 : reachable sp (parts sp al (st sp al ts j) ts[j]).P (j + 1) x = true := by
+            simp only [marked, Bool.and_eq_true] at hm
+            exact hm.1
+          rw [parts_P' sp al _ _ hinvj.len] at hre1
+          rcases hstep.noRes x hre1 with h | h
+          · simpa using h
+          · exfalso
+            obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp h
+            have := hstep.fresh nn hnn
+            rw [hid, hn] at this
+            cases this
+        · have := hstep.touchReach x ht
+          simpa using this
+      have hyp : y ∈ pointees sp n.hist := by
+        have h1 := hinvj.ref_mem_pointees hwj hr0
+        rw [hwh] at h1
+        obtain ⟨e', he', hye⟩ := (mem_pointees sp _ y).mp h1
+        exact (mem_pointees sp _ y).mpr ⟨e', (mem_upTo.mp he').1, hye⟩
+      have hlog := evLogic_st sp al ts hok hj hmk hev j (by omega)
+      obtain ⟨hyD, v', hv', hvref⟩ := hlog.clean x n hxw hre hn hxD y hyp
+      rw [hlvj, Option.some.injEq] at hv'
+      subst hv'
+      obtain ⟨e', he', hye⟩ := (mem_pointees sp _ y).mp hyp
+      obtain ⟨m, hm, -⟩ := hinvj.ptrs x n hn e' he' y hye
+      refine ⟨j, by omega, by omega, hyD, by simp [hm], ?_⟩
+      rw [← hvref]
+      exact hr0
+    · -- x was put back by Rule A at j + 1: J = j + 1.
+      have htk := (step_r7_shape sp al _ _ hinvj.len).2.subset hr7
+      have hP : (st sp al ts (j + 1)).P = (parts sp al (st sp al ts j) ts[j]).P := by
+        rw [st_succ sp al ts hjl, step_eq_parts]
+      have hS : (st sp al ts (j + 1)).S = Snew sp al (st sp al ts j) ts[j] := by
+        rw [st_succ sp al ts hjl, step_S]
+      obtain ⟨nx, hnx⟩ := Option.isSome_iff_exists.mp
+        (isSome_of_isIndex (step_taken_index sp al _ _ hinvj htk))
+      obtain ⟨v, hv, hvref⟩ := step_taken_refs sp al _ _ hok.1 hinvj hstep htk hnx
+      have hsk1 := lastSp_st_mono hok hst (i := j + 1) (j := k) hjk hk
+      have hxD1 : (x, j + 1) ∈ (st sp al ts (j + 1)).D := by
+        rw [hinv1.inv1]
+        refine mem_sectionD_of (R := (parts sp al (st sp al ts j) ts[j]).R) (by omega)
+          (by rw [hinv1.len]; omega) ?_ (by rw [hgd]; exact hxR)
+        rw [hS, ← hinvj.len]
+        exact Snew_getElem?_new sp al _ _
+      have hxnone : ∀ r', j + 2 ≤ r' → (st sp al ts k).S.versionAt r' x = none := by
+        intro r' hr'
+        cases hv' : (st sp al ts k).S.versionAt r' x with
+        | none => rfl
+        | some u =>
+          exfalso
+          have hr'k := hvk hv'
+          obtain ⟨d, hd, hds⟩ := written_inD hok hst hk (J := j + 1) (by omega) (by omega) hr'k hv'
+            (Or.inl hxi)
+          have h1 := mem_of_nodup_keys hinv1.dNodup hd hxD1
+          have h2 := lastSp_st_mono hok hst (i := r') (j := k) hr'k hk
+          omega
+      have hlv1 : (st sp al ts (j + 1)).S.lv x = some w := by
+        rw [st_S_take hok hst (j := j + 1) (k := k) hjk hk, lv_take hxnone]
+        exact hw
+      have hwj := hinv1.lv_at hlv1
+      rw [hS, hv, Option.some.injEq] at hlv1
+      subst hlv1
+      obtain ⟨-, -, n1, hn1, hwh, -, -⟩ := hinv1.version_node hwj
+      have hn1x : n1 = nx := by
+        rw [hP, hnx] at hn1
+        exact (Option.some.inj hn1).symm
+      subst hn1x
+      have hyp : y ∈ pointees sp n1.hist := by
+        have h1 := hinv1.ref_mem_pointees hwj hr0
+        rw [hwh] at h1
+        obtain ⟨e', he', hye⟩ := (mem_pointees sp _ y).mp h1
+        exact (mem_pointees sp _ y).mpr ⟨e', (mem_upTo.mp he').1, hye⟩
+      have hr0' := hvref y hyp
+      rw [hr0, ← hS] at hr0'
+      obtain ⟨e', he', hye⟩ := (mem_pointees sp _ y).mp hyp
+      obtain ⟨m, hm, -⟩ := hinv1.ptrs x n1 (by rw [hP]; exact hnx) e' he' y hye
+      refine ⟨j + 1, by omega, hjk, ?_, by simp [hm], hr0'.symm⟩
+      cases hyD : inD (st sp al ts (j + 1)).D y with
+      | false => rfl
+      | true =>
+        exfalso
+        cases hl : (st sp al ts (j + 1)).S.lv y with
+        | none => rw [hl] at hr0'; cases hr0'
+        | some u =>
+          rw [hl, Option.map_some, Option.some.injEq] at hr0'
+          have := hD (j + 1) (show lastSp (st sp al ts k).S ≤ j + 1 by omega) hjk y hyD u hl
+          omega
+  obtain ⟨J, hsJ, hJk, hyD, hyJ, hlvJ⟩ := key
+  have hnone : ∀ r', J + 1 ≤ r' → (st sp al ts k).S.versionAt r' y = none := by
+    intro r' hr'
+    cases hv : (st sp al ts k).S.versionAt r' y with
+    | none => rfl
+    | some u =>
+      exfalso
+      obtain ⟨d, hd, -⟩ := written_inD hok hst hk hsJ (by omega) (hvk hv) hv (Or.inr hyJ)
+      have : inD (st sp al ts J).D y = true := (inD_iff _ _).mpr ⟨d, hd⟩
+      rw [hyD] at this
+      cases this
+  have hlvk : (st sp al ts k).S.lv y = (st sp al ts J).S.lv y := by
+    rw [st_S_take hok hst hJk hk, lv_take hnone]
+  have h1 : ((st sp al ts k).S.lv y).map (·.recNo) = some r0 := by rw [hlvk]; exact hlvJ
+  refine ⟨h1, ?_⟩
+  cases hyk : inD (st sp al ts k).D y with
+  | false => rfl
+  | true =>
+    exfalso
+    cases hl : (st sp al ts k).S.lv y with
+    | none => rw [hl] at h1; cases h1
+    | some u =>
+      rw [hl, Option.map_some, Option.some.injEq] at h1
+      have hspk : lastSp (st sp al ts k).S ≤ k := by
+        rcases hinvk.spLt with h | ⟨-, h⟩ <;> omega
+      have := hD k hspk (Nat.le_refl _) y hyk u hl
+      omega
 
 end
 

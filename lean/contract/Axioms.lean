@@ -156,3 +156,5 @@ open Contract
 #print axioms full_cut_rc
 #print axioms cut_keeps_top_rc
 #print axioms cut_java_reads_rc
+#print axioms rc_dref
+#print axioms cutOK_of_reads

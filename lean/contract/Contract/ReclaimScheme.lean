@@ -158,6 +158,46 @@ theorem tscheme_of_open {sp : Spec V T} {al : Algo V T} (ho : TSchemeOpen sp al)
   obtain ⟨p1, -, p3, p4⟩ := rc_parts hok hj hmk hk hrc
   exact ⟨p1, h2, fun x hx v hv => ⟨p3 x hx v hv, h3 x hx v hv⟩, p4⟩
 
+section
+
+variable {sp : Spec V T} {al : Algo V T} {ts : List T}
+
+/-- CutOK's part 3, second half, under RC, for a run with TREE and A6'
+(`EvictRunOK`, which the bridge gives for BergDB's key tree): a reference below
+c of the latest version of a node of D names the latest version of a node not
+in D. -/
+theorem rc_dref (hok : RunOK sp al ts) (hev : SIS.EvictRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) {c e k : Nat}
+    (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ x, inD db.D x = true → ∀ v, db.S.lv x = some v →
+      ∀ y r, v.ref? y = some r → r < c → (db.S.lv y).map (·.recNo) = some r ∧ inD db.D y = false := by
+  dsimp only
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  obtain ⟨hce, -, hrw, hlb, w, hw1, hw2⟩ := hrc
+  have h1 := lastSp_take_le hok hst w
+  apply dref_lv hok hj hmk hev hk
+  intro K hsK hKk
+  have h2 := lastSp_take_le hok hst K
+  have hes : e ≤ lastSp (run sp al (ts.take K)).S :=
+    Nat.le_trans hw1 (SIS.lastSp_st_mono hok hst (i := w) (j := K) (by omega) (by omega))
+  exact inD_lv_ge hok hst hmk (by omega) hce hes
+    (SIS.latest_st sp al ts hok hst e K c hce (by omega) (by omega) hrw hlb hes)
+
+/-- CutOK under RC from part 2 alone, for a run with TREE and A6'. -/
+theorem cutOK_of_reads (hok : RunOK sp al ts) (hev : SIS.EvictRunOK sp al ts)
+    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) {c e k : Nat}
+    (hk : k ≤ ts.length) (hrc : RC sp al ts c e k)
+    (h2 : ∀ t w, lastFa (run sp al (ts.take k)).S ≤ t → t ≤ k →
+      ReadsPhys sp (run sp al (ts.take k)).S (run sp al (ts.take k)).P (run sp al (ts.take k)).D t w →
+      c ≤ w.recNo) :
+    CutOK sp c (run sp al (ts.take k)) k := by
+  obtain ⟨p1, -, p3, p4⟩ := rc_parts hok hj hmk hk hrc
+  have hd := rc_dref hok hev hj hmk hk hrc
+  exact ⟨p1, h2, fun x hx v hv => ⟨p3 x hx v hv, fun y r hr hrc' => (hd x hx v hv y r hr hrc').1⟩, p4⟩
+
+end
+
 /-- T-SCHEME and RC at every cut mark give the premise `hcut` of the theorems
 after cuts: `CutOK` at the largest cut so far. -/
 theorem hcut_of_rc {sp : Spec V T} {al : Algo V T} (hts : TScheme sp al)
