@@ -224,11 +224,11 @@ final class PeWriter {
         if (rv == null) {
             throw new Bug("PE at " + tt + ": the space root settled to nothing.");
         }
-        final List<FEnt> e = emit(rv);
-        if (e.size() != 1) {
-            throw new Bug("PE at " + tt + ": the space root emitted " + e.size() + " nodes.");
+        final Object e = emit(rv);
+        if (!(e instanceof Tgt)) {
+            throw new Bug("PE at " + tt + ": the space root emitted more than one node.");
         }
-        final Tgt t = e.get(0).t;
+        final Tgt t = (Tgt) e;
         if (t.node == root) {
             return;
         }
@@ -539,11 +539,11 @@ final class PeWriter {
                 result = null;
                 return null;
             }
-            final List<FEnt> e = emit(s);
-            if (e.size() != 1) {
-                throw new Bug("PE at " + tt + ": a segment root emitted " + e.size() + " nodes.");
+            final Object e = emit(s);
+            if (!(e instanceof Tgt)) {
+                throw new Bug("PE at " + tt + ": a segment root emitted more than one node.");
             }
-            result = new Sub(e.get(0).t, s instanceof VN && ((VN) s).wrote);
+            result = new Sub((Tgt) e, s instanceof VN && ((VN) s).wrote);
             return null;
         }
     }
@@ -1458,17 +1458,15 @@ final class PeWriter {
 
     /**
      * emit: the planned subtree written, children first, each node by its decision: kept,
-     * klongs appended, or its final list cut into new nodes. Gives the entries its parent gets,
-     * the first with compare value 0 (the parent puts its own).
+     * klongs appended, or its final list cut into new nodes. Gives the entries its parent gets:
+     * one, what it names (a Tgt); or, for a cut into two nodes or more, their entries (Parts),
+     * the first's compare value 0 (the parent puts its own).
      */
-    private List<FEnt> emit(Object ch) {
+    private Object emit(Object ch) {
         if (ch instanceof Tgt) {
-            final ArrayList<FEnt> one = new ArrayList<FEnt>(1);
-            one.add(new FEnt(0, (Tgt) ch));
-            return one;
+            return ch;
         }
         final VN v = (VN) ch;
-        final ArrayList<FEnt> out = new ArrayList<FEnt>(1);
         if (v.dec == SAME) {
             // Kept: its children planned emitted, its list not made (it is the base's).
             boolean wroteBelow = false;
@@ -1484,21 +1482,18 @@ final class PeWriter {
             if (v.wrote) {
                 pd.nodeChangeListener.keyNodeOnPath(v.base);
             }
-            out.add(new FEnt(0, v.from));
-            return out;
+            return v.from;
         }
         v.wrote = true;
         if (v.counted) {
             appendPlanned(v);
             Dag.statAppends++;
-            out.add(new FEnt(0, v.from));
-            return out;
+            return v.from;
         }
         if (v.dec == APPEND && v.changes != null) {
             appendChanges(v.base, v.lb, v.changes);
             Dag.statAppends++;
-            out.add(new FEnt(0, v.from));
-            return out;
+            return v.from;
         }
         final List<FEnt> f;
         if (v.h == 0) {
@@ -1506,9 +1501,14 @@ final class PeWriter {
         } else {
             final ArrayList<FEnt> fi = new ArrayList<FEnt>(v.f.size());
             for (Ent e : v.es) {
-                final List<FEnt> sub = emit(e.ch);
-                for (int i = 0; i < sub.size(); i++) {
-                    fi.add(i == 0 ? new FEnt(e.cv, sub.get(0).t) : sub.get(i));
+                final Object sub = emit(e.ch);
+                if (sub instanceof Tgt) {
+                    fi.add(new FEnt(e.cv, (Tgt) sub));
+                    continue;
+                }
+                final List<FEnt> parts = ((Parts) sub).es;
+                for (int i = 0; i < parts.size(); i++) {
+                    fi.add(i == 0 ? new FEnt(e.cv, parts.get(0).t) : parts.get(i));
                 }
             }
             if (!fi.isEmpty() && fi.get(0).cv != 0) {
@@ -1519,8 +1519,7 @@ final class PeWriter {
         if (v.dec == APPEND) {
             append(v.base, v.lb, f);
             Dag.statAppends++;
-            out.add(new FEnt(0, v.from));
-            return out;
+            return v.from;
         }
         if (v.base != null) {
             if (v.compact) {
@@ -1532,6 +1531,8 @@ final class PeWriter {
             }
         }
         final int[] sizes = partSizes(f.size(), v.dec, v.join);
+        final ArrayList<FEnt> out = sizes.length > 1 ? new ArrayList<FEnt>(sizes.length) : null;
+        Tgt one = null;
         int off = 0;
         for (int s : sizes) {
             // The node filled first, then reported made (its id, and its bytes counted with
@@ -1547,13 +1548,26 @@ final class PeWriter {
                 reportPointer(nn, i);
             }
             pd.nodeChangeListener.keyNodeChanged(nn);
-            out.add(new FEnt(s == 0 ? 0 : f.get(off).cv, new Tgt(nn)));
+            if (out != null) {
+                out.add(new FEnt(s == 0 ? 0 : f.get(off).cv, new Tgt(nn)));
+            } else {
+                one = new Tgt(nn);
+            }
             off += s;
         }
         if (v.base != null) {
             replaced(v.base);
         }
-        return out;
+        return out != null ? new Parts(out) : one;
+    }
+
+    /** The new nodes of a list cut into two or more, as emit gives them to the parent. */
+    private static final class Parts {
+        final ArrayList<FEnt> es;
+
+        Parts(ArrayList<FEnt> es) {
+            this.es = es;
+        }
     }
 
     /** emitKs: the klongs that make the base hold F: a time klong, a bitmap if a compare
@@ -1580,12 +1594,17 @@ final class PeWriter {
     private void appendPlanned(VN v) {
         for (Ent e : v.es) {
             final VN c = (VN) e.ch;
-            final List<FEnt> sub = emit(c);
+            final Object sub = emit(c);
             if (c.dec < 1) {
                 continue;                       // kept: its entry is the live one
             }
-            for (int i = 0; i < sub.size(); i++) {
-                addEntry(v.base, i == 0 ? e.cv : sub.get(i).cv, sub.get(i).t, true);
+            if (sub instanceof Tgt) {
+                addEntry(v.base, e.cv, (Tgt) sub, true);
+                continue;
+            }
+            final List<FEnt> parts = ((Parts) sub).es;
+            for (int i = 0; i < parts.size(); i++) {
+                addEntry(v.base, i == 0 ? e.cv : parts.get(i).cv, parts.get(i).t, true);
             }
         }
         pd.nodeChangeListener.keyNodeChanged(v.base);

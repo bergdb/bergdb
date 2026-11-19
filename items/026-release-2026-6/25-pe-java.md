@@ -72,6 +72,27 @@ it restates. The differences of form, none of which changes a node:
   section 2.6, its recommendation; 030-21 ran the traces with `cap` = h,
   and its theorems hold for any `cap` from 1 to M - 1, `Cfg.Ok`).
 
+**The ways to the same decisions.** PE's program decides a node by its
+whole final list; Java decides most nodes by counts, without the lists,
+where the counts give the same decision (each way is compared with the
+model, node for node, on every traced transaction):
+
+- the short way of a transaction of at most 8 operations whose every
+  segment leaf is only appended to (it fits, keeps a live klong, at most
+  theta dead klongs, at least m if not a root) and that makes no segment
+  tree: the operations found as a get finds a key (one scan an inner
+  node), the values made in key order, each leaf's klongs appended, the
+  nodes above marked; anything else changes nothing and the plan runs
+  (`PeWriter.shortWay`);
+- in the plan, a segment leaf kept or appended to is decided by counts over
+  its changes (`LeafFrame.leafNode`); an inner node whose children planned
+  are all kept is kept without its list (sparse), and one whose children
+  are kept or replaced by new nodes, none empty or joined, is appended to
+  by counts (`appendedByCounts`); an inner node routes a few operations by
+  one scan of its klongs, not by its sorted live list (`routeBySearch`);
+- the rest, a node cut, replaced, joined, emptied or collapsed, by its
+  lists, as PeWriter.lean.
+
 **The ids.** Db gives a node its id when it is reported made, so the order
 of the reports is that of PeWriter.lean's fresh ids: a value or delete node
 when its operation is applied at its segment leaf (key order), a segment
