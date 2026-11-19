@@ -3560,9 +3560,10 @@ public class Reclaim implements Db.TransactionListener {
          * the stream was never cut, with no exception: the fault of a queue of about 100M
          * keys at the real limit, 2 GB (024-07, section 3). Now the startup pos passes the
          * last step within 100 transactions. 200 kB since the merges at the delete (bergdb
-         * 024-21): Dag.dirtyNodeBound counts up to 922 index nodes, 179 kB, for the user's
+         * 024-21): Dag.dirtyNodeBound counted up to 922 index nodes, 179 kB, for the user's
          * transactions of 8 puts and 8 deletes at node size 8, and a limit of 100 kB refused
-         * them. At 200 kB the test still has its fault: with the touch of a key range back
+         * them; since record format 8 (PE) and bergdb 028-21's bound, up to 902, 175 kB
+         * (bergdb 028-26, a probe of these transactions). At 200 kB the test still has its fault: with the touch of a key range back
          * (Db.touchRange before 024-07) it fails, the startup pos 252,408 bytes behind after
          * 100 transactions (024-21's review, R5).
          */
