@@ -49,6 +49,23 @@ theorem old_reads_good (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
         reachable sp db.P (min t (lastSp db.S)) w.node = true :=
   OldReads.oldReadsGood_st hok hj hk
 
+/-- **Part 2 needs only the first wait** (the independent search's remark;
+bergdb 030-24): with c ≤ e ≤ fa(k), RC2 and RC3 at e, and the startup pos of
+record k at e or later, every version that a read at a time from the first
+available time to k may follow is at the cut or later. Java's second wait
+(RC4's v) is needed for D's references (`rc_dref`), not for reads. -/
+theorem rc_part2_first_wait (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    {c e k : Nat} (hk : k ≤ ts.length) (hce : c ≤ e) (hef : e ≤ lastFa (run sp al (ts.take k)).S)
+    (h2 : RC2 sp (run sp al (ts.take e)) e c) (h3 : RC3 sp (run sp al (ts.take e)) e)
+    (hsp : e ≤ lastSp (run sp al (ts.take k)).S) :
+    let db := run sp al (ts.take k)
+    ∀ t w, lastFa db.S ≤ t → t ≤ k → ReadsPhys sp db.S db.P db.D t w → c ≤ w.recNo := by
+  dsimp only
+  intro t w hft htk hr
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have h1 := lastSp_take_le hok hst k
+  exact OldReads.rc_reads hok hj e k c hce (by omega) hk h2 h3 hsp t w (by omega) htk hr
+
 /-- **`CutOK`'s part 2 under RC** (bergdb 030-24): every version that a read at
 a time from the first available time to k may follow is at the cut or later.
 From RunOK and Java's still-dirty test; of RC it uses c ≤ e ≤ fa(k), RC2, RC3
