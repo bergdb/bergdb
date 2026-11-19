@@ -105,7 +105,7 @@ Open
 | [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done on its branch |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
 | [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | A (Frans) | done |
-| [028-27](27-disjoint-test-sets.md) | Change | night, week and timing as disjoint sets of tests; Android in week | decided | in progress |
+| [028-27](27-disjoint-test-sets.md) | Change | night, week and timing as disjoint sets of tests; Android in week | decided | done on its branch |
 
 
 Closed
@@ -232,3 +232,8 @@ to 10 to 10^9 and returns the value set; gated on the branch
 2026-11-19. 028-27 registered (Frans's decision of 2026-11-19) and taken by
 an agent of coord-1118: night.sh, week.sh and timing.sh as disjoint sets
 of tests, the Android tests in week.sh; branch `028-27-disjoint-test-sets`.
+
+2026-11-19. 028-27 done on its branch: week.sh stands alone with the
+Android tests, night.sh without `week` and `large`, the shared machinery
+in `java/stress/runlib.sh`; WEEK OK from `week.sh short`, by an agent of
+coord-1118.

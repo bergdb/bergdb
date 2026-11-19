@@ -20,8 +20,8 @@
 #
 # Usage: java/week.sh          the week run, about 9 hours on F53 (an estimate of
 #                              2026-11-19 from the steps' times below)
-#        java/week.sh short    a trial of the script: its steps small (about 20 minutes
-#                              on a quiet F53, 35 at a load near 90)
+#        java/week.sh short    a trial of the script: its steps small (13 minutes on
+#                              F53 at a load of 13 to 22, 2026-11-19)
 #        DRY=1 java/week.sh [short]
 #                              prints the steps in order with their commands, runs
 #                              nothing (no clone, no report)

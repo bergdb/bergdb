@@ -1,7 +1,7 @@
 028-27. Change: night, week and timing as disjoint sets of tests; Android in week
 ================================================================================
 
-Status: in progress. Kind: Change. Frans: decided (2026-11-19).
+Status: done on its branch. Kind: Change. Frans: decided (2026-11-19).
 Created 2026-11-19 by Frans Lundberg.
 
 What: make `java/week.sh` a distinct set of tests that does not run
@@ -148,3 +148,19 @@ Log
 2026-11-19. Registered (Frans's decision of 2026-11-19) and taken by an
 agent of coord-1118: in progress; branch `028-27-disjoint-test-sets` in a
 scratch clone.
+
+2026-11-19. Done on the branch `028-27-disjoint-test-sets`, by an agent of
+coord-1118. Gates on F53, at a load of 13 to 22 (the old form of week.sh
+ran from the main tree meanwhile): `stress/android.sh` alone, with the SDK
+of 006-18-03 in `ANDROID_SDK` and `ANDROID_USER_HOME`: ANDROID OK (1727
+tests, 4 skipped) in 159 s; `week.sh short` on `5989fc22`, with the SDK
+set: WEEK OK (13 minutes; before-commit 70 s, apps-quick 243 s,
+kill-restart-week 62 s, fuzz-week 60 s, unlinkfuzz-week 141 s with 1,613
+rounds, the day's block only, harness-soak-week 15 s, conformance-small
+77 s with the Lean checker built by the step, android 133 s), and its
+`tools/news.sh` entry; `before-commit.sh`: BEFORE COMMIT OK (95 s);
+`DRY=1 sh java/night.sh` lists the 17 steps of before, in their order and
+with their commands; `night.sh large` is refused with a usage line;
+`sh -n` on every changed script. After the gate only week.sh's header
+changed (the short run's time). Not run: a full week.sh (about 9 hours)
+and a full night.sh.
