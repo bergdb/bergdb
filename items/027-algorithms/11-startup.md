@@ -364,7 +364,8 @@ T3 and T4 are part 6's; what they give a start:
 * **Time, cold** (s1): 46 and 51 s at 10M keys, 50 and 200 MB, with rule
   4 by position, 34 s of the 46 the rerun's loads; 214 and 210 s before:
   measured (005-57). No bound proposed (BD6). Not measured since format
-  7, whose merges read siblings (024-11, TU9).
+  7, whose merges read siblings (024-11, TU9), nor since format 8, whose
+  joins do too (part 4; 026-25).
 * **Heap**: the section's records and the maps, outside the cache
   budget: the live heap peaked at 3.3 to 4.9 sd, D included, 0.9 to 2.1
   times the section above the running database's: measured (019-45).
@@ -410,10 +411,12 @@ T3 and T4 are part 6's; what they give a start:
     (`followStreamPointer`, step 1); for a top node's pointer that
     neither map of rule 4 finds (005-57 found none); at topPos when not
     in posToId (1.6).
-  * Merges: a join of the writer (PE's rebalance, format 8; a merge of
-    format 7, 024-21) reads a sibling a level and may leave it unchanged
-    when it does not join it (the count of M1), on no path of `pathOf`;
-    the cold-read bounds do not cover Java's rerun of deletes.
+  * Joins: PE's rebalance (format 8; a merge of format 7, 024-21) reads
+    a sibling of a changed child with fewer than m entries, for its live
+    count (M1's choice of the left or the right neighbour), and may leave
+    it unchanged when it joins the other one; such a sibling is on no
+    path of `pathOf`, so the cold-read bounds do not cover Java's rerun
+    of the transactions that join, deletes mostly.
   * The touch: Java's rerun does not repeat a reclaim step's touch
     (1.7), the model's does; that D adds no read (`MemInv.coverGd`)
     rests for Java on the touched nodes being on the step's put paths
@@ -489,6 +492,10 @@ and P5 bounds it.
   parents a node (`T4_debt_java_tree`; part 6); a cold start's reads no
   longer depend on it.
 * `DropStep` is not checked on Java's traces, as C-A checks TREE: open.
+  Its words are those of format 7's writer (a split's new nodes); since
+  format 8 the writer is PE (part 4), whose cuts, joins and collapses
+  were not examined against it (026-25 did not touch these proofs, which
+  are at the tag `proofs-2026-11-17`).
 * A cold start in seconds needs the rerun's reads cheaper or fewer
   (007-05, point 3); after it the writer reads a header for each stream
   pointer of D's nodes it writes, 1.48 million in 300 transactions at
@@ -570,3 +577,9 @@ tests, section 9 the outcomes, 1.11 `level1.sh`'s corrected header.
 2026-11-18. 028-15 (agent sdkv of coord-1118): sd is a KV read at the end
 of a start (1.1, 1.4, 1.9); meta version 155, a block without the node
 size damaged (1.2); the creating start's record of sd (1.9).
+
+2026-11-19. Brought up to date with PE (026-25), from the code at
+`b03dcea7`: section 4's cold time and section 5's joins (PE's
+rebalance reads a sibling for M1), section 9's `DropStep` against PE;
+1.7's batch was 026-25's. By an agent of coord-1118, on the branch
+`027-pe`.

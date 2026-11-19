@@ -9,7 +9,11 @@ A-COPY, `LiveAppend`); what the proofs leave out (concurrency, bytes, torn
 records, resource bounds); the mapping from Java's state to the model's
 and its registers (011-11, 001-07, 001-08, 009-05); the checkers and their
 sets (`conformance.sh`, `treeconf.sh`, `TakeCheck`, `A2A3Check2`; 027-02's
-format); a table of every theorem with its part.
+format); since record format 8 the tree checker's writer is PE
+(lean/SIS/Tree/Pe.lean), shown to give the trees of the proved writer,
+`Contract.PE.peTx` (030-21), on Java's traces by 026-25's `pecmp`, and the
+contract checker (`lean/contract/check.sh`); a table of every theorem with
+its part.
 
 Not written yet: the outline's order of writing is 027-04, section 5.1.
 Each part follows the template of 027-04, section 2.2.
@@ -20,3 +24,6 @@ Log
 
 2026-11-13. Created as a stub (Frans, 11:09, 027-04's Q3: "as
 recommended").
+
+2026-11-19. The checks of the writer PE (026-25, 030-21). By an agent of
+coord-1118, on the branch `027-pe`.

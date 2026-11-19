@@ -153,6 +153,22 @@ The references in `java/`, `AGENTS.md`, `README.md` and
 items keep 024-02. By agent sf of coord-1113, on the branch
 `027-03-stream-format`.
 
+2026-11-19. 027 brought up to date with the writer PE, record format 8
+(026-25; Frans, 10:14: "Yes, good."), from the code at `b03dcea7`
+(`PeWriter`, `Dag.putKvs`, `DbStarter.rerunTransaction`, `Db.putKvs`)
+and the Lean writer (lean/SIS/Tree/Pe.lean): 027-02 (the TREE line's
+thresholds in their roles in PE, BASE's id order, the OP lines' batch,
+`treecheck`'s writer, the unreached nodes, the empty key node); 027-03
+(sections 1, 3, 6, 8.1, 8.3, 8.4, 11.3, 14.2, G11, G12, Q1, Q2, Q22;
+026-25 had done 5, 8.2, 11.2 and 21.1); 027-08 (a summary of PE until
+the part is written); 027-11 (the cold time, the joins, `DropStep`);
+027-13 (the row's dirty bytes, LIVEBELOW's premise); the stubs 027-06,
+027-09 and 027-17. 027-01 (the snapshot) and 027-04 (the outline's
+decision record) are history and not changed. Registered: 028-21
+(`dirtyNodeBound` not argued for PE) and 028-22 (Java comments that
+describe the old writer as today's). By an agent of coord-1118, on the
+branch `027-pe`.
+
 
 State
 =====
@@ -168,3 +184,7 @@ the reading order; one subitem per part, 027-05 to 027-18, made as
 stubs; 027 with Lean is the authority for the exact rules, and the
 code's comments may repeat or summarize them, so that a reader can tell
 whether the code does what it should.
+
+2026-11-19. Up to date with PE (record format 8, 026-25). Open from it:
+028-21 (`dirtyNodeBound` for PE), 028-22 (stale Java comments); part 4
+(027-08) is still a stub, with a summary of PE until it is written.

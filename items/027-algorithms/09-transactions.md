@@ -6,8 +6,11 @@ Part 5 of 027's outline (027-04, section 2.3; levels: 0). How a
 transaction becomes a change and a record: the clock and the times (56
 bits; the last 1,024 times kept for reclaim's internal transactions); the
 read set and the STM check; the key and value transformations; the KVs in
-key order, one a key; the limits L1 to L6 and the check of the dirty
-nodes; the go point (R1: a refused call changes nothing) and the steps
+key order, one a key, given to the writer as one batch (record format 8,
+026-25), after every value transformation of the transaction has run;
+the limits L1 to L6 and the check of the dirty nodes (`dirtyNodeBound`,
+argued for format 7's writer, checked for PE; 027-03, section 8.3;
+028-21); the go point (R1: a refused call changes nothing) and the steps
 after it (statistics, eviction, reclaim's work); one writer and readers
 without locks; why a rerun gives the same record (P2, P8).
 
@@ -20,3 +23,7 @@ Log
 
 2026-11-13. Created as a stub (Frans, 11:09, 027-04's Q3: "as
 recommended").
+
+2026-11-19. The batch of record format 8 (026-25) and the status of
+`dirtyNodeBound` with PE. By an agent of coord-1118, on the branch
+`027-pe`.
