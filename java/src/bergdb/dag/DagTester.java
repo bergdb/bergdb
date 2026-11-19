@@ -986,6 +986,113 @@ public class DagTester {
     }
     
     /**
+     * Dag.dirtyNodeBound for the writer PE (bergdb 028-21), against the key nodes that a
+     * transaction makes dirty, at node sizes 8, 14, 30 and 62: (1) a new segment tree of 1 to
+     * 2 B + 2 keys, which PE cuts into parts from h + 1 keys (until 028-21 counted as the old
+     * writer's one node to B - 3 keys: 18 keys at node size 30 made three nodes, counted as
+     * one); (2) a parent whose children are each cut into three parts, one more than their
+     * overflows and one, at node size 30: the root, 21 klongs and 18 live, gets three klongs
+     * a child where the count gave two, and is cut (until 028-21, 12 key nodes and a bound
+     * of 10); (3) random histories and a transaction of runs of puts, new keys and deletes;
+     * (4) deletes of most keys under several inner nodes of trees thinned towards m, so that
+     * joins happen on several levels, one level down too.
+     */
+    @Nano
+    public static void testDirtyNodeBoundOfPe() {
+        // (1) New segment trees.
+        for (int b : new int[] {8, 14, 30, 62}) {
+            for (int n = 1; n <= 2 * b + 2; n++) {
+                BoundCase c = new BoundCase(b);
+                List<String> ks = new ArrayList<String>();
+                for (int i = 0; i < 5; i++) ks.add(String.format("/p%05d/x00000", 2 * i));
+                c.run(ks, null, false);
+                ks.clear();
+                for (int i = 0; i < n; i++) ks.add(String.format("/p00005/x%05d", i));
+                c.run(ks, null, true);
+            }
+        }
+        
+        // (2) A root of 17 leaves of 15 keys; leaf 0 cut in two (the root: 21 klongs, 18 live,
+        // one dead), and four new keys in three leaves (21 klongs, 19 live); then 12 new keys
+        // in each of the three, 31 entries, three parts each.
+        BoundCase c = new BoundCase(30);
+        List<String> ks = new ArrayList<String>();
+        for (int i = 0; i < 255; i++) ks.add(String.format("k%05d", i * 100));
+        c.run(ks, null, false);
+        ks.clear();
+        for (int j = 1; j <= 14; j++) ks.add(String.format("k%05d", j));
+        for (int l : new int[] {5, 6, 7}) for (int j = 1; j <= 4; j++) ks.add(String.format("k%05d", l * 1500 + j));
+        c.run(ks, null, false);
+        KeyNode root = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
+        Assert.assertEquals("the root's klongs", 21, root.size);
+        ks.clear();
+        for (int l : new int[] {5, 6, 7}) for (int j = 10; j < 22; j++) ks.add(String.format("k%05d", l * 1500 + j));
+        long cuts0 = Dag.statCuts;
+        c.run(ks, null, true);
+        Assert.assertEquals("three leaves and the root cut", 4, Dag.statCuts - cuts0);
+        
+        // (3) Random histories, then runs of puts, new keys and deletes.
+        Random r = new Random(28021);
+        for (int b : new int[] {8, 14, 30, 62}) {
+            for (int iter = 0; iter < 12; iter++) {
+                c = new BoundCase(b);
+                int nk = 20 + r.nextInt(b * b * 2);
+                boolean two = r.nextBoolean();
+                Set<Integer> live = new java.util.TreeSet<Integer>();
+                for (int h = 1 + r.nextInt(6); h > 0; h--) {
+                    List<String> ps = new ArrayList<String>(), ds = new ArrayList<String>();
+                    int dens = 1 + r.nextInt(6);
+                    for (int i = 0; i < nk; i++) {
+                        if (r.nextInt(dens) != 0) continue;
+                        if (live.contains(i) && r.nextInt(4) == 0) { ds.add(peKey(two, i)); live.remove(i); }
+                        else { ps.add(peKey(two, i)); live.add(i); }
+                    }
+                    c.run(ps, ds, false);
+                }
+                List<String> ps = new ArrayList<String>(), ds = new ArrayList<String>();
+                for (int cl = 1 + r.nextInt(5); cl > 0; cl--) {
+                    int lo = r.nextInt(nk), len = 1 + r.nextInt(3 * b), step = 1 + r.nextInt(3);
+                    boolean del = r.nextInt(3) == 0;
+                    for (int i = lo; i < Math.min(nk, lo + len); i += step) {
+                        if (!del) ps.add(peKey(two, i));
+                        else if (live.contains(i)) ds.add(peKey(two, i));
+                    }
+                }
+                int at = r.nextInt(nk);
+                for (int i = r.nextInt(4 * b); i > 0; i--) ps.add(peKey(two, at) + "n" + i);
+                ps.removeAll(ds);
+                c.run(ps, ds, true);
+            }
+        }
+        
+        // (4) Deletes of most keys under several inner nodes.
+        for (int b : new int[] {8, 14, 30}) {
+            for (int keep : new int[] {2, 3, b}) {
+                c = new BoundCase(b);
+                List<String> all = new ArrayList<String>();
+                for (int i = 0; i < 6 * b * b; i++) all.add(String.format("k%05d", i));
+                c.run(all, null, false);
+                List<String> ds = new ArrayList<String>();
+                for (int i = 0; i < all.size(); i++) if (i % 3 != 0) ds.add(all.get(i));
+                c.run(new ArrayList<String>(), ds, false);
+                List<String> left = new ArrayList<String>();
+                for (int i = 0; i < all.size(); i += 3) left.add(all.get(i));
+                ds.clear();
+                for (int i = left.size() / 4; i < 3 * left.size() / 4; i++) {
+                    if (i % keep != 0) ds.add(left.get(i));
+                }
+                long joins0 = Dag.statJoins;
+                c.run(new ArrayList<String>(), ds, true);
+                Assert.assertTrue("b " + b + ", keep " + keep + ": joins", Dag.statJoins - joins0 >= 10);
+            }
+        }
+    }
+    
+    private static String peKey(boolean two, int i) {
+        return two ? String.format("/p%05d/x%05d", i / 10, i % 10) : String.format("k%05d", i);
+    }
+    
+    /**
      * Dag.dirtyNodeBound sums the klongs that root collapse gives a segment leaf over the
      * trees below it (bergdb 023-11, review B, B1, its SiblingCollapseProbe): the space root,
      * a segment leaf, names two trees of 1,024 keys at node size 6; a transaction deletes

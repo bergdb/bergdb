@@ -77,8 +77,8 @@ details):
   transaction of the level scripts (027-02, section 4); `pecmp` showed
   that copy equal to the proved `Contract.PE.peTx` on the same traces
   (026-25, section 3); 030-21 proves that `peTx` meets the writer's
-  contract. `dirtyNodeBound` was argued for format 7's writer and is
-  checked, not argued, for PE (027-03, section 8.3; 028-21).
+  contract. `dirtyNodeBound` is argued for PE since 028-21, which
+  closed two gaps of the old count (027-03, section 8.3).
 * **Removed with format 8** (026-25, section 5): the per-operation walk,
   the five splits (in place and not), rule O, the upward unlink, LE-b's
   relabel, root collapse by descent, the merges at the delete, the
@@ -97,3 +97,6 @@ recommended").
 2026-11-19. A summary of PE, until the part is written, from the code at
 `b03dcea7` (`PeWriter`, `Dag.putKvs`) and 026-25. By an agent of
 coord-1118, on the branch `027-pe`.
+
+2026-11-19. 028-21: `dirtyNodeBound` argued for PE. By an agent of
+coord-1118, on the branch `028-21-dirty-bound`.
