@@ -476,6 +476,14 @@ Files
   `IterationOK` (`PE.pe_reclaim_reads_steps`); an example; how Java's steps
   could be checked on traces; 730 lines of Lean. Written 2026-11-19.
   Status: done.
+* [030-27](27-step-check.md). Java's reclaim steps checked on the
+  traces: the exporter's STEP line (t0, c, lastKey before and after, eod,
+  from the row in memory) and `tracecheck`'s C-STEP, which checks every
+  step at its state against the model of 030-25 (`StepsOK`) on the tree
+  model's reads, and every cut against its iteration's last step; a fault
+  test of 10 faults in level 3; on level 3's 35 reclaim traces 1,014
+  steps in 907 iterations and 775 cuts, 0 failures. Written 2026-11-19.
+  Status: done.
 
 Log
 ===

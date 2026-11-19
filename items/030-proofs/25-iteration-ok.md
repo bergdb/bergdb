@@ -232,6 +232,14 @@ Not built (more than a few lines). What a check would need:
   live before s whose value node is before c is written from s to e. It
   checks the premise 030-24 uses, not the steps.
 
+2026-11-19, later: built in 030-27, as designed above, with the STEP line
+`STEP t0 c L L' eod` (the exporter's `steps=1`; 027-02, section 4) and
+`tracecheck`'s C-STEP, which also checks a STEP line in every step and
+none elsewhere, and a new iteration only after a step with eod. On level
+3's 35 reclaim traces: 1,014 steps in 907 iterations and 775 cuts, 0
+failures.
+The cheaper check was not built.
+
 
 # 6. Java against 027-13, section 1.4
 
