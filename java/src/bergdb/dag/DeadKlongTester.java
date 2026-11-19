@@ -191,10 +191,13 @@ public class DeadKlongTester {
     }
 
     /**
-     * The transaction's own bitmap, changed in place, is a write too: a leaf of 14 keys with 6
-     * dead klongs gets three deletes in one transaction; the first makes 7, theta; the second
-     * would make 8 by the bitmap in place, so the leaf is replaced by its last version without
-     * the two keys, and the third delete goes to that new node.
+     * A bitmap is a write too: a leaf of 14 keys with 6 dead klongs gets three deletes in one
+     * transaction, which would leave it 9 dead klongs, above theta, so the leaf is replaced by
+     * one node of its live list, the time klong and 11 keys, none dead. (Until record format 8,
+     * whose writer decides a node once from the transaction's whole batch, bergdb 026-25: the
+     * first delete made 7, theta; the second would make 8 by the transaction's own bitmap in
+     * place, so the leaf was replaced by its last version without the two keys, and the third
+     * delete went to that new node, 14 klongs, one dead.)
      */
     @Nano
     public static void testOwnBitmapIsAWrite() {
@@ -215,9 +218,9 @@ public class DeadKlongTester {
         Assert.assertEquals(compactions0 + 1, Dag.statCompactions);
         KeyNode last = r.root();
         Assert.assertTrue("a new leaf", last != leaf);
-        // T, 12 keys (the last version without /k010 and /k011), the bitmap of /k012.
-        Assert.assertEquals(14, last.getSize());
-        Assert.assertEquals(1, Dag.deadCount(last));
+        // T and the 11 keys left.
+        Assert.assertEquals(12, last.getSize());
+        Assert.assertEquals(0, Dag.deadCount(last));
         r.checkGets("after the deletes");
         r.checkFill("after the deletes");
     }
