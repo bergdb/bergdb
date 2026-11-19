@@ -3481,8 +3481,8 @@ public class Db implements AutoCloseable {
         // a key. Since record format 8 the Dag gets the transaction's operations as one batch
         // (Dag.putKvs, the writer PE; bergdb 026-25), so a value transformation runs before any
         // operation is applied: a reclaim step's row stores the bytes that the step's touch made
-        // dirty (Trans.dirtiedBytes); those of the nodes that the batch makes dirty after it
-        // Reclaim.step charges after the commit and stores with the next step's row (bergdb
+        // dirty (Trans.dirtiedBytes); Reclaim.step adds those of the nodes that the batch makes
+        // dirty after it once the step has committed, and stores the row again (bergdb
         // 028-26).
         // The record holds the KVs put, and the startup's rerun gives them to the Dag in their
         // stored order, this order, and does not sort.
