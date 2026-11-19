@@ -1,7 +1,7 @@
 # 030-21. The PE writer meets the writer's contract: the proof
 
-Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-19): the proof
-complete and gated; what is left is in the Result.
+Created 2026-11-18 by Frans Lundberg. Status: open (part 2, `MeetsFull`,
+under way; part 1, the contract, TREE and the top, done 2026-11-19).
 
 The complete proof that PE's writer, "plan, then emit" (026-23, section
 1.2; the trial 026-24), meets the writer's contract (030-04), so that the
@@ -208,22 +208,62 @@ In 21-pe-proof/ (the trial's program with two checks added, as
   only in counts the trial program got after its first runs).
 
 
+# 5. Part 2: `MeetsFull` for PE
+
+The coordinator, 2026-11-19, 02:10, within Frans's go: `MeetsFull` for PE,
+so that recovery, restarts, lazy reading, eviction with handles and
+reclaim's safe cuts (030-07, 030-14, 030-17) hold for PE; then, if time
+allows, PE's acceptance. On the branch `030-21-full`.
+
+- **PE's record in the model's words** (`Contract/PeRecord.lean`): the
+  primordial change (`c0`: the root, node 0, on the root's level; the space
+  root, node 1; the start top node, node 2, on the top nodes' level); a
+  transaction's change (`peChange`: the fresh ids written as the nodes
+  made, with their levels, a value a data node; a new top node on the top
+  nodes' level plus its ordinal; the entries added, for each node written in
+  the order written, the entries of the klongs it got, `newVals`; the
+  root's entry for a new top node and its root and skip pointers; no touch);
+  a run and its history (`peRun`, `peHist`). The levels are the model's
+  (`Params.topLevel`, `Params.rootLevel`). Every computed clause of
+  `MeetsFull` holds for it on a test history of 72 transactions.
+- **The bridge's computed clauses** (`Contract/Proof/PeBridge.lean`,
+  `pe_bridge`, `pe_bridge_hist_full`; by a sub-agent): N, K, F4, W, W5, A4,
+  A2, A3, A5 (`bridgeOk`) and `Made`, with a new invariant `InvB` (node 0
+  is no node; W5 and A4 of every key node). A premise: each transaction's
+  keys are distinct (Java's Dag gets one operation a key): with two puts of
+  one key the first put's value is made and never reached (A3 fails; the
+  test history shows it).
+- **The top's clause TB** (`Contract/Proof/PeFull.lean`, `pe_topLocal`,
+  `pe_topChange_hist`), with the model's levels along the history
+  (`pe_levels`). Premises: fewer than 2^48 - 1 transactions (the top
+  nodes stay below the root's level: Java refuses at 2^48 top nodes, 030-02,
+  which PE's model does not), and the top nodes' level at most 2^62.
+- **The start** (`pe_start`: `StartB`, `topStartOk`), **the touch** (PE
+  touches nothing: `pe_touch_hist`).
+- **A6' and A-COPY** (`Contract/Proof/PeAdopt.lean`, `pe_adopt_hist`; by a
+  sub-agent): proved from one named premise, `Prov` (every old node that a
+  written node names by a live klong was before a live child of it, or of an
+  old node reached and not written), which holds on all 221,142
+  transactions of the 288 traces (21-pe-proof/runs/adopt.txt) and is being
+  proved.
+- **K-LEVEL** (`pe_kinds`: every key node's kind is its level's, `peKind`),
+  which the reads after a crash ask besides `MeetsFull`.
+- **The whole**: `pe_meetsFull_of_prov`, `pe_full_of_prov` (`MeetsFull`
+  and K-LEVEL) and `pe_crash_reads_of_prov` (reads after a crash for PE),
+  given `Prov`.
+
+
 # State
 
-2026-11-19, 02:15. **Done: the complete proof, gated.** GATED: 9ee10300
-on the branch `030-21-land` in /Users/f/fl/bench/2026-11-18/pw/clone, one
-commit on main 622d774d (the work's history is on the branch
-`030-21-pe-proof`, the same tree); `lean/contract/gate.sh 622d774d`: GATE
-OK (132 theorems, the standard axioms only; no file changed outside
-lean/contract/ and items/030-proofs/; the pinned files changed are
-Axioms.lean, with four theorems and two examples added, and the new
-statement files). No run going.
-
-- What is left (the Result): PE's acceptance (tested), `MeetsFull` for PE
-  (its record in the model's words), Java.
-- The sub-agents' clones under /Users/f/fl/bench/2026-11-18/pw/ (top,
-  harness, inst, emit, keys, post, seg) hold nothing that is not merged.
-
+2026-11-19, 04:15. Part 1 done and on main (b15f4b1b). Part 2 on the branch
+`030-21-full` in /Users/f/fl/bench/2026-11-18/pw/clone (last f020fe8e,
+GATE OK without new main theorems yet): `MeetsFull` and K-LEVEL for PE's
+history are proved but for one premise, `Prov` (section 5). Running: a
+sub-agent proving `Prov` (branch `030-21-adopt` in
+/Users/f/fl/bench/2026-11-18/pw/adopt, report by 06:15). Next: merge it;
+the main theorem `pe_meetsFull` without the premise; Axioms.lean,
+statements.pin, a landing commit, GATED hash here. No GATED commit of
+part 2 yet.
 
 # Log
 
@@ -248,3 +288,9 @@ histories, `PeTx.lean` and `PeStatement.lean` (01:55 to 02:02); the gate
 program (23:02 to 23:20): the trial's tree at all 221,142 transactions.
 
 2026-11-19. Status done: the proof complete and gated (02:10).
+
+2026-11-19. Part 2 (the coordinator, 02:10): PE's record in the model's
+words (02:15), the bridge's computed clauses (a sub-agent, 02:20 to 03:00),
+A6' and A-COPY from `Prov` (a sub-agent, 03:10 to 03:50), TB, the start,
+K-LEVEL and the whole given `Prov` (03:55 to 04:10); `Prov` started (a
+sub-agent, 03:55).

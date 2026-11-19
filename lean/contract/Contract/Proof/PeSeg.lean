@@ -12,7 +12,9 @@ The parts:
 * C. The runs' writes, one after the other (`runs_writes`).
 * D. `applyGroups`: one run for each compare value touched (`ag_runs`).
 * E. The segment's step from its plan (`seg_none`, `seg_some`).
-* F. `planTree_ok`, `seg_space`.
+* F. `planTree_ok`, `seg_space`; `seg_space_rch`, for operations of distinct
+  keys (`Dk`, carried in `RunOk` and `TreeOk`): every node written is reached
+  from the new space root through live klongs (`Rch`).
 
 The writes are stated with `WOkV`, `WOk` with values written: a value node
 that `applyGroups` writes for a put has no klongs, so `WOk`'s `times` (every
@@ -45,7 +47,8 @@ def Lo (s : Tree) : Option NodeId → List (Key × Nat)
 /-- What a run from acc to acc' writes, W (newest first): each node once; a
 fresh id of the run or an old node of U; every time klong of a key node
 written at most i; an old key node keeps its klongs and gets klongs after a
-time klong of i. (`WOk`, with values written too.) -/
+time klong of i; each node written has a form of `WForm`. (`WOk`, with values
+written too.) -/
 structure WOkV (i : Time) (s : Tree) (U : List NodeId) (acc acc' : Acc)
     (W : List (NodeId × Obj)) : Prop where
   ws : acc'.ws = W ++ acc.ws
@@ -55,6 +58,7 @@ structure WOkV (i : Time) (s : Tree) (U : List NodeId) (acc acc' : Acc)
   times : ∀ p ∈ W, ∀ n, p.2 = .key n → ∀ t, Klong.time t ∈ n.ks → t ≤ i
   frame : ∀ p ∈ W, ∀ n, s.obj p.1 = some (.key n) →
     ∃ more, p.2 = .key { n with ks := n.ks ++ Klong.time i :: more }
+  form : ∀ p ∈ W, WForm i s p
 
 /-- A tree T after a run's writes W, for the old nodes U the run owns: it has
 the writes, every other node of U is as in s, and every node of s is a node
@@ -87,6 +91,11 @@ structure SegPre (cf : Cfg) (i : Time) (s : Tree) (g : Nat) (root : Option NodeI
   ops : ∀ op ∈ ops, keyOk cf op.key = true ∧ g < op.key.length
   root : ∀ r, root = some r → Shaped cf s g (htIn cf s r) r ∧ Good s r 0 none ∧ (R s r).Nodup
 
+/-- The operations of a segment g tree as PE's run gives them, for the
+reach of the writes: their keys distinct, and their first g segments shared. -/
+def Dk (g : Nat) (ops : List Op) : Prop :=
+  (ops.map Op.key).Nodup ∧ ∀ a ∈ ops, ∀ b ∈ ops, a.key.take g = b.key.take g
+
 /-- What a run of `planTree` from acc to acc' on segment g gives: its writes
 (each once, fresh or an old node of the old tree; an old node written is a
 key node), and in any tree after them: every key node written meets the
@@ -99,11 +108,12 @@ def TreeOk (cf : Cfg) (i : Time) (s : Tree) (g : Nat) (root : Option NodeId) (op
   ∃ W, WOkV i s (Ro s root) acc acc' W ∧ (∀ p ∈ W, ∀ o, s.obj p.1 = some o → ∃ n, o = .key n) ∧
     ∀ T, After s T W (Ro s root) →
       (∀ p ∈ W, ∀ n, p.2 = .key n → nodeOk cf.params T n = true ∧ n.ks ≠ []) ∧
-      match res with
+      (match res with
       | none => applyOps (ops.map (dropKey g)) (Lo s root) = []
       | some r' => (∃ ht, RootIn cf T g ht r' (applyOps (ops.map (dropKey g)) (Lo s root))
           (Ro s root ++ List.range' acc.next (acc'.next - acc.next))) ∧
-          ∃ m, T.obj r' = some (.key m) ∧ live m.ks ≠ []
+          ∃ m, T.obj r' = some (.key m) ∧ live m.ks ≠ []) ∧
+      (Dk g ops → ∀ w ∈ W.map (·.1), ∃ y, res = some y ∧ Rch T y w)
 
 /-- What one compare value's run of `applyGroups` at segment g does, with the
 group grp of its operations, from the old entry y0 of its compare value: its
@@ -120,10 +130,11 @@ def RunOk (cf : Cfg) (i : Time) (s : Tree) (g : Nat) (grp : List Op) (y0 : Optio
       (∀ p ∈ W, ∀ n, p.2 = .key n → nodeOk cf.params T n = true ∧ n.ks ≠ []) ∧
       entry (fun c y => klongList T true (L T) c y) r.c r.res =
         applyOps (grp.map (dropKey g)) (entry (fun c y => klongList s true (L s) c y) r.c y0) ∧
-      ∀ y, r.res = some y → T.obj y ≠ none ∧ PayGood cf T g r.c y ∧
+      (∀ y, r.res = some y → T.obj y ≠ none ∧ PayGood cf T g r.c y ∧
         (isLong r.c = true → Shaped cf T (g + 1) (htIn cf T y) y ∧ NOk cf.params T y) ∧
         ∀ f, cf.lev g 0 ≤ f → (reachAt T f y).Subperm
-          (Ro s y0 ++ List.range' r.a.next (r.a'.next - r.a.next))
+          (Ro s y0 ++ List.range' r.a.next (r.a'.next - r.a.next))) ∧
+      (Dk g grp → ∀ w ∈ W.map (·.1), ∃ y, r.res = some y ∧ Rch T y w)
 
 /-- `planTree`'s result at every fuel below F. -/
 def TreeIH (cf : Cfg) (i : Time) (s : Tree) (F : Nat) : Prop :=
@@ -557,7 +568,7 @@ theorem c_wokv_append {U1 U2 : List NodeId} {a0 a1 a2 : Acc} {W1 W2 : List (Node
     WOkV i s (U1 ++ U2) a0 a2 (W2 ++ W1) := by
   have hn1 := h1.next
   have hn2 := h2.next
-  refine ⟨by rw [h2.ws, h1.ws, List.append_assoc], by nomega, ?_, ?_, ?_, ?_⟩
+  refine ⟨by rw [h2.ws, h1.ws, List.append_assoc], by nomega, ?_, ?_, ?_, ?_, ?_⟩
   · rw [List.map_append, List.nodup_append]
     refine ⟨h2.nodup, h1.nodup, ?_⟩
     intro w hw w' hw' hww
@@ -585,6 +596,10 @@ theorem c_wokv_append {U1 U2 : List NodeId} {a0 a1 a2 : Acc} {W1 W2 : List (Node
     rcases List.mem_append.mp hp with hp | hp
     · exact h2.frame p hp
     · exact h1.frame p hp
+  · intro p hp
+    rcases List.mem_append.mp hp with hp | hp
+    · exact h2.form p hp
+    · exact h1.form p hp
 
 /-- **The runs' writes**: runs one after the other, each with its writes
 (`WOkV` for its old nodes `Ur r`, and S), the old nodes distinct and nodes of
@@ -605,7 +620,7 @@ theorem runs_writes (S : Run → List (NodeId × Obj) → Prop) (Ur : Run → Li
     intro a a' hch _ _ _ _
     simp only [Chain] at hch
     subst hch
-    exact ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp⟩, by simp, by simp⟩
+    exact ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp, by simp⟩, by simp, by simp⟩
   | cons r rs ih =>
     intro a a' hch hrun hnd hex hfresh
     obtain ⟨hra, hrn, hch'⟩ := hch
@@ -646,6 +661,51 @@ theorem runs_writes (S : Run → List (NodeId × Obj) → Prop) (Ur : Run → Li
           · exact hdisj p.1 u p.1 hpu' rfl
 
 /-! ## D. applyGroups -/
+
+/-- A key's first g + 1 segments: its first g and its compare value at g. -/
+theorem dk_take_succ {g : Nat} {op : Op} (h : g < op.key.length) :
+    op.key.take (g + 1) = op.key.take g ++ [segAt g op] := by
+  rw [List.take_add_one, List.getElem?_eq_getElem h]
+  simp only [segAt, List.getElem?_eq_getElem h, Option.getD_some, Option.toList_some]
+
+/-- A list whose images are distinct and all equal has one element at most. -/
+theorem dk_len_le_one {α β : Type} {f : α → β} : ∀ {l : List α}, (l.map f).Nodup →
+    (∀ a ∈ l, ∀ b ∈ l, f a = f b) → l.length ≤ 1
+  | [], _, _ => by simp
+  | [_], _, _ => by simp
+  | a :: b :: l, hnd, he => by
+    exfalso
+    simp only [List.map_cons, List.nodup_cons, List.mem_cons, not_or] at hnd
+    exact hnd.1.1 (he a List.mem_cons_self b (List.mem_cons_of_mem _ List.mem_cons_self))
+
+theorem dk_filter {g : Nat} {ops : List Op} (q : Op → Bool) (h : Dk g ops) :
+    Dk g (ops.filter q) :=
+  ⟨h.1.sublist (List.Sublist.map _ List.filter_sublist), fun a ha b hb =>
+    h.2 a (List.mem_filter.mp ha).1 b (List.mem_filter.mp hb).1⟩
+
+/-- The group of compare value c at g, passed down to segment g + 1. -/
+theorem dk_succ {g c : Nat} {ops : List Op} (hg : ∀ op ∈ ops, g < op.key.length)
+    (hdk : Dk g (ops.filter (fun op => segAt g op == c))) :
+    Dk (g + 1) (ops.filter (fun op => segAt g op == c)) := by
+  refine ⟨hdk.1, fun a ha b hb => ?_⟩
+  obtain ⟨ha1, ha2⟩ := mem_grp ha
+  obtain ⟨hb1, hb2⟩ := mem_grp hb
+  rw [dk_take_succ (hg a ha1), dk_take_succ (hg b hb1), hdk.2 a ha b hb, ha2, hb2]
+
+/-- A short compare value's group at g, of distinct keys sharing their first g
+segments, is one operation at most: all have the same key. -/
+theorem dk_short {g c : Nat} {ops : List Op} (hw : ∀ op ∈ ops, keyWf op.key = true)
+    (hg : ∀ op ∈ ops, g < op.key.length) (hc : isLong c = false)
+    (hdk : Dk g (ops.filter (fun op => segAt g op == c))) :
+    (ops.filter (fun op => segAt g op == c)).length ≤ 1 := by
+  refine dk_len_le_one hdk.1 (fun a ha b hb => ?_)
+  have key : ∀ x ∈ ops.filter (fun op => segAt g op == c), x.key = x.key.take g ++ [c] := by
+    intro x hx
+    obtain ⟨hx1, hx2⟩ := mem_grp hx
+    have hex : endsAt g x = true := by rw [endsAt_of_keyWf (hw x hx1) (hg x hx1), hx2, hc]; rfl
+    simp only [endsAt, beq_iff_eq] at hex
+    rw [← hx2, ← dk_take_succ (hg x hx1), List.take_of_length_le (le_of_eq hex)]
+  rw [key a ha, key b hb, hdk.2 a ha b hb]
 
 /-- A short compare value's fold over its group (F, the step of
 `applyGroups`'s fold for compare value c): one value written per put, at
@@ -755,7 +815,8 @@ theorem d_run_short {g c : Nat} {ops : List Op} {y0 : Option NodeId}
     rw [endsAt_of_keyWf (hw lop hm1) (hg lop hm1), hm2, hc]
     rfl
   have hkey : (dropKey g lop).key = [c] := by rw [dropKey_key_of_endsAt hends, (mem_grp hlopm).2]
-  refine ⟨⟨W, ⟨h1, h2, h3, fun w hw' => ?_, fun p hp n hn => ?_, fun p hp n hn => ?_⟩,
+  refine ⟨⟨W, ⟨h1, h2, h3, fun w hw' => ?_, fun p hp n hn => ?_, fun p hp n hn => ?_,
+    fun p hp => Or.inl ⟨hfresh p.1 (h4 p hp).1.1, Or.inl (h4 p hp).2⟩⟩,
     fun p hp o ho => ?_, fun T hT => ?_⟩, h2, h5⟩
   · obtain ⟨p, hp, rfl⟩ := List.mem_map.mp hw'
     exact Or.inl (h4 p hp).1
@@ -772,7 +833,7 @@ theorem d_run_short {g c : Nat} {ops : List Op} {y0 : Option NodeId}
       | none => exact Or.inl rfl
       | some y => exact klongList_short s (L s) y hc
     have hblk := applyOps_short_block hw hg hc _ hm
-    refine ⟨fun p hp n hn => ?_, ?_, ?_⟩
+    refine ⟨fun p hp n hn => ?_, ?_, ?_, ?_⟩
     · obtain ⟨v, hv⟩ := (h4 p hp).2
       rw [hv] at hn
       cases hn
@@ -808,6 +869,37 @@ theorem d_run_short {g c : Nat} {ops : List Op} {y0 : Option NodeId}
       | del k =>
         rw [h7 k hlop] at hy
         cases hy
+    · intro hdk w hw'
+      have hone := dk_short hw hg hc hdk
+      obtain ⟨op1, hgrp⟩ : ∃ op1, ops.filter (fun op => segAt g op == c) = [op1] := by
+        cases hl : ops.filter (fun op => segAt g op == c) with
+        | nil => exact absurd hl hgne
+        | cons op1 rest =>
+          cases rest with
+          | nil => exact ⟨op1, rfl⟩
+          | cons _ _ => rw [hl] at hone; simp at hone
+      rw [hgrp] at hq
+      simp only [List.foldl_cons, List.foldl_nil] at hq
+      cases op1 with
+      | put k hv =>
+        rw [hFp] at hq
+        simp only [Prod.mk.injEq] at hq
+        obtain ⟨hes, hacc⟩ := hq
+        have hW : [(acc.next, Obj.val hv)] ++ acc.ws = W ++ acc.ws := by rw [← h1, ← hacc]; rfl
+        rw [← List.append_cancel_right hW] at hw'
+        simp only [List.map_cons, List.map_nil, List.mem_singleton] at hw'
+        refine ⟨acc.next, ?_, by rw [hw']; exact Rch.refl _⟩
+        show es1.lookup c = some acc.next
+        rw [← hes, setEntry_lookup, ite_eq_left rfl]
+      | del k =>
+        rw [hFd] at hq
+        simp only [Prod.mk.injEq] at hq
+        obtain ⟨_, hacc⟩ := hq
+        have hl := congrArg List.length h1
+        rw [List.length_append, ← hacc] at hl
+        have hW : W = [] := List.eq_nil_of_length_eq_zero (by omega)
+        rw [hW] at hw'
+        simp at hw'
 
 /-- A long compare value's entry holds the next segment's keys with c in
 front. -/
@@ -845,8 +937,8 @@ theorem d_run_long {f g c : Nat} {ops : List Op} {y0 : Option NodeId}
     omega
   obtain ⟨W, hW, hold, hTW⟩ := hIH f (Nat.lt_succ_self f) y0 (g + 1) _ acc res acc1 hpre hp
   refine ⟨⟨W, hW, hold, fun T hA => ?_⟩, hW.next⟩
-  obtain ⟨hnode, hm⟩ := hTW T hA
-  refine ⟨hnode, ?_, ?_⟩
+  obtain ⟨hnode, hm, hrch⟩ := hTW T hA
+  refine ⟨hnode, ?_, ?_, fun hdk => hrch (dk_succ hg hdk)⟩
   · show entry _ c res = _
     rw [d_entry_long hc y0, applyOps_cons_block hg]
     cases res with
@@ -1003,10 +1095,11 @@ def e_runW (cf : Cfg) (s : Tree) (g : Nat) (grp : List Op) (y0 : Option NodeId)
       (∀ p ∈ W, ∀ n, p.2 = .key n → nodeOk cf.params T n = true ∧ n.ks ≠ []) ∧
       entry (fun c y => klongList T true (L T) c y) r.c r.res =
         applyOps (grp.map (dropKey g)) (entry (fun c y => klongList s true (L s) c y) r.c y0) ∧
-      ∀ y, r.res = some y → T.obj y ≠ none ∧ PayGood cf T g r.c y ∧
+      (∀ y, r.res = some y → T.obj y ≠ none ∧ PayGood cf T g r.c y ∧
         (isLong r.c = true → Shaped cf T (g + 1) (htIn cf T y) y ∧ NOk cf.params T y) ∧
         ∀ f, cf.lev g 0 ≤ f → (reachAt T f y).Subperm
-          (Ro s y0 ++ List.range' r.a.next (r.a'.next - r.a.next))
+          (Ro s y0 ++ List.range' r.a.next (r.a'.next - r.a.next))) ∧
+      (Dk g grp → ∀ w ∈ W.map (·.1), ∃ y, r.res = some y ∧ Rch T y w)
 
 theorem e_subperm_nodup {α : Type} {l1 l2 : List α} (h : l1.Subperm l2) (hn : l2.Nodup) :
     l1.Nodup := by
@@ -1021,6 +1114,7 @@ theorem e_wokv_mono {U U' : List NodeId} {a a' : Acc} {W : List (NodeId × Obj)}
   ids w hw := (h.ids w hw).imp_right (hU w)
   times := h.times
   frame := h.frame
+  form := h.form
 
 /-- After a part of the writes, for the old nodes no other write touches. -/
 theorem e_after_sub {T : Tree} {W Wr : List (NodeId × Obj)} {U Ur : List NodeId}
@@ -1214,7 +1308,7 @@ theorem seg_none (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
     obtain ⟨r, _, Wr, _, hS, _, _, hpr⟩ := hWmem p hpW
     exact hS.1 p hpr o hpo
   · intro T hT
-    refine ⟨?_, ?_⟩
+    refine ⟨?_, ?_, ?_⟩
     · intro p hpW n hpn
       obtain ⟨r, hr, Wr, _, hS, hsub, hown, hpr⟩ := hWmem p hpW
       have hTa : After s T Wr (Ro s (E.lookup r.c)) :=
@@ -1232,6 +1326,15 @@ theorem seg_none (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
         simp at h1) (by rw [hE']; exact List.Pairwise.nil)
       rw [← hk, hE']
       rfl
+    · intro hdk w hw
+      exfalso
+      obtain ⟨p, hpW, rfl⟩ := List.mem_map.mp hw
+      obtain ⟨r, hr, Wr, _, hS, hsub, hown, hpr⟩ := hWmem p hpW
+      have hTa : After s T Wr (Ro s (E.lookup r.c)) :=
+        e_after_sub hT hsub (fun z hz => hwsub z (List.mem_flatMap.mpr ⟨r, hr, hz⟩)) hown
+      obtain ⟨y, hy, _⟩ := (hS.2 T hTa).2.2.2 (dk_filter _ hdk) p.1 (List.mem_map_of_mem hpr)
+      rw [hres r hr] at hy
+      cases hy
 
 
 /-! ### The new root: helpers -/
@@ -1391,6 +1494,29 @@ theorem e_split_range (a0 a1 a2 : Nat) (h01 : a0 ≤ a1) (h12 : a1 ≤ a2) :
   rw [show a0 + 1 * (a1 - a0) = a1 by omega, show a1 - a0 + (a2 - a1) = a2 - a0 by omega] at this
   exact this
 
+/-- The leaf entries of a node that T holds are reached from it through live
+klongs. -/
+theorem rch_of_holds {T : Tree} {g : Nat} : ∀ (h : Nat) {x : NodeId} {A : Node h},
+    Contract.PE.Holds cf T g h x A → ∀ q ∈ content h A, Rch T x q.2
+  | 0, x, A, hH, q, hq => by
+    cases hH with
+    | @leaf _ n _ hobj _ _ _ _ hlive =>
+      have : (q.1, q.2) ∈ live n.ks := by rw [hlive]; exact hq
+      exact Rch.one hobj this
+  | h + 1, x, A, hH, q, hq => by
+    cases hH with
+    | @inner _ _ n _ hobj _ _ _ _ _ hcv hk =>
+      simp only [content] at hq
+      obtain ⟨e, he, hqe⟩ := List.mem_flatMap.mp hq
+      have hlen : (live n.ks).length = (kids A).length := by
+        have := congrArg List.length hcv; simpa using this
+      obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem he
+      have hj' : j < (live n.ks).length := hlen ▸ hj
+      have hp : ((live n.ks)[j], (kids A)[j]) ∈ (live n.ks).zip (kids A) := by
+        rw [List.mem_iff_getElem]
+        exact ⟨j, by simp [hj, hj'], by simp⟩
+      exact Rch.step hobj (List.getElem_mem hj') (rch_of_holds h (hk _ hp) q hqe)
+
 /-- **The new root**: a planned root settled into v' and emitted as one node
 r': the runs' and emit's writes, and in a tree after them r' holds the keys
 after the operations. -/
@@ -1407,7 +1533,8 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
         (∀ p ∈ W, ∀ n, p.2 = .key n → nodeOk cf.params T n = true ∧ n.ks ≠ []) ∧
         (∃ ht, RootIn cf T g ht r' (applyOps (ops.map (dropKey g)) (Lo s root))
           (Ro s root ++ List.range' acc0.next (acc2.next - acc0.next))) ∧
-        (content h (absV s h v) ≠ [] → ∃ m, T.obj r' = some (.key m) ∧ live m.ks ≠ []) := by
+        (content h (absV s h v) ≠ [] → ∃ m, T.obj r' = some (.key m) ∧ live m.ks ≠ []) ∧
+        (Dk g ops → ∀ w ∈ W.map (·.1), Rch T r' w) := by
   have hnd := e_runs_nodup hp
   have h01 : acc0.next ≤ acc1.next := chain_next hp.chain
   have hE's : (content h (absV s h v)).Pairwise CvLtA := e_content_sorted hp.wfe
@@ -1428,7 +1555,7 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
   have hUnd : (Ui s v').Nodup :=
     e_subperm_nodup ((List.sublist_append_left _ _).subperm.trans hB') hBnd
   have hfresh1 : ∀ x, acc1.next ≤ x → s.obj x = none := fun x hx => hfresh x (le_trans h01 hx)
-  obtain ⟨We, hwse, hnexte, hnde, hidse, htimese, hframee, hshe, hTe⟩ :=
+  obtain ⟨We, hwse, hnexte, hnde, hidse, htimese, hframee, hshe, hforme, hTe⟩ :=
     emit_spec_w hcf hvok' heok' hs hfresh1 hUnd (wfe_inord hwfe') he
   obtain ⟨_, hwsub⟩ := e_walks ho hnd
   obtain ⟨Wr, hWr, hWrun, hWmem⟩ := e_runs_W hfresh ho hp
@@ -1507,7 +1634,12 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
       intro p hp' n hpn
       rcases List.mem_append.mp hp' with hpe | hpr
       · exact hframee p hpe n hpn
-      · exact hWr.frame p hpr n hpn }
+      · exact hWr.frame p hpr n hpn
+    form := by
+      intro p hp'
+      rcases List.mem_append.mp hp' with hpe | hpr
+      · exact hforme p hpe
+      · exact hWr.form p hpr }
   refine ⟨We ++ Wr, hWall, ?_, ?_⟩
   · intro p hp' o hpo
     rcases List.mem_append.mp hp' with hpe | hpr
@@ -1553,7 +1685,7 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
     · obtain ⟨r, hr, hrc⟩ := e_run_of_touched hp hc
       obtain ⟨Wr', hS, hA⟩ := hrunT r hr
       have hres : r.res = some q.2 := by rw [← e_run_res hp hr, hrc, hlq]
-      obtain ⟨_, _, hy⟩ := hS.2 T hA
+      obtain ⟨_, _, hy, _⟩ := hS.2 T hA
       obtain ⟨_, hpg, hlong, _⟩ := hy q.2 hres
       rw [hrc] at hpg hlong
       exact ⟨hpg, hlong⟩
@@ -1578,7 +1710,7 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
     · obtain ⟨r, hr, rfl⟩ := e_run_of_touched hp hc
       obtain ⟨Wr', hS, hA⟩ := hrunT r hr
       have hres : r.res = some y := by rw [← e_run_res hp hr]; exact hlq
-      obtain ⟨_, _, hy⟩ := hS.2 T hA
+      obtain ⟨_, _, hy, _⟩ := hS.2 T hA
       obtain ⟨hex, _, _, hreach⟩ := hy y hres
       refine ⟨hex, fun f hf => ?_⟩
       rw [e_oldPart, e_RG_run hnd hr]
@@ -1641,6 +1773,28 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
   have hnokq : ∀ q ∈ content h' (fin s h' v'), PayGood cf T g q.1 q.2 ∧
       (isLong q.1 = true → NOk cf.params T q.2) :=
     fun q hq => ⟨(hpayT q (hkeys' ▸ hq)).1, fun hl => ((hpayT q (hkeys' ▸ hq)).2 hl).2⟩
+  -- every node written is reached from r': emit's from its one entry, a run's
+  -- from its result, a payload of the root
+  have hrch : Dk g ops → ∀ w ∈ (We ++ Wr).map (·.1), Rch T r' w := by
+    intro hdk w hw
+    rw [List.map_append, List.mem_append] at hw
+    rcases hw with hw | hw
+    · obtain ⟨We', hwse', hTe'⟩ := emit_rch hcf hvok' heok' hs hfresh1 hUnd (wfe_inord hwfe') he
+      have hWe : We' = We := List.append_cancel_right (hwse'.symm.trans hwse)
+      rw [hWe] at hTe'
+      obtain ⟨e, he', hr⟩ := hTe' T (fun p => oldPart s E p ++ e_RG runs p)
+        (fun p hp' => hT.ws p (List.mem_append_left _ hp')) hkeep hT.exist hPB w hw
+      rw [List.mem_singleton] at he'
+      subst he'
+      exact hr
+    · obtain ⟨p, hpW, rfl⟩ := List.mem_map.mp hw
+      obtain ⟨r, hr, Wr', _, hS, hsub, hown, hpr'⟩ := hWmem p hpW
+      obtain ⟨y, hy, hry⟩ := (hS.2 T (hAfter r hr Wr' hsub hown)).2.2.2 (dk_filter _ hdk) p.1
+        (List.mem_map_of_mem hpr')
+      have hq : (r.c, y) ∈ content h' (fin s h' v') := by
+        rw [hkeys']
+        exact lookup_mem ((e_run_res hp hr).trans hy)
+      exact (rch_of_holds h' hHo _ hq).trans hry
   refine ⟨fun p hp' n hpn => ?_, ?_⟩
   · rcases List.mem_append.mp hp' with hpe | hpr
     · exact hnokW p hpe n hpn
@@ -1654,7 +1808,7 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
     | leaf hobj hleaf hlev hG hok hlive =>
       refine ⟨⟨0, ⟨Nat.zero_le _, Shaped.leaf hobj hleaf hlev hG (fun c y hm _ => by
           rw [hlive] at hm; nomatch hm), hgood, hkeysT, e_nok_empty hobj hok hlive,
-          hreachT, fun m hm => Or.inl ?_⟩⟩, fun hne => absurd hE0 hne⟩
+          hreachT, fun m hm => Or.inl ?_⟩⟩, fun hne => absurd hE0 hne, hrch⟩
       rw [hobj] at hm
       obtain rfl : _ = m := by simpa using hm
       exact hleaf
@@ -1663,7 +1817,7 @@ theorem seg_some (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (N
     obtain ⟨_, _, _, _, hHr⟩ := hHo.bounds
     refine ⟨⟨h', ⟨hHr, shaped_of_holds h' hHo hWF (fun q hq hl => ((hpayT q (hkeys' ▸ hq)).2 hl).1),
       hgood, hkeysT, nok_of_holds rfl h' hHo hWF hnokq, hreachT, fun m' hm' => Or.inr ?_⟩⟩,
-      fun _ => ⟨m, hm, hlivem⟩⟩
+      fun _ => ⟨m, hm, hlivem⟩, hrch⟩
     rw [hm] at hm'
     obtain rfl : m = m' := by simpa using hm'
     exact hlivem
@@ -1859,8 +2013,9 @@ theorem f_tail (hcf : cf.Ok) {f g h : Nat} {root : Option NodeId} {E : List (Nat
       obtain ⟨rfl, rfl⟩ := ht
       obtain ⟨W, h1, h2, h3⟩ := seg_some hcf hpre.sok hpre.fresh hpre.ops ho hp hset he
       refine ⟨W, h1, h2, fun T hT => ?_⟩
-      obtain ⟨a1, a2, a3⟩ := h3 T hT
-      exact ⟨a1, a2, a3 (settle_content hcf hp.vok hp.wfe hset)⟩
+      obtain ⟨a1, a2, a3, a4⟩ := h3 T hT
+      exact ⟨a1, ⟨a2, a3 (settle_content hcf hp.vok hp.wfe hset)⟩,
+        fun hd w hw => ⟨_, rfl, a4 hd w hw⟩⟩
     · cases ht
 
 /-- One step of the induction: `planTree` at fuel f + 1 from `TreeIH` at f. -/
@@ -1936,5 +2091,39 @@ theorem seg_space (hcf : cf.Ok) {f : Nat} {r : NodeId} {ops : List Op} {acc0 acc
   obtain ⟨runs, ho, hpl⟩ := f_old hcf (f_all hcf f) hpre hsh hg hnd hp
   obtain ⟨W, h1, h2, h3⟩ := seg_some hcf hpre.sok hpre.fresh hpre.ops ho hpl hsr he
   exact ⟨W, h1, h2, fun T hT => ⟨(h3 T hT).1, (h3 T hT).2.1⟩⟩
+
+/-- **Every node the space root's step writes is reached from the new space
+root** (bergdb 030-21, part 2), for operations of distinct keys: in any tree T
+after the writes, through live klongs (`Rch`). A run's value or next segment's
+root is a payload of the root, a next segment's tree's writes are reached from
+its root, and emit's from the entry it gives; an emptied next segment's tree
+writes nothing. With two puts of one key the first value is written and then
+replaced in the leaf, so the keys must be distinct. -/
+theorem seg_space_rch (hcf : cf.Ok) {f : Nat} {r : NodeId} {ops : List Op} {acc0 acc1 acc2 : Acc}
+    {v v' : VN} {c0 r' : NodeId}
+    (hpre : SegPre cf i s 0 (some r) ops acc0)
+    (hkeys : (ops.map Op.key).Nodup)
+    (hp : plan cf i s f r 0 (htIn cf s r) ops acc0 = some (v, acc1))
+    (hsr : settleRoot cf i s f 0 v true = some (some v'))
+    (he : emit cf i s v' acc1 = some ([(c0, r')], acc2)) :
+    ∃ W, acc2.ws = W ++ acc0.ws ∧ ∀ T, After s T W (R s r) → ∀ w ∈ W.map (·.1), Rch T r' w := by
+  obtain ⟨hsh, hg, hnd⟩ := hpre.root r rfl
+  obtain ⟨runs, ho, hpl⟩ := f_old hcf (f_all hcf f) hpre hsh hg hnd hp
+  obtain ⟨W, h1, _, h3⟩ := seg_some hcf hpre.sok hpre.fresh hpre.ops ho hpl hsr he
+  exact ⟨W, h1.ws, fun T hT => (h3 T hT).2.2.2 ⟨hkeys, fun a _ b _ => by simp⟩⟩
+
+/-- **The form of the space root's writes**: every node the space root's step
+writes has one of the forms of `WForm` (a fresh id written as a value or a new
+key node, or an old key node with emit's klongs appended, more than the time
+klong). -/
+theorem seg_space_form (hcf : cf.Ok) {f : Nat} {r : NodeId} {ops : List Op} {acc0 acc1 acc2 : Acc}
+    {v v' : VN} {c0 r' : NodeId}
+    (hpre : SegPre cf i s 0 (some r) ops acc0)
+    (hp : plan cf i s f r 0 (htIn cf s r) ops acc0 = some (v, acc1))
+    (hsr : settleRoot cf i s f 0 v true = some (some v'))
+    (he : emit cf i s v' acc1 = some ([(c0, r')], acc2)) :
+    ∃ W, acc2.ws = W ++ acc0.ws ∧ ∀ p ∈ W, WForm i s p := by
+  obtain ⟨W, hW, _, _⟩ := seg_space hcf hpre hp hsr he
+  exact ⟨W, hW.ws, hW.form⟩
 
 end Contract.PE

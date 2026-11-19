@@ -139,3 +139,6 @@ open Contract
 #print axioms Contract.PE.pe_meetsTop_start
 #print axioms Contract.PE.Example.hist
 #print axioms Contract.PE.Example.meetsTop
+#print axioms Contract.PE.pe_full_of_prov
+#print axioms Contract.PE.pe_crash_reads_of_prov
+#print axioms Contract.PE.FullExample.full

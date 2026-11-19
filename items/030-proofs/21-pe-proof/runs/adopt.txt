@@ -1,0 +1,37 @@
+bergdb 030-21, part 2: A6', A-COPY and PE's provenance (`Prov`, the premise
+of lean/contract/Contract/Proof/PeAdopt.lean) on 026-21's 288 traces.
+2026-11-19.
+
+The new writer alone (pecrun, PeWriter.lean of f4a17b9b) with the trial
+program's checks and, at every transaction (PeTrial-adopt.diff, a section
+`Adopt` and its call in `pecStep`):
+
+- prov: `Prov s s' D` (PeAdopt.lean's `provB`, with the walk's parent map
+  for the node before that names a moved node);
+- A-COPY: `copyOk T s s' tp (peChange cf s tp o)`, with PeRecord.lean's
+  `peChange` (copied) and hash sets for the walks and the namers;
+- A6': `adoptOk (s'.at T)`, and invA.below: the number of klongs that need
+  A6''s fourth case ("below x"), which `InvA` says PE never needs;
+- exact: where the two walks hold fewer than 400 nodes, `provB`, `copyOk`
+  and `adoptOk` as defined (the slow definitions) compared with the fast
+  ones;
+- moved: the old nodes that a node written names by a live klong after the
+  transaction and that were no live child of it before (the case of `Prov`
+  that names a parent not written).
+
+Raw outputs in /Users/f/fl/bench/2026-11-18/pw/runs/adopt2 (runs/adopt1 the
+same without the moved count), 03:43 to 03:50, 4 processes:
+
+- small: 70 traces, 7,100 transactions (exact 6,132), moved 30,773
+- drain: 110 traces, 13,900 transactions (exact 9,246), moved 157,339
+- reclaim: 15 traces, 8,735 transactions (exact 7,817), moved 27,939
+- medium: 27 traces, 13,667 transactions (exact 735), moved 506,123
+- own: 6 traces, 7,740 transactions (exact 27), moved 225,287
+- large: 60 traces, 170,000 transactions (exact 72,493), moved 568,283
+
+All 288: 221,142 transactions, none refused, no failure: `Prov`, A-COPY and
+A6' hold at every one, no klong needs "below x" (`InvA` holds after every
+one), and the fast checks equal the definitions at all 96,450 compared;
+1,515,744 moved nodes, each a live child before of a node not written.
+Wall: small 1 s, drain 4 s, reclaim 2 s, own 145 s, medium 42 s, large
+200 s.

@@ -19,7 +19,8 @@ node's children by `kids_spec`, its decision by `step_same`, `step_append`,
   live klongs; the pieces are `finEnts` of `fin`), the nodes reached from the
   entries are, as a multiset, among the used old nodes, the payloads' bounds
   and the fresh ids of the run (for TREE), and every node written meets the
-  rules of one node and has a klong (`emit_spec_w`).
+  rules of one node and has a klong (`emit_spec_w`) and is reached from one of
+  the entries through live klongs (`emit_rch`, `Rch`).
 
 The premises are facts of the tree before s (its key nodes meet `nodeOk`, have
 a klong and times before i; the ids from `acc.next` are no nodes of s), of the
@@ -45,6 +46,7 @@ needed, as the program runs:
 -/
 import Contract.Proof.PeInst
 import Contract.Proof.PeEmit
+import Contract.Proof.PeRch
 
 namespace Contract.PE
 
@@ -185,9 +187,19 @@ node's id is no node of s. -/
 def MatchF (s : Tree) (E : List (Nat × NodeId)) (P : List (Nat × Option NodeId)) : Prop :=
   List.Forall₂ (fun e p => e.1 = p.1 ∧ (p.2 = some e.2 ∨ (p.2 = none ∧ s.obj e.2 = none))) E P
 
+/-- The form of a node that PE's run writes: a fresh id (no node of s) written as a value or
+as a new key node whose klongs are `newKs i F` (F its live list); or an old key node written as
+its klongs with `emitKs i n.ks F` appended (F its live list after), more than the time klong. -/
+def WForm (i : Time) (s : Tree) (p : NodeId × Obj) : Prop :=
+  (s.obj p.1 = none ∧ ((∃ v, p.2 = .val v) ∨
+     ∃ l b F, p.2 = .key ⟨l, b, newKs i F⟩ ∧ live (newKs i F) = F)) ∨
+  (∃ n F, s.obj p.1 = some (.key n) ∧ p.2 = .key { n with ks := n.ks ++ emitKs i n.ks F } ∧
+     live (n.ks ++ emitKs i n.ks F) = F ∧ emitKs i n.ks F ≠ [.time i])
+
 /-- What a run of emit from acc to acc' writes, W (newest first): each node
 once; a fresh id of the run or an old node of U; every time klong at most i;
-an old node keeps its klongs and gets klongs after a time klong of i. -/
+an old node keeps its klongs and gets klongs after a time klong of i; each
+node written has one of the forms of `WForm`. -/
 structure WOk (i : Time) (s : Tree) (U : List NodeId) (acc acc' : Acc)
     (W : List (NodeId × Obj)) : Prop where
   ws : acc'.ws = W ++ acc.ws
@@ -197,6 +209,7 @@ structure WOk (i : Time) (s : Tree) (U : List NodeId) (acc acc' : Acc)
   times : ∀ p ∈ W, ∃ n, p.2 = .key n ∧ ∀ t, Klong.time t ∈ n.ks → t ≤ i
   frame : ∀ p ∈ W, ∀ n, s.obj p.1 = some (.key n) →
     ∃ more, p.2 = .key { n with ks := n.ks ++ Klong.time i :: more }
+  form : ∀ p ∈ W, WForm i s p
 
 /-- A tree T after the writes W: it has them; every other node of U is as in
 s; every node of s is a node of T; every payload p of the leaves is a node of
@@ -797,7 +810,7 @@ def ESpec (cf : Cfg) (i : Time) (s : Tree) (g h : Nat) (v : VN) (acc : Acc)
       HoldsE cf T g h (renameHead 0 E) (finEnts 0 v (fin s h v)) ∧
       (∀ f, cf.lev g h + 1 ≤ f → (E.flatMap (fun e => reachAt T f e.2)).Subperm
         (Ui s v ++ (pays v).flatMap PB ++ List.range' acc.next (acc'.next - acc.next))) ∧
-      WNode cf T W
+      WNode cf T W ∧ (∀ w ∈ W.map (·.1), ∃ e ∈ E, Rch T e.2 w)
 
 /-- What emit of a planned node's children did, from acc to acc1, writing W
 (its old nodes shaped at segment g): its real final list F' (with each child's
@@ -817,7 +830,7 @@ structure CRes (cf : Cfg) (i : Time) (s : Tree) (g h : Nat) (v : VN) (U : List N
     RelH cf T g h F' (fin s h v) ∧ (∀ e ∈ F', T.obj e.2 ≠ none) ∧
     (∀ f, cf.lev g h ≤ f → (F'.flatMap (fun e => reachAt T f e.2)).Subperm
       (U ++ (pays v).flatMap PB ++ List.range' acc.next (acc1.next - acc.next))) ∧
-    WNode cf T W
+    WNode cf T W ∧ (∀ w ∈ W.map (·.1), ∃ e ∈ F', Rch T e.2 w)
 
 theorem tpre_sub {T : Tree} {g : Nat} {W1 W2 : List (NodeId × Obj)} {U1 U2 : List NodeId}
     {Py1 Py2 : List (Nat × NodeId)} {PB : Nat × NodeId → List NodeId}
@@ -839,7 +852,7 @@ theorem not_mem_ws {a : Acc} {b : Nat} {Wi U' : List NodeId}
 
 theorem WOk.mono {U U' : List NodeId} {a a' : Acc} {W : List (NodeId × Obj)}
     (h : WOk i s U a a' W) (hU : ∀ z ∈ U, z ∈ U') : WOk i s U' a a' W :=
-  ⟨h.ws, h.next, h.nodup, fun w hw => (h.ids w hw).imp_right (hU w), h.times, h.frame⟩
+  ⟨h.ws, h.next, h.nodup, fun w hw => (h.ids w hw).imp_right (hU w), h.times, h.frame, h.form⟩
 
 /-- Two runs one after the other. -/
 theorem WOk.append {U1 U2 : List NodeId} {a0 a1 a2 : Acc} {W1 W2 : List (NodeId × Obj)}
@@ -848,7 +861,7 @@ theorem WOk.append {U1 U2 : List NodeId} {a0 a1 a2 : Acc} {W1 W2 : List (NodeId 
     WOk i s (U1 ++ U2) a0 a2 (W2 ++ W1) := by
   have hn1 := h1.next
   have hn2 := h2.next
-  refine ⟨by rw [h2.ws, h1.ws, List.append_assoc], by nomega, ?_, ?_, ?_, ?_⟩
+  refine ⟨by rw [h2.ws, h1.ws, List.append_assoc], by nomega, ?_, ?_, ?_, ?_, ?_⟩
   · rw [List.map_append, List.nodup_append]
     refine ⟨h2.nodup, h1.nodup, ?_⟩
     intro w hw w' hw' hww
@@ -876,6 +889,10 @@ theorem WOk.append {U1 U2 : List NodeId} {a0 a1 a2 : Acc} {W1 W2 : List (NodeId 
     rcases List.mem_append.mp hp with hp | hp
     · exact h2.frame p hp
     · exact h1.frame p hp
+  · intro p hp
+    rcases List.mem_append.mp hp with hp | hp
+    · exact h2.form p hp
+    · exact h1.form p hp
 
 /-! ## An untouched node -/
 
@@ -889,11 +906,11 @@ theorem old_spec (hs : SOk cf i s) {g h : Nat} {y : NodeId} {acc : Acc}
   | old hsh hg _ =>
   obtain ⟨lo, hi, hg⟩ := hg
   obtain ⟨n, hobj, hlev, _⟩ := shaped_obj hsh
-  refine ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp⟩, WSh.nil,
+  refine ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp, by simp⟩, WSh.nil,
     List.Forall₂.cons ⟨rfl, Or.inl rfl⟩ List.Forall₂.nil, rfl, ?_⟩
   intro T PB hT
   have hag : ∀ z ∈ R s y, T.obj z = s.obj z := fun z hz => hT.keep z hz (by simp)
-  refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, WNode.nil⟩
+  refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, WNode.nil, by simp⟩
   · show Holds cf T g h y (fin s h (.old y))
     rw [fin_old']
     exact holds_kept hs hT.exist h hsh hag
@@ -940,6 +957,25 @@ theorem matchF_some {F' : List (Nat × NodeId)} : ∀ {L : List (Nat × NodeId)}
       rcases c2 with c2 | ⟨c2, _⟩
       · simp only [Option.some.injEq] at c2; subst c1 c2; rfl
       · cases c2
+
+/-- Entries that emit gives, all nodes of s, against the planned ones: the
+planned ones are they, each with its id. -/
+theorem matchF_old : ∀ {F' : List (Nat × NodeId)} {F : List (Nat × Option NodeId)},
+    MatchF s F' F → (∀ e ∈ F', s.obj e.2 ≠ none) → F'.map (fun q => (q.1, some q.2)) = F
+  | [], [], _, _ => rfl
+  | e :: F', p :: F, h, hs => by
+    cases h with
+    | cons h1 h2 =>
+      obtain ⟨c1, c2⟩ := h1
+      rw [List.map_cons, matchF_old h2 (fun e' he' => hs e' (List.mem_cons_of_mem _ he'))]
+      obtain ⟨a, y⟩ := e
+      obtain ⟨c, z⟩ := p
+      simp only at c1 c2
+      rcases c2 with c2 | ⟨_, c2⟩
+      · subst c1 c2; rfl
+      · exact absurd c2 (hs _ List.mem_cons_self)
+  | [], _ :: _, h, _ => by cases h
+  | _ :: _, [], h, _ => by cases h
 
 theorem inord_cvs : ∀ {h : Nat} {Q : Node h}, InOrd h Q → (Q.map (·.1)).Pairwise (· < ·)
   | 0, _, hq => List.pairwise_map.mpr hq
@@ -990,10 +1026,10 @@ theorem step_same (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool} {es :
   have hTk : TPre cf s T g W0 U (pays (.node (some x) g h join es F .same)) PB :=
     tpre_sub hT (fun p hp => hp) (fun z hz => by rw [hn.ui]; simp [hz]) (fun p hp => hp)
       (fun z _ hn' => hn')
-  obtain ⟨hrel, _, hreach, hwn⟩ := hc.t T PB hTk
+  obtain ⟨hrel, _, hreach, hwn, hrch⟩ := hc.t T PB hTk
   have hTx : T.obj x = some (.key n) := by
     rw [hT.keep x (by rw [hn.ui]; simp) hxW, hobj]
-  refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, hwn⟩
+  refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, hwn, ?_⟩
   · exact holds_of_rel hTx hleaf hlev hg hh (nodeOk_transfer (hs x n hobj).1 hT.exist)
       (hF' ▸ hrel)
   · intro f hf
@@ -1001,6 +1037,10 @@ theorem step_same (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool} {es :
     simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil, reachAt_key hTx, ← hF']
     rw [hn.ui]
     exact sub_cons (hreach f' (by omega))
+  · intro w hw
+    obtain ⟨e, he, hr⟩ := hrch w hw
+    exact ⟨(0, x), List.mem_singleton_self _,
+      Rch.step hTx (show (e.1, e.2) ∈ live n.ks from hF' ▸ he) hr⟩
 
 /-- **`append`**: the base gets emit's klongs (026-24's lemma of emit). -/
 theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
@@ -1028,9 +1068,10 @@ theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
   have hsort : F'.Pairwise CvLt := by
     have := hn.ord (0, fin s h (.node (some x) g h join es F .append)) (by simp [finEnts])
     exact sorted_of_cvs hc.cv (inord_cvs this)
+  have hlive : live (n.ks ++ emitKs i n.ks F') = F' := emitKs_live hok'.2.1 i hsort
   set nobj : Obj := .key { n with ks := n.ks ++ emitKs i n.ks F' } with hnobj
   have hw := hc.w
-  refine ⟨(x, nobj) :: W0, ⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_,
+  refine ⟨(x, nobj) :: W0, ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_,
     List.Forall₂.cons ⟨rfl, Or.inl rfl⟩ List.Forall₂.nil, rfl, ?_⟩
   · simp [Acc.write, hw.ws]
   · simpa [Acc.write] using hw.next
@@ -1057,6 +1098,21 @@ theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
       obtain ⟨more, hm⟩ := emitKs_ext i n.ks F'
       exact ⟨more, by rw [hnobj, hm]⟩
     · exact hw.frame p hp
+  · intro p hp
+    rcases List.mem_cons.mp hp with rfl | hp
+    · refine Or.inr ⟨n, F', hobj, hnobj, hlive, fun heq => ?_⟩
+      -- the klongs only a time klong: the planned list is the base's live list
+      have hF'eq : live n.ks = F' := by
+        have := hlive
+        rwa [heq, live_append_time] at this
+      have hFeq : (live n.ks).map (fun q => (q.1, some q.2)) = F := by
+        rw [hF'eq]
+        exact matchF_old hc.m (fun e he => by
+          obtain ⟨c, y⟩ := e
+          exact hok'.2.2 c y (live_mem_key' (hF'eq ▸ he)))
+      rw [← hFeq] at hdec
+      simp [decideNode] at hdec
+    · exact hw.form p hp
   · intro p hp o ho
     rcases List.mem_cons.mp hp with rfl | hp
     · exact ⟨n, h, (Option.some.inj (hobj.symm.trans ho)).symm, hb x rfl⟩
@@ -1067,9 +1123,8 @@ theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
         (fun p hp => hp) (fun z hz hn' => by
           simp only [List.map_cons, List.mem_cons, not_or]
           exact ⟨fun h => hxU (h ▸ hz), hn'⟩)
-    obtain ⟨hrel, hptr, hreach, hwn⟩ := hc.t T PB hTk
+    obtain ⟨hrel, hptr, hreach, hwn, hrch⟩ := hc.t T PB hTk
     have hTx : T.obj x = some nobj := hT.ws (x, nobj) List.mem_cons_self
-    have hlive : live (n.ks ++ emitKs i n.ks F') = F' := emitKs_live hok'.2.1 i hsort
     have hlen : (n.ks ++ emitKs i n.ks F').length ≤ cf.M := by
       rw [List.length_append, emitKs_length_eq hc.m (fun c y hy => hok'.2.2 c y (live_mem_key' hy))]
       exact dec_append hdec.symm
@@ -1079,7 +1134,7 @@ theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
       rcases List.mem_append.mp hk with hk | hk
       · exact hT.exist y (hok'.2.2 c y hk)
       · exact hptr (c, y) (emitKs_ptrs hk)
-    refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, ?_⟩
+    refine ⟨List.Forall₂.cons ⟨rfl, ?_⟩ List.Forall₂.nil, ?_, ?_, ?_⟩
     · exact holds_of_rel hTx hleaf hlev hg hh hok2 (by rw [hlive]; exact hrel)
     · intro f hf
       obtain ⟨f', rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
@@ -1093,6 +1148,14 @@ theorem step_append (hs : SOk cf i s) {g h : Nat} {x : NodeId} {join : Bool}
         subst hm'
         exact ⟨hok2, by simp [hne]⟩
       · exact hwn p hp m hm
+    · intro w hw
+      simp only [List.map_cons, List.mem_cons] at hw
+      rcases hw with hw | hw
+      · exact ⟨(0, x), List.mem_singleton_self _, by rw [hw]; exact Rch.refl x⟩
+      · obtain ⟨e, he, hr⟩ := hrch w hw
+        have hTx' : T.obj x = some (.key { n with ks := n.ks ++ emitKs i n.ks F' }) := hTx
+        exact ⟨(0, x), List.mem_singleton_self _,
+          Rch.step hTx' (show (e.1, e.2) ∈ live (n.ks ++ emitKs i n.ks F') by rw [hlive]; exact he) hr⟩
 
 /-! ## The parts -/
 
@@ -1257,6 +1320,39 @@ theorem npE_reach {T : Tree} {g h f : Nat} :
     refine (List.Perm.append_left _ ih).trans ?_
     exact List.perm_append_comm_assoc _ _ _
 
+/-- The nodes that new parts write, and their entries, are reached from the
+entries `newParts` gives. -/
+theorem npE_rch {T : Tree} {g h : Nat} :
+    ∀ (a : Nat) (Ps : List (List (Nat × NodeId))),
+      (∀ p ∈ npW cf i g h a Ps, T.obj p.1 = some p.2) →
+      (∀ P ∈ Ps, live (newKs i (rnH h P)) = rnH h P) →
+      (∀ w ∈ (npW cf i g h a Ps).map (·.1), ∃ e ∈ npE a Ps, Rch T e.2 w) ∧
+      (∀ x ∈ Ps.flatten, ∃ e ∈ npE a Ps, Rch T e.2 x.2)
+  | _, [], _, _ => by simp [npW, npE]
+  | a, P :: Ps, hw, hl => by
+    have ih := npE_rch (T := T) (g := g) (h := h) (a + 1) Ps
+      (fun p hp => hw p (by simp only [npW, List.mem_cons]; exact Or.inr hp))
+      (fun Q hQ => hl Q (List.mem_cons_of_mem _ hQ))
+    have hTa : T.obj a = some (.key ⟨cf.lev g h, h == 0, newKs i (rnH h P)⟩) :=
+      hw (a, npObj cf i g h P) (by simp [npW])
+    refine ⟨fun w hw' => ?_, fun x hx => ?_⟩
+    · simp only [npW, List.map_cons, List.mem_cons] at hw'
+      rcases hw' with hw' | hw'
+      · exact ⟨(headCv P, a), by simp [npE], by rw [hw']; exact Rch.refl a⟩
+      · obtain ⟨e, he, hr⟩ := ih.1 w hw'
+        exact ⟨e, by simp only [npE]; exact List.mem_cons_of_mem _ he, hr⟩
+    · rw [List.flatten_cons, List.mem_append] at hx
+      rcases hx with hx | hx
+      · have hy : x.2 ∈ (rnH h P).map (·.2) := by rw [rnH_snd]; exact List.mem_map_of_mem hx
+        obtain ⟨x', hx', hx2⟩ := List.mem_map.mp hy
+        have hlv : (x'.1, x'.2) ∈ live (newKs i (rnH h P)) := by
+          rw [hl P List.mem_cons_self]; exact hx'
+        refine ⟨(headCv P, a), by simp [npE], ?_⟩
+        rw [← hx2]
+        exact Rch.one hTa hlv
+      · obtain ⟨e, he, hr⟩ := ih.2 x hx
+        exact ⟨e, by simp only [npE]; exact List.mem_cons_of_mem _ he, hr⟩
+
 theorem sub_parts {Z X B U PBs r1 : List NodeId} (hX : X.Subperm (U ++ PBs ++ r1)) :
     (Z ++ X).Subperm (B ++ U ++ PBs ++ (r1 ++ Z)) := by
   rw [subperm_iff_le] at hX ⊢
@@ -1303,8 +1399,27 @@ theorem step_parts (hcf : cf.Ok) {g h : Nat} {b : Option NodeId} {join : Bool}
   have hn1 := hw.next
   have hfr : ∀ p ∈ npW cf i g h acc1.next (cutList F' (partSizes F'.length k join)),
       s.obj p.1 = none := fun p hp => hn.fresh p.1 (by have := (mem_npW hp).1; nomega)
+  have hcvPQ : List.Forall₂ (fun (P : List (Nat × NodeId)) (Q : Node h) => P.map (·.1) = Q.map (·.1))
+      (cutList F' (partSizes F'.length k join))
+      (cutList (fin s h (.node b g h join es F (.parts k))) (partSizes F'.length k join)) :=
+    (forall₂_cutList _ (forall₂_of_cvs hc.cv)).imp (fun _ _ h => forall₂_map_fst (fun _ _ h => h) h)
+  have hordQ : ∀ Q ∈ cutList (fin s h (.node b g h join es F (.parts k))) (partSizes F'.length k join),
+      InOrd h (rnH h Q) := by
+    intro Q hQ
+    have hm : rnH h Q ∈ (finEnts 0 (.node b g h join es F (.parts k))
+        (fin s h (.node b g h join es F (.parts k)))).map (·.2) := by
+      rw [hfin, renameHead_map_snd, List.map_map]
+      exact List.mem_map.mpr ⟨Q, hQ, rfl⟩
+    obtain ⟨e, he, he2⟩ := List.mem_map.mp hm
+    exact he2 ▸ hn.ord e he
+  have hsortP : ∀ P ∈ cutList F' (partSizes F'.length k join), (rnH h P).Pairwise CvLt := by
+    intro P hP
+    obtain ⟨Q, hQ, hPQ⟩ := forall₂_exists hcvPQ P hP
+    exact sorted_of_cvs (rnH_cvs h hPQ) (inord_cvs (hordQ Q hQ))
+  have hliveP : ∀ P ∈ cutList F' (partSizes F'.length k join), live (newKs i (rnH h P)) = rnH h P :=
+    fun P hP => newKs_live i (hsortP P hP)
   refine ⟨(npW cf i g h acc1.next (cutList F' (partSizes F'.length k join))).reverse ++ W0,
-    ⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_⟩
+    ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_⟩
   · rw [hws, hw.ws, List.append_assoc]
   · rw [hnext]; nomega
   · rw [List.map_append, List.nodup_append, List.map_reverse, npW_ids]
@@ -1334,6 +1449,12 @@ theorem step_parts (hcf : cf.Ok) {g h : Nat} {b : Option NodeId} {join : Bool}
     · intro n hn'
       rw [hfr p (List.mem_reverse.mp hp)] at hn'; cases hn'
     · exact hw.frame p hp
+  · intro p hp
+    rcases List.mem_append.mp hp with hp | hp
+    · obtain ⟨_, P, hP, hP2⟩ := mem_npW (List.mem_reverse.mp hp)
+      exact Or.inl ⟨hfr p (List.mem_reverse.mp hp),
+        Or.inr ⟨cf.lev g h, h == 0, rnH h P, hP2, hliveP P hP⟩⟩
+    · exact hw.form p hp
   · intro p hp o ho
     rcases List.mem_append.mp hp with hp | hp
     · rw [hfr p (List.mem_reverse.mp hp)] at ho; cases ho
@@ -1366,29 +1487,10 @@ theorem step_parts (hcf : cf.Ok) {g h : Nat} {b : Option NodeId} {join : Bool}
           rw [List.map_reverse, List.mem_reverse, npW_ids, List.mem_range'] at hm
           obtain ⟨j, _, rfl⟩ := hm
           exact hn.ex _ hz (hn.fresh _ (by nomega)))
-    obtain ⟨hrel, hptr, hreach, hwn⟩ := hc.t T PB hTk
+    obtain ⟨hrel, hptr, hreach, hwn, hrch⟩ := hc.t T PB hTk
     have hTw : ∀ p ∈ npW cf i g h acc1.next (cutList F' (partSizes F'.length k join)),
         T.obj p.1 = some p.2 := fun p hp =>
       hT.ws p (List.mem_append_left _ (List.mem_reverse.mpr hp))
-    have hcvPQ : List.Forall₂ (fun (P : List (Nat × NodeId)) (Q : Node h) => P.map (·.1) = Q.map (·.1))
-        (cutList F' (partSizes F'.length k join))
-        (cutList (fin s h (.node b g h join es F (.parts k))) (partSizes F'.length k join)) :=
-      (forall₂_cutList _ (forall₂_of_cvs hc.cv)).imp (fun _ _ h => forall₂_map_fst (fun _ _ h => h) h)
-    have hordQ : ∀ Q ∈ cutList (fin s h (.node b g h join es F (.parts k))) (partSizes F'.length k join),
-        InOrd h (rnH h Q) := by
-      intro Q hQ
-      have hm : rnH h Q ∈ (finEnts 0 (.node b g h join es F (.parts k))
-          (fin s h (.node b g h join es F (.parts k)))).map (·.2) := by
-        rw [hfin, renameHead_map_snd, List.map_map]
-        exact List.mem_map.mpr ⟨Q, hQ, rfl⟩
-      obtain ⟨e, he, he2⟩ := List.mem_map.mp hm
-      exact he2 ▸ hn.ord e he
-    have hsortP : ∀ P ∈ cutList F' (partSizes F'.length k join), (rnH h P).Pairwise CvLt := by
-      intro P hP
-      obtain ⟨Q, hQ, hPQ⟩ := forall₂_exists hcvPQ P hP
-      exact sorted_of_cvs (rnH_cvs h hPQ) (inord_cvs (hordQ Q hQ))
-    have hliveP : ∀ P ∈ cutList F' (partSizes F'.length k join), live (newKs i (rnH h P)) = rnH h P :=
-      fun P hP => newKs_live i (hsortP P hP)
     have hfitP : ∀ P ∈ cutList F' (partSizes F'.length k join), P.length + 1 ≤ cf.M := by
       intro P hP
       have := cutList_length_le F' _ (cf.M - 1) (fun x hx => by
@@ -1407,7 +1509,7 @@ theorem step_parts (hcf : cf.Ok) {g h : Nat} {b : Option NodeId} {join : Bool}
         have : y ∈ P.map (·.2) := by rw [← rnH_snd h P]; exact List.mem_map.mpr ⟨_, hy, rfl⟩
         obtain ⟨e, he, rfl⟩ := List.mem_map.mp this
         exact hptrP P hP e he
-    refine ⟨?_, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_⟩
     · rw [hE, hfin]
       unfold HoldsE
       apply forall₂_renameHead 0 (fun _ _ h => ⟨rfl, h.2⟩)
@@ -1438,6 +1540,15 @@ theorem step_parts (hcf : cf.Ok) {g h : Nat} {b : Option NodeId} {join : Bool}
         subst hm
         exact ⟨hokP P hP, by simp [newKs]⟩
       · exact hwn p hp m hm
+    · have hnr := npE_rch (T := T) acc1.next (cutList F' (partSizes F'.length k join)) hTw hliveP
+      intro w hw'
+      rw [hE]
+      rw [List.map_append, List.mem_append, List.map_reverse, List.mem_reverse] at hw'
+      rcases hw' with hw' | hw'
+      · exact hnr.1 w hw'
+      · obtain ⟨e, he, hr⟩ := hrch w hw'
+        obtain ⟨e', he', hr'⟩ := hnr.2 e (by rw [hflat]; exact he)
+        exact ⟨e', he', hr'.trans hr⟩
 
 /-! ## Emit of a planned node: its children, then its decision -/
 
@@ -1521,7 +1632,7 @@ theorem leaf_cres {g : Nat} {b : Option NodeId} {join : Bool} {es : List (Nat ×
     CRes cf i s g 0 (.node b g 0 join es F dec) [] acc acc [] (es.map (fun e => (e.1, e.2.oid))) F := by
   have hpays : pays (.node b g 0 join es F dec) = es.map (fun e => (e.1, e.2.oid)) := by
     rw [pays_node]; rfl
-  refine ⟨⟨by simp, le_refl _, by simp, by simp, by simp, by simp⟩, WSh.nil, ?_, rfl, ?_⟩
+  refine ⟨⟨by simp, le_refl _, by simp, by simp, by simp, by simp, by simp⟩, WSh.nil, ?_, rfl, ?_⟩
   · rw [hF]
     unfold MatchF
     have : ∀ e ∈ es, ents e.1 e.2 = [(e.1, some e.2.oid)] := by
@@ -1538,7 +1649,7 @@ theorem leaf_cres {g : Nat} {b : Option NodeId} {join : Bool} {es : List (Nat ×
     intro e _
     exact ⟨rfl, Or.inl rfl⟩
   · intro T PB hT
-    refine ⟨rfl, fun e he => (hT.pays e (hpays ▸ he)).1, fun f hf => ?_, WNode.nil⟩
+    refine ⟨rfl, fun e he => (hT.pays e (hpays ▸ he)).1, fun f hf => ?_, WNode.nil, by simp⟩
     simp only [List.nil_append, Nat.sub_self, List.range'_zero, List.append_nil]
     rw [hpays]
     exact flatMap_subperm _ (fun p hp => (hT.pays p (hpays ▸ hp)).2 f hf)
@@ -1610,15 +1721,15 @@ theorem kids_spec (hcf : cf.Ok) (hs : SOk cf i s) {g h : Nat}
           (∀ f, cf.lev g h + 1 ≤ f → (F0.flatMap (fun e => reachAt T f e.2)).Subperm
             (es.flatMap (fun e => Ui s e.2) ++ (es.flatMap (fun e => pays e.2)).flatMap PB ++
               List.range' acc.next (acc1.next - acc.next))) ∧
-          WNode cf T W
+          WNode cf T W ∧ (∀ w ∈ W.map (·.1), ∃ e ∈ F0, Rch T e.2 w)
   | [], acc, F0, acc1, _, _, _, _, _, he => by
     rw [emitKids.eq_1] at he
     simp only [Option.some.injEq, Prod.mk.injEq] at he
     obtain ⟨rfl, rfl⟩ := he
-    refine ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp⟩, WSh.nil,
+    refine ⟨[], ⟨by simp, le_refl _, by simp, by simp, by simp, by simp, by simp⟩, WSh.nil,
       List.Forall₂.nil, rfl, ?_⟩
     intro T PB _
-    exact ⟨List.Forall₂.nil, fun f _ => List.nil_subperm, WNode.nil⟩
+    exact ⟨List.Forall₂.nil, fun f _ => List.nil_subperm, WNode.nil, by simp⟩
   | (c, w) :: rest, acc, F0, acc1, hv, he', hnd, hfresh, hord, he => by
     rw [emitKids.eq_2] at he
     cases hw : emit cf i s w acc with
@@ -1679,9 +1790,9 @@ theorem kids_spec (hcf : cf.Ok) (hs : SOk cf i s) {g h : Nat}
           (fun p hp => List.mem_append_right _ hp) (fun z hz hn => by
             rw [List.map_append, List.mem_append, not_or]
             exact ⟨hn, not_mem_ws hfresh hW1.ids (hex2 z hz) (fun h => hdisj z h hz)⟩)
-      obtain ⟨hh1, hr1, hwn1⟩ := ht1 T PB hT1
-      obtain ⟨hh2, hr2, hwn2⟩ := ht2 T PB hT2
-      refine ⟨?_, fun f hf => ?_, hwn2.append hwn1⟩
+      obtain ⟨hh1, hr1, hwn1, hc1⟩ := ht1 T PB hT1
+      obtain ⟨hh2, hr2, hwn2, hc2⟩ := ht2 T PB hT2
+      refine ⟨?_, fun f hf => ?_, hwn2.append hwn1, ?_⟩
       · unfold HoldsE at hh1 hh2 ⊢
         refine List.rel_append ?_ hh2
         rw [finEnts_rename c w, ← renameHead_renameHead c 0 E]
@@ -1696,6 +1807,14 @@ theorem kids_spec (hcf : cf.Ok) (hs : SOk cf i s) {g h : Nat}
           rw [e1, ← List.range'_append, e2]
         rw [hr]
         exact sub_two (hr1 f hf) (hr2 f hf)
+      · intro w hw
+        rw [List.map_append, List.mem_append] at hw
+        rcases hw with hw | hw
+        · obtain ⟨e, he, hr⟩ := hc2 w hw
+          exact ⟨e, List.mem_append_right _ he, hr⟩
+        · obtain ⟨e, he, hr⟩ := hc1 w hw
+          obtain ⟨e', he', h2⟩ := mem_snd_of_rename (c := c) he
+          exact ⟨e', List.mem_append_left _ he', by rw [h2]; exact hr⟩
 
 /-! ## The induction -/
 
@@ -1809,15 +1928,18 @@ theorem emit_main (hcf : cf.Ok) (hs : SOk cf i s) {g : Nat} : ∀ (h : Nat) {v :
           exact forall₂_renameHead 0 (fun _ _ h => ⟨rfl, h.2⟩) hm0
         · intro T PB hT
           rw [hpays] at hT
-          obtain ⟨hh, hr, hwn⟩ := ht0 T PB hT
+          obtain ⟨hh, hr, hwn, hrc⟩ := ht0 T PB hT
           refine ⟨forall₂_renameHead 0 (fun _ _ h => ⟨rfl, h.2⟩) hh, fun e hm => ?_, fun f hf => ?_,
-            hwn⟩
+            hwn, fun w hw => ?_⟩
           · obtain ⟨e', hm', h2⟩ := renameHead_mem hm
             obtain ⟨a, _, hrel⟩ := forall₂_exists hh e' hm'
             obtain ⟨n, hn, _⟩ := hrel.2.obj
             rw [← h2, hn]; simp
           · rw [renameHead_flatMap_snd, hpays]
             exact hr f (by rw [Cfg.lev_succ] at hf; omega)
+          · obtain ⟨e, he, hr'⟩ := hrc w hw
+            obtain ⟨e', he', h2⟩ := mem_snd_of_rename (c := 0) he
+            exact ⟨e', he', by rw [h2]; exact hr'⟩
       have hn : NH cf i s g' (h + 1) b join es F dec (es.flatMap (fun e => Ui s e.2)) acc :=
         ⟨hv', he', hUi, hnd', hex, hfresh, hord⟩
       exact node_dispatch hcf hs hn hc hem
@@ -1915,10 +2037,11 @@ theorem zip_renameHead {β : Type} {P : NodeId → β → Prop} (c : Nat) :
     · exact h p (by simp [renameHead, hp])
 
 /-- **emit realizes the planned tree, and the nodes it writes** (bergdb
-030-21): `emit_spec` below, and two more facts of the writes W. Every old node
+030-21): `emit_spec` below, and three more facts of the writes W. Every old node
 emit writes is a key node of segment g shaped as PE's trees (an appended base:
-`EOk`); in T, every key node written meets the rules of one node and has a
-klong (a time klong of i first: `emitHead`, `newKs`). -/
+`EOk`); every node written has a form of `WForm`; in T, every key node written
+meets the rules of one node and has a klong (a time klong of i first:
+`emitHead`, `newKs`). -/
 theorem emit_spec_w (hcf : cf.Ok) {i : Time} {s : Tree} {g h : Nat} {v : VN} {acc acc' : Acc}
     {E : List (Nat × NodeId)}
     (hv : VOk cf s g h v) (ho : EOk cf i s g h v)
@@ -1934,6 +2057,7 @@ theorem emit_spec_w (hcf : cf.Ok) {i : Time} {s : Tree} {g h : Nat} {v : VN} {ac
       (∀ p ∈ W, ∀ n, s.obj p.1 = some (.key n) →
         ∃ more, p.2 = .key { n with ks := n.ks ++ Klong.time i :: more }) ∧
       (∀ p ∈ W, ∀ o, s.obj p.1 = some o → ∃ n h', o = .key n ∧ Shaped cf s g h' p.1) ∧
+      (∀ p ∈ W, WForm i s p) ∧
       ∀ (T : Tree) (PB : Nat × NodeId → List NodeId),
         (∀ p ∈ W, T.obj p.1 = some p.2) →
         (∀ z ∈ Ui s v, z ∉ W.map (·.1) → T.obj z = s.obj z) →
@@ -1948,9 +2072,9 @@ theorem emit_spec_w (hcf : cf.Ok) {i : Time} {s : Tree} {g h : Nat} {v : VN} {ac
           (Ui s v ++ (pays v).flatMap PB ++ List.range' acc.next (acc'.next - acc.next))) ∧
         (∀ p ∈ W, ∀ n, p.2 = .key n → nodeOk cf.params T n = true ∧ n.ks ≠ []) := by
   obtain ⟨W, hW, hsh, _, hcv, ht⟩ := emit_main hcf hs h hv ho hU hfresh (pieces_of_inord hcf ho hord) he
-  refine ⟨W, hW.ws, hW.next, hW.nodup, hW.ids, hW.times, hW.frame, hsh, ?_⟩
+  refine ⟨W, hW.ws, hW.next, hW.nodup, hW.ids, hW.times, hW.frame, hsh, hW.form, ?_⟩
   intro T PB h1 h2 h3 h4
-  obtain ⟨hh, hr, hwn⟩ := ht T PB ⟨h1, h2, h3, h4⟩
+  obtain ⟨hh, hr, hwn, _⟩ := ht T PB ⟨h1, h2, h3, h4⟩
   have hhz : ∀ p ∈ (renameHead 0 E).zip (finEnts 0 v (fin s h v)), Holds cf T g h p.1.2 p.2.2 :=
     fun p hp => ((List.forall₂_iff_zip.mp hh).2 hp).2
   have hhE := zip_renameHead (P := fun x (a : Nat × Node h) => Holds cf T g h x a.2) 0 hhz
@@ -2010,10 +2134,35 @@ theorem emit_spec (hcf : cf.Ok) {i : Time} {s : Tree} {g h : Nat} {v : VN} {acc 
           (Ui s v ++ (pays v).flatMap PB ++ List.range' acc.next (acc'.next - acc.next)) ∧
         ∀ f, cf.lev g h + 1 ≤ f → (E.flatMap (fun e => reachAt T f e.2)).Subperm
           (Ui s v ++ (pays v).flatMap PB ++ List.range' acc.next (acc'.next - acc.next)) := by
-  obtain ⟨W, h1, h2, h3, h4, h5, h6, _, ht⟩ := emit_spec_w hcf hv ho hs hfresh hU hord he
+  obtain ⟨W, h1, h2, h3, h4, h5, h6, _, _, ht⟩ := emit_spec_w hcf hv ho hs hfresh hU hord he
   refine ⟨W, h1, h2, h3, h4, h5, h6, fun T PB t1 t2 t3 t4 => ?_⟩
   obtain ⟨c1, c2, c3, c4, _⟩ := ht T PB t1 t2 t3 t4
   exact ⟨c1, c2, c3, c4⟩
+
+/-- **Every node emit writes is reached from the entries it gives** (bergdb
+030-21, part 2): in a tree T as in `emit_spec`, each node written is reached
+from one of the entries through live klongs (`Rch`): a fresh part is an entry
+or reached from its parent part, an appended base is the entry or reached
+from its parent, and a base kept (`same`) has its live list as before. -/
+theorem emit_rch (hcf : cf.Ok) {i : Time} {s : Tree} {g h : Nat} {v : VN} {acc acc' : Acc}
+    {E : List (Nat × NodeId)}
+    (hv : VOk cf s g h v) (ho : EOk cf i s g h v)
+    (hs : ∀ x n, s.obj x = some (.key n) →
+      nodeOk cf.params s n = true ∧ n.ks ≠ [] ∧ ∀ t, Klong.time t ∈ n.ks → t < i)
+    (hfresh : ∀ x, acc.next ≤ x → s.obj x = none)
+    (hU : (Ui s v).Nodup)
+    (hord : InOrd h (fin s h v))
+    (he : emit cf i s v acc = some (E, acc')) :
+    ∃ W, acc'.ws = W ++ acc.ws ∧
+      ∀ (T : Tree) (PB : Nat × NodeId → List NodeId),
+        (∀ p ∈ W, T.obj p.1 = some p.2) →
+        (∀ z ∈ Ui s v, z ∉ W.map (·.1) → T.obj z = s.obj z) →
+        (∀ z, s.obj z ≠ none → T.obj z ≠ none) →
+        (∀ p ∈ pays v, T.obj p.2 ≠ none ∧
+          ∀ f, cf.lev g 0 ≤ f → (reachAt T f p.2).Subperm (PB p)) →
+        ∀ w ∈ W.map (·.1), ∃ e ∈ E, Rch T e.2 w := by
+  obtain ⟨W, hW, _, _, _, ht⟩ := emit_main hcf hs h hv ho hU hfresh (pieces_of_inord hcf ho hord) he
+  exact ⟨W, hW.ws, fun T PB h1 h2 h3 h4 => (ht T PB ⟨h1, h2, h3, h4⟩).2.2.2⟩
 
 /-! ## The payloads' premise, for the caller -/
 

@@ -66,4 +66,9 @@ import Contract.RecoverWholeTheorems
 import Contract.PeWriter
 import Contract.PeStatement
 import Contract.Proof.PeTx
+import Contract.Proof.PeBridge
+import Contract.Proof.PeAdopt
 import Contract.PeExample
+import Contract.PeAdoptExample
+import Contract.Proof.PeFull
+import Contract.PeFullExample

@@ -1,0 +1,192 @@
+--- a/PeTrial.lean.txt
++++ b/PeTrial.lean
+@@ -105,6 +105,7 @@
+ -/
+ import Pe.Plan
+ import Contract.PeWriter
++import Contract.BridgeTop
+ import Check.Tree
+ import SIS.Tree.Read
+ import SIS.Tree.Inv
+@@ -874,6 +875,9 @@
+   height : Nat := 0
+   fails : Std.HashMap String Nat := {}
+   first : Array String := #[]
++  adoptChecked : Nat := 0
++  exactChecked : Nat := 0
++  moved : Nat := 0
+ 
+ def PR.fail (r : PR) (check msg : String) : PR :=
+   { r with fails := bump r.fails check,
+@@ -907,7 +911,135 @@
+     ("startTree", { objs := ({} : Std.HashMap NodeId Contract.Obj).insert 1 o1, roots := s.roots },
+       Contract.PE.startTop, Contract.PE.startNext)
+   | _, _ => ("trial", h, tp, 1000)
++
++/-! ## 030-21 part 2: PE's record, A6', A-COPY and PE's provenance, computed -/
++
++namespace Adopt
++
++open SIS (Changes NewNode)
++open SIS.Check (BVal)
++
++/-- PeRecord.lean's `newTopOf`, `lvlOf`, `isDataOf`, `peChange`. -/
++def newTopOf (tp : Contract.Top) (o : Contract.PE.Out) : Option (NodeId × Contract.TopNode) :=
++  if o.top.length = tp.length then none else o.top.getLast?
++
++def lvlOf (T : Contract.Tree) (x : NodeId) : Nat :=
++  match T.obj x with
++  | some ob => Contract.lvl ob
++  | none => 0
++
++def isDataOf (T : Contract.Tree) (x : NodeId) : Bool :=
++  match T.obj x with
++  | some (.val _) => true
++  | _ => false
++
++def keyMax (cf : Contract.PE.Cfg) : Nat := 1 + cf.G * (cf.H + 1) + cf.H
++def topBase (cf : Contract.PE.Cfg) : Nat := keyMax cf + 1
++
++def peChange (cf : Contract.PE.Cfg) (s : Contract.Tree) (tp : Contract.Top) (o : Contract.PE.Out) : Changes BVal :=
++  let T := o.tree s
++  let xs := (o.ws.map (·.1)).reverse
++  { new := (xs.filter (fun x => (s.obj x).isNone)).map (fun x => ⟨x, lvlOf T x, isDataOf T x⟩) ++
++      (match newTopOf tp o with
++       | some (z, _) => [⟨z, topBase cf + tp.length, false⟩]
++       | none => []),
++    adds := xs.flatMap (fun x => (Contract.newVals s T x).map (fun v => (x, v))) ++
++      (match newTopOf tp o with
++       | some (z, n) => (0, BVal.top z) :: (Contract.topVals n).map (fun v => (z, v))
++       | none => []),
++    touch := [] }
++
++/-- PeAdopt.lean's `kidOf` and `provB` (the exact, slow definitions). -/
++def kidOf (s : Contract.Tree) (q y : NodeId) : Bool :=
++  match s.obj q with
++  | some (.key n) => (Contract.live n.ks).any (fun cy => cy.2 == y)
++  | _ => false
++
++def provB (s T : Contract.Tree) (D : List NodeId) : Bool :=
++  D.all (fun p => match T.obj p with
++    | some (.key m) => (Contract.live m.ks).all (fun cy => (s.obj cy.2).isNone || kidOf s p cy.2 ||
++        (Contract.reach s).any (fun q => !D.contains q && kidOf s q cy.2))
++    | _ => true)
++
++/-- `provB`, fast: the parent of a moved node by the map of the walk. -/
++def provFast (s T : Contract.Tree) (D : List NodeId) (par : Std.HashMap NodeId NodeId) : Bool :=
++  let Ds : Std.HashSet NodeId := Std.HashSet.ofList D
++  D.all (fun p => match T.obj p with
++    | some (.key m) => (Contract.live m.ks).all (fun cy => (s.obj cy.2).isNone || kidOf s p cy.2 ||
++        (match par[cy.2]? with
++         | some q => !Ds.contains q
++         | none => false))
++    | _ => true)
++
++/-- The old nodes that the nodes written name by a live klong after the
++transaction and that were no live child of them before (moved). -/
++def movedCount (s T : Contract.Tree) (D : List NodeId) : Nat :=
++  D.foldl (fun n p => match T.obj p with
++    | some (.key m) => n + ((Contract.live m.ks).filter (fun cy =>
++        (s.obj cy.2).isSome && !kidOf s p cy.2)).length
++    | _ => n) 0
++
++/-- The walk's parent map (a node by the last node reached naming it live). -/
++def parents (s : Contract.Tree) (rl : List NodeId) : Std.HashMap NodeId NodeId :=
++  rl.foldl (fun m q => match s.obj q with
++    | some (.key n) => (Contract.live n.ks).foldl (fun m cy => m.insert cy.2 q) m
++    | _ => m) {}
++
++/-- For each node, the nodes reached that name it by a key klong, Contract.live or dead. -/
++def namers (s : Contract.Tree) (rl : List NodeId) : Std.HashMap NodeId (List NodeId) :=
++  rl.foldl (fun m z => match s.obj z with
++    | some (.key n) => n.ks.foldl (fun m k => match k with
++        | .key _ y => m.insert y (z :: (m.getD y []))
++        | _ => m) m
++    | _ => m) {}
+ 
++/-- `copyOk`, fast. -/
++def copyFast (s : Contract.Tree) (tp : Contract.Top) (c : Changes BVal) (before now : Std.HashSet NodeId)
++    (nm : Std.HashMap NodeId (List NodeId)) : Bool :=
++  let addIds : Std.HashSet NodeId := Std.HashSet.ofList (c.adds.map (·.1))
++  let newIds : Std.HashSet NodeId := Std.HashSet.ofList (c.new.map (·.id))
++  let path := fun x => before.contains x && (addIds.contains x || c.touch.contains x || !now.contains x)
++  let topMade := c.adds.any (fun a => match a.2 with
++    | .top _ => true
++    | _ => false)
++  let named := fun y => newIds.contains y || path y || (nm.getD y []).any path ||
++    (topMade && match tp.getLast? with
++      | some (_, nw) => nw.root == y
++      | none => false)
++  let _ := s
++  c.adds.all (fun a => match a.2 with
++    | .key _ y => named y
++    | .rootKey y => named y
++    | .skip _ y =>
++      match tp.getLast? with
++      | some (w, nw) => y == w || nw.skips.any (fun q => q.2.1 == y)
++      | none => false
++    | _ => true)
++
++/-- `adoptOk`, fast; and the number of klongs that needed its fourth case
++("below x"), which `InvA` says PE never needs. -/
++def adoptFast (sT : Contract.Tree) (rl : List NodeId) (now : Std.HashSet NodeId) : Bool × Nat := Id.run do
++  let mut ok := true
++  let mut below := 0
++  for x in rl do
++    match sT.obj x with
++    | some (.key n) =>
++      let lv : Std.HashSet NodeId := Std.HashSet.ofList ((Contract.live n.ks).map (·.2))
++      for k in n.ks do
++        match k with
++        | .key _ y =>
++          let isVal := match sT.obj y with
++            | some (.val _) => true
++            | _ => false
++          if !(lv.contains y || isVal || !now.contains y) then
++            below := below + 1
++            if !(Contract.reachAt sT (sT.fuel x) x).contains y then ok := false
++        | _ => pure ()
++    | _ => pure ()
++  return (ok, below)
++
++end Adopt
++
+ /-- One transaction of the standalone run at time T; false if peTx refused it. -/
+ def pecStep (cf : Contract.PE.Cfg) (p : Params) (r0 : PR) (T : Nat) (x : SIS.Check.Tree.TTx) :
+     PR × Bool := Id.run do
+@@ -974,6 +1106,27 @@
+       if !Contract.invOk cp sT then r := r.fail "C1.inv" s!"T {T}"
+       else r := r.fail "C2.contents" s!"T {T}"
+     if !Contract.treeOkB sT then r := r.fail "C4.tree" s!"T {T}"
++    -- 030-21 part 2: PE's provenance, A-COPY, A6' (and InvA: no "below")
++    let s0 := h0.tree
++    let chg := Adopt.peChange cf s0 r0.tp o
++    let sPrev := s0.at (T - 1)
++    let rlb := Contract.reach sPrev
++    let before : Std.HashSet NodeId := Std.HashSet.ofList rlb
++    let rla := Contract.reach sT
++    let nowS : Std.HashSet NodeId := Std.HashSet.ofList rla
++    let pv := Adopt.provFast s0 s' o.D (Adopt.parents sPrev rlb)
++    if !pv then r := r.fail "prov" s!"T {T}"
++    let cp := Adopt.copyFast s0 r0.tp chg before nowS (Adopt.namers s0 rlb)
++    if !cp then r := r.fail "A-COPY" s!"T {T}"
++    let (ad, below) := Adopt.adoptFast sT rla nowS
++    if !ad then r := r.fail "A6'" s!"T {T}"
++    if below > 0 then r := r.fail "invA.below" s!"T {T}: {below}"
++    r := { r with adoptChecked := r.adoptChecked + 1, moved := r.moved + Adopt.movedCount s0 s' o.D }
++    if rla.length + rlb.length < 400 then
++      r := { r with exactChecked := r.exactChecked + 1 }
++      if Adopt.provB s0 s' o.D != pv then r := r.fail "prov.exact" s!"T {T}"
++      if Contract.copyOk T s0 s' r0.tp chg != cp then r := r.fail "A-COPY.exact" s!"T {T}"
++      if Contract.adoptOk sT != ad then r := r.fail "A6'.exact" s!"T {T}"
+     if !(Contract.topStepB T r0.tp o.top && h'.roots == Contract.rootsOf o.top) then
+       r := r.fail "C5.top" s!"T {T}"
+     let q : Contract.ShapeParams := ⟨p.H, p.mergeBelow, p.theta⟩
+@@ -1026,6 +1179,7 @@
+     s!"refusedby={showMap r.refusedBy} " ++
+     s!"madekey={r.madeKey} versions={r.versions} tops={r.tops} bnew={r.bNew} ball={r.bAll} " ++
+     s!"btop={r.bTop} maxheight={r.height} gets={r.gets} jreads={r.jreads} wsdup={r.wsDup} " ++
++    s!"adopt={r.adoptChecked} exact={r.exactChecked} moved={r.moved} " ++
+     s!"fails={showMap r.fails}")
+   for f in r.first do
+     IO.println s!"  {f}"
