@@ -1106,7 +1106,9 @@ public class Db implements AutoCloseable {
      *          start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
-     *          transaction (bergdb 005-33). The start writes nothing.
+     *          transaction (bergdb 005-33): a part of the creation's first record, or the
+     *          first record alone, without the second, the startup distance's (bergdb
+     *          028-18). The start writes nothing.
      * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
@@ -1169,8 +1171,8 @@ public class Db implements AutoCloseable {
         assertStateIsZero();
 
         storageManager.start();
-        handleEmptyStream();
-        refuseIncompleteCreation();
+        final boolean creating = handleEmptyStream();
+        refuseIncompleteCreation(creating);
         
         try {
             refuseOtherNodeSize();
@@ -1199,10 +1201,9 @@ public class Db implements AutoCloseable {
         
         long startupPos = readStartupPos();
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
-        // The stream holds the primordial record alone: this start creates the database, or
-        // a crash or a stop came before the creating start's KV of the startup distance.
-        final boolean primordialOnly = transactions.size() == 1
-                && transactions.get(0).tpos == RecoverableStream.META_BLOCK_SIZE;
+        // A start that creates the database finds the primordial record alone (bergdb
+        // 028-18); any other start that would has refused the stream already.
+        assert !creating || transactions.size() == 1 : transactions.size() + " records";
         
         setLastTransTimeOfDbClock(transactions);
         
@@ -1211,10 +1212,12 @@ public class Db implements AutoCloseable {
         keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         createPutAndGetData();
-        writeCreatedTxtIfMissing();
+        if (!creating) {
+            writeCreatedTxtIfMissing();     // the creating start writes it at its end
+        }
         
         this.state = DbState.ACTIVE;
-        readStartupDistanceKv(primordialOnly);
+        readStartupDistanceKv(creating);
         reclaim.initFromDb();
         synchronized (writeLock) {
             // The admission of the large values that the start made resident, as after a
@@ -1235,10 +1238,12 @@ public class Db implements AutoCloseable {
                 audit(true);
             }
         }
-        if (primordialOnly) {
-            // The creation's KV of the startup distance, the builder's (bergdb 028-15): the
-            // writer's first transaction, before any other. A start that throws here has
-            // written the primordial record, or nothing, and the next start writes it.
+        if (creating) {
+            // The creation's second record, the KV of the startup distance, the builder's
+            // (bergdb 028-15): the writer's first transaction, before any other. A start that
+            // throws here, or a crash before the record is durable, leaves the primordial
+            // record alone, or a part of it, and the next start refuses the stream as a
+            // creation that did not complete (refuseIncompleteCreation; bergdb 028-18).
             final long creationEnd;
             synchronized (writeLock) {
                 putStartupDistanceKv(startupDistance, true);
@@ -1247,14 +1252,14 @@ public class Db implements AutoCloseable {
                 creationEnd = x.endOfLastTrans;
             }
             if (createdTxtDir != null) {
-                // Durable before the start returns, as the primordial record is
-                // (handleEmptyStream, rule D1; bergdb 028-17): the creation is both records.
-                // Until 028-17 this record waited in the write buffer, and a crash after the
-                // start returned, before the buffer's first write or a sync, left the
-                // primordial record alone, beside created.txt; the next start then put the KV
-                // with its own time, after the times of the transactions the crash lost, and
-                // with its own builder's setting instead of the creator's.
+                // With created.txt (the Pub API), the creation, both records, is durable
+                // before created.txt is written and the start returns: one sync by rule D1
+                // (bergdb 015-01, 028-17, 028-18). Until 028-18 the primordial record was
+                // synced and created.txt written first (handleEmptyStream), and this record
+                // synced after it (028-17); a start that found the primordial record alone
+                // put the KV itself, with its own builder's setting (028-15).
                 syncCreation(creationEnd);
+                writeCreatedTxt(Util.today(), databaseId);
             }
         }
         
@@ -1299,21 +1304,23 @@ public class Db implements AutoCloseable {
     /**
      * Reads the startup distance from its KV, DbConstants.SD_KEY, at the end of the start,
      * before the writer's first transaction (bergdb 028-15): only the writer uses it, as the
-     * take's setting (TransSeq.take). A stream that holds the primordial record alone has no
-     * KV yet, and the start keeps the builder's setting, which it then puts (startInner); any
-     * other stream must have it, as every record after the primordial one comes after the
-     * creating start's KV, which reclaim copies forward as any live KV.
+     * take's setting (TransSeq.take). The start that creates the database ('creating') finds
+     * no KV yet, and keeps the builder's setting, which it then puts (startInner); any other
+     * stream must have it, as every record after the primordial one comes after the
+     * creating start's KV, which reclaim copies forward as any live KV, and a stream with
+     * the primordial record alone is refused before (refuseIncompleteCreation; bergdb
+     * 028-18).
      * 
      * @throws InternalDataException  if the KV's bytes are not a startup distance
-     * @throws StreamFormatException  if a stream with more than the primordial record has
-     *          no KV: a damaged stream, as every database of the meta block's version 155
-     *          has it (older ones are refused before, by the version)
+     * @throws StreamFormatException  if a stream that this start did not create has no KV: a
+     *          damaged stream, as every database of the meta block's version 155 has it
+     *          (older ones are refused before, by the version)
      */
-    private void readStartupDistanceKv(boolean primordialOnly) {
+    private void readStartupDistanceKv(boolean creating) {
         byte[] value = getOne(Long.MAX_VALUE, DbConstants.SD_KEY, newGetData());
         if (value != null) {
             startupDistance = parseStartupDistance(value);
-        } else if (!primordialOnly) {
+        } else if (!creating) {
             throw new StreamFormatException("The database has no startup distance, the KV "
                     + "/#i/-sd that every database since release 2026.6 has from "
                     + "its creation on (bergdb 028-15): the stream is damaged.");
@@ -1538,34 +1545,37 @@ public class Db implements AutoCloseable {
     /**
      * If the stream is empty, this method creates the database id 
      * (if not given in the database builder)
-     * and writes the first metablock and the primordial transaction to the stream.
+     * and writes the first metablock and the primordial transaction to the stream: the
+     * creation's first record. The start writes its second, the KV of the startup distance,
+     * at its end (startInner; bergdb 028-15).
      * 
      * <p>With created.txt (DbBuilder.createdTxt, the Pub API's directories), the creation is
-     * made durable first, by a sync as Db.sync(ORDINARY) makes (rule D1: the main stream's
-     * write and force), and created.txt written after it (2026-11-03, bergdb 015-01): so
-     * created.txt marks a directory whose creation reached the disk, and the Pub API's start
-     * refuses one that has it and no stream byte. Before, created.txt was written at once,
-     * and the creation reached the file with the buffer's first write, after start()
-     * returned. A sync that fails fails the start, and no created.txt is written.</p>
+     * made durable first, both records, by a sync as Db.sync(ORDINARY) makes (rule D1: the
+     * main stream's write and force), and created.txt written after it, at the end of the
+     * start (2026-11-03, bergdb 015-01; both records since 028-18): so created.txt marks a
+     * directory whose creation reached the disk, and the Pub API's start refuses one that
+     * has it and no stream byte. Before 015-01, created.txt was written at once, and the
+     * creation reached the file with the buffer's first write, after start() returned; from
+     * 015-01 to 028-18, here, after a sync of the primordial record alone. A sync that fails
+     * fails the start, and no created.txt is written.</p>
      * 
+     * @return  Whether this start creates the database: the stream was empty.
      * @throws StreamIoException
      */
-    private void handleEmptyStream() {
+    private boolean handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
             determineDatabaseId();            
             writePrimordialTransaction();
-            if (createdTxtDir != null) {
-                syncCreation(CREATION_LENGTH);
-                writeCreatedTxt(Util.today(), databaseId);
-            }
+            return true;
         }
+        return false;
     }
     
     /**
      * Waits until the creation is durable up to 'length' (the bytes before it), by rule D1
-     * (bergdb 015-01): the primordial record (handleEmptyStream, CREATION_LENGTH), and then
-     * the creating start's record of the startup distance (startInner; bergdb 028-15,
-     * 028-17). Without being interrupted: a start ignores an interrupt until it is done,
+     * (bergdb 015-01): both its records, the primordial one and the creating start's record
+     * of the startup distance, before created.txt is written (startInner; bergdb 028-15,
+     * 028-17, 028-18). Without being interrupted: a start ignores an interrupt until it is done,
      * and keeps the thread's flag (bergdb 005-46; PubInterruptTester). StorageManager.sync
      * ends on an interrupt and sets the flag again; here the flag is cleared and the wait
      * goes on, and the flag is set again at the end.
@@ -1611,22 +1621,37 @@ public class Db implements AutoCloseable {
     /**
      * Refuses a stream that holds a creation which did not complete (2026-10-25, bergdb
      * 005-33), before recovery: a crash, as a power loss, while the database was created left
-     * a part of what the creation writes (RecoverableStream.isIncompleteCreation). Such a
-     * stream holds no committed transaction, so no data, and it is not a database: a stream
-     * is valid only after its primordial transaction has run (Frans, 2012-08-20). Before, the
-     * start threw one of three StreamFormatExceptions that did not say so, and recovery
-     * zero-filled a cut transaction first. Now nothing is written, and the application, or a
-     * person, removes the files.
+     * a part of what the creation writes. A creation writes two records (bergdb 028-15): the
+     * primordial record and the creating start's record of the startup distance, the KV
+     * /#i/-sd. Refused: a part of the primordial record, or the record failed
+     * (RecoverableStream.isIncompleteCreation; 005-33); and, since 2026-11-19 (bergdb 028-18,
+     * option C), the primordial record alone, with nothing after it, or with a part of the
+     * second record, or the second failed (RecoverableStream.holdsFirstTransactionAlone).
+     * Such a stream holds no committed transaction but the primordial one, so no data, and it
+     * is not a database: a stream is valid only after its creation has run (Frans,
+     * 2012-08-20). Before 005-33, the start threw one of three StreamFormatExceptions that
+     * did not say so, and recovery zero-filled a cut transaction first; from 028-15 to 028-18
+     * a start that found the primordial record alone wrote the KV itself, with its own
+     * builder's setting. Now nothing is written, and the application, or a person, removes
+     * the files. The start that creates the database ('creating') has written the primordial
+     * record itself, and is not refused.
      *
      * @throws DatabaseNotCreatedException
      */
-    private void refuseIncompleteCreation() {
+    private void refuseIncompleteCreation(boolean creating) {
         if (nodeStream.isIncompleteCreation(CREATION_LENGTH)) {
             throw new DatabaseNotCreatedException("The database was not completely created "
                     + "(a crash or a power loss while it was created?): its stream, of length "
                     + nodeStream.getLength() + ", holds an incomplete creation, and no data. "
                     + "Remove its files and start it again; the start then creates it (bergdb "
                     + "005-33).");
+        }
+        if (!creating && nodeStream.holdsPrimordialRecordAlone(CREATION_LENGTH)) {
+            throw new DatabaseNotCreatedException("The database was not completely created "
+                    + "(a crash or a power loss while it was created?): its stream, of length "
+                    + nodeStream.getLength() + ", holds the creation's first record and not "
+                    + "its second, the startup distance, and no data. Remove its files and "
+                    + "start it again; the start then creates it (bergdb 005-33, 028-18).");
         }
     }
     

@@ -1,9 +1,9 @@
 028-18. Change: one startup transaction, the startup distance in the primordial record
 =======================================================================================
 
-Status: open, waits for Frans: a pinned statement (below, "For Frans").
-Kind: Change. Frans: decided (2026-11-18, 21:37); a decision on the
-contract's start.
+Status: done (option C, gated and merged into `main` 2026-11-19; below,
+"Option C: what was made"). Kind: Change. Frans: decided (2026-11-18,
+21:37); C (2026-11-19, 09:53 and 09:59).
 Created 2026-11-18 by Frans Lundberg.
 
 Frans, 2026-11-18, 21:30, on 028-15's creation in two records: ""a new
@@ -167,8 +167,121 @@ Recommended: A. If Frans takes A, the Java side is ready on the branch
 prover's task (030), with this item's tests and gates after it.
 
 
-Prepared for option A
----------------------
+Frans's choice: C
+-----------------
+
+Frans, 2026-11-19, 09:53: "Option C seems like the way forward." 09:59:
+"Can you start option C now? I want it. We may add things to this first
+non-primordial transaction later. But start with this."
+
+So the creation stays two records, and "Done when" above is replaced by
+option C's: the primordial record alone refused, `created.txt` after
+both records are synced, the path that completed a lone primordial
+record and its tests removed; no change of the Lean model, the trace
+format or the contract (no pinned statement moves). The branch
+`028-18-prepared` (option A) is not taken.
+
+
+Option C: what was made
+-----------------------
+
+On the branch `028-18-option-c` (from `main` c458bfea, `main` merged
+again at b03dcea7), by an agent of coord-1118, 2026-11-19, from 10:00.
+
+* **The refusal.** `RecoverableStream.holdsFirstTransactionAlone`
+  (only reads): the stream is not cut, shorter than a meta block
+  distance (no second meta block), its first block valid and naming no
+  record, its first record of the creation's length (`Db.CREATION_LENGTH`,
+  272 bytes with the block) and committed, and after it nothing, a part
+  of a record (its size too), or one record failed (its last byte 0, as
+  recovery's zero fill leaves it) that ends the stream. `Db.refuseIncompleteCreation`,
+  before recovery, throws `DatabaseNotCreatedException` for such a
+  stream ("holds the creation's first record and not its second, the
+  startup distance"), as for a part of the primordial record (005-33):
+  the start writes nothing. Not on the creating start, which wrote the
+  primordial record itself (`handleEmptyStream` now says whether it
+  did).
+* **The creation's order.** `handleEmptyStream` writes the primordial
+  record only. At the end of the creating start (`startInner`) the
+  internal transaction puts the builder's startup distance at `/#i/-sd`
+  (as since 028-15); with `created.txt` (the Pub API) one sync of both
+  records (`syncCreation`, rule D1), then `created.txt`, then the start
+  returns. Until now `created.txt` came after the primordial record's
+  sync, and the second record had a sync of its own after it (028-17):
+  one sync less per creation. `writeCreatedTxtIfMissing` is not called
+  by the creating start.
+* **Removed.** The path in which a start that found the primordial
+  record alone wrote the KV itself, with its own builder's value
+  (`primordialOnly` in `startInner` and `readStartupDistanceKv`, now
+  `creating`: no KV is an SFE on every start but the creating one).
+* **Javadoc and comments.** `Db.start()`'s `@throws
+  DatabaseNotCreatedException`; `DatabaseNotCreatedException` (the
+  creation's first two records); `DatabaseBuilderImp.refuseMissingStream`;
+  `NodeStream.holdsPrimordialRecordAlone`.
+* **Not changed.** The Lean model, the trace format, the contract, the
+  writer (PE), the record format and the meta version; the kill-restart
+  harness (below).
+
+**Tests.**
+
+* `DbTesterRestart.testCrashInCreationsSecondRecord` (replaces
+  `testCrashInCreatingStartsKv`, the removed path's test): the primordial
+  record alone, it with the second record cut at every 8th byte, and it
+  with the second record failed: each refused with
+  `DatabaseNotCreatedException`, the stream unchanged, at two starts (a
+  Core API start, without `created.txt`); the whole creation keeps the
+  creator's startup distance at two starts with other builder values,
+  counters 0.
+* `DbTesterStream.testCreatedTxtAfterBothRecords` (new): with
+  `created.txt` on files, every force of the creating start is recorded
+  with the file's length and whether `created.txt` existed: no force saw
+  it, one force covered the whole stream as `start()` left it (both
+  records), and `created.txt` is there when `start()` returns; then a
+  restart keeps the creator's setting, a change of the startup
+  distance, and a restart with it. On `main`'s `Db.java` it fails
+  ("created.txt at a force of the start").
+* `DbTesterStream.testCreationDurableWhenStartReturns` (028-17's) kept:
+  a copy taken after `start()` returned has both records.
+* `RecoverableStream.Tester.testHoldsFirstTransactionAlone` (new): the
+  method's cases, and that it only reads.
+* Changed: `DbTester.testCrash8InCreation` (f) also refuses the
+  primordial record whole and alone, and starts the whole creation;
+  `PubTester.testCrashInCreation` cuts at 272, 273, 280 and the whole
+  creation less one byte too, with and without a crypto key, each
+  refused with nothing written.
+* The kill-restart harness (`KillRestartHarness.open`) is unchanged: it
+  allows `DatabaseNotCreatedException` only before a start of the
+  database succeeded (its journal's `ST` line, written by
+  `DatabaseImp.testHookAfterStart` after the Core's start returned), then
+  removes the files and creates the database again. Since a start
+  returns only after both records are synced, a kill during the creation
+  is that case: no committed transaction is lost.
+* Before the change (`main`'s `Db.java` with the new tests):
+  `testCrashInCreationsSecondRecord` ("started, length 272"),
+  `testCreatedTxtAfterBothRecords` and `PubTester.testCrashInCreation`
+  ("started, cut at 272") fail; after it they pass.
+
+**Descriptions.** 027-03 (sections 7, 14.2 steps 1, 6 and 8, 15, and
+its log), 027-11 (1.2, 1.9, log), 028-15 (decision 1, a note), 028-17 (a
+note), `releases/next.md` (a crash during the creation gives
+`DatabaseNotCreatedException`, also between the two records).
+
+
+**Gates of option C** at 6ce83269 (`main` b03dcea7 merged; 2026-11-19,
+10:10 to 10:50, with `java/night.sh` running on the machine):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (at d2b8d4b7 and again at
+  6ce83269).
+* `java/stress/core-build.sh unit f`: CORE BUILD OK.
+* `java/stress/level1.sh`: LEVEL 1 OK.
+* `java/stress/level2.sh` full: LEVEL 2 OK.
+* `java/stress/kill-restart.sh 1000` with seeds 20261118, 20261119 and
+  20261120: KILL RESTART OK each (1000 kills; 54, 50 and 52 exits; 2451,
+  2538 and 2400 s), beside `night.sh` at a load near 55.
+
+
+Prepared for option A (not taken)
+---------------------------------
 
 On the branch `028-18-prepared` (this branch and its commits on top), by
 an agent of coord-1118, 2026-11-18, 22:00 to 23:15. Not for `main` until
@@ -259,6 +372,10 @@ with level 2 as it is, and this item's State.
 State
 -----
 
+2026-11-19, 10:56. Option C done: gated (the three kill-restart runs
+passed) and merged into `main` by coord-1118. The rest of this State,
+below, is of 2026-11-18 and is history.
+
 2026-11-18, 23:15. Waits for Frans: option A, B or C ("For Frans").
 Nothing of 028-18's code is on `main` or on this branch,
 `028-18-one-startup-tx`, which holds the findings and the options. Option
@@ -286,3 +403,14 @@ A, B and C for Frans, A recommended.
 tree checker's R(0) check made on `028-18-prepared`, with a check of the
 inner node's first klong that a damaged stream showed; gated there but
 for the contract package's start (above). State written.
+
+2026-11-19, 09:53 and 09:59. Frans: option C. Started by an agent of
+coord-1118 in a clone, on the branch `028-18-option-c`.
+
+2026-11-19, 10:50. An agent of coord-1118: option C made (the lone
+primordial record refused with `DatabaseNotCreatedException`, the
+completing path removed, `created.txt` after one sync of both records);
+tests; 027-03, 027-11, 028-15, 028-17, `releases/next.md`; gates OK but
+kill-restart, still running.
+2026-11-19, 10:56. The three kill-restart runs passed (KILL RESTART OK);
+merged into `main` by coord-1118.
