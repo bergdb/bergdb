@@ -697,6 +697,14 @@ section 21, V-D), readable by any reader that reads the tree.
 **Depends on.** SF5 (unknown keys), SF3 (the compatibility rule), 028-18
 (option C, the two records).
 
+**Frans, 2026-11-19, 10:05**, on the creating release in `/#i/` or the
+meta block (the coordinator: `/#i/` only, write-once; maybe "written by
+release" in each meta block): "Both of these are logging, really. For
+"forensics". Perhaps added when needed, not now. I want encryption and
+replication in too. At some time. That is harder. Can come first. These
+two are easy." So: the release fields wait until needed; the format's
+design takes encryption and replication first.
+
 
 ## 3. The order
 
@@ -815,3 +823,6 @@ were.
 
 2026-11-19. SF12 added: what a database holds from its creation (Frans,
 09:53 and 09:59); 028-18 takes option C.
+
+2026-11-19. SF12: the release fields wait; encryption and replication
+come first in the format's design (Frans, 10:05).

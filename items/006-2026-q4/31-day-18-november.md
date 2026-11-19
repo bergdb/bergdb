@@ -303,6 +303,10 @@ The decisions, as recorded here:
   "Can you start option C now? I want it. We may add things to this first
   non-primordial transaction later. But start with this." Agent optc
   started 10:00.
+* 10:05 Frans on the creating release (SF12): "Both of these are
+  logging, really. [...] Perhaps added when needed, not now. I want
+  encryption and replication in too. At some time. That is harder. Can
+  come first." Written into 026-12, SF12.
 
 
 ## 4b. Unattended, 13:48 to 07:00
