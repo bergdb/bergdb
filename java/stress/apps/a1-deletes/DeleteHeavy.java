@@ -2,6 +2,7 @@ import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.StoredTrans;
 import bergdb.core.StoredValueNode;
+import bergdb.core.TestNodeSize;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -67,11 +68,7 @@ public class DeleteHeavy {
     }
 
     static void start() throws Exception {
-        DbBuilder b = Db.builder().mainStream(new FileStream(dir, false));
-        if (nodeSize == 8) b.maxNodeSize8();
-        else if (nodeSize == 14) b.maxNodeSize14();
-        else if (nodeSize == 62) b.maxNodeSize62();
-        else b.maxNodeSize30();
+        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false));  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         if (cacheBytes > 0) b.cacheSizeIndicator(cacheBytes);
         db = b.start();
     }

@@ -1,8 +1,12 @@
 #!/bin/sh
 # Native syscall audit of FlushOrderProbe. This is separate from the simulated
 # power-loss gate. macOS needs clang and Python 3; Linux needs strace and Python 3.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 set -eu
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 JAVA=${JAVA:-java}
 if [ -n "${JAVA_HOME:-}" ]; then JAVA="$JAVA_HOME/bin/java"; fi
 OUT=${OUT:-build/flush-order}

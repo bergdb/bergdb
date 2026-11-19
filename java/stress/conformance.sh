@@ -56,8 +56,12 @@
 # trace, then the failing checks summed over all traces, the time and memory of
 # the runs, and CONFORMANCE OK or CONFORMANCE FAILED for the sets run. Set
 # JAVA_HOME or PATH for the JDK.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 CP=build/bergdb.jar:build/stress

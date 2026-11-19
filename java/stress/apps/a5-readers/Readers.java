@@ -1,5 +1,6 @@
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
+import bergdb.core.TestNodeSize;
 import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
 import bergdb.stream.FileStream;
@@ -39,11 +40,7 @@ public class Readers {
         long retainMs = a.length > 6 ? Long.parseLong(a[6]) : 0;
         retain = retainMs * 10_000L;
         Common.rmrf(dir);
-        DbBuilder b = Db.builder().mainStream(new FileStream(dir, false)).startupDistance(400_000);
-        if (nodeSize == 8) b.maxNodeSize8();
-        else if (nodeSize == 14) b.maxNodeSize14();
-        else if (nodeSize == 62) b.maxNodeSize62();
-        else b.maxNodeSize30();
+        DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false)).startupDistance(400_000);  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         if (seed % 2 == 0) b.cacheSizeIndicator(3_000_000);
         db = b.start();
         if (retain > 0) db.setRetainDuration(retain);

@@ -505,9 +505,9 @@ public class StorageFaultTester {
             }, "StorageFaultTester-runner");
             inj.runner = runner;
             runner.start();
-            runner.join(10 * 1000);
+            runner.join(60 * 1000);     // a hang guard; 10 s until bergdb 028-23
             if (runner.isAlive()) {
-                run.finding("close returns", "the workload or close() hangs, 10 s: "
+                run.finding("close returns", "the workload or close() hangs, 60 s: "
                         + stack(runner));
                 return run;     // the directory and the threads are left
             }

@@ -100,6 +100,16 @@ the changes of the public repository (029; Frans, 2026-11-17, 11:40):
 * 024-38's scripts (`release.sh`, `stage-b.sh`, `finish.sh`), adapted for
   2026.6, stage no binaries in `releases/2026.6/` and write
   `SHA256SUMS` for the two uploaded files only.
+* **week.sh and timing.sh run before the release** (028-23): `java/week.sh`,
+  the functional run (night's steps, the large conformance set, the user
+  apps, more kills and fuzzing; about 11 hours), in place of 024-38's
+  `night.sh large`; and `java/timing.sh` on a quiet F53 or s1 (CORE, the
+  pause probe, `performance.sh ab` against 2026.5 at 1M and 10M keys), in
+  place of the night's perf step. Both on a commit near commit A, not
+  necessarily A itself. Frans, 2026-11-19, 10:25: "It would always run
+  before a release. Near a release, at least. Not necessarily on the exact
+  version that ships in the release. Minor change after can be
+  acceptable."
 
 
 Proposed for 2026.6, not decided
@@ -191,7 +201,8 @@ Files
   026-08): twelve programs with their own oracles, SIGKILLs of child
   JVMs; no bug in BergDB; U13-1 to U13-6, Javadoc findings and one
   question (Q1: commits pace reclaim by the stream, `maintain()` by the
-  clock); proposed 028-todo entries. The apps in 13-user-apps/.
+  clock); proposed 028-todo entries. The logs in 13-user-apps/; the
+  apps maintained in java/stress/apps/ since 2026-11-19 (028-23).
 
 * 14-model-scope.md. 026-14, the Lean model's scope: the boundary as it
   is, three additions in order of value (reclaim as a whole, the stream

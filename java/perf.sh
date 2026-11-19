@@ -11,8 +11,12 @@
 # Builds with build.sh, then runs the tests. Prints their output and keeps a
 # copy in build/test/perf.txt. Exits with status 1 unless the tests print
 # SUCCESS. Set JAVA_HOME or PATH for the JDK; the build needs javac too.
+#
+# Kind: timing (bergdb 028-23): the times are the result; run it on a quiet machine, as
+# timing.sh.
 
 cd "$(dirname "$0")"
+echo "Kind: timing"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

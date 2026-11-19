@@ -13,8 +13,12 @@
 #   nodes visited, ...), then TRANSCHECK OK, or TRANSCHECK FAILED unless both
 #   groups print SUCCESS and the check found no failure. Set JAVA_HOME or PATH
 #   for the JDK; the build needs javac too.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; the tests' time limits are hang guards, generous for a loaded machine.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
