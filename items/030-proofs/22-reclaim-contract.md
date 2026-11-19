@@ -33,10 +33,11 @@ For Frans, in plain words. The details are in sections 1 to 8.
   (a put makes a new value node; PE has it); RC1 and RC4 are Java's
   arithmetic, tested. The false premise ("a key range only shrinks") is
   not used.
-- **Evidence:** Java's cuts meet RC1 to RC3 on every reclaim trace
-  (C-CUT). In the model, T-SCHEME with Java's exact waits held in all
-  4,863 states run today, half of them with "dangerous" versions that no
-  read reaches.
+- **Evidence:** Java's cuts pass C-CUT on every reclaim trace, which
+  covers RC2, RC3 and RC1's order (section 5.1). In the model, T-SCHEME
+  with Java's exact waits held in all 72,730 states of a run today (50
+  seeds of 60 transactions), most of them with "dangerous" versions that
+  no read reaches.
 - **Size:** 4,000 to 9,000 lines of Lean, 2 to 4 nights (a judgment). Main
   risk: the invariant. Cheapest first step: the Lean statement and the
   invariant found by running, a few hours.
@@ -213,7 +214,7 @@ statement changes; new ones are added.
      that may name an older version of a child, and a read in the running
      process follows every later version of that child. Versions written
      from c to v that name a version before c of a child live at a time
-     from e on ("dangerous" versions) exist in about half of the states
+     from e on ("dangerous" versions) exist in half or more of the states
      past the waits, and no read reaches them (`CutOK` holds). The
      invariant must say why: such a version was written before the
      rewrite below it, or while it was in D; the marking and Rule A make
@@ -338,9 +339,11 @@ and buys little.
 
 ## 5.1 On Java's traces
 
-- **RC1** is C-CUT's CUT-order; **RC3** is CUT-live (`liveBelowFailures`,
-  at the first available time, which is e). Both checked at every CUT
-  line.
+- **RC1**, the part that soundness uses: c ≤ fa is C-CUT's CUT-order, and
+  e is the CUT's first available time; that c is at or after the previous
+  cut is one comparison more. (s is not in the trace; c ≤ s matters only
+  for meeting RC2.) **RC3** is CUT-live (`liveBelowFailures`, at the first
+  available time, which is e). Both checked at every CUT line.
 - **RC2** is implied by CUT-reach: a value node that a read at e reaches
   is reachable from f = e on, and its one version is its latest.
 - **RC4** is not checked as such; C-CUT checks the conclusion. A check
@@ -382,7 +385,16 @@ to run it). 20 seeds of 30 transactions, the four startup pos policies:
   fails in 0 (2). `pSafeWitness` (001-07, section 2.8) is the known case.
   The example exercises the second wait weakly; the invariant search
   should look for runs that need it.
-- **The larger run** (100 seeds of 100 transactions): see the Log.
+- **The larger run, 50 seeds of 60 transactions** (5 minutes): with the
+  touch 1,552 iterations and 38,093 states past Java's waits (1,402 not in
+  `checkSchemeC`'s), without any touch 1,472 and 34,637 (1,330); `CutOK`
+  fails in 0 of the 72,730. A read reaches a superseded version in 6,966
+  (6,241) states, one from c to v in 1,492 (1,603); dangerous versions
+  exist in 28,710 (25,243). LNL at k: 0 failures; at the earlier times:
+  18,669 (17,533). Between the waits `CutOK` fails in 0 of 2,915 (18 of
+  2,766): the second wait matters, without the touch.
+- **100 seeds of 100 transactions** (the T-SCHEME check only): see the
+  Log.
 
 So a proof attempt starts from evidence: the statement survives running
 in the model with Java's exact waits, including the superseded versions it
@@ -500,3 +512,6 @@ branch `030-22-reclaim-contract` in a clone of `main` c458bfea.
 2026-11-19, 09:58. T-SCHEME by running with Java's exact waits (section
 5.2), 20 seeds of 30 transactions: 0 failures; the diagnostics of
 superseded versions.
+
+2026-11-19, 10:09. 50 seeds of 60 transactions: 0 failures in 72,730
+states past Java's waits (section 5.2).
