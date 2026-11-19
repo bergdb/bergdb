@@ -1442,7 +1442,9 @@ public class KeyNode implements Node {
     }
     
     /**
-     * Same as check() except for that the node size is also checked against maxNodeSize.
+     * Same as check(), with the historical size allowance of maxNodeSize + 1: until record
+     * format 8 the writer could briefly overfill a node before replacing it. PE never makes
+     * more than B = maxNodeSize klongs (bergdb 027-03, section 11.3); the check stays looser.
      */
     public void check(int maxNodeSize) {
         short sz = this.size;

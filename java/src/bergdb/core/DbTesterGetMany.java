@@ -1285,7 +1285,8 @@ public class DbTesterGetMany {
      * nodes on its path and no more. Before 023-09 the same scan ended by the stop condition
      * alone, which sees live KVs only, followed every key node of the deleted keys up to "c"
      * (398), and the test failed without the end key's check in GetMany.Chain.next(). Since
-     * 023-09 a delete unlinks the nodes it empties (Dag.deleteUpward; bergdb 023-07, section
+     * 023-09 a delete removes empty nodes (PE drops them since record format 8; until then
+     * Dag.deleteUpward; bergdb 023-07, section
      * 5.1), so the stop condition alone follows few key nodes too (11); the results of both
      * are the same. So this tests K1 and SE together, and passes without SE's check;
      * testEndKeyAsEndpoint and testEndKeyChainEdges test SE's own (bergdb 023-11, B3).

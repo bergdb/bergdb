@@ -26,8 +26,8 @@ public class GetData extends OpData {
     /**
      * The time of the key node entry that points to the value found: not the time of the
      * write, but the time of the transaction that made the entry, the write's or a later one
-     * (bergdb 021-19). A transaction that replaces a full key node, by a time split or a
-     * space split, makes every entry that the node keeps anew, at its own time, also those
+     * (bergdb 021-19). PE makes every entry of a new key node anew, at its own time, in a
+     * replacement, cut, join or compaction (bergdb 027-08), also those
      * of keys that it does not write; and reclaim, which copies a value forward, writes it
      * anew (see tpos). So the time is at or after the time of the write and at or before the
      * lookup time, and two reads of a value that did not change, at lookup times before and

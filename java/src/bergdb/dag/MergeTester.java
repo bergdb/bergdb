@@ -385,8 +385,9 @@ public class MergeTester {
      * The thresholds of format 7 (bergdb 024-21, section 2; 024-14, QT1: 8/17/17 at node size
      * 30, scaled to other node sizes): the values at the database's node sizes, h = B / 2
      * below 8 as in 2026.4, no merges there, and V1's conditions (024-11, section 5.4) for
-     * every node size from 8 to 64: a space split's halves and a redistribution's halves hold
-     * at least m, a merge into one node fits in c, and h and c leave room in a node.
+     * every node size from 8 to 64. The historical format 7 inequalities below say a space
+     * split's halves and a redistribution's halves hold at least m, a merge into one node
+     * fits in c, and h and c leave room. PE's cut parts are checked separately above them.
      */
     @Nano
     public static void testThresholds() {

@@ -516,13 +516,13 @@ public class DagTester {
     }
     
     /**
-     * The last pointer reported for a node is the node's last memory pointer, unless the
-     * transaction that reported it replaced the node by a split: a replaced node loses its
-     * klongs of that transaction (Dag.handleFullNode, since 2026-10-16), so then its last
-     * memory pointer is the last one reported in an earlier transaction. The key access path
-     * is cleared after each put, as Db does (since bergdb 024-23: until then it grew over the
-     * test's puts, and a split of the space root, which option 2's compaction of it reached,
-     * took the node before it in the path for its parent).
+     * The last pointer reported for a node is its last memory pointer. PE plans the whole
+     * batch and emits each node once; a replaced base receives no klongs or pointers from
+     * this transaction (bergdb 027-08). Until record format 8 Dag.handleFullNode could
+     * replace a node already written by that transaction and remove its new klongs, so the
+     * listener restores the last pointer reported in an earlier transaction in that case.
+     * The former key access path was cleared after each put since bergdb 024-23: before
+     * that it grew over the test's puts and could give a replaced space root a wrong parent.
      */
     @SuppressWarnings("unchecked")
     private static void testPointerCreationListener(int n) {

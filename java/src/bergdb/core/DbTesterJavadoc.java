@@ -703,7 +703,7 @@ public class DbTesterJavadoc {
     /**
      * Kvt.time and GetData.kvTime: the time of the key node entry that points to the value,
      * not the time of the write (bergdb 021-19; 020-24-09, U9-3). T1 puts 25 keys, and T2 a
-     * 26th, which replaces their full key node (a space split), so that T1's keys read T2's
+     * 26th, which makes PE cut their full key node's live list into new nodes, so T1's keys read T2's
      * time; at or after the write's time and at or before the lookup time; a read before T2
      * gives T1's; the write's time is getTrans(tpos).tt. If the time becomes the write's, the
      * last assertion fails, and the Javadoc of both is to change. 25 keys since bergdb 028-15:

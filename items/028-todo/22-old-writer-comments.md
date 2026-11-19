@@ -1,7 +1,7 @@
 028-22. Fix: Java comments that describe the old writer as today's
 ==================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: since record format 8 the writer is PE (026-25; 027-08). 026-25
@@ -67,3 +67,13 @@ Log
 
 2026-11-19. Registered by an agent of coord-1118 while bringing 027 up
 to date with PE (branch `027-pe`).
+
+2026-11-19. Checked the listed comments against PE and updated the stale
+ones for record format 8. Kept the old mechanisms as explicit history,
+including the historical threshold assertions. KeyNode.check(int) still
+allows B + 1; its comment states PE's B-klong limit. Db's
+value-transformation comment already described the touch's counts only.
+The named grep in java/src and java/stress now finds only history;
+java/src-dev's example also names its split as history. Java executable
+text is unchanged. The whitespace and ordinary diff statistics match.
+java/before-commit.sh: BEFORE COMMIT OK (86 s), on the final comments.
