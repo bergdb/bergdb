@@ -23,10 +23,19 @@ proved half (`rc_latest`, `rc_parts`): parts 1, 3 (latest versions) and 4 of
 `CutOK`, and part 2 for the latest versions that a read follows. The open
 half (`TSchemeOpen`): part 2 for the versions that a pointer leads to
 besides the latest ones (`ReadsPhys.child`), and part 3's references below
-the cut, which need an invariant on superseded versions that is not known
-(bergdb 030-22, section 3.2; 030-23). `tscheme_of_open` puts the halves
-together; `full_cut_rc`, `cut_keeps_top_rc` and `cut_java_reads_rc` are the
-theorems after cuts with T-SCHEME and RC in place of `CutOK`.
+the cut. `tscheme_of_open` puts the halves together; `full_cut_rc`,
+`cut_keeps_top_rc` and `cut_java_reads_rc` are the theorems after cuts with
+T-SCHEME and RC in place of `CutOK`.
+
+For a run with TREE and A6' (`EvictRunOK`, which the bridge gives for
+BergDB's key tree), part 3's references below the cut are proved too
+(`rc_dref`), so what is open is part 2 alone (`TSchemeReads`, which needs an
+invariant on superseded versions; bergdb 030-22, section 3.2; 030-23,
+sections 4 and 5): `cutOK_of_reads`, `hcut_of_reads`, and `full_cut_reads`,
+`cut_keeps_top_reads` and `cut_java_reads_reads`, the theorems after cuts
+with `TSchemeReads` and RC in place of `CutOK`. `TScheme` speaks of every run
+that meets `RunOK`; without A6' its part 3 is not known to hold, so the form
+to prove is `TSchemeReads`.
 -/
 import Contract.RecoverCutTheorems
 import SIS.ReclaimTheorems
@@ -72,7 +81,7 @@ def RC (sp : Spec V T) (al : Algo V T) (ts : List T) (c e k : Nat) : Prop :=
 /-- **T-SCHEME** (bergdb 030-22, section 3.1; 024-06; 001-07, section 5): for a
 run that meets `RunOK`, with Java's still-dirty test (Rule A) and the marking,
 a cut that meets RC is safe. A definition: half proved (`rc_parts`), the
-rest open (`TSchemeOpen`). -/
+rest open (`TSchemeOpen`); for runs with A6' see `TSchemeReads`. -/
 def TScheme (sp : Spec V T) (al : Algo V T) : Prop :=
   al.stillDirty = javaTest sp → al.mark = true →
   ∀ ts : List T, RunOK sp al ts → ∀ c e k, k ≤ ts.length → RC sp al ts c e k →
@@ -82,7 +91,8 @@ def TScheme (sp : Spec V T) (al : Algo V T) : Prop :=
 under RC, every version that a read from the first available time on may
 follow is at c or later (`CutOK`'s part 2; its latest versions are proved,
 `rc_latest`), and every reference below c of the latest version of a node
-of D names the latest version of its node (part 3's second half). -/
+of D names the latest version of its node (part 3's second half; proved for
+runs with A6', `rc_dref`). -/
 def TSchemeOpen (sp : Spec V T) (al : Algo V T) : Prop :=
   al.stillDirty = javaTest sp → al.mark = true →
   ∀ ts : List T, RunOK sp al ts → ∀ c e k, k ≤ ts.length → RC sp al ts c e k →
