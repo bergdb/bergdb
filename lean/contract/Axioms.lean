@@ -167,3 +167,4 @@ open Contract
 #print axioms rc_goodc
 #print axioms gis_latest_clean
 #print axioms gis_latest_dirty
+#print axioms gis_clause2_case1

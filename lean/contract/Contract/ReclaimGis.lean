@@ -291,6 +291,61 @@ theorem gis_latest_dirty (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
   refine ⟨hcw, j, w.recNo, w, by omega, by omega, by rw [hwn]; exact hre, by rw [hwn]; exact hwa,
     Nat.le_refl _, hgood⟩
 
+/-- GIS-J's clause (ii), case 1 (bergdb 030-23, section 5.2): a version w of the
+stream with GIS's I, not put back in D, and a child y live in w at t that is
+live, at its time, in a good version of w's node at or before w (for a time of
+[e, k] at which the node is reachable): every version of y at or after the
+record w names has I. -/
+theorem gis_clause2_case1 (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    {c e k : Nat} (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ t r w, lastFa db.S ≤ t → t ≤ k → db.S.versionAt r w.node = some w →
+      c ≤ w.recNo → (w.node, w.recNo) ∉ db.D →
+      ∀ y ∈ sp.live (w.hist.upTo t),
+        (∃ t' rg g, e ≤ t' ∧ t' ≤ k ∧ reachable sp db.P t' w.node = true ∧
+          db.S.versionAt rg w.node = some g ∧ rg ≤ w.recNo ∧ good sp db.S db.P t' g = true ∧
+          y ∈ sp.live (g.hist.upTo t')) →
+        ∀ r' u, db.S.versionAt r' y = some u → (∀ r0, w.ref? y = some r0 → r0 ≤ r') →
+          GisI sp db c e k u := by
+  dsimp only
+  intro t r w _ _ hw _ _ y hy hgx r' u hu hle
+  obtain ⟨t', rg, g, het, htk, hrx, hg, hrg, hgood, hyg⟩ := hgx
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have hls : SIS.LiveSub sp := hok.1.liveSub
+  have hinvk := SIS.inv_st sp al ts hok hst k hk
+  have hwr := (hinvk.version_node hw).2.1
+  have hgr := (hinvk.version_node hg).2.1
+  -- g names y at a record a with a version of y good for t'.
+  obtain ⟨⟨n, hn, hh⟩, hc⟩ := (SIS.good_iff sp _ _ _ _).mp hgood
+  obtain ⟨a, ga, ha, hga, -, hgga⟩ := hc y hyg
+  have hgn := (hinvk.version_node hg).1
+  rw [hgn] at hn
+  -- y is reachable at t': a live child at t' of w's node, which is reachable then.
+  have hyr : reachable sp (run sp al (ts.take k)).P t' y = true := by
+    have hyn : y ∈ sp.live (n.hist.upTo t') := by rw [← hh]; exact hyg
+    obtain ⟨e', he', hye⟩ := hls _ _ hyn
+    obtain ⟨m, hm, hlt⟩ := hinvk.ptrs w.node n hn e' (SIS.mem_upTo.mp he').1 y hye
+    rw [SIS.reachable_iff] at hrx ⊢
+    exact SIS.Reach.child hrx hn hyn hm hlt
+  have hca := rc_goodc hok hj hk hrc t' y a ga het htk hyr hga hgga
+  -- w names y at a record at or after a.
+  have hyw : y ∈ SIS.pointees sp w.hist := SIS.mem_pointees_of_live hls hy
+  have hyp : y ∈ SIS.pointees sp g.hist := SIS.mem_pointees_of_live hls hyg
+  have har : a ≤ r' := by
+    rcases Nat.lt_or_ge rg w.recNo with hlt | hge
+    · obtain ⟨r2, -, h2, -, h3⟩ := hinvk.ref_mono hg hw (by omega) hyp hyw ha
+      have := hle r2 h2
+      omega
+    · have hrr : rg = r := by omega
+      rw [hrr, hw, Option.some.injEq] at hg
+      subst hg
+      have := hle a ha
+      omega
+  obtain ⟨-, -, -, hun⟩ := SIS.versionAt_spec hu
+  have hur := (hinvk.version_node hu).2.1
+  refine ⟨by omega, t', a, ga, het, htk, by rw [hun]; exact hyr, by rw [hun]; exact hga,
+    by omega, hgga⟩
+
 end
 
 end Contract
