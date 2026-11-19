@@ -40,12 +40,16 @@ The files and their lines (2026-11-18; the old line had 747 files and
 * In all: 159 files, 65,852 lines; the contract package, contract/, has 80
   files and 18,704 lines more.
 
-* **The executable model of the key tree**, SIS/Tree/ (11 files): Val.lean
+* **The executable model of the key tree**, SIS/Tree/ (12 files): Val.lean
   (the entry values of the BergDB instance and `blive`), Node.lean (a key
   node as its klongs; the searches; the last version and the halves of a
-  split), Exec.lean (the writer, `Tree.exec?`: put, the splits, the delete
-  with the upward unlink, LE-b, the take-back and root collapse, the
-  merges, the top node), Read.lean (get, scan, the touch), Spec.lean
+  split), Pe.lean (the writer since record format 8, PE, "plan, then
+  emit": a copy of contract/'s `Contract.PE.peTx`, which bergdb 030-21
+  proves, on P and with Java's ids, `Pe.runOps` and `Pe.exec`; the tree
+  checker's writer since bergdb 026-25), Exec.lean (the writer of record
+  formats 2 to 7, `Tree.exec?`: put, the splits, the delete with the upward
+  unlink, LE-b, the take-back and root collapse, the merges, the top node;
+  `treeSpec` and the statements of Props.lean are about it), Read.lean (get, scan, the touch), Spec.lean
   (`treeSpec`: the tree as an instance of `Spec`, so that `step` is BergDB
   whole), Inv.lean (the tree's invariants, as a walk that can be run),
   Top.lean (the search through the top nodes' skip pointers), Bound.lean
@@ -71,7 +75,8 @@ The files and their lines (2026-11-18; the old line had 747 files and
 * **The trace checkers**, Check/ and TraceCheck.lean, TreeCheck.lean:
   `tracecheck` (the abstract model against Java's traces, levels 2 to 4,
   `java/stress/conformance.sh`) and `treecheck` (the key tree against
-  Java's traces of format 3, `java/stress/treeconf.sh`).
+  Java's traces of format 3, `java/stress/treeconf.sh`; its writer is
+  Pe.lean's since record format 8).
 * **The test programs**: `sistest` (Test.lean), `phystest` (PhysTest.lean),
   `reclaimtest` (ReclaimTest.lean), run by `java/stress/lean-tests.sh`, and
   `treetest` (TreeTest.lean), run by `java/stress/tree-tests.sh`; both are

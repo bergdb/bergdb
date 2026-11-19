@@ -150,7 +150,15 @@ writers on Java's structure before every transaction of Java's traces and
 walks both trees after it from their space roots: the same old nodes, every
 node written by either written by the other, with the same level, kind and
 klongs, the nodes made renamed by a bijection, values with the same hash.
-Results in section 6.
+`pecmp --cap-h` is its own test: the proved writer with the cut size h
+against the copy's M / 2 must, and does, differ on traces of node size 30.
+
+**Results** (Java's traces of this branch, 2026-11-19): the small set (21
+traces, 2,151 transactions), the drain set (33, 4,203), the reclaim set
+(10, 5,789), the medium set (27 traces, 13,640 transactions,
+node sizes 8 to 62): the same trees at every transaction, PECMP OK. With
+the tree checker's TREE OK on the same traces (section 6), Java's writer
+makes the proved writer's trees, node for node.
 
 The tree checker then compares Java with PE node for node, with the ids:
 the nodes made (NEW), the entries (ADD), the klongs (KN), the noops, the
