@@ -1,7 +1,7 @@
 028-20. Fix: the kill-and-restart harness fails a late exit run
 ===============================================================
 
-Status: in progress. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: `java/stress/kill-restart.sh 1000`, seed 20261119, while the
@@ -79,7 +79,24 @@ self-check (not a commit gate; before-commit.sh unchanged).
 - Before the fix (the test hook and the check on the old `runChild`): LATE
   EXIT FAILED, "the child ended before its kill, with status 0", in 4 of 4
   runs.
-- After the fix: LATE EXIT OK in 4 of 4 runs.
+- After the fix: LATE EXIT OK in 4 of 4 runs, and in each gate's run.
+
+
+Gates
+-----
+
+On the branch `028-20-harness-late-exit` with main merged (00ca0348; the
+later merge of main, e472f95f, changed only items), on F53 while
+`java/night.sh` and other gates ran (load 40 to 70):
+
+- `java/before-commit.sh`: BEFORE COMMIT OK (167 s).
+- `java/stress/kill-restart.sh 1000 20261119`: SELF-CHECK OK, LATE EXIT OK,
+  KILL RESTART OK, 1,000 kills and 50 exits in 2,242 s (late 0).
+- `java/stress/kill-restart.sh 1000 20261121`: SELF-CHECK OK, LATE EXIT OK,
+  KILL RESTART OK, 1,000 kills and 44 exits in 2,237 s (late 1).
+
+The same three passed on the first merge of main (e95bcc66), before
+028-18 landed.
 
 
 Log
@@ -87,3 +104,6 @@ Log
 
 2026-11-19. Registered and taken by an agent of coord-1118 (Frans, 10:14),
 on the branch `028-20-harness-late-exit`.
+
+2026-11-19. Done: the fix, the check `lateexit` and the gates, by an agent
+of coord-1118.
