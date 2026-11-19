@@ -1,7 +1,7 @@
 028-26. Fix: reclaim's allowance charge omits the index nodes that PE creates
 ============================================================================
 
-Status: in progress. Kind: Fix. Frans: none.
+Status: in progress. Kind: Fix. Frans: decision.
 Created 2026-11-19 by Frans Lundberg.
 
 What: a reclaim step's row (`/#i/dreclaim/-current.txt`) is made by a
@@ -31,7 +31,10 @@ for Frans to confirm; he confirmed it on 2026-11-19 as recommended, and
 the review showed it is a defect: coord-1118 registered this fix, with
 Frans's priority of the day, "Stability and bug fixes are prio."
 
-Frans: none.
+Frans: decision (section Decision): option A, made and gated on the
+branch, adds an internal record after most reclaim steps, which changes
+the stream and adds a mechanism; coord-1118 holds the landing for Frans's
+word.
 
 Done when: the charge, in the row as stored and in the counter in
 memory, includes the bytes of every index node that the step's
@@ -45,8 +48,91 @@ First step: read the review's finding 1 and its probe
 (/Users/f/fl/bench/2026-11-19/codex-pe/, not kept in Git).
 
 
-The fix
--------
+Decision
+--------
+
+The fault: since record format 8, a reclaim step's charge leaves out the
+index nodes that the writer makes for the step's batch (replacements,
+cuts, joins, a new top node), because the row that stores the charge is
+made before the batch. In Codex's probe that is 30 % of the index bytes
+that the first iteration made dirty at node size 8 (90,832 of 301,856)
+and 24 % at node size 30 (49,824 of 211,520); with the old writer it was
+under 1 % (2,304). Reclaim then rewrites more than its fraction f of the
+stream's growth. The choice is how to charge those bytes, or whether to.
+
+* **A. The row stored again after the step (made and gated; recommended).**
+  After the step's transaction commits, the step adds the bytes that its
+  batch made dirty after the row was made (`Trans.dirtiedBytes` at the
+  end less what the row counted) to the row's `rewritten`, and, if they
+  are more than 0, stores the row again at `/#i/dreclaim/-current.txt`
+  in an internal transaction of its own; after the iteration's last step
+  the row stored done with the table holds them, with no extra
+  transaction. The charge is exact, in memory and in the stream, after
+  every call, so a restart resumes with the same charge and INV-RESTART
+  holds (StreamDigest: each l3-* configuration's four modes, plain,
+  reads, restarts and restarts-once, give one digest). Cost: one more
+  internal record after most steps, about 400 bytes besides the index
+  nodes that its take writes (a record header and the row's value node);
+  in a run of 20,000 updates at node size 8, 912 such records for 981
+  steps, about 375 kB of 38.8 MB of growth (1 %; about 410 bytes each,
+  the records' bytes less their index nodes, less those of the table's
+  121 records at their average before). The bytes that this
+  record makes dirty itself are not charged, as those of the table's
+  transactions are not. Effect: reclaim keeps closer to f; the stream
+  grew 1.5 to 7.8 % less in the probe's workloads, with 7 to 23 % fewer
+  steps; StreamDigest's l3-* digests changed (+1.7 %, -4.1 %, -0.8 %,
+  -6.9 % in length), l2-* identical. No change of the record format or
+  of the row's text; one mechanism more (`Reclaim.storeCurrent`, 20
+  lines); internal transactions after a user transaction at most six,
+  not five. A crash between the step and its second record loses that
+  step's new nodes from the charge (a crash only; a clean restart does
+  not).
+* **B. Keep the undercount, documented.** No code change: 027-13 says
+  that the row counts the touch's nodes only and that PE's new nodes are
+  not charged, and 028-19 measures reclaim's pace at 10M keys with it.
+  Cost: reclaim rewrites more than f of the growth, by about the share
+  above (in the probe, 1.5 to 7.8 % more stream growth than A); the
+  comment in Reclaim (011-04, "Level 3 cost") that the allowance charges
+  the nodes of the puts and the touch stays untrue. No stream change
+  against main today.
+* **C. Carry the post-batch bytes into the next step's row.** As A, but
+  without the second record: the bytes are added in memory at once and
+  stored with the next step's row, or with the row stored done. Made
+  first (11:15) and refused by `before-commit.sh`:
+  `DbTesterRestart.testReclaimSettingsKeptOverRestarts`, "the decided
+  cut, expected 1240592, got 1441224". A restart between two steps loses
+  the carry, the last step's new nodes (about 2.8 kB a step on average at
+  node size 8 in the probe, 90,832 bytes over 33 steps), as nothing that a
+  start reads holds it; the run with restarts then paces its steps
+  otherwise and writes another stream, so INV-RESTART (027-13, section 3;
+  RestartInvariance in level 3, StreamDigest's restarts modes) fails. To
+  keep the carry over a restart it would have to be written, which is A.
+* **D. Count PE's nodes before they are made** (in the plan, before the
+  emit), so that the step's own row is exact. Not possible without
+  changing the stream: PE makes a value node, and gives it its id, when
+  the plan applies its operation at its segment leaf, and emits a
+  segment tree's new nodes during the plan, before the leaf's later
+  operations (026-25, section 2, "The ids"); the row's value is needed
+  before the nodes it would count exist. Running the plan twice, or
+  reordering the ids, changes PeWriter and the ids that the model proves.
+* **E. Write the charge into the row's value node after the batch.**
+  Exact and without a record, but it changes a value that is already a
+  node (`ValueNode.value` is immutable, and the trace records the value
+  when the node is made), and the row's text would need a fixed width
+  for its number. Not tried.
+
+**Recommendation: A.** It is the only option that charges what the
+allowance says it charges, exactly and over restarts, without touching
+the writer or the record format; its cost, about 1 % of the growth in
+records of the row, is smaller than what it saves (1.5 to 7.8 % of the
+growth in the probe). B leaves a known accounting defect in reclaim's
+pacing; C breaks INV-RESTART; D and E change the writer or a node after
+it is made. Whether A's saving holds at 10M keys is 028-19's measurement
+(Measurements, "For 028-19").
+
+
+The fix (option A)
+------------------
 
 **The mechanism: the row stored again after the step.** After a step's
 transaction has committed, `Reclaim.step` adds to the row's `rewritten`

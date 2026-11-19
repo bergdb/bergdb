@@ -104,7 +104,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | open |
 | [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decision | open |
-| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | none | in progress |
+| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | decision | in progress |
 
 
 Closed
