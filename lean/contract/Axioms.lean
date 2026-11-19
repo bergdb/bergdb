@@ -133,3 +133,9 @@ open Contract
 #print axioms handles_java_whole
 #print axioms crash_java_tree_whole
 #print axioms Contract.RecoverCutExample.crash_whole_get16
+#print axioms Contract.PE.pe_step
+#print axioms Contract.PE.pe_meetsTop
+#print axioms Contract.PE.pe_meets
+#print axioms Contract.PE.pe_meetsTop_start
+#print axioms Contract.PE.Example.hist
+#print axioms Contract.PE.Example.meetsTop

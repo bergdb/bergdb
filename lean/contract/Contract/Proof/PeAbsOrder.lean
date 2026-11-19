@@ -1,0 +1,974 @@
+/-
+bergdb 026-24 (copied for 030-21), phase 3, beyond the two lemmas: the proof's part 1 for the
+order, on the abstract tree of PeProof/Abs.lean: PE's plan keeps a tree in
+order, every child in its range (the contract's RangeOK and NonEmptyOK, and
+the order of the live lists, for one segment).
+-/
+import Contract.Proof.PeAbs
+
+namespace PeProof.Abs
+
+open PeProof Contract.PE
+
+/-- The bound after an entry: the next entry's compare value, or hi. -/
+def nxt {β : Type} (rest : List (Nat × β)) (hi : Option Nat) : Option Nat :=
+  match rest with
+  | (c, _) :: _ => some c
+  | [] => hi
+
+/-- Every child (c, x) in order with the range from max(lo, c) to the next
+compare value or hi; with `E`, a child may be empty. -/
+def KidsWF {β : Type} (W : Nat → Option Nat → β → Prop) (lo : Nat) (hi : Option Nat) :
+    List (Nat × β) → Prop
+  | [] => True
+  | (c, x) :: rest => W (max lo c) (nxt rest hi) x ∧ KidsWF W lo hi rest
+
+/-- A node of height h with the range [lo, hi) is in order: it has an entry;
+its entries are in strictly increasing order of compare values, each below
+hi; a leaf's at or above lo; an inner node's first entry is the empty key
+(LeftmostOK, which PE keeps) and its children each in order with its range. -/
+def WF : (h : Nat) → Nat → Option Nat → Node h → Prop
+  | 0, lo, hi, x => x ≠ [] ∧ (x : List (Nat × Nat)).Pairwise CvLtA ∧
+      ∀ e ∈ (x : List (Nat × Nat)), lo ≤ e.1 ∧ Below e.1 hi
+  | h + 1, lo, hi, x => (kids x).head?.map (·.1) = some 0 ∧ (kids x).Pairwise CvLtA ∧
+      (∀ e ∈ kids x, Below e.1 hi) ∧ KidsWF (WF h) lo hi (kids x)
+
+/-- In order, or empty. -/
+def WFE (h : Nat) (lo : Nat) (hi : Option Nat) (x : Node h) : Prop := x = [] ∨ WF h lo hi x
+
+/-- What settle keeps at a parent with the range [lo, hi): the children's
+compare values in strictly increasing order, each below hi, and each child
+in order with its range or empty. -/
+def SInv (h : Nat) (lo : Nat) (hi : Option Nat) (ks : List (Nat × Node h)) : Prop :=
+  ks.Pairwise CvLtA ∧ (∀ e ∈ ks, Below e.1 hi) ∧ KidsWF (WFE h) lo hi ks
+
+/-! ## Wider ranges -/
+
+theorem boundLe_refl (hi : Option Nat) : BoundLe hi hi := by
+  cases hi <;> simp [BoundLe]
+
+theorem boundLe_nxt {β : Type} (rest : List (Nat × β)) {hi hi' : Option Nat} (h : BoundLe hi hi') :
+    BoundLe (nxt rest hi) (nxt rest hi') := by
+  cases rest with
+  | nil => exact h
+  | cons a r => exact boundLe_refl _
+
+theorem kidsWF_mono {β : Type} {W : Nat → Option Nat → β → Prop}
+    (hW : ∀ lo hi lo' hi' x, W lo hi x → lo' ≤ lo → BoundLe hi hi' → W lo' hi' x) :
+    ∀ (ks : List (Nat × β)) (lo lo' : Nat) (hi hi' : Option Nat), KidsWF W lo hi ks → lo' ≤ lo →
+      BoundLe hi hi' → KidsWF W lo' hi' ks
+  | [], _, _, _, _, _, _, _ => trivial
+  | (c, x) :: rest, lo, lo', hi, hi', ⟨h1, h2⟩, hlo, hhi =>
+    ⟨hW _ _ _ _ x h1 (by omega) (boundLe_nxt rest hhi), kidsWF_mono hW rest lo lo' hi hi' h2 hlo hhi⟩
+
+theorem WF_mono : ∀ (h : Nat) (lo lo' : Nat) (hi hi' : Option Nat) (x : Node h), WF h lo hi x →
+    lo' ≤ lo → BoundLe hi hi' → WF h lo' hi' x
+  | 0, lo, lo', hi, hi', x, ⟨h1, h2, h3⟩, hlo, hhi =>
+    ⟨h1, h2, fun e he => ⟨by have := (h3 e he).1; omega, below_mono (h3 e he).2 hhi⟩⟩
+  | h + 1, lo, lo', hi, hi', x, ⟨h1, h2, h3, h4⟩, hlo, hhi =>
+    ⟨h1, h2, fun e he => below_mono (h3 e he) hhi,
+      kidsWF_mono (fun lo hi lo' hi' x hx hl hh => WF_mono h lo lo' hi hi' x hx hl hh)
+        (kids x) lo lo' hi hi' h4 hlo hhi⟩
+
+theorem WFE_mono {h : Nat} {lo lo' : Nat} {hi hi' : Option Nat} {x : Node h} (hx : WFE h lo hi x)
+    (hlo : lo' ≤ lo) (hhi : BoundLe hi hi') : WFE h lo' hi' x := by
+  rcases hx with hx | hx
+  · exact Or.inl hx
+  · exact Or.inr (WF_mono h lo lo' hi hi' x hx hlo hhi)
+
+/-! ## A node in order holds keys in its range -/
+
+theorem WF_ne_nil : ∀ (h : Nat) (lo : Nat) (hi : Option Nat) (x : Node h), WF h lo hi x → x ≠ []
+  | 0, _, _, _, hx => hx.1
+  | h + 1, _, _, x, hx => by
+    intro he
+    have := hx.1
+    subst he
+    have h0 : (kids ([] : Node (h + 1))).head?.map (·.1) = none := rfl
+    rw [h0] at this
+    cases this
+
+theorem kidsWF_bounds {β : Type} {W : Nat → Option Nat → β → Prop} {C : β → List (Nat × Nat)}
+    (hW : ∀ lo hi x, W lo hi x → ∀ e ∈ C x, lo ≤ e.1 ∧ Below e.1 hi) :
+    ∀ (ks : List (Nat × β)) (lo : Nat) (hi : Option Nat), KidsWF W lo hi ks →
+      (∀ e ∈ ks, Below e.1 hi) → ∀ e ∈ ks.flatMap (fun k => C k.2), lo ≤ e.1 ∧ Below e.1 hi
+  | [], _, _, _, _ => by simp
+  | (c, x) :: rest, lo, hi, ⟨h1, h2⟩, hb => by
+    intro e he
+    rw [List.flatMap_cons, List.mem_append] at he
+    rcases he with he | he
+    · have := hW _ _ x h1 e he
+      refine ⟨by have := this.1; omega, ?_⟩
+      cases rest with
+      | nil => exact this.2
+      | cons r rr =>
+        exact below_trans (by simpa [nxt, Below] using this.2) (hb r (by simp))
+    · exact kidsWF_bounds hW rest lo hi h2 (fun e he => hb e (List.mem_cons_of_mem _ he)) e he
+
+theorem WF_bounds : ∀ (h : Nat) (lo : Nat) (hi : Option Nat) (x : Node h), WF h lo hi x →
+    ∀ e ∈ content h x, lo ≤ e.1 ∧ Below e.1 hi
+  | 0, _, _, _, hx => hx.2.2
+  | h + 1, lo, hi, x, hx => by
+    simp only [content]
+    exact kidsWF_bounds (C := content h) (fun lo hi x hx => WF_bounds h lo hi x hx) (kids x) lo hi
+      hx.2.2.2 hx.2.2.1
+
+theorem content_ne_nil : ∀ (h : Nat) (lo : Nat) (hi : Option Nat) (x : Node h), WF h lo hi x →
+    content h x ≠ []
+  | 0, _, _, _, hx => hx.1
+  | h + 1, lo, hi, x, hx => by
+    obtain ⟨h1, _, _, h4⟩ := hx
+    simp only [content]
+    cases hk : kids x with
+    | nil => simp [hk] at h1
+    | cons k rest =>
+      rw [hk] at h4
+      have := content_ne_nil h _ _ k.2 h4.1
+      simp only [List.flatMap_cons]
+      intro he
+      exact this (List.append_eq_nil_iff.mp he).1
+
+/-- A node in order has a nonempty range. -/
+theorem WF_range {h : Nat} {lo : Nat} {hi : Option Nat} {x : Node h} (hx : WF h lo hi x) :
+    Below lo hi := by
+  obtain ⟨e, he⟩ := List.exists_mem_of_ne_nil _ (content_ne_nil h lo hi x hx)
+  have := WF_bounds h lo hi x hx e he
+  rcases Nat.eq_or_lt_of_le this.1 with h1 | h1
+  · rw [h1]; exact this.2
+  · exact below_trans h1 this.2
+
+/-! ## Lists of children -/
+
+theorem nxt_append {β : Type} (A B : List (Nat × β)) (hi : Option Nat) :
+    nxt (A ++ B) hi = nxt A (nxt B hi) := by
+  cases A with
+  | nil => rfl
+  | cons a r => rfl
+
+theorem kidsWF_append {β : Type} (W : Nat → Option Nat → β → Prop) (lo : Nat) (hi : Option Nat)
+    (B : List (Nat × β)) : ∀ A : List (Nat × β),
+    KidsWF W lo hi (A ++ B) ↔ KidsWF W lo (nxt B hi) A ∧ KidsWF W lo hi B
+  | [] => by simp [KidsWF]
+  | (c, x) :: A => by
+    simp only [List.cons_append, KidsWF]
+    rw [kidsWF_append W lo hi B A, nxt_append]
+    tauto
+
+/-- Children whose compare values are all at or above b: the bound lo below
+b changes no range. -/
+theorem kidsWF_lo {β : Type} {W : Nat → Option Nat → β → Prop} {a b : Nat} (hab : a ≤ b) :
+    ∀ (ks : List (Nat × β)) (hi : Option Nat), (∀ e ∈ ks, b ≤ e.1) →
+      KidsWF W b hi ks → KidsWF W a hi ks
+  | [], _, _, _ => trivial
+  | (c, x) :: rest, hi, hb, ⟨h1, h2⟩ => by
+    have hc : b ≤ c := hb (c, x) List.mem_cons_self
+    refine ⟨?_, kidsWF_lo hab rest hi (fun e he => hb e (List.mem_cons_of_mem _ he)) h2⟩
+    have e1 : max a c = c := by omega
+    have e2 : max b c = c := by omega
+    rw [e1]; rw [e2] at h1; exact h1
+
+/-- The entries after the first of an inner node in order are above lo. -/
+theorem WF_tail_above {h : Nat} {lo : Nat} {hi : Option Nat} {x : Node (h + 1)}
+    (hx : WF (h + 1) lo hi x) : ∀ e ∈ (kids x).tail, lo < e.1 := by
+  obtain ⟨_, h2, _, h4⟩ := hx
+  generalize kids x = ks at h2 h4
+  -- each child is in order with a nonempty range: max lo c < next
+  induction ks with
+  | nil => simp
+  | cons k rest ih =>
+    obtain ⟨c, y⟩ := k
+    simp only [List.tail_cons]
+    intro e he
+    cases rest with
+    | nil => simp at he
+    | cons k2 rest2 =>
+      have hr := WF_range h4.1
+      simp only [nxt, Below] at hr
+      rcases List.mem_cons.mp he with rfl | he
+      · omega
+      · have := ih (List.Pairwise.of_cons h2) h4.2 e (by simpa using he)
+        exact this
+
+/-! ## Settle's join -/
+
+/-- A join of two nodes in order, the left one's range [a, cR), the right
+one's [max a cR, nx) (or empty): in order with the range [a, nx). -/
+theorem WF_join : ∀ (h : Nat) {a cR : Nat} {nx : Option Nat} {L R : Node h},
+    WF h a (some cR) L → WFE h (max a cR) nx R → Below cR nx →
+    WF h a nx (L ++ eff (h != 0) (cR, R))
+  | 0, a, cR, nx, L, R, hL, hR, hc => by
+    have e : eff (0 != 0) (cR, R) = R := rfl
+    rw [e]
+    rcases hR with rfl | hR
+    · simpa using WF_mono 0 a a (some cR) nx L hL (le_refl a) (boundLe_of_below hc)
+    obtain ⟨hL1, hL2, hL3⟩ := hL
+    obtain ⟨_, hR2, hR3⟩ := hR
+    refine ⟨by simp [hL1], ?_, ?_⟩
+    · rw [List.pairwise_append]
+      refine ⟨hL2, hR2, fun x hx y hy => ?_⟩
+      have := (hL3 x hx).2
+      have := (hR3 y hy).1
+      simp only [Below] at *
+      show x.1 < y.1
+      omega
+    · intro e he
+      rcases List.mem_append.mp he with he | he
+      · exact ⟨(hL3 e he).1, below_trans (by simpa [Below] using (hL3 e he).2) hc⟩
+      · exact ⟨le_trans (le_max_left _ _) (hR3 e he).1, (hR3 e he).2⟩
+  | h + 1, a, cR, nx, L, R, hL, hR, hc => by
+    have e : eff (h + 1 != 0) (cR, R) = renameHead cR R := rfl
+    rw [e]
+    rcases hR with rfl | hR
+    · have : renameHead cR ([] : Node (h + 1)) = [] := rfl
+      rw [this, List.append_nil]
+      exact WF_mono (h + 1) a a (some cR) nx L hL (le_refl a) (boundLe_of_below hc)
+    have htail := WF_tail_above hR
+    obtain ⟨hL1, hL2, hL3, hL4⟩ := hL
+    obtain ⟨hR1, hR2, hR3, hR4⟩ := hR
+    generalize hLk : kids L = Lk at hL1 hL2 hL3 hL4
+    generalize hRk : kids R = Rk at hR1 hR2 hR3 hR4 htail
+    obtain ⟨⟨r0, y0⟩, Rt, rfl⟩ : ∃ r Rt, Rk = r :: Rt := by
+      cases Rk with
+      | nil => simp at hR1
+      | cons r Rt => exact ⟨r, Rt, rfl⟩
+    have hr0 : r0 = 0 := by simpa using hR1
+    subst hr0
+    have hk : kids (L ++ renameHead cR R) = Lk ++ (cR, y0) :: Rt := by
+      show (L ++ renameHead cR R : List _) = _
+      rw [show (L : List (Nat × Node h)) = Lk from hLk, show (R : List (Nat × Node h)) = (0, y0) :: Rt from hRk]
+      rfl
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · rw [hk]
+      cases Lk with
+      | nil => simp at hL1
+      | cons l Lt => simpa using hL1
+    · rw [hk, List.pairwise_append]
+      refine ⟨hL2, ?_, ?_⟩
+      · rw [List.pairwise_cons]
+        refine ⟨fun b hb => ?_, (List.pairwise_cons.mp hR2).2⟩
+        have := htail b (by simpa using hb)
+        show cR < b.1
+        omega
+      · intro x hx y hy
+        have h1 := hL3 x hx
+        simp only [Below] at h1
+        show x.1 < y.1
+        rcases List.mem_cons.mp hy with rfl | hy
+        · exact h1
+        · have := htail y (by simpa using hy); omega
+    · rw [hk]
+      intro e he
+      rcases List.mem_append.mp he with he | he
+      · exact below_trans (by simpa [Below] using hL3 e he) hc
+      · rcases List.mem_cons.mp he with rfl | he
+        · exact hc
+        · exact hR3 e (List.mem_cons_of_mem _ he)
+    · rw [hk, kidsWF_append]
+      refine ⟨hL4, ?_⟩
+      obtain ⟨hR4a, hR4b⟩ := hR4
+      refine ⟨?_, kidsWF_lo (le_max_left a cR) Rt nx (fun e he => ?_) hR4b⟩
+      · have e1 : max a cR = max (max a cR) 0 := by omega
+        rw [show max a cR = max (max a cR) 0 by omega]
+        exact hR4a
+      · have := htail e (by simp [he]); omega
+
+/-! ## Settle's cut -/
+
+theorem kidsWF_lo_eq {β : Type} {W : Nat → Option Nat → β → Prop} {a b : Nat} :
+    ∀ (ks : List (Nat × β)) (hi : Option Nat), (∀ e ∈ ks, a ≤ e.1 ∧ b ≤ e.1) →
+      KidsWF W a hi ks → KidsWF W b hi ks
+  | [], _, _, _ => trivial
+  | (c, x) :: rest, hi, hb, ⟨h1, h2⟩ => by
+    have hc := hb (c, x) List.mem_cons_self
+    refine ⟨?_, kidsWF_lo_eq rest hi (fun e he => hb e (List.mem_cons_of_mem _ he)) h2⟩
+    have e1 : max a c = c := by simp at hc; omega
+    have e2 : max b c = c := by simp at hc; omega
+    rw [e2]; rw [e1] at h1; exact h1
+
+theorem headCv_mem {β : Type} {Q : List (Nat × β)} (hQ : Q ≠ []) : ∃ y, (headCv Q, y) ∈ Q ∧
+    ∀ e ∈ Q, Q.Pairwise CvLtA → headCv Q ≤ e.1 := by
+  obtain ⟨a, r, rfl⟩ := List.exists_cons_of_ne_nil hQ
+  refine ⟨a.2, by simp [headCv], fun e he hs => ?_⟩
+  simp only [headCv, List.head?_cons, Option.map_some, Option.getD_some]
+  rcases List.mem_cons.mp he with rfl | he
+  · exact le_refl _
+  · exact le_of_lt ((List.pairwise_cons.mp hs).1 e he)
+
+/-- Leaves cut into pieces: each piece in order with its range. -/
+theorem pieces_wf0 (lo : Nat) : ∀ (nx : Option Nat) (Qs : List (Node 0)), (∀ Q ∈ Qs, Q ≠ []) →
+    (Qs.flatten : List (Nat × Nat)).Pairwise CvLtA →
+    (∀ e ∈ (Qs.flatten : List (Nat × Nat)), lo ≤ e.1 ∧ Below e.1 nx) →
+    KidsWF (WFE 0) lo nx (Qs.map (fun Q => (headCv Q, Q)))
+  | _, [], _, _, _ => trivial
+  | nx, Q :: Qs, hne, hs, hb => by
+    have hQ : Q ≠ [] := hne Q List.mem_cons_self
+    rw [List.flatten_cons, List.pairwise_append] at hs
+    refine ⟨Or.inr ⟨hQ, hs.1, fun e he => ⟨?_, ?_⟩⟩,
+      pieces_wf0 lo nx Qs (fun Q h => hne Q (List.mem_cons_of_mem _ h)) hs.2.1
+        (fun e he => hb e (by rw [List.flatten_cons]; exact List.mem_append_right _ he))⟩
+    · have h1 := (hb e (by rw [List.flatten_cons]; exact List.mem_append_left _ he)).1
+      have h2 := (headCv_mem hQ).choose_spec.2 e he hs.1
+      omega
+    · cases Qs with
+      | nil =>
+        exact (hb e (by simp [he])).2
+      | cons Q2 Qs2 =>
+        have hQ2 : Q2 ≠ [] := hne Q2 (by simp)
+        obtain ⟨y2, hy2, _⟩ := headCv_mem hQ2
+        have := hs.2.2 e he (headCv Q2, y2) (by simp [hy2])
+        simpa [nxt, Below] using this
+
+theorem nxt_flatten {β γ : Type} (f : List (Nat × β) → γ) : ∀ (Qs : List (List (Nat × β)))
+    (nx : Option Nat), (∀ Q ∈ Qs, Q ≠ []) →
+    nxt Qs.flatten nx = nxt (Qs.map (fun Q => (headCv Q, f Q))) nx
+  | [], _, _ => rfl
+  | Q :: Qs, nx, hne => by
+    have hQ : Q ≠ [] := hne Q List.mem_cons_self
+    obtain ⟨a, r, rfl⟩ := List.exists_cons_of_ne_nil hQ
+    rfl
+
+/-- Inner nodes cut into pieces, each but the first with the empty key put
+first: each piece in order with its range. -/
+theorem pieces_wfS (h : Nat) (lo lo0 : Nat) : ∀ (nx : Option Nat) (Qs : List (List (Nat × Node h))),
+    (∀ Q ∈ Qs, Q ≠ []) → Qs.flatten.Pairwise CvLtA →
+    (∀ e ∈ Qs.flatten, lo < e.1 ∧ lo0 ≤ e.1 ∧ Below e.1 nx) →
+    KidsWF (WF h) lo0 nx Qs.flatten →
+    KidsWF (WFE (h + 1)) lo nx (Qs.map (fun Q => (headCv Q, (renameHead 0 Q : Node (h + 1)))))
+  | _, [], _, _, _, _ => trivial
+  | nx, Q :: Qs, hne, hs, hb, hk => by
+    have hQ : Q ≠ [] := hne Q List.mem_cons_self
+    have hne' : ∀ Q ∈ Qs, Q ≠ [] := fun Q h => hne Q (List.mem_cons_of_mem _ h)
+    rw [List.flatten_cons, kidsWF_append] at hk
+    rw [List.flatten_cons, List.pairwise_append] at hs
+    have hbQ : ∀ e ∈ Q, lo < e.1 ∧ lo0 ≤ e.1 ∧ Below e.1 nx :=
+      fun e he => hb e (by rw [List.flatten_cons]; exact List.mem_append_left _ he)
+    -- the bound after this piece
+    have hbound : nxt Qs.flatten nx =
+        nxt (Qs.map (fun Q => (headCv Q, (renameHead 0 Q : Node (h + 1))))) nx :=
+      nxt_flatten (fun Q => (renameHead 0 Q : Node (h + 1))) Qs nx hne'
+    have hbelow : ∀ e ∈ Q, Below e.1 (nxt Qs.flatten nx) := by
+      intro e he
+      cases Qs with
+      | nil => exact (hbQ e he).2.2
+      | cons Q2 Qs2 =>
+        have hQ2 : Q2 ≠ [] := hne' Q2 (by simp)
+        obtain ⟨b, r2, rfl⟩ := List.exists_cons_of_ne_nil hQ2
+        simp only [List.flatten_cons, List.cons_append, nxt, Below]
+        exact hs.2.2 e he b (by simp)
+    refine ⟨Or.inr ?_, pieces_wfS h lo lo0 nx Qs hne' hs.2.1
+      (fun e he => hb e (by rw [List.flatten_cons]; exact List.mem_append_right _ he)) hk.2⟩
+    rw [← hbound]
+    obtain ⟨⟨q0c, q0⟩, Qt, rfl⟩ := List.exists_cons_of_ne_nil hQ
+    change WF (h + 1) (max lo q0c) _ _
+    have hQs := List.pairwise_cons.mp hs.1
+    have hk1 := hk.1
+    obtain ⟨hk1a, hk1b⟩ := hk1
+    have hq0 := hbQ (q0c, q0) List.mem_cons_self
+    refine ⟨rfl, ?_, ?_, ?_⟩
+    · show ((0, q0) :: Qt).Pairwise CvLtA
+      rw [List.pairwise_cons]
+      refine ⟨fun b hb' => ?_, hQs.2⟩
+      have := hQs.1 b hb'
+      show 0 < b.1
+      simp only [CvLtA] at this
+      omega
+    · intro e he
+      rcases List.mem_cons.mp he with rfl | he
+      · rcases Nat.eq_zero_or_pos q0c with h0 | h0
+        · rw [← h0]; exact hbelow (q0c, q0) List.mem_cons_self
+        · exact below_trans h0 (hbelow (q0c, q0) List.mem_cons_self)
+      · exact hbelow e (List.mem_cons_of_mem _ he)
+    · refine ⟨?_, ?_⟩
+      · have e1 : max (max lo q0c) 0 = max lo0 q0c := by omega
+        show WF h (max (max lo q0c) 0) (nxt Qt (nxt Qs.flatten nx)) q0
+        rw [e1]; exact hk1a
+      · refine kidsWF_lo_eq Qt _ (fun e he => ?_) hk1b
+        have h1 := hbQ e (List.mem_cons_of_mem _ he)
+        have h2 := hQs.1 e he
+        simp only [CvLtA] at h2
+        constructor <;> omega
+
+/-! ## Settle's steps keep the order -/
+
+theorem pairwise_cv_iff {β : Type} (l : List (Nat × β)) :
+    l.Pairwise CvLtA ↔ (l.map Prod.fst).Pairwise (· < ·) := by
+  rw [List.pairwise_map]
+
+theorem sinv_drop {h : Nat} {lo : Nat} {hi : Option Nat} (pre post : List (Nat × Node h)) (c : Nat)
+    (hs : SInv h lo hi (pre ++ (c, []) :: post)) : SInv h lo hi (pre ++ post) := by
+  obtain ⟨h1, h2, h3⟩ := hs
+  refine ⟨h1.sublist (List.Sublist.append_left (List.sublist_cons_self _ _) pre),
+    fun e he => h2 e (by simp at he ⊢; tauto), ?_⟩
+  rw [kidsWF_append] at h3 ⊢
+  obtain ⟨h3a, _, h3c⟩ := h3
+  refine ⟨kidsWF_mono (W := WFE h) (fun lo hi lo' hi' x hx hl hh => WFE_mono hx hl hh) pre lo lo
+    _ _ h3a (le_refl lo) ?_, h3c⟩
+  simp only [nxt]
+  cases post with
+  | nil =>
+    exact boundLe_of_below (h2 (c, []) (by simp))
+  | cons p r =>
+    have := (List.pairwise_append.mp h1).2.1
+    have := (List.pairwise_cons.mp this).1 p (by simp)
+    simp only [BoundLe]
+    exact le_of_lt this
+
+theorem sinv_join {h : Nat} {lo : Nat} {hi : Option Nat} (pre post : List (Nat × Node h))
+    (cL cR : Nat) (L R : Node h) (hL : L ≠ [])
+    (hs : SInv h lo hi (pre ++ (cL, L) :: (cR, R) :: post)) :
+    SInv h lo hi (pre ++ (cL, L ++ eff (h != 0) (cR, R)) :: post) := by
+  obtain ⟨h1, h2, h3⟩ := hs
+  have hcv : ((pre ++ (cL, L ++ eff (h != 0) (cR, R)) :: post).map Prod.fst).Sublist
+      ((pre ++ (cL, L) :: (cR, R) :: post).map Prod.fst) := by
+    simp only [List.map_append, List.map_cons]
+    exact List.Sublist.append_left (List.Sublist.cons_cons _ (List.sublist_cons_self _ _)) _
+  refine ⟨(pairwise_cv_iff _).mpr (((pairwise_cv_iff _).mp h1).sublist hcv), ?_, ?_⟩
+  · intro e he
+    simp only [List.mem_append, List.mem_cons] at he
+    rcases he with he | he | he
+    · exact h2 e (by simp [he])
+    · rw [he]; exact h2 (cL, L) (by simp)
+    · exact h2 e (by simp [he])
+  · rw [kidsWF_append] at h3 ⊢
+    obtain ⟨h3a, ⟨hLw, hRw, h3c⟩⟩ := h3
+    refine ⟨h3a, ⟨?_, h3c⟩⟩
+    have hlt : cL < cR := by
+      have := (List.pairwise_append.mp h1).2.1
+      have := (List.pairwise_cons.mp this).1 (cR, R) (by simp)
+      exact this
+    have hbR : Below cR (nxt post hi) := by
+      cases post with
+      | nil => exact h2 (cR, R) (by simp)
+      | cons p r =>
+        have := (List.pairwise_append.mp h1).2.1
+        have := (List.pairwise_cons.mp (List.pairwise_cons.mp this).2).1 p (by simp)
+        simpa [nxt, Below] using this
+    rcases hLw with hL0 | hLw
+    · exact absurd hL0 hL
+    refine Or.inr (WF_join h hLw ?_ hbR)
+    have e1 : max (max lo cL) cR = max lo cR := by omega
+    rw [e1]
+    exact hRw
+
+theorem heads_pairwise {β : Type} (f : List (Nat × β) → List (Nat × β)) :
+    ∀ (Qs : List (List (Nat × β))), (∀ Q ∈ Qs, Q ≠ []) → Qs.flatten.Pairwise CvLtA →
+      (Qs.map (fun Q => (headCv Q, f Q))).Pairwise CvLtA
+  | [], _, _ => by simp
+  | Q :: Qs, hne, hs => by
+    rw [List.map_cons, List.pairwise_cons]
+    have hQ : Q ≠ [] := hne Q List.mem_cons_self
+    rw [List.flatten_cons, List.pairwise_append] at hs
+    refine ⟨fun e he => ?_, heads_pairwise f Qs (fun Q h => hne Q (List.mem_cons_of_mem _ h)) hs.2.1⟩
+    obtain ⟨Q2, hQ2, rfl⟩ := List.mem_map.mp he
+    obtain ⟨y, hy, _⟩ := headCv_mem hQ
+    obtain ⟨y2, hy2, _⟩ := headCv_mem (hne Q2 (List.mem_cons_of_mem _ hQ2))
+    exact hs.2.2 _ hy _ (List.mem_flatten.mpr ⟨Q2, hQ2, hy2⟩)
+
+/-- The compare values of a cut's entries: the child's own, then the
+pieces' first ones, all in increasing order, at or above c, and below the
+bound after the child. -/
+theorem cut_cvs {β : Type} {c : Nat} {nx : Option Nat} {P1 : List (Nat × β)}
+    {Qs : List (List (Nat × β))} (hne : ∀ Q ∈ Qs, Q ≠ []) (hs : (P1 ++ Qs.flatten).Pairwise CvLtA)
+    (hgt : ∀ e ∈ Qs.flatten, c < e.1) (hb : ∀ e ∈ Qs.flatten, Below e.1 nx)
+    (f : List (Nat × β) → List (Nat × β)) :
+    ((c, P1) :: Qs.map (fun Q => (headCv Q, f Q))).Pairwise CvLtA ∧
+      ∀ e ∈ (c, P1) :: Qs.map (fun Q => (headCv Q, f Q)), c ≤ e.1 ∧ (e.1 = c ∨ Below e.1 nx) := by
+  have hmem : ∀ Q ∈ Qs, ∃ y, (headCv Q, y) ∈ Qs.flatten := by
+    intro Q hQ
+    obtain ⟨y, hy, _⟩ := headCv_mem (hne Q hQ)
+    exact ⟨y, List.mem_flatten.mpr ⟨Q, hQ, hy⟩⟩
+  rw [List.pairwise_append] at hs
+  constructor
+  · rw [List.pairwise_cons]
+    refine ⟨?_, heads_pairwise f Qs hne hs.2.1⟩
+    intro e he
+    obtain ⟨Q, hQ, rfl⟩ := List.mem_map.mp he
+    obtain ⟨y, hy⟩ := hmem Q hQ
+    exact hgt _ hy
+  · intro e he
+    rcases List.mem_cons.mp he with rfl | he
+    · exact ⟨le_refl _, Or.inl rfl⟩
+    · obtain ⟨Q, hQ, rfl⟩ := List.mem_map.mp he
+      obtain ⟨y, hy⟩ := hmem Q hQ
+      exact ⟨le_of_lt (hgt _ hy), Or.inr (hb _ hy)⟩
+
+/-- The cut child's pieces in order (the first piece, and the others): the
+part of settle's cut that depends on the height. -/
+theorem cut_pieces : ∀ (h : Nat) (lo : Nat) (c : Nat) (nx : Option Nat) (P1 : Node h)
+    (Qs : List (Node h)), P1 ≠ [] → (∀ Q ∈ Qs, Q ≠ []) →
+    WF h (max lo c) nx ((P1 :: Qs).flatten : Node h) →
+    WFE h (max lo c) (nxt (Qs.map (fun Q => (headCv Q, if (h != 0) then renameHead 0 Q else Q))) nx) P1 ∧
+      KidsWF (WFE h) lo nx (Qs.map (fun Q => (headCv Q, if (h != 0) then renameHead 0 Q else Q))) ∧
+      (∀ e ∈ (Qs.flatten : List (Nat × Elem h)), c < e.1 ∧ Below e.1 nx) ∧
+      ((P1 : List (Nat × Elem h)) ++ Qs.flatten).Pairwise CvLtA
+  | 0, lo, c, nx, P1, Qs, hP1, hne, hW => by
+    obtain ⟨_, hs, hb⟩ := hW
+    rw [List.flatten_cons] at hs hb
+    have hs' := List.pairwise_append.mp hs
+    obtain ⟨⟨p0c, p0⟩, Pt, rfl⟩ := List.exists_cons_of_ne_nil hP1
+    have hgt : ∀ e ∈ (Qs.flatten : List (Nat × Nat)), c < e.1 := by
+      intro e he
+      have h1 := (hb (p0c, p0) (by simp)).1
+      have h2 := hs'.2.2 (p0c, p0) (by simp) e he
+      simp only [CvLtA] at h2
+      omega
+    have hmap : ∀ Q : Node 0, (if (0 != 0) = true then renameHead 0 Q else Q) = Q := fun Q => rfl
+    simp only [hmap]
+    refine ⟨Or.inr ⟨by simp, hs'.1, fun e he => ⟨(hb e (List.mem_append_left _ he)).1, ?_⟩⟩,
+      pieces_wf0 lo nx Qs hne hs'.2.1 (fun e he => ⟨?_, (hb e (List.mem_append_right _ he)).2⟩),
+      fun e he => ⟨hgt e he, (hb e (List.mem_append_right _ he)).2⟩, hs⟩
+    · cases Qs with
+      | nil => exact (hb e (by simp [he])).2
+      | cons Q2 Qs2 =>
+        have hQ2 : Q2 ≠ [] := hne Q2 (by simp)
+        obtain ⟨y2, hy2, _⟩ := headCv_mem hQ2
+        have := hs'.2.2 e he (headCv Q2, y2) (by simp [hy2])
+        simpa [nxt, Below] using this
+    · have := (hb e (List.mem_append_right _ he)).1
+      omega
+  | h + 1, lo, c, nx, P1, Qs, hP1, hne, hW => by
+    have htail := WF_tail_above hW
+    obtain ⟨hW1, hW2, hW3, hW4⟩ := hW
+    have hk : kids ((P1 :: Qs).flatten : Node (h + 1)) =
+        (P1 : List (Nat × Node h)) ++ (Qs.flatten : List (Nat × Node h)) := by
+      rw [List.flatten_cons]; rfl
+    rw [hk] at hW1 hW2 hW3 hW4 htail
+    obtain ⟨⟨p0c, p0⟩, Pt, rfl⟩ := List.exists_cons_of_ne_nil hP1
+    have hs' := List.pairwise_append.mp hW2
+    have hgt : ∀ e ∈ (Qs.flatten : List (Nat × Node h)), max lo c < e.1 := by
+      intro e he
+      exact htail e (List.mem_append_right (Pt : List (Nat × Node h)) he)
+    have hmap : ∀ Q : Node (h + 1),
+        (if (h + 1 != 0) = true then renameHead 0 Q else Q) = renameHead 0 Q := fun Q => rfl
+    simp only [hmap]
+    replace hW4 := (kidsWF_append (WF h) (max lo c) nx (Qs.flatten : List (Nat × Node h))
+      ((p0c, p0) :: Pt : List (Nat × Node h))).mp hW4
+    have hbound : nxt (Qs.flatten : List (Nat × Node h)) nx =
+        nxt (Qs.map (fun Q => (headCv Q, (renameHead 0 Q : Node (h + 1))))) nx :=
+      nxt_flatten (fun Q => (renameHead 0 Q : Node (h + 1))) Qs nx hne
+    refine ⟨Or.inr ⟨?_, hs'.1, ?_, ?_⟩, ?_, fun e he => ⟨by have := hgt e he; omega,
+      hW3 e (List.mem_append_right _ he)⟩, hW2⟩
+    · have h0 : p0c = 0 := by
+        have := hW1
+        simp only [List.cons_append] at this
+        exact Option.some.inj this
+      show some p0c = some 0
+      rw [h0]
+    · intro e he
+      rw [← hbound]
+      cases Qs with
+      | nil => exact hW3 e (by simp only [List.flatten_nil, List.append_nil]; exact he)
+      | cons Q2 Qs2 =>
+        have hQ2 : Q2 ≠ [] := hne Q2 (by simp)
+        obtain ⟨b, r2, rfl⟩ := List.exists_cons_of_ne_nil hQ2
+        simp only [List.flatten_cons, List.cons_append, nxt, Below]
+        exact hs'.2.2 e he b List.mem_cons_self
+    · rw [← hbound]; exact hW4.1
+    · exact pieces_wfS h lo (max lo c) nx Qs hne hs'.2.1
+        (fun e he => ⟨by have := hgt e he; omega, le_of_lt (hgt e he),
+          hW3 e (List.mem_append_right _ he)⟩) hW4.2
+
+/-- **Settle, cut**, at the parent: the pieces of a child, the first with the
+child's compare value, keep the order. -/
+theorem sinv_cut {h : Nat} {lo : Nat} {hi : Option Nat} (pre post : List (Nat × Node h)) (c : Nat)
+    (Ps : List (Node h)) (hne : ∀ P ∈ Ps, P ≠ []) (hPs : Ps ≠ [])
+    (hs : SInv h lo hi (pre ++ (c, (Ps.flatten : Node h)) :: post)) :
+    SInv h lo hi (pre ++ (cutEnts (h != 0) c Ps : List (Nat × Node h)) ++ post) := by
+  obtain ⟨P1, Qs, rfl⟩ := List.exists_cons_of_ne_nil hPs
+  have hP1 : P1 ≠ [] := hne P1 List.mem_cons_self
+  have hneQ : ∀ Q ∈ Qs, Q ≠ [] := fun Q h => hne Q (List.mem_cons_of_mem _ h)
+  obtain ⟨h1, h2, h3⟩ := hs
+  rw [kidsWF_append] at h3
+  obtain ⟨h3a, ⟨hWe, h3c⟩⟩ := h3
+  have hW : WF h (max lo c) (nxt post hi) ((P1 :: Qs).flatten : Node h) := by
+    rcases hWe with h0 | h0
+    · exfalso
+      have : (P1 :: Qs).flatten ≠ [] := by
+        rw [List.flatten_cons]; exact fun he => hP1 (List.append_eq_nil_iff.mp he).1
+      exact this h0
+    · exact h0
+  obtain ⟨hp1, hpieces, hQb, hsort⟩ := cut_pieces h lo c (nxt post hi) P1 Qs hP1 hneQ hW
+  -- the cut's entries, as the parent's
+  have hseg : (cutEnts (h != 0) c (P1 :: Qs) : List (Nat × Node h)) =
+      (c, P1) :: Qs.map (fun Q => (headCv Q, if (h != 0) then renameHead 0 Q else Q)) := rfl
+  obtain ⟨hcv1, hcv2⟩ := cut_cvs (c := c) (nx := nxt post hi) hneQ hsort
+    (fun e he => (hQb e he).1) (fun e he => (hQb e he).2)
+    (fun Q => if (h != 0) then renameHead 0 Q else Q)
+  rw [hseg]
+  -- the old entries
+  rw [List.pairwise_append] at h1
+  obtain ⟨hpre, hcp, hx⟩ := h1
+  rw [List.pairwise_cons] at hcp
+  have hpre_c : ∀ a ∈ pre, a.1 < c := fun a ha =>
+    hx a ha (c, ((P1 :: Qs).flatten : Node h)) List.mem_cons_self
+  have hc_post : ∀ d ∈ post, c < d.1 := hcp.1
+  have hbc : Below c hi := h2 (c, ((P1 :: Qs).flatten : Node h)) (by simp)
+  refine ⟨?_, ?_, ?_⟩
+  · rw [List.append_assoc, List.pairwise_append]
+    refine ⟨hpre, ?_, ?_⟩
+    · rw [List.pairwise_append]
+      refine ⟨hcv1, hcp.2, fun b hb d hd => ?_⟩
+      rcases (hcv2 b hb).2 with hbe | hbe
+      · show b.1 < d.1; rw [hbe]; exact hc_post d hd
+      · -- b is below the first entry of post, which is at or below d
+        cases post with
+        | nil => simp at hd
+        | cons d0 rest =>
+          simp only [nxt, Below] at hbe
+          show b.1 < d.1
+          rcases List.mem_cons.mp hd with rfl | hd
+          · exact hbe
+          · have := (List.pairwise_cons.mp hcp.2).1 d hd
+            simp only [CvLtA] at this
+            omega
+    · intro a ha b hb
+      rcases List.mem_append.mp hb with hb | hb
+      · have := (hcv2 b hb).1
+        have := hpre_c a ha
+        show a.1 < b.1
+        omega
+      · exact hx a ha b (List.mem_cons_of_mem _ hb)
+  · intro e he
+    simp only [List.mem_append] at he
+    rcases he with (he | he) | he
+    · exact h2 e (by simp [he])
+    · rcases (hcv2 e he).2 with hbe | hbe
+      · rw [hbe]; exact hbc
+      · cases post with
+        | nil => simpa [nxt] using hbe
+        | cons d0 rest =>
+          simp only [nxt, Below] at hbe
+          exact below_trans hbe (h2 d0 (by simp))
+    · exact h2 e (by simp [he])
+  · rw [List.append_assoc, kidsWF_append, kidsWF_append]
+    refine ⟨?_, ⟨hp1, hpieces⟩, h3c⟩
+    have : nxt ((c, P1) :: Qs.map (fun Q => (headCv Q, if (h != 0) then renameHead 0 Q else Q)) ++ post) hi = some c := rfl
+    rw [this]
+    exact h3a
+
+/-! ## Settle keeps the order, through every level it touches -/
+
+theorem Step.src_ne_nil {inner : Bool} {α : Type} {es es' : Ents α} (h : Step inner es es') :
+    es ≠ [] := by
+  cases h <;> simp
+
+theorem Sett.nil_eq {h : Nat} {ks ks' : List (Nat × Node h)} (hs : Sett h ks ks') :
+    ks = [] → ks' = [] := by
+  induction hs with
+  | refl => exact id
+  | step h ks ks' ks'' hst _ _ => intro he; exact absurd he (Step.src_ne_nil hst)
+  | down h pre post c J J' ks'' _ _ _ _ => intro he; simp at he
+
+theorem kidsWF_WFE {h : Nat} : ∀ (lo : Nat) (hi : Option Nat) (ks : List (Nat × Node h)),
+    KidsWF (WF h) lo hi ks → KidsWF (WFE h) lo hi ks
+  | _, _, [], _ => trivial
+  | lo, hi, (_, _) :: rest, ⟨h1, h2⟩ => ⟨Or.inr h1, kidsWF_WFE lo hi rest h2⟩
+
+theorem kidsWF_of_WFE {h : Nat} : ∀ (lo : Nat) (hi : Option Nat) (ks : List (Nat × Node h)),
+    KidsWF (WFE h) lo hi ks → (∀ e ∈ ks, e.2 ≠ []) → KidsWF (WF h) lo hi ks
+  | _, _, [], _, _ => trivial
+  | lo, hi, (c, x) :: rest, ⟨h1, h2⟩, hn => by
+    refine ⟨?_, kidsWF_of_WFE lo hi rest h2 (fun e he => hn e (List.mem_cons_of_mem _ he))⟩
+    rcases h1 with h1 | h1
+    · exact absurd h1 (hn (c, x) List.mem_cons_self)
+    · exact h1
+
+theorem kidsWF_ne_nil {h : Nat} : ∀ (lo : Nat) (hi : Option Nat) (ks : List (Nat × Node h)),
+    KidsWF (WF h) lo hi ks → ∀ e ∈ ks, e.2 ≠ []
+  | _, _, [], _ => by simp
+  | lo, hi, (c, x) :: rest, ⟨h1, h2⟩ => by
+    intro e he
+    rcases List.mem_cons.mp he with rfl | he
+    · exact WF_ne_nil h _ _ x h1
+    · exact kidsWF_ne_nil lo hi rest h2 e he
+
+theorem pairwise_cv_congr {β : Type} {l l' : List (Nat × β)} (h : l.map Prod.fst = l'.map Prod.fst)
+    (hl : l.Pairwise CvLtA) : l'.Pairwise CvLtA := by
+  rw [pairwise_cv_iff] at hl ⊢; rw [← h]; exact hl
+
+/-- **Settle keeps the order**: through its steps and its settles one level
+down, every child stays in order with its range; and a list of nonempty
+children stays so, with its first compare value. -/
+theorem Sett.inv {h : Nat} {ks ks' : List (Nat × Node h)} (hs : Sett h ks ks') :
+    ∀ (lo : Nat) (hi : Option Nat), SInv h lo hi ks → SInv h lo hi ks' ∧
+      ((∀ e ∈ ks, e.2 ≠ []) → (∀ e ∈ ks', e.2 ≠ []) ∧
+        ks'.head?.map (·.1) = ks.head?.map (·.1)) := by
+  induction hs with
+  | refl => exact fun _ _ hi => ⟨hi, fun hn => ⟨hn, rfl⟩⟩
+  | step h ks ks' ks'' hst _ ih =>
+    intro lo hi hinv
+    have hinv' : SInv h lo hi ks' := by
+      cases hst with
+      | drop pre post c => exact sinv_drop pre post c hinv
+      | join pre post cL cR L R hL => exact sinv_join pre post cL cR L R hL hinv
+      | cut pre post c Ps hne hPs => exact sinv_cut pre post c Ps hne hPs hinv
+    refine ⟨(ih lo hi hinv').1, fun hn => ?_⟩
+    have hn' : (∀ e ∈ ks', e.2 ≠ []) ∧ ks'.head?.map (·.1) = ks.head?.map (·.1) := by
+      cases hst with
+      | drop pre post c => exact absurd (hn (c, []) (by simp)) (by simp)
+      | join pre post cL cR L R hL =>
+        refine ⟨fun e he => ?_, ?_⟩
+        · simp only [List.mem_append, List.mem_cons] at he
+          rcases he with he | he | he
+          · exact hn e (by simp [he])
+          · rw [he]; simp [hL]
+          · exact hn e (by simp [he])
+        · cases pre <;> rfl
+      | cut pre post c Ps hne hPs =>
+        refine ⟨fun e he => ?_, ?_⟩
+        · simp only [List.mem_append] at he
+          rcases he with (he | he) | he
+          · exact hn e (by simp [he])
+          · obtain ⟨P1, Qs, rfl⟩ := List.exists_cons_of_ne_nil hPs
+            simp only [cutEnts, List.mem_cons, List.mem_map] at he
+            rcases he with rfl | ⟨Q, hQ, rfl⟩
+            · exact hne P1 List.mem_cons_self
+            · have hQ' := hne Q (List.mem_cons_of_mem _ hQ)
+              cases h with
+              | zero => exact hQ'
+              | succ h' =>
+                obtain ⟨a, r, rfl⟩ := List.exists_cons_of_ne_nil hQ'
+                simp [renameHead]
+          · exact hn e (by simp [he])
+        · obtain ⟨P1, Qs, rfl⟩ := List.exists_cons_of_ne_nil hPs
+          cases pre <;> rfl
+    obtain ⟨h1, h2⟩ := (ih lo hi hinv').2 hn'.1
+    exact ⟨h1, h2.trans hn'.2⟩
+  | down h pre post c J J' ks'' hJ _ ih1 ih2 =>
+    intro lo hi hinv
+    obtain ⟨h1, h2, h3⟩ := hinv
+    rw [kidsWF_append] at h3
+    obtain ⟨h3a, ⟨hJw, h3c⟩⟩ := h3
+    have hmap : (pre ++ (c, J') :: post).map Prod.fst = (pre ++ (c, J) :: post).map Prod.fst := by
+      simp
+    -- the child J' in order, or empty, and nonempty if J is
+    have hJ' : WFE (h + 1) (max lo c) (nxt post hi) J' ∧ (J ≠ [] → J' ≠ []) := by
+      rcases hJw with hJ0 | hJw
+      · have : kids J' = [] := hJ.nil_eq (by rw [hJ0]; rfl)
+        exact ⟨Or.inl this, fun h => absurd hJ0 h⟩
+      · obtain ⟨w1, w2, w3, w4⟩ := hJw
+        have hne := kidsWF_ne_nil _ _ _ w4
+        obtain ⟨i1, i2⟩ := ih1 (max lo c) (nxt post hi) ⟨w2, w3, kidsWF_WFE _ _ _ w4⟩
+        obtain ⟨i3, i4⟩ := i2 hne
+        obtain ⟨j1, j2, j3⟩ := i1
+        refine ⟨Or.inr ⟨by rw [i4]; exact w1, j1, j2, kidsWF_of_WFE _ _ _ j3 i3⟩, fun _ => ?_⟩
+        intro he
+        have : (kids J').head?.map (·.1) = none := by rw [show kids J' = [] from he]; rfl
+        rw [i4, w1] at this
+        cases this
+    have hinv' : SInv (h + 1) lo hi (pre ++ (c, J') :: post) := by
+      refine ⟨pairwise_cv_congr hmap.symm h1, fun e he => ?_, ?_⟩
+      · simp only [List.mem_append, List.mem_cons] at he
+        rcases he with he | he | he
+        · exact h2 e (by simp [he])
+        · rw [he]; exact h2 (c, J) (by simp)
+        · exact h2 e (by simp [he])
+      · rw [kidsWF_append]
+        exact ⟨h3a, ⟨hJ'.1, h3c⟩⟩
+    refine ⟨(ih2 lo hi hinv').1, fun hn => ?_⟩
+    have hn' : ∀ e ∈ pre ++ (c, J') :: post, e.2 ≠ [] := by
+      intro e he
+      simp only [List.mem_append, List.mem_cons] at he
+      rcases he with he | he | he
+      · exact hn e (by simp [he])
+      · rw [he]; exact hJ'.2 (hn (c, J) (by simp))
+      · exact hn e (by simp [he])
+    obtain ⟨k1, k2⟩ := (ih2 lo hi hinv').2 hn'
+    refine ⟨k1, k2.trans ?_⟩
+    cases pre <;> rfl
+
+/-! ## Plan keeps the order -/
+
+theorem mput_sorted (c v : Nat) : ∀ {m : List (Nat × Nat)}, m.Pairwise CvLtA →
+    (mput c v m).Pairwise CvLtA
+  | [], _ => by simp [mput]
+  | (c', v') :: r, h => by
+    rw [List.pairwise_cons] at h
+    unfold mput
+    split
+    · rename_i h1
+      refine List.pairwise_cons.mpr ⟨fun b hb => ?_, List.pairwise_cons.mpr h⟩
+      rcases List.mem_cons.mp hb with rfl | hb
+      · exact h1
+      · have := h.1 b hb; simp only [CvLtA] at this ⊢; omega
+    · split
+      · rename_i h1 h2
+        subst h2
+        exact List.pairwise_cons.mpr ⟨fun b hb => h.1 b hb, h.2⟩
+      · rename_i h1 h2
+        refine List.pairwise_cons.mpr ⟨fun b hb => ?_, mput_sorted c v h.2⟩
+        rcases mem_mput hb with rfl | hb
+        · show c' < c; omega
+        · exact h.1 b hb
+
+/-- The operations applied to the plain map keep it in order and in a range
+that holds them. -/
+theorem applyOps_wf {lo : Nat} {hi : Option Nat} : ∀ (ops : List Op) (m : List (Nat × Nat)),
+    m.Pairwise CvLtA → (∀ e ∈ m, lo ≤ e.1 ∧ Below e.1 hi) →
+    (∀ op ∈ ops, lo ≤ op.cv ∧ Below op.cv hi) →
+    (applyOps ops m).Pairwise CvLtA ∧ ∀ e ∈ applyOps ops m, lo ≤ e.1 ∧ Below e.1 hi
+  | [], m, hs, hb, _ => ⟨hs, hb⟩
+  | o :: ops, m, hs, hb, hops => by
+    simp only [applyOps, List.foldl_cons]
+    have ho := hops o List.mem_cons_self
+    have h1 : (applyOp m o).Pairwise CvLtA ∧ ∀ e ∈ applyOp m o, lo ≤ e.1 ∧ Below e.1 hi := by
+      cases o with
+      | put c v =>
+        refine ⟨mput_sorted c v hs, fun e he => ?_⟩
+        rcases mem_mput he with rfl | he
+        · exact ho
+        · exact hb e he
+      | del c => exact ⟨hs.filter _, fun e he => hb e (List.mem_of_mem_filter he)⟩
+    exact applyOps_wf ops _ h1.1 h1.2 (fun op hop => hops op (List.mem_cons_of_mem _ hop))
+
+/-- The children routed and planned are each in order with its range, or
+empty; their compare values are the old ones. -/
+theorem routed_inv {h : Nat}
+    (IH : ∀ (lo : Nat) (hi : Option Nat) (x : Node h) (o : List Op) (x' : Node h), Plan h x o x' →
+      WFE h lo hi x → (∀ op ∈ o, lo ≤ op.cv ∧ Below op.cv hi) → WFE h lo hi x') :
+    ∀ (ks : List (Nat × Node h)) (lo : Nat) (hi : Option Nat) (ops : List Op)
+      (ks' : List (Nat × Node h)), KidsWF (WF h) lo hi ks → ks.Pairwise CvLtA →
+      (∀ op ∈ ops, (∀ c x, ks.head? = some (c, x) → max lo c ≤ op.cv) ∧ Below op.cv hi) →
+      (∀ e ∈ ks.tail, lo < e.1) →
+      Routed (Plan h) ks (route ks ops) ks' →
+      KidsWF (WFE h) lo hi ks' ∧ ks'.map Prod.fst = ks.map Prod.fst
+  | [], _, _, _, _, _, _, _, _, hr => by
+    simp only [route] at hr
+    cases hr
+    exact ⟨trivial, rfl⟩
+  | [(c, x)], lo, hi, ops, ks', hk, _, hops, _, hr => by
+    simp only [route] at hr
+    obtain ⟨hx, _⟩ := hk
+    have hops' : ∀ op ∈ ops, max lo c ≤ op.cv ∧ Below op.cv (nxt ([] : List (Nat × Node h)) hi) :=
+      fun op hop => ⟨(hops op hop).1 c x rfl, (hops op hop).2⟩
+    cases hr with
+    | keep _ _ _ _ _ hr' =>
+      cases hr'
+      exact ⟨⟨Or.inr hx, trivial⟩, rfl⟩
+    | plan _ _ _ x' _ _ _ hp hr' =>
+      cases hr'
+      exact ⟨⟨IH _ _ x ops x' hp (Or.inr hx) hops', trivial⟩, rfl⟩
+  | (c, x) :: (c', y) :: r, lo, hi, ops, ks', hk, hs, hops, htail, hr => by
+    simp only [route] at hr
+    obtain ⟨hx, hk'⟩ := hk
+    have hcc : c < c' := (List.pairwise_cons.mp hs).1 (c', y) (by simp)
+    have hlc' : lo < c' := htail (c', y) (by simp)
+    have hops1 : ∀ op ∈ ops.filter (fun o => decide (o.cv < c')), max lo c ≤ op.cv ∧
+        Below op.cv (nxt ((c', y) :: r) hi) := by
+      intro op hop
+      rw [List.mem_filter] at hop
+      exact ⟨(hops op hop.1).1 c x rfl, by simpa [nxt, Below] using hop.2⟩
+    have hops2 : ∀ op ∈ ops.filter (fun o => decide (c' ≤ o.cv)),
+        (∀ c0 x0, ((c', y) :: r).head? = some (c0, x0) → max lo c0 ≤ op.cv) ∧ Below op.cv hi := by
+      intro op hop
+      rw [List.mem_filter] at hop
+      refine ⟨fun c0 x0 h0 => ?_, (hops op hop.1).2⟩
+      simp only [List.head?_cons, Option.some.injEq, Prod.mk.injEq] at h0
+      obtain ⟨rfl, _⟩ := h0
+      have := hop.2
+      simp only [decide_eq_true_eq] at this
+      omega
+    have htail2 : ∀ e ∈ ((c', y) :: r).tail, lo < e.1 :=
+      fun e he => htail e (by simp at he ⊢; exact Or.inr he)
+    generalize ho1 : ops.filter (fun o => decide (o.cv < c')) = o1 at hr hops1
+    cases hr with
+    | keep _ _ _ _ ks'' hr' =>
+      obtain ⟨r1, r2⟩ := routed_inv IH ((c', y) :: r) lo hi _ ks'' hk'
+        (List.pairwise_cons.mp hs).2 hops2 htail2 hr'
+      refine ⟨⟨?_, r1⟩, by simp [r2]⟩
+      have : nxt ks'' hi = some c' := by
+        cases ks'' with
+        | nil => simp at r2
+        | cons k rest => simp only [List.map_cons, List.cons.injEq] at r2; simp [nxt, r2.1]
+      rw [this]
+      exact Or.inr hx
+    | plan _ _ _ x' _ _ ks'' hp hr' =>
+      obtain ⟨r1, r2⟩ := routed_inv IH ((c', y) :: r) lo hi _ ks'' hk'
+        (List.pairwise_cons.mp hs).2 hops2 htail2 hr'
+      refine ⟨⟨?_, r1⟩, by simp [r2]⟩
+      have : nxt ks'' hi = some c' := by
+        cases ks'' with
+        | nil => simp at r2
+        | cons k rest => simp only [List.map_cons, List.cons.injEq] at r2; simp [nxt, r2.1]
+      rw [this]
+      exact IH _ _ x _ x' hp (Or.inr hx) hops1
+
+/-- **Plan keeps the order**: a node in order (or empty), with operations in
+its range, is planned into a node in order with the same range, or an empty
+one. -/
+theorem Plan.wf : ∀ (h : Nat) (lo : Nat) (hi : Option Nat) (es : Node h) (ops : List Op)
+    (es' : Node h), Plan h es ops es' → WFE h lo hi es →
+    (∀ op ∈ ops, lo ≤ op.cv ∧ Below op.cv hi) → WFE h lo hi es'
+  | 0, lo, hi, es, ops, es', hp, hw, hops => by
+    simp only [Plan] at hp
+    subst hp
+    have hm : (es : List (Nat × Nat)).Pairwise CvLtA ∧ ∀ e ∈ (es : List (Nat × Nat)), lo ≤ e.1 ∧ Below e.1 hi := by
+      rcases hw with rfl | hw
+      · exact ⟨List.Pairwise.nil, by simp⟩
+      · exact ⟨hw.2.1, hw.2.2⟩
+    have := applyOps_wf ops es hm.1 hm.2 hops
+    by_cases he : applyOps ops es = []
+    · exact Or.inl he
+    · exact Or.inr ⟨he, this.1, this.2⟩
+  | h + 1, lo, hi, es, ops, es', hp, hw, hops => by
+    obtain ⟨ks', ks'', hr, hs, hne, he⟩ := hp
+    rcases hw with hw0 | hw
+    · -- an empty node: nothing to route, nothing planned
+      have hk : kids es = [] := by rw [hw0]; rfl
+      rw [hk] at hr
+      simp only [route] at hr
+      cases hr
+      have : ks'' = [] := hs.nil_eq rfl
+      subst this
+      left
+      show kids es' = []
+      rw [he]; rfl
+    obtain ⟨w1, w2, w3, w4⟩ := hw
+    have htail := WF_tail_above ⟨w1, w2, w3, w4⟩
+    have hops' : ∀ op ∈ ops, (∀ c x, (kids es).head? = some (c, x) → max lo c ≤ op.cv) ∧
+        Below op.cv hi := by
+      intro op hop
+      refine ⟨fun c x hcx => ?_, (hops op hop).2⟩
+      rw [hcx] at w1
+      simp only [Option.map_some, Option.some.injEq] at w1
+      subst w1
+      simpa using (hops op hop).1
+    obtain ⟨r1, r2⟩ := routed_inv (fun lo hi x o x' hp hx ho => Plan.wf h lo hi x o x' hp hx ho)
+      (kids es) lo hi ops ks' w4 w2 hops' htail hr
+    have hinv : SInv h lo hi ks' := by
+      refine ⟨pairwise_cv_congr r2.symm w2, fun e he => ?_, r1⟩
+      have : e.1 ∈ (kids es).map Prod.fst := by rw [← r2]; exact List.mem_map_of_mem he
+      obtain ⟨e0, he0, h0⟩ := List.mem_map.mp this
+      rw [← h0]; exact w3 e0 he0
+    obtain ⟨⟨s1, s2, s3⟩, _⟩ := hs.inv lo hi hinv
+    -- the settled children, the first with the empty key
+    cases ks'' with
+    | nil => left; show kids es' = []; rw [he]; rfl
+    | cons k rest =>
+      obtain ⟨c0, x0⟩ := k
+      right
+      have hk' : kids es' = (0, x0) :: rest := by rw [he]; rfl
+      have hx0 : x0 ≠ [] := hne (c0, x0) List.mem_cons_self
+      have hrest : ∀ e ∈ rest, e.2 ≠ [] := fun e he => hne e (List.mem_cons_of_mem _ he)
+      rw [List.pairwise_cons] at s1
+      obtain ⟨s3a, s3b⟩ := s3
+      refine ⟨by rw [hk']; rfl, ?_, ?_, ?_⟩
+      · rw [hk', List.pairwise_cons]
+        refine ⟨fun b hb => ?_, s1.2⟩
+        have := s1.1 b hb
+        show 0 < b.1
+        simp only [CvLtA] at this; omega
+      · rw [hk']
+        intro e he
+        rcases List.mem_cons.mp he with rfl | he
+        · rcases Nat.eq_zero_or_pos c0 with h0 | h0
+          · rw [← h0]; exact s2 (c0, x0) List.mem_cons_self
+          · exact below_trans h0 (s2 (c0, x0) List.mem_cons_self)
+        · exact s2 e (List.mem_cons_of_mem _ he)
+      · rw [hk']
+        refine ⟨?_, kidsWF_of_WFE lo hi rest s3b hrest⟩
+        rcases s3a with h0 | h0
+        · exact absurd h0 hx0
+        · exact WF_mono h _ _ _ _ x0 h0 (by omega) (boundLe_refl _)
+
+end PeProof.Abs

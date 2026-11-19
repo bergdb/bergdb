@@ -1,0 +1,466 @@
+/-
+bergdb 026-24 (copied for 030-21), phase 3: the lemma of emit (026-23, section 1.2, the proof's
+part 2, "one node"). PE's emit writes a virtual node once, from its base's
+klongs and the list F it is to hold at time i: either the base gets klongs
+appended (`emitKs`: a time klong of i, a bitmap if a compare value of the
+base's live list is not in F, a key klong for each entry of F that is new or
+repointed), or a new node is made (`newKs`: a time klong of i and F's
+entries). This file proves, against the contract's definitions
+(lean/contract/Contract/Statement.lean and Tree.lean), that:
+
+* the node's live klongs are then exactly F (`emitKs_live`, `newKs_live`);
+* its klongs stay well formed, W1 to W4 (`emitKs_wf`, `newKs_wf`);
+* the base's klongs are kept and the first klong added is a time klong of i,
+  the frame of the contract's `Ext` (`emitKs_ext`), so a reader at an
+  earlier time sees the base as it was (`emitKs_prefixAt`);
+* every key klong written names a pointee of F (`emitKs_ptrs`), and the
+  number of klongs added is what PE's decision counts (`emitKs_length`).
+
+Premises: the base's klongs are well formed, nonempty, and of times before
+i; F is in strictly increasing order of its compare values. Nothing else: no
+fact of a state between operations, only of the base (a node of the tree
+before) and of F.
+
+`emitKs` restates `Pe.appendKs` (lean/pe/Pe/Plan.lean) on the contract's
+klongs; the model's `bitsUnion` is the union of the same bits, kept sorted,
+where the contract's bitmap is a list read by membership only.
+-/
+import Contract.Proof.PeQuarry
+import Contract.Check
+import Contract.PeWriter
+
+namespace PeProof
+
+open Contract Contract.PE
+
+/-! ## Definitions -/
+
+/-- The live list without the compare values of R. -/
+def dropCvs (R : List Nat) (l : List (Nat × NodeId)) : List (Nat × NodeId) :=
+  l.filter (fun a => !R.contains a.1)
+
+/-! ## Small facts -/
+
+theorem mem_dropCvs {R : List Nat} {l : List (Nat × NodeId)} {p : Nat × NodeId} :
+    p ∈ dropCvs R l ↔ p ∈ l ∧ p.1 ∉ R := by
+  simp [dropCvs]
+
+theorem dropCvs_sorted (R : List Nat) {l : List (Nat × NodeId)} (h : l.Pairwise CvLt) :
+    (dropCvs R l).Pairwise CvLt :=
+  h.filter _
+
+theorem dropCvs_nil (l : List (Nat × NodeId)) : dropCvs [] l = l := by
+  simp [dropCvs]
+
+theorem mem_bitsIn {ks : List Klong} {R : List Nat} {j : Nat} :
+    j ∈ bitsIn ks R ↔ ∃ c ∈ R, cvAt ks j = some c := by
+  unfold bitsIn
+  rw [List.mem_filterMap]
+  constructor
+  · rintro ⟨⟨k, i⟩, hm, hf⟩
+    have hi := getElem?_of_mem_zipIdx hm
+    cases k with
+    | key c y =>
+      simp only at hf
+      split at hf
+      · rename_i hc
+        simp only [Option.some.injEq] at hf
+        subst hf
+        exact ⟨c, List.contains_iff_mem.mp hc, cvAt_of_key hi⟩
+      · simp at hf
+    | time t => simp at hf
+    | del b => simp at hf
+  · rintro ⟨c, hc, hj⟩
+    unfold cvAt at hj
+    cases hk : ks[j]? with
+    | none => rw [hk] at hj; simp at hj
+    | some k =>
+      rw [hk] at hj
+      cases k with
+      | key c' y =>
+        simp only [Option.some.injEq] at hj
+        subst hj
+        refine ⟨(Klong.key c' y, j), List.mem_zipIdx_iff_getElem?.mpr hk, ?_⟩
+        simpa using hc
+      | time t => simp at hj
+      | del b => simp at hj
+
+theorem bitsIn_lt {ks : List Klong} {R : List Nat} {j : Nat} (h : j ∈ bitsIn ks R) :
+    j < ks.length := by
+  obtain ⟨c, _, hj⟩ := mem_bitsIn.mp h
+  exact cvAt_lt hj
+
+theorem keysOf_snoc (A : List (Nat × NodeId)) (a : Nat × NodeId) :
+    keysOf (A ++ [a]) = keysOf A ++ [Klong.key a.1 a.2] := by
+  simp [keysOf]
+
+theorem lastBitmap_append_keys (L : List Klong) (A : List (Nat × NodeId)) :
+    lastBitmap (L ++ keysOf A) = lastBitmap L := by
+  induction A using List.reverseRecOn with
+  | nil => simp [keysOf]
+  | append_singleton A a ih =>
+    rw [keysOf_snoc, ← List.append_assoc, lastBitmap_snoc]
+    exact ih
+
+/-- Key klongs appended after klongs whose last bitmap holds only earlier
+indexes: the live list is the fold of `insertCv`. -/
+theorem live_append_keys {L : List Klong} (h : ∀ j ∈ lastBitmap L, j < L.length)
+    (A : List (Nat × NodeId)) :
+    live (L ++ keysOf A) = A.foldl (fun m cy => insertCv cy.1 cy.2 m) (live L) := by
+  induction A using List.reverseRecOn with
+  | nil => simp [keysOf]
+  | append_singleton A a ih =>
+    rw [keysOf_snoc, ← List.append_assoc, live_append_key_of, ih, List.foldl_append]
+    · rfl
+    · rw [lastBitmap_append_keys]
+      intro j hj
+      have := h j hj
+      simp only [List.length_append]
+      omega
+
+/-! ## The live list under a bitmap of several compare values -/
+
+theorem dropCvs_insertCv_mem {R : List Nat} {c : Nat} (hc : c ∈ R) (y : NodeId)
+    {m : List (Nat × NodeId)} (hs : m.Pairwise CvLt) :
+    dropCvs R (insertCv c y m) = dropCvs R m := by
+  refine cvSorted_ext (dropCvs_sorted R (insertCv_sorted c y hs)) (dropCvs_sorted R hs)
+    (fun p => ?_)
+  rw [mem_dropCvs, mem_dropCvs, mem_insertCv_iff hs]
+  constructor
+  · rintro ⟨h | ⟨h1, _⟩, h3⟩
+    · subst h; exact absurd hc h3
+    · exact ⟨h1, h3⟩
+  · rintro ⟨h1, h3⟩
+    exact ⟨Or.inr ⟨h1, fun e => h3 (e ▸ hc)⟩, h3⟩
+
+theorem dropCvs_insertCv_nmem {R : List Nat} {c : Nat} (hc : c ∉ R) (y : NodeId)
+    {m : List (Nat × NodeId)} (hs : m.Pairwise CvLt) :
+    dropCvs R (insertCv c y m) = insertCv c y (dropCvs R m) := by
+  refine cvSorted_ext (dropCvs_sorted R (insertCv_sorted c y hs))
+    (insertCv_sorted c y (dropCvs_sorted R hs)) (fun p => ?_)
+  rw [mem_dropCvs, mem_insertCv_iff hs, mem_insertCv_iff (dropCvs_sorted R hs), mem_dropCvs]
+  constructor
+  · rintro ⟨h | ⟨h1, h2⟩, h3⟩
+    · exact Or.inl h
+    · exact Or.inr ⟨⟨h1, h3⟩, h2⟩
+  · rintro (h | ⟨⟨h1, h3⟩, h2⟩)
+    · subst h; exact ⟨Or.inl rfl, hc⟩
+    · exact ⟨Or.inr ⟨h1, h2⟩, h3⟩
+
+/-- The live klongs under a bitmap U that deletes what D deletes and every key
+klong of a compare value in R: those under D without R (`liveWith_union` of
+the tag, for several compare values). -/
+theorem liveWith_unionR (R : List Nat) (D U : List Nat) (L : List (Klong × Nat))
+    (hU : ∀ c y i, (Klong.key c y, i) ∈ L → (i ∈ U ↔ i ∈ D ∨ c ∈ R)) :
+    liveWith U L = dropCvs R (liveWith D L) := by
+  unfold liveWith
+  refine foldl_sim_mem _ _
+    (fun (m m' : List (Nat × NodeId)) => m = dropCvs R m' ∧ m'.Pairwise CvLt)
+    (fun m m' => m = dropCvs R m') (fun _ _ h => h.1) L ?_ [] [] ⟨rfl, List.Pairwise.nil⟩
+  rintro m m' ⟨k, i⟩ hmem ⟨hm, hs⟩
+  cases k with
+  | time x => exact ⟨hm, hs⟩
+  | del b => exact ⟨hm, hs⟩
+  | key c y =>
+    have hu := hU c y i hmem
+    simp only [List.contains_iff_mem]
+    by_cases hc : c ∈ R
+    · have hiU : i ∈ U := hu.mpr (Or.inr hc)
+      simp only [hiU, ite_true]
+      by_cases hiD : i ∈ D
+      · simp only [hiD, ite_true]
+        exact ⟨hm, hs⟩
+      · simp only [hiD, ite_false]
+        exact ⟨by rw [dropCvs_insertCv_mem hc y hs, hm], insertCv_sorted _ _ hs⟩
+    · have hiff : i ∈ U ↔ i ∈ D := by
+        rw [hu]
+        exact or_iff_left hc
+      by_cases hiD : i ∈ D
+      · simp only [hiD, hiff.mpr hiD, ite_true]
+        exact ⟨hm, hs⟩
+      · have hiU : i ∉ U := fun h => hiD (hiff.mp h)
+        simp only [hiD, hiU, ite_false]
+        exact ⟨by rw [dropCvs_insertCv_nmem hc y hs, hm], insertCv_sorted _ _ hs⟩
+
+/-- The live list after the head of emit's klongs: the base's without the
+compare values removed. -/
+theorem live_emitHead (i : Time) (ks : List Klong) (R : List Nat) :
+    live (ks ++ emitHead i ks R) = dropCvs R (live ks) := by
+  unfold emitHead
+  split
+  · rename_i hR
+    rw [List.isEmpty_iff.mp hR, dropCvs_nil]
+    exact live_append_time ks i
+  · rw [show ks ++ [Klong.time i, Klong.del (emitBits ks R)] =
+        (ks ++ [Klong.time i]) ++ [Klong.del (emitBits ks R)] by simp,
+      live_snoc_del, liveWith_snoc_time]
+    unfold live
+    refine liveWith_unionR R _ _ _ (fun c y j hm => ?_)
+    have hj := cvAt_of_key (getElem?_of_mem_zipIdx hm)
+    unfold emitBits
+    rw [List.mem_append, mem_bitsIn]
+    constructor
+    · rintro (h | ⟨c', hc', h2⟩)
+      · exact Or.inl h
+      · rw [hj, Option.some.injEq] at h2
+        exact Or.inr (h2 ▸ hc')
+    · rintro (h | h)
+      · exact Or.inl h
+      · exact Or.inr ⟨c, h, hj⟩
+
+theorem lastBitmap_emitHead_lt {ks : List Klong} (hwf : klongsWf ks = true) (i : Time)
+    (R : List Nat) :
+    ∀ j ∈ lastBitmap (ks ++ emitHead i ks R), j < (ks ++ emitHead i ks R).length := by
+  have hb := (bmW_of_wf hwf).lt_length
+  unfold emitHead
+  split
+  · rw [lastBitmap_snoc]
+    intro j hj
+    have := hb j hj
+    simp only [List.length_append, List.length_singleton]
+    omega
+  · rw [show ks ++ [Klong.time i, Klong.del (emitBits ks R)] =
+        (ks ++ [Klong.time i]) ++ [Klong.del (emitBits ks R)] by simp, lastBitmap_snoc]
+    intro j hj
+    simp only [List.length_append, List.length_singleton]
+    unfold emitBits at hj
+    rcases List.mem_append.mp hj with h | h
+    · have := hb j h; omega
+    · have := bitsIn_lt h; omega
+
+/-! ## The live list after emit -/
+
+theorem mem_removedCvs {lb F : List (Nat × NodeId)} {c : Nat} :
+    c ∈ removedCvs lb F ↔ (∃ y, (c, y) ∈ lb) ∧ ∀ e ∈ F, e.1 ≠ c := by
+  unfold removedCvs
+  simp only [List.mem_map, List.mem_filter, Bool.not_eq_eq_eq_not, Bool.not_true,
+    List.any_eq_false, beq_iff_eq]
+  constructor
+  · rintro ⟨⟨c', y⟩, ⟨h1, h2⟩, rfl⟩
+    exact ⟨⟨y, h1⟩, fun e he heq => h2 e he heq⟩
+  · rintro ⟨⟨y, h1⟩, h2⟩
+    exact ⟨(c, y), ⟨h1, fun e he heq => h2 e he heq⟩, rfl⟩
+
+theorem mem_addedOf {lb F : List (Nat × NodeId)} {q : Nat × NodeId} :
+    q ∈ addedOf lb F ↔ q ∈ F ∧ lb.lookup q.1 ≠ some q.2 := by
+  simp [addedOf]
+
+/-- In a list in strictly increasing order of compare values, two members of
+one compare value are one. -/
+theorem eq_of_cv_eq {F : List (Nat × NodeId)} (hF : F.Pairwise CvLt) {p q : Nat × NodeId}
+    (hp : p ∈ F) (hq : q ∈ F) (h : p.1 = q.1) : p = q := by
+  induction F with
+  | nil => simp at hp
+  | cons a r ih =>
+    rw [List.pairwise_cons] at hF
+    rcases List.mem_cons.mp hp with hpa | hp'
+    · rcases List.mem_cons.mp hq with hqa | hq'
+      · rw [hpa, hqa]
+      · have := hF.1 q hq'; rw [← hpa] at this; unfold CvLt at this; omega
+    · rcases List.mem_cons.mp hq with hqa | hq'
+      · have := hF.1 p hp'; rw [← hqa] at this; unfold CvLt at this; omega
+      · exact ih hF.2 hp' hq'
+
+theorem foldl_insertCv_sorted : ∀ (A m : List (Nat × NodeId)), m.Pairwise CvLt →
+    (A.foldl (fun m cy => insertCv cy.1 cy.2 m) m).Pairwise CvLt
+  | [], _, h => h
+  | a :: A, _, h => foldl_insertCv_sorted A _ (insertCv_sorted a.1 a.2 h)
+
+/-- The fold of the added entries into the base's live list without the
+removed compare values is F. -/
+theorem fold_added {lb F : List (Nat × NodeId)} (hlb : lb.Pairwise CvLt) (hF : F.Pairwise CvLt) :
+    (addedOf lb F).foldl (fun m cy => insertCv cy.1 cy.2 m) (dropCvs (removedCvs lb F) lb) = F := by
+  have hA : (addedOf lb F).Pairwise CvLt := hF.filter _
+  refine cvSorted_ext ?_ hF (fun p => ?_)
+  · exact foldl_insertCv_sorted _ _ (dropCvs_sorted _ hlb)
+  rw [mem_foldl_insertCv _ _ (dropCvs_sorted _ hlb) (CvLt.ne hA), mem_dropCvs, mem_removedCvs]
+  constructor
+  · rintro (h | ⟨⟨h1, h2⟩, h3⟩)
+    · exact (mem_addedOf.mp h).1
+    · have : ∃ e ∈ F, e.1 = p.1 := by
+        by_contra hn
+        push Not at hn
+        exact h2 ⟨⟨p.2, h1⟩, fun e he => hn e he⟩
+      obtain ⟨e, he, he1⟩ := this
+      by_cases heq : e.2 = p.2
+      · have : e = p := Prod.ext he1 heq
+        exact this ▸ he
+      · exfalso
+        refine h3 e (mem_addedOf.mpr ⟨he, ?_⟩) he1
+        rw [he1, (lookup_iff_mem hlb p.1 p.2).mpr h1]
+        exact fun h => heq (Option.some.inj h).symm
+  · intro hp
+    by_cases hl : lb.lookup p.1 = some p.2
+    · refine Or.inr ⟨⟨(lookup_iff_mem hlb p.1 p.2).mp hl, fun h => (h.2 p hp) rfl⟩, ?_⟩
+      intro q hq hq1
+      have hqF := mem_addedOf.mp hq
+      have : q = p := eq_of_cv_eq hF hqF.1 hp hq1
+      exact hqF.2 (this ▸ hl)
+    · exact Or.inl (mem_addedOf.mpr ⟨hp, hl⟩)
+
+/-- **The lemma of emit, the live list**: after emit's klongs, the base holds
+exactly F. -/
+theorem emitKs_live {ks : List Klong} (hwf : klongsWf ks = true) (i : Time)
+    {F : List (Nat × NodeId)} (hF : F.Pairwise CvLt) :
+    live (ks ++ emitKs i ks F) = F := by
+  unfold emitKs
+  rw [← List.append_assoc, live_append_keys (lastBitmap_emitHead_lt hwf i _), live_emitHead]
+  exact fold_added (live_sorted ks) hF
+
+/-! ## Well formed: W1 to W4 -/
+
+/-- A bitmap that holds B, and every key klong of a compare value in R, set after
+klongs where B is well formed (`bitmapOk_union` of the tag, for several compare
+values). -/
+theorem bitmapOk_unionR {ks0 : List Klong} {before B U : List Nat} {R : List Nat}
+    (hB : ∀ j ∈ B, j < ks0.length ∧ (cvAt ks0 j).isSome = true ∧
+      ∀ j', j' < j → cvAt ks0 j' = cvAt ks0 j → j' ∈ B)
+    (hbefore : ∀ j ∈ before, j ∈ B) (hU : ∀ j, j ∈ U ↔ j ∈ B ∨ ∃ c ∈ R, cvAt ks0 j = some c) :
+    bitmapOk (ks0 ++ [.del U]) ks0.length before U = true := by
+  have hcv : ∀ j, cvAt (ks0 ++ [.del U]) j = cvAt ks0 j := cvAt_snoc (by simp)
+  rw [bitmapOk_iff_all]
+  simp only [hcv]
+  refine ⟨fun j hj => ?_, fun j hj => (hU j).mpr (Or.inl (hbefore j hj)),
+    fun j hj j' hlt heq => ?_⟩
+  · rcases (hU j).mp hj with h | ⟨c, _, h⟩
+    · exact ⟨(hB j h).1, (hB j h).2.1⟩
+    · exact ⟨cvAt_lt h, by rw [h]; rfl⟩
+  · rcases (hU j).mp hj with h | ⟨c, hc, h⟩
+    · exact (hU j').mpr (Or.inl ((hB j h).2.2 j' hlt heq))
+    · exact (hU j').mpr (Or.inr ⟨c, hc, heq.trans h⟩)
+
+theorem klongsWf_snoc_unionR {ks1 : List Klong} (h : klongsWf ks1 = true) (hne : ks1 ≠ [])
+    {B U : List Nat} {R : List Nat}
+    (hB : ∀ j ∈ B, j < ks1.length ∧ (cvAt ks1 j).isSome = true ∧
+      ∀ j', j' < j → cvAt ks1 j' = cvAt ks1 j → j' ∈ B)
+    (hbefore : ∀ j ∈ lastBitmap ks1, j ∈ B)
+    (hU : ∀ j, j ∈ U ↔ j ∈ B ∨ ∃ c ∈ R, cvAt ks1 j = some c) :
+    klongsWf (ks1 ++ [.del U]) = true := by
+  simp only [klongsWf, Bool.and_eq_true] at h ⊢
+  rw [timesOk_snoc_del hne, bitmapsOk_snoc_del, h.2, Bool.true_and]
+  exact ⟨h.1, bitmapOk_unionR hB hbefore hU⟩
+
+theorem klongsWf_append_keys {L : List Klong} (h : klongsWf L = true) (hne : L ≠ []) :
+    ∀ A : List (Nat × NodeId), klongsWf (L ++ keysOf A) = true := by
+  intro A
+  induction A using List.reverseRecOn with
+  | nil => simpa [keysOf] using h
+  | append_singleton A a ih =>
+    rw [keysOf_snoc, ← List.append_assoc]
+    exact klongsWf_append_key ih (by simp [hne]) _ _
+
+theorem klongsWf_emitHead {ks : List Klong} (hwf : klongsWf ks = true) {i : Time}
+    (ht : ∀ t, Klong.time t ∈ ks → t < i) (R : List Nat) :
+    klongsWf (ks ++ emitHead i ks R) = true := by
+  have h1 : klongsWf (ks ++ [Klong.time i]) = true := klongsWf_append_time hwf ht
+  unfold emitHead
+  split
+  · exact h1
+  · rw [show ks ++ [Klong.time i, Klong.del (emitBits ks R)] =
+        (ks ++ [Klong.time i]) ++ [Klong.del (emitBits ks R)] by simp]
+    have hcv : ∀ j, cvAt (ks ++ [Klong.time i]) j = cvAt ks j := cvAt_snoc (by simp)
+    have hlb : lastBitmap (ks ++ [Klong.time i]) = lastBitmap ks := lastBitmap_snoc _ _
+    refine klongsWf_snoc_unionR h1 (by simp) (B := lastBitmap ks) (R := R) ?_
+      (by rw [hlb]; exact fun j h => h) ?_
+    · intro j hj
+      have := lastBitmap_facts h1 j (by rw [hlb]; exact hj)
+      rw [hlb] at this
+      exact this
+    · intro j
+      unfold emitBits
+      rw [List.mem_append, mem_bitsIn, hcv]
+
+/-- **The lemma of emit, well formed**: the base with emit's klongs keeps W1 to
+W4. -/
+theorem emitKs_wf {ks : List Klong} (hwf : klongsWf ks = true) (hne : ks ≠ []) {i : Time}
+    (ht : ∀ t, Klong.time t ∈ ks → t < i) (F : List (Nat × NodeId)) :
+    klongsWf (ks ++ emitKs i ks F) = true := by
+  unfold emitKs
+  rw [← List.append_assoc]
+  exact klongsWf_append_keys (klongsWf_emitHead hwf ht _) (by simp [hne]) _
+
+/-! ## The frame, the pointers, the count -/
+
+/-- **The lemma of emit, the frame**: the base's klongs are kept, and the first
+klong added is a time klong of i (the contract's `Ext` for a key node). -/
+theorem emitKs_ext (i : Time) (ks : List Klong) (F : List (Nat × NodeId)) :
+    ∃ more, ks ++ emitKs i ks F = ks ++ Klong.time i :: more := by
+  unfold emitKs emitHead
+  split
+  · exact ⟨keysOf (addedOf (live ks) F), by simp⟩
+  · exact ⟨Klong.del (emitBits ks (removedCvs (live ks) F)) :: keysOf (addedOf (live ks) F),
+      by simp⟩
+
+theorem extKs_append_time (i : Time) (more : List Klong) :
+    ∀ ks : List Klong, extKs i ks (ks ++ Klong.time i :: more) = true
+  | [] => by simp [extKs]
+  | a :: r => by simpa [extKs] using extKs_append_time i more r
+
+/-- The same, as the trace checker computes it (`extKs`, Check.lean). -/
+theorem emitKs_extKs (i : Time) (ks : List Klong) (F : List (Nat × NodeId)) :
+    extKs i ks (ks ++ emitKs i ks F) = true := by
+  obtain ⟨more, h⟩ := emitKs_ext i ks F
+  rw [h]
+  exact extKs_append_time i more ks
+
+/-- A reader at a time before i sees the base as it was. -/
+theorem prefixAt_append_time {i t : Time} (hti : t < i) (more : List Klong) :
+    ∀ ks : List Klong, prefixAt (ks ++ Klong.time i :: more) t = prefixAt ks t := by
+  intro ks
+  induction ks with
+  | nil => simp [prefixAt, Nat.not_le.mpr hti]
+  | cons a r ih =>
+    unfold prefixAt at ih ⊢
+    simp only [List.cons_append, List.takeWhile_cons]
+    split <;> simp [ih]
+
+theorem emitKs_prefixAt {ks : List Klong} {i t : Time} (hti : t < i) (F : List (Nat × NodeId)) :
+    prefixAt (ks ++ emitKs i ks F) t = prefixAt ks t := by
+  obtain ⟨more, h⟩ := emitKs_ext i ks F
+  rw [h]
+  exact prefixAt_append_time hti more ks
+
+/-- Every key klong that emit writes names a pointee of F. -/
+theorem emitKs_ptrs {i : Time} {ks : List Klong} {F : List (Nat × NodeId)} {c : Nat} {y : NodeId}
+    (h : Klong.key c y ∈ emitKs i ks F) : (c, y) ∈ F := by
+  unfold emitKs emitHead at h
+  rw [List.mem_append] at h
+  rcases h with h | h
+  · split at h <;> simp at h
+  · unfold keysOf at h
+    simp only [List.mem_map, Klong.key.injEq] at h
+    obtain ⟨e, he, h1, h2⟩ := h
+    rw [← h1, ← h2]
+    exact (mem_addedOf.mp he).1
+
+/-- The number of klongs emit adds: what PE's decision counts against the
+node size. -/
+theorem emitKs_length (i : Time) (ks : List Klong) (F : List (Nat × NodeId)) :
+    (emitKs i ks F).length =
+      (if (removedCvs (live ks) F).isEmpty then 1 else 2) + (addedOf (live ks) F).length := by
+  unfold emitKs emitHead keysOf
+  split <;> simp <;> omega
+
+/-! ## A new node -/
+
+/-- **The lemma of emit, a new node**: a time klong of i and F's entries hold
+exactly F, well formed. -/
+theorem newKs_live (i : Time) {F : List (Nat × NodeId)} (hF : F.Pairwise CvLt) :
+    live (newKs i F) = F :=
+  live_version hF i
+
+theorem newKs_wf (i : Time) (F : List (Nat × NodeId)) : klongsWf (newKs i F) = true :=
+  klongsWf_version i F
+
+theorem newKs_ptrs {i : Time} {F : List (Nat × NodeId)} {c : Nat} {y : NodeId}
+    (h : Klong.key c y ∈ newKs i F) : (c, y) ∈ F := by
+  unfold newKs keysOf at h
+  simp only [List.mem_cons, List.mem_map, Klong.key.injEq, reduceCtorEq, false_or] at h
+  obtain ⟨e, he, h1, h2⟩ := h
+  rw [← h1, ← h2]
+  exact he
+
+theorem newKs_length (i : Time) (F : List (Nat × NodeId)) : (newKs i F).length = F.length + 1 := by
+  simp [newKs, keysOf]
+
+end PeProof

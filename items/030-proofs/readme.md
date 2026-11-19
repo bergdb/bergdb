@@ -91,6 +91,13 @@ D0. The contract approach, a fresh start
   part) was taken off `main` on 2026-11-18 (Frans, 08:42; 030-18): it is
   at the tag `writer-proof-2026-11-18`. No proof nights for now (006-31,
   D4).
+* **PE's writer proved** (030-21, 2026-11-19): PE (026-24) as total
+  functions on the contract's tree, the trial's tree on all 288 traces;
+  every history it writes from the empty tree meets `MeetsTop`
+  (`Contract.PE.pe_meetsTop_start`), the standard axioms only. Left for the
+  writer's part of the aim: `MeetsFull` for PE (its record in the model's
+  words: recovery, restarts, eviction, cuts), PE's acceptance (tested),
+  Java.
 * **What it changes here:** D1 is paused; D3's goal moves to 030-04's
   step 4. "The aim" above is as written on 16 November; D0's aim is its
   goal. The rules above hold for `lean/` as before; the new package's
@@ -375,6 +382,15 @@ Files
   so every record meets it whatever the writer does; what Java's
   `TransCheck` does today, what it would take, and the cost, not yet
   measured. Written 2026-11-18. Status: a note.
+* [030-21](21-pe-proof.md). The complete proof that PE's writer meets the
+  writer's contract: PE as total functions on the contract's tree
+  (`Contract/PeWriter.lean`), the trial's tree at all 221,142 transactions
+  of 288 traces; `pe_step` (a transaction PE accepts meets the contract,
+  TREE and the top's clauses, and PE keeps its state), `pe_meetsTop` and
+  `pe_meetsTop_start` (every history PE writes from the empty tree meets
+  `MeetsTop`); 15,003 lines, the standard axioms only, gated. Left:
+  `MeetsFull` for PE, its acceptance (tested), Java. The night of 18
+  November. Status: done.
 
 Log
 ===

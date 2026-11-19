@@ -1,0 +1,26 @@
+bergdb 030-21: runpec.sh on 026-21's traces, the level 2 set (small 70, drain 110). 2026-11-18.
+
+The binary: petrial built from PeTrial.lean.txt here (on the branch
+026-24-pe-trial) with lean/contract/Contract/PeWriter.lean of the branch
+030-21-pe-proof at b443d7a1 (blob dd6df9df: the cut made at emit, the
+deletes of keys the tree cannot hold dropped), unchanged. pec = petrial pe
+--contract --paired --pec; pecrun = petrial pe --pecrun. 4 processes at a
+time, on a machine shared with other sessions (load average 7 to 50): the
+times are wall times under that load. v1 = 026-24's runs/v1 (mode pe,
+--contract --paired). Raw outputs: /Users/f/fl/bench/2026-11-18/pw/runs/r3
+(those of 91136c67, before the fix: runs/r2; see summary.txt).
+
+== set small
+pec: 70 traces, 70 complete, PETRIAL OK 70; transactions 7100: same 7100, differ 0, refused 0 ; the refused ones without their longdel deletes: same 0, differ 0, refused 0; wsdup 0; nodes walked 434672
+pec: RESULT lines equal to v1's (whole line): 70 of 70
+pecrun: 70 traces, 70 complete, PETRIAL OK 70; start {'startTree': 70}; transactions 7100, operations 40260, refused 0 , wsdup 0; gets 40260, Java's reads 35500; failures 0
+pecrun: txs, madekey, versions, tops, bnew, ball, btop equal to v1's RESULT: 70 of 70
+time: small pec 70 traces, 1 s wall, 4 processes
+time: small pecrun 70 traces, 1 s wall, 4 processes
+== set drain
+pec: 110 traces, 110 complete, PETRIAL OK 110; transactions 13900: same 13900, differ 0, refused 0 ; the refused ones without their longdel deletes: same 0, differ 0, refused 0; wsdup 0; nodes walked 2081107
+pec: RESULT lines equal to v1's (whole line): 110 of 110
+pecrun: 110 traces, 110 complete, PETRIAL OK 110; start {'startTree': 110}; transactions 13900, operations 251431, refused 0 , wsdup 0; gets 251431, Java's reads 69500; failures 0
+pecrun: txs, madekey, versions, tops, bnew, ball, btop equal to v1's RESULT: 110 of 110
+time: drain pec 110 traces, 5 s wall, 4 processes
+time: drain pecrun 110 traces, 4 s wall, 4 processes

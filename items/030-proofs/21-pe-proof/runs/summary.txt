@@ -1,0 +1,41 @@
+bergdb 030-21: the new writer (Contract/PeWriter.lean, `Contract.PE.peTx`)
+against the trial's PE program (026-24) on 026-21's 288 traces. 2026-11-18.
+The details per set: level2.txt, reclaim.txt, medium.txt, large.txt,
+own.txt; the bug found in the first version: min-case.txt.
+
+pec: at every transaction, peTx from the trial's tree before (its contract
+heap, top and next id), its tree after compared with the trial's, ids
+matched. pecrun: the new writer alone from startTree (the trial's start, as
+checked by the program), the contract's checks at every transaction.
+
+PeWriter.lean of b443d7a1 (blob dd6df9df), 23:02 to 23:20, raw outputs in
+/Users/f/fl/bench/2026-11-18/pw/runs/r3:
+
+- small (70 traces, 7,100 transactions), drain (110, 13,900), reclaim (15,
+  8,735), medium (27, 13,667), own (6, 7,740), large (60, 170,000): pec the
+  same tree at every transaction, 0 differ, 0 refused; pecrun 0 failures, 0
+  refusals.
+- All 288 (221,142 transactions): the same tree 221,142 times; no node
+  written twice; pecrun 0 failures of the contract (C1 to C5), the frame,
+  fresh ids, the shape rules, the contents against the reference, Java's
+  1,067,010 GET and SCAN lines (the contract's readers) and the history;
+  its counts that depend only on the trees (txs, madekey, versions, tops,
+  bnew, ball, btop) equal v1's RESULT on 288 of 288.
+- Mode pe's RESULT lines (the trial's program, unchanged): equal to v1's on
+  282 of 288 whole; the other 6 (large: l-few-2, 3, 5, 7, 9, 10) equal but
+  for cmp's counts `more` and `more.ball` (8 in all), which the trial
+  program got after its v1 runs (cfe907dc, 026-24 section 2.4).
+- Wall times, 4 processes, load average 7 to 50 from other sessions (pec,
+  pecrun): small 1 s, 1 s; drain 5 s, 4 s; reclaim 1 s, 1 s; medium 64 s,
+  29 s; own 523 s, 82 s; large 289 s, 120 s.
+
+Before the fix, PeWriter.lean of 91136c67 (blob 4c9f249b), 22:29 to 22:56,
+raw outputs in runs/r2: the same tree in 217,246 transactions; 3 differ
+(drain: d-fifo2-3 T=13, d-fifo2-5 T=11 and T=78), the cut of a planned
+child by its parent (`cutKids` in `plan`) before the parent's join is
+rebalanced one level down, where the trial cuts at emit (min-case.txt, 3
+transactions, 29 operations); 3,893 refused (small 371, medium 70, large
+3,452), all for deletes of keys of more than G + 1 segments, noops that
+the trial and Java do as nothing, which `opsOk` refused (run again without
+those deletes: the trial's tree in all 3,893). pecrun 0 failures; its counts
+equal v1's on 286 of 288 (not on the two drain traces of the differences).

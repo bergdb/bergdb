@@ -1,0 +1,140 @@
+bergdb 030-21: the smallest case found where the new writer
+(Contract/PeWriter.lean, `Contract.PE.peTx`) gives another tree than the
+trial's PE program (026-24, lean/pe/Pe/Plan.lean), from the same tree before.
+
+Found on Java's traces first: drain set, d-fifo2-3.trace T=13 and
+d-fifo2-5.trace T=11 and T=78 (the only 3 of the level 2 set's 13,900
+transactions that differ). Then made by hand on the same mechanism and
+shrunk by deleting operations while the difference stays (29 operations in
+3 transactions); both writers' trees meet the contract (--pecrun: no
+failure).
+
+Parameters (the small set's): TREE 8 0 4 1 2 4 4 2, so M = 8, G = 0, H = 4
+(+2), m = 2, c = 4, h = 4, theta = 2, cap = h = 4. Keys of one segment,
+compare value 64 j + 8 for key number j (written below as j).
+
+Transactions 1 and 2 build, by PE itself, the tree before transaction 3:
+  root [L, R]
+    L = [A1 = (10, 11, 12), A2 = (13, 14, 15)]
+    R = [A3 = (20, 30, 40), B1 = (50, 52, 53), B2 = (54, 60, 70, 80)]
+  (the dump below has the exact klongs, ids and compare values)
+Transaction 3: put 16, 17, 18, 19 (all into A2); delete 30, 40 (A3 keeps
+20) and every key of B1 and B2.
+
+Both writers plan the same: A2 gets 7 entries, which do not fit its base (4
+klongs + 1 + 4 > M = 8), so its decision is 2 parts (cutParts 7 = 2, sizes 3
+and 4, the larger last). R keeps one child, A3' with one entry: R' has one
+entry and is small (< m), so the root's rebalance joins it with its left
+neighbour L' (M1, no right one), a join of two inner nodes, whose joined
+list is rebalanced one level down (`down`). There A3' (one entry, changed)
+is small and is joined with its left neighbour. The neighbour differs:
+
+  - trial (Pe/Plan.lean): L's entries in the plan are its children
+    uncut: [A1, A2' (7 entries, parts 2)]. The cut of A2' is emit's. So A3'
+    is joined with all of A2': 7 + 1 = 8 entries, a joined list, cut by
+    nParts c = 4 into 2 parts of 4 and 4 (the larger first).
+    Root after (L and R collapse into it): [A1 (10 11 12),
+    (13 14 15 16), (17 18 19 20)].
+  - new writer (PeWriter.lean): L's planned entries are already cut by
+    `cutKids` in `plan` (`mkNode ... (cutKids es2)`): [A1, A2a (13 14 15),
+    A2b (16 17 18 19)], each piece a new node of `parts 1`. `joinAt`'s
+    `openEs` of L' gives the pieces, so A3' is joined with the last piece
+    only: 4 + 1 = 5 entries, cut into 3 and 2.
+    Root after: [A1 (10 11 12), (13 14 15), (16 17 18), (19 20)].
+
+So the header's claim that cutting a list by the parent (`cutKids`) instead
+of by emit "changes no tree, only the ids that new nodes get" does not hold
+when a planned inner node whose child was cut is then joined with a
+neighbour and the joined list is rebalanced one level down: M1's choice
+(`cntOf` of the left neighbour), the join's partner and the joined list's
+cut all see the pieces in the new writer and the whole list in the trial.
+The same happens one level higher on the traces (d-fifo2-3 T=13: a leaf
+cut into 6 parts under a node cut into 2, then joined).
+
+The trace (TRACE 3 format, readable by petrial):
+TRACE 3
+TREE 8 0 4 1 2 4 4 2
+TX 0
+END 0
+TX 1
+OP P 1 648 110
+OP P 1 1288 120
+OP P 1 1928 130
+OP P 1 2568 140
+OP P 1 3208 150
+OP P 1 3848 160
+OP P 1 4488 170
+OP P 1 5128 180
+END 1
+TX 2
+OP P 1 712 211
+OP P 1 776 212
+OP P 1 840 213
+OP P 1 904 214
+OP P 1 968 215
+OP P 1 3336 252
+OP P 1 3400 253
+OP P 1 3464 254
+END 2
+TX 3
+OP P 1 1032 316
+OP P 1 1096 317
+OP P 1 1160 318
+OP P 1 1224 319
+OP D 1 1928
+OP D 1 2568
+OP D 1 3208
+OP D 1 3336
+OP D 1 3400
+OP D 1 3464
+OP D 1 3848
+OP D 1 4488
+OP D 1 5128
+END 3
+
+petrial pe --pec --pecdump=3 (the new binary of this item; RESULT left out):
+PEC trace=min.trace txs=3 same=2 differ=1 refused=0 refusedby= fsame=0 fdiffer=0 frefused=0 wsdup=0 nodes=36
+PECDUMP min.trace T=3: 13 operations
+  put [1032] 316
+  put [1096] 317
+  put [1160] 318
+  put [1224] 319
+  del [1928]
+  del [2568]
+  del [3208]
+  del [3336]
+  del [3400]
+  del [3464]
+  del [3848]
+  del [4488]
+  del [5128]
+the tree before:
+  1054 L3 [t2 k0>1050 k1288>1052]
+    1050 L2 [t2 k0>1040 k840>1042]
+      1040 L1 leaf [t2 k648>1000 k712>1024 k776>1026]
+      1042 L1 leaf [t2 k840>1028 k904>1030 k968>1032]
+    1052 L2 [t2 k0>1044 k3208>1046 k3464>1048]
+      1044 L1 leaf [t2 k1288>1002 k1928>1004 k2568>1006]
+      1046 L1 leaf [t2 k3208>1008 k3336>1034 k3400>1036]
+      1048 L1 leaf [t2 k3464>1038 k3848>1010 k4488>1012 k5128>1014]
+the trial's nodes new or appended:
+  1070 L2 [t3 k0>1040 k840>1066 k1096>1068] NEW
+    1066 L1 leaf [t3 k840>1028 k904>1030 k968>1032 k1032>1058] NEW
+    1068 L1 leaf [t3 k1096>1060 k1160>1062 k1224>1064 k1288>1002] NEW
+the new writer's nodes new or appended:
+  1065 L2 [t3 k0>1040 k840>1062 k1032>1063 k1224>1064] NEW
+    1062 L1 leaf [t3 k840>1028 k904>1030 k968>1032] NEW
+    1063 L1 leaf [t3 k1032>1058 k1096>1059 k1160>1060] NEW
+    1064 L1 leaf [t3 k1224>1061 k1288>1002] NEW
+PETRIAL FAILED
+
+petrial pe --pecrun:
+PECSTART trace=min.trace start=startTree next=3
+PECRUN trace=min.trace M=8 G=0 H=6 m=2 c=4 h=4 theta=2 start=startTree txs=3 ops=29 refused=0 refusedby= madekey=15 versions=15 tops=3 bnew=1440 ball=1440 btop=208 maxheight=2 gets=29 jreads=0 wsdup=0 fails=
+PETRIAL OK
+
+Fixed by PeWriter.lean of b443d7a1 (030-21-pe-proof; the cut made at emit,
+openEs of a planned node gives its entries before any cut): the same trace,
+petrial pe --pec, with that writer:
+PEC trace=min.trace txs=3 same=3 differ=0 refused=0 refusedby= fsame=0 fdiffer=0 frefused=0 wsdup=0 nodes=50
+PETRIAL OK

@@ -63,3 +63,7 @@ import Contract.RecoverWhole
 import Contract.Proof.Prefix
 import Contract.Proof.RecoverWhole
 import Contract.RecoverWholeTheorems
+import Contract.PeWriter
+import Contract.PeStatement
+import Contract.Proof.PeTx
+import Contract.PeExample
