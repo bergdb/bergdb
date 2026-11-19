@@ -213,9 +213,16 @@ The old writer of formats 2 to 7 in Java, and its books:
   TransCheck's take-back (it now fails a node made or changed and replaced
   in one transaction: each node is written once).
 - The write half: about 1,395 code lines before (Dag 1,110, KeyNode 126,
-  PutData 42, KeyAccessPath 117), about 890 after (PeWriter.java 846, the
-  entry points in Dag 43): 36 % less. With comments, PeWriter.java is
-  1,081 lines against the 2,011 lines of Dag.java's old write half.
+  PutData 42, KeyAccessPath 117), about 1,380 after (PeWriter.java 1,338,
+  the entry points in Dag 43). The plain PE writer was 846 code lines (36 %
+  less, at commit 1befbe22); the shortcuts that brought it to main's
+  speed (section 6: the short way, leaves and inner nodes decided by counts,
+  routing by one scan, the live lists in work arrays) took about 490 lines
+  of that back. With comments, PeWriter.java is 1,713 lines against the
+  2,011 lines of Dag.java's old write half. What is gone is not only lines:
+  no node is written twice in a transaction, no take-back and no books of
+  it, no split in place; the writer is one plan and one emit, each the
+  contract's (section 3).
 
 Tests and tools changed with it: the Dag's tests and fuzzers give a
 transaction as one batch (DagTester, MergeTester, DeadKlongTester,
@@ -245,4 +252,15 @@ reports the expected differences). Next: PeWriter.java.
 
 2026-11-19. Created the item; the clone at main b15f4b1b, branch
 `026-25-pe-java` (02:10). The oracle, lean/SIS/Tree/Pe.lean (02:20 to
-02:45).
+02:45). PeWriter.java and Dag.putKvs, Db's and the start's batch (02:35);
+the tests adapted, record format 8, the old write half removed (02:55);
+main merged (62cd36c4); pecmp, 0 differences (03:07). Bugs found on the
+way and fixed: a node reported made before it was filled (CapacityTester's
+counts); a damaged record's KVs out of order reached the Dag
+(CorruptStreamTester.testSample, now an SFE); the short way grouped a
+leaf's operations by position, not by leaf, when a segment tree came
+between them (PubPromiseTester, a leaf of 31 klongs;
+`DagTester.testShortWayLeafAroundASegmentTree` fails on it). The first
+s1 run: PE about 2 times main's time; the ways by counts, the short way,
+routing by one scan and fewer allocations brought it near main's (03:50 to
+03:59, section 6). Gates on d64e5638 from 04:00.
