@@ -94,6 +94,7 @@
 # the same in build/week/RUN/, WEEK OK or WEEK FAILED.
 
 cd "$(dirname "$0")" || exit 1
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
@@ -120,7 +121,6 @@ if [ "$1" = week ]; then
     if [ "$2" = short ]; then SHORT=1; fi
 fi
 if [ $KIND = week ]; then NAME=WEEK; else NAME=NIGHT; fi
-echo "Kind: functional"
 
 REPO=$(git rev-parse --show-toplevel) || { echo "$NAME FAILED: not in git"; exit 1; }
 RUN=$(pwd)/build/$KIND/$(date +%Y-%m-%d-%H%M)

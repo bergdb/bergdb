@@ -69,7 +69,7 @@ load-sensitive or timing check before this entry (section 3).
 
 * build.sh, deps.py, doubles.py: functional.
 * The unit tests (`bergdb.dev.Unit`, TransCheck on): functional; was
-  load-sensitive (section 3, items 1 to 8).
+  load-sensitive (section 3, items 1 to 8 and 14).
 * The f-tests (`bergdb.dev.F`): functional; was load-sensitive (item 8).
 * The demos: functional; 60 s each, a hang guard (about 3 s in all).
 
@@ -96,7 +96,7 @@ priority too):
 * count-gates: functional; was load-sensitive (item 11).
 * lean-tests, tree-tests: functional (Lean programs).
 * night-tests (`bergdb.dev.Night`): functional; was load-sensitive
-  (StorageFaultTester, item 9).
+  (StorageFaultTester, item 9; IndexJobsHarness, item 14).
 * harness-soak -r 2: functional; `-t` (1,800 s a job) and the harnesses'
   join and cleanup bounds (10 to 30 s, scaled by `harness.slow`) are hang
   guards.
@@ -137,8 +137,9 @@ stress/soak.sh.
 
 Counts: before-commit.sh 6 steps, night.sh 17 (18 with large), week.sh 9
 of its own besides night's 17, all functional: 32; timing.sh 3 steps,
-all timing. Before this entry 12 checks inside the functional steps were
-load-sensitive or timing (section 3) and 3 more in the apps; none now.
+all timing. Before this entry 13 checks inside the functional steps were
+load-sensitive or timing (section 3) and 3 more in the apps; none known
+now.
 
 
 3. The load-sensitive checks made robust
@@ -189,6 +190,15 @@ check:
     within 500 kB a database of a reopened one is now a NOTE, the check
     the heap 10 s after; Kill's and KillEmpty's child exit within 120 s
     now 600 s; Buffers' child start within 60 s now 300 s.
+
+14. `IndexJobsHarness`'s creation (unit's testRetriedFaultThenDeletedDuringBuild,
+    the night tests, harness-soak): found by this entry's gate, failed once
+    in before-commit.sh at a load near 100 % ("creation 1 returned, and
+    memory has no definition"). With a deletion during build 1, the build's
+    thread can reach its third step, and the deletion, before start() has
+    returned to the run's thread, which then found no definition. Now no
+    finding when the deletion has begun (a flag set before its call); the
+    deletion's own call checks the rest.
 
 Left as they are, with headroom of about 1,000 times or only in the safe
 direction: the 10 s hang guards of NodeStreamTester, FileStream,
