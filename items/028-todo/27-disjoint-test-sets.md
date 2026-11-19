@@ -1,7 +1,7 @@
 028-27. Change: night, week and timing as disjoint sets of tests; Android in week
 ================================================================================
 
-Status: done on its branch. Kind: Change. Frans: decided (2026-11-19).
+Status: done. Kind: Change. Frans: decided (2026-11-19).
 Created 2026-11-19 by Frans Lundberg.
 
 What: make `java/week.sh` a distinct set of tests that does not run
@@ -164,3 +164,8 @@ with their commands; `night.sh large` is refused with a usage line;
 `sh -n` on every changed script. After the gate only week.sh's header
 changed (the short run's time). Not run: a full week.sh (about 9 hours)
 and a full night.sh.
+
+2026-11-19. Merged into main by coord-1118 and gated again on the merged
+tree: BEFORE COMMIT OK, night.sh's steps listed with DRY=1, and week.sh
+short with the Android SDK, WEEK OK (13 minutes; ANDROID OK, 1728 tests,
+4 skipped).
