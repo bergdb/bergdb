@@ -257,6 +257,18 @@ The decisions, as recorded here:
   distinct. GATE OK (137 theorems), no existing statement changed;
   LANDED ca51029f. Left: PE's acceptance (tested), Java (026-25, under
   way).
+* 04:43 Agent acc started: 030-21 part 3, PE's acceptance (Opus xhigh).
+* 05:04 026-25 done (agent pej, 02:10 to 05:04): Java's writer as PE,
+  node for node `Contract.PE.peTx`; the level scripts' oracle is PE (a
+  copy, 0 differences with the proved writer on 23,665 transactions);
+  record format 8; take-back, its books, the split variants and the
+  merges at the delete removed. Gates: BEFORE COMMIT OK, CORE BUILD OK,
+  LEVEL 1 to 4 OK, CONTRACT OK, transcheck OK, kill-restart OK (one
+  harness timing failure under load, passed on rerun). Performance on
+  s1: about 8 % slower in CCBench (0.93 to 1.24), commits a second 0.99
+  (history kept) and 0.94 (reclaim). Gated on the branch `026-25-pe-java`
+  (d64e5638), not merged: it waits for Frans's word (026-25, State); the
+  item landed 7db68696.
 
 
 ## 4b. Unattended, 13:48 to 07:00
