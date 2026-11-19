@@ -25,6 +25,7 @@ cut; 027-13, section 3, REWRITES); VAL-NEW is the writer's.
 -/
 import Contract.ReclaimReads
 import Contract.Proof.ReclaimTree
+import Contract.Proof.PeSim
 
 namespace Contract
 
@@ -76,7 +77,8 @@ theorem Good.mem_idListAt {s : Tree} : ∀ (f : Nat) {x : NodeId} {lo : Nat} {hi
         obtain ⟨k, hk'⟩ := Good.mem_idListAt f hgy hm1 (by omega) v w hvy hvw
         cases hl : n.leaf with
         | false =>
-          exact ⟨k, (c, y), hm, by simp only [idKlongList, Bool.false_eq_true, ite_false]; exact hk'⟩
+          exact ⟨k, (c, y), hm, by
+            simp only [idKlongList, Bool.false_eq_true, ite_false]; exact hk'⟩
         | true =>
           refine ⟨c :: k, (c, y), hm, ?_⟩
           simp only [idKlongList, hk hl, ite_true, List.mem_map, Prod.mk.injEq]
@@ -646,6 +648,434 @@ theorem reclaim_java_reads {p : Params} {h : BHist} {top : Nat → Top} {kind : 
   cut_java_reads_of_rc hm hM hkd al hj hmk hpol cs hcs (cutsMeetRC_of_iter hm hM hv al hcs hit)
     hreads hft htn mid s tp
 
+/-! ## VAL-NEW from distinct put hashes -/
+
+/-- An entry of the plain map after operations was there before, or one of
+them put it. -/
+theorem mem_applyOps_put : ∀ {ops : List Op} {m : List (Key × Nat)} {e : Key × Nat},
+    e ∈ applyOps ops m → e ∈ m ∨ Op.put e.1 e.2 ∈ ops
+  | [], _, _, h => Or.inl h
+  | op :: ops, m, e, h => by
+    rw [PeProof.Keys.applyOps_cons'] at h
+    rcases mem_applyOps_put h with h | h
+    · cases op with
+      | put k v =>
+        rcases PeProof.Keys.mem_mapPut h with rfl | h
+        · exact Or.inr (by simp)
+        · exact Or.inl h
+      | del k => exact Or.inl (PeProof.Keys.mem_mapDel h)
+    · exact Or.inr (List.mem_cons_of_mem _ h)
+
+theorem mem_mapPut_self (k : Key) (v : Nat) : ∀ m : List (Key × Nat), (k, v) ∈ mapPut k v m
+  | [] => by simp [mapPut]
+  | (k', v') :: r => by
+    unfold mapPut
+    split_ifs with h1 h2
+    · simp
+    · simp
+    · exact List.mem_cons_of_mem _ (mem_mapPut_self k v r)
+
+theorem mem_mapPut_of_ne {k k' : Key} {v v' : Nat} (hne : k ≠ k') :
+    ∀ {m : List (Key × Nat)}, (k, v) ∈ m → (k, v) ∈ mapPut k' v' m
+  | [], h => by simp at h
+  | (a, b) :: r, h => by
+    unfold mapPut
+    split_ifs with h1 h2
+    · exact List.mem_cons_of_mem _ h
+    · rcases List.mem_cons.mp h with h3 | h3
+      · injection h3 with h4 _
+        exact absurd (h4.trans h2.symm) hne
+      · exact List.mem_cons_of_mem _ h3
+    · rcases List.mem_cons.mp h with h3 | h3
+      · rw [h3]; exact List.mem_cons_self
+      · exact List.mem_cons_of_mem _ (mem_mapPut_of_ne hne h3)
+
+/-- Operations on other keys keep an entry. -/
+theorem applyOps_keep {k : Key} {v : Nat} : ∀ (ops : List Op) (m : List (Key × Nat)),
+    k ∉ ops.map Op.key → (k, v) ∈ m → (k, v) ∈ applyOps ops m
+  | [], _, _, h => h
+  | op :: ops, m, hk, h => by
+    rw [PeProof.Keys.applyOps_cons']
+    simp only [List.map_cons, List.mem_cons, not_or] at hk
+    apply applyOps_keep ops _ hk.2
+    cases op with
+    | put k' v' => exact mem_mapPut_of_ne (by simpa [Op.key] using hk.1) h
+    | del k' =>
+      refine List.mem_filter.mpr ⟨h, ?_⟩
+      simpa [Op.key] using hk.1
+
+/-- With distinct keys, a put's entry is in the map after the operations. -/
+theorem applyOps_put {k : Key} {v : Nat} : ∀ (ops : List Op) (m : List (Key × Nat)),
+    (ops.map Op.key).Nodup → Op.put k v ∈ ops → (k, v) ∈ applyOps ops m
+  | [], _, _, h => by simp at h
+  | op :: ops, m, hn, h => by
+    rw [PeProof.Keys.applyOps_cons']
+    simp only [List.map_cons, List.nodup_cons] at hn
+    rcases List.mem_cons.mp h with rfl | h
+    · exact applyOps_keep ops _ (by simpa [Op.key] using hn.1) (mem_mapPut_self k v m)
+    · exact applyOps_put ops _ hn.2 h
+
+/-- A key that the operations do not write keeps its entries. -/
+theorem applyOps_unwritten {k : Key} {v : Nat} {ops : List Op} {m : List (Key × Nat)}
+    (hk : k ∉ ops.map Op.key) : (k, v) ∈ applyOps ops m ↔ (k, v) ∈ m := by
+  constructor
+  · intro h
+    rcases mem_applyOps_put h with h | h
+    · exact h
+    · exact absurd (List.mem_map.mpr ⟨_, h, rfl⟩) hk
+  · exact applyOps_keep ops m hk
+
+/-- A live key's value node by id holds the value that the contents give it. -/
+theorem idListAt_mem_listAt (s : Tree) : ∀ (f : Nat) (x : NodeId) (k : Key) (y : NodeId) (v : Nat),
+    (k, y) ∈ idListAt s f x → s.obj y = some (.val v) → (k, v) ∈ listAt s f x
+  | 0, _, _, _, _, h, _ => by simp [idListAt] at h
+  | f + 1, x, k, y, v, h, hy => by
+    simp only [idListAt] at h
+    simp only [listAt]
+    cases hx : s.obj x with
+    | none => rw [hx] at h; simp at h
+    | some o =>
+      rw [hx] at h
+      cases o with
+      | val _ => simp at h
+      | key n =>
+        simp only [List.mem_flatMap] at h ⊢
+        obtain ⟨⟨c, z⟩, hcz, hz⟩ := h
+        refine ⟨(c, z), hcz, ?_⟩
+        unfold idKlongList at hz
+        unfold klongList
+        cases hl : n.leaf with
+        | false =>
+          simp only [hl, Bool.false_eq_true, ite_false] at hz ⊢
+          exact idListAt_mem_listAt s f z k y v hz hy
+        | true =>
+          cases hc : isLong c with
+          | true =>
+            simp only [hl, hc, ite_true, List.mem_map] at hz ⊢
+            obtain ⟨⟨k', y'⟩, hk', heq⟩ := hz
+            injection heq with h1 h2
+            subst h1 h2
+            exact ⟨(k', v), idListAt_mem_listAt s f z k' y' v hk' hy, rfl⟩
+          | false =>
+            simp only [hl, hc, ite_true, Bool.false_eq_true, ite_false] at hz ⊢
+            split at hz
+            · simp only [List.mem_singleton, Prod.mk.injEq] at hz
+              obtain ⟨rfl, rfl⟩ := hz
+              rw [hy]
+              simp
+            · simp at hz
+
+/-- A live key's value node by id is reached by the walk. -/
+theorem idListAt_reach (s : Tree) : ∀ (f : Nat) (x : NodeId) (k : Key) (y : NodeId),
+    (k, y) ∈ idListAt s f x → y ∈ reachAt s f x
+  | 0, _, _, _, h => by simp [idListAt] at h
+  | f + 1, x, k, y, h => by
+    simp only [idListAt] at h
+    simp only [reachAt, List.mem_cons]
+    right
+    cases hx : s.obj x with
+    | none => rw [hx] at h; simp at h
+    | some o =>
+      rw [hx] at h
+      cases o with
+      | val _ => simp at h
+      | key n =>
+        simp only [List.mem_flatMap] at h ⊢
+        obtain ⟨⟨c, z⟩, hcz, hz⟩ := h
+        refine ⟨(c, z), hcz, ?_⟩
+        unfold idKlongList at hz
+        cases hl : n.leaf with
+        | false =>
+          simp only [hl, Bool.false_eq_true, ite_false] at hz
+          exact idListAt_reach s f z k y hz
+        | true =>
+          cases hc : isLong c with
+          | true =>
+            simp only [hl, hc, ite_true, List.mem_map] at hz
+            obtain ⟨⟨k', y'⟩, hk', heq⟩ := hz
+            injection heq with _ h2
+            subst h2
+            exact idListAt_reach s f z k' y' hk'
+          | false =>
+            simp only [hl, hc, ite_true, Bool.false_eq_true, ite_false] at hz
+            split at hz
+            · simp only [List.mem_singleton, Prod.mk.injEq] at hz
+              obtain ⟨_, rfl⟩ := hz
+              exact mem_reachAt_self s f y
+            · simp at hz
+
+theorem idContents_mem_contents {s : Tree} {k : Key} {y : NodeId} {v : Nat}
+    (h : (k, y) ∈ idContents s) (hy : s.obj y = some (.val v)) : (k, v) ∈ contents s := by
+  unfold idContents at h
+  unfold contents
+  cases hr : s.root with
+  | none => rw [hr] at h; simp at h
+  | some r => rw [hr] at h; exact idListAt_mem_listAt s _ r k y v h hy
+
+theorem idContents_reach {s : Tree} {k : Key} {y : NodeId} (h : (k, y) ∈ idContents s) :
+    y ∈ reach s := by
+  unfold idContents at h
+  unfold reach
+  cases hr : s.root with
+  | none => rw [hr] at h; simp at h
+  | some r => rw [hr] at h; exact idListAt_reach s _ r k y h
+
+theorem mem_of_lookup' {β : Type} {l : List (Key × β)} {k : Key} {y : β}
+    (h : l.lookup k = some y) : (k, y) ∈ l := by
+  obtain ⟨l₁, l₂, rfl, -⟩ := List.lookup_eq_some_iff.mp h
+  simp
+
+section Unique
+
+variable {p : Params} {h : BHist} {top : Nat → Top}
+
+/-- Every entry of the contents after j transactions was put by one of them. -/
+theorem MeetsFull.contents_puts (hm : MeetsFull p h top) (hM : 1 ≤ p.M) :
+    ∀ j, j ≤ h.txs.length → ∀ e ∈ contents ((h.tree j).at j),
+      ∃ j0, ∃ hj0 : j0 < h.txs.length, j0 < j ∧ Op.put e.1 e.2 ∈ h.txs[j0].ops
+  | 0, _, e, he => by
+    change e ∈ contents (h.s0.at 0) at he
+    rw [(hm.start.start hM).2] at he
+    simp at he
+  | j + 1, hj, e, he => by
+    have hc := (hm.step j (by omega)).1.1
+    simp only [contractOk, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at hc
+    rw [hc.2] at he
+    rcases mem_applyOps_put he with h1 | h1
+    · obtain ⟨j0, hj0, h2, h3⟩ := MeetsFull.contents_puts hm hM j (by omega) e h1
+      exact ⟨j0, hj0, by omega, h3⟩
+    · exact ⟨j, by omega, by omega, h1⟩
+
+/-- A node of the tree keeps its kind, and a value its hash, in the next tree. -/
+theorem MeetsFull.obj_next (hm : MeetsFull p h top) {j : Nat} (hj : j < h.txs.length)
+    {x : NodeId} {o : Obj} (hx : (h.tree j).obj x = some o) :
+    ∃ o', (h.tree (j + 1)).obj x = some o' ∧ Ext (j + 1) o o' :=
+  let ⟨o', h1, h2, _⟩ := (hm.step j hj).1.2.1 x o hx
+  ⟨o', h1, h2⟩
+
+/-- A value that the walk reaches is named by a live key. -/
+theorem MeetsFull.reach_idContents (hm : MeetsFull p h top) (hM : 1 ≤ p.M) {j : Nat}
+    (hj : j ≤ h.txs.length) {y : NodeId} (hy : y ∈ reach ((h.tree j).at j)) {v : Nat}
+    (hv : ((h.tree j).at j).obj y = some (.val v)) :
+    ∃ k, (k, y) ∈ idContents ((h.tree j).at j) := by
+  have hi := hm.meetsBridge.binv j hj
+  rw [hi.timely.at_eq] at hy hv ⊢
+  unfold reach at hy
+  unfold idContents
+  cases hr : (h.tree j).root with
+  | none => rw [hr] at hy; simp at hy
+  | some r =>
+    rw [hr] at hy
+    obtain ⟨n, hn, hg, -⟩ := hm.root_good hM hj hr
+    have hfuel : (h.tree j).fuel r = n.level + 1 := by simp [Tree.fuel, hn]
+    exact Good.mem_idListAt _ hg hn (by rw [hfuel]; omega) y v hy hv
+
+/-- **VAL-NEW from distinct put hashes**: in a history in the contract's
+words whose transactions have distinct keys, whose puts have distinct hashes
+(a hash names one transaction and one key), and whose transactions make value
+nodes only with hashes they put, VAL-NEW holds. A put's key names, after its
+transaction, a value node with the put's hash, which is new: an older one
+would hold a hash of an older put. A key not written names a value node with
+the same hash as before; if it is not the one before, it is an older value
+node that the walk reached before, so a live key named it then with that
+hash, which only the old key was put with. -/
+theorem valNew_of_unique (hm : MeetsFull p h top) (hM : 1 ≤ p.M)
+    (hk : ∀ j (hj : j < h.txs.length), (h.txs[j].ops.map Op.key).Nodup)
+    (hu : ∀ j (hj : j < h.txs.length) j' (hj' : j' < h.txs.length) k k' v,
+      Op.put k v ∈ h.txs[j].ops → Op.put k' v ∈ h.txs[j'].ops → j = j' ∧ k = k')
+    (hmade : ∀ j (hj : j < h.txs.length) y v, y ∈ h.txs[j].c.new.map (·.id) →
+      (h.tree (j + 1)).obj y = some (.val v) → ∃ k, Op.put k v ∈ h.txs[j].ops) :
+    ValNew h := by
+  intro j hj k
+  have hc := (hm.step j hj).1.1
+  simp only [contractOk, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at hc
+  have hstep : contents ((h.tree (j + 1)).at (j + 1)) =
+      applyOps h.txs[j].ops (contents ((h.tree j).at j)) := hc.2
+  have hnd0 := contents_nodup (hm.inv_at hM j (by omega))
+  have hnd1 := contents_nodup (hm.inv_at hM (j + 1) hj)
+  have hind0 : ((idContents ((h.tree j).at j)).map Prod.fst).Nodup := by
+    rw [idContents_keys]; exact hnd0
+  have hind1 : ((idContents ((h.tree (j + 1)).at (j + 1))).map Prod.fst).Nodup := by
+    rw [idContents_keys]; exact hnd1
+  have hnores := (bridgeOk_parts (hm.step j hj).2.1).2.2.2.2.2
+  simp only [noResOk, List.all_eq_true, Bool.or_eq_true, List.contains_iff_mem, List.any_eq_true,
+    beq_iff_eq, Nat.add_sub_cancel] at hnores
+  -- A value node named by a live key after j + 1: its hash, and where it was.
+  have hval : ∀ k' y, (k', y) ∈ idContents ((h.tree (j + 1)).at (j + 1)) →
+      ∃ v, ((h.tree (j + 1)).at (j + 1)).obj y = some (.val v) ∧
+        (k', v) ∈ contents ((h.tree (j + 1)).at (j + 1)) ∧
+        (y ∈ h.txs[j].c.new.map (·.id) ∨
+          ∃ k2, (k2, v) ∈ contents ((h.tree j).at j)) := by
+    intro k' y hy
+    have hy' := hy
+    unfold idContents at hy'
+    split at hy'
+    · obtain ⟨v, hv⟩ := idListAt_val _ _ _ _ _ hy'
+      refine ⟨v, hv, idContents_mem_contents hy hv, ?_⟩
+      rcases hnores y (idContents_reach hy) with hold | ⟨nn, hnn, hid⟩
+      · right
+        have hi := hm.meetsBridge.binv j (by omega)
+        have hobj : ((h.tree j).at j).obj y ≠ none := by
+          have := hi.reach_obj (by rw [← hi.timely.at_eq]; exact hold)
+          rw [hi.timely.at_eq]
+          intro h0; rw [h0] at this; cases this
+        obtain ⟨o, ho⟩ := Option.ne_none_iff_exists'.mp hobj
+        have ho' : (h.tree j).obj y = some o := by
+          rw [hi.timely.at_eq] at ho; exact ho
+        obtain ⟨o', ho1, hext⟩ := hm.obj_next hj ho'
+        have hv' : (h.tree (j + 1)).obj y = some (.val v) := by
+          have hi1 := hm.meetsBridge.binv (j + 1) hj
+          rw [hi1.timely.at_eq] at hv; exact hv
+        rw [hv'] at ho1
+        injection ho1 with ho1
+        subst ho1
+        cases o with
+        | key n => simp [Ext] at hext
+        | val w =>
+          simp only [Ext] at hext
+          subst hext
+          obtain ⟨k2, hk2⟩ := hm.reach_idContents hM (by omega) hold
+            (by rw [hi.timely.at_eq]; exact ho')
+          exact ⟨k2, idContents_mem_contents hk2 (by rw [hi.timely.at_eq]; exact ho')⟩
+      · left
+        exact List.mem_map.mpr ⟨nn, hnn, hid⟩
+    · simp at hy'
+  constructor
+  · -- A put: its key names a new value node.
+    intro hput
+    obtain ⟨v, hv⟩ : ∃ v, Op.put k v ∈ h.txs[j].ops := by
+      simp only [putKeys, List.mem_filterMap] at hput
+      obtain ⟨op, hop, hk'⟩ := hput
+      cases op with
+      | put k' v => simp only [Option.some.injEq] at hk'; subst hk'; exact ⟨v, hop⟩
+      | del k' => simp at hk'
+    have hc1 : (k, v) ∈ contents ((h.tree (j + 1)).at (j + 1)) := by
+      rw [hstep]; exact applyOps_put _ _ (hk j hj) hv
+    have hkey : (idContents ((h.tree (j + 1)).at (j + 1))).lookup k ≠ none := by
+      intro hn
+      have : k ∉ (idContents ((h.tree (j + 1)).at (j + 1))).map Prod.fst := by
+        intro hm'
+        obtain ⟨⟨k', y'⟩, hm1, rfl⟩ := List.mem_map.mp hm'
+        rw [lookup_of_mem hind1 hm1] at hn
+        cases hn
+      rw [idContents_keys] at this
+      exact this (List.mem_map.mpr ⟨_, hc1, rfl⟩)
+    obtain ⟨y, hy⟩ := Option.ne_none_iff_exists'.mp hkey
+    refine ⟨y, hy, ?_⟩
+    obtain ⟨w, -, hw, hcase⟩ := hval k y (mem_of_lookup' hy)
+    have hwv : w = v := by
+      have h1 := lookup_of_mem hnd1 hw
+      rw [lookup_of_mem hnd1 hc1] at h1
+      injection h1 with h1
+      exact h1.symm
+    subst hwv
+    rcases hcase with hnew | ⟨k2, hk2⟩
+    · obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp hnew
+      have : (h.chs.getD (j + 1) { new := [], adds := [] }) = h.txs[j].c := by
+        simp [BHist.chs, hj]
+      simp only [madeAt, this, List.any_eq_true, beq_iff_eq]
+      exact ⟨nn, hnn, hid⟩
+    · exfalso
+      obtain ⟨j0, hj0, hlt, hp⟩ := hm.contents_puts hM j (by omega) _ hk2
+      have := (hu j hj j0 hj0 k k2 w hv hp).1
+      omega
+  · -- A key not written: its value node is the one before.
+    intro hnot
+    have hiff : ∀ v, (k, v) ∈ contents ((h.tree (j + 1)).at (j + 1)) ↔
+        (k, v) ∈ contents ((h.tree j).at j) := by
+      intro v; rw [hstep]; exact applyOps_unwritten hnot
+    cases ho : (idContents ((h.tree j).at j)).lookup k with
+    | none =>
+      apply lookup_none
+      rw [idContents_keys]
+      intro hm'
+      obtain ⟨⟨k', v⟩, hm1, rfl⟩ := List.mem_map.mp hm'
+      have h0 : (k', v) ∈ contents ((h.tree j).at j) := (hiff v).mp hm1
+      have : k' ∈ (idContents ((h.tree j).at j)).map Prod.fst := by
+        rw [idContents_keys]; exact List.mem_map.mpr ⟨_, h0, rfl⟩
+      obtain ⟨⟨k'', y''⟩, hm2, rfl⟩ := List.mem_map.mp this
+      rw [lookup_of_mem hind0 hm2] at ho
+      cases ho
+    | some yo =>
+      have hyo := mem_of_lookup' ho
+      have hi := hm.meetsBridge.binv j (by omega)
+      have hyo' := hyo
+      unfold idContents at hyo'
+      split at hyo'
+      · obtain ⟨vo, hvo⟩ := idListAt_val _ _ _ _ _ hyo'
+        have hc0 := idContents_mem_contents hyo hvo
+        have hc1 := (hiff vo).mpr hc0
+        have hkey : (idContents ((h.tree (j + 1)).at (j + 1))).lookup k ≠ none := by
+          intro hn
+          have : k ∉ (idContents ((h.tree (j + 1)).at (j + 1))).map Prod.fst := by
+            intro hm'
+            obtain ⟨⟨k', y'⟩, hm1, rfl⟩ := List.mem_map.mp hm'
+            rw [lookup_of_mem hind1 hm1] at hn
+            cases hn
+          rw [idContents_keys] at this
+          exact this (List.mem_map.mpr ⟨_, hc1, rfl⟩)
+        obtain ⟨yn, hyn⟩ := Option.ne_none_iff_exists'.mp hkey
+        rw [hyn]
+        obtain ⟨vn, hvn, hcn, hcase⟩ := hval k yn (mem_of_lookup' hyn)
+        have hvv : vn = vo := by
+          have h1 := lookup_of_mem hnd1 hcn
+          rw [lookup_of_mem hnd1 hc1] at h1
+          injection h1 with h1
+          exact h1.symm
+        subst hvv
+        obtain ⟨j0, hj0, hlt0, hp0⟩ := hm.contents_puts hM j (by omega) _ hc0
+        rcases hcase with hnew | ⟨k2, hk2⟩
+        · exfalso
+          have hvn' : (h.tree (j + 1)).obj yn = some (.val vn) := by
+            have hi1 := hm.meetsBridge.binv (j + 1) hj
+            rw [hi1.timely.at_eq] at hvn; exact hvn
+          obtain ⟨k3, hk3⟩ := hmade j hj yn vn hnew hvn'
+          have := (hu j hj j0 hj0 k3 k vn hk3 hp0).1
+          omega
+        · -- yn was reached before: the old key named it.
+          -- (yn's object before is the same value.)
+          have hyn_reach := idContents_reach (mem_of_lookup' hyn)
+          rcases hnores yn hyn_reach with hold | ⟨nn, hnn, hid⟩
+          · have hobj : ((h.tree j).at j).obj yn ≠ none := by
+              have := hi.reach_obj (by rw [← hi.timely.at_eq]; exact hold)
+              rw [hi.timely.at_eq]
+              intro h0; rw [h0] at this; cases this
+            obtain ⟨o, hoo⟩ := Option.ne_none_iff_exists'.mp hobj
+            have ho' : (h.tree j).obj yn = some o := by
+              rw [hi.timely.at_eq] at hoo; exact hoo
+            obtain ⟨o', ho1, hext⟩ := hm.obj_next hj ho'
+            have hvn' : (h.tree (j + 1)).obj yn = some (.val vn) := by
+              have hi1 := hm.meetsBridge.binv (j + 1) hj
+              rw [hi1.timely.at_eq] at hvn; exact hvn
+            rw [hvn'] at ho1
+            injection ho1 with ho1
+            subst ho1
+            cases o with
+            | key n => simp [Ext] at hext
+            | val w =>
+              simp only [Ext] at hext
+              subst hext
+              obtain ⟨k4, hk4⟩ := hm.reach_idContents hM (by omega) hold
+                (by rw [hi.timely.at_eq]; exact ho')
+              have hc4 := idContents_mem_contents hk4 (by rw [hi.timely.at_eq]; exact ho')
+              obtain ⟨j1, hj1, _, hp1⟩ := hm.contents_puts hM j (by omega) _ hc4
+              have hk4k := (hu j1 hj1 j0 hj0 k4 k _ hp1 hp0).2
+              subst hk4k
+              have := lookup_of_mem hind0 hk4
+              rw [ho] at this
+              injection this with this
+              rw [this]
+          · exfalso
+            have hvn' : (h.tree (j + 1)).obj yn = some (.val vn) := by
+              have hi1 := hm.meetsBridge.binv (j + 1) hj
+              rw [hi1.timely.at_eq] at hvn; exact hvn
+            obtain ⟨k3, hk3⟩ := hmade j hj yn vn (List.mem_map.mpr ⟨nn, hnn, hid⟩) hvn'
+            have := (hu j hj j0 hj0 k3 k vn hk3 hp0).1
+            omega
+      · simp at hyo'
+
+end Unique
+
 end Contract
 
 namespace Contract.PE
@@ -654,7 +1084,7 @@ variable {cf : Cfg}
 
 /-- **Reclaim chooses only safe cuts, for PE, given VAL-NEW** (bergdb 030-24):
 `reclaim_java_reads` for every history PE writes (`pe_full`), with VAL-NEW as a
-premise until `pe_valNew` is proved. -/
+premise; `pe_reclaim_reads` discharges it by `pe_valNew`. -/
 theorem pe_reclaim_reads_of_valNew (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62)
     {txs : List (List Op)} {h : BHist} {top : Nat → Top} (hlen : txs.length < 2 ^ 48 - 1)
     (hk : ∀ ops ∈ txs, (ops.map Op.key).Nodup) (hh : peHist cf txs = some (h, top))
@@ -675,7 +1105,94 @@ theorem pe_reclaim_reads_of_valNew (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62)
   obtain ⟨hm, hkd⟩ := pe_full hcf hcap hlen hk hh
   exact reclaim_java_reads hm hM hkd hv al hj hmk hpol cs hcs hit hreads hft htn mid s tp
 
-/- Not yet proved (bergdb 030-24):
+/-! ## VAL-NEW for PE: the run with labelled puts -/
+
+theorem obj_at_objH (σ : Nat → Nat) (t : Time) (o : Obj) :
+    Obj.at t (objH σ o) = objH σ (Obj.at t o) := by
+  cases o <;> rfl
+
+theorem at_treeH (σ : Nat → Nat) (s : Tree) (t : Time) : (treeH σ s).at t = treeH σ (s.at t) := by
+  simp only [Tree.at, treeH, Tree.mk.injEq, and_true]
+  funext x
+  cases s.obj x <;> simp [obj_at_objH]
+
+theorem idListAt_treeH (σ : Nat → Nat) (s : Tree) : ∀ (f : Nat) (x : NodeId),
+    idListAt (treeH σ s) f x = idListAt s f x
+  | 0, _ => rfl
+  | f + 1, x => by
+    have hobj : ∀ z, (treeH σ s).obj z = (s.obj z).map (objH σ) := fun _ => rfl
+    simp only [idListAt]
+    rw [hobj x]
+    cases hx : s.obj x with
+    | none => rfl
+    | some o =>
+      cases o with
+      | val _ => rfl
+      | key n =>
+        simp only [Option.map_some, objH]
+        apply List.flatMap_congr
+        rintro ⟨c, y⟩ _
+        unfold idKlongList
+        simp only [idListAt_treeH σ s f, hobj]
+        cases n.leaf with
+        | false => rfl
+        | true =>
+          cases isLong c with
+          | true => rfl
+          | false =>
+            simp only
+            cases s.obj y with
+            | none => rfl
+            | some o => cases o <;> rfl
+
+theorem idContents_treeH (σ : Nat → Nat) (s : Tree) : idContents (treeH σ s) = idContents s := by
+  unfold idContents
+  have hroot : (treeH σ s).root = s.root := rfl
+  have hfuel : ∀ x, (treeH σ s).fuel x = s.fuel x := by
+    intro x
+    simp only [Tree.fuel, treeH]
+    cases s.obj x with
+    | none => rfl
+    | some o => cases o <;> rfl
+  rw [hroot]
+  cases s.root with
+  | none => rfl
+  | some r => simp only [hfuel, idListAt_treeH]
+
+theorem putKeys_opH (σ : Nat → Nat) (ops : List Op) : putKeys (ops.map (opH σ)) = putKeys ops := by
+  unfold putKeys
+  rw [List.filterMap_map]
+  congr 1
+  funext op
+  cases op <;> rfl
+
+/-- The tree after j transactions of a history PE writes, from its run. -/
+theorem peHist_tree {L : List (BTx × Top)} (j : Nat) (hj : j ≤ L.length) :
+    ((startTree cf :: L.map (·.1.s))[j]?) =
+      some ((⟨startTree cf, c0 cf, L.map (·.1)⟩ : BHist).tree j) := by
+  cases j with
+  | zero => rfl
+  | succ j =>
+    have hj' : j < L.length := by omega
+    simp [BHist.tree, List.getElem?_map, List.getElem?_eq_getElem hj']
+
+theorem peHist_new {L L' : List (BTx × Top)} (hlen : L.length = L'.length)
+    (hnew : ∀ j (hj : j < L.length) (hj' : j < L'.length), L[j].1.c.new = L'[j].1.c.new)
+    (i : Nat) :
+    ((⟨startTree cf, c0 cf, L.map (·.1)⟩ : BHist).chs.getD i { new := [], adds := [] }).new =
+      ((⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist).chs.getD i { new := [], adds := [] }).new := by
+  cases i with
+  | zero => simp [BHist.chs]
+  | succ j =>
+    simp only [BHist.chs, Array.getD_eq_getD_getElem?, List.getElem?_toArray,
+      List.getElem?_cons_succ, List.getElem?_map]
+    by_cases hj : j < L.length
+    · have hj' : j < L'.length := by omega
+      simp [List.getElem?_eq_getElem hj, List.getElem?_eq_getElem hj', hnew j hj hj']
+    · have hj' : ¬ j < L'.length := by omega
+      simp [List.getElem?_eq_none (Nat.le_of_not_lt hj),
+        List.getElem?_eq_none (Nat.le_of_not_lt hj')]
+
 /-- **PE meets VAL-NEW** (bergdb 030-24; 030-22, section 2.3): every history PE
 writes makes a new value node for each put, which the key names after the
 transaction, and keeps the value node of each key it does not write. -/
@@ -683,10 +1200,114 @@ theorem pe_valNew (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62) {txs : List (List
     {h : BHist} {top : Nat → Top} (hlen : txs.length < 2 ^ 48 - 1)
     (hk : ∀ ops ∈ txs, (ops.map Op.key).Nodup) (hh : peHist cf txs = some (h, top)) :
     ValNew h := by
-  (proof to come)
--/
 
-/- Not yet proved (bergdb 030-24):
+  have hM : 1 ≤ cf.params.M := by
+    show 1 ≤ cf.M
+    have := hcf.h1; have := hcf.hM; omega
+  obtain ⟨L, hr, rfl, -⟩ := peHist_eq hh
+  -- The run with each put labelled by its place.
+  have hmap := labTxs_map txs
+  rw [← hmap, ← startTree_treeH (labσ txs) cf] at hr
+  obtain ⟨L', hr', hlenL, hall⟩ := peRun_mapH cf (labσ txs) (labTxs txs) (startTree cf) startTop
+    startNext 0 L hr
+  have hops' := peRun_ops cf _ _ _ _ _ _ hr'
+  have hlenL' : L'.length = (labTxs txs).length := by rw [← hops']; simp
+  have hh' : peHist cf (labTxs txs) = some (⟨startTree cf, c0 cf, L'.map (·.1)⟩,
+      fun j => match j with
+        | 0 => startTop
+        | j + 1 => ((L'[j]?).map (·.2)).getD startTop) := by
+    unfold peHist
+    rw [hr']
+    rfl
+  have hk' : ∀ ops ∈ labTxs txs, (ops.map Op.key).Nodup := by
+    intro ops hops
+    obtain ⟨j, hj, rfl⟩ := List.getElem_of_mem hops
+    rw [labTxs_get txs hj, relab_keys]
+    exact hk _ (List.getElem_mem _)
+  have hm' := (pe_full hcf hcap (by rw [labTxs_length]; exact hlen) hk' hh').1
+  -- The labelled history's transactions are the labelled operations.
+  have hopsj : ∀ j (hj : j < L'.length), L'[j].1.ops = (labTxs txs)[j]'(by omega) := by
+    intro j hj
+    have := congrArg (fun l => l[j]?) hops'
+    simp only [List.getElem?_map, List.getElem?_eq_getElem hj, Option.map_some,
+      List.getElem?_eq_getElem (show j < (labTxs txs).length by omega)] at this
+    exact Option.some.inj this
+  have hv' : ValNew (⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist) := by
+    apply valNew_of_unique hm' hM
+    · intro j hj
+      simp only [List.getElem_map]
+      rw [hopsj j (by simpa using hj)]
+      exact hk' _ (List.getElem_mem _)
+    · intro j hj j' hj' k k' v h1 h2
+      simp only [List.getElem_map] at h1 h2
+      rw [hopsj j (by simpa using hj)] at h1
+      rw [hopsj j' (by simpa using hj')] at h2
+      exact labTxs_unique txs _ _ h1 h2
+    · intro j hj y v hy hv
+      have hjL : j < L'.length := by simpa using hj
+      have hnone : ((⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist).tree j).obj y = none := by
+        have hn := (bridgeOk_parts (hm'.step j hj).2.1).1
+        simp only [newsOk, Bool.and_eq_true, List.all_eq_true] at hn
+        obtain ⟨nn, hnn, hid⟩ := List.mem_map.mp hy
+        have := (hn.2 nn hnn).1
+        rw [hid] at this
+        simpa using this
+      have htree : ((⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist).tree (j + 1)) = L'[j].1.s := by
+        simp [BHist.tree, List.getElem?_map, List.getElem?_eq_getElem hjL]
+      rw [htree] at hv
+      have := peRun_vals cf _ _ _ _ _ _ hr' j hjL y v hv
+        (by rw [peHist_tree j (by omega), Option.bind_some]; exact hnone)
+      simpa using this
+  -- Back to the history: the same steps, the trees the images of the labelled ones.
+  have htree : ∀ j, (⟨startTree cf, c0 cf, L.map (·.1)⟩ : BHist).tree j =
+      treeH (labσ txs) ((⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist).tree j) := by
+    intro j
+    cases j with
+    | zero => exact (startTree_treeH _ cf).symm
+    | succ j =>
+      simp only [BHist.tree, List.getElem?_map]
+      by_cases hj : j < L.length
+      · have hj' : j < L'.length := by omega
+        simp only [List.getElem?_eq_getElem hj, List.getElem?_eq_getElem hj', Option.map_some]
+        exact (hall j hj hj').2.1
+      · have hj' : ¬ j < L'.length := by omega
+        simp only [List.getElem?_eq_none (Nat.le_of_not_lt hj),
+          List.getElem?_eq_none (Nat.le_of_not_lt hj'), Option.map_none]
+        exact (startTree_treeH _ cf).symm
+  have hidc : ∀ j, idContents (((⟨startTree cf, c0 cf, L.map (·.1)⟩ : BHist).tree j).at j) =
+      idContents (((⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist).tree j).at j) := by
+    intro j
+    rw [htree j, at_treeH, idContents_treeH]
+  have hmadeEq : ∀ i y, madeAt (⟨startTree cf, c0 cf, L.map (·.1)⟩ : BHist) i y =
+      madeAt (⟨startTree cf, c0 cf, L'.map (·.1)⟩ : BHist) i y := by
+    intro i y
+    simp only [madeAt]
+    rw [peHist_new hlenL (fun j hj hj' => (hall j hj hj').2.2.1) i]
+  intro j hj k
+  have hjL : j < L.length := by simpa using hj
+  have hjL' : j < L'.length := by omega
+  have hopsEq : ((L.map (fun p : BTx × Top => p.1))[j]'hj).ops =
+      ((L'.map (fun p : BTx × Top => p.1))[j]'(by simpa using hjL')).ops.map (opH (labσ txs)) := by
+    simp only [List.getElem_map]
+    exact (hall j hjL hjL').1
+  obtain ⟨A, B⟩ := hv' j (by simpa using hjL') k
+  constructor
+  · intro hput
+    rw [hopsEq, putKeys_opH] at hput
+    obtain ⟨y, hy, hm⟩ := A hput
+    refine ⟨y, ?_, ?_⟩
+    · rw [hidc]; exact hy
+    · rw [hmadeEq]; exact hm
+  · intro hnot
+    rw [hopsEq, List.map_map] at hnot
+    have hnot' : k ∉
+        ((L'.map (fun p : BTx × Top => p.1))[j]'(by simpa using hjL')).ops.map Op.key := by
+      intro hm; apply hnot
+      have : (Op.key ∘ opH (labσ txs)) = Op.key := by funext op; simp
+      rw [this]; exact hm
+    rw [hidc, hidc]
+    exact B hnot'
+
 /-- **Reclaim chooses only safe cuts, for PE** (bergdb 030-24): for every history
 PE writes, with Java's still-dirty test and the marking, policies that read no
 cut stream, and cuts whose iterations meet `IterationOK` (with a key live at
@@ -711,7 +1332,8 @@ theorem pe_reclaim_reads (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62) {txs : Lis
     HoldsView V (kindOf (peKind cf) V) t s →
       TopFrom (SIS.lastFa (SIS.run h.spec al h.ts).S) (top h.txs.length) tp →
       JReadsRight s tp t mid (h.txs.map (·.ops)) := by
-  (proof to come)
--/
+  have hM' : 1 ≤ cf.params.M := hM
+  exact pe_reclaim_reads_of_valNew hcf hcap hlen hk hh hM' (pe_valNew hcf hcap hlen hk hh) al hj
+    hmk hpol cs hcs hit hreads hft htn mid s tp
 
 end Contract.PE
