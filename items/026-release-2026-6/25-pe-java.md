@@ -15,7 +15,21 @@ coord-1118, from 02:10 on 2026-11-19, on the branch `026-25-pe-java` in
 
 # Result
 
-(To be written when the work is gated.)
+Java's writer is PE (`PeWriter.java`, `Dag.putKvs`): a transaction's KVs
+planned over the tree as one batch, each node decided once and emitted
+once, node for node the trees of `Contract.PE.peTx`. The level scripts'
+oracle is PE (lean/SIS/Tree/Pe.lean, a copy shown equal to PeWriter.lean
+on every transaction of Java's traces by this item's pecmp). Record format
+8 (section 4: the rerun of a record makes another tree than the old
+writer's, so a database of format 7 is refused with a message, not rerun
+into a tree that its stream does not hold). The take-back, its books, the splits in place
+and the merges at the delete are gone (section 5). Gated on d64e5638
+(section 6: before-commit, core-build, level1 to level4, contract, medium
+tree checks, transcheck, kill-restart with two seeds). On s1, PE is about
+8 % slower than main a operation in CCBench (0.93 to 1.24), 0.94 to 0.99 of
+main's commits a second in Perf's writes, reads unchanged. For Frans:
+the performance left (section 6), the reclaim row's bytes (section 2),
+the harness's late exit run (section 6).
 
 
 # 1. The plan
@@ -260,8 +274,18 @@ while other sessions ran Lean proofs (load up to 90; no timing there):
 - The medium traces (`treeconf.sh medium`): TREE OK on m-big-1, m-long-1,
   m-fifo-1, m-d62-1, m-d30-1; pecmp (section 3).
 - `transcheck.sh`: TRANSCHECK OK.
-- `kill-restart.sh 1000`: seed 20261120 KILLB; seed 20261119 failed once,
-  KILLA.
+- `kill-restart.sh 1000`: KILL RESTART OK with seed 20261120 (1,000 kills,
+  52 exits) and with seed 20261119 (1,000 kills, 50 exits). The first run
+  of seed 20261119, while the load stood near 90, failed at database 11, run
+  13: "the child ended before its kill, with status 0", a run aimed at
+  "exit" whose child did not print "P exit" within 8 s of "P running", so
+  that the parent counted it late and aimed a kill after a delay, and the
+  child had by then stopped and ended by itself, as an exit run should. Not
+  a failure of the database (the check of the data never ran); the
+  harness's late path (`KillRestartHarness.runChild`) does not allow for an
+  exit run. The rerun with the same seed, at a load near 7, passed. **For
+  Frans**: a 028 todo for the harness (a late exit run whose child ends with
+  status 0 is an exit), not made here (a change of code after the gates).
 
 **Performance, s1** (2 vCPUs, 3.8 GB; nothing else running; main at
 62cd36c4 against d64e5638, ABBA order; runner and summary in
@@ -305,15 +329,14 @@ between transactions).
 
 # State
 
-2026-11-19, 04:25. The writer done, the old write half removed, record
-format 8, the oracle PE (pecmp: 0 differences). Gates running on
-d64e5638 (the last code change; later commits are items and lean/README.md
-only): TRANSCHECK OK, CORE BUILD OK (unit, f), medium tree checks TREE OK
-so far; level1 to level4, kill-restart (two seeds), the contract's
-check.sh still running. s1: CCBench PE/main 0.93 to 1.24 an operation,
-Perf's writes at 0.99 of main's commits a second (fsync-bound), its load
-0.88. For Frans: the reclaim row's bytes (section 2), the residual cost
-of plan-then-emit (section 6), format 8 (section 4).
+2026-11-19, 05:05. **GATED d64e5638** (the last code change; the commits
+after it change items and lean/README.md only), on the branch
+`026-25-pe-java` in /Users/f/fl/bench/2026-11-19/pej/clone, not merged,
+not pushed; main has not moved since the merge of 62cd36c4. All gates of
+section 6 pass. For Frans: the performance left (section 6: about 8 %
+in CCBench, 0.94 to 0.99 of main's commits a second); the reclaim row's
+bytes (section 2); the kill-restart harness's late exit run (section 6);
+format 8 (section 4). Then the merge into main.
 
 
 # Log
@@ -331,4 +354,6 @@ between them (PubPromiseTester, a leaf of 31 klongs;
 `DagTester.testShortWayLeafAroundASegmentTree` fails on it). The first
 s1 run: PE about 2 times main's time; the ways by counts, the short way,
 routing by one scan and fewer allocations brought it near main's (03:50 to
-03:59, section 6). Gates on d64e5638 from 04:00.
+03:59, section 6). Gates on d64e5638 from 04:00, all passed by 05:03
+(kill-restart's seed 20261119 a second time, section 6); s1's runs from
+03:45 to 04:27.

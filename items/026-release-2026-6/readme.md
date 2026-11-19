@@ -286,7 +286,9 @@ Files
   that 030-21 proved (Frans, 2026-11-18, 21:42: "feel free to do the Java
   implementation too"): Java's write half replaced by PeWriter.lean's
   program, the tree checker's oracle made PE, the record format, the old
-  writer's code removed. Open; the branch `026-25-pe-java`.
+  writer's code removed; record format 8. Gated d64e5638 on the branch
+  `026-25-pe-java`, not merged; on s1 about 8 % slower than main's
+  writer in CCBench, for Frans.
 
 
 Log
