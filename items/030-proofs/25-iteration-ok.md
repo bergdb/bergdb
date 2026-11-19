@@ -259,8 +259,11 @@ transaction and the end are as 027-13 says. One stale text, no bug:
 - **Gate:** `lean/contract/gate.sh c0e2afaf` at 2d2e3021: GATE OK (191
   theorems, the standard axioms only; 85 files of the closure, 99 pinned;
   pinned files changed since c0e2afaf: Axioms.lean, by added lines, and
-  ReclaimSteps.lean, new). At the head, with this item and 027-13: see the
-  State. No pinned statement of 030-24 or before changed. Java and lean/
+  ReclaimSteps.lean, new). At the head (6a409cf2, this item, 030's readme
+  and 027-13): `gate.sh c0e2afaf` passes steps 1 to 3 and 5, and step 4
+  lists only items/027-algorithms/13-reclaim.md, which the gate does not
+  allow by design; `gate.sh` without a base: GATE OK. No pinned statement
+  of 030-24 or before changed. Java and lean/
   outside lean/contract did not change; the checkers' package
   (lean/contractcheck) imports neither new file.
 
