@@ -166,3 +166,4 @@ open Contract
 #print axioms tschemeReads_of_gis
 #print axioms rc_goodc
 #print axioms gis_latest_clean
+#print axioms gis_latest_dirty

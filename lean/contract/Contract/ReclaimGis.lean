@@ -261,6 +261,36 @@ theorem gis_latest_clean (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
   refine ⟨hcw, t, w.recNo, w, by omega, htk, by rw [hwn]; exact hr, by rw [hwn]; exact hwa,
     Nat.le_refl _, hgv⟩
 
+/-- GIS-J's clause (i) for the nodes of D whose latest version was not put back
+at its record: under RC, with the marking, such a node got dirty by the marking
+or the touch at a record d after the startup pos, so after e; it was reachable
+at d - 1 and clean then, so its latest version is good for d - 1
+(`dirty_good`), and it is at c or later (`rc_parts`, part 3): it has GIS's I.
+Stated for every such node of D, reachable or not. -/
+theorem gis_latest_dirty (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+    (hmk : al.mark = true) {c e k : Nat} (hk : k ≤ ts.length) (hrc : RC sp al ts c e k) :
+    let db := run sp al (ts.take k)
+    ∀ x w, inD db.D x = true → db.S.lv x = some w → (x, w.recNo) ∉ db.D →
+      GisI sp db c e k w := by
+  dsimp only
+  intro x w hx hw hwD
+  have hst := SIS.algOK_of sp al (Or.inl hj)
+  have hinvk := SIS.inv_st sp al ts hok hst k hk
+  have hcw := (rc_parts hok hj hmk hk hrc).2.2.1 x hx w hw
+  obtain ⟨d, hd⟩ := (SIS.inD_iff _ _).mp hx
+  obtain ⟨j, hjd, hre, hgood⟩ := dirty_good hok hj hmk hk hd hw hwD
+  have hsec : (x, d) ∈ SIS.sectionD (SIS.st sp al ts k).S := by rw [← hinvk.inv1]; exact hd
+  obtain ⟨hsd, hdl, -⟩ := SIS.sectionD_mem hsec
+  obtain ⟨-, -, -, -, v0, hv1, hv2⟩ := hrc
+  have h1 := lastSp_take_le hok hst v0
+  change v0 < lastSp (SIS.st sp al ts k).S at hv2
+  have hlen := hinvk.len
+  change (SIS.st sp al ts k).S.lv x = some w at hw
+  have hwa := hinvk.lv_at hw
+  have hwn := (hinvk.version_node hwa).1
+  refine ⟨hcw, j, w.recNo, w, by omega, by omega, by rw [hwn]; exact hre, by rw [hwn]; exact hwa,
+    Nat.le_refl _, hgood⟩
+
 end
 
 end Contract
