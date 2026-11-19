@@ -111,20 +111,24 @@ by an agent of coord-1118, 2026-11-19.
   the setting in force writes nothing). Tests whose point was the builder
   were rewritten for the setter (below).
 
-The callers in the user apps of `items/` are not changed (028-23 moves
-them into `java/` today). They call the removed methods:
+The user apps of 024-26 and 026-13 moved into `java/stress/apps/` with
+028-23 while this was made (merged into the branch at 12:00). These called
+the removed methods, and now set the distance after the start, the same
+values (their copies in `items/` are records and stay as they were):
 
-* 024-26: `a2-churn/Churn.java` (`DbBuilder.startupDistance`),
+* `a2-churn/Churn.java` (its first value, until the run sets another, so
+  that a restart does not undo the run's own setting),
   `a3-limits/WorstCase.java` (400,000), `a4-kill/Kill.java` (300,000),
   `a5-readers/Readers.java` (400,000), `a6-index-churn/IndexChurn.java`
-  (`DatabaseBuilder.startupDistanceInMb(1)`).
-* 026-13: `a5-readers/Readers.java` (400,000),
-  `a6-index-churn/IndexChurn.java` (`startupDistanceInMb(1)`),
-  `b1-back-to-empty/BackToEmpty.java`, `b5-kill/KillEmpty.java` (300,000),
-  `c2-slow-drive/SlowDrive.java` (`DbBuilder.startupDistance(sd)`).
+  (`setStartupDistanceInMb(1)`, clamped to 5 MB as the builder's was);
+* `b1-back-to-empty/BackToEmpty.java`, `b5-kill/KillEmpty.java`
+  (300,000), `c2-slow-drive/SlowDrive.java` (its builder call dropped: it
+  already called the setter after the start).
 
-Each becomes a call of the setter after `start()`. The other probes and
-benches in `items/` are records of their items and stay as they are.
+`lean/contract/bridge-faults.sh`: its faults level-0 and root-pointer
+named TX 3 of the trace `tree-small/mixed-1`, the second transaction of
+the workload; with the exporter's setting at TX 2 that is TX 4 (the top
+node's time 4). No checker and no pinned statement changed.
 
 
 The floor: is 400,000 needed?

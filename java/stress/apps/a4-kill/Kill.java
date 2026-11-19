@@ -166,7 +166,17 @@ public class Kill {
         dir.mkdirs();
         DbBuilder b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false));  // TestNodeSize: since 026-08 the size setters are package-private (028-23)
         b.cacheSizeIndicator(4_000_000);
-        Db db = b.start();
+        Db db;
+        try {
+            db = b.start();
+        } catch (bergdb.pub.util.DatabaseNotCreatedException e) {
+            // A kill inside the creating start (bergdb 028-18): no data, and the start wrote
+            // nothing. As the exception says: the files removed, the start creates it again.
+            for (File f : dir.listFiles()) if (f.getName().endsWith(".bergdb")) f.delete();
+            b = TestNodeSize.builder(nodeSize).mainStream(new FileStream(dir, false));
+            b.cacheSizeIndicator(4_000_000);
+            db = b.start();
+        }
         db.setStartupDistance(300_000);     // after the start since bergdb 028-13; nothing written if in force
         try {
             // Recover: the marker, the replay, the check.
