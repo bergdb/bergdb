@@ -353,6 +353,22 @@ The decisions, as recorded here:
   needs one more internal record per reclaim step: for Frans to decide.
 * 12:40 027-08's 14 corrections landed (b2891439), each checked against
   the code; no code bug beyond 028-21 and 028-25.
+* 13:12 028-24 landed (19a7c9b3): the level scripts build the contract
+  checkers without Mathlib, in `lean/contractcheck/`. 030-23 landed
+  (b2fe8dad): reclaim's proof, step 1; what is open is one statement,
+  `TSchemeGis`.
+* 13:30 Frans chose option A for 028-26: the row is stored again after a
+  step with the bytes its batch made dirty after the row. No Lean
+  statement changes: RC is about where cuts go, not about the pace.
+* 13:42 Frans decided that committed text records decisions, their
+  reasons and conclusions, not the conversation behind them (1f25b044:
+  AGENTS.md, 013-01, 013-02).
+* 13:43 Frans confirmed 028-13's range, clamp and Core setter returning
+  an int.
+* 13:45 Frans raised the stop to week 92 % for reclaim's proof, step 2
+  (030-24, agent rcp: `TSchemeGis`, its hardest case first).
+* 13:53 028-26 landed (9ed26b44, regated on the merged tree: level 2 and
+  3), pushed d1c5da0b.
 
 
 ## 4b. Unattended, 13:48 to 07:00
@@ -375,6 +391,33 @@ waits for the morning); a no-go of the PE trial ends it with its result.
 Changed by Frans's word in the evening: 028-18 (21:37) and the complete
 PE proof, then Java if it is proved (21:42).
 
+
+## 4c. Unattended, 2026-11-19 14:00 to 2026-11-20 07:00
+
+What runs while Frans is away:
+
+* 028-13 lands when its gates on the merged tree pass (before-commit,
+  levels 1 to 3).
+* `night.sh` of 09:49 ends; its report goes to `news.md`.
+* The first full `java/week.sh` (about 11 hours, 028-23) on main with
+  today's landings, started when `night.sh` has ended and 028-13 has
+  landed.
+* Reclaim's proof, step 2 (030-24, agent rcp), until the stop at week
+  92 % or 06:30, with its State note every hour.
+* Codex, after its own limit resets (about 15:20): it finishes its
+  independent search for reclaim's invariant; then, if its quota lasts,
+  028-25 option B and 028-22. The coordinator reviews, gates and lands
+  them.
+* The coordinator: a check-in every 20 minutes (no quiet block: no
+  timing on F53 tonight), lands gated work, registers the day's small
+  leftovers as 028 entries, writes `news.md` on failures; from 06:00 the
+  morning summary.
+
+Decided by Frans (2026-11-19), the defaults offered at 13:55: unattended
+until 07:00; Codex, not a Claude agent, for 028-25 B and 028-22; the
+quotes of Frans already in current files reworded as decisions after the
+week's reset (2026-11-23), without rewriting the history. Not tonight:
+028-19's timing (it needs a quiet machine).
 
 ## 5. Outcome
 
