@@ -61,9 +61,16 @@ open in the next (2026.5 refuses those of 2026.4 and earlier). There is
 no upgrade tool; read the data with the old release and put it with the
 new one. The `main` branch moves ahead of the latest release.
 
-The repository also holds `lean/`, a model of BergDB's algorithm in the
-Lean language, which the tests check Java against. It is work in
-progress, for the database's developers. BergDB itself is Java.
+BergDB's core algorithms are proved. The writer, reads at the latest and
+at every earlier time, crash recovery, restarts, eviction and reclaim's
+cuts are proved in Lean, a language whose checker verifies every step of
+a proof, for a model of BergDB's Core layer in `lean/`. The proofs rest
+on assumptions that are tested instead, among them that Java does what
+the model does, which the tests check transaction by transaction; the
+Pub layer, threads and the costs are outside the model. This holds for
+the code on `main` since 2026-11-19, not for release 2026.5, whose writer
+is older. Item 030-26 says what is proved and what is not:
+[items/030-proofs/26-core-algorithms-proved.md](items/030-proofs/26-core-algorithms-proved.md).
 
 Each release's jar and Javadoc are on the repository's GitHub Releases
 page, under the release's tag; `releases/VERSION/` holds its notes and
@@ -235,7 +242,8 @@ Repository
 ----------
 
 * `java/`: the implementation, its build scripts and its tests.
-* `lean/`: a model of the algorithm, used in testing; work in progress.
+* `lean/`: the Lean model of the Core's algorithms, its proofs and the
+  checkers that test Java against it (030-26).
 * `items/`: the work items, the design documents among them.
 * `releases/`: each release's notes and checksums.
 * `docs/log.md`: the development log.

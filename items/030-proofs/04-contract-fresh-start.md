@@ -184,6 +184,14 @@ puts that test where it is small and exact, on Java's own tree.
 
 ## 3.5 The assumptions, in one list
 
+**Updated in 030-26, section 5 (2026-11-19).** Assumption 1 is proved
+for PE, the writer of Java since 026-25 (030-21), so what is tested is
+that Java's writer is PE; assumption 11 is proved from reclaim's contract
+and the model of its steps (030-24, 030-25), so what is tested is RC1,
+RC4 and that Java's steps are the model's. 030-26 lists the 13 with the
+test and the script beside each. The list below is kept as it was
+written.
+
 Every claim names these five. No such list existed before (006-26,
 section 2.5).
 

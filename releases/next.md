@@ -21,8 +21,9 @@ release is made"; 029). The notes say so where they list the files.
 ### The theme
 
 Proven algorithms (Frans, 2026-11-19): BergDB's core algorithms are
-proved, given tested assumptions (bergdb 030). Release 2026.5's theme
-was solid algorithms. The stable stream format waits for a later release.
+proved, given tested assumptions (bergdb 030-26, which states the claim
+with the model and its limits). Release 2026.5's theme was solid
+algorithms. The stable stream format waits for a later release.
 
 
 ### The stream

@@ -31,6 +31,12 @@ not aimed for: Java against the model (tested by design), the platform's
 assumptions (tested), the cost and bounded-startup statements, and what
 the model leaves out (threads, the Pub layer, the cache's budget).
 
+**Reached (2026-11-19).** The writer's part by PE (030-21; Java's writer
+is PE since 026-25), reclaim's part by 030-24 and 030-25, each given the
+tested assumptions, which 030-26, section 5, lists as they now stand.
+030-26 states the claim for publication, in the words Frans chose,
+"BergDB's core algorithms are proved", with the model and its limits.
+
 Before: a fully proved model: "We still try to prove everything now.
 Once that work is done, I may decide on a general policy on this."
 (Frans, 2026-11-15, 08:47.) The goals in order were 006-26, section 8;
@@ -99,6 +105,11 @@ D0. The contract approach, a fresh start
   transaction but a put of a key the tree cannot hold, within named bounds
   of H and of the fuel (`pe_accepts`). Left for the writer's part of the
   aim: Java.
+* **State (2026-11-19): the goal is reached.** PE's writer meets the
+  contract (030-21) and Java's writer is PE (026-25, record format 8);
+  reclaim's cuts are safe given RC1, RC4 and Java's steps (030-24,
+  030-25). What stays tested is 030-26, section 5; 030-26 is the public
+  statement of the claim.
 * **What it changes here:** D1 is paused; D3's goal moves to 030-04's
   step 4. "The aim" above is as written on 16 November; D0's aim is its
   goal. The rules above hold for `lean/` as before; the new package's
@@ -476,6 +487,12 @@ Files
   `IterationOK` (`PE.pe_reclaim_reads_steps`); an example; how Java's steps
   could be checked on traces; 730 lines of Lean. Written 2026-11-19.
   Status: done.
+* [030-26](26-core-algorithms-proved.md). The public statement that
+  BergDB's core algorithms are proved (Frans, 2026-11-19): the claim and
+  what it means for a user; what is proved, each part with its top
+  theorem; the model and what "proved" means; the limits; 030-04's 13
+  tested assumptions as they now stand, each with its test and where it
+  runs; how it stays true; the history. Written 2026-11-19. Status: done.
 
 Log
 ===
