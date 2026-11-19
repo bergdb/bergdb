@@ -73,6 +73,14 @@ plain map gives (030-05, 030-08). Lean's three standard axioms only, no
      crash are right (`pe_crash_reads`). Premises: `Cfg.Ok`, the top
      nodes' level at most 2^62, fewer than 2^48 - 1 transactions, each
      transaction's keys distinct (Java's Dag keeps one operation a key).
+     **Corrected 2026-11-19** (an independent review of this item's
+     statements): the premise is on the base level of the top nodes,
+     `cf.topBase` (the start top node's level, `Cfg.topBase` in
+     PeRecord.lean), at most 2^62; later top nodes have the level
+     `topBase` plus their ordinal. The bound on the number of transactions
+     is a premise of the proof; Java bounds the top nodes' ordinals
+     (005-02), not the number of transactions, and a transaction that
+     leaves the space root as it was makes no top node.
   3. Java: PE is the model's writer; Java's write half is not PE yet
      (026-24's recommendation, step 2). Java against the model stays
      tested, by design.
@@ -282,7 +290,12 @@ allows, PE's acceptance. On the branch `030-21-full`.
 
 The coordinator, 2026-11-19, 04:43, within Frans's go: PE accepts every
 transaction it should, so that the theorems' premise "a transaction PE
-accepts" is discharged but for named, user-visible limits. By an agent of
+accepts" is discharged but for named, user-visible limits. **Corrected
+2026-11-19** (an independent review of this item's statements): only the
+key premise (`keyOk`) is an exact limit of the program (`pe_refuses`);
+`FuelOk` and `Room` are bounds that suffice for the proof, premises of
+`pe_accepts`, not limits that Java checks before its go point. That PE
+accepts every transaction that Java admits is not proved. By an agent of
 coord-1118 and one sub-agent of it, on the branch `030-21-accept` in
 /Users/f/fl/bench/2026-11-19/acc/clone.
 

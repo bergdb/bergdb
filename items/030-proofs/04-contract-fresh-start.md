@@ -125,6 +125,17 @@ accepts, the writer ends in a tree that:
 3. has changed or made only nodes that are then in D, the set of dirty
    nodes to be written to the stream; every other node is as it was.
 
+**Note (2026-11-19, after an independent review of 030-21's
+statements):** clause 3 as settled in Lean (`Frame`,
+Contract/Statement.lean) says less about new nodes than the wording
+above. Every node of the tree before is still there, of the same kind, a
+value unchanged, a key node with its level, its kind and its klongs, and
+new klongs only after a time klong of the transaction's time; a node not
+in D is unchanged; every key node made is in D. A value made need not be
+in D. That every node made, values among them, is in the transaction's
+change, which its record writes, is the bridge's clause N (`Made`,
+Contract/Bridge.lean), part of `MeetsFull`.
+
 The invariants are those of TP7 (006-26, section 2.3): the key order, the
 kinds of the nodes, a live klong in every node, at most M klongs in a
 node, every pointer naming a node that exists, and maybe the fill.

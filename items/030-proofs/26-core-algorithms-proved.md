@@ -75,15 +75,23 @@ every transaction:
 2. the tree holds the old contents with exactly the transaction's change:
    each key put has its new value, each key deleted is gone, every other
    key is as it was;
-3. nothing that existed was changed, only extended at the new time, and
-   only in the nodes that the transaction writes to the stream.
+3. every node that existed is still there and of the same kind: a value
+   is unchanged, a key node keeps its entries and gets new ones only after
+   a mark of the new time; a node that is not dirty (not in D, the nodes
+   still to be written to the stream) is unchanged; every key node made
+   is dirty. That every node made, values among them, is in the
+   transaction's change, which its record writes, is a clause of the
+   bridge to the model of the stream (`MeetsFull`, 2.3).
 
 `Contract.PE.pe_meetsTop_start` ([030-21](21-pe-proof.md)), with the top
 nodes that readers use to find the tree of an earlier time. PE does not
 meet the contract by refusing work: it accepts every transaction whose
-keys the tree can hold, within stated bounds (`Contract.PE.pe_accepts`),
-and refuses a put of a key the tree cannot hold
-(`Contract.PE.pe_refuses`).
+keys the tree can hold (`Contract.PE.pe_accepts`), given two bounds of
+the proof, on the tree's height and on the program's steps, and refuses a
+put of a key the tree cannot hold (`Contract.PE.pe_refuses`). The two
+bounds suffice for the proof; they are not limits that Java checks. So it
+is not proved that PE accepts every transaction that Java admits
+(section 4).
 
 ## 2.2 Reads
 
@@ -152,12 +160,20 @@ on can reach lies before it (`cutOK_of_rc`,
 
 ## 2.6 The bounds the theorems carry
 
-Writer parameters (the node size and its thresholds) that meet `Cfg.Ok`,
-as Java's do; fewer than 2^48 − 1 transactions (Java refuses a
-transaction there, 005-02); distinct keys within a transaction (Java's
-writer gets one operation per key); the top nodes' level at most 2^62.
-The bounds of `pe_accepts` on the tree's height and the program's steps
-are enough for acceptance, not its exact limits (030-21, section 6).
+The theorems about PE's histories have these premises:
+
+- writer parameters (the node size and its thresholds) that meet
+  `Cfg.Ok`, as Java's do;
+- distinct keys within a transaction (Java's writer gets one operation
+  per key);
+- the base level of the top nodes (`cf.topBase`, the start top node's
+  level, which the parameters give) at most 2^62;
+- a history of fewer than 2^48 − 1 transactions. This is a premise of
+  the proof, not a limit Java checks: Java bounds the top nodes'
+  ordinals (005-02), not the number of transactions, and a transaction
+  that leaves the tree's root as it was makes no top node.
+
+`pe_accepts` adds its two bounds (2.1).
 
 
 # 3. The model, and what "proved" means
@@ -206,8 +222,18 @@ it; that PE meets it is proved apart.
   answer) found faults in the trace checkers and gaps in what was stated;
   each was fixed or added to the tested assumptions. The reviews of 030-24
   and of 030-25 (2026-11-19) found no defect in a statement; their
-  qualifications are in section 4. PE's statements (030-21) have had no
-  review of their own.
+  qualifications are in section 4. An independent review of 030-21's
+  statements (2026-11-19) found PE's top statements substantive and not
+  vacuous within their premises, and the two Lean writers, the proved one
+  and the tree checker's copy, making the same choices of tree. It found
+  prose that said more than the Lean: the frame's rule for new values, the
+  acceptance bounds called limits of Java, the bound on transactions
+  taken for Java's, and the top nodes' level where the premise is on
+  their base level. These are corrected
+  here and in dated notes in 030-04 and 030-21. Its other two findings:
+  the copy is neither pinned nor compared with the proved writer as a
+  routine step (section 5, item 1), and PE's short way in Java reported
+  its dirty nodes in another order than emit's, which 028-25 fixed.
 
 `lean/contract/gate.sh` checks the first three.
 
@@ -232,6 +258,8 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   drains, restarts, eviction, reclaim). A case no trace reaches is covered
   only by the other tests, among them Java's own check of the contract
   after every transaction of its unit tests and f-tests (`TransCheck`).
+  That PE accepts every transaction that Java admits is not proved (2.1);
+  a transaction that the model refuses on a trace fails the tree checker.
   An independent review of Java's PE writer (2026-11-19) found one fault,
   in reclaim's accounting, not in the tree; it is fixed (028-26).
 - **The platform.** The model assumes that a synced append is durable,
@@ -284,9 +312,11 @@ fuzzing and the large trace set, before every release.
    medium set in `night.sh`). Java checks the contract itself
    (`TransCheck`: the unit tests in `before-commit.sh`, the f-tests in
    `night.sh`). The tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a copy
-   of the proved one, rule for rule; a run of both on Java's traces gave
-   the same trees (026-25, section 3), but that run is not a step of the
-   scripts.
+   of the proved one, rule for rule. A run of both on Java's traces gave
+   the same trees from the space roots (026-25, section 3); it did not
+   compare how the top nodes are made, and it is not a step of the
+   scripts. The copy is not pinned. A routine comparison of the two is
+   being added (030-28).
 2. **A synced append is durable.** CrashTest (`level2.sh` to
    `level4.sh`), PowerLossTest (`level3.sh`), `kill-restart.sh`
    (`night.sh`: 1,000 kills; `week.sh`: 3,000 more).
@@ -374,3 +404,10 @@ fuzzing and the large trace set, before every release.
 2026-11-19. Written, from 030-04, 030-21 to 030-25 and `lean/contract/`
 at 3b85b7e6 (191 theorems), on the branch `030-26-core-proved`; it lands
 on `main` when Frans has read it.
+
+2026-11-19. Corrected after an independent review of 030-21's statements,
+each point checked against the Lean: the frame's clause 3 as `Frame`
+states it (2.1), the acceptance bounds as premises of the proof (2.1,
+section 4), the bound on transactions and the top nodes' base level
+(2.6), the copy of PE in the tree checker (section 5, item 1), and the
+review itself (3.2). Dated notes in 030-04, section 3.2, and 030-21.
