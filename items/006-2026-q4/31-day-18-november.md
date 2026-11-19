@@ -326,6 +326,33 @@ The decisions, as recorded here:
   before-commit.sh, night.sh, week.sh. Timing in timing.sh, only this
   script requires a quite machine. Good structure." Agent tiers (028-23)
   started 10:39.
+* 10:43 Frans on Mathlib in the level scripts: the contract's checkers
+  move to a package without Mathlib (028-24, agent nomath).
+* 10:54 Frans: the stop at week 90 %; 027-08 "Write it for me." (agent
+  w08); the 024-26 apps are fixed with 028-23.
+* 10:55 028-18 option C landed (0cfc13bc): a lone primordial record is
+  refused with DatabaseNotCreatedException.
+* 11:11 Frans on 028-13: the builders' startup distance removed (Core
+  and Pub), the setters keep a range and clamp it (agent sd2). Frans: a
+  review of 027-08 against the code, by Codex for independence.
+* 11:13 Codex's review of Java's PE (10:36): one P2, reclaim's charge
+  omits the index nodes PE makes after the row; 028-26 registered, agent
+  rch. 027-08 landed (15abcaf3).
+* 11:20 Frans: reclaim's proof, its first step now, "Perhaps both?":
+  agent rcp (030-23, Opus xhigh) and Codex (the invariant on superseded
+  versions), independent, compared after both end (about 17:00).
+* 11:31 Level 2 on main 0cfc13bc: LEVEL 2 OK (the night's failure was
+  the Mathlib cache only). Codex's 027-08 review: 14 points, two high
+  (collapse tests the final list; a new top is stored by a later take).
+* 11:46 028-20 landed (55875108): the kill-restart harness counts a late
+  exit that ended by itself as an exit.
+* 11:58 028-23 landed (5bdb6773): tests by kind; week.sh and timing.sh;
+  the user apps in java/stress/apps/.
+* 12:01 028-21 landed (fa3b83ca, regated with 028-23): `dirtyNodeBound`
+  did not bound PE in three put-only cases, fixed. 028-26's exact charge
+  needs one more internal record per reclaim step: for Frans to decide.
+* 12:40 027-08's 14 corrections landed (b2891439), each checked against
+  the code; no code bug beyond 028-21 and 028-25.
 
 
 ## 4b. Unattended, 13:48 to 07:00
