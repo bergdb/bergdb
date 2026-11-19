@@ -19,8 +19,12 @@
 # the checkers' outputs to build/traces/tree-SET/. Prints the summary of each
 # check, then CONTRACTCONF OK or CONTRACTCONF FAILED. Set JAVA_HOME or PATH for
 # the JDK.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load.
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 SET=${1:-medium}
 SEEDS=$2

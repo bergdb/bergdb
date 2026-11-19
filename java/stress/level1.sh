@@ -32,8 +32,13 @@
 # dirty index nodes also while the startup section is shorter than the setting, so the
 # startup pos moves now and then (027-11, section 1.11). Logs go to build/level1/.
 # Set JAVA_HOME or PATH for the JDK; the build needs javac too.
+#
+# Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
+# load; CORE, printed and not checked, is a figure of time for information only (timing.sh
+# measures it on a quiet machine).
 
 cd "$(dirname "$0")/.."
+echo "Kind: functional"
 
 JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi

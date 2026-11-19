@@ -236,7 +236,7 @@ public class InterruptStress {
         }
         stop = true;
         for (Worker w : all) {
-            w.join(10000);
+            w.join(60000);      // a hang guard; 10 s until bergdb 028-23
             if (w.isAlive()) {
                 throw new AssertionError(w.getName() + " hung: " + java.util.Arrays.toString(w.getStackTrace()));
             }

@@ -251,20 +251,17 @@ public class Limits {
                 }
             }
         }
-        // A w() with a refused put: the builder after the refusal.
+        // A w() with a refused put: the builder after the refusal. Since 024-27 (024-26, U26-5, decided) a
+        // refused call spoils the builder: its later calls and execute() throw, and nothing is written
+        // (028-23: until then the app noted what it saw, the builder going on).
         WBuilder w = c.w();
         w.put("/k/ok1.bin", new byte[] {1});
         String longKey = keyOf("/k/", "a", 112, ".bin");
         expect(IllegalArgumentException.class, thrown(() -> w.put(longKey, new byte[] {2})), "w().put of a 112-byte key");
-        w.put("/k/ok2.bin", new byte[] {3});
-        Throwable t = thrown(() -> w.execute());
-        if (t == null) {
-            model.put("/k/ok1.bin", new byte[] {1});
-            model.put("/k/ok2.bin", new byte[] {3});
-            noteOnce("WBuilder after a refused put (L2): the builder goes on; execute() writes the other puts");
-        } else {
-            noteOnce("WBuilder after a refused put (L2): execute() throws " + t);
-        }
+        expect(IllegalStateException.class, thrown(() -> w.put("/k/ok2.bin", new byte[] {3})), "put() on a spoiled WBuilder");
+        expect(IllegalStateException.class, thrown(() -> w.execute()), "execute() of a spoiled WBuilder");
+        if (c.get("/k/ok1.bin", byte[].class) != null || c.get("/k/ok2.bin", byte[].class) != null)
+            throw new Common.Fail("a spoiled WBuilder wrote a put");
         // Deep directories: each '/' counts two.
         StringBuilder deep = new StringBuilder();
         while (stored(deep + "/d") + 2 <= 109) deep.append("/d");

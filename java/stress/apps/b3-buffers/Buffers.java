@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * cache of 1 MB: the heap of each just started (about 0.7 MB, DatabaseBuilder; FAIL over 1 MB),
  * 0.3 s after a fast write of small values (the buffers grown), 3.5 s and 10 s after, and after
  * a close and an open of each; 3.5 s after the writes and a sync of each the heap must be within 500 kB a
- * database of the reopened one (the buffers shrank back).
+ * database of the reopened one (the buffers shrank back); on a loaded machine 10 s after will do, with a NOTE.
  *
  * Mode kill: a child JVM writes bursts with idle gaps around 2 s to NDB databases, each
  * transaction i of a database a function of the seed, the database and i, with a marker;
@@ -199,8 +199,17 @@ public class Buffers {
                 + " kB a database more than when opened)");
         // The buffers have shrunk: the heap 3.5 s after the writes is about that of the same databases just
         // opened again (what remains is their data's, which a start loads; not the buffers').
-        if ((idle - reopened) / n > 500_000) throw new Common.Fail("heap " + (idle - reopened) / n / 1000
-                + " kB a database more 3.5 s after the writes and syncs than after a close and an open: the buffers did not shrink");
+        // On a loaded machine the 2 idle s can come later than 3.5 s after the syncs (028-23: the kind of
+        // the test is functional, its result must not depend on speed): then 10 s after is the check, and
+        // 3.5 s only a NOTE.
+        if ((idle - reopened) / n > 500_000) {
+            if ((idle10 - reopened) / n > 500_000) throw new Common.Fail("heap " + (idle - reopened) / n / 1000 + " kB 3.5 s and "
+                    + (idle10 - reopened) / n / 1000 + " kB 10 s after the writes and syncs, a database more than after a close"
+                    + " and an open: the buffers did not shrink");
+            Common.log("NOTE heap " + (idle - reopened) / n / 1000 + " kB a database more 3.5 s after the writes and syncs than"
+                    + " after a close and an open, " + (idle10 - reopened) / n / 1000 + " kB 10 s after: the buffers shrank late"
+                    + " (a loaded machine?)");
+        }
         if ((open - base) / n > 1_000_000) throw new Common.Fail("a new database holds " + (open - base) / n / 1000 + " kB, not about 0.7 MB");
         for (Slot s : slots) verify(s, "after the heap phase");
         closeAll(slots);
@@ -448,9 +457,9 @@ public class Buffers {
                 } catch (IOException e) { }
             });
             reader.start();
-            long until = System.currentTimeMillis() + 60_000;
+            long until = System.currentTimeMillis() + 300_000;    // a hang, not a speed: 60 s until 028-23
             while (ready.get() == 0 && p.isAlive() && System.currentTimeMillis() < until) Thread.sleep(5);
-            if (ready.get() == 0) { System.out.println("FAIL the child did not start: " + other); p.destroyForcibly(); System.exit(1); }
+            if (ready.get() == 0) { System.out.println("FAIL the child did not start in 300 s: " + other); p.destroyForcibly(); System.exit(1); }
             Thread.sleep(500 + rnd.nextInt(6000));
             long killMs = System.currentTimeMillis();
             p.destroyForcibly();

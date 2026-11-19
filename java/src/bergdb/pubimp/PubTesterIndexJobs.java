@@ -848,7 +848,8 @@ public class PubTesterIndexJobs {
             };
             Assert.assertEquals(JobStatus.State.ACTIVE, db.indexBuilder("by-field")
                     .dir("/items/").type("long").field("amount").start().join().state());
-            b[0].join(5000);
+            b[0].join(60 * 1000);      // a hang guard; 5 s until bergdb 028-23
+            Assert.assertFalse("the other thread's join() returned", b[0].isAlive());
             Assert.assertTrue("join() waited for the build that had not started", waited[0]);
             Assert.assertEquals(JobStatus.State.ACTIVE, got.get().state());
             

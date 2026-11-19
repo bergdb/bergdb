@@ -54,16 +54,36 @@ a snapshot of the former `docs/` of 2026-11-12.
   conformance steps, and `level2.sh` also the contract package
   `lean/contract/`, with Mathlib (030-13; it runs `lake exe cache get` there
   if the cache is missing).
-- Some tasks need more testing than that, depending on the job: work on
-  performance runs the performance tests (`java/stress/performance.sh` with
-  a suite, or `java/perf.sh`); a change to a level's mechanism runs that
-  level's script. The task's item says what it needs.
-- `java/night.sh` runs on a clone of the committed code: the level scripts,
-  the night tests and more; its reports are in `java/build/night/`. It has
-  no fixed time: the day's coordinator (013-02) starts it as a step of its
-  plan when the machine has room for it, or Frans by hand (the command is
-  in its header). `java/night.sh large` adds the large conformance set and
-  is started by hand.
+- Tests are of two kinds (028-23), written in each script's header and
+  printed at its start: functional, whose result does not depend on the
+  machine's speed or load (time limits inside are hang guards), and
+  timing, where the number is the result. Functional testing is in three
+  scripts: `java/before-commit.sh` (each commit), `java/night.sh` (about
+  once a day while there is development, about 2.5 hours) and
+  `java/week.sh` (on demand, about 11 hours: night's steps, the large
+  conformance set, the user apps of `java/stress/apps.sh`, more kills and
+  fuzzing). They may run while someone works on the machine, night.sh and
+  week.sh also at a low priority (`nice`, `taskpolicy -b`). Timing is in
+  `java/timing.sh` (CORE, the pause probe, `performance.sh ab` against the
+  last release at 1M and 10M keys), the only one of the four that needs a
+  quiet machine: it checks the load itself and refuses a busy one. Keep
+  timing out of the functional scripts: a figure of time may be printed
+  there, never decide a pass.
+- Before every release, `java/week.sh` and `java/timing.sh` run on a
+  commit near it. Frans, 2026-11-19, 10:25: "It would always run before a
+  release. Near a release, at least. Not necessarily on the exact version
+  that ships in the release. Minor change after can be acceptable."
+- Some tasks need more testing than before-commit.sh, depending on the
+  job: work on performance runs `java/timing.sh` or the performance tests
+  (`java/stress/performance.sh` with a suite, or `java/perf.sh`), on a
+  quiet machine; a change to a level's mechanism runs that level's script.
+  The task's item says what it needs.
+- `java/night.sh` and `java/week.sh` run on a clone of the committed code;
+  their reports are in `java/build/night/` and `java/build/week/`. They
+  have no fixed time: the day's coordinator (013-02) starts them as a step
+  of its plan, or Frans by hand (the commands are in their headers).
+  `java/night.sh large` adds the large conformance set, which week.sh
+  includes.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
 ## News
