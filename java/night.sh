@@ -17,17 +17,19 @@
 # several times longer). Timing has its own script, timing.sh, the only one that needs a
 # quiet machine. The three functional scripts: before-commit.sh before each commit, this
 # one about once a day while there is development, week.sh on demand and before every
-# release.
+# release. This one, week.sh and timing.sh are disjoint sets of tests (Frans decided,
+# 2026-11-19; bergdb 028-27): no step of one runs in another, except before-commit.sh,
+# which this one and week.sh run first; where a harness runs here and in week.sh, week.sh
+# runs it with other seeds and sizes (028-27 lists them).
 #
 # Usage: java/night.sh          the night run, about 2.5 hours on F53 (100 minutes
 #                               before bergdb 030-13, which adds about 30 to 35)
-#        java/night.sh large    the same and the large conformance set,
-#                               about 7 hours; by hand (week.sh includes it)
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #                               only the night tests, here, about 4.5 minutes
-#        java/night.sh week [short]
-#                               week.sh's run (bergdb 028-23): run it as java/week.sh,
-#                               whose header lists its steps
+#        DRY=1 java/night.sh    prints the steps in order with their commands, runs
+#                               nothing (no clone, no report)
+# The large conformance set, once "night.sh large", is week.sh's since 2026-11-19 (bergdb
+# 028-27), and week.sh no longer runs this script's steps.
 #
 # The night tests (bergdb.dev.Night, the Nano test group "night") are the
 # long-running tests of 2013 to 2015, with assertions on (-ea); with "tests",
@@ -38,7 +40,8 @@
 # The night run clones HEAD of this repository into build/night/RUN/repo (RUN
 # is the date and time; lean/.lake and lean/contractcheck/.lake are copied in, so
 # that lake builds only what changed) and runs there, one after another, going
-# on after a failure:
+# on after a failure (the clone, the steps' runner, the report and the news entry are
+# stress/runlib.sh's, which week.sh shares):
 #   1. before-commit.sh: the unit and f-tests.
 #   2. stress/core-build.sh unit f: the Core Layer built alone, with an empty
 #      class path, a program that calls Db with only it, and its unit and
@@ -83,21 +86,16 @@
 #      030-13); 32 minutes on F53 under a heavy load (2026-11-17), most of it
 #      the bridge's six traces of m-d30 and m-d62.
 #      level2.sh's step 8b checks both on the small and drain sets.
-#  12. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
-#      transactions at node sizes 8 to 62; about 5 hours, most of it the two
-#      l-big62 traces.
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
 # line, result and time, and NIGHT OK or NIGHT FAILED), each step's output in
 # STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and
 # its databases. Exits with status 1 if a step failed. Set JAVA_HOME or PATH
-# for the JDK; the build needs javac too, and the Lean steps elan. With "week",
-# the same in build/week/RUN/, WEEK OK or WEEK FAILED.
+# for the JDK; the build needs javac too, and the Lean steps elan.
 
 cd "$(dirname "$0")" || exit 1
 echo "Kind: functional"
-
-JAVA=${JAVA:-java}
-if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
+# JAVA, DAY, run_start, step and run_finish (bergdb 028-27).
+. ./stress/runlib.sh
 
 if [ "$1" = tests ]; then
     shift
@@ -109,58 +107,12 @@ if [ "$1" = tests ]; then
     exit 0
 fi
 
-# KIND: night, or week (week.sh's run); SHORT: week.sh short, its own steps small and
-# night's steps left out, a trial of the script.
-KIND=night
-LARGE=0
-SHORT=0
-if [ "$1" = large ]; then LARGE=1; fi
-if [ "$1" = week ]; then
-    KIND=week
-    LARGE=1
-    if [ "$2" = short ]; then SHORT=1; fi
+if [ -n "${1:-}" ]; then
+    echo "Usage: java/night.sh [tests [OPTIONS]] (\"large\" and \"week\" are week.sh's since bergdb 028-27)"
+    exit 2
 fi
-if [ $KIND = week ]; then NAME=WEEK; else NAME=NIGHT; fi
 
-REPO=$(git rev-parse --show-toplevel) || { echo "$NAME FAILED: not in git"; exit 1; }
-RUN=$(pwd)/build/$KIND/$(date +%Y-%m-%d-%H%M)
-SRC=$RUN/repo
-REPORT=$RUN/report.txt
-START=$(date +%s)
-
-mkdir -p $RUN || exit 1
-git clone -q "$REPO" $SRC || { echo "$NAME FAILED: clone" | tee $REPORT; exit 1; }
-if [ -d "$REPO/lean/.lake" ]; then
-    cp -R "$REPO/lean/.lake" $SRC/lean/ 2>/dev/null
-fi
-# The contract checkers' .lake (lean/contractcheck/, no Mathlib, bergdb 028-24).
-if [ -d "$REPO/lean/contractcheck/.lake" ]; then
-    cp -R "$REPO/lean/contractcheck/.lake" $SRC/lean/contractcheck/ 2>/dev/null
-fi
-{
-    if [ $KIND = week ]; then
-        echo "Week run $(basename $RUN) on $(hostname -s)$([ $SHORT = 1 ] && echo ", short")"
-    else
-        echo "Night run $(basename $RUN) on $(hostname -s)"
-    fi
-    echo "Kind: functional"
-    echo "Commit: $(git -C $SRC log -1 --format='%h %ad %s' --date=format:'%Y-%m-%d %H:%M')"
-    echo "JDK: $($JAVA -version 2>&1 | head -1)"
-    echo
-} > $REPORT
-
-FAILED=""
-
-# step NAME COMMAND...: runs the command in the clone's java/, output in NAME.txt.
-step() {
-    name=$1; shift
-    s=$(date +%s)
-    (cd $SRC/java && "$@") > $RUN/$name.txt 2>&1
-    status=$?
-    t=$(( $(date +%s) - s ))
-    if [ $status = 0 ]; then result=ok; else result=FAILED; FAILED="$FAILED $name"; fi
-    printf '%-18s %-6s %5d s   %s\n' $name $result $t "$(tail -1 $RUN/$name.txt)" >> $REPORT
-}
+run_start night "Night run"
 
 # The night tests in the clone (its night.sh may be older than this one).
 night_tests() {
@@ -170,28 +122,6 @@ night_tests() {
     grep -q '^SUCCESS' build/test/night.txt
 }
 
-# kill_seeds KILLS SEED...: kill-restart.sh with each seed in turn, KILLS kills each; stops
-# at the first failure, whose database stays in build/kill-restart/ (the next run would
-# delete it).
-kill_seeds() {
-    kills=$1; shift
-    for seed in "$@"; do
-        sh stress/kill-restart.sh $kills $seed || return 1
-    done
-}
-
-# week.sh short's conformance: the checker built first, as the level scripts do for theirs.
-conformance_small() {
-    (cd ../lean && lake build) > build/lake-week.txt 2>&1 \
-        || { echo "CONFORMANCE FAILED: lake build (log: java/build/lake-week.txt)"; return 1; }
-    sh stress/conformance.sh small 1
-}
-
-# The day's number (days since 1970), for week.sh's seeds: other seeds each day, and
-# other than night.sh's of the same day.
-DAY=$(( $(date +%s) / 86400 ))
-
-if [ $SHORT = 0 ]; then
 step before-commit sh before-commit.sh
 step core-build sh stress/core-build.sh unit f
 step transcheck sh stress/transcheck.sh
@@ -212,53 +142,5 @@ step kill-restart sh stress/kill-restart.sh 1000
 step conformance-medium sh stress/conformance.sh medium
 # The writer's contract and the bridge on the medium tree set (bergdb 030-13).
 step contract-medium sh stress/contractconf.sh medium
-fi
-# week.sh's own steps (its header has them; bergdb 028-23), after night's, the
-# longest last.
-if [ $KIND = week ] && [ $SHORT = 0 ]; then
-    step apps-quick sh stress/apps.sh quick
-    step apps-soak sh stress/apps.sh soak $DAY
-    step apps-kill sh stress/apps.sh kill $DAY
-    step kill-restart-week kill_seeds 1000 $((DAY * 10 + 1)) $((DAY * 10 + 2)) $((DAY * 10 + 3))
-    step fuzz-week sh stress/fuzz.sh 60 $((DAY * 1000 + 100))
-    step unlinkfuzz-week sh stress/unlinkfuzz.sh $((DAY * 1000 + 500))
-    step harness-soak-week sh stress/harness-soak.sh -r 10 -b $((DAY * 1000 + 100)) \
-        -o build/harness-soak-week
-elif [ $KIND = week ]; then
-    step apps-quick sh stress/apps.sh quick
-    step kill-restart-week kill_seeds 10 $((DAY * 10 + 1)) $((DAY * 10 + 2))
-    step fuzz-week sh stress/fuzz.sh 1 $((DAY * 1000 + 100))
-    step unlinkfuzz-week sh stress/unlinkfuzz.sh $((DAY * 1000 + 500))
-    step harness-soak-week sh stress/harness-soak.sh -r 1 -b $((DAY * 1000 + 100)) \
-        -o build/harness-soak-week
-fi
-if [ $SHORT = 1 ]; then
-    step conformance-small conformance_small
-elif [ $LARGE = 1 ]; then
-    step conformance-large sh stress/conformance.sh large
-fi
 
-# The logs, without the databases and traces; then the clone.
-(cd $SRC/java/build && find . -name '*.txt' -size -20000k | while read f; do
-    mkdir -p "$RUN/logs/$(dirname "$f")"
-    cp "$f" "$RUN/logs/$f"
-done)
-rm -rf $SRC
-
-echo >> $REPORT
-if [ -z "$FAILED" ]; then
-    echo "$NAME OK ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
-else
-    echo "$NAME FAILED:$FAILED ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT
-fi
-cat $REPORT
-
-# One line in news.md, a local file of background work's results that Git does not
-# track (AGENTS.md, "News"; tools/news.sh).
-if [ -f "$REPO/tools/news.sh" ]; then
-    if [ -z "$FAILED" ]; then st=OK; else st=FAILED; fi
-    sh "$REPO/tools/news.sh" "$st" $KIND.sh \
-        "$(tail -1 $REPORT) on $(sed -n 's/^Commit: \([0-9a-f]*\) .*/\1/p' $REPORT). Report: java/build/$KIND/$(basename $RUN)/report.txt" \
-        || echo "$KIND.sh: news.sh failed"
-fi
-[ -z "$FAILED" ]
+run_finish
