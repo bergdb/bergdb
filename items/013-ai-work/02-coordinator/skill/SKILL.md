@@ -98,7 +98,8 @@ UNTIL is when Frans is back, such as `07:00` (the next one) or
 
 1. Ask the questions that would otherwise stop the work, in one round
    (AskUserQuestion, at most four). 013-01, section 3, step 4, lists the
-   usual ones. Quote the answers in the day's plan.
+   usual ones. Record the decisions in the day's plan, as decisions,
+   not quotes (AGENTS.md, "Public repository").
 2. Write in the plan what will run while he is away, and when. For a
    night, set up 013-01: the conductor, the steps with READY markers, the
    quiet block, the morning. `night.sh` has no fixed time: it is a step

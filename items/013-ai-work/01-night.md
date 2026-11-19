@@ -67,7 +67,7 @@ Two things make it work:
    tasks to take "if there is time".
 3. **Write the plan** as a subitem of the quarter's item (006-09 was
    one). Sections:
-   1. the request, quoted, and Frans's answers;
+   1. the request and Frans's decisions;
    2. the ground rules;
    3. the work, W1 to Wn;
    4. the principles each task must keep;
@@ -75,8 +75,9 @@ Two things make it work:
    6. what happens if the session stops;
    7. progress, a log with times;
    8. the Outcome.
-4. **Ask Frans the blocking questions,** and quote his answers in
-   section 1. Typical questions:
+4. **Ask Frans the blocking questions,** and record his decisions in
+   section 1, as decisions, not quotes (AGENTS.md, "Public
+   repository"). Typical questions:
    * may the session commit to `main`;
    * may it put a given change into `java/`;
    * who decides when an item is done;
