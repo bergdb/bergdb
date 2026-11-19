@@ -255,15 +255,16 @@ allows, PE's acceptance. On the branch `030-21-full`.
 
 # State
 
-2026-11-19, 04:15. Part 1 done and on main (b15f4b1b). Part 2 on the branch
-`030-21-full` in /Users/f/fl/bench/2026-11-18/pw/clone (last f020fe8e,
-GATE OK without new main theorems yet): `MeetsFull` and K-LEVEL for PE's
-history are proved but for one premise, `Prov` (section 5). Running: a
-sub-agent proving `Prov` (branch `030-21-adopt` in
-/Users/f/fl/bench/2026-11-18/pw/adopt, report by 06:15). Next: merge it;
-the main theorem `pe_meetsFull` without the premise; Axioms.lean,
-statements.pin, a landing commit, GATED hash here. No GATED commit of
-part 2 yet.
+2026-11-19, 04:20. Part 1 done and on main (b15f4b1b). Part 2, `MeetsFull`
+for PE, **reduced to one named premise, `Prov`**, GATED: dba4059b on the
+branch `030-21-full-land` in /Users/f/fl/bench/2026-11-18/pw/clone (one
+commit on main 62cd36c4; the history on `030-21-full`, the same tree;
+`gate.sh 62cd36c4` GATE OK, 135 theorems, the standard axioms only; the
+pinned files changed: Axioms.lean, with two theorems and an example added,
+and the new PeRecord.lean, PeAdopt.lean, PeFull.lean). Running: a sub-agent
+proving `Prov` (branch `030-21-adopt` in /Users/f/fl/bench/2026-11-18/pw/adopt,
+report by 06:15). Next: merge it; `pe_full` and `pe_crash_reads` without the
+premise; Axioms.lean, statements.pin, a landing commit, its GATED hash here.
 
 # Log
 
