@@ -1,7 +1,7 @@
 028-24. Change: the level scripts without Mathlib
 =================================================
 
-Status: done (branch `028-24-checkers-no-mathlib`). Kind: Change. Frans: none.
+Status: done. Kind: Change. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: since 030-13, `java/stress/level2.sh` and `java/night.sh` (through
