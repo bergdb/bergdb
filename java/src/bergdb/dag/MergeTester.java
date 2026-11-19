@@ -1,10 +1,8 @@
 package bergdb.dag;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +15,13 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * The merges at the delete (bergdb 024-21; 024-11, sections 5 and 6), on the Dag alone, in
- * memory: BU1 checked after every transaction (Dag.checkFill: V1, V2, V4 and TU2's count),
- * lookups at every time against a model, no klong of a node reachable at any time naming a
- * node taken back (V8), the cases of prototype P5 (023-05, section 2.4) reached, the shape
- * against a twin (BU2), and thrash at a boundary (TU5).
+ * The merges at the delete (bergdb 024-21; 024-11, sections 5 and 6), since record format 8
+ * the writer's joins (PeWriter's rebalance; bergdb 026-25), on the Dag alone, in memory: BU1
+ * checked after every transaction (Dag.checkFill: V1, V2, V4 and TU2's count), lookups at
+ * every time against a model, joins of leaves and inner nodes, cuts and root collapses
+ * reached, the shape against a twin (BU2), and thrash at a boundary (TU5). Until format 8 also
+ * V8 (no klong names a node taken back) and the cases of prototype P5 (023-05, section 2.4):
+ * the writer of format 8 takes no node back.
  *
  * @author Frans Lundberg
  */
@@ -52,7 +52,6 @@ public class MergeTester {
         final TreeMap<String, TreeMap<Long, String>> model =
                 new TreeMap<String, TreeMap<Long, String>>(BYTES);
         final Set<Node> madeNow = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-        final Set<Node> takenBack = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
         final List<Long> times = new ArrayList<Long>();
         long t = 0;
         long newNodes = 0;
@@ -66,7 +65,6 @@ public class MergeTester {
                 public void keyNodeCreated(KeyNode node) { madeNow.add(node); newNodes++; }
                 public void valueNodeCreated(ValueNode node, long[] key) {}
                 public void keyNodeChanged(KeyNode node) {}
-                public void keyNodeTakenBack(KeyNode node) { takenBack.add(node); }
             };
         }
 
@@ -80,10 +78,18 @@ public class MergeTester {
         void trans(TreeMap<String, String> ops) {
             t += 10;
             pd.tt = t;
+            final long[][] keys = new long[ops.size()][];
+            final byte[][] values = new byte[ops.size()][];
+            int i = 0;
             for (Map.Entry<String, String> e : ops.entrySet()) {
                 String v = e.getValue();
-                dag.putKv(Keys.toSegments(e.getKey()), v == null ? null : StringUtil.toBytes(v), pd);
-                pd.clearFast();
+                keys[i] = Keys.toSegments(e.getKey());
+                values[i++] = v == null ? null : StringUtil.toBytes(v);
+            }
+            dag.putKvs(keys, values, pd);
+            pd.clearFast();
+            for (Map.Entry<String, String> e : ops.entrySet()) {
+                String v = e.getValue();
                 TreeMap<Long, String> h = model.get(e.getKey());
                 if (h == null) {
                     h = new TreeMap<Long, String>();
@@ -139,27 +145,6 @@ public class MergeTester {
             Assert.assertEquals(at + ": scan at " + u, exp, got);
         }
 
-        /** V8: no klong, live, deleted or shadowed, of a node reachable at any time names a
-         *  node taken back. */
-        void checkTakenBack(String at) {
-            Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
-            Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
-            for (long u : times) {
-                KeyNode root = dag.getTopDs().findRoot(u, gd());
-                if (root != null && seen.add(root)) todo.add(root);
-            }
-            while (!todo.isEmpty()) {
-                KeyNode n = todo.poll();
-                Assert.assertTrue(at + ": a taken-back node is reachable", !takenBack.contains(n));
-                for (int i = 0; i < n.size; i++) {
-                    if (!Klong.isKey(n.klongs[i])) continue;
-                    Node c = n.getPointerNode(i);
-                    Assert.assertTrue(at + ": klong " + i + " names a taken-back node",
-                            c == null || !takenBack.contains(c));
-                    if (c instanceof KeyNode && seen.add(c)) todo.add((KeyNode) c);
-                }
-            }
-        }
     }
 
     private static String key(int i) {
@@ -179,17 +164,16 @@ public class MergeTester {
      * TU1 and TU2 (bergdb 024-11): random transactions of puts and deletes, most of them
      * deletes in a second phase, keys of one segment and of up to three; after every
      * transaction BU1 (Dag.checkFill), and lookups at every time and scans against the model;
-     * at the end V8. Node sizes 8, 14, 30. The cases of prototype P5 (023-05, section 2.4)
-     * are reached: merges into one node and into two, of leaves and inner nodes, a left and
-     * a right node made by the transaction, two klongs of one compare value in the parent,
-     * nodes taken back, and root collapse after a merge.
+     * reached: joins (merges) of leaves and of inner nodes, cuts of a list into new nodes,
+     * appends, and root collapse. Node sizes 8, 14, 30. (Until record format 8: V8 at the
+     * end, and the cases of prototype P5, 023-05, section 2.4: merges into one node and into
+     * two, a left and a right node made by the transaction, two klongs of one compare value
+     * in the parent, nodes taken back.)
      */
     @Nano
     public static void testFillAfterEveryTransaction() {
-        final long merges0 = Dag.statMerges, two0 = Dag.statMergesTwo,
-                leaves0 = Dag.statMergeLeaves, madeL0 = Dag.statMergeMadeL,
-                madeR0 = Dag.statMergeMadeR, dup0 = Dag.statMergeDup,
-                taken0 = Dag.statMergeTaken, collapses0 = Dag.statCollapses;
+        final long joins0 = Dag.statJoins, cuts0 = Dag.statCuts, appends0 = Dag.statAppends,
+                collapses0 = Dag.statCollapses;
         Random r = new Random(21);
         for (int b : new int[] {8, 14, 30}) {
             for (int shape = 0; shape < 2; shape++) {
@@ -213,17 +197,11 @@ public class MergeTester {
                     }
                 }
                 run.checkGets(at, 1);
-                run.checkTakenBack(at);
             }
         }
-        Assert.assertTrue("merges", Dag.statMerges > merges0);
-        Assert.assertTrue("merges into two nodes", Dag.statMergesTwo > two0);
-        Assert.assertTrue("merges of inner nodes",
-                Dag.statMerges - merges0 > Dag.statMergeLeaves - leaves0);
-        Assert.assertTrue("a left node made by the transaction", Dag.statMergeMadeL > madeL0);
-        Assert.assertTrue("a right node made by the transaction", Dag.statMergeMadeR > madeR0);
-        Assert.assertTrue("two klongs of a compare value in the parent", Dag.statMergeDup > dup0);
-        Assert.assertTrue("nodes taken back", Dag.statMergeTaken > taken0);
+        Assert.assertTrue("joins", Dag.statJoins > joins0);
+        Assert.assertTrue("cuts", Dag.statCuts > cuts0);
+        Assert.assertTrue("appends", Dag.statAppends > appends0);
         Assert.assertTrue("root collapses", Dag.statCollapses > collapses0);
     }
 
@@ -344,13 +322,14 @@ public class MergeTester {
     }
 
     /**
-     * 024-22's MF1 (its J4): a delete in a full leaf makes a rule O first (a time split whose
-     * last version has m - 1 live klongs), whose klong can split the parent and make a new
-     * root, and then merges and root collapse, in one operation. The model's smallest case at
-     * node size 8: twelve keys (the smallest, "/" for the model's empty key, eight of one
-     * segment, three under one 7-byte prefix and one under another), each put in its own
-     * transaction, all again in one, then a put of the smallest, then its delete. In the delete: a rule O and a merge; after it
-     * BU1, every get at every time, and dirtyNodeBound at least the key nodes made dirty.
+     * 024-22's MF1 (its J4): until record format 8, a delete in a full leaf made a rule O first
+     * (a time split whose last version has m - 1 live klongs), whose klong could split the
+     * parent and make a new root, and then merges and root collapse, in one operation. The
+     * model's smallest case at node size 8: twelve keys (the smallest, "/" for the model's
+     * empty key, eight of one segment, three under one 7-byte prefix and one under another),
+     * each put in its own transaction, all again in one, then a put of the smallest, then its
+     * delete. Since format 8 (bergdb 026-25) the delete joins the leaf; after it BU1, every
+     * get at every time, and dirtyNodeBound at least the key nodes made dirty.
      */
     @Nano
     public static void testRuleOBeforeAMerge() {
@@ -389,23 +368,17 @@ public class MergeTester {
             public void valueNodeCreated(ValueNode node, long[] key) {}
             public void keyNodeChanged(KeyNode node) { dirty.add(node); }
             public void keyNodeReplaced(KeyNode node) { dirty.remove(node); }
-            public void keyNodeTakenBack(KeyNode node) {
-                dirty.remove(node);
-                changes.keyNodeTakenBack(node);
-            }
+            public void keyNodeOnPath(KeyNode node) { dirty.add(node); }
         };
-        final long merges0 = Dag.statMerges;
-        final int full0 = run.pd.fullNodes;
+        final long joins0 = Dag.statJoins;
         TreeMap<String, String> del = new TreeMap<String, String>(BYTES);
         del.put("/", null);
         run.trans(del);
-        Assert.assertTrue("a rule O in the delete", run.pd.fullNodes > full0);
-        Assert.assertTrue("a merge in the delete", Dag.statMerges > merges0);
+        Assert.assertTrue("a join in the delete", Dag.statJoins > joins0);
         Assert.assertTrue("dirty key nodes " + dirty.size() + ", bound " + bound,
                 dirty.size() <= bound);
         run.checkFill("the delete");
         run.checkGets("the delete", 1);
-        run.checkTakenBack("the delete");
     }
     
     /**
@@ -422,6 +395,13 @@ public class MergeTester {
             Assert.assertEquals("m at " + x[0], x[1], Dag.minFill(x[0]));
             Assert.assertEquals("h at " + x[0], x[2], Dag.splitAbove(x[0]));
             Assert.assertEquals("c at " + x[0], x[3], Dag.mergeCap(x[0]));
+            // The cut of format 8 (bergdb 026-25): a list of more than h entries is cut into
+            // parts of at most cutSize = B / 2, at least two, as even as possible; each part
+            // holds at least m: the smallest part of a cut into k is of a list of more than
+            // (k - 1) cutSize entries, or of more than h for k = 2.
+            int b = x[0], m = Dag.minFill(b), cap = Dag.cutSize(b), h = Dag.splitAbove(b);
+            Assert.assertEquals("cut size at " + b, b / 2, cap);
+            Assert.assertTrue("b " + b + ": a cut's parts", (Math.min(h, cap) + 1) / 2 >= m);
         }
         for (int b = 2; b < 8; b++) {
             Assert.assertEquals("m at " + b, 1, Dag.minFill(b));

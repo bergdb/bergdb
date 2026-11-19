@@ -1484,6 +1484,10 @@ public class Db implements AutoCloseable {
                 takenBackInTrans.add(node);
             }
             
+            public void keyNodeOnPath(KeyNode node) {
+                markAtEndOfOp(node);
+            }
+            
             public void topNodeReplaced(TopNode node) {
                 if (x.transInfo != null) replacedInTrans.add(node);
                 final TestHooks hooks = testHooks;
@@ -3460,9 +3464,16 @@ public class Db implements AutoCloseable {
         // with the same operations run the same and write the same stream. A user
         // transaction's value transformations ran before the go point, in this order
         // (transformValues(), bergdb 026-06); an internal transaction's, the row of a reclaim
-        // step, run in the put loop: each reads the previous value at tt, as before.
-        // The record holds the KVs put, and the startup's rerun applies them in their stored
-        // order, this order, and does not sort.
+        // step, run here, before the Dag gets the operations: each reads the previous value at
+        // tt, which is the value before the transaction, as the transaction has one operation
+        // a key. Since record format 8 the Dag gets the transaction's operations as one batch
+        // (Dag.putKvs, the writer PE; bergdb 026-25), so a value transformation runs before any
+        // operation is applied: a reclaim step's row stores the bytes that the step's touch made
+        // dirty (Trans.dirtiedBytes), and no longer those of the puts that sort before the row.
+        // The record holds the KVs put, and the startup's rerun gives them to the Dag in their
+        // stored order, this order, and does not sort.
+        final long[][] keys = new long[kvs.length][];
+        final byte[][] values = new byte[kvs.length][];
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
@@ -3475,11 +3486,12 @@ public class Db implements AutoCloseable {
             if (kvHooks != null) {
                 kvHooks.kvApplied(kv.getKey(), kv.getValue());
             }
-            dag.putKv(kv.getKey(), kv.getValue(), x.putData);
-            endOfOp(false);
-            
-            x.putData.clearFast();
+            keys[i] = kv.getKey();
+            values[i] = kv.getValue();
         }
+        dag.putKvs(keys, values, x.putData);
+        endOfOp(false);
+        x.putData.clearFast();
         
         endOfTrans();
         if (transCheck != null) transCheck.end(dag.getTopDs().getSuperRoot(), kvs);
@@ -4188,9 +4200,12 @@ public class Db implements AutoCloseable {
 
         /**
          * The transaction being executed is about to give the Dag this operation (Db.putKvs,
-         * before Dag.putKv): the key, and the value after its transformation, null for a
+         * before Dag.putKvs): the key, and the value after its transformation, null for a
          * delete; in the order the Dag gets them. A delete that changes nothing is told here
          * too, and makes no value node (bergdb 024-12, section 2.6: the trace's OP lines).
+         * Since record format 8 (bergdb 026-25) the Dag gets them as one batch: every
+         * operation is told before the first value node is made (valueNodeCreated, with its
+         * key).
          */
         public default void kvApplied(long[] key, byte[] value) {}
 

@@ -129,7 +129,7 @@ public class DbTesterMerge {
      */
     @Nano
     public static void testRestartsRerunTheMerges() {
-        final long merges0 = Dag.statMerges;
+        final long merges0 = Dag.statJoins;
         for (int sd : new int[] {10, 10 * 1000 * 1000}) {
             String at0 = "startup distance " + sd;
             MemoryStream ms = new MemoryStream();
@@ -159,7 +159,7 @@ public class DbTesterMerge {
             checkValues(db, state, 1200, at0);
             db.close();
         }
-        Assert.assertTrue("merges", Dag.statMerges > merges0);
+        Assert.assertTrue("merges", Dag.statJoins > merges0);
     }
 
     /**

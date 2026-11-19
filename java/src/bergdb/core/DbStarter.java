@@ -378,11 +378,20 @@ public class DbStarter {
         PutData pd = createPutData();
         long valueBytes = 0;
         
-        for (StoredValueNode node : valueNodes) {
-            long[] key = node.getKey();
-            byte[] value = node.getNode().getValue();
-            valueBytes += StoredValueNode.getByteSizeLong(value, key);
-            
+        // The record's KVs, in their stored order, given to the Dag as one batch, as the
+        // transaction gave them (Db.putKvs; record format 8, bergdb 026-25).
+        final long[][] keys = new long[valueNodes.size()][];
+        final byte[][] values = new byte[valueNodes.size()][];
+        {
+            int k = 0;
+            for (StoredValueNode node : valueNodes) {
+                keys[k] = node.getKey();
+                values[k] = node.getNode().getValue();
+                valueBytes += StoredValueNode.getByteSizeLong(values[k], keys[k]);
+                k++;
+            }
+        }
+        {
             pd.tt = storedTrans.tt;
             pd.nodeChangeListener = new Dag.NodeChangeListener() {
                 public void topNodeCreated(TopNode node) {
@@ -442,7 +451,7 @@ public class DbStarter {
                 }
             };
             
-            dag.putKv(key, value, pd);
+            dag.putKvs(keys, values, pd);
             
             pd.clearFast();
         }

@@ -884,22 +884,23 @@ public class KeyNode implements Node {
     }
     
     /**
-     * Adds a KEY klong whose pointer is a copy of pointer 'from' of this node: the same
-     * pointee (a handle, or nothing) and the same reference, read as a coherent pair under
-     * the node's monitor, as lastVersionGivenDel() copies pointers. If needed, a time klong
-     * is added before it. Write access required. For the empty key's klong at a delete, when
-     * its child has emptied (bergdb 023-07, section 5.2, LE-b; Dag.emptyKeyNext).
+     * Adds a KEY klong whose pointer is a copy of pointer 'from' of the node 'src', this node
+     * or another: the same pointee (a handle, a value, or nothing) and the same reference,
+     * read as a coherent pair under src's monitor, as lastVersionGivenDel() copies pointers.
+     * If needed, a time klong is added before it. Write access required. For the writer's
+     * emit (bergdb 026-25; PeWriter): a node written that names a node or a value that an
+     * existing pointer names, through a copy of that pointer (the A-COPY of bergdb 030-07).
      * 
      * @return The index of the new klong.
      */
-    public int addKlongCopyPointer(long time, long klong, int from) {
+    public int addKlongCopyPointer(long time, long klong, KeyNode src, int from) {
         assert Klong.getType(klong) == Klong.TYPE_KEY;
-        assert from >= 0 && from < this.size && Klong.getType(klongs[from]) == Klong.TYPE_KEY;
+        assert from >= 0 && from < src.size && Klong.getType(src.klongs[from]) == Klong.TYPE_KEY;
         final Pointee pointer;
         final long ref;
-        synchronized (this) {
-            pointer = pointers[from];
-            ref = pos[from];
+        synchronized (src) {
+            pointer = src.pointers[from];
+            ref = src.pos[from];
         }
         short sz = this.size;
         assert lastTimeIndex == -1 || time >= klongs[lastTimeIndex];
