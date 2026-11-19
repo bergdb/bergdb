@@ -289,7 +289,11 @@ pending, M1's condition holds, or the dead hand has more.
   >= pEnd. Proved in the model (`T_cover`, `T_latest`).
 * **T-SCHEME**: Java's waits (1.5, 1.6) give `CutOK`. Checked: C-CUT at
   every cut of every reclaim trace (026-05: 0 of 794 failing in level3's
-  set, 0 of 479 in its own), and `checkSchemeC`. Not proved: open.
+  set, 0 of 479 in its own), and `checkSchemeC`. Since 030-23 stated
+  (`TScheme`, lean/contract/Contract/ReclaimScheme.lean) for cuts that
+  meet reclaim's contract RC (030-22): half proved (`rc_parts`), the
+  rest open (`TSchemeOpen`); C-CUT checks RC at every cut too
+  (`RC1-order`, `RC2-rewrites`, `RC4-waits`; RC3 is `CUT-live`).
 * **The touch on the paths** (`TouchOnPaths`): checked (C-A,
   `touchPath`); gated (`testStepDirtiesItsPathsOnly`). **No conflict in
   a step** (1.4): argued; no test.
@@ -372,7 +376,11 @@ pending, M1's condition holds, or the dead hand has more.
 * **Assumptions**: `RunOK` (A2 to A5, TREE), Java's still-dirty test and
   marking, `LiveAppend`, `EvictRunOK`; for T8 and T12 `ExecRootOK`,
   `VirtLiveOK`, `PolicyCutOK`. REWRITES and LIVEBELOW are premises.
-  **Stated, not proved**: nothing; T-SCHEME has no statement and is
+  **Stated, not proved**: T-SCHEME, in lean/contract (030-23):
+  `TScheme`, for cuts that meet RC; its proved half `rc_parts` (`CutOK`'s
+  parts 1, 3's first half and 4, and part 2 for the latest versions),
+  its open half `TSchemeOpen`; `full_cut_rc`, `cut_keeps_top_rc` and
+  `cut_java_reads_rc` take T-SCHEME and RC in place of `CutOK`. Also
   checked by running (`checkSchemeC` in SIS/ReclaimExample.lean, `lake
   exe reclaimtest`; 024-07, section 4.3).
 * **Left out**: keys, the scan and E, R and the times, the table, the
@@ -381,7 +389,7 @@ pending, M1's condition holds, or the dead hand has more.
 * **Conformance** (027-02's `TOUCH`, `FA`, `CUT`, `PHYSCUT`; Check/Steps
   and TraceCheck.lean): C-A (TouchOK, `touchPath`), C-S (the model's
   step against Java's records, D on the cut stream), C-CUT (`CutOK` at
-  every cut Java decides; `CUT-live`), C-L (the first touches after
+  every cut Java decides; `CUT-live`; RC, 030-23), C-L (the first touches after
   restarts); C-P and C-H with eviction.
 
 

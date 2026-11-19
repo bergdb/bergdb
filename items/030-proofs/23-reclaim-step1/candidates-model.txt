@@ -1,0 +1,210 @@
+# 030-23: the candidates in the model (ReclaimL.lean.txt), example 4's random runs, Java's exact waits.
+# Each policy line: iterations, states past the waits, states between the waits where CutOK fails; then the states where each candidate fails; then the instances.
+# Policies: std = 030-22's four (lags 1, 2, 4, erratic); lag = 6, 9, erratic up to 9 and 13; all = std then lag. 'touch' = spec4, 'notouch' = spec4n.
+
+## reclaiml 20 40 std (the cover runs; the third version, without POSTV-R)
+policy std/0 touch: 104 iterations (94 with RC3), 1681 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1038, GI(i) 1038, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 1128, PART3B 0, REACHPB 157, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 1128, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 160, GIS-CASE2 0
+  instances: POSTV versions after v 73838, PBORD versions with a pointee in D 69552, OLDCHAIN premises 103722, GIW(ii) pairs 3081546, reached superseded versions 13661, dangerous versions 5455, PART3B refs below c 3365, GIS(ii) case-2 instances 0, good versions of reachable nodes 883168
+policy std/0 notouch: 98 iterations (94 with RC3), 1521 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1009, GI(i) 1009, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 968, PART3B 0, REACHPB 96, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 968, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 54866, PBORD versions with a pointee in D 45778, OLDCHAIN premises 80947, GIW(ii) pairs 1901373, reached superseded versions 7922, dangerous versions 4346, PART3B refs below c 2107, GIS(ii) case-2 instances 0, good versions of reachable nodes 628565
+policy std/1 touch: 104 iterations (94 with RC3), 1487 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 41, PBORD 0, OLDCHAIN 0, GOODREACH 1311, GI(i) 1311, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 974, PART3B 0, REACHPB 53, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 974, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 148, GIS-CASE2 0
+  instances: POSTV versions after v 66542, PBORD versions with a pointee in D 75598, OLDCHAIN premises 56327, GIW(ii) pairs 2718198, reached superseded versions 3312, dangerous versions 4572, PART3B refs below c 4268, GIS(ii) case-2 instances 0, good versions of reachable nodes 705307
+policy std/1 notouch: 98 iterations (94 with RC3), 1339 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 36, PBORD 0, OLDCHAIN 0, GOODREACH 1223, GI(i) 1223, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 826, PART3B 0, REACHPB 30, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 826, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 57526, PBORD versions with a pointee in D 70991, OLDCHAIN premises 49550, GIW(ii) pairs 2048676, reached superseded versions 1674, dangerous versions 4757, PART3B refs below c 2643, GIS(ii) case-2 instances 0, good versions of reachable nodes 541240
+policy std/2 touch: 104 iterations (94 with RC3), 1075 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1075, GI(i) 1075, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 16, GIW(iii) 0, SAFE(ii) 661, PART3B 0, REACHPB 0, GIW0(i) 0, GIW0(ii) 16, GIW0(iii) 0, GIW0(iv) 661, GIR(i) 0, GIR(ii) 16, GIR(iii) 0, GIS(i) 69, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 116, GIS-CASE2 0
+  instances: POSTV versions after v 38484, PBORD versions with a pointee in D 47155, OLDCHAIN premises 23718, GIW(ii) pairs 1497054, reached superseded versions 0, dangerous versions 2832, PART3B refs below c 3775, GIS(ii) case-2 instances 0, good versions of reachable nodes 429246
+policy std/2 notouch: 98 iterations (94 with RC3), 959 states past the waits, 5 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 959, GI(i) 959, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 11, GIW(iii) 0, SAFE(ii) 545, PART3B 0, REACHPB 0, GIW0(i) 0, GIW0(ii) 11, GIW0(iii) 0, GIW0(iv) 545, GIR(i) 0, GIR(ii) 11, GIR(iii) 0, GIS(i) 90, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 33453, PBORD versions with a pointee in D 42913, OLDCHAIN premises 21261, GIW(ii) pairs 1127766, reached superseded versions 0, dangerous versions 2748, PART3B refs below c 2642, GIS(ii) case-2 instances 0, good versions of reachable nodes 341602
+policy std/3 touch: 104 iterations (94 with RC3), 1388 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1141, GI(i) 1141, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 903, PART3B 0, REACHPB 42, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 903, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 143, GIS-CASE2 0
+  instances: POSTV versions after v 44009, PBORD versions with a pointee in D 40904, OLDCHAIN premises 40164, GIW(ii) pairs 1609379, reached superseded versions 2869, dangerous versions 3296, PART3B refs below c 4135, GIS(ii) case-2 instances 0, good versions of reachable nodes 604884
+policy std/3 notouch: 98 iterations (94 with RC3), 1245 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1086, GI(i) 1086, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 760, PART3B 0, REACHPB 12, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 760, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 33692, PBORD versions with a pointee in D 31913, OLDCHAIN premises 34976, GIW(ii) pairs 1109683, reached superseded versions 2183, dangerous versions 2946, PART3B refs below c 2728, GIS(ii) case-2 instances 0, good versions of reachable nodes 459176
+TOTAL: 808 iterations (752 with RC3), 10695 states past the waits, 5 between the waits with CutOK failing
+  CUTOK: 0 states fail
+  LNLK: 0 states fail
+  POSTV: 77 states fail; first: k=32: (10051,30) after v=29 names a child below c=16
+  PBORD: 0 states fail
+  OLDCHAIN: 0 states fail
+  GOODREACH: 8842 states fail; first: k=7 t=7: reached (10051,7), no version good for t
+  GI(i): 8842 states fail; first: k=7 t=7: latest (10051,7) of a reachable node fails I
+  GI(ii): 0 states fail
+  GI(iii): 0 states fail
+  GIW(i): 0 states fail
+  GIW(ii): 27 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIW(iii): 0 states fail
+  SAFE(ii): 6765 states fail; first: k=18 t=15: (30,3) has I, child 20's (20,3) not
+  PART3B: 0 states fail
+  REACHPB: 390 states fail; first: k=15 t=4: reached superseded put-back (1,14)
+  GIW0(i): 0 states fail
+  GIW0(ii): 27 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIW0(iii): 0 states fail
+  GIW0(iv): 6765 states fail; first: k=18: (7,0) at or after a good version, before c=3
+  GIR(i): 0 states fail
+  GIR(ii): 27 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIR(iii): 0 states fail
+  GIS(i): 159 states fail; first: k=13 t=9: latest (10075,13) of a reachable node fails I
+  GIS(ii): 0 states fail
+  GIS(iii): 0 states fail
+  GIS-J(i): 0 states fail
+  GIS-J(iii): 0 states fail
+  GOODC: 567 states fail; first: k=11: (6,0) good for 8, reachable then, before c=1
+  GIS-CASE2: 0 states fail
+  instances: POSTV versions after v 402410, PBORD versions with a pointee in D 424804, OLDCHAIN premises 410665, GIW(ii) pairs 15093675, reached superseded versions 31621, dangerous versions 30952, PART3B refs below c 25663, GIS(ii) case-2 instances 0, good versions of reachable nodes 4593188
+     1197.59 real       413.44 user         2.49 sys
+
+## reclaiml 20 40 lag (the cover runs; the third version, without POSTV-R)
+policy lag/0 touch: 104 iterations (94 with RC3), 647 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 645, GI(i) 645, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 83, GIW(iii) 0, SAFE(ii) 347, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 83, GIW0(iii) 0, GIW0(iv) 347, GIR(i) 7, GIR(ii) 83, GIR(iii) 0, GIS(i) 115, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 93, GIS-CASE2 0
+  instances: POSTV versions after v 17712, PBORD versions with a pointee in D 20089, OLDCHAIN premises 9078, GIW(ii) pairs 697227, reached superseded versions 495, dangerous versions 1260, PART3B refs below c 1876, GIS(ii) case-2 instances 0, good versions of reachable nodes 241679
+policy lag/0 notouch: 98 iterations (94 with RC3), 554 states past the waits, 9 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 554, GI(i) 554, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 63, GIW(iii) 0, SAFE(ii) 254, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 63, GIW0(iii) 0, GIW0(iv) 254, GIR(i) 7, GIR(ii) 63, GIR(iii) 0, GIS(i) 144, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 15036, PBORD versions with a pointee in D 18223, OLDCHAIN premises 8055, GIW(ii) pairs 534286, reached superseded versions 0, dangerous versions 1113, PART3B refs below c 1226, GIS(ii) case-2 instances 0, good versions of reachable nodes 187854
+policy lag/1 touch: 104 iterations (94 with RC3), 222 states past the waits, 5 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 222, GI(i) 222, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 77, GIW(iii) 0, SAFE(ii) 117, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 77, GIW0(iii) 0, GIW0(iv) 117, GIR(i) 7, GIR(ii) 77, GIR(iii) 0, GIS(i) 61, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 64, GIS-CASE2 0
+  instances: POSTV versions after v 4511, PBORD versions with a pointee in D 4693, OLDCHAIN premises 2097, GIW(ii) pairs 173123, reached superseded versions 0, dangerous versions 262, PART3B refs below c 587, GIS(ii) case-2 instances 0, good versions of reachable nodes 79509
+policy lag/1 notouch: 98 iterations (94 with RC3), 158 states past the waits, 5 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 158, GI(i) 158, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 77, GIW(iii) 0, SAFE(ii) 53, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 77, GIW0(iii) 0, GIW0(iv) 53, GIR(i) 7, GIR(ii) 77, GIR(iii) 0, GIS(i) 46, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 3256, PBORD versions with a pointee in D 3574, OLDCHAIN premises 1553, GIW(ii) pairs 114144, reached superseded versions 0, dangerous versions 185, PART3B refs below c 199, GIS(ii) case-2 instances 0, good versions of reachable nodes 53379
+policy lag/2 touch: 104 iterations (94 with RC3), 1280 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 1047, GI(i) 1047, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 737, PART3B 0, REACHPB 78, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 835, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 128, GIS-CASE2 0
+  instances: POSTV versions after v 33475, PBORD versions with a pointee in D 26432, OLDCHAIN premises 28320, GIW(ii) pairs 1479161, reached superseded versions 7018, dangerous versions 2159, PART3B refs below c 4338, GIS(ii) case-2 instances 0, good versions of reachable nodes 530710
+policy lag/2 notouch: 98 iterations (94 with RC3), 1152 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 981, GI(i) 981, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 704, PART3B 0, REACHPB 45, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 707, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 26805, PBORD versions with a pointee in D 23412, OLDCHAIN premises 25569, GIW(ii) pairs 1051675, reached superseded versions 3794, dangerous versions 2333, PART3B refs below c 2842, GIS(ii) case-2 instances 0, good versions of reachable nodes 415569
+policy lag/3 touch: 104 iterations (94 with RC3), 933 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 748, GI(i) 748, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 411, PART3B 0, REACHPB 7, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 532, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 116, GIS-CASE2 0
+  instances: POSTV versions after v 15483, PBORD versions with a pointee in D 4373, OLDCHAIN premises 11685, GIW(ii) pairs 806523, reached superseded versions 4294, dangerous versions 821, PART3B refs below c 2807, GIS(ii) case-2 instances 0, good versions of reachable nodes 352606
+policy lag/3 notouch: 98 iterations (94 with RC3), 817 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 702, GI(i) 702, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 394, PART3B 0, REACHPB 37, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 416, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0
+  instances: POSTV versions after v 13279, PBORD versions with a pointee in D 5985, OLDCHAIN premises 10206, GIW(ii) pairs 655010, reached superseded versions 3758, dangerous versions 865, PART3B refs below c 1784, GIS(ii) case-2 instances 0, good versions of reachable nodes 280235
+TOTAL: 808 iterations (752 with RC3), 5763 states past the waits, 19 between the waits with CutOK failing
+  CUTOK: 0 states fail
+  LNLK: 0 states fail
+  POSTV: 0 states fail
+  PBORD: 0 states fail
+  OLDCHAIN: 0 states fail
+  GOODREACH: 5057 states fail; first: k=17 t=6: reached (10051,12), no version good for t
+  GI(i): 5057 states fail; first: k=17 t=6: latest (10051,12) of a reachable node fails I
+  GI(ii): 0 states fail
+  GI(iii): 0 states fail
+  GIW(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIW(ii): 300 states fail; first: k=18 t=6: (10050,12) has I, child 1's (1,7) not
+  GIW(iii): 0 states fail
+  SAFE(ii): 3017 states fail; first: k=28 t=20: (30,7) has I, child 20's (20,7) not
+  PART3B: 0 states fail
+  REACHPB: 167 states fail; first: k=30 t=17: reached superseded put-back (1,27)
+  GIW0(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIW0(ii): 300 states fail; first: k=18 t=6: (10050,12) has I, child 1's (1,7) not
+  GIW0(iii): 0 states fail
+  GIW0(iv): 3261 states fail; first: k=28: (7,0) at or after a good version, before c=3
+  GIR(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIR(ii): 300 states fail; first: k=18 t=6: (10050,12) has I, child 1's (1,7) not
+  GIR(iii): 0 states fail
+  GIS(i): 366 states fail; first: k=17 t=6: latest (10051,12) of a reachable node fails I
+  GIS(ii): 0 states fail
+  GIS(iii): 0 states fail
+  GIS-J(i): 0 states fail
+  GIS-J(iii): 0 states fail
+  GOODC: 401 states fail; first: k=24: (6,0) good for 8, reachable then, before c=1
+  GIS-CASE2: 0 states fail
+  instances: POSTV versions after v 129557, PBORD versions with a pointee in D 106781, OLDCHAIN premises 96563, GIW(ii) pairs 5511149, reached superseded versions 19359, dangerous versions 8998, PART3B refs below c 15659, GIS(ii) case-2 instances 0, good versions of reachable nodes 2141541
+      563.09 real       240.05 user         1.63 sys
+
+## reclaiml 20 40 all rc (RC exactly; with POSTV-R)
+policy all/0 touch: 94 iterations (94 with RC3), 1385 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 846, GI(i) 846, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 968, PART3B 0, REACHPB 97, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 968, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 57392, PBORD versions with a pointee in D 59134, OLDCHAIN premises 87781, GIW(ii) pairs 2157832, reached superseded versions 8305, dangerous versions 4865, PART3B refs below c 3053, GIS(ii) case-2 instances 0, good versions of reachable nodes 660510
+policy all/0 notouch: 94 iterations (94 with RC3), 1385 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 916, GI(i) 916, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 968, PART3B 0, REACHPB 80, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 968, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 47836, PBORD versions with a pointee in D 42743, OLDCHAIN premises 75268, GIW(ii) pairs 1554937, reached superseded versions 6414, dangerous versions 4346, PART3B refs below c 2107, GIS(ii) case-2 instances 0, good versions of reachable nodes 531012
+policy all/1 touch: 94 iterations (94 with RC3), 1211 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 41, PBORD 0, OLDCHAIN 0, GOODREACH 1074, GI(i) 1074, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 826, PART3B 0, REACHPB 49, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 826, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 52572, PBORD versions with a pointee in D 65795, OLDCHAIN premises 47313, GIW(ii) pairs 1947674, reached superseded versions 2954, dangerous versions 4278, PART3B refs below c 3850, GIS(ii) case-2 instances 0, good versions of reachable nodes 523712
+policy all/1 notouch: 94 iterations (94 with RC3), 1211 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 36, PBORD 0, OLDCHAIN 0, GOODREACH 1111, GI(i) 1111, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 826, PART3B 0, REACHPB 24, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 826, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 51441, PBORD versions with a pointee in D 66988, OLDCHAIN premises 45894, GIW(ii) pairs 1768623, reached superseded versions 1518, dangerous versions 4757, PART3B refs below c 2643, GIS(ii) case-2 instances 0, good versions of reachable nodes 460055
+policy all/2 touch: 94 iterations (94 with RC3), 847 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 847, GI(i) 847, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 16, GIW(iii) 0, SAFE(ii) 545, PART3B 0, REACHPB 0, GIW0(i) 0, GIW0(ii) 16, GIW0(iii) 0, GIW0(iv) 545, GIR(i) 0, GIR(ii) 16, GIR(iii) 0, GIS(i) 65, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 29596, PBORD versions with a pointee in D 39256, OLDCHAIN premises 19012, GIW(ii) pairs 974396, reached superseded versions 0, dangerous versions 2558, PART3B refs below c 3335, GIS(ii) case-2 instances 0, good versions of reachable nodes 312843
+policy all/2 notouch: 94 iterations (94 with RC3), 847 states past the waits, 5 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 847, GI(i) 847, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 11, GIW(iii) 0, SAFE(ii) 545, PART3B 0, REACHPB 0, GIW0(i) 0, GIW0(ii) 11, GIW0(iii) 0, GIW0(iv) 545, GIR(i) 0, GIR(ii) 11, GIR(iii) 0, GIS(i) 90, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 29099, PBORD versions with a pointee in D 39406, OLDCHAIN premises 19186, GIW(ii) pairs 902563, reached superseded versions 0, dangerous versions 2748, PART3B refs below c 2642, GIS(ii) case-2 instances 0, good versions of reachable nodes 283452
+policy all/3 touch: 94 iterations (94 with RC3), 1124 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 928, GI(i) 928, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 760, PART3B 0, REACHPB 42, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 760, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 34467, PBORD versions with a pointee in D 35139, OLDCHAIN premises 33480, GIW(ii) pairs 1173785, reached superseded versions 2089, dangerous versions 2974, PART3B refs below c 3675, GIS(ii) case-2 instances 0, good versions of reachable nodes 449506
+policy all/3 notouch: 94 iterations (94 with RC3), 1124 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 976, GI(i) 976, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 760, PART3B 0, REACHPB 12, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 760, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 29452, PBORD versions with a pointee in D 29614, OLDCHAIN premises 32111, GIW(ii) pairs 926049, reached superseded versions 1901, dangerous versions 2946, PART3B refs below c 2728, GIS(ii) case-2 instances 0, good versions of reachable nodes 388780
+policy all/4 touch: 94 iterations (94 with RC3), 476 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 474, GI(i) 474, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 43, GIW(iii) 0, SAFE(ii) 254, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 43, GIW0(iii) 0, GIW0(iv) 254, GIR(i) 7, GIR(ii) 43, GIR(iii) 0, GIS(i) 110, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 12874, PBORD versions with a pointee in D 15961, OLDCHAIN premises 6881, GIW(ii) pairs 438404, reached superseded versions 495, dangerous versions 1046, PART3B refs below c 1470, GIS(ii) case-2 instances 0, good versions of reachable nodes 163649
+policy all/4 notouch: 94 iterations (94 with RC3), 476 states past the waits, 9 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 476, GI(i) 476, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 40, GIW(iii) 0, SAFE(ii) 254, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 40, GIW0(iii) 0, GIW0(iv) 254, GIR(i) 7, GIR(ii) 40, GIR(iii) 0, GIS(i) 139, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 12664, PBORD versions with a pointee in D 16226, OLDCHAIN premises 6996, GIW(ii) pairs 404841, reached superseded versions 0, dangerous versions 1113, PART3B refs below c 1226, GIS(ii) case-2 instances 0, good versions of reachable nodes 150375
+policy all/5 touch: 94 iterations (94 with RC3), 112 states past the waits, 3 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 112, GI(i) 112, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 60, GIW(iii) 0, SAFE(ii) 53, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 60, GIW0(iii) 0, GIW0(iv) 53, GIR(i) 7, GIR(ii) 60, GIR(iii) 0, GIS(i) 28, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 2343, PBORD versions with a pointee in D 2687, OLDCHAIN premises 1113, GIW(ii) pairs 80867, reached superseded versions 0, dangerous versions 180, PART3B refs below c 262, GIS(ii) case-2 instances 0, good versions of reachable nodes 36996
+policy all/5 notouch: 94 iterations (94 with RC3), 112 states past the waits, 5 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 112, GI(i) 112, GI(ii) 0, GI(iii) 0, GIW(i) 7, GIW(ii) 60, GIW(iii) 0, SAFE(ii) 53, PART3B 0, REACHPB 0, GIW0(i) 7, GIW0(ii) 60, GIW0(iii) 0, GIW0(iv) 53, GIR(i) 7, GIR(ii) 60, GIR(iii) 0, GIS(i) 35, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 2283, PBORD versions with a pointee in D 2708, OLDCHAIN premises 1137, GIW(ii) pairs 75226, reached superseded versions 0, dangerous versions 185, PART3B refs below c 199, GIS(ii) case-2 instances 0, good versions of reachable nodes 33764
+policy all/6 touch: 94 iterations (94 with RC3), 1042 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 844, GI(i) 844, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 697, PART3B 0, REACHPB 42, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 707, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 26026, PBORD versions with a pointee in D 23139, OLDCHAIN premises 23913, GIW(ii) pairs 1060805, reached superseded versions 3943, dangerous versions 2062, PART3B refs below c 3883, GIS(ii) case-2 instances 0, good versions of reachable nodes 396830
+policy all/6 notouch: 94 iterations (94 with RC3), 1042 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 886, GI(i) 886, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 704, PART3B 0, REACHPB 30, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 707, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 23560, PBORD versions with a pointee in D 22138, OLDCHAIN premises 23586, GIW(ii) pairs 891575, reached superseded versions 2840, dangerous versions 2333, PART3B refs below c 2842, GIS(ii) case-2 instances 0, good versions of reachable nodes 352809
+policy all/7 touch: 94 iterations (94 with RC3), 711 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 560, GI(i) 560, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 375, PART3B 0, REACHPB 6, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 416, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 11175, PBORD versions with a pointee in D 3422, OLDCHAIN premises 9094, GIW(ii) pairs 557234, reached superseded versions 3648, dangerous versions 749, PART3B refs below c 2254, GIS(ii) case-2 instances 0, good versions of reachable nodes 253556
+policy all/7 notouch: 94 iterations (94 with RC3), 711 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 608, GI(i) 608, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 394, PART3B 0, REACHPB 30, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 416, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 11035, PBORD versions with a pointee in D 5419, OLDCHAIN premises 9020, GIW(ii) pairs 538621, reached superseded versions 3225, dangerous versions 865, PART3B refs below c 1784, GIS(ii) case-2 instances 0, good versions of reachable nodes 231496
+TOTAL: 1504 iterations (1504 with RC3), 13816 states past the waits, 22 between the waits with CutOK failing
+  CUTOK: 0 states fail
+  LNLK: 0 states fail
+  POSTV: 77 states fail; first: k=32: (10051,30) after v=29 names a child below c=16
+  PBORD: 0 states fail
+  OLDCHAIN: 0 states fail
+  GOODREACH: 11617 states fail; first: k=18 t=18: reached (10075,18), no version good for t
+  GI(i): 11617 states fail; first: k=18 t=18: latest (10075,18) of a reachable node fails I
+  GI(ii): 0 states fail
+  GI(iii): 0 states fail
+  GIW(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIW(ii): 230 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIW(iii): 0 states fail
+  SAFE(ii): 8982 states fail; first: k=18 t=15: (30,3) has I, child 20's (20,3) not
+  PART3B: 0 states fail
+  REACHPB: 412 states fail; first: k=31 t=17: reached superseded put-back (1,30)
+  GIW0(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIW0(ii): 230 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIW0(iii): 0 states fail
+  GIW0(iv): 9058 states fail; first: k=18: (7,0) at or after a good version, before c=3
+  GIR(i): 28 states fail; first: k=18 t=8: latest (30,13) of a reachable node fails I
+  GIR(ii): 230 states fail; first: k=36 t=28: (10226,32) has I, child 2's (2,29) not
+  GIR(iii): 0 states fail
+  GIS(i): 467 states fail; first: k=28 t=24: latest (10195,28) of a reachable node fails I
+  GIS(ii): 0 states fail
+  GIS(iii): 0 states fail
+  GIS-J(i): 0 states fail
+  GIS-J(iii): 0 states fail
+  GOODC: 0 states fail
+  GIS-CASE2: 0 states fail
+  POSTV-R: 0 states fail
+  instances: POSTV versions after v 433815, PBORD versions with a pointee in D 469775, OLDCHAIN premises 441785, GIW(ii) pairs 15453432, reached superseded versions 37332, dangerous versions 38005, PART3B refs below c 37953, GIS(ii) case-2 instances 0, good versions of reachable nodes 5229345
+     1401.73 real       520.31 user         3.13 sys
+
+## reclaiml 40 50 all rc (RC exactly; stopped after the first policy)
+policy all/0 touch: 232 iterations (232 with RC3), 4496 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 2751, GI(i) 2751, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 3604, PART3B 0, REACHPB 419, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 3604, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 236379, PBORD versions with a pointee in D 232029, OLDCHAIN premises 353075, GIW(ii) pairs 10848098, reached superseded versions 34663, dangerous versions 17853, PART3B refs below c 13003, GIS(ii) case-2 instances 0, good versions of reachable nodes 3110538
+policy all/0 notouch: 232 iterations (232 with RC3), 4496 states past the waits, 0 between the waits with CutOK failing
+  CUTOK 0, LNLK 0, POSTV 0, PBORD 0, OLDCHAIN 0, GOODREACH 2950, GI(i) 2950, GI(ii) 0, GI(iii) 0, GIW(i) 0, GIW(ii) 0, GIW(iii) 0, SAFE(ii) 3604, PART3B 0, REACHPB 363, GIW0(i) 0, GIW0(ii) 0, GIW0(iii) 0, GIW0(iv) 3604, GIR(i) 0, GIR(ii) 0, GIR(iii) 0, GIS(i) 0, GIS(ii) 0, GIS(iii) 0, GIS-J(i) 0, GIS-J(iii) 0, GOODC 0, GIS-CASE2 0, POSTV-R 0
+  instances: POSTV versions after v 197600, PBORD versions with a pointee in D 169471, OLDCHAIN premises 303501, GIW(ii) pairs 7863466, reached superseded versions 27083, dangerous versions 16279, PART3B refs below c 9122, GIS(ii) case-2 instances 0, good versions of reachable nodes 2507505

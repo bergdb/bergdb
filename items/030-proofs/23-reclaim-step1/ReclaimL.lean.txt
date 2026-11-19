@@ -1,0 +1,347 @@
+/-
+bergdb 030-23, step 3: candidate invariants on superseded versions, by running.
+A scratch program, not part of lean/: to run it, copy it to lean/ReclaimL.lean,
+add to lean/lakefile.toml
+
+    [[lean_exe]]
+    name = "reclaiml"
+    root = "ReclaimL"
+
+and run `lake build reclaiml && .lake/build/bin/reclaiml SEEDS N [POLICIES [rc]]`
+in lean/. POLICIES: `std` (030-22's four), `lag` (larger and erratic lags, for
+the second wait), or `all`; with `rc`, only the iterations that meet RC3 itself
+(`liveBelowB`), so exactly RC.
+
+For each iteration of a random run of example 4 (SIS/ReclaimExample.lean) whose
+scheme conditions hold (c ≤ pStart, the rewrites `rewritesB`, and the cover
+`coverB`, which RC3 gives by `T_cover`; also counted: those with RC3 itself,
+`liveBelowB`), v the first record with sp(v) ≥ e, and every state k past Java's
+waits (sp(k) > v, fa(k) ≥ e), as in 030-22's `checkSchemeJ`, the candidates
+below are checked; each counts the states where it fails and keeps the first
+counterexample. Times: T = [e, k] (f = fa(k) ≥ e; CutOK asks [f, k]).
+
+* CUTOK: `CutOK c` (the conclusion; 030-22 found 0 failures).
+* LNLK (030-22 a): a node reachable at k and not in D has a latest version that
+  names the latest version of each child live at k.
+* POSTV (030-22 b): a version written after v names, for each child live at a
+  time of T in it, a version at c or later.
+* POSTV-R (030-22 b in its own words): only the children reachable at a time
+  from e up to the version's record.
+* PBORD (030-22 c, Rule A's order): a version p of x at r with a pointee in D
+  after T(r) was put back ((x, r) in D after T(r)), and x's next version, if
+  any, comes after a version of that pointee written after r; with none,
+  (x, r) is in D after T(k).
+* OLDCHAIN (030-22 d): a version p of x at r that names y at r0, where y's next
+  version after r0 is r1 ≤ k, r1 > r, and x is y's parent at r1 (y live in x
+  at r1, x reachable at r1): x has a version after r, or x is in D after T(k).
+* GOODREACH: every version that a read at a time t of [f, k] may follow
+  (`ReadsPhys`) is at or after a version of its node that is good for t.
+* GI (an inductive form, over all versions, not only those reached): with
+  I_t(p) := c ≤ p.rec and some version of p's node good for t is at or before
+  p: (i) the latest version of every node reachable at t has I_t; (ii) for a
+  version p with I_t that is not put back and still in D ((x, r) ∈ D after
+  T(k)), every version of a child y live at t in p, at or after the record p
+  names, has I_t; (iii) for such a p in D, the version that Rule R gives has
+  I_t. (i) to (iii) for every t in [f, k] give CutOK's part 2.
+* GIW: as GI with "good for some time of T" in place of "good for t".
+* GIW0: GIW without "c ≤ p.rec"; (iv): such a version is at c or later.
+* GIR: GIW, and p's node is reachable at some time of T.
+* GIS: I(p) := c ≤ p.rec and some version of p's node at or before p is good
+  for a time of T at which the node is reachable. GIS-J: (i) and (iii) with
+  J(p) := I(p), or p put back and still in D, at c or later, with Rule R's
+  versions of its children live at t in J (bottom up by level).
+* SAFE (the plain form): I_t(p) := c ≤ p.rec and every child live at t in p is
+  named at c or later; (ii) of it over all versions.
+* GOODC: a version good for a time of T at which its node is reachable is at c
+  or later.
+* GIS-CASE2: the instances of GIS's (ii) where no good version g of p's node at
+  or before p, for a time t' of T at which the node is reachable, has the child
+  live at t' (a count; the instances are listed under "instances").
+* PART3B: CutOK's part 3, second half (a reference below c of the latest
+  version of a node of D names the latest version of a node not in D).
+* REACHPB: the states where a read reaches a superseded version that Rule A
+  put back at its record (diagnostic).
+
+Each line of output gives, per policy and spec, the states where each
+candidate fails, and the instances counted ("instances").
+-/
+import SIS.ReclaimExample
+
+open SIS SIS.Example SIS.PhysExample SIS.ReclaimExample
+
+/-- A counter of failing states with the first counterexample. -/
+structure Cnt where
+  bad : Nat := 0
+  ex : String := ""
+  deriving Inhabited
+
+def Cnt.add (c : Cnt) (fails : List String) : Cnt :=
+  match fails.head? with
+  | none => c
+  | some m => { bad := c.bad + 1, ex := if c.ex == "" then m else c.ex }
+
+def names : List String :=
+  ["CUTOK", "LNLK", "POSTV", "PBORD", "OLDCHAIN", "GOODREACH", "GI(i)", "GI(ii)", "GI(iii)",
+   "GIW(i)", "GIW(ii)", "GIW(iii)", "SAFE(ii)", "PART3B", "REACHPB",
+   "GIW0(i)", "GIW0(ii)", "GIW0(iii)", "GIW0(iv)", "GIR(i)", "GIR(ii)", "GIR(iii)",
+   "GIS(i)", "GIS(ii)", "GIS(iii)", "GIS-J(i)", "GIS-J(iii)", "GOODC", "GIS-CASE2", "POSTV-R"]
+
+/-- The candidates' failures in state k (db) for the iteration (c, e, v); dbs
+holds the states 0 to n. -/
+def candidates (sp : Spec Val Tr4) (dbs : Array (DB Val Tr4)) (c e v k : Nat) :
+    List (List String) × List Nat :=
+  let db := dbs.getD k (init sp)
+  let S := db.S
+  let D := db.D
+  let P := db.P
+  let f := lastFa S
+  let Tm := List.range' e (k + 1 - e)
+  let Tf := List.range' f (k + 1 - f)
+  let vers : List (Version Val) := (List.range (k + 1)).flatMap (fun r => (S[r]?.map (·.vers)).getD [])
+  let recsOf := fun (y : NodeId) => (vers.filter (·.node == y)).map (·.recNo)
+  let nextVer := fun (y : NodeId) (r : Nat) => (recsOf y).find? (fun q => decide (r < q))
+  let lvRec := fun (y : NodeId) => (S.lv y).map (·.recNo)
+  let inDk := fun (x : NodeId) (r : Nat) => D.contains (x, r)
+  let pbAt := fun (x : NodeId) (r : Nat) => (dbs.getD r (init sp)).D.contains (x, r)
+  let goodAt := fun (t : Nat) (w : Version Val) => good sp S P t w
+  -- the least record of a version of x good for t
+  let minGood := fun (t : Nat) (x : NodeId) =>
+    (vers.filter (fun w => w.node == x && goodAt t w)).map (·.recNo) |>.min?
+  let minGoodT := Tm.map (fun t => (t, (vers.map (·.node)).eraseDups.map (fun x => (x, minGood t x))))
+  let mg := fun (t : Nat) (x : NodeId) =>
+    ((minGoodT.lookup t).bind (fun l => (l.lookup x).join))
+  let mgAny := fun (x : NodeId) => (Tm.filterMap (fun t => mg t x)).min?
+  let reachT := Tm.map (fun t => (t, reachList sp P t))
+  let reachAt := fun (t : Nat) (x : NodeId) => ((reachT.lookup t).getD []).contains x
+  let mgS := fun (x : NodeId) => (Tm.filterMap (fun t => if reachAt t x then mg t x else none)).min?
+  let inReachT := fun (x : NodeId) => Tm.any (fun t => reachAt t x)
+  let It := fun (t : Nat) (w : Version Val) => decide (c ≤ w.recNo) &&
+    (match mg t w.node with | some r => decide (r ≤ w.recNo) | none => false)
+  let Iw := fun (w : Version Val) => decide (c ≤ w.recNo) &&
+    (match mgAny w.node with | some r => decide (r ≤ w.recNo) | none => false)
+  let safeT := fun (t : Nat) (w : Version Val) => decide (c ≤ w.recNo) &&
+    (sp.live (w.hist.upTo t)).all (fun y => match w.ref? y with
+      | some r => decide (c ≤ r)
+      | none => (recsOf y).all (fun q => decide (c ≤ q)))
+  let followers := fun (t : Nat) (w : Version Val) =>
+    (sp.live (w.hist.upTo t)).flatMap (fun y =>
+      (vers.filter (fun u => u.node == y && decide ((w.ref? y).getD 0 ≤ u.recNo))).map (fun u => (y, u)))
+  let ruleR := fun (t : Nat) (w : Version Val) =>
+    (sp.live (w.hist.upTo t)).filterMap (fun y => follow S (lastSp S) true y (w.ref? y))
+  let showV := fun (w : Version Val) => s!"({w.node},{w.recNo})"
+  -- CUTOK
+  let cutok := if cutOKB sp c db k then [] else [s!"k={k}: CutOK fails"]
+  -- LNLK
+  let lnlk := (reachList sp P k).filterMap (fun x =>
+    if D.any (·.1 == x) then none else
+    match S.lv x with
+    | some w => if (sp.live (w.hist.upTo k)).all (fun y => w.ref? y == lvRec y) then none
+        else some s!"k={k}: {showV w} not naming the latest of a live child"
+    | none => none)
+  -- POSTV
+  let postv := (vers.filter (fun w => decide (v < w.recNo))).filterMap (fun w =>
+    let bad := Tm.any (fun t => (sp.live (w.hist.upTo t)).any (fun y =>
+      match w.ref? y with
+      | some r => decide (r < c)
+      | none => (recsOf y).any (fun q => decide (q < c))))
+    if bad then some s!"k={k}: {showV w} after v={v} names a child below c={c}" else none)
+  -- POSTV-R (030-22's wording): only the children reachable at a time from e up to
+  -- the version's record
+  let postvR := (vers.filter (fun w => decide (v < w.recNo))).filterMap (fun w =>
+    let bad := (List.range' e (w.recNo + 1 - e)).any (fun t => (sp.live (w.hist.upTo t)).any (fun y =>
+      reachable sp P t y && (match w.ref? y with
+      | some r => decide (r < c)
+      | none => (recsOf y).any (fun q => decide (q < c)))))
+    if bad then some s!"k={k}: {showV w} after v={v} names a reachable child below c={c}" else none)
+  -- PBORD
+  let pbord := vers.filterMap (fun w =>
+    let Dr := (dbs.getD w.recNo (init sp)).D
+    let ys := (pointees sp w.hist).filter (fun y => Dr.any (·.1 == y))
+    if ys.isEmpty then none else
+    if !pbAt w.node w.recNo then some s!"k={k}: {showV w} with pointees {ys} in D, not put back" else
+    match nextVer w.node w.recNo with
+    | some r' => if ys.all (fun y => (nextVer y w.recNo).any (fun q => decide (q ≤ r'))) then none
+        else some s!"k={k}: {showV w} rewritten at {r'} before its pointees {ys}"
+    | none => if inDk w.node w.recNo then none
+        else some s!"k={k}: {showV w} latest, put back, not in D"
+    )
+  -- OLDCHAIN
+  let oldchain := vers.filterMap (fun w =>
+    let bad := (pointees sp w.hist).filter (fun y =>
+      match w.ref? y with
+      | some r0 => match nextVer y r0 with
+        | some r1 => decide (w.recNo < r1) && decide (r1 ≤ k) &&
+            (match P.get? w.node with
+             | some nx => (sp.live (nx.hist.upTo r1)).contains y && reachable sp P r1 w.node
+             | none => false) &&
+            !((nextVer w.node w.recNo).isSome || D.any (·.1 == w.node))
+        | none => false
+      | none => false)
+    if bad.isEmpty then none else some s!"k={k}: {showV w} names old versions of {bad}, neither superseded nor in D")
+  -- reads
+  let reads := Tf.map (fun t => (t, readsPhysB sp S P D t))
+  let goodreach := reads.flatMap (fun (t, rs) => rs.filterMap (fun p =>
+    match mg t p.1 with
+    | some r => if r ≤ p.2 then none else some s!"k={k} t={t}: reached ({p.1},{p.2}) before the first good version {r}"
+    | none => some s!"k={k} t={t}: reached ({p.1},{p.2}), no version good for t"))
+  let reachpb := reads.flatMap (fun (t, rs) => rs.filterMap (fun p =>
+    if lvRec p.1 != some p.2 && pbAt p.1 p.2 then some s!"k={k} t={t}: reached superseded put-back ({p.1},{p.2})" else none))
+  -- GI
+  let gi1 := fun (I : Nat → Version Val → Bool) => Tf.flatMap (fun t => (reachList sp P t).filterMap (fun x =>
+    match S.lv x with
+    | some w => if I t w then none else some s!"k={k} t={t}: latest {showV w} of a reachable node fails I"
+    | none => none))
+  -- J: I, or put back and still in D, at c or later, and Rule R's versions of its
+  -- children live at t have J (bottom up by level)
+  let byLevel := vers.mergeSort (fun a b => decide (a.level ≤ b.level))
+  let Jset := fun (I : Nat → Version Val → Bool) (t : Nat) =>
+    byLevel.foldl (fun (acc : List (NodeId × Nat)) w =>
+      if I t w || (inDk w.node w.recNo && decide (c ≤ w.recNo) &&
+          (ruleR t w).all (fun u => I t u || acc.contains (u.node, u.recNo)))
+      then acc ++ [(w.node, w.recNo)] else acc) []
+  let gi1' := fun (I : Nat → Version Val → Bool) => Tf.flatMap (fun t =>
+    let js := Jset I t
+    (reachList sp P t).filterMap (fun x =>
+    match S.lv x with
+    | some w => if js.contains (w.node, w.recNo) then none
+        else some s!"k={k} t={t} c={c} e={e} v={v} f={f} sp={lastSp S}: latest {showV w} of a reachable node fails J; D entries {D.filter (·.1 == x)}; versions {recsOf x}; good at (t, rec): {Tm.flatMap (fun t' => (vers.filter (fun u => u.node == x && goodAt t' u)).map (fun u => (t', u.recNo)))}; reachable at {Tm.filter (fun t' => reachAt t' x)}; hist {w.hist.map (fun en => en.time)}; refs {w.refs}"
+    | none => none))
+  let gi3' := fun (I : Nat → Version Val → Bool) => Tf.flatMap (fun t =>
+    let js := Jset I t
+    (vers.filter (fun w => js.contains (w.node, w.recNo) && inDk w.node w.recNo)).flatMap (fun w =>
+      (ruleR t w).filterMap (fun u => if I t u || js.contains (u.node, u.recNo) then none
+        else some s!"k={k} t={t}: {showV w} in D has J, Rule R's {showV u} not")))
+  let gi2 := fun (I : Nat → Version Val → Bool) => Tf.flatMap (fun t => (vers.filter (fun w => I t w && !inDk w.node w.recNo)).flatMap (fun w =>
+    (followers t w).filterMap (fun (y, u) => if I t u then none
+      else some s!"k={k} t={t}: {showV w} has I, child {y}'s {showV u} not")))
+  let gi3 := fun (I : Nat → Version Val → Bool) => Tf.flatMap (fun t => (vers.filter (fun w => I t w && inDk w.node w.recNo)).flatMap (fun w =>
+    (ruleR t w).filterMap (fun u => if I t u then none
+      else s!"k={k} t={t}: {showV w} in D has I, Rule R's {showV u} not" |> some)))
+  let giw := fun (_ : Nat) (w : Version Val) => Iw w
+  let gir := fun (_ : Nat) (w : Version Val) => Iw w && inReachT w.node
+  let gis := fun (_ : Nat) (w : Version Val) => decide (c ≤ w.recNo) &&
+    (match mgS w.node with | some r => decide (r ≤ w.recNo) | none => false)
+  let Iw0 := fun (_ : Nat) (w : Version Val) =>
+    match mgAny w.node with | some r => decide (r ≤ w.recNo) | none => false
+  let giw0iv := vers.filterMap (fun w => if Iw0 0 w && !decide (c ≤ w.recNo) then
+    some s!"k={k}: {showV w} at or after a good version, before c={c}" else none)
+  -- GOODC: a version good for a time of T at which its node is reachable is at c or later
+  let goodR := Tm.flatMap (fun t => (vers.filter (fun w => reachAt t w.node && goodAt t w)).map (fun w => (t, w)))
+  let goodc := goodR.filterMap (fun (t, w) => if decide (c ≤ w.recNo) then none
+    else some s!"k={k}: {showV w} good for {t}, reachable then, before c={c}")
+  -- CASE2 of GIS(ii): no good version g of x at or before p (for a time t' of T at which x
+  -- is reachable) has y live at t'
+  let case2 := Tf.flatMap (fun t => (vers.filter (fun w => gis t w && !inDk w.node w.recNo)).flatMap (fun w =>
+    (sp.live (w.hist.upTo t)).filterMap (fun y =>
+      if goodR.any (fun (t', g) => g.node == w.node && decide (g.recNo ≤ w.recNo) &&
+          (sp.live (g.hist.upTo t')).contains y) then none
+      else some s!"k={k} t={t}: {showV w}, child {y}: no good version at or before it has {y} live at its time")))
+  -- PART3B
+  let part3b := D.flatMap (fun (x, _) => match S.lv x with
+    | some w => (w.refs.filter (fun q => decide (q.2 < c))).filterMap (fun q =>
+        if lvRec q.1 == some q.2 && !D.any (·.1 == q.1) then none
+        else some s!"k={k}: {showV w} of D names ({q.1},{q.2}) below c={c}, not latest or in D")
+    | none => [])
+  let nPostv := (vers.filter (fun w => decide (v < w.recNo) &&
+    Tm.any (fun t => !(sp.live (w.hist.upTo t)).isEmpty))).length
+  let nPbord := (vers.filter (fun w => (pointees sp w.hist).any (fun y =>
+    (dbs.getD w.recNo (init sp)).D.any (·.1 == y)))).length
+  let nOld := (vers.filter (fun w => (pointees sp w.hist).any (fun y =>
+      match w.ref? y with
+      | some r0 => match nextVer y r0 with
+        | some r1 => decide (w.recNo < r1) && decide (r1 ≤ k) &&
+            (match P.get? w.node with
+             | some nx => (sp.live (nx.hist.upTo r1)).contains y && reachable sp P r1 w.node
+             | none => false)
+        | none => false
+      | none => false))).length
+  let nGiw := Tf.foldl (fun n t => n + ((vers.filter (fun w => Iw w && !inDk w.node w.recNo)).flatMap
+    (fun w => followers t w)).length) 0
+  let nSup := (reads.flatMap (fun (_, rs) => rs.filter (fun p => lvRec p.1 != some p.2))).length
+  let nDang := (vers.filter (fun w => decide (c ≤ w.recNo) && decide (w.recNo ≤ v) &&
+    Tm.any (fun t => (sp.live (w.hist.upTo t)).any (fun y => match w.ref? y with
+      | some r => decide (r < c)
+      | none => (recsOf y).any (fun q => decide (q < c)))))).length
+  let n3b := (D.flatMap (fun (x, _) => match S.lv x with
+    | some w => w.refs.filter (fun q => decide (q.2 < c))
+    | none => [])).length
+  ([cutok, lnlk, postv, pbord, oldchain, goodreach, gi1 It, gi2 It, gi3 It, gi1 giw, gi2 giw, gi3 giw,
+   gi2 safeT, part3b, reachpb, gi1 Iw0, gi2 Iw0, gi3 Iw0, giw0iv,
+   gi1 gir, gi2 gir, gi3 gir, gi1 gis, gi2 gis, gi3 gis, gi1' gis, gi3' gis, goodc, case2, postvR],
+   [nPostv, nPbord, nOld, nGiw, nSup, nDang, n3b, case2.length, goodR.length])
+
+/-- Over a run: the counters, (iterations with the conditions, of them with RC3
+itself, states checked), and the instances of part 3b (refs below c of D's
+latest versions). -/
+def instNames : List String :=
+  ["POSTV versions after v", "PBORD versions with a pointee in D", "OLDCHAIN premises",
+   "GIW(ii) pairs", "reached superseded versions", "dangerous versions", "PART3B refs below c",
+   "GIS(ii) case-2 instances", "good versions of reachable nodes"]
+
+def runCands (rcOnly : Bool) (sp : Spec Val Tr4) (al : Algo Val Tr4) (ts : List Tr4) (cs : Array Cnt × Array Nat)
+    (acc : Nat × Nat × Nat × Nat) : (Array Cnt × Array Nat) × (Nat × Nat × Nat × Nat) :=
+  let n := ts.length
+  let dbs := ((List.range (n + 1)).map (fun j => run sp al (ts.take j))).toArray
+  let sps := dbs.toList.map (fun db => lastSp db.S)
+  (schemeIters ts).foldl (fun (st : (Array Cnt × Array Nat) × (Nat × Nat × Nat × Nat)) it =>
+    let (pStart, pCut, tEnd) := it
+    let (cs, (nIt, nRc, nSt, nMid)) := st
+    if !(decide (pCut ≤ pStart) && rewritesB sp al ts pCut tEnd && coverB sp al ts pCut tEnd &&
+        (!rcOnly || liveBelowB sp al ts tEnd)) then st
+    else
+      let nRc := if liveBelowB sp al ts tEnd then nRc + 1 else nRc
+      match sps.findIdx? (fun s => decide (tEnd ≤ s)) with
+      | none => (cs, (nIt + 1, nRc, nSt, nMid))
+      | some v =>
+        let ks := (List.range (n + 1)).filter (fun k => decide (v < sps.getD k 0) &&
+          decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S))
+        -- states between the waits where CutOK fails (the second wait needed)
+        let mid := (List.range (n + 1)).filter (fun k => decide (tEnd ≤ sps.getD k 0) &&
+          decide (sps.getD k 0 ≤ v) && decide (tEnd ≤ lastFa (dbs.getD k (init sp)).S) &&
+          !cutOKB sp pCut (dbs.getD k (init sp)) k)
+        let cs := ks.foldl (fun cs k =>
+          let (fs, ns) := candidates sp dbs pCut tEnd v k
+          ((cs.1.zip fs.toArray).map (fun (c, f) => c.add f),
+            (cs.2.zip ns.toArray).map (fun (a, b) => a + b))) cs
+        (cs, (nIt + 1, nRc, nSt + ks.length, nMid + mid.length))) (cs, acc)
+
+def lagPolicies : List (SIS.Stream Val Tr4 → Dirty → Time → Tr4 → Nat) :=
+  [fun _ _ i _ => i - 6, fun _ _ i _ => i - 9, fun _ _ i _ => i - 1 - lcg i / 4096 % 9,
+   fun _ _ i _ => i - 1 - lcg (i + 7) / 4096 % 13]
+
+def main (args : List String) : IO UInt32 := do
+  let seeds := (args[0]?.bind String.toNat?).getD 10
+  let n := (args[1]?.bind String.toNat?).getD 30
+  let which := args[2]?.getD "std"
+  -- with a fourth argument `rc`, only the iterations that meet RC3 itself (`liveBelowB`)
+  let rcOnly := args[3]? == some "rc"
+  let pols := match which with
+    | "lag" => lagPolicies
+    | "all" => policies4 ++ lagPolicies
+    | _ => policies4
+  let mut total : Array Cnt := (names.map (fun _ => ({} : Cnt))).toArray
+  let mut totalN : Array Nat := (instNames.map (fun _ => 0)).toArray
+  let mut acc : Nat × Nat × Nat × Nat := (0, 0, 0, 0)
+  for (pol, a) in pols.zipIdx do
+    for (sp, sn) in [(spec4, "touch"), (spec4n, "notouch")] do
+      let al := algo4 pol
+      let mut cs : Array Cnt × Array Nat :=
+        ((names.map (fun _ => ({} : Cnt))).toArray, (instNames.map (fun _ => 0)).toArray)
+      let mut ac : Nat × Nat × Nat × Nat := (0, 0, 0, 0)
+      for seed in [1:seeds + 1] do
+        let ts := (randomTs4 seed n).map (·.1)
+        let r := runCands rcOnly sp al ts cs ac
+        cs := r.1
+        ac := r.2
+      IO.println s!"policy {which}/{a} {sn}: {ac.1} iterations ({ac.2.1} with RC3), {ac.2.2.1} states past the waits, {ac.2.2.2} between the waits with CutOK failing"
+      IO.println ("  " ++ ", ".intercalate ((names.zip cs.1.toList).map (fun (nm, c) => s!"{nm} {c.bad}")))
+      IO.println ("  instances: " ++ ", ".intercalate ((instNames.zip cs.2.toList).map (fun (nm, c) => s!"{nm} {c}")))
+      (← IO.getStdout).flush
+      total := (total.zip cs.1).map (fun (t, c) => { bad := t.bad + c.bad, ex := if t.ex == "" then c.ex else t.ex })
+      totalN := (totalN.zip cs.2).map (fun (a, b) => a + b)
+      acc := (acc.1 + ac.1, acc.2.1 + ac.2.1, acc.2.2.1 + ac.2.2.1, acc.2.2.2 + ac.2.2.2)
+  IO.println s!"TOTAL: {acc.1} iterations ({acc.2.1} with RC3), {acc.2.2.1} states past the waits, {acc.2.2.2} between the waits with CutOK failing"
+  for (nm, c) in names.zip total.toList do
+    IO.println s!"  {nm}: {c.bad} states fail{if c.ex == "" then "" else s!"; first: {c.ex}"}"
+  IO.println ("  instances: " ++ ", ".intercalate ((instNames.zip totalN.toList).map (fun (nm, c) => s!"{nm} {c}")))
+  return 0

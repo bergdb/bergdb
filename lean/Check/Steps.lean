@@ -306,6 +306,34 @@ def cutFailures (c f : Nat) (D : Dirty) (below : List (NodeId × Nat))
       [("CUT-Dref", s!"in D, a reference before {c} to a version that is not its node's latest: {showIds dRef}")]) ++
     topOld
 
+/-- Reclaim's contract RC at a CUT line in TX i (bergdb 030-22, section 2.2;
+030-23), the conditions that C-CUT's other checks do not name: RC1, the cut at
+or after the earlier cuts (prev, the largest so far; c ≤ f is CUT-order, f the
+record's fa CUT-fa); RC2, every data node reachable at f, the iteration's end
+that Java makes the first available time, has its version at c or later
+(dataOld, those that do not); RC4, Java's two waits: v, the first record whose
+startup pos is at f or later, is before the startup pos of R(i) (sps, the
+startup pos of R(0), ..., R(i)). RC3 is CUT-live. Also returns v. -/
+def rcFailures (c f prev i : Nat) (sps : List Nat) (dataOld : List NodeId) :
+    List (String × String) × Option Nat :=
+  let v := sps.findIdx? (fun s => decide (f ≤ s))
+  let spi := sps.getD i 0
+  let r1 := if prev ≤ c then [] else [("RC1-order", s!"cut at {c}, before the earlier cut at {prev}")]
+  let r2 := if dataOld.isEmpty then [] else
+    [("RC2-rewrites", s!"data nodes reachable at {f} with a version before {c}: {showIds dataOld}")]
+  let r4 := match v with
+    | some v => if v < spi then [] else
+        [("RC4-waits", s!"startup pos {spi} at or before R({v}), the first record whose startup pos reached {f}")]
+    | none => [("RC4-waits", s!"no record up to R({i}) has its startup pos at {f} or later")]
+  (r1 ++ r2 ++ r4, v)
+
+/- RC4 fails when the startup pos has reached the iteration's end but not passed v,
+the first record whose startup pos reached it; RC1 and RC2 by name. -/
+#guard (rcFailures 1 3 0 4 [0, 1, 2, 3, 3] []).1.map (·.1) == ["RC4-waits"]
+#guard (rcFailures 1 3 0 5 [0, 1, 2, 3, 3, 4] []).1.isEmpty
+#guard (rcFailures 1 3 2 5 [0, 1, 2, 3, 3, 4] [7]).1.map (·.1) == ["RC1-order", "RC2-rewrites"]
+#guard (rcFailures 1 9 0 2 [0, 1, 2] []).1.map (·.1) == ["RC4-waits"]
+
 /-- The failures of `SpecOK` for the initial structure, with `VirtInit` for a
 virtual root. -/
 def initFailures (sp : Spec BVal Nat) : List String :=
