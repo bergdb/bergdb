@@ -43,8 +43,11 @@
 #                 sudo -n purge); the run stops if it cannot.
 #   SUITE=principal|grid|smoke|quick|release|FILE  The scenarios (default principal; smoke sets
 #                 smoke; release: 1M and 10M keys, timing.sh's, bergdb 028-23).
-#   FORCE=1       Run although the machine is not quiet (under 90% idle CPU); the results are then
-#                 not a reference.    DISKMIN_GB=N  Free disk space needed (default 30).
+#   FORCE=1       Run although the machine is not quiet (under MINIDLE % idle CPU); the results are
+#                 then not a reference.    DISKMIN_GB=N  Free disk space needed (default 30).
+#   MINIDLE=P     The idle CPU share, in percent over 2 s, of a quiet machine (default 90).
+#   QUIETWAIT=M   Minutes to wait for a quiet machine before the runs (default 0: refuse at once);
+#                 checked every 30 s. timing.sh passes its RUNWAIT (bergdb 028-33).
 #   KEEPDATA=1    Keep the data directories (java/build/perf/data/, deleted after each run otherwise).
 #   COOLDOWN=S    Seconds between runs (default 5).        THRESHOLDS=FILE  (default java/bench/thresholds.json)
 #   JFLAGS="..."  Extra JVM flags for every run, recorded with the others (jvm.flags): for
@@ -60,7 +63,8 @@
 # everything at once.
 #
 # Kind: timing (bergdb 028-23): the figures are the result; it checks that the machine is
-# quiet itself. timing.sh runs its ab with the release suite.
+# quiet itself (quiet_check, after its builds). timing.sh runs its ab with the release suite,
+# MINIDLE and QUIETWAIT (bergdb 028-33).
 
 cd "$(dirname "$0")/.." || exit 1
 echo "Kind: timing"
@@ -83,6 +87,8 @@ ONLY=${ONLY:-}
 OSCACHE=${OSCACHE:-warm}
 COOLDOWN=${COOLDOWN:-5}
 FORCE=${FORCE:-0}
+MINIDLE=${MINIDLE:-90}
+QUIETWAIT=${QUIETWAIT:-0}
 KEEPDATA=${KEEPDATA:-0}
 THRESHOLDS=${THRESHOLDS:-$JAVADIR/bench/thresholds.json}
 SRCPATHS="java/src java/src-dev java/stress java/build.sh java/in"
@@ -217,25 +223,52 @@ machine_facts() {
     echo "machine.fsType=$(mount | grep " on $mp " | head -1 | sed -e 's/.*(\([^,)]*\).*/\1/')"
 }
 
-# Refuses to start when other work uses the machine, or the disk is nearly full.
+# Refuses to start when the disk is nearly full, or when other work uses the machine: less
+# than MINIDLE % idle CPU over 2 s. A busy machine is waited for, up to QUIETWAIT minutes,
+# checked every 30 s, each check printed (bergdb 028-33: a build just before, timing.sh's of
+# its candidate or this script's of "current", left the machine busy for a minute or two,
+# and the check refused at once); the commands call it after their builds. FORCE=1 and
+# smoke run on a busy machine with a warning.
+cpu_idle() {
+    if [ "$(uname -s)" = Darwin ]; then
+        top -l 2 -n 0 -s 2 | grep "CPU usage" | tail -1 | sed -e 's/.* \([0-9.]*\)% idle.*/\1/'
+    else
+        vmstat 1 2 | tail -1 | awk '{print $15}'
+    fi
+}
 quiet_check() {
     mkdir -p "$DATA"
     freekb=$(df -Pk "$DATA" | tail -1 | awk '{print $4}')
     if [ "$freekb" -lt $((${DISKMIN_GB:-30} * 1000000)) ]; then
         die "less than ${DISKMIN_GB:-30} GB free where the data directories are (DISKMIN_GB to change): $(df -h "$DATA" | tail -1)"
     fi
-    if [ "$(uname -s)" = Darwin ]; then
-        idle=$(top -l 2 -n 0 -s 2 | grep "CPU usage" | tail -1 | sed -e 's/.* \([0-9.]*\)% idle.*/\1/')
-    else
-        idle=$(vmstat 1 2 | tail -1 | awk '{print $15}')
-    fi
-    echo "CPU idle before the runs: ${idle}%"
-    if [ -n "$idle" ] && awk "BEGIN { exit !($idle < 90) }"; then
-        if [ "$FORCE" = 1 ] || [ "$MODE_SMOKE" = 1 ]; then
-            echo "WARNING: the machine is not quiet (${idle}% idle); results are not a reference."
-        else
-            die "the machine is not quiet (${idle}% idle): stop other jobs, or FORCE=1 (the results are then not a reference)"
+    qstart=$(date +%s)
+    qend=$(( qstart + QUIETWAIT * 60 ))
+    waited=0
+    while true; do
+        idle=$(cpu_idle)
+        if [ -z "$idle" ] || awk "BEGIN { exit !($idle >= $MINIDLE) }"; then
+            break
         fi
+        if [ "$FORCE" = 1 ] || [ "$MODE_SMOKE" = 1 ]; then
+            echo "CPU idle before the runs: ${idle}%"
+            echo "WARNING: the machine is not quiet (${idle}% idle); results are not a reference."
+            return 0
+        fi
+        if [ "$(date +%s)" -ge $qend ]; then
+            if [ "$QUIETWAIT" -gt 0 ]; then
+                die "the machine is not quiet (${idle}% idle, under $MINIDLE % for $QUIETWAIT minutes): stop other jobs, or FORCE=1 (the results are then not a reference)"
+            fi
+            die "the machine is not quiet (${idle}% idle, under $MINIDLE %): stop other jobs, QUIETWAIT=MINUTES, or FORCE=1 (the results are then not a reference)"
+        fi
+        echo "CPU idle $(date +%H:%M:%S): ${idle}%, under $MINIDLE %; waiting up to $QUIETWAIT minutes for a quiet machine"
+        sleep 30
+        waited=1
+    done
+    if [ $waited = 1 ]; then
+        echo "CPU idle before the runs: ${idle}% (after $(( $(date +%s) - qstart )) s of waiting)"
+    else
+        echo "CPU idle before the runs: ${idle}%"
     fi
 }
 
@@ -418,8 +451,8 @@ case $cmd in
         prepare_target R "$b"
         sf=$(suite_file)
         check_scenarios "$sf"
-        quiet_check
         start_caffeinate
+        quiet_check
         new_session R "$sf" smoke "${1:-}"
         target R
         echo "Session $SID"
@@ -439,8 +472,8 @@ case $cmd in
         prepare_target R "$b"
         sf=$(suite_file)
         check_scenarios "$sf"
-        quiet_check
         start_caffeinate
+        quiet_check
         new_session R "$sf" "${SUITE:-principal}" "${1:-}"
         target R
         echo "Session $SID, source ${R_BUILD}"
@@ -457,8 +490,8 @@ case $cmd in
         sf=$(suite_file)
         [ "$R_HSHA" = "$C_HSHA" ] || die "the harness differs"
         check_scenarios "$sf"
-        quiet_check
         start_caffeinate
+        quiet_check
         new_session R "$sf" "${SUITE:-principal}" "ref"
         new_session C "$sf" "${SUITE:-principal}" "cand"
         echo "Reference session $R_SID"
