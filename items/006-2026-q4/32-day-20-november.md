@@ -74,6 +74,18 @@ Decisions of the morning:
   week.sh in parallel, then timing.sh on a quiet F53. The release is
   planned for Tuesday 24 November, after the usage reset.
 
+* 15:50 week.sh's first try failed on a unit test's timing at a low
+  priority (fixed, 2bb2b851); night.sh and week.sh restarted on
+  2bb2b851 at `nice -n 10`, timing.sh after them.
+* 15:55 The review of the statements landed as 030-33 (four findings);
+  F4 corrected (bf9b3428); F2, F3 corrected in 030-26 and TransCheck's
+  Javadoc (4f1ff7e7); 028-40 done, RB-003 (S4) in 033 (dd92de21).
+* 17:29 030-34 landed (a1d1a123): C-STEP checks the values a reclaim
+  step writes back and refuses its other writes; 0 failures.
+* 18:07 030-35 landed (2151cd4b): reclaim's step model requires the
+  values read, and reads after reclaim give the users' values, proved
+  (`PE.pe_reclaim_user_reads_steps`; 215 theorems). 030-33 done.
+
 
 ## 5. Outcome
 
