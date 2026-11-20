@@ -102,8 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
-| [028-35](35-killempty-not-created.md) | Fix | The user app KillEmpty and a kill during a database's creation | none | open |
-| [028-36](36-index-jobs-retried-fault-flake.md) | Investigate | IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild under load | none | open |
 
 
 Closed
@@ -114,6 +112,8 @@ Closed
 | [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh and level2.sh run the bridge checker once | none | done | 2026-11-20 |
 | [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc: the false step about joins, proved and tested | none | done | 2026-11-20 |
 | [028-38](38-fresh-tree-bound-small-nodes.md) | Fix | freshTreeBound at node sizes of 4 or less: sizes below 8 refused | decided | done | 2026-11-20 |
+| [028-36](36-index-jobs-retried-fault-flake.md) | Investigate | IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild: 028-29's race | none | done | 2026-11-20 |
+| [028-35](35-killempty-not-created.md) | Fix | The user app KillEmpty and a kill during a database's creation | none | done | 2026-11-20 |
 | [028-31](31-reclaim-row-without-end-key.md) | Fix | Text about a reclaim row without an end key | none | done | 2026-11-20 |
 | [028-30](30-refusal-message-2026-4.md) | Investigate | A refusal message names a release that cannot help: main's, fixed | none | done | 2026-11-20 |
 | [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | done | 2026-11-20 |
@@ -293,3 +293,9 @@ the false step about joins (030-29, section 4) and say what is proved
 lean/contract/check.sh alone, which runs both checkers and their fault
 tests; bridge-check.sh no longer checks the same traces again. Moved to
 Closed.
+
+2026-11-20. 028-35 and 028-36 taken and done by fx2 of coord-1120 on the
+branch `028-fx2`. 028-35: KillEmpty makes a database whose creation a
+kill cut again, as Kill does (a kill inside the creating start, or after
+it returned, as the Core API's creation is not synced). 028-36: 028-29's
+second race, fixed in main; no fault of the database. Moved to Closed.

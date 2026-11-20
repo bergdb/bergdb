@@ -1,6 +1,7 @@
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.Trans;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.dag.GetData;
@@ -12,6 +13,7 @@ import bergdb.stream.FileStream;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -28,6 +30,16 @@ import java.util.concurrent.atomic.AtomicLong;
  * sync it prints "S i". The parent kills it after a random delay, and checks that the next
  * child recovers at least the last synced transaction. A child that finds a difference
  * prints "FAIL ..." and exits 1. Every DBKILLS kills the parent starts a new database.
+ *
+ * A kill that leaves a creation that did not complete makes the next start throw
+ * DatabaseNotCreatedException (bergdb 028-18): a kill inside the creating start, or, as the
+ * Core API's creating start does not sync (Db.startInner), one after it returned and before
+ * the creation's two records were written. The child then checks that the refused start
+ * changed no file, prints "NOTCREATED", removes the stream's files and starts again, which
+ * creates the database, as the exception says (bergdb 028-35). The parent accepts the
+ * refusal only while nothing durable of the database was seen: no child reported a sync
+ * ("S i") or recovered a transaction ("R n", n >= 0). After that the stream holds the whole
+ * creation, and a refusal is a failure.
  *
  * Usage: java -cp bergdb-release.jar:out KillEmpty parent SEED DIR KILLS [DBKILLS] [maxDelayMs]
  *        java -cp bergdb-release.jar:out KillEmpty child SEED DIR NODESIZE RETAINMS [maxTx]
@@ -51,7 +63,7 @@ public class KillEmpty {
         Random rnd = new Random(seed);
         String java = System.getProperty("java.home") + "/bin/java";
         String cp = System.getProperty("java.class.path");
-        int done = 0, cleanExits = 0, dbs = 0, early = 0;
+        int done = 0, cleanExits = 0, dbs = 0, early = 0, notCreated = 0;
         long totalRecovered = 0;
         long t0 = System.currentTimeMillis();
         while (done < kills) {
@@ -70,6 +82,7 @@ public class KillEmpty {
                 Process p = pb.start();
                 final AtomicLong synced = new AtomicLong(maxSynced);
                 final AtomicLong recovered = new AtomicLong(-2);
+                final AtomicBoolean refused = new AtomicBoolean();     // the child printed "NOTCREATED"
                 final StringBuilder fail = new StringBuilder();
                 final List<String> tail = Collections.synchronizedList(new ArrayList<>());
                 Thread reader = new Thread(() -> {
@@ -78,6 +91,7 @@ public class KillEmpty {
                         while ((line = br.readLine()) != null) {
                             if (line.startsWith("S ")) synced.accumulateAndGet(Long.parseLong(line.substring(2)), Math::max);
                             else if (line.startsWith("R ")) recovered.set(Long.parseLong(line.substring(2)));
+                            else if (line.equals("NOTCREATED")) refused.set(true);
                             else {
                                 tail.add(line);
                                 if (tail.size() > 60) tail.remove(0);
@@ -113,6 +127,15 @@ public class KillEmpty {
                     dumpTail(tail);
                     System.exit(1);
                 }
+                if (refused.get()) {
+                    if (maxSynced >= 0 || lastRecovered >= 0) {
+                        System.out.println("FAIL db " + dbs + " (seed " + dbSeed + "): a start refused it as not created "
+                                + "after a sync (" + maxSynced + ") or a recovery (" + lastRecovered + ")");
+                        dumpTail(tail);
+                        System.exit(1);
+                    }
+                    notCreated++;
+                }
                 long r = recovered.get();
                 if (r != -2) {
                     if (r < maxSynced) {
@@ -145,9 +168,18 @@ public class KillEmpty {
                 System.out.println("FAIL final check of db " + dbs + ":\n" + out);
                 System.exit(1);
             }
+            if (out.contains("NOTCREATED\n")) {
+                if (maxSynced >= 0 || lastRecovered >= 0) {
+                    System.out.println("FAIL final check of db " + dbs + " (seed " + dbSeed + "): a start refused it as "
+                            + "not created after a sync (" + maxSynced + ") or a recovery (" + lastRecovered + ")");
+                    System.exit(1);
+                }
+                notCreated++;
+            }
         }
         Common.log("OK KillEmpty seed " + seed + ": " + done + " kills (" + early + " aimed at the start), " + cleanExits
-                + " clean exits, " + dbs + " databases, " + totalRecovered + " recoveries checked, "
+                + " clean exits, " + dbs + " databases, " + totalRecovered + " recoveries checked, " + notCreated
+                + " creations cut and made again, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s");
     }
 
@@ -170,7 +202,24 @@ public class KillEmpty {
         dir.mkdirs();
         DbBuilder b = Db.builder().mainStream(new FileStream(dir, false));
         b.cacheSizeIndicator(4_000_000);
-        Db db = b.start();
+        Map<String, Long> files = streamFiles(dir);
+        Db db;
+        try {
+            db = b.start();
+        } catch (DatabaseNotCreatedException e) {
+            // A kill during the creation, or before it was durable (bergdb 028-18): no data,
+            // and the start wrote nothing. The parent checks that nothing durable was seen.
+            Map<String, Long> after = streamFiles(dir);
+            if (!after.equals(files)) fail("the refused start changed the stream's files: " + files + ", then " + after);
+            System.out.println("NOTCREATED");
+            System.out.flush();
+            for (String name : after.keySet()) {
+                if (!new File(dir, name).delete()) fail("could not remove " + name);
+            }
+            b = Db.builder().mainStream(new FileStream(dir, false));
+            b.cacheSizeIndicator(4_000_000);
+            db = b.start();
+        }
         db.setStartupDistance(300_000);     // after the start since bergdb 028-13; nothing written if in force
         try {
             // Recover: the marker, the replay, the check.
@@ -232,6 +281,14 @@ public class KillEmpty {
             System.out.flush();
             Runtime.getRuntime().halt(1);
         }
+    }
+
+    /** The stream's files in dir (*.bergdb), each with its length. */
+    static Map<String, Long> streamFiles(File dir) {
+        TreeMap<String, Long> m = new TreeMap<>();
+        File[] fs = dir.listFiles();
+        if (fs != null) for (File f : fs) if (f.getName().endsWith(".bergdb")) m.put(f.getName(), f.length());
+        return m;
     }
 
     static void fail(String s) {
