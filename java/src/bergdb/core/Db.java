@@ -1129,6 +1129,14 @@ public class Db implements AutoCloseable {
      * finalized the Db, and its threads wrote into a database started after it on the same
      * files.</p>
      * 
+     * <p>A start on an empty stream creates the database, and the creation is durable only
+     * at the first sync after it (bergdb 028-40): this start writes the creation's records
+     * but does not sync them. To make a new database survive a crash or a restart, call
+     * sync(SyncLevel.ORDINARY) after start() (with DbBuilder.createdTxt(File), as the Pub
+     * API uses it, the start syncs the creation itself). A crash before that sync can leave the stream empty, which
+     * a next start creates again, or with part of the creation, which a next start refuses
+     * with DatabaseNotCreatedException.</p>
+     * 
      * @throws StreamIoException
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
@@ -1141,7 +1149,9 @@ public class Db implements AutoCloseable {
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33): a part of the creation's first record, or the
      *          first record alone, without the second, the startup distance's (bergdb
-     *          028-18). The start writes nothing.
+     *          028-18). A crash inside the creating start leaves it, and so does a crash
+     *          after the creating start returned, before a sync (above; bergdb 028-40).
+     *          The start writes nothing.
      * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException

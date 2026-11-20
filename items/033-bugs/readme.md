@@ -48,7 +48,7 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 0 | 2 |
+| 2026.5 | 0 | 2 | 0 | 1 | 3 |
 
 
 Released bugs
@@ -84,8 +84,30 @@ RB-002. A key transformation that throws fails the database
   `DbException`, as for RB-001.
 
 
+RB-003. The Core API's Javadoc does not say that a new database is durable only at its first sync
+---------------------------------------------------------------------------------------------------
+
+* **What a user sees:** with the Core API (`bergdb.core.Db`), a crash after
+  the start that creates a database returned, and before a sync, can make
+  the next start throw `DatabaseNotCreatedException`; the Javadoc of
+  `Db.start()` and of the exception spoke only of a crash while the
+  database was created. A Core user who needs a new database to survive a
+  crash or a restart calls `Db.sync(SyncLevel.ORDINARY)` after
+  `Db.start()`. The Pub API syncs the creation in its start and is not
+  affected. Nothing committed is lost: the database holds no data.
+* **Severity:** S4 (unclear documentation of the Core API; Frans,
+  2026-11-20).
+* **Releases:** 2026.5 (and before); fixed on `main` for 2026.6.
+* **Found:** 2026-11-20, by 028-35 (the user app KillEmpty under kills);
+  not known at the release.
+* **Fix:** 028-40, 2026-11-20: the Javadoc only; the behaviour is
+  unchanged (Frans, 2026-11-20).
+
+
 Log
 ===
 
 2026-11-20. Created the item, with its rules (Frans), from release 2026.5.
 Registered RB-001 and RB-002, both fixed by 026-06.
+
+2026-11-20. RB-003 registered (028-40), S4.

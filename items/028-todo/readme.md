@@ -102,7 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
-| [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation is durable only at its first sync, not in its Javadoc | none | open |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation durable at its first sync: Javadoc; RB-003 | decided | done | 2026-11-20 |
 | [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh and level2.sh run the bridge checker once | none | done | 2026-11-20 |
 | [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc: the false step about joins, proved and tested | none | done | 2026-11-20 |
 | [028-38](38-fresh-tree-bound-small-nodes.md) | Fix | freshTreeBound at node sizes of 4 or less: sizes below 8 refused | decided | done | 2026-11-20 |
@@ -300,3 +300,5 @@ branch `028-fx2`. 028-35: KillEmpty makes a database whose creation a
 kill cut again, as Kill does (a kill inside the creating start, or after
 it returned, as the Core API's creation is not synced). 028-36: 028-29's
 second race, fixed in main; no fault of the database. Moved to Closed.
+
+2026-11-20. 028-40 done by coord-1120: the Javadoc of the Core's creation (Frans decided); RB-003. Moved to Closed.

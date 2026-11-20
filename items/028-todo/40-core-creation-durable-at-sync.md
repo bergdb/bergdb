@@ -1,7 +1,7 @@
 028-40. Fix: the Core API's creation is durable only at its first sync, not said in its Javadoc
 ================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: decided (2026-11-20).
 Created 2026-11-20 by Frans Lundberg.
 
 What: a database made by the Core API's creating start (`Db.start()` on a
@@ -33,7 +33,27 @@ First step: `Db.startInner`'s comment on the creation's sync and 028-35's
 findings.
 
 
+Result
+------
+
+Frans decided (2026-11-20): the Javadoc only; it is to say clearly that a
+Core user calls sync after start() for a new database to survive a
+restart; a minor released bug, the unclear API documentation.
+
+* `Db.start()`'s Javadoc: a paragraph on the creation's durability (the
+  first sync after the start; `sync(SyncLevel.ORDINARY)` after `start()`;
+  with `DbBuilder.createdTxt(File)` the start syncs it itself), and its
+  `@throws DatabaseNotCreatedException` names the crash after the start
+  returned.
+* `DatabaseNotCreatedException`'s Javadoc: the Pub API against the Core
+  API, and what a Core user does.
+* Release 2026.5: the same behaviour (its start syncs the creation only
+  with `created.txt`, `syncCreation`) and the same Javadoc: RB-003 in 033,
+  S4.
+
+
 Log
 ---
 
 2026-11-20. Registered by coord-1120, from 028-35's report.
+2026-11-20. Done by coord-1120: the Javadoc; RB-003. Moved to Closed.
