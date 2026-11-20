@@ -122,6 +122,31 @@ lines as on `main` 6d379122):
   node's largest size and adds the top nodes; PE's top node is written apart
   (`Out.top`), and Db counts it apart.
 
+- The time. Java's searches read the klongs at the lookup time, its
+  `w.node.size` and `deadCount(node)` the node as it is; the model reads
+  both at `s.at t`. Db passes the latest time, `dbClock.lookupTime(MAX)`,
+  which every transaction's end sets, so no node has a klong after it (the
+  theorem's `Inv` says the same), and the two agree. At an earlier time
+  Java's sizes and dead counts could only be larger, the safe side.
+- What Db does around the call: when its cheap estimate (three nodes a
+  level of a put's path, twenty of a delete's) fits, Db does not call
+  `dirtyNodeBound` at all, and a key with a key transformation is counted
+  only by that estimate. That the estimate bounds PE is not proved here
+  (027-08, 4.2: it is above PE's own count for puts).
+- Java's long arithmetic does not overflow for any transaction Db admits;
+  the model's numbers are unbounded.
+- One difference outside the theorem: at node sizes of 4 and below, Java's
+  loop of the splits in `freshTreeBound` (line 833) never ends once
+  `overflows(ov, 1, false)` is 1 (room 1 or 0, q = 2); the model's fuel ends
+  it. Only Dag's own tests use such sizes (a database has node size 30; 8,
+  14 and 62 are for BergDB's tests; DbBuilder), and the theorem needs 8 or
+  more. A defect of test sizes only, for a later 028 entry if wanted.
+
+A second reading of the model against Dag.java, KeyNode's searches and
+Db.checkDirtyNodes, by a helper agent, found no difference that could make
+the model count more than Java at the arguments Db passes, besides the
+points above.
+
 That the model is Java's count rests on this reading, as PE's model rests
 on 030-21's; the tree checker's own copy of the count
 (lean/SIS/Tree/Bound.lean, C-T8) is a second restatement, checked on the
