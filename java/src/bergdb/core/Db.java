@@ -532,7 +532,8 @@ public class Db implements AutoCloseable {
 
     /**
      * Java's own check of the writer's contract after each transaction's puts (bergdb 030-09;
-     * test-only): null unless the system property transcheck=1 (TransCheck.ON).
+     * test-only): null unless TransCheck.ON (the system property transcheck=1, or the
+     * environment variable BERGDB_TRANSCHECK, bergdb 030-30).
      */
     private final TransCheck transCheck;
 

@@ -5,12 +5,14 @@
 # (-r 2, about 4 minutes). Longer, a soak for a spare machine (the VPS s1).
 #
 # Usage: java/stress/harness-soak.sh [-j JAR] [-o DIR] [-u HH:MM] [-r ROUNDS]
-#            [-b BASE] [-c CPUS] [-x HEAP] [-t SECONDS] [-h NAMES]
+#            [-f FIRST] [-b BASE] [-c CPUS] [-x HEAP] [-t SECONDS] [-h NAMES]
 #   -j JAR      the jar (default build/bergdb.jar; build it first with build.sh)
 #   -o DIR      the output directory (default build/harness-soak); refused if it
 #               holds a soak's results
 #   -u HH:MM    starts no job at or after this time of day (default: none)
 #   -r ROUNDS   at most this many rounds (default 1, or none with -u)
+#   -f FIRST    the first round (default 0): rounds FIRST to FIRST + ROUNDS - 1, so
+#               that a soak split in two runs the rounds of one (bergdb 030-30)
 #   -b BASE     the first seed (default the date as YYYYMMDD times 1000)
 #   -c CPUS     Linux only: the CPUs of taskset, such as 1 or 0-1; "auto"
 #               (the default on Linux) takes CPU 1 while another java process
@@ -86,17 +88,19 @@ JAR=$JAVADIR/build/bergdb.jar
 OUT=$JAVADIR/build/harness-soak
 UNTIL=
 ROUNDS=
+FIRSTROUND=0
 BASE=$(date +%Y%m%d)000
 CPUS=auto
 HEAP=1g
 LIMIT=1800
 NAMES=h2,h3,h4,obj,dobj
-while getopts j:o:u:r:b:c:x:t:h: opt; do
+while getopts j:o:u:r:f:b:c:x:t:h: opt; do
     case $opt in
     j) JAR=$OPTARG ;;
     o) OUT=$OPTARG ;;
     u) UNTIL=$(echo "$OPTARG" | tr -d :) ;;
     r) ROUNDS=$OPTARG ;;
+    f) FIRSTROUND=$OPTARG ;;
     b) BASE=$OPTARG ;;
     c) CPUS=$OPTARG ;;
     x) HEAP=$OPTARG ;;
@@ -126,7 +130,7 @@ rm -f "$OUT"/run/* "$OUT/STOP"
 : > "$OUT/results.tsv"
 LOGF=$OUT/soak.log
 STARTED=$(date '+%Y-%m-%d %H:%M:%S')
-echo "harness-soak: started $STARTED, jar $JAR, seeds from $BASE, until ${UNTIL:-none}, rounds $ROUNDS, cpus $CPUS, -Xmx$HEAP, limit ${LIMIT}s, harnesses $NAMES" | tee "$LOGF"
+echo "harness-soak: started $STARTED, jar $JAR, seeds from $BASE, until ${UNTIL:-none}, rounds $ROUNDS from round $FIRSTROUND, cpus $CPUS, -Xmx$HEAP, limit ${LIMIT}s, harnesses $NAMES" | tee "$LOGF"
 "$JAVA" -version >> "$LOGF" 2>&1
 
 # The word number $1 (from 0, cyclic) of the words that follow.
@@ -235,8 +239,8 @@ has() {
     return 1
 }
 
-r=0
-while [ $r -lt "$ROUNDS" ]; do
+r=$FIRSTROUND
+while [ $r -lt $((FIRSTROUND + ROUNDS)) ]; do
     seed=$((BASE + r))
     echo "round $r, seed $seed" > "$OUT/STATE"
     evict=$(pick $r "" "-Devict=every" "-Devict=random -Devictseed=$seed" "-Devict=values" "-Devict=budget -Devictbudget=20000")
@@ -298,16 +302,16 @@ while [ $r -lt "$ROUNDS" ]; do
     fi
     over && break
     r=$((r + 1))
-    DONE=$r
+    DONE=$((r - FIRSTROUND))
 done
-DONE=$r
-echo "ended $(date '+%Y-%m-%d %H:%M:%S') after $r rounds" > "$OUT/STATE"
+DONE=$((r - FIRSTROUND))
+echo "ended $(date '+%Y-%m-%d %H:%M:%S') after $DONE rounds" > "$OUT/STATE"
 summary
 echo "harness-soak: ended $(date '+%Y-%m-%d %H:%M:%S'), $N jobs" | tee -a "$LOGF"
 grep '^ALL' "$OUT/summary.txt"
 # The last line, for night.sh's report: OK unless a job failed or hung.
 if grep -q '^ALL: .* 0 FAIL, 0 TIMEOUT' "$OUT/summary.txt"; then
-    echo "HARNESS SOAK OK: $N jobs, $r rounds"
+    echo "HARNESS SOAK OK: $N jobs, $DONE rounds"
 else
     echo "HARNESS SOAK FAILED (summary: $OUT/summary.txt)"
     exit 1

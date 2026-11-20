@@ -523,6 +523,16 @@ Files
   depth guard unreachable on an undamaged stream, and `pe_accepts`'
   premises met by every transaction Java admits (G = 8,192, H = 100); the
   digests of record format 8. Written 2026-11-19. Status: done.
+* [030-30](30-seeds-and-contract-check.md). Two changes to the testing
+  of Java against the model (Frans, 2026-11-20): `night.sh` runs the
+  sets of traces on new seeds each day as well (the conformance sets and
+  the tree sets with the tree check, the contract and bridge checkers
+  and `pecmp`; 406 traces, 13 minutes), every seed recorded, a failing
+  trace kept with the command that makes it again; and `week.sh` runs
+  Java's commit-time check (CC) on the apps' quick and kill rounds, one
+  kill-restart seed and three harness-soak rounds, switched on in every
+  JVM by the environment variable `BERGDB_TRANSCHECK`; its cost
+  measured. Written 2026-11-20. Status: done.
 
 Log
 ===
