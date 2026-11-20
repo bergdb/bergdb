@@ -211,7 +211,7 @@ How it is proved (Contract/Proof/Dnb*.lean):
 
 # 3. Tests
 
-The model runs. A random test (in the session's scratch, not in the
+The model runs. A random test (kept outside the repository, not in the
 repository) wrote PE histories from the empty tree at node sizes 8, 14, 30
 and 62, with transactions of random puts and deletes, runs of keys under
 one new segment, runs of consecutive keys and runs of deletes, and checked
@@ -243,7 +243,7 @@ which joins a small child left alone in either. 028-21's argument counts, for
 each delete, three nodes a level and three entries and a bitmap in the
 parent, from "a joined group is its small children and at most one other
 node". That is not always so, as a constructed transaction shows (run on the
-Lean model, PE as proved, in the session's scratch): node size 30 (m = 8,
+Lean model, PE as proved, outside the repository): node size 30 (m = 8,
 c = 17, cut size 15), a space root R of height 2 with three children, L, O
 and P, each with eight leaves of eight keys. One transaction of 170
 operations deletes all of L's keys but one, empties five of O's leaves, and
@@ -339,7 +339,7 @@ equality, the example, section 5; 030-26, 030-28, 027-03 and 027-08
 updated; the model read a second time against the Java (section 1). The
 delete case is open (section 4): the leaf, the segment tree, the new
 segment tree with deletes, and the decision and rebalance facts are proved
-by helpers outside the branch, kept in the session's scratch for a later
+by helpers outside the branch, kept outside the repository for a later
 session; the joins (a loss lemma, and the chains of lone small children
 one level down) are not started in Lean.
 
