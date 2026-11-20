@@ -68,8 +68,8 @@ Result
   changed.
 
 Trials (2026-11-20, F53, in a clone; the machine was 78 to 85 % idle
-throughout, with desktop use and mediaanalysisd, so no trial met the
-default MINIDLE of 90):
+during the first ones, with desktop use and mediaanalysisd, so they used
+a lower MINIDLE; the last ran with the defaults):
 
 - performance.sh `reference` with SUITE=smoke, ONLY=w-hot-s: MINIDLE=99.9,
   QUIETWAIT=1: two checks, then refused after a minute, exit 1; MINIDLE=60,
@@ -86,11 +86,13 @@ default MINIDLE of 90):
   after timing.sh's own check: performance.sh waited a minute and
   stopped; the report said "stopped: the machine is not quiet (0.0% idle,
   under 70 % for 1 minutes)" and TIMING ALERTS: (busy, stopped: perf), and
-  the news entry "needs a look".
-
-A run of `java/timing.sh perf` with the default MINIDLE of 90 on a quiet
-F53 is left to the next timing run (013-02's plan): the machine was not
-quiet during this work.
+  the news entry "needs a look" (to a trial file, NEWS_FILE).
+- `WAIT=10 java/timing.sh perf` with the defaults (MINIDLE 90, RUNWAIT
+  15, FORCE unset), on the branch's commit, when F53 had become quiet:
+  96 % idle at timing.sh's start; performance.sh built "current", found
+  77 % idle right after the build (the case of the three refused runs),
+  waited, then "CPU idle before the runs: 94.70% (after 36 s of waiting)"
+  and the first scenario, read-100 [R]; stopped there with a kill.
 
 
 Log
