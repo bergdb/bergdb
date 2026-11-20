@@ -548,3 +548,59 @@ PE (026-25) was made and gated on its branch; not merged (below).
 **Left:** the format work (026-01's compact nodes, the versioning rule)
 after the algorithms settle (Frans, 12:39); CC as a test switch, a fast
 check designed later (030-20); the C clone follows a release.
+
+
+### The second day, 2026-11-19 07:00 to 2026-11-20 13:35
+
+Written 2026-11-20, 13:35, by coord-1118, at its closing; coord-1120
+took over at 11:04. The week went from 77 % to 95 %, the stop Frans
+set for the day (92 % the day before).
+
+**Done, in `main`:**
+
+- **The proof aim is reached** (030's aim): BergDB's core algorithms
+  are proved, given tested assumptions. The writer (030-21, PE, Java's
+  writer since 026-25's merge) and reclaim: 030-23 (T-SCHEME stated),
+  030-24 (reads after cuts, `PE.pe_reclaim_reads`), 030-25 (`IterationOK`
+  from a model of reclaim's steps, `PE.pe_reclaim_reads_steps`).
+  Independent reviews of the statements of 030-21, 030-24 and 030-25:
+  no statement defect; the prose they overstated corrected.
+- **The public statement** (030-26): "BergDB's core algorithms are
+  proved", with the model, its limits and the tested assumptions with
+  their checks; on `main` since 2026-11-20, kept up to date at least
+  until release 2026.6 (Frans). Release 2026.6's theme: proven
+  algorithms (Frans, 2026-11-19).
+- **The tested links made stronger:** every reclaim step checked against
+  the model (030-27); the checkers' copy of PE compared with the proved
+  writer at every transaction and the pinned files' hashes checked every
+  night (030-28); new trace seeds each night and Java's commit check in
+  `week.sh` (030-30); the user apps' workloads and reclaim across
+  restarts and crashes checked against the model (030-31). The proof
+  goals from 2026-11-20 (030's readme): keep it true, strengthen the
+  tested links, design 2026.8's stream format model first.
+- **Tests by kind** (028-23, 028-27): `night.sh`, `week.sh` (with the
+  Android tests) and `timing.sh` are disjoint sets; all three run before
+  a release. The first full `week.sh` (11.5 hours): every step OK but
+  one harness job, a fault of the harness (028-32, fixed). The first
+  `timing.sh`: CORE 1.058 of 2026.5's time, the pause probe 40.1 ms
+  against 28.8 ms (guide 50); its perf step was refused by a fault of
+  the script (028-33, fixed), so the perf figures are still to come.
+- **Fixes:** 028-13 (the startup distance only by the running database's
+  setter), 028-20, 028-21 (`dirtyNodeBound` against PE), 028-22,
+  028-24 (the level scripts without Mathlib), 028-25 B (one mark order),
+  028-26 A (reclaim's charge counts PE's nodes).
+- **Releases 2026.7 (031) and 2026.8 (032)** created; the stream
+  format's work moved to 2026.8, with encryption and replication (Frans).
+- **Committed text records decisions, reasons and conclusions, not the
+  conversation behind them** (Frans, AGENTS.md, 1f25b044).
+
+**Handed to coord-1120:** 030-29 (gated, 6954f1d6): `dirtyNodeBound`
+proved for transactions of puts (`PE.pe_dirtyNodeBound_puts`), the
+delete case open (groundwork outside the repository); the acceptance
+argument in Lean at H = 126 (`pe_accepts_java`), 030-26 and 030-28
+corrected (H = 100 holds at node sizes 30 and 62 only).
+
+**Left:** the delete case of 030-29; a full `timing.sh` on a quiet F53
+(028-19's figures, the pauses again); the open 028 entries (028-28 to
+028-31, 028-35 to 028-37); the quotes of Frans already in current files,
+reworded after the week's reset (decided).
