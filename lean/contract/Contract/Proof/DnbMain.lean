@@ -55,4 +55,21 @@ theorem pe_dirtyNodeBound_puts {b G H : Nat} (hb : 8 ≤ b) {t i : Time} {s : Tr
   rw [dirtyNodeBound_eq_sb b hI hok]
   exact pe_keyWrites_le_sb_puts hb hI hfill hdel hw
 
+/-- **The same for every history PE writes from the empty tree**: the next
+transaction of puts, on a tree that meets the fill rules, writes at most
+Java's count of it, read at the history's last time. -/
+theorem pe_dirtyNodeBound_puts_hist {b G H : Nat} (hb : 8 ≤ b) {txs : List (List Op)} {s : Tree}
+    {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hfill : FillOk b H s) (hputs : ∀ op ∈ ops, ∃ k v, op = .put k v)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  have hcf : (Cfg.java b G H).Ok := ⟨by simp [Cfg.java, DNB.splitAbove]; omega,
+    by simp [Cfg.java, DNB.splitAbove]; omega, by simp [Cfg.java, DNB.cutSize]; omega,
+    by simp [Cfg.java, DNB.cutSize]; omega, by simp [Cfg.java, DNB.mergeCap]; omega,
+    by simp [Cfg.java, DNB.mergeCap]; omega⟩
+  obtain ⟨h0, hst, htop⟩ := start_inv hcf
+  have hI := (pe_meetsTop hcf h0 hst htop hh).2
+  exact pe_dirtyNodeBound_puts hb hI hfill hputs hw
+
 end Contract.PE

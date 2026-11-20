@@ -225,7 +225,7 @@ assistant, in two packages:
   functions that run (`Contract/PeWriter.lean`), the bridge from the
   DAG to the abstract model, reclaim's contract, the model of its steps,
   and the proofs. It uses Mathlib, Lean's library of mathematics. 152
-  files, about 57,000 lines; the gate checks 197 theorems.
+  files, about 57,000 lines; the gate checks 198 theorems.
 
 The writer's contract is the centre. It says what must hold when a
 transaction ends, not how the writer gets there. Reads, recovery,
@@ -250,7 +250,7 @@ the whole DAG at that point, each node with all its time-marked entries;
 ## 3.2 What "proved" means here
 
 - **Checked by machine.** Lean's kernel checks every step of every proof.
-- **No extra axioms.** The 197 theorems of `lean/contract/Axioms.lean`
+- **No extra axioms.** The 198 theorems of `lean/contract/Axioms.lean`
   rest only on Lean's three standard axioms (`propext`,
   `Classical.choice`, `Quot.sound`): no `sorry` (a step left unproved),
   no `admit`, no `native_decide` (which trusts compiled code), no axiom of

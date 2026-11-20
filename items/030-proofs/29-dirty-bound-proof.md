@@ -152,6 +152,11 @@ key nodes PE writes are at most Java's `dirtyNodeBound` of the transaction
 on the tree read at t, the lookup time Db uses (the latest). A transaction
 without operations writes none.
 
+`Contract.PE.pe_dirtyNodeBound_puts_hist` says the same for every history
+PE writes from the empty tree (030-21's `PeHist`): the next transaction of
+puts, on a tree that meets the fill rules, writes at most Java's count of
+it, read at the history's last time.
+
 `Contract.PE.DnbExample` (Contract/DnbExample.lean) shows the premises can
 hold: from the empty tree at node size 30, a transaction of two puts, one
 key node written and counted.
@@ -275,11 +280,11 @@ On the branch's Lean commit 9cd46821, in lean/contract/:
 
 - `sh gate.sh`: GATE OK. 1. lake build passes (no warnings); 2. no
   `sorry`, `admit`, `native_decide` or axiom; 3. the standard axioms only
-  (197 theorems, 191 before); 5. the statements pinned: 91 files of the
+  (198 theorems, 191 before); 5. the statements pinned: 91 files of the
   main theorems' closure, 112 pinned (106 before).
 - `sh gate.sh 6d379122`: steps 1, 2, 3 and 5 pass; step 4 lists the edits
   of 027-03 and 027-08 (outside the paths it allows, by design); step 5
-  lists the pinned files changed since the base: Axioms.lean (six lines
+  lists the pinned files changed since the base: Axioms.lean (seven lines
   added) and six new files (DirtyBound, DirtyBoundStatement, DnbSpec,
   DnbWalk, DnbMain, DnbRoom). No existing statement changed.
 - `sh pins.sh`: PINS OK.
