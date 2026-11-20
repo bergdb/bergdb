@@ -1,7 +1,7 @@
 028-28. Investigate: the kill-and-restart harness's check at old times
 ======================================================================
 
-Status: in progress. Kind: Investigate. Frans: none.
+Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: `KillRestartHarness.verify()` reads the database at old times on the
@@ -88,9 +88,25 @@ forced in verify() (not committed): "Database 0 abandoned in run 3", then
 the next databases, KILL RESTART OK.
 
 
+Gates
+-----
+
+On the branch `028-29-28-harness` (KillRestartHarness as at 1c2ee58a):
+
+- `java/before-commit.sh` at 1c2ee58a: BEFORE COMMIT OK (196 s); at
+  16e8ff2a: BEFORE COMMIT OK (143 s).
+- `java/stress/kill-restart.sh 1000` (seed 20261120) at 1c2ee58a, at a load
+  of 40 to 80: KILL RESTART OK: 1000 kills and 52 exits in 1955 s; no
+  refusal (no cutSkipped, no database abandoned).
+
+
 Log
 ---
 
 2026-11-19. Registered by coord-1118 from a report of the day's work.
 
 2026-11-20. Taken by hf of coord-1120, on the branch `028-29-28-harness`.
+
+2026-11-20. Done by hf of coord-1120 on the branch `028-29-28-harness`
+(1c2ee58a): a refusal at a time that has left the retention is expected,
+checked by refused(); verify() then abandons the database.

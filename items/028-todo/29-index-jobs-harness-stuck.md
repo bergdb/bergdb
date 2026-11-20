@@ -1,7 +1,7 @@
 028-29. Investigate: IndexJobsHarness counts a slow cleanup as stuck
 ====================================================================
 
-Status: in progress. Kind: Investigate. Frans: none.
+Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: `IndexJobsHarness` may count an index cleanup that is slow, on a loaded
@@ -121,8 +121,22 @@ progress for 300 ms"), `testActivationBetweenRestartReads` (fails with the
 old comparison, with the 2026-11-19 finding, at the first run; passes
 with the fix), `testDisagree`. About 5 s more in the unit tests.
 
-After the fix, the same probes at a load of 35 to 50: 0 findings in 960
-and in 600 runs; the class's 12 tests passed in repeated runs.
+After the fixes, the same probes at a load of 35 to 60: 0 findings in
+960, 600 and 1,800 runs, and 0 in 3,240 runs of every point and fault
+(testEveryPointAndFault's 54 configurations, 6 JVMs in parallel); the
+class's 12 tests passed 20 times of 20.
+
+
+Gates
+-----
+
+On the branch `028-29-28-harness`, at a load of 40 to 80:
+
+- `java/before-commit.sh` at 16e8ff2a: BEFORE COMMIT OK (143 s).
+- The index jobs harness soak, `stress/harness-soak.sh -h h3 -r 10 -b
+  20261120600` at 16e8ff2a: HARNESS SOAK OK: 10 jobs, 10 rounds (30 to
+  20,000 objects, with the eviction schedules and the audit); also with
+  `-b 20261120500` at 1c2ee58a.
 
 
 Log
@@ -131,3 +145,7 @@ Log
 2026-11-19. Registered by coord-1118 from a report of the day's work.
 
 2026-11-20. Taken by hf of coord-1120, on the branch `028-29-28-harness`.
+
+2026-11-20. Done by hf of coord-1120 on the branch `028-29-28-harness`
+(1c2ee58a, 16e8ff2a): four races of the harness's checks, no fault of the
+database; the cleanups and the builds stuck only with no progress.
