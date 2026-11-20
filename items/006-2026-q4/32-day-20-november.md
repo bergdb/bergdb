@@ -87,6 +87,30 @@ Decisions of the morning:
   (`PE.pe_reclaim_user_reads_steps`; 215 theorems). 030-33 done.
 
 
+## 6. Next: Monday 23 November and the release
+
+Decided by Frans (2026-11-20), for the coordinator of Monday (after the
+usage reset of Monday 22:00 where usage requires it):
+
+* **The scope of the proofs as a closed list of user guarantees** (a new
+  030 subitem): 030-26's "What it means for a user" made a numbered list
+  G1 to Gn, each marked proved (its theorem) or tested on purpose (its
+  assumption in 030-26, section 5, and its check); written by an agent,
+  reviewed independently against the pinned statements. 030's goal 2
+  (strengthen the tested links) is done when 030-36 lands or the delete
+  case is left tested by decision; further links only by a new decision.
+  026's release steps get the check: the guarantee list reviewed against
+  the pinned statements before the tag.
+* Land 030-36 (the dirty-node bound with deletes, running tonight) after
+  its gate; turn the bug hunt's findings (026-26, running tonight) into
+  028 entries, or RB entries in 033 when 2026.5 has them.
+* The release runs' results (night.sh, week.sh, timing.sh, started
+  15:50): failures fixed; timing.sh's figures against 2026.5 for
+  028-19's decision (not blocking unless a large loss at 1M or 10M).
+* Release 2026.6 on Tuesday 24 November: the notes from `releases/next.md`,
+  033's RB-001 to RB-003, 030-26 current.
+
+
 ## 5. Outcome
 
 Not yet.
