@@ -98,6 +98,10 @@ the changes of the public repository (029; Frans, 2026-11-17, 11:40):
 * 024-38's scripts (`release.sh`, `stage-b.sh`, `finish.sh`), adapted for
   2026.6, stage no binaries in `releases/2026.6/` and write
   `SHA256SUMS` for the two uploaded files only.
+* **030-26 is current before the tag.** The public statement that the
+  core algorithms are proved (030-26) says what commit A proves and
+  tests: its theorem counts, its tested assumptions with their checks,
+  and where they run match `main` (Frans, 2026-11-20). The notes cite it.
 * **week.sh and timing.sh run before the release** (028-23): `java/week.sh`,
   the functional run (night's steps, the large conformance set, the user
   apps, more kills and fuzzing; about 11 hours), in place of 024-38's

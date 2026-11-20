@@ -499,7 +499,8 @@ Files
   what it means for a user; what is proved, each part with its top
   theorem; the model and what "proved" means; the limits; 030-04's 13
   tested assumptions as they now stand, each with its test and where it
-  runs; how it stays true; the history. Written 2026-11-19. Status: done.
+  runs; how it stays true; the history. Written 2026-11-19; kept up to
+  date with `main`, at least until release 2026.6 (Frans, 2026-11-20).
 * [030-27](27-step-check.md). Java's reclaim steps checked on the
   traces: the exporter's STEP line (t0, c, lastKey before and after, eod,
   from the row in memory) and `tracecheck`'s C-STEP, which checks every

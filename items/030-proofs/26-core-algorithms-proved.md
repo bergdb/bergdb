@@ -1,6 +1,11 @@
 # 030-26. BergDB's core algorithms are proved
 
-Created 2026-11-19 by Frans Lundberg. Status: done.
+Created 2026-11-19 by Frans Lundberg. Status: kept up to date.
+
+Kept up to date with `main`, at least until release 2026.6 (Frans,
+2026-11-20): a change to a proof, to the tested assumptions or to the
+checks that cover them updates this page in the same change, and the
+release checks it before the tag (026, "How the release is made").
 
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
@@ -473,3 +478,6 @@ structure, it says "the DAG" or "the stored nodes" (sections 2, 2.3, 3.1,
 3.3, 4 and 5, item 1). Checked against `Contract/Tree.lean`,
 `Reach.lean`, `ShapeStatement.lean`, `TheoremsShape.lean` and
 `Bridge.lean`.
+
+2026-11-20. Kept up to date with `main`, at least until release 2026.6
+(Frans).
