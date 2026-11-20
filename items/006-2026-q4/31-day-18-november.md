@@ -369,6 +369,64 @@ The decisions, as recorded here:
   (030-24, agent rcp: `TSchemeGis`, its hardest case first).
 * 13:53 028-26 landed (9ed26b44, regated on the merged tree: level 2 and
   3), pushed d1c5da0b.
+* 14:24 028-13 landed (92721cac): the startup distance only by the
+  running database's setter; 028-26's new test moved to the setter.
+* 15:13 030-24 landed (c0e2afaf): reclaim's reads after cuts proved for
+  every history PE writes (`PE.pe_reclaim_reads`), with the independent
+  search's invariant; `TScheme` as 030-23 stated it is false without A6'.
+* 15:26 Frans chose the public claim "BergDB's core algorithms are
+  proved", with the model and its limits stated beside it (030-26).
+* 15:30 An independent review of 030-24's statements: no statement
+  defect; two parts of RC1 and the iteration checked only in a weaker
+  form (030-27 checks them).
+* 15:51 030-25 done, landed 16:06 (c1edf68c): `IterationOK` proved from a
+  model of reclaim's steps. With 030-21 and 030-24, the proof aim is
+  reached: the core algorithms proved, given tested assumptions.
+* 15:59 Frans decided: night.sh, week.sh and timing.sh are disjoint sets
+  of tests, week.sh with the Android tests and without night's steps
+  (028-27, landed 16:47, 92ecdeea); before a release all three run.
+* 16:08 Frans decided: the independent tool is for independent reviews
+  and independent ideas; implementation goes to agents of the session.
+* 16:09 An independent review of 030-25's statements: no statement
+  defect; the example's description corrected (311da61c).
+* 16:11 Frans decided release 2026.6's theme: proven algorithms, after
+  2026.5's solid algorithms. The stable stream format waits for a later
+  release, with encryption and replication (3b85b7e6).
+* 16:31 028-22 and 028-25 B landed (34d5ce37).
+* 16:33 An independent review of 030-21's statements: substantive and
+  not vacuous; prose corrected in 030-04, 030-21 and the page; the
+  checkers' copy of PE was not compared routinely with the proved writer
+  (030-28).
+* 17:24 030-27 landed (70d09c9a): every reclaim step on the traces
+  checked against the model (0 of 21,483 transactions fail).
+* 17:40 028-28 to 028-31 registered from the day's reports.
+* 17:49 030-28 landed (dab74f92): the copy compared with the proved
+  writer at every transaction in level 2 (top nodes too), the pinned
+  files' hashes checked in level 2; Java's depth guard unreachable.
+* 22:33 week.sh's harness soak failed 1 of 50 jobs: 028-32, a fault of
+  IndexHarness's bound, not of the database; landed 23:10 (f995e1a8).
+* 02:47 week.sh ended (693 minutes): every step OK but that job,
+  conformance-large included.
+* 02:54 timing.sh, its first run: CORE 1.058 of 2026.5's time (alert
+  above 1.10), the pause probe 40.1 ms against 28.8 ms (guide 50); the
+  perf step refused three times by performance.sh's quiet check right
+  after a build: 028-33.
+
+**For Frans to decide** (2026-11-20 morning):
+
+1. **030-26, the public page** (branch `030-26-core-proved`, 2ef660a7,
+   not on main): land it, with its text brought up to 030-27 and 030-28
+   (done since). Recommended: yes, and 030-26 a maintained description.
+2. **The stream format's work out of 2026.6**: 026-01 (compact nodes),
+   026-12 (the stable-format plan) and the merges-in-place study, to the
+   later release with encryption and replication. Recommended: yes.
+3. **The copy's comparison on night's medium set too** (030-28): a few
+   minutes a night. Recommended: yes.
+4. **CORE in night's level 1** (a printed figure) and **the Android
+   test's fixed port** (028-27). Recommended: keep both as they are.
+5. **The pause probe** (40.1 ms against 28.8 ms, within the guide):
+   measured again when 028-33 lets the perf step run. Recommended: wait
+   for that run.
 
 
 ## 4b. Unattended, 13:48 to 07:00

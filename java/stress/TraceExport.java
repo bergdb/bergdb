@@ -65,6 +65,10 @@ import bergdb.stream.MemoryStream;
  *              a KN line for every key node that the transaction made or whose klongs
  *              it changed in any way, from a diff of the klongs (bergdb 030-09), so that
  *              the contract's checker sees a klong changed or removed too
+ *   steps=1    with retain and tree=1: a STEP line for each step of reclaim, from its
+ *              iteration's row in memory (bergdb 030-27; 027-02, section 4): t0, c, lastKey
+ *              before and after the step, and eod; not in the contract's grammar, so the
+ *              traces of its checkers have none (default: none)
  *   fault=I    a test of the checkers (bergdb 030-09): when R(I) is recorded, a key
  *              klong of a key node made before it gets another compare value in
  *              memory, a change that Java never makes; the trace must then fail
@@ -147,6 +151,8 @@ public class TraceExport {
     final boolean live = "1".equals(System.getProperty("live"));
     final boolean tree = "1".equals(System.getProperty("tree"));
     final int treeGets = Integer.getInteger("gets", 4);
+    /** steps=1: a STEP line for each step of reclaim (bergdb 030-27). */
+    final boolean stepLines = "1".equals(System.getProperty("steps"));
     final int faultAt = Integer.getInteger("fault", -1);
     /** maint=K: a call of Db.maintain() after every K-th user transaction (bergdb 024-32). */
     final int maint = Integer.getInteger("maint", 0);
@@ -1073,7 +1079,9 @@ public class TraceExport {
 
     /** The kind of R(i), its touch, the first available time and a cut decided at it. */
     void recordReclaim(Db db, Trans t, List<Node> touched, Rec rec) {
+        stepEnded();
         rec.kind = !t.isInternal() ? "user" : t.touch ? "step" : "table";
+        if (t.touch && stepLines) stepBegun(db, rec);
         if (t.touch) {
             TreeSet<Long> ids = new TreeSet<Long>();
             for (Node x : touched) {
@@ -1105,6 +1113,41 @@ public class TraceExport {
         }
     }
 
+    /** The step recorded last, until its STEP line is made (bergdb 030-27): its record, its
+     *  iteration's row in memory and the line's first tokens. */
+    Rec stepRec;
+    Reclaim.IterationInfo stepRow;
+    String stepHead;
+
+    /** At a step's record, inside Reclaim.step's commit: t0 (tStart's record), c (the first
+     *  record at or after pCut) and lastKey before the step, from its iteration's row, which
+     *  the step updates after its commit. */
+    void stepBegun(Db db, Rec rec) {
+        Reclaim.IterationInfo it = db.internal().reclaim().currentIteration();
+        if (it == null) {
+            error("STEP of R(" + rec.index + "): no iteration in progress");
+            return;
+        }
+        Integer c = idxByTpos.get(it.pCut);
+        if (c == null) error("STEP of R(" + rec.index + "): pCut " + it.pCut + " is not a record's start");
+        stepRec = rec;
+        stepRow = it;
+        stepHead = "STEP " + timeIndex(it.tStart, "tStart of the step R(" + rec.index + ")") + " "
+                + (c == null ? -1 : c) + " " + (it.lastKey == null ? "-" : segs(it.lastKey));
+    }
+
+    /** The STEP line of the step recorded last, at the next record or at the end of the call,
+     *  when Reclaim.step has updated the row: lastKey after the step, and eod, whether its scan
+     *  ended the iteration (the row done, with the step's time as tEnd). */
+    void stepEnded() {
+        if (stepRec == null) return;
+        boolean eod = stepRow.done && stepRow.tEnd == stepRec.tt;
+        stepRec.reclaimLines.add(stepHead + " " + (stepRow.lastKey == null ? "-" : segs(stepRow.lastKey))
+                + " " + (eod ? 1 : 0));
+        stepRec = null;
+        stepRow = null;
+    }
+
     /**
      * With maint=K, a call of maintain() after every K-th user transaction, the same in
      * runs A, B and E (bergdb 024-32): its records belong to the call of transaction i, as
@@ -1120,6 +1163,7 @@ public class TraceExport {
      *  first position (the physical cut, at the call's last record), and Java's first
      *  available time against the model's. */
     void afterCall(Db db, AppendOnlyStream stream, int i) {
+        stepEnded();
         for (int r = userRec[i]; r <= userLast[i]; r++) {
             for (String line : recs.get(r).reclaimLines) {
                 if (line.startsWith("CUT ")) cutCalls.add(i);

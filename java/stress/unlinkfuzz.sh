@@ -5,16 +5,18 @@
 # (fault 12 of bergdb 023-08, review C) passed before-commit.sh and level1.sh to level4.sh;
 # UnlinkFuzz finds that fault in seconds, in the "big-long" configurations below.
 #
-# Usage: java/stress/unlinkfuzz.sh [SEED]
+# Usage: java/stress/unlinkfuzz.sh [SEED [day]]
 #   Each configuration runs two blocks of rounds, a round a seed: the fixed block, seeds 1,
 #   2, ... (a regression run, the same every time), and the day's block, seeds SEED, SEED +
 #   1, ... (default: the day's number times 1000, as fuzz.sh, so each day new seeds). Both
 #   blocks have the number of rounds that the list gives the configuration, chosen so that a
 #   block takes about 35 seconds on F53 and the script about 5 minutes (294 s, 3,226 rounds,
-#   on 2026-11-11). Prints one line a configuration, then UNLINKFUZZ OK; or, after a line
-#   for each failure, UNLINKFUZZ FAILED with the first failure's configuration, seed and
-#   message, and exits with status 1. A block stops at its first failure, which this
-#   repeats alone, with the transactions:
+#   on 2026-11-11). With "day", only the day's block: week.sh's run (bergdb 028-27), whose
+#   seeds are other than night.sh's and which leaves the fixed block to night.sh. Prints
+#   one line a configuration, then UNLINKFUZZ OK; or, after a line for each failure,
+#   UNLINKFUZZ FAILED with the first failure's configuration, seed and message, and exits
+#   with status 1. A block stops at its first failure, which this repeats alone, with the
+#   transactions:
 #     java -ea PROPERTIES -cp java/build/bergdb.jar:java/build/stress bergdb.dag.UnlinkFuzz SEED 1
 #
 # The configurations (UnlinkFuzz's class comment has the properties): the gate runs of
@@ -29,7 +31,7 @@
 # PAR=N runs N JVMs at once (default 4), each on one core (-XX:ActiveProcessorCount=1).
 # Needs java/build (java/build.sh). Output: java/build/unlinkfuzz/, a file for each block.
 # Not a commit gate: before-commit.sh must stay fast, and a harness joins it only if it
-# adds a few seconds. night.sh runs it.
+# adds a few seconds. night.sh runs it, and week.sh with "day".
 #
 # Kind: functional (bergdb 028-23): the result does not depend on the machine's speed or
 # load.
@@ -40,6 +42,8 @@ JAVA=${JAVA:-java}
 if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 SEED=${1:-$(( $(date +%s) / 86400 * 1000 ))}
+# The blocks of each configuration: both, or with "day" only the day's.
+if [ "${2:-}" = day ]; then BLOCKS=day; else BLOCKS="fixed day"; fi
 PAR=${PAR:-4}
 OUT=build/unlinkfuzz
 CP=build/bergdb.jar:build/stress
@@ -76,12 +80,16 @@ block() {
         bergdb.dag.UnlinkFuzz $3 $4 > $OUT/$1-$2.txt 2>&1
 }
 
-echo "unlinkfuzz.sh: fixed seeds from 1, the day's from $SEED, $PAR JVMs at once, $(date)"
+if [ "$BLOCKS" = day ]; then
+    echo "unlinkfuzz.sh: the day's seeds from $SEED (no fixed block), $PAR JVMs at once, $(date)"
+else
+    echo "unlinkfuzz.sh: fixed seeds from 1, the day's from $SEED, $PAR JVMs at once, $(date)"
+fi
 START=$(date +%s)
 configs > $OUT/configs.txt
 running=0
 while read name rounds props; do
-    for b in fixed day; do
+    for b in $BLOCKS; do
         if [ $b = fixed ]; then first=1; else first=$SEED; fi
         block $name $b $first $rounds "$props" &
         running=$((running + 1))
@@ -96,8 +104,12 @@ wait
 FAILED=0
 FIRST=
 while read name rounds props; do
-    line="   $name: $rounds rounds from seed 1 and from seed $SEED:"
-    for b in fixed day; do
+    if [ "$BLOCKS" = day ]; then
+        line="   $name: $rounds rounds from seed $SEED:"
+    else
+        line="   $name: $rounds rounds from seed 1 and from seed $SEED:"
+    fi
+    for b in $BLOCKS; do
         if [ $b = fixed ]; then first=1; else first=$SEED; fi
         f=$OUT/$name-$b.txt
         if grep -q "^Done: $rounds rounds, 0 failures" $f; then
@@ -117,12 +129,12 @@ while read name rounds props; do
         echo "unlinkfuzz.sh: configuration $name failed, $what (log: java/$f); repeat: $again"
         [ -n "$FIRST" ] || FIRST="configuration $name, $what; repeat: $again"
     done
-    echo "$line $(grep -ho 'nodes taken back by the climb [0-9]* (roots [0-9]*)' $OUT/$name-fixed.txt | sed 's/ by the climb//')"
+    echo "$line $(grep -ho 'nodes taken back by the climb [0-9]* (roots [0-9]*)' $OUT/$name-${BLOCKS%% *}.txt | sed 's/ by the climb//')"
 done < $OUT/configs.txt
 
 T=$(( $(date +%s) - START ))
 if [ $FAILED -eq 0 ]; then
-    echo "UNLINKFUZZ OK ($(awk '{n += 2 * $2} END {print n}' $OUT/configs.txt) rounds, $T s)"
+    echo "UNLINKFUZZ OK ($(awk -v b="$(echo $BLOCKS | wc -w)" '{n += b * $2} END {print n}' $OUT/configs.txt) rounds, $T s)"
     exit 0
 fi
 echo "UNLINKFUZZ FAILED: $FAILED blocks ($T s); the first: $FIRST"

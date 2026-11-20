@@ -15,6 +15,14 @@
 # lean/, lean/contract/ and lean/contractcheck/, which builds the checkers from
 # lean/contract/'s files without Mathlib, bergdb 028-24).
 #
+# Beside the closure, files that are no statement but whose change must show in
+# review the same way (bergdb 030-28): the tree checker's writer
+# lean/SIS/Tree/Pe.lean, a copy of the proved writer (Contract/PeWriter.lean) that
+# the level scripts compare Java with; pecmp, which compares the two writers on
+# Java's traces (lean/pecmp/: PeCmp.lean, check.sh and its package's files); and
+# pins.sh, the check of these pins without a build. Pinning them changes no
+# statement.
+#
 # Usage: lean/contract/pin.sh. Needs lake build in lean/contract/.
 cd "$(dirname "$0")"
 FILES=$(lake env lean Statements.lean 2>&1 | grep '^lean/')
@@ -23,7 +31,9 @@ EXTRA="lean/contract/Axioms.lean lean/contract/Statements.lean lean/contract/Con
 lean/contract/BridgeCheck.lean lean/contract/gate.sh lean/contract/lean-toolchain
 lean/contract/lakefile.toml lean/contract/lake-manifest.json lean/lean-toolchain
 lean/lakefile.toml lean/lake-manifest.json lean/contractcheck/lean-toolchain
-lean/contractcheck/lakefile.toml lean/contractcheck/lake-manifest.json"
+lean/contractcheck/lakefile.toml lean/contractcheck/lake-manifest.json
+lean/SIS/Tree/Pe.lean lean/pecmp/PeCmp.lean lean/pecmp/check.sh lean/pecmp/lakefile.toml
+lean/pecmp/lean-toolchain lean/pecmp/lake-manifest.json lean/contract/pins.sh"
 cd ../..
 {
     echo "$FILES"

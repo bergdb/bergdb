@@ -73,7 +73,7 @@ for the night:
 | The watchdog | A shell script outside the session, started for unattended mode: keeps the Mac awake, logs whether the session lives and the network works, and writes `news.md` if the session is gone (section 8). |
 | The conductor | 013-01's script for the night's timed steps. |
 | `night.sh` | The night test run, about 2.5 hours, at no fixed time: a step of the coordinator's plan, like the other heavy runs (section 6). |
-| `week.sh`, `timing.sh` | The week run (about 11 hours, on demand and before every release) and the timing run (CORE, pauses, `performance.sh ab`; before every release, and after work on speed), steps of the plan too (028-23). |
+| `week.sh`, `timing.sh` | The week run (about 9 hours, on demand and before every release; with the Android SDK in its environment, 028-27) and the timing run (CORE, pauses, `performance.sh ab`; before every release, and after work on speed), steps of the plan too (028-23). |
 
 2026-11-06: `night.sh` no longer runs at 02:10 from launchd. Frans, 11:21:
 "I think we should remove the fixed-time scheduling of night.sh. You can
@@ -100,6 +100,12 @@ needs a quiet machine: the coordinator plans it in a quiet block of F53,
 or on s1, with nothing else heavy beside it; it refuses to start on a busy
 machine (`WAIT=MINUTES` makes it wait), and runs before every release on
 a commit near it.
+
+Since 2026-11-19 (028-27; Frans decided), `night.sh`, `week.sh` and
+`timing.sh` are disjoint sets of tests: `week.sh` no longer runs
+`night.sh`'s steps, and it runs the Android tests, so it is started with
+`ANDROID_SDK` set (its header). Before every release all three run, on a
+commit near it.
 
 
 ## 3. The day

@@ -101,10 +101,11 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
-| [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | done |
-| [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done on its branch |
-| [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decided B | done |
-| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | A (Frans) | done |
+| [028-28](28-kill-restart-verify-old-times.md) | Investigate | The kill-and-restart harness's check at old times | none | open |
+| [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | open |
+| [028-30](30-refusal-message-2026-4.md) | Investigate | 2026.4's refusal message names a release that cannot help | none | open |
+| [028-31](31-reclaim-row-without-end-key.md) | Fix | Text about a reclaim row without an end key | none | open |
+| [028-33](33-timing-perf-refused.md) | Fix | timing.sh's perf step is refused right after a build | none | open |
 
 
 Closed
@@ -112,6 +113,12 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-32](32-frozen-lookup-time.md) | Fix | IndexHarness bounds a frozen lookup time by an earlier time | none | done | 2026-11-19 |
+| [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | done | 2026-11-19 |
+| [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done | 2026-11-19 |
+| [028-25](25-pe-mark-order.md) | Decide | One order of the marks for both ways of PE | decided B | done | 2026-11-19 |
+| [028-26](26-reclaim-charge-pe-nodes.md) | Fix | Reclaim's charge omits the index nodes that PE makes | A (Frans) | done | 2026-11-19 |
+| [028-27](27-disjoint-test-sets.md) | Change | night, week and timing as disjoint sets of tests; Android in week | decided | done | 2026-11-19 |
 | [028-13](13-startup-distance-ranges.md) | Decide | The startup distance: the builders' methods go | decided (11:10) | done | 2026-11-19 |
 | [028-21](21-dirty-node-bound-pe.md) | Investigate | Does dirtyNodeBound bound the writer PE? No: three gaps, fixed | none | done | 2026-11-19 |
 | [028-20](20-harness-late-exit.md) | Fix | The kill-and-restart harness fails a late exit run | none | done | 2026-11-19 |
@@ -227,3 +234,23 @@ database's setter (Frans, 11:06 and 11:10); `DbBuilder.startupDistance`
 and `DatabaseBuilder.startupDistanceInMb` removed; the Core setter clamps
 to 10 to 10^9 and returns the value set; gated on the branch
 `028-13-startup-distance-setter`, by an agent of coord-1118.
+
+2026-11-19. 028-27 registered (Frans's decision of 2026-11-19) and taken by
+an agent of coord-1118: night.sh, week.sh and timing.sh as disjoint sets
+of tests, the Android tests in week.sh; branch `028-27-disjoint-test-sets`.
+
+2026-11-19. 028-27 done on its branch: week.sh stands alone with the
+Android tests, night.sh without `week` and `large`, the shared machinery
+in `java/stress/runlib.sh`; WEEK OK from `week.sh short`, by an agent of
+coord-1118.
+
+2026-11-19. 028-28 to 028-31 registered by coord-1118 from the day's
+reports; 028-22, 028-24 to 028-27 moved to Closed.
+
+2026-11-19. 028-32 registered and taken: week.sh's harness-soak failure
+(run 2026-11-19-1514), a harness bug: IndexHarness bounded a frozen lookup
+time by the current time taken before the read, while an index job may
+commit between; gated on the branch `028-32-frozen-lookup-time`, by an
+agent of coord-1118.
+
+2026-11-20. 028-33 registered by coord-1118 from the first timing runs.

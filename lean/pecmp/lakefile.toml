@@ -1,0 +1,27 @@
+# pecmp (bergdb 030-28; first 026-25's tool): the tree checker's writer, the copy
+# lean/SIS/Tree/Pe.lean, against the proved writer, lean/contract/Contract/PeWriter.lean,
+# on Java's traces; java/stress/level2.sh runs it on every trace of its tree sets.
+# The package `sis` (..) cannot import the contract's files (lean/contract requires
+# sis), so this package builds the proved writer's closure, which needs neither Mathlib
+# nor lean/SIS, from lean/contract's own sources (srcDir) into its own .lake, as
+# lean/contractcheck does for the checkers (bergdb 028-24): the file it runs is the
+# file 030-21 proves. lean/contract is not built or changed.
+name = "pecmp"
+version = "0.1.0"
+defaultTargets = ["pecmp"]
+
+[[require]]
+name = "sis"
+path = ".."
+
+# The proved writer and the files it imports, from ../contract/Contract/ (Lake builds
+# a library's modules from its roots only, so every one is named).
+[[lean_lib]]
+name = "ContractPe"
+srcDir = "../contract"
+roots = ["Contract.Tree", "Contract.Read", "Contract.Statement", "Contract.Reach",
+         "Contract.Shape", "Contract.Top", "Contract.PeWriter"]
+
+[[lean_exe]]
+name = "pecmp"
+root = "PeCmp"
