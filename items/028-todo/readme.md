@@ -101,8 +101,6 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
-| [028-28](28-kill-restart-verify-old-times.md) | Investigate | The kill-and-restart harness's check at old times | none | open |
-| [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
 
 
@@ -113,6 +111,8 @@ Closed
 |---|---|---|---|---|---|
 | [028-31](31-reclaim-row-without-end-key.md) | Fix | Text about a reclaim row without an end key | none | done | 2026-11-20 |
 | [028-30](30-refusal-message-2026-4.md) | Investigate | A refusal message names a release that cannot help: main's, fixed | none | done | 2026-11-20 |
+| [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | done | 2026-11-20 |
+| [028-28](28-kill-restart-verify-old-times.md) | Investigate | The kill-and-restart harness's check at old times | none | done | 2026-11-20 |
 | [028-33](33-timing-perf-refused.md) | Fix | timing.sh's perf step is refused right after a build | none | done | 2026-11-20 |
 | [028-32](32-frozen-lookup-time.md) | Fix | IndexHarness bounds a frozen lookup time by an earlier time | none | done | 2026-11-19 |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | done | 2026-11-19 |
@@ -267,3 +267,8 @@ branch `028-30-31-texts`. 028-30: the message is main's (028-15), not
 which refuses it; fixed to the release that wrote it, with the next
 release's notes; not a released bug (033). 028-31: 027-13 and
 `Reclaim.step`'s Javadoc as the code is since 028-15. Moved to Closed.
+2026-11-20. 028-29 and 028-28 taken and done by hf of coord-1120 on the
+branch `028-29-28-harness`: four races of IndexJobsHarness's checks (no
+fault of the database), its cleanups and builds stuck only with no
+progress; KillRestartHarness expects a refusal only at a time that has left
+the retention, and verify() then abandons the database. Moved to Closed.

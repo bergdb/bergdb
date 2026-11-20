@@ -296,6 +296,54 @@ public final class KillRestartHarness {
         Assert.assertTrue("cut " + cut, cut > 0);
     }
 
+    /**
+     * bergdb 028-28: verify() reads at the start's time ts on the real clock. A database with
+     * a retain duration of 1 s and the Core's startup distance of 10 bytes cuts within
+     * seconds of writes, until its first available lookup time is past ts: verify()'s read
+     * at ts is refused, which is expected as ts has left the retention, and verify() throws
+     * Abandon, not an AssertionError (the child prints "P abandon", the parent begins a new
+     * database). A refusal claimed at a time inside the retention, the current time, fails
+     * the check.
+     */
+    @Nano
+    public static void testRefusalOutsideRetention() throws IOException {
+        File root = Files.createTempDirectory("bergdb-killrestart-").toFile();
+        File dir = new File(root, "db");
+        Child c = new Child(dir, 1, 1, new Journal(journalOf(dir)),
+                new TreeMap<Integer, RunLog>());
+        try {
+            c.open(new Settings(1, 0, 0), 0, 0, 0);
+            c.dbi.getDb().setStartupDistance(10);
+            Connection w = c.db.newConnection();
+            long end = System.nanoTime() + 60000000000L;
+            for (int i = 0; c.db.getFirstAvailableLookupTime().units() <= c.ts; i++) {
+                check(System.nanoTime() < end, "no cut past the start's time in 60 s");
+                w.w().put("/y/k" + (i % 20), "v" + i).execute();
+                sleep(1);
+            }
+            boolean failed = false;
+            try {
+                c.refused(c.now(), new LookupTimeNotAvailableException("claimed by the test"));
+            } catch (AssertionError e) {
+                failed = true;
+            }
+            check(failed, "a refusal claimed inside the retention passed the check");
+            boolean abandoned = false;
+            try {
+                c.verify();
+            } catch (Abandon e) {
+                abandoned = true;
+            }
+            check(abandoned, "verify() at the cut time ts did not abandon the database");
+            check(c.info.get("cutSkipped") == 1, "cutSkipped " + c.info.get("cutSkipped"));
+        } finally {
+            if (c.db != null) {
+                c.db.close();
+            }
+            deleteTree(root);
+        }
+    }
+
     static Item item(Random r) {
         Item it = new Item();
         if (r.nextInt(5) != 0) {
@@ -868,6 +916,35 @@ public final class KillRestartHarness {
             return db.currentTime().units();
         }
 
+        /**
+         * The earliest time that verify()'s reads need now: the time of the lookup, or for
+         * the transaction in flight's information, a time at or before its own (bergdb
+         * 028-28).
+         */
+        long needed = -1;
+
+        /**
+         * Checks a refusal of a lookup that needed the time t (bergdb 028-28): expected only
+         * when t has left the retention, t &lt; first &lt;= now - retain, with first the
+         * database's first available lookup time. The database keeps every state of its
+         * retain duration (Database.setRetainDuration()): reclaim cuts only states older than
+         * it, and the first available lookup time moves only past them (bergdb 027-13). A
+         * refusal at a time inside the retention, or with no retain duration, or not
+         * explained by the first available lookup time, fails the check. Counted as
+         * "cutSkipped": the check at t is skipped.
+         */
+        void refused(long t, LookupTimeNotAvailableException e) {
+            long retain = db.getRetainDuration().units();
+            long first = db.getFirstAvailableLookupTime().units();
+            long now = now();
+            check(retain != Duration.MAX.units() && t < first && first <= now - retain,
+                    "a lookup that needed the time " + t + " was refused, inside the retention "
+                    + "or not explained by the first available lookup time " + first + " (now "
+                    + now + ", retain " + (retain == Duration.MAX.units() ? "forever" : retain)
+                    + "): " + e);
+            count("cutSkipped", 1);
+        }
+
         // -------- The start --------
 
         void open(Settings settings, int stepValues, final int stepSleep,
@@ -940,6 +1017,24 @@ public final class KillRestartHarness {
          * written) is resolved from the database, and its resolution written.
          */
         void verify() {
+            try {
+                verifyAtTimes();
+            } catch (LookupTimeNotAvailableException e) {
+                refused(needed, e);
+                throw new Abandon("the time " + needed + ", which the checks after the start "
+                        + "need, has left the retention: " + e.getMessage());
+            }
+        }
+
+        /**
+         * verify()'s reads at the times of the starts, ts and the first start after the killed
+         * run's kill. Each read is at its time on the real clock, and the time may have left
+         * the retain duration (20 s in some databases) by then on a loaded machine or after
+         * several runs killed during their start: reclaim may have cut it. A refusal then is
+         * expected (refused()), and the database cannot be checked further: verify() throws
+         * Abandon, and the parent begins a new database (bergdb 028-28).
+         */
+        private void verifyAtTimes() {
             RunLog pending = null;
             for (RunLog j : logs.values()) {
                 if (j.run >= run || !j.ok) {
@@ -969,6 +1064,7 @@ public final class KillRestartHarness {
                 }
                 Connection cj = db.newConnection();
                 cj.setLookupTime(Time.units(tsj));
+                needed = tsj;
                 Resolution res = resolve(pending, cj, tsj);
                 for (Map.Entry<Integer, long[]> e : res.threads.entrySet()) {
                     journal.line("V", run, pending.run, "T", e.getKey(), e.getValue()[0],
@@ -980,6 +1076,7 @@ public final class KillRestartHarness {
                 }
                 journal.line("VE", run, pending.run);
             }
+            needed = ts;
             checkAtStart(c);
         }
 
@@ -1111,7 +1208,11 @@ public final class KillRestartHarness {
                             + ", and " + (inflight > 0 ? inflight + " in flight" : "none in "
                             + "flight") + ": a committed transaction lost, or one there "
                             + "that was not committed by then");
+                    // Its information is cut if its own time has left the retention, and
+                    // reclaim has rewritten its stamp: a time after cmaxTime, at or before ts.
+                    needed = cmaxTime + 1;
                     TransactionInfo ti = c.transactionInfo();
+                    needed = ts;
                     tf = ti.time().units();
                     check(tf <= ts && tf > cmaxTime, "run " + j.run + ", thread " + th
                             + ": the transaction in flight is there, at the time " + tf
@@ -1401,7 +1502,7 @@ public final class KillRestartHarness {
                 }
                 count("pastChecked", 1);
             } catch (LookupTimeNotAvailableException e) {
-                // Reclaim cut t meanwhile.
+                refused(t, e);      // Reclaim cut t meanwhile.
             }
         }
 
@@ -1553,10 +1654,14 @@ public final class KillRestartHarness {
             long t = dbi.getDb().lookupTime(Long.MAX_VALUE);
             Connection rc = db.newConnection();
             rc.setLookupTime(Time.units(t));
-            for (String name : INDEX_NAMES) {
-                checkIndexAt(rc, t, name, live.get(name), r);
+            try {
+                for (String name : INDEX_NAMES) {
+                    checkIndexAt(rc, t, name, live.get(name), r);
+                }
+                check(checkMarkers(t).isEmpty(), "a marker came back");
+            } catch (LookupTimeNotAvailableException e) {
+                refused(t, e);      // The checks took longer than the retention.
             }
-            check(checkMarkers(t).isEmpty(), "a marker came back");
         }
 
         // -------- The schedule --------
@@ -1844,11 +1949,16 @@ public final class KillRestartHarness {
             }
             Connection rc = db.newConnection();
             rc.setLookupTime(Time.units(t));
-            for (String name : INDEX_NAMES) {
-                checkIndexAt(rc, t, name, live.get(name), r);
+            try {
+                for (String name : INDEX_NAMES) {
+                    checkIndexAt(rc, t, name, live.get(name), r);
+                }
+                checkDir(rc, DIRS[r.nextInt(DIRS.length)], t);
+                checkMarkers(t);
+            } catch (LookupTimeNotAvailableException e) {
+                refused(t, e);      // The checks took longer than the retention.
+                return;
             }
-            checkDir(rc, DIRS[r.nextInt(DIRS.length)], t);
-            checkMarkers(t);
             journal.line("CK", run, t);
         }
     }
@@ -1906,6 +2016,33 @@ public final class KillRestartHarness {
             b.backward();
         }
         return b;
+    }
+
+    /**
+     * Thrown by verify() when a time that its checks need has left the retention, and the
+     * database refused it (bergdb 028-28): the run cannot check the database, and the child
+     * ends with "P abandon"; the parent begins a new database. Not a fault.
+     */
+    static final class Abandon extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        Abandon(String message) {
+            super(message);
+        }
+    }
+
+    /** Prints the run's counts, ABANDON and "P abandon", and ends the process with status 0. */
+    static void abandon(Child c, Abandon e) {
+        c.count("abandoned", 1);
+        StringBuilder s = new StringBuilder("INFO");
+        for (Map.Entry<String, Long> en : c.info.entrySet()) {
+            s.append(' ').append(en.getKey()).append('=').append(en.getValue());
+        }
+        System.out.println("ABANDON " + e.getMessage());
+        System.out.println(s);
+        System.out.println("P abandon");
+        System.out.flush();
+        Runtime.getRuntime().halt(0);
     }
 
     /** Prints FAIL with the error and ends the process with status 3, at once. */
@@ -1970,6 +2107,8 @@ public final class KillRestartHarness {
             System.out.println("P running");
             c.schedule(threads, closeAfterMs);
             System.out.flush();     // A return from main after stop() (closeAfterMs < 0).
+        } catch (Abandon e) {
+            abandon(c, e);
         } catch (Throwable e) {
             fail(e);
         }
@@ -2016,6 +2155,11 @@ public final class KillRestartHarness {
          * PX in the journal (also when it was late).
          */
         boolean exited;
+        /**
+         * The child printed "P abandon": a time that its checks after the start need has left
+         * the retention (Abandon); the parent begins a new database.
+         */
+        boolean abandoned;
         final Map<String, Long> info = new TreeMap<String, Long>();
     }
 
@@ -2057,6 +2201,10 @@ public final class KillRestartHarness {
             }
             if (line != null) {
                 cr.out.append(line).append('\n');
+                if (line.equals("P abandon")) {
+                    cr.abandoned = true;
+                    break;
+                }
                 if (line.equals("P running")) {
                     running = System.currentTimeMillis();
                 }
@@ -2087,7 +2235,7 @@ public final class KillRestartHarness {
                 Thread.sleep(Math.max(1, Math.min(10, end - System.currentTimeMillis())));
             }
         }
-        if (last) {
+        if (last || cr.abandoned) {
             p.waitFor(60, TimeUnit.SECONDS);
         }
         // Whether the child ended by itself, before its kill: then, or with status 0 (a JVM
@@ -2105,6 +2253,8 @@ public final class KillRestartHarness {
         for (String l : cr.out.toString().split("\n")) {
             if (l.startsWith("FAIL")) {
                 cr.failure = l;
+            } else if (l.equals("P abandon")) {
+                cr.abandoned = true;    // Also when it came after the phase of the kill.
             } else if (l.startsWith("INFO")) {
                 for (String kv : l.substring(4).trim().split(" ")) {
                     int eq = kv.indexOf('=');
@@ -2115,7 +2265,7 @@ public final class KillRestartHarness {
             }
         }
         ended = ended || p.exitValue() == 0;
-        if (cr.failure == null && found && !last && ended) {
+        if (cr.failure == null && found && !last && ended && !cr.abandoned) {
             if (phase == 8 && p.exitValue() == 0
                     && ("\n" + cr.out).contains("\nP exit\n")) {
                 // An exit: stop() and a return from main, the JVM ended by itself with
@@ -2129,14 +2279,24 @@ public final class KillRestartHarness {
                 cr.failure = "the child ended before its kill, with status " + p.exitValue();
             }
         }
-        if (cr.failure == null && last && (!found || p.exitValue() != 0)) {
+        if (cr.failure == null && last && !cr.abandoned && (!found || p.exitValue() != 0)) {
             cr.failure = "the last run did not end with \"P done\" and status 0 (status "
                     + p.exitValue() + ")";
         }
-        if (cr.failure == null && !found && !last) {
+        if (cr.failure == null && !found && !last && !cr.abandoned) {
             cr.failure = "the child ended without \"" + want + "\", status " + p.exitValue();
         }
         return cr;
+    }
+
+    /** The child's ABANDON line, without its head. */
+    static String abandonReason(ChildRun cr) {
+        for (String l : cr.out.toString().split("\n")) {
+            if (l.startsWith("ABANDON ")) {
+                return l.substring(8);
+            }
+        }
+        return "no ABANDON line";
     }
 
     static void deleteTree(File f) {
@@ -2221,6 +2381,12 @@ public final class KillRestartHarness {
                             + (last ? ", the last" : ", kill in phase " + PHASES[phase] + " + "
                             + delay + " ms") + "; kept: " + dir + " and " + journalOf(dir));
                     return 1;
+                }
+                if (cr.abandoned) {
+                    // A time that the checks after the start need left the retention: the
+                    // database cannot be checked further (bergdb 028-28).
+                    say("Database " + d + " abandoned in run " + run + ": " + abandonReason(cr));
+                    break;
                 }
                 if (last) {
                     break;
