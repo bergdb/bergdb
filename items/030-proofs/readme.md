@@ -255,8 +255,10 @@ changes (030-13):
   with its own tests. Step 0 (030-28): `lean/contract/pins.sh`, the
   hashes of statements.pin (the statements, the copy, pecmp), no build.
 * `java/night.sh`: `java/stress/transcheck.sh` (TransCheck in the unit and
-  f-tests); level2.sh full; and `java/stress/contractconf.sh medium`, the
-  medium tree set with the tree model's check, the contract and the bridge.
+  f-tests); level2.sh full; `java/stress/contractconf.sh medium`, the
+  medium tree set (written without the tree model's check), the contract
+  and the bridge; and `lean/pecmp/check.sh medium` on its traces (030-28,
+  since 2026-11-20).
 * By hand: `bridgecheck --model` and the large set.
 
 How the directions hang together
