@@ -1,7 +1,7 @@
 028-36. Investigate: IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild under load
 =======================================================================================
 
-Status: in progress. Kind: Investigate. Frans: none.
+Status: done. Kind: Investigate. Frans: none.
 Created 2026-11-20 by Frans Lundberg.
 
 What: `IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild` failed
@@ -65,9 +65,21 @@ beside them for load; other sessions' runs shared the machine):
 50 to 80. No change to the code: main has the fix.
 
 
+Gates
+-----
+
+On the branch `028-fx2` (no change to the code; main's harness):
+
+- `java/before-commit.sh` at 851d2222: BEFORE COMMIT OK (78 s).
+- The probe runs above under load: 0 findings in 45,000 runs.
+
+
 Log
 ---
 
 2026-11-20. Registered by coord-1120, from 030-30's report.
 
 2026-11-20. Taken by fx2 of coord-1120, on the branch `028-fx2`.
+
+2026-11-20. Done by fx2 of coord-1120: 028-29's second race, fixed in
+main since 1c2ee58a; no fault of the database, no change.

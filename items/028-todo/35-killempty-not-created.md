@@ -1,7 +1,7 @@
 028-35. Fix: the user app KillEmpty and a kill during a database's creation
 ===========================================================================
 
-Status: in progress. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-20 by Frans Lundberg.
 
 What: in `week.sh short` on 2026-11-20 (030-30's gates), the user app
@@ -49,6 +49,14 @@ writer had written the first record alone. So a refusal is expected for
 a database of which nothing durable was seen, and not after a sync or the
 recovery of a transaction, which read both records from the files.
 
+**Not changed here; for the coordinator.** The public Javadoc of
+`Db.start()` (its `@throws DatabaseNotCreatedException`) and of
+`DatabaseNotCreatedException` speak of a crash while the database was
+created; that a Core API creation is durable only at the first sync, so
+that a crash after `start()` returned can also give the exception, is said
+only in the comment in `Db.startInner`. A candidate todo (Javadoc), not a
+fault: the Pub API's start syncs the creation.
+
 **The fix** (`KillEmpty.java`, the app only):
 
 - The child takes the stream's files and their lengths before the start;
@@ -79,9 +87,26 @@ recovery of a transaction, which read both records from the files.
   OK, with 4 creations cut and made again (seeds 51, 62 twice, 63).
 
 
+Gates
+-----
+
+On the branch `028-fx2`, at a load of 5 to 30, with other sessions'
+runs:
+
+- `java/before-commit.sh` at 851d2222: BEFORE COMMIT OK (78 s).
+- The apps' kill round, `java/stress/apps.sh kill 35` at 851d2222 (Kill
+  300 kills, KillEmpty 250, Buffers kill 60, new seeds; 48 minutes): APPS
+  OK; KillEmpty "0 creations cut and made again" in this round.
+
+
 Log
 ---
 
 2026-11-20. Registered by coord-1120, from 030-30's report.
 
 2026-11-20. Taken by fx2 of coord-1120, on the branch `028-fx2`.
+
+2026-11-20. Done by fx2 of coord-1120 on the branch `028-fx2` (851d2222): a
+fault of the app; KillEmpty makes a database whose creation a kill cut
+again, as Kill does, and accepts the refusal only while nothing durable of
+the database was seen.
