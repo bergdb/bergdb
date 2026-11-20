@@ -32,7 +32,8 @@ Done by an agent of the day's coordinator on the branch
   segment trees' parts are proved (section 4), but not the joins of
   `rebalance`, in particular a join of two inner nodes that is rebalanced
   one level down, where cut parts merge again; there 028-21's paper argument
-  needs a step it does not give (section 4). The count holds on every
+  has a false step, shown by a constructed transaction (section 4), though
+  the count covers that case many times over. The count holds on every
   transaction tried
   (section 3): its deletes' terms are generous (4 nodes a level and 8 a
   delete), and 028-21 found deletes at least 5.7 times under it.
@@ -211,18 +212,25 @@ neighbour; the joined list of two inner nodes is rebalanced one level down,
 which joins a small child left alone in either. 028-21's argument counts, for
 each delete, three nodes a level and three entries and a bitmap in the
 parent, from "a joined group is its small children and at most one other
-node". A proof has to show that from PE's rules, and one step needs more than
-the argument gives: in the join one level down, a small child joined with a
-neighbour that was cut into parts of the cut size (15 at node size 30) is cut
-again by c (17), into fewer parts, so a joined node can hold fewer entries
-than its two lists did, and so possibly fewer than m though one of them held
-m or more; it would then be joined again, with a second node that is not
-small. This case was not constructed. It needs many deletes below the
-joined nodes (a small node lost entries, each through a delete), so the
-count's four nodes a level a delete would still cover it; a proof needs an
-invariant that charges each join to the deletes below it, through the joins
-one level down. That is left for later work.
-
+node". That is not always so, as a constructed transaction shows (run on the
+Lean model, PE as proved, in the session's scratch): node size 30 (m = 8,
+c = 17, cut size 15), a space root R of height 2 with three children, L, O
+and P, each with eight leaves of eight keys. One transaction of 170
+operations deletes all of L's keys but one, empties five of O's leaves, and
+puts 23, 23 and 21 keys into O's other three leaves. L ends with one leaf of
+one entry: small. O's three leaves are cut into 3, 3 and 2 parts (31, 31 and
+29 entries, cut by 15), so O holds 8 entries: not small. R joins L with O;
+one level down the leaf of one entry is joined with O's first leaf, whose 32
+entries are cut by c into 2 parts where they were 3: the joined node holds 7
+entries, fewer than m, and R joins it again, with P, a second node that is
+not small. The tree after is a root of 15 leaves. PE writes 8 key nodes;
+Java's count is 2,279. So the paper argument's step is wrong, but not the
+count: such a join needs many deletes below the small node (it lost all its
+entries but one, each through a delete), and the count's four nodes a level
+for each delete cover it many times over. A proof needs an invariant that
+charges each join to the deletes below it, through the joins one level
+down, and a loss lemma (a node loses at most as many entries as deletes pass
+through it). That is left for later work, or for a simpler rule (028).
 
 # 5. PE's acceptance at Java's parameters
 
