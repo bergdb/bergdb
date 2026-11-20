@@ -13,9 +13,11 @@ four places where this page said more than is proved or checked. F2
 week.sh rounds that run it) are corrected here (section 4; section 5,
 items 1, 7 and 9; section 6). F1 is open: reclaim's step model does not
 require a step to write back the value it read, and neither does the
-trace check C-STEP; both are being fixed (030-34, 030-35). Until then,
-that reclaim keeps the users' values is tested by the workloads' reads,
-not by the step check or the proof.
+trace check C-STEP did not either. C-STEP checks it since 030-34
+(2026-11-20, every step of the reclaim and crash traces); the step model
+and a theorem that reads after reclaim give the users' values are being
+made (030-35). Until then, that reclaim keeps the users' values is
+tested, not proved.
 
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
@@ -180,9 +182,10 @@ began, may stop before or after any key by any rule, and writes again
 every key it met whose value was written before the cut; the last step's
 scan reaches the end. The model requires that such a key is written
 again, not yet that it is written with the value the step read, nor that
-the step writes no other user key (030-33, F1; being fixed in 030-34 and
+the step writes no other user key (030-33, F1; the proof being made in
 030-35): the cut's safety below is proved; that reclaim keeps the users'
-values is tested by the workloads' reads. Such an iteration writes again every key whose value
+values is tested, by C-STEP on every step of the traces (030-34) and by
+the workloads' reads. Such an iteration writes again every key whose value
 predates the cut (`iterationOK_of_stepsOK`), and a cut that meets
 reclaim's contract is safe: nothing a read from the first available time
 on can reach lies before it (`cutOK_of_rc`,
@@ -381,7 +384,12 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   at the iteration's last step. Since [030-31](31-app-traces.md) also
   in runs with restarts, and with crashes right after a step's record:
   the row each restart resumes (with Java's end key in it) and the step
-  after it. Still tested only: that the trace's line for a step is what
+  after it. Since [030-34](34-c-step-values.md) (2026-11-20) C-STEP also
+  checks that each step writes back, at every old key its scan met, the
+  value the scan read (by the trace's value hashes, above), and that it
+  puts nothing else than those rewrites and its row and deletes nothing;
+  the model of the steps (`StepTx`) does not yet require it (030-33,
+  F1). Still tested only: that the trace's line for a step is what
   Java's step holds in memory, Java's end key where no restart reads it,
   a crash at another point of reclaim's work (inside a step's record it
   is a crash before the step; after the call, a restart), and
@@ -470,7 +478,8 @@ checker and `pecmp`; a failing trace is kept with its seed.
     every cut of the reclaim traces (`level3.sh`); and **Java's steps are
     the model's**: every step of the reclaim traces checked against the
     model of the steps, after the check's own fault test (C-STEP, 030-27:
-    `level3.sh`), also across restarts and crashes of the traced run
+    `level3.sh`; since 030-34 also the values each step writes back and
+    no other write of a user key), also across restarts and crashes of the traced run
     (STEP-resume, 030-31: `level3.sh`), and the reclaim tests
     (ReclaimStress: `level3.sh`, `level4.sh`). Still tested only: section
     4.

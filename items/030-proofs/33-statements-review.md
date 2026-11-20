@@ -20,8 +20,8 @@ repository. What is done about each finding is in section "Actions".
   tested by the functional tests (section 4), and that Java's commit-time
   check is a quick, partial check, not a complete check of the contract
   (section 4; section 5, items 1, 7, 9; section 6; TransCheck's Javadoc).
-* F1: the trace check C-STEP to compare the values a step writes back
-  (030-34) and the step model and a theorem that reads after reclaim give
+* F1: the trace check C-STEP compares the values a step writes back
+  since 030-34 (landed 2026-11-20); and the step model and a theorem that reads after reclaim give
   the users' values (030-35), both started 2026-11-20 (Frans); 030-26,
   section 2.5, says what is open meanwhile.
 
