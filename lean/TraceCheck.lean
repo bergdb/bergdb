@@ -54,8 +54,10 @@ Checks, per transaction i (R(0) included):
        iteration's step before (none for its first), c <= t0 + 1, L' is L or a key of
        the range (the live keys after L up to E, the greatest key live after T(t0)),
        with eod the range's last, the step puts every KV of the range up to L' whose
-       value node was made before c, and its operations have distinct keys and a put
-       (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-ops); a STEP line in every
+       value node was made before c, each with the value the scan read (since bergdb
+       030-34), and its operations have distinct keys, are those puts and the row's
+       put, at the key of the trace's first step's row, and no delete (STEP-chain,
+       STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops); a STEP line in every
        record with a TOUCH line and in no other (STEP-line); and per CUT line, the
        iteration with its c has its last step, with eod, at the CUT's first available
        time (CUT-steps). Since bergdb 030-31, at each restart of run A (RESTART, after
@@ -414,7 +416,7 @@ def main (args : List String) : IO UInt32 := do
       for (i, f) in rep.fails do cstep := cstep.add i f
       IO.println (s!"C-STEP reclaim's steps (bergdb 030-27): {cstep.failing} of {total} transactions fail" ++
         (if cstep.byName.isEmpty then "" else s!" ({", ".intercalate (cstep.byName.map (fun p => s!"{p.1} {p.2}"))})") ++
-        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again, {rep.cuts} CUT lines with their iteration's last step" ++
+        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again with the value read, {rep.cuts} CUT lines with their iteration's last step" ++
         (if rep.restarts == 0 then "" else
           s!"; {rep.restarts} restarts ({rep.crashes} crashes), {rep.resumed} with an iteration in progress, {rep.spans} iterations with a step before a restart and the next after it"))
       for e in cstep.examples do IO.println s!"  {e}"

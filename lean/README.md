@@ -107,7 +107,8 @@ The files and their lines (2026-11-18; the old line had 747 files and
   that `lake build` checks them all; test-traces/ holds the traces of the
   trace checker's own tests (`test-traces/run.sh`), and the fault test of
   its C-STEP (`test-traces/step-faults.sh`, a step of level 3; bergdb
-  030-27; with restarts and crashes and C-STEP's STEP-resume since 030-31).
+  030-27; with restarts and crashes and C-STEP's STEP-resume since 030-31;
+  with the values written back and the step's other operations since 030-34).
 
 
 Build and run
