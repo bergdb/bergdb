@@ -599,7 +599,10 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
   new nodes and as klongs in its parent, and a root the new roots above
   them (`rootsAbove`); a new segment tree PE's parts and roots. Joins
   are covered by a delete's four nodes a level, as a child is joined
-  only if a delete below it left it under m entries (V1). Checked by
+  only if a delete below it left it under m entries (V1); the Javadoc's
+  argument for that had a false step (a joined node can end small and be
+  joined again; 030-29, section 4; removed by 028-39), so for
+  transactions with deletes the count is tested, not proved. Checked by
   `DagTester.testDirtyNodeBoundOfPe` and the tree checker's C-T8 on
   every traced transaction, with the copy in lean/SIS/Tree/Bound.lean.
 * `recordLimit` (:69) is `static volatile`; tests lower it.

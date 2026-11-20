@@ -25,8 +25,9 @@
 # percent twice); transactions of up to 40 long keys, sorted and shuffled, with and without
 # keys twice, which make a segment root, split it in place and empty it in one transaction
 # (bergdb 023-08, the check of fault 12, section 3.2); the draining runs of bergdb 023-05,
-# P4 (mostly deletes on few keys, long keys, node size 6, and fifo, where the tree is a
-# moving window); and fifo at the default sizes.
+# P4 (mostly deletes on few keys, long keys, and fifo, where the tree is a moving window);
+# and fifo at the default sizes. "drain-60" ran at node size 6 as "drain-b6" until
+# 2026-11-20, when node sizes below 8 became refused (bergdb 028-38).
 #
 # PAR=N runs N JVMs at once (default 4), each on one core (-XX:ActiveProcessorCount=1).
 # Needs java/build (java/build.sh). Output: java/build/unlinkfuzz/, a file for each block.
@@ -67,7 +68,7 @@ configs() {
     echo "drain-30             32 -Dmaxnode=8 -Dkeys=30 -Ddel=70 -Dops=10 -Dn=200"
     echo "drain-120            28 -Dmaxnode=8 -Dkeys=120 -Ddel=60 -Dops=40 -Dn=100"
     echo "drain-long           11 -Dmaxnode=8 -Dshape=long -Dkeys=200 -Ddel=80 -Dops=30 -Dn=100"
-    echo "drain-b6             14 -Dmaxnode=6 -Dkeys=60 -Ddel=55 -Dops=20 -Dn=200"
+    echo "drain-60             14 -Dmaxnode=8 -Dkeys=60 -Ddel=55 -Dops=20 -Dn=200"
     # P4's fifo runs had 2,000 and 3,000 keys in 200 transactions, minutes a round.
     echo "fifo-big             10 -Dmaxnode=8 -Dshape=fifo -Dkeys=400 -Dops=30 -Dn=60"
     echo "fifo-big-b14         8 -Dmaxnode=14 -Dshape=fifo -Dkeys=600 -Dops=40 -Dn=60"

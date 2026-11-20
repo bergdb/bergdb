@@ -51,7 +51,18 @@ public class Dag {
      */
     public static final int MAX_NODE_SIZE = 62;
     
-    /** @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62. */
+    /**
+     * The smallest node size, 8 (Frans, 2026-11-20; bergdb 028-38): a database has node size
+     * 8, 14, 30 or 62 (DbBuilder), and from 8 the writer joins small nodes (m = minFill(b) >= 2;
+     * PE's cut parts hold at least m) and compacts dead klongs (theta(b) >= 2). A Dag refuses
+     * a smaller size when it is made (checkNodeSize). Until 2026-11-20 Dag's own tests used
+     * smaller sizes, with m = 1, no joins and theta off, and freshTreeBound's loop of the
+     * splits did not end at 4 or less (bergdb 030-29, section 1).
+     */
+    public static final int MIN_NODE_SIZE = 8;
+    
+    /** @throws IllegalArgumentException  If maxNodeSize is below MIN_NODE_SIZE, 8, or above
+     *      MAX_NODE_SIZE, 62. */
     public Dag(TopNode superRoot, int maxNodeSize) {
         checkNodeSize(maxNodeSize);
         this.topDs = new TopDs(superRoot);
@@ -59,10 +70,16 @@ public class Dag {
     }
     
     /**
-     * Refuses a node size above MAX_NODE_SIZE (bergdb 024-19, Q6). Until 2026-11-12 a Dag took
-     * any size, and one above 62 failed at its first delete bit beyond 61 (024-19, 2.2).
+     * Refuses a node size above MAX_NODE_SIZE (bergdb 024-19, Q6) or below MIN_NODE_SIZE
+     * (bergdb 028-38). Until 2026-11-12 a Dag took any size, and one above 62 failed at its
+     * first delete bit beyond 61 (024-19, 2.2); until 2026-11-20 any size up to 62.
      */
     private static void checkNodeSize(int maxNodeSize) {
+        if (maxNodeSize < MIN_NODE_SIZE) {
+            throw new IllegalArgumentException("The node size " + maxNodeSize + " is below "
+                    + MIN_NODE_SIZE + ", the smallest: a database has node size 8, 14, 30 or "
+                    + "62 (bergdb 028-38).");
+        }
         if (maxNodeSize > MAX_NODE_SIZE) {
             throw new IllegalArgumentException("The node size " + maxNodeSize + " is above "
                     + MAX_NODE_SIZE + ", the largest: a delete bitmap names " + MAX_NODE_SIZE
@@ -74,7 +91,8 @@ public class Dag {
      * Factory method to create minimal Dag with two nodes: a top node and a key node.
      * The database is empty; no KVs.
      * 
-     * @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62.
+     * @throws IllegalArgumentException  If maxNodeSize is below MIN_NODE_SIZE, 8, or above
+     *      MAX_NODE_SIZE, 62.
      */
     public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower, 
             Dag.PointerCreatedListener pointerCreationListener) {
@@ -522,8 +540,7 @@ public class Dag {
      * positions of the walk (its left and its right node), floor((a + b) / q) <= floor(a /
      * q) + floor(b / q) + 1. A merged node starts with up to c + 1 klongs, so a node of a
      * delete's path overflows as if it had at most q klongs of room (roomAfterReplacement).
-     * A sibling that a merge leaves out is not made dirty. With m < 2 (minFill) there are
-     * no merges, and these are counted as a margin. An argument, checked by DagTester's tests
+     * A sibling that a merge leaves out is not made dirty. An argument, checked by DagTester's tests
      * of the bound (bergdb 024-11, TU8), not a proof. For node size 30 and a path of 5 nodes,
      * about 30 nodes a delete: a record's limit takes about 120,000 deletes in one
      * transaction; a larger one is refused (Db.checkDirtyNodes), as one of puts that can make
@@ -537,8 +554,9 @@ public class Dag {
      * 
      * <p>The count above was argued for the writer of record formats 6 and 7, whose
      * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), and the
-     * count is argued for it as follows (bergdb 028-21, which found it short in three ways and
-     * added them: a new segment tree of h + 1 entries or more, which PE cuts into parts where
+     * count is argued for it as follows, proved for puts and tested for deletes (see the
+     * end; bergdb 028-21, which found it short in three ways and added them: a new segment
+     * tree of h + 1 entries or more, which PE cuts into parts where
      * the old writer made one node, 18 to 28 keys at node size 30 counted as one node and made
      * as three; a list cut into more parts than the overflows and one, 31 entries at node size
      * 30 into three, whose parent got one klong too few; and the new root above a segment
@@ -566,25 +584,35 @@ public class Dag {
      * <li>joins (PeWriter.rebalance, joinAt) and the rebalance of a joined list one level
      * down: a child is joined only if it was changed and holds fewer than m entries. Every
      * key node but a root holds m or more (V1, the tree checker's C-T6 on every traced
-     * transaction), the parts of a cut hold at least (h + 1) / 2 >= m and a joined node m or
-     * more unless it is its parent's only child, so a child is small only with a delete below
-     * it, and two small children have different deletes below them. A joined group is its
-     * small children and at most one other node: an untouched neighbour of at most B - 1
-     * entries, at most two parts of c (B - 1 <= 2 c), or a node of the paths, whose own parts
-     * are counted above; as ceil((a + b) / c) <= ceil(a / c) + ceil(b / c), its parts are at
-     * most one for each small child and two more, or the other node's parts. So each delete's
-     * joins make at most three nodes a level, and give the parent at most three entries and a
-     * bitmap: the four nodes a level of a delete's path (two levels more as a margin) and the
-     * four klongs in each node of it cover them. A join one level down opens the nodes it
-     * joins, and its group replaces the one counted there;</li>
+     * transaction), and the parts of a cut hold at least (h + 1) / 2 >= m, so in a transaction
+     * of puts no child is small and nothing is joined (proved, bergdb 030-29), and with
+     * deletes a child is small only with a delete below it. For deletes the count gives four
+     * nodes a level of a delete's path (two levels more as a margin) and four klongs in each
+     * node of it, for the joins. 028-21 argued that this covers them, from "a joined group is
+     * its small children and at most one other node", so at most three nodes a level a
+     * delete and three entries and a bitmap in the parent. That step is false (bergdb 030-29,
+     * section 4; 028-39): the joined list of two inner nodes is rebalanced one level down,
+     * where cut parts can merge again, so a node joined from a small and a non-small node can
+     * end with fewer than m entries and be joined again, with a second node that is not
+     * small. The count still covers 030-29's example many times over (node size 30, one
+     * transaction of 170 operations: 8 key nodes written, a count of 2,279), as such a join
+     * needs many deletes below the small node, each counted four nodes a level; for deletes
+     * the count is tested, not proved (below);</li>
      * <li>root collapse and an emptied root make no node, but for an empty space root a new
      * empty segment leaf, which replaces the space root, walked.</li>
      * </ul>
-     * <p>An argument, not a proof, given V1; checked by DagTester's tests of the bound
-     * (testDirtyNodeBoundOfPe, testDirtyNodeBoundOfDeletes) and by the tree checker on every
-     * traced transaction (C-T8, with the Lean model's copy of this count, SIS/Tree/Bound.lean).
-     * A delete's count is generous for PE (at least five times the nodes marked in 028-21's
-     * tests), a put's is tight: every node of its path is marked when it is appended to.</p>
+     * <p>Proved for transactions of puts (bergdb 030-29, Contract.PE.pe_dirtyNodeBound_puts,
+     * with the Lean model of this count, Contract/DirtyBound.lean): the key nodes the proved
+     * writer PE writes are at most the count, at every node size from 8, given the fill
+     * rules V1 and V2, which the tree checker checks on Java's tree after every traced
+     * transaction (C-T6). For transactions with deletes not proved: the argument above has a
+     * false step at the joins. Tested: DagTester's tests of the bound
+     * (testDirtyNodeBoundOfPe, testDirtyNodeBoundOfDeletes), the tree checker on every traced
+     * transaction (C-T8, with the Lean model's copy of this count, SIS/Tree/Bound.lean), and
+     * 030-29's 421,000 random transactions of the Lean model, about 128,000 with deletes,
+     * none above the count. A delete's count is generous for PE (at least five times the
+     * nodes marked in 028-21's tests), a put's is tight: every node of its path is marked
+     * when it is appended to.</p>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
      *      changes nothing.
@@ -777,6 +805,8 @@ public class Dag {
             return 0;
         }
         final int theta = theta(maxNodeSize);
+        // theta > 0 holds at every node size since 2026-11-20 (MIN_NODE_SIZE); kept as the
+        // Lean model's overflowsD (bergdb 030-29, section 1).
         final long least = theta > 0 && dead >= 0 && dead + klongs > theta ? 1 : 0;
         final long k = klongs + 1;
         final long q = roomAfterReplacement();
@@ -1072,23 +1102,18 @@ public class Dag {
      *  than two (PeWriter.nParts, partSizes; bergdb 027-08, sections 1.4 and 1.7). */
     static final int MERGE_CAP_30 = 17;
 
-    /**
-     * The smallest node size with joins. Below it PE's cuts can make parts with fewer than
-     * 2 entries, so V1 cannot hold with m = 2: m is 1 there and no node is joined. Until
-     * record format 8 this was the limit for a space split's halves (h / 2 < 2).
-     * A database has node size 8, 14, 30 or 62 (DbBuilder); smaller ones are for Dag's tests.
-     */
-    static final int MERGE_MIN_NODE_SIZE = 8;
-
-    /** h for node size 'b' (see SPLIT_ABOVE_30): b / 2 below 8 too, as in 2026.4. */
+    /** h for node size 'b' (see SPLIT_ABOVE_30). */
     public static int splitAbove(int b) {
         return SPLIT_ABOVE_30 * b / THRESHOLDS_NODE_SIZE;
     }
 
-    /** m for node size 'b' (see MIN_FILL_30, MERGE_MIN_NODE_SIZE). */
+    /**
+     * m for node size 'b' (see MIN_FILL_30), at least 2: below node size 8 PE's cuts could
+     * make parts of fewer than 2 entries, so V1 could not hold with m = 2; such sizes are
+     * refused (MIN_NODE_SIZE). Until 2026-11-20 m was 1 below 8, with no joins (bergdb 028-38).
+     */
     public static int minFill(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 1
-                : Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
+        return Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
     /** c for node size 'b' (see MERGE_CAP_30). */
@@ -1149,16 +1174,15 @@ public class Dag {
     static final int THETA_MIN = 2;
 
     /**
-     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2, from node size
-     * 8 (2 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
-     * (bergdb 024-23, OD2; other node sizes are open with 024-14's QT2). A rule of record
-     * formats 7 and 8, as the thresholds are. The floor was 1 until 2026-11-12 (Frans, 024-19, Q4):
-     * theta 1 at 8 compacted a node at every second dead klong and cost 25 percent of the
-     * bytes a put (024-19, section 4.5).
+     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2 (2 at 8, 3 at
+     * 14, 14 at 62; other node sizes are open with 024-14's QT2). It was 0, off, below node
+     * size 8 until 2026-11-20 (bergdb 024-23, OD2), when such sizes became refused
+     * (MIN_NODE_SIZE; 028-38). A rule of record formats 7 and 8, as the thresholds are. The
+     * floor was 1 until 2026-11-12 (Frans, 024-19, Q4): theta 1 at 8 compacted a node at every
+     * second dead klong and cost 25 percent of the bytes a put (024-19, section 4.5).
      */
     public static int theta(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 0
-                : Math.max(THETA_MIN, THETA_30 * b / THRESHOLDS_NODE_SIZE);
+        return Math.max(THETA_MIN, THETA_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
     /**
@@ -1225,8 +1249,7 @@ public class Dag {
      * nodes are at most S + (n + S - 1) / (m - 1) for S segment trees and n live keys, which
      * V1, V2 and V4 give; and TP39 of option 2 (bergdb 024-23), every node holds at most
      * theta dead klongs (deadCount, at the latest time). For tests: it reads as a reader at
-     * 'time' does, loading nodes through gd's follower. With m < 2 (node size below
-     * MERGE_MIN_NODE_SIZE) it checks V2 and V4, and V1 as "not empty".
+     * 'time' does, loading nodes through gd's follower.
      */
     public Fill checkFill(long time, GetData gd) {
         final Fill f = new Fill();
@@ -1251,7 +1274,7 @@ public class Dag {
             final int dead = deadCount(node);
             f.deadKlongs += dead;
             f.deadMax = Math.max(f.deadMax, dead);
-            if (theta > 0 && dead > theta && f.error == null) {
+            if (dead > theta && f.error == null) {
                 f.error = "TP39: " + what(node, isRoot, depth) + " holds " + dead
                         + " dead klongs, more than theta = " + theta;
             }
@@ -1308,7 +1331,7 @@ public class Dag {
                 }
             }
         }
-        if (f.error == null && m >= 2 && f.keyNodes > f.trees + f.leafKlongs / (m - 1)) {
+        if (f.error == null && f.keyNodes > f.trees + f.leafKlongs / (m - 1)) {
             f.error = "TU2: " + f.keyNodes + " key nodes, more than S + (n + S - 1) / (m - 1) = "
                     + (f.trees + f.leafKlongs / (m - 1)) + " for S = " + f.trees + ", m = " + m;
         }

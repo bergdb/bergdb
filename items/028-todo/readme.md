@@ -104,9 +104,6 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
 | [028-35](35-killempty-not-created.md) | Fix | The user app KillEmpty and a kill during a database's creation | none | open |
 | [028-36](36-index-jobs-retried-fault-flake.md) | Investigate | IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild under load | none | open |
-| [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh runs the bridge checker twice | none | open |
-| [028-38](38-fresh-tree-bound-small-nodes.md) | Fix | Dag.freshTreeBound does not end at node sizes of 4 or less | none | open |
-| [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc repeats a false step about joins | none | open |
 
 
 Closed
@@ -114,6 +111,9 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh and level2.sh run the bridge checker once | none | done | 2026-11-20 |
+| [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc: the false step about joins, proved and tested | none | done | 2026-11-20 |
+| [028-38](38-fresh-tree-bound-small-nodes.md) | Fix | freshTreeBound at node sizes of 4 or less: sizes below 8 refused | decided | done | 2026-11-20 |
 | [028-31](31-reclaim-row-without-end-key.md) | Fix | Text about a reclaim row without an end key | none | done | 2026-11-20 |
 | [028-30](30-refusal-message-2026-4.md) | Investigate | A refusal message names a release that cannot help: main's, fixed | none | done | 2026-11-20 |
 | [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | done | 2026-11-20 |
@@ -277,3 +277,19 @@ branch `028-29-28-harness`: four races of IndexJobsHarness's checks (no
 fault of the database), its cleanups and builds stuck only with no
 progress; KillRestartHarness expects a refusal only at a time that has left
 the retention, and verify() then abandons the database. Moved to Closed.
+
+2026-11-20. 028-38 taken and done by fx1 of coord-1120 on the branch
+`028-fx1`: Frans decided a minimum node size of 8 in the Dag in place of a
+fix of `freshTreeBound` at 4 or less; a Dag refuses sizes below 8, their
+branches and tests removed or moved to 8. Moved to Closed.
+
+2026-11-20. 028-39 taken and done by fx1 of coord-1120 on the branch
+`028-fx1`: `Dag.dirtyNodeBound`'s Javadoc, 028-21, 027-03 and 027-08 name
+the false step about joins (030-29, section 4) and say what is proved
+(puts, 030-29) and what is tested (deletes). Moved to Closed.
+
+2026-11-20. 028-37 taken and done by fx1 of coord-1120 on the branch
+`028-fx1`: contractconf.sh and level2.sh's step 8b run
+lean/contract/check.sh alone, which runs both checkers and their fault
+tests; bridge-check.sh no longer checks the same traces again. Moved to
+Closed.

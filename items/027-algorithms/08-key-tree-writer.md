@@ -47,8 +47,9 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
   transaction j (`h.tree j`) are the whole DAG at that point.
 * **B**, the node size: the most klongs of a key node, kept in the stream
   (027-03, section 6). Every database a user makes has B = 30;
-  `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. Sizes below
-  8 exist for the Dag's own tests only.
+  `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. A `Dag`
+  refuses a size below 8 (`Dag.MIN_NODE_SIZE`) or above 62 when it is made;
+  until 2026-11-20 the Dag's own tests used sizes below 8 (028-38).
 * **The thresholds**, functions of B by integer division, rules of record
   format 8 (a start's rerun uses them, so a change of any is a change of
   the format; `Dag.splitAbove`, `minFill`, `mergeCap`, `theta`,
@@ -624,7 +625,9 @@ and added them (a new segment tree of more than h entries cut into
 parts; a node cut into more parts than its overflows and one, its
 parent a klong short; the new root above a cut segment root). Joins are
 covered by a delete's four nodes a level, as a child is joined only if a
-delete below it left it under m entries (V1). Checked by C-T8 (the key
+delete below it left it under m entries (V1); 028-21's argument for that
+had a false step (a joined node can end small and be joined again;
+030-29, section 4; 028-39). Checked by C-T8 (the key
 nodes the transaction marks are at most the bound, every traced
 transaction, with the Lean copy) and DagTester's
 `testDirtyNodeBoundOfPe`, `testDirtyNodeBoundOfDeletes`,

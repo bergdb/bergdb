@@ -166,7 +166,25 @@ written below, or appends to, all walked, and the nodes it makes:
 * root collapse and an emptied root make no node but the space root's
   empty leaf, which replaces the walked root.
 
-It is an argument given V1, not a proof. `Db.checkDirtyNodes`'s cheap
+It is an argument given V1, not a proof.
+
+Correction (2026-11-20, 028-39): the step on joins above is false. A
+join of two inner nodes rebalances the joined list one level down, where
+cut parts can merge again, so a node joined from a small and a non-small
+node can end with fewer than m entries and be joined again, with a second
+node that is not small: a joined group is not always its small children
+and at most one other node (030-29, section 4, a constructed transaction
+at node size 30: PE writes 8 key nodes, the count is 2,279). The count
+still covers that case many times over, as such a join needs many deletes
+below the small node, each counted four nodes a level. What holds since
+030-29: for transactions of puts the count is proved
+(`Contract.PE.pe_dirtyNodeBound_puts`: the key nodes PE writes are at
+most the count, at every node size from 8, given the fill rules); for
+transactions with deletes it is tested, not proved (the tests below, C-T8,
+and 030-29's 421,000 random transactions of the Lean model, about 128,000
+with deletes, none above the count).
+
+`Db.checkDirtyNodes`'s cheap
 test, three nodes a level a put and 20 a delete, is above PE's own count
 (a put makes at most two nodes a level and a new root a segment tree), so
 it was not changed.

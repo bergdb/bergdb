@@ -51,12 +51,14 @@
 #      change of every traced transaction, node by node and klong by klong,
 #      and Java's answers to gets and scans; the tree's invariants hold.
 #  8b. The writer's contract on the same traces (bergdb 030-04, 030-13):
-#      lean/contract/check.sh on the small and drain sets (contractcheck: each
-#      transaction meets the contract, the trace is whole, the LIVE lines are
-#      Java's searches; first its fault tests, faults.sh and faults-top.sh),
-#      and lean/contract/bridge-check.sh on the same sets (bridgecheck: the
-#      bridge's clauses to the abstract model, bergdb 030-07; first its fault
-#      test, bridge-faults.sh, on a small and a reclaim trace). About 80 s.
+#      lean/contract/check.sh on the small and drain sets, with both checkers on
+#      each trace: contractcheck (each transaction meets the contract, the
+#      trace is whole, the LIVE lines are Java's searches) and bridgecheck (the
+#      bridge's clauses to the abstract model, bergdb 030-07); first their fault
+#      tests, faults.sh, faults-top.sh and bridge-faults.sh (on a small and a
+#      reclaim trace). Until 2026-11-20 lean/contract/bridge-check.sh then ran
+#      bridgecheck and bridge-faults.sh a second time on the same sets (bergdb
+#      028-37). About 80 s.
 #      It builds the checkers in lean/contractcheck/, a Lake package without
 #      Mathlib that builds them from lean/contract/'s files (bergdb 028-24).
 #  8c. The tested writer is the proved writer (bergdb 030-28): lean/pecmp/check.sh
@@ -226,14 +228,14 @@ echo "8b. The writer's contract and the bridge on the tree traces (bergdb 030-13
 # The checkers, built without Mathlib (lean/contractcheck/, bergdb 028-24).
 (cd ../lean/contractcheck && lake build) > $LOG/lake-contract.txt 2>&1 \
     || fail "the contract checkers, lake build in lean/contractcheck" $LOG/lake-contract.txt
-sh ../lean/contract/check.sh small drain > $LOG/contract.txt 2>&1
-grep -q '^CONTRACT OK' $LOG/contract.txt || fail "lean/contract/check.sh small drain" $LOG/contract.txt
-grep '^tree-' $LOG/contract.txt | sed 's/^/   contract, /' | cut -c1-150
+# check.sh runs bridge-faults.sh only if a small and a reclaim trace are there.
 [ -f build/traces/tree-reclaim/r-del-1.trace ] \
     || fail "no reclaim trace for lean/contract/bridge-faults.sh" build/traces/tree-reclaim
-sh ../lean/contract/bridge-check.sh small drain > $LOG/bridge.txt 2>&1
-grep -q '^BRIDGE OK' $LOG/bridge.txt || fail "lean/contract/bridge-check.sh small drain" $LOG/bridge.txt
-grep '^tree-' $LOG/bridge.txt | sed 's/^/   bridge, /' | cut -c1-150
+sh ../lean/contract/check.sh small drain > $LOG/contract.txt 2>&1
+grep -q '^CONTRACT OK' $LOG/contract.txt || fail "lean/contract/check.sh small drain" $LOG/contract.txt
+grep -q '^(bridge-faults.sh not run' $LOG/contract.txt \
+    && fail "lean/contract/check.sh did not run bridge-faults.sh" $LOG/contract.txt
+grep '^tree-' $LOG/contract.txt | sed 's/^/   /' | cut -c1-150
 
 echo "8c. The tested writer against the proved writer (bergdb 030-28)"
 (cd ../lean/pecmp && lake build) > $LOG/lake-pecmp.txt 2>&1 \
