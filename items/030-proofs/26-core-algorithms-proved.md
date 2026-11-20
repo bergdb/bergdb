@@ -228,10 +228,18 @@ fill rules, the key nodes PE writes for any transaction of puts it accepts
 are at most Java's count (`Contract.PE.pe_dirtyNodeBound_puts`,
 [030-29](29-dirty-bound-proof.md)). Java's count is modelled in Lean
 function for function (`Contract/DirtyBound.lean`); that the model is
-Java's rests on reading the two side by side, as PE's model does. For
-transactions with deletes the bound is tested, not proved: its terms for
-deletes are large (four nodes a level of a delete's path, and eight more),
-and the tests find deletes far under it (028-21; 030-29, section 3).
+Java's rests on reading the two side by side, as PE's model does. Proved
+too, for transactions of puts and deletes that join no nodes: under the
+same state and fill rules, with keys within the model's segment limit, the
+bound holds when no node made small by the deletes is joined with a
+neighbour, empty children removed and the root collapsed included
+(`Contract.PE.pe_dirtyNodeBound_noJoins`, and after every history PE
+writes, `pe_dirtyNodeBound_noJoins_hist`; [030-36](36-dirty-bound-deletes.md)).
+For transactions whose deletes join nodes the bound is tested, not proved:
+its terms for deletes are large (four nodes a level of a delete's path, and
+eight more), and the tests find deletes far under it (028-21; 030-29,
+section 3). One join of two leaves is bounded (030-36); repeated joins
+and joins of inner nodes are open.
 
 
 # 3. The model, and what "proved" means
