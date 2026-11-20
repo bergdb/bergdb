@@ -102,6 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
+| [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation is durable only at its first sync, not in its Javadoc | none | open |
 
 
 Closed
