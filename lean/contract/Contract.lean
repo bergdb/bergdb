@@ -94,3 +94,5 @@ import Contract.Proof.DnbRoom
 import Contract.Proof.DnbTop
 import Contract.Proof.DnbMain
 import Contract.DnbExample
+import Contract.Proof.DnbDelJoin
+import Contract.DnbDeletesExample

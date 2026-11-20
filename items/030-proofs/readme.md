@@ -601,6 +601,12 @@ Files
   time (`PE.pe_reclaim_user_reads_steps`). The changes to pinned
   statements and proposed sentences for 030-26, section 2.5. Written
   2026-11-20. Status: done.
+* [030-36](36-dirty-bound-deletes.md). The dirty-node bound for mixed
+  transactions without joins, including empty-child removal and root
+  collapse (`pe_dirtyNodeBound_noJoins`, its history form); a leaf-root
+  corollary and one local planned-leaf join. The general joins and removal
+  of the fill premise remain open. Written 2026-11-20. Status: open.
+
 
 Log
 ===
