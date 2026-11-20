@@ -18,14 +18,9 @@ The stream format's draft specification is 027-03 (024-02 until
 
 Work moved here from 2026.5:
 
-* **A compact stored form of the index nodes** (026-01, moved from
-  024-20 on 2026-11-12; Frans, 2026-11-12, 07:26, QC1: "For 2026.6 as
-  recommended. QC2,3,4,5 should wait since it is for 2026.6."; 07:39:
-  "In particular this 024-20 should move there."): encoding C keeps 38
-  to 47 % of the index bytes; with compact value nodes, frames and top
-  nodes the stream is 19 to 52 % smaller. Its questions QC2 to QC5 (the
-  accounting, the startup distance's unit, reclaim's charge, delta
-  writes) wait for this release's work on the format.
+* **A compact stored form of the index nodes** (026-01): moved to
+  2026.8 (032) on 2026-11-20 (Frans), with the stream format; its ID and
+  file stay here.
 
 * **The 10 MB write buffer of a started database** (024-05, ST8; 024-01,
   PA7; Frans, 2026-11-12, 12:10, "As recommended"): a buffer that grows
@@ -51,11 +46,8 @@ Work moved here from 2026.5:
   30; 8, 14 and 62 stay for BergDB's own tests only. Replaces the
   proposal that a start read B from the meta block (024-19, Q5).
 * **Merges "in place and net", studied and decided with the stable
-  format** (024-22, QM1; Frans, 2026-11-13, 09:23: "Yes, decided work."):
-  the other way than P5's new nodes and take-back, which changes what a
-  record means; 2026.5 has P5's way (Frans, 2026-11-11, 14:34). Decided
-  work means it is settled in 2026.6, with measurements, not that the
-  merge changes.
+  format** (024-22, QM1): moved to 2026.8 (032) on 2026-11-20 (Frans),
+  with the stream format.
 * **The startup distance out of the meta block, into an internal KV**
   (028-15; 026-12, SF7 (a); 024-01, OT4; Frans, 2026-11-16, 10:32:
   "There is still a stream format change that I want to get in place in
@@ -128,12 +120,10 @@ Proposed for 2026.6, not decided
 Each stays where it is until Frans decides; recommended for 2026.6
 there, or implied by this release's theme.
 
-* **The stable format's open questions of the first theme** (024's Log,
-  2026-11-10, the reading of 19:52, accepted for "a stable stream
-  format"): the startup distance in a KV (024-01, OT4, "with a format
-  change"; decided 2026-11-16, 028-15, above) and a place reserved
-  for objects' storage and encryption (024-01, PA5, "study only", and
-  PA9, "not in 2026.5").
+* **The stable format's open questions of the first theme**: the
+  startup distance in a KV was decided and made in this release (028-15,
+  above); the place reserved for objects' storage and encryption (024-01,
+  PA5 and PA9) moved to 2026.8 (032) on 2026-11-20 (Frans).
 * **Commits give a mass delete's space back by the clock, as
   `maintain()` does** (026-13, U13-4 and Q1, option B; Frans, 2026-11-13,
   13:07): a commit begins a reclaim iteration also on `maintain()`'s rule
@@ -146,8 +136,9 @@ there, or implied by this release's theme.
 Files
 =====
 
-* 01-compact-nodes.md. 026-01, a more compact stored form of an index
-  node, moved from 024-20 on 2026-11-12: measured on record format 7,
+* 01-compact-nodes.md. 026-01, for 2026.8 (032) since 2026-11-20; a
+  more compact stored form of an index node, moved from 024-20 on
+  2026-11-12: measured on record format 7,
   encoding C keeps 38 to 47 % of the index bytes in every workload; with
   compact value nodes, frames and top nodes the stream 19 to 52 %
   smaller; for 2026.6 (Frans, 2026-11-12, QC1). QC2 to QC5 wait for
@@ -200,8 +191,8 @@ Files
   `count-gates.sh`: at most 2 R (2,000 drive transactions) at 1M keys;
   1,281 on `main` (margin 1.56), 4,395 without 026-05 (fails); on main
   since 2026-11-13 (00eca320).
-* 12-stable-format-plan.md. 026-12, the stable stream format: a draft
-  plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
+* 12-stable-format-plan.md. 026-12, for 2026.8 (032) since 2026-11-20;
+  the stable stream format: a draft plan for Frans (10:24): 11 questions, SF1 to SF11, merged from 027-03's
   Q1 to Q23 and section 21, 026-01's QC2 to QC5, 024-22's QM1, 024-01's
   OT4, PA5 and PA9, 017-08 and 017-11; each with its options, what it
   depends on and a recommendation; the decisions already taken quoted;
@@ -397,3 +388,7 @@ work on main since 2026-11-13, nothing to port (agent of coord-1118).
 writer (030-21) and of reclaim (030-23 to 030-25). The stable stream
 format waits for a later release, perhaps more than one release later,
 together with encryption and replication (Frans).
+
+2026-11-20. 026-01, 026-12, QM1 and PA5/PA9 moved to release 2026.8
+(032), with the stream format, encryption and replication; their IDs
+kept (Frans). Releases 2026.7 (031) and 2026.8 (032) created.

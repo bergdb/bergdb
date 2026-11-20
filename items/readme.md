@@ -217,3 +217,8 @@ Index
   every direction (today's model, simpler algorithms, the bridges,
   bounded startup, the rest), its state, its next step and the decision
   it waits for, and the rules all proof work follows.
+* **031-release-2026-7** (open). Release 2026.7, after 2026.6: its plan,
+  its decisions and the work towards it. No theme yet.
+* **032-release-2026-8** (open). Release 2026.8, after 2026.7: its plan,
+  its decisions and the work towards it. Preliminary theme: the stream
+  format, with encryption and replication.
