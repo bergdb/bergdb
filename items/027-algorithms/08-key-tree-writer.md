@@ -29,6 +29,22 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
 
 ### 1.1. Terms, settings and constants
 
+* **The DAG and the key tree**: the index is stored as a persistent DAG
+  (`Dag`): a transaction writes new versions of the nodes it changes, as
+  klongs appended after a time klong of tt or as new nodes, and leaves
+  the old ones in place; untouched subtrees are shared between versions;
+  old versions stay until reclaim cuts them (027-13). The nodes that a
+  lookup at time t reaches, from the space root of t through the live
+  klongs at t, form a tree: no node, key node or value, is reached twice.
+  That is **TREE**: proved for every history PE writes, at every time of
+  it, the earlier times too (030-26, section 3.1; `tree_right`, for a
+  history that meets `MeetsTop`, which `pe_meetsTop_start` gives,
+  section 5); checked (the contract checker's C4, on every traced
+  transaction). In 027, "the key tree" or "the tree" is that tree at a
+  lookup time unless it says otherwise; the trees of different times
+  share nodes, and "the DAG" is the whole stored structure. In the Lean,
+  `Tree` (lean/contract/Contract/Tree.lean) and the tree after
+  transaction j (`h.tree j`) are the whole DAG at that point.
 * **B**, the node size: the most klongs of a key node, kept in the stream
   (027-03, section 6). Every database a user makes has B = 30;
   `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. Sizes below
@@ -418,7 +434,7 @@ then reports in emit's order. A second implementation can follow the
 plan's order alone to match Java's got-dirty pairs and later takes.
 Until this change the short way reported leaves in first-operation
 order, then each path top-down. New streams can have different bytes,
-but record format 8 keeps its meaning: the tree and fresh ids are the
+but record format 8 keeps its meaning: the DAG and fresh ids are the
 same, and startup rebuilds D in the stored got-dirty order, independently
 of the rerun's marks (027-11, section 1.7).
 
@@ -472,7 +488,7 @@ make another tree under PE (027-03, section 8.2).
 
 ## 2. State
 
-* **In memory**: only the tree. A transaction's plan (its planned nodes,
+* **In memory**: only the DAG. A transaction's plan (its planned nodes,
   the leaves' changes, the live lists) lives until the transaction ends;
   `Dag.stat*` counts the decisions for tests.
 * **In the stream**: nothing of the plan. B is in the stream (027-03,
@@ -498,9 +514,9 @@ of 1.9; values are not in that set.
   roots are only added; with **TREE** (no node reached twice from a space
   root) and the top's clauses. Proved for `Contract.PE.peTx` (030-21:
   `pe_step`, `pe_meetsTop_start`, and `MeetsFull` with K-LEVEL,
-  `pe_full`); Java's writer gives that program's trees: checked (1.10,
-  section 5). Java's own check of clauses 1 to 3 on the nodes it touched:
-  TransCheck, gated.
+  `pe_full`); Java's writer writes what that program writes: checked
+  (1.10, section 5). Java's own check of clauses 1 to 3 on the nodes it
+  touched: TransCheck, gated.
 * **LE-b** (LeftmostOK): an inner node's smallest live cv is the empty
   key: by mkNode; proved (`Shaped`, part of 030-21's `Inv`); checked
   (C-T6, the shape check).
@@ -621,7 +637,8 @@ transactions are not checked (027-13, 1.4).
   `cntOf`, `openEs`, `settleRoot`, `mkNode`, `ents`, `decideNode`,
   `cutParts`, `nParts`, `partSizes`, `emit`, `emitKids`, `newParts`,
   `emitKs`, `newTopNode`): PE as total functions with fuel on the
-  contract's tree, each Java method naming the definition it restates.
+  contract's `Tree` (the DAG, 1.1), each Java method naming the
+  definition it restates.
   Its differences of form from Java change no node: a node is named by an
   id, not by the pointer that reached it; heights come from levels; a
   delete that deletes makes no node (Java makes a delete node, with an
@@ -676,7 +693,7 @@ transactions are not checked (027-13, 1.4).
   node changed, C-T3 the noops, C-T4 the reads, C-T6 the invariants, C-T7
   the form (keys strictly increasing), C-T8 the bound (4.2), C-T9 the
   whole run (records, gd as a set, D); the contract checker
-  (`lean/contract/check.sh`: the contract on Java's tree before and after
+  (`lean/contract/check.sh`: the contract on Java's DAG before and after
   every traced transaction); the bridge checker.
 
 
@@ -915,3 +932,9 @@ writer, is a step of level2.sh, with the top node and the writes in their
 order; Pe.lean is pinned (section 5).
 
 2026-11-20. 030-28: pecmp also on night.sh's medium set (section 5).
+
+2026-11-20. "Tree" kept as the main word, with a clarification (Frans
+decided, 2026-11-20): 1.1 defines the persistent DAG, the key tree at a
+lookup time and TREE (030-26, section 3.1), checked against the Lean.
+Where "tree" meant the whole stored structure, it says "the DAG" or what
+the writer writes (1.10, 2, 3, 5).

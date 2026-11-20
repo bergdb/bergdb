@@ -49,10 +49,10 @@ Some words first:
   applied at once. Each one makes a new time; a read is made at a time.
 - **The stream.** BergDB's only durable storage, appended to and never
   changed: one record per transaction, with the nodes it wrote.
-- **The key tree.** BergDB's index, a tree of key nodes stored in the
-  stream. A transaction never removes or changes what a node held; it
-  only adds entries marked with its time, so every earlier state stays
-  readable.
+- **The key tree.** BergDB's index, key nodes stored in the stream; what
+  a read at one time reaches of them is a tree (section 3.1). A
+  transaction never removes or changes what a node held; it only adds
+  entries marked with its time, so every earlier state stays readable.
 - **The plain map.** A sorted map from keys to values, with the
   transactions applied in order. The reads are compared with it.
 
@@ -113,13 +113,13 @@ top nodes' skip pointers: `jget_right`, `jscan_right`
 
 ## 2.3 Crash recovery and restarts
 
-A start reads the tail of the stream and builds the tree from it; older
+A start reads the tail of the stream and builds the DAG from it; older
 nodes are read when a read first reaches them (a lazy startup). PE's
-histories meet the clauses that tie the key tree to the model of the
-stream (`MeetsFull`, by `Contract.PE.pe_full`). For such a history:
+histories meet the clauses that tie the DAG to the model of the stream
+(`MeetsFull`, by `Contract.PE.pe_full`). For such a history:
 
 - after a crash that keeps the stream up to the record of transaction
-  k, a start gives back the tree after transaction k with its whole
+  k, a start gives back the DAG after transaction k with its whole
   history (`full_recovery`, [030-07](07-bridge.md)), and every get and
   scan at every time up to k is right (`Contract.PE.pe_crash_reads`;
   Java's readers, `crash_java_reads`, [030-14](14-reads-after-crash.md));
@@ -197,8 +197,8 @@ assistant, in two packages:
   reclaim's cut, proved for any structure that meets its assumptions; and
   the executable model that the trace checkers run.
 - `lean/contract/`: the key tree, the writer's contract, PE as Lean
-  functions that run (`Contract/PeWriter.lean`), the bridge from the key
-  tree to the abstract model, reclaim's contract, the model of its steps,
+  functions that run (`Contract/PeWriter.lean`), the bridge from the
+  DAG to the abstract model, reclaim's contract, the model of its steps,
   and the proofs. It uses Mathlib, Lean's library of mathematics. 131
   files, about 48,000 lines; the gate checks 191 theorems.
 
@@ -206,6 +206,21 @@ The writer's contract is the centre. It says what must hold when a
 transaction ends, not how the writer gets there. Reads, recovery,
 restarts, eviction and cuts are proved from it, for any writer that meets
 it; that PE meets it is proved apart.
+
+BergDB stores its index as a persistent DAG, a directed acyclic graph
+(the Java class `Dag`): a transaction writes new versions of the nodes it
+changes and leaves the old ones in place, unchanged subtrees are shared
+between versions, and old versions stay until reclaim cuts them. At any
+one time t, the nodes a lookup at t can reach form a tree: no node is
+reached twice. That is TREE, a clause of the contract (`TreeOk`,
+`Contract/Reach.lean`), proved at every time of every history PE writes,
+the earlier times too (`tree_right`, for the histories that meet
+`MeetsTop`, as PE's do). So on this page "the tree" is the tree at a
+time, the trees of different times share nodes, and the whole stored
+structure is "the DAG". One catch in the Lean: the type `Tree`
+(`Contract/Tree.lean`) and the tree after transaction j (`h.tree j`) are
+the whole DAG at that point, each node with all its time-marked entries;
+`s.at t` is the DAG as a reader at time t sees it.
 
 ## 3.2 What "proved" means here
 
@@ -256,12 +271,13 @@ it; that PE meets it is proved apart.
 ## 3.3 From the model to Java
 
 A theorem speaks of the model. A claim about Java follows from it with
-facts that are tested, not proved: that Java's writer makes PE's tree,
-that Java's readers are the model's, that Java writes the model's records
-and that its startup builds what the stream holds (section 5, items 1, 6,
-10 and 13). They are tested on traces: logs that test runs of Java write,
-with each transaction's operations, the nodes it wrote, its record and
-Java's answers to reads ([027-02](../027-algorithms/02-trace-format.md)).
+facts that are tested, not proved: that Java's writer writes what PE
+writes, that Java's readers are the model's, that Java writes the model's
+records and that its startup builds what the stream holds (section 5,
+items 1, 6, 10 and 13). They are tested on traces: logs that test runs of
+Java write, with each transaction's operations, the nodes it wrote, its
+record and Java's answers to reads
+([027-02](../027-algorithms/02-trace-format.md)).
 Checkers in Lean check every traced transaction with the theorems' own
 definitions; that the contract checker's pass means the contract holds is
 proved (`contractVerdict_sound`). The Java code itself is not proved.
@@ -278,7 +294,7 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   argument on paper, not in Lean (2.1); a transaction that the model
   refuses on a trace fails the tree checker.
   An independent review of Java's PE writer (2026-11-19) found one fault,
-  in reclaim's accounting, not in the tree; it is fixed (028-26).
+  in reclaim's accounting, not in the stored nodes; it is fixed (028-26).
 - **The platform.** The model assumes that a synced append is durable,
   that a crash leaves at most a torn tail (a partly written last record),
   and that bytes read back are the bytes written. Covered by the crash,
@@ -323,16 +339,16 @@ about once a day while there is development; `week.sh`, with more kills,
 fuzzing and the large trace set, before every release.
 
 1. ~~The writer meets the contract~~, proved for PE (030-21). Left:
-   **Java's writer is PE.** The tree checker compares Java's tree with
-   the model's PE, node for node, on every traced transaction of the
-   small, drain and reclaim sets (`level2.sh`). The contract checker
-   checks Java's tree after every traced transaction (`level2.sh`; the
-   medium set in `night.sh`). Java checks the contract itself
-   (`TransCheck`: the unit tests in `before-commit.sh`, the f-tests in
-   `night.sh`). The tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a copy
-   of the proved one, rule for rule; `pecmp` compares the two at every
-   transaction of the same three sets: the writes in their order, the
-   trees and the top nodes (`level2.sh`, step 8c; 030-28). The copy is
+   **Java's writer is PE.** The tree checker compares what Java writes
+   with what the model's PE writes, node for node, on every traced
+   transaction of the small, drain and reclaim sets (`level2.sh`). The
+   contract checker checks Java's DAG after every traced transaction
+   (`level2.sh`; the medium set in `night.sh`). Java checks the contract
+   itself (`TransCheck`: the unit tests in `before-commit.sh`, the f-tests
+   in `night.sh`). The tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a
+   copy of the proved one, rule for rule; `pecmp` compares the two at
+   every transaction of the same three sets: the writes in their order,
+   the trees and the top nodes (`level2.sh`, step 8c; 030-28). The copy is
    pinned, and its hash is checked every night (`level2.sh`, step 0). So
    on those traces Java writes what the proved writer writes.
 2. **A synced append is durable.** CrashTest (`level2.sh` to
@@ -447,3 +463,13 @@ Java's G and H) and 028-27 (`night.sh` and `week.sh` disjoint), on main
 
 2026-11-20. Landed on `main` by coord-1118: Frans decided to land it and
 then read it there, and to decide afterwards how it is kept.
+
+2026-11-20. "Tree" kept as the main word, with a clarification (Frans
+decided, 2026-11-20): section 3.1 says that the index is stored as a
+persistent DAG, that the nodes a lookup at one time reaches form a tree
+(TREE, proved at every time by `tree_right`), and that the Lean's `Tree`
+and `h.tree j` are the whole DAG. Where the page meant the whole stored
+structure, it says "the DAG" or "the stored nodes" (sections 2, 2.3, 3.1,
+3.3, 4 and 5, item 1). Checked against `Contract/Tree.lean`,
+`Reach.lean`, `ShapeStatement.lean`, `TheoremsShape.lean` and
+`Bridge.lean`.
