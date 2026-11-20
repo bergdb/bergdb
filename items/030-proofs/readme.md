@@ -577,6 +577,11 @@ Files
   restarts and crashes (`restart=K`, `crash=K`), RESTART and RESUME
   lines, and C-STEP's STEP-resume (`conformance.sh crash`, in
   `level3.sh`). Written 2026-11-20. Status: done.
+* [030-32](32-week-47-diary.md). The proof week of 16 to 20 November, a
+  diary: one heading a day, from a large step-by-step model close to
+  being given up, through the contract approach (Tuesday), to the core
+  algorithms proved; and the idea of a contract tested after every
+  operation. Written 2026-11-20. Status: done.
 
 Log
 ===
