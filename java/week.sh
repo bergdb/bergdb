@@ -33,9 +33,9 @@
 #   1. before-commit: before-commit.sh, the unit and f-tests and the demos (about 2
 #      minutes). If it fails, the run stops: the rest would test broken code.
 #   2. apps-quick, apps-soak-cc, apps-kill-cc: stress/apps.sh, the user applications of
-#      024-26 and 026-13 (its header), built against the clone's own release jar: quick
-#      (about 6 minutes), soak and kill rounds with the day's number as N, new seeds each
-#      day (about 40 and 30 minutes). Soak and kill with CC (below).
+#      024-26, 026-13 and 026-26 (its header), built against the clone's own release jar:
+#      quick (about 6 minutes), soak and kill rounds with the day's number as N, new seeds
+#      each day (about 40 and 30 minutes). Soak and kill with CC (below).
 #   3. kill-restart-week, kill-restart-cc: stress/kill-restart.sh, its self-check and 1,000
 #      kills on each of three seeds (the day's number times 10, plus 1 to 3; night.sh's
 #      seed is the date, YYYYMMDD), the third with CC; about 80 minutes. Stops at the
