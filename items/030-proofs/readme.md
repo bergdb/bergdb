@@ -586,7 +586,8 @@ Files
   statements against 030-26 (Codex, 2026-11-20): four findings, one high
   (reclaim's step model does not require the value written back to be the
   value read; C-STEP neither), two medium (values as hashes; TransCheck's
-  coverage), one low. Status: open, to act on before release 2026.6.
+  coverage), one low. Status: done, all four acted on (030-34, 030-35,
+  030-26).
 * [030-34](34-c-step-values.md). 030-33's F1 in the trace checker
   (Frans decided, 2026-11-20): C-STEP checks that each step of reclaim
   writes back, at every old key its scan met, the value the scan read

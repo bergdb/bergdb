@@ -8,16 +8,13 @@ checks that cover them updates this page in the same change, and the
 release checks it before the tag (026, "How the release is made").
 
 **Under correction (2026-11-20).** An independent review (030-33) found
-four places where this page said more than is proved or checked. F2
-(values as hashes), F3 (Java's commit-time check is partial) and F4 (the
-week.sh rounds that run it) are corrected here (section 4; section 5,
-items 1, 7 and 9; section 6). F1 is open: reclaim's step model does not
-require a step to write back the value it read, and neither does the
-trace check C-STEP did not either. C-STEP checks it since 030-34
-(2026-11-20, every step of the reclaim and crash traces); the step model
-and a theorem that reads after reclaim give the users' values are being
-made (030-35). Until then, that reclaim keeps the users' values is
-tested, not proved.
+four places where this page said more than is proved or checked, all
+corrected on 2026-11-20. F1: reclaim's step model did not require a step
+to write back the value it read; it does now, and reads after reclaim
+are proved to give the users' values (030-35, section 2.5), and the
+trace check C-STEP checks the same on every step (030-34). F2 (values as
+hashes), F3 (Java's commit-time check is partial) and F4 (the week.sh
+rounds that run it): section 4; section 5, items 1, 7 and 9; section 6.
 
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
@@ -178,14 +175,25 @@ the first available time on: `Contract.PE.pe_reclaim_reads_steps`
 
 In the model, each step scans the live keys at its own time, from where
 the step before stopped up to the greatest key live when the iteration
-began, may stop before or after any key by any rule, and writes again
-every key it met whose value was written before the cut; the last step's
-scan reaches the end. The model requires that such a key is written
-again, not yet that it is written with the value the step read, nor that
-the step writes no other user key (030-33, F1; the proof being made in
-030-35): the cut's safety below is proved; that reclaim keeps the users'
-values is tested, by C-STEP on every step of the traces (030-34) and by
-the workloads' reads. Such an iteration writes again every key whose value
+began, and may stop before or after any key by any rule. Each step puts
+every old key its scan met, with the value the key had immediately
+before the step, and puts its current row under reclaim's reserved
+prefix. It puts no other key and deletes none; the row may replace its
+own rewrite. The last step's scan reaches the end (030-35; until
+2026-11-20 the model did not require the value or forbid other writes,
+030-33, F1).
+
+**Reclaim keeps the users' values.** For every accepted history PE
+writes, with all of reclaim's maintenance transactions meeting this step
+model or writing only reclaim's reserved namespace, and with the cut and
+reader premises below, reads after cuts, handles, eviction and restarts
+agree with the reference made from the users' operations alone, at every
+retained lookup time (`Contract.PE.pe_reclaim_user_reads_steps`,
+[030-35](35-reclaim-preserves-values.md)). Reclaim's transactions add no
+operations to that reference and do not change its lookup times. Gets
+and scans in the users' ranges agree directly, scan limits included; a
+Core scan across reclaim's namespace can also return its rows, and
+without them it gives the users' scan. Such an iteration writes again every key whose value
 predates the cut (`iterationOK_of_stepsOK`), and a cut that meets
 reclaim's contract is safe: nothing a read from the first available time
 on can reach lies before it (`cutOK_of_rc`,
@@ -387,9 +395,9 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   after it. Since [030-34](34-c-step-values.md) (2026-11-20) C-STEP also
   checks that each step writes back, at every old key its scan met, the
   value the scan read (by the trace's value hashes, above), and that it
-  puts nothing else than those rewrites and its row and deletes nothing;
-  the model of the steps (`StepTx`) does not yet require it (030-33,
-  F1). Still tested only: that the trace's line for a step is what
+  puts nothing else than those rewrites and its row and deletes nothing:
+  what the model of the steps (`StepTx`) requires since 030-35. Still
+  tested only: that the trace's line for a step is what
   Java's step holds in memory, Java's end key where no restart reads it,
   a crash at another point of reclaim's work (inside a step's record it
   is a crash before the step; after the call, a restart), and
