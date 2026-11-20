@@ -64,6 +64,16 @@ Decisions of the morning:
 * 14:03 The usage stop raised to 98 % (Frans); fx1 and fx2 started on
   the small 028 fixes.
 
+* 14:20 Codex started on an independent review of the Lean statements
+  against 030-26 (to be 030-32).
+* 14:55 028-37, 028-38 (a Dag refuses node sizes below 8, Frans's
+  decision), 028-39 landed (99047e73); 028-35, 028-36 landed (416cfa93);
+  no fault of the database. week.sh's conformance-large on the day's
+  seeds (Frans; 34d4b599). 028-40 registered.
+* 14:58 The runs before release 2026.6 started on 3334bb0f: night.sh and
+  week.sh in parallel, then timing.sh on a quiet F53. The release is
+  planned for Tuesday 24 November, after the usage reset.
+
 
 ## 5. Outcome
 
