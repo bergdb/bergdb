@@ -63,6 +63,21 @@ Reproduced on 9f6f7888: 6 runs of 600 (INTERRUPT at BUILD_STEP 1, deleted
 during the build). The deletion, like the activation, commits and changes
 memory under IndexManager's lock.
 
+**A third and a fourth race, found here.** `testEveryPointAndFault`
+failed once in 20 runs of the class on the first fix: "stop; ERROR at
+CLEANUP_END 1: the database stopped creation 2 with no stop". The Error
+in the cleanup's thread fails the database (IndexManager.startCleanup),
+and the harness's probe (`probe()`) made a get, then read the Db's state:
+the get came before the failure, the state after it, and the probe took
+the database for stopped. A get made again threw DbFailedException each
+time (a probe with the details). Beside it, `alive()` read the field
+`fired` twice: an Error that fired in the cleanup's thread between the
+two reads skipped the wait for the failure and gave the finding "Error
+fails the database ... the database goes on". Both reproduced on the
+code before this fix: 14 runs of 1,800 (ERROR at CLEANUP_STEP and
+CLEANUP_END), 12 of the first kind and 2 of the second; the database
+failed with the Error injected each time.
+
 **"Stuck" by the time alone.** `awaitCleanup()` counted a cleanup stuck
 when its markers were left after CLEANUP_MS (30 s times harness.slow),
 whatever the cleanup did; the restart's wait for the resumed cleanup was
@@ -94,6 +109,10 @@ steps).
 - The creation's check accepts no definition in the stream only if the
   deletion during build 1 has begun and memory read again after the
   stream has none (the same lock).
+- `probe()`: a get that returned while the Db is no longer active is made
+  again, and its exception tells a failure from a stop. `alive()` reads
+  `fired` once, before the probe, for the check of an active database
+  after an Error; for a stop or a failure seen, after it.
 
 **Tests.** `testSlowCleanupNotStuck` (each cleanup step sleeps 150 ms, 11
 steps, a bound of 1 s without progress: no finding), `testNoProgressStuck`

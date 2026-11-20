@@ -1376,11 +1376,16 @@ public final class IndexJobsHarness {
          * The database's state by a read: true if active. A stop or a failure is checked
          * against the fault: a stop only after the fault STOP; a failure only after an Error,
          * or after a throw at a point after a commit. After an Error in a job's thread, waits
-         * up to 30 s for the failure.
+         * up to 30 s for the failure. For an active database, whether the fault fired is read
+         * once, before the probe: an Error that fires after it is checked at the next call
+         * (bergdb 028-29: read twice, an Error that fired between the two reads was taken for
+         * one that the database went on after). A stop or a failure seen comes after its
+         * fault, so the field is read after the probe for them.
          */
         boolean alive(String where) {
+            final boolean firedBefore = fired;
             String state = probe();
-            if (state.equals("active") && fired && cfg.fault == Fault.ERROR
+            if (state.equals("active") && firedBefore && cfg.fault == Fault.ERROR
                     && firedThread != Thread.currentThread() && !cfg.point.inCall()) {
                 long end = System.nanoTime() + 30000000000L;
                 while (state.equals("active") && System.nanoTime() < end) {
@@ -1407,7 +1412,7 @@ public final class IndexJobsHarness {
                 }
                 return false;
             }
-            if (fired && cfg.fault == Fault.ERROR) {
+            if (firedBefore && cfg.fault == Fault.ERROR) {
                 finding("Error fails the database", "an Error at " + cfg.point + " in "
                         + firedThread.getName() + ", and the database goes on " + where
                         + " (019-10's error model; 010-01, P7)");
@@ -1417,16 +1422,28 @@ public final class IndexJobsHarness {
             return true;
         }
 
-        /** "active", "stopped" or "failed" (with 'failure' set), by a get and the Db's state. */
+        /**
+         * "active", "stopped" or "failed" (with 'failure' set), by a get and the Db's state. A
+         * get that returned with the Db no longer active came before a stop or a failure: the
+         * get is made again, and its exception tells which (bergdb 028-29: it was taken for a
+         * stop, after a failure by an Error in a cleanup's thread).
+         */
         private String probe() {
-            try {
-                db.newConnection().get("/q/k", byte[].class);
-                return dbOf(db).internal().isActive() ? "active" : "stopped";
-            } catch (DbFailedException e) {
-                failure = e;
-                return "failed";
-            } catch (IllegalDbStateException | StreamIoException e) {
-                return "stopped";
+            for (int i = 0; ; i++) {
+                try {
+                    db.newConnection().get("/q/k", byte[].class);
+                    if (dbOf(db).internal().isActive()) {
+                        return "active";
+                    }
+                    if (i == 100) {
+                        return "stopped";       // Gets served with the Db not active.
+                    }
+                } catch (DbFailedException e) {
+                    failure = e;
+                    return "failed";
+                } catch (IllegalDbStateException | StreamIoException e) {
+                    return "stopped";
+                }
             }
         }
 
