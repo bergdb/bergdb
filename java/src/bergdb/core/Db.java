@@ -532,7 +532,8 @@ public class Db implements AutoCloseable {
 
     /**
      * Java's own check of the writer's contract after each transaction's puts (bergdb 030-09;
-     * test-only): null unless the system property transcheck=1 (TransCheck.ON).
+     * test-only): null unless TransCheck.ON (the system property transcheck=1, or the
+     * environment variable BERGDB_TRANSCHECK, bergdb 030-30).
      */
     private final TransCheck transCheck;
 
@@ -1133,8 +1134,9 @@ public class Db implements AutoCloseable {
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
      *          005-50); and with a VersioningStreamException, a database of release 2026.5 or
-     *          earlier, of the meta block's version 154 (bergdb 028-15, option A). The
-     *          start then writes nothing.
+     *          earlier, of the meta block's version 154 (bergdb 028-15, option A), whose
+     *          data is read with the release that wrote it and put into a new database with
+     *          this release (bergdb 028-30). The start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33): a part of the creation's first record, or the

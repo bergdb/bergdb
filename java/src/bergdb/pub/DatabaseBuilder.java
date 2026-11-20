@@ -179,8 +179,9 @@ public interface DatabaseBuilder {
      *             VersioningStreamException if a release before 2026.6 wrote the database
      *             (its meta blocks of version 154; bergdb 028-15): this release does not
      *             open it, the message names release 2026.5, and the start, as create() on
-     *             its directory, changes no file; its data is moved with that release, as the
-     *             release notes say (bergdb 024-26, U26-8; 028-15).
+     *             its directory, changes no file; its data is read with the release that
+     *             wrote the database and put into a new one with this release, as the release
+     *             notes say (bergdb 024-26, U26-8; 028-15, 028-30).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The

@@ -89,6 +89,27 @@ import bergdb.stream.MemoryStream;
  *   long=2     the keys of UnlinkFuzz's long shape (A2A3Check2.longShapeKey: 1 to 5 segments,
  *              shared prefixes), which makes and empties many small segment trees
  *              (bergdb 024-09, step A1); the trace's CONFIG line says long=false for it
+ *   restart=K  run A restarts its database after every K-th user transaction's call: a sync,
+ *              stop() and a start from a copy of the stream (bergdb 030-31; default 0: none)
+ *   crash=K    run A's database crashes right after every K-th step of reclaim: the hook of
+ *              the step's record syncs the record and throws, which fails the database inside
+ *              the step's call, before reclaim updates its row in memory and before the rest
+ *              of the call; run A starts again from a copy of the stream as it is then (bergdb
+ *              030-31; default 0: none); not with probe or rune, whose runs have no crash
+ *   workload=F a workload recorded from an application (java/stress/AppRecord.java; bergdb
+ *              030-31) in place of the generator's: its user transactions with their times,
+ *              keys and values, its node size, startup distance and reclaim settings, and the
+ *              application's restarts, which run A makes at the same places; run A only
+ *
+ * Restarts and crashes in run A (restart, crash, a workload's restarts; bergdb 030-31): the
+ * restarted database's records are recorded as before, through the hooks. A node keeps its
+ * id; its object is the restarted database's from when the walk or a transaction's dirty
+ * nodes meet it, and its history must go on from the one before. The start itself appends no
+ * record, which is checked. The last record before the restart gets a line RESTART stop or
+ * RESTART crash, and with steps=1 a line RESUME, the iteration in progress that the start read
+ * from the stream (027-02, section 4); a step that the crash ended gets its STEP line from that
+ * row, the row the step committed. Run A's state then has stream pointers, so live=1 is
+ * refused with them.
  *
  * The last line on stdout (not in the trace; bergdb 024-09, step A1) has the Dag's counters of
  * this JVM, so of runs A, B and E together, a rerun at a start included: PE's appends,
@@ -164,6 +185,13 @@ public class TraceExport {
     final long timeScale = retain > 0 ? bergdb.pub.util.Clock.UNITS_PER_SEC / 100 : 1;
     /** long=2: UnlinkFuzz's long key shape. */
     final boolean longShape = "2".equals(System.getProperty("long"));
+    /** restart=K and crash=K: restarts and crashes of run A (bergdb 030-31). */
+    final int restartEvery = Integer.getInteger("restart", 0);
+    final int crashEvery = Integer.getInteger("crash", 0);
+    /** workload=F: a recorded application's workload (bergdb 030-31), or null. */
+    final AppRecord.Workload app;
+    /** The retain duration in clock units: retain seconds, or the workload's (retainunits). */
+    final long retainUnits = Long.getLong("retainunits", retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
 
     // The workload: per transaction, keys and values (null value: delete).
     final List<String[]> wkeys = new ArrayList<String[]>();
@@ -176,11 +204,26 @@ public class TraceExport {
     final List<String> errors = new ArrayList<String>();
 
     TraceExport(long seed) {
+        this(seed, null);
+    }
+
+    /** With a recorded workload (bergdb 030-31): main sets n, maxnode, sd and the reclaim
+     *  settings from it before this constructor runs. */
+    TraceExport(long seed, AppRecord.Workload app) {
         this.seed = seed;
+        this.app = app;
         Random rnd = new Random(seed);
         times = new long[n];
         userRec = new int[n];
         userLast = new int[n];
+        if (app != null) {
+            for (int i = 0; i < n; i++) {
+                times[i] = app.txs.get(i).tt;
+                wkeys.add(new String[0]);       // the keys are app.txs' segments
+                wvalues.add(app.txs.get(i).values);
+            }
+            return;
+        }
         long time = 10;
         int nextNew = keyCount;     // keys of bulk loads, beyond the key space
         int fifoNext = 0, fifoFirst = 0;
@@ -253,7 +296,7 @@ public class TraceExport {
         Db db = startOnly(stream, clock, schedule);
         // Since bergdb 015-87 kept in the stream: the first call commits reclaim's settings
         // (an internal record, kind=table), the calls after a restart write nothing.
-        if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
+        if (retain > 0) db.setRetainDuration(retainUnits);
         return db;
     }
 
@@ -304,7 +347,10 @@ public class TraceExport {
     /** A node of P: kind and the Java object (null for the root). */
     static final class PNode {
         final long id;
-        final Node obj;
+        /** The node's object; after a restart the restarted database's, once met (030-31). */
+        Node obj;
+        /** The restart (TraceExport.epoch) whose database obj is of. */
+        int epoch;
         final int created;      // index of the creating record
         List<Ent> hist = new ArrayList<Ent>();
         PNode(long id, Node obj, int created) { this.id = id; this.obj = obj; this.created = created; }
@@ -325,7 +371,7 @@ public class TraceExport {
     /** What run A saw for one record. */
     static final class Rec {
         int index;
-        long tt, tpos;
+        long tt, tpos, nextPos;
         int sp;
         int top = -1;
         long topNode = -1;      // the node of the version that top names (model id)
@@ -353,6 +399,8 @@ public class TraceExport {
         /** Trace format 3 (bergdb 024-12): BASE and OP; then KN, GET, SCAN. */
         List<String> treeHead = new ArrayList<String>();
         List<String> treeLines = new ArrayList<String>();
+        /** RESTART and RESUME: run A restarted its database after this record (030-31). */
+        List<String> restartLines = new ArrayList<String>();
     }
 
     final Map<Long, PNode> nodes = new TreeMap<Long, PNode>();
@@ -483,7 +531,7 @@ public class TraceExport {
             }
             return result;
         }
-        if (pn.obj.isIndexNode()) return objectEntries(pn.obj, ns, true, "node " + pn.id);
+        if (pn.obj.isIndexNode()) return objectEntries(pn.obj, ns, epoch == 0, "node " + pn.id);
         List<Ent> result = new ArrayList<Ent>();
         result.add(new Ent(pn.created, "V " + hash(((ValueNode) pn.obj).getValue())));
         return result;
@@ -531,12 +579,18 @@ public class TraceExport {
         return x;
     }
 
-    /** Adds every node reachable through memory pointers, live or dead, to 'nodes'. */
+    /** Adds every node reachable through memory pointers, live or dead, to 'nodes'; after a
+     *  restart (bergdb 030-31) from the node table's objects too. */
     void walk(Db db, int index) {
         TopNode superRoot = db.internal().dag().getTopDs().getSuperRoot();
         Deque<Node> todo = new ArrayDeque<Node>();
         Set<Node> seen = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
         todo.add(superRoot);
+        if (epoch > 0) {
+            for (Node x : db.internal().cache().nodes()) {
+                if (x.isIndexNode() && x.isCanonical()) todo.add(x);
+            }
+        }
         while (!todo.isEmpty()) {
             Node x = todo.poll();
             if (!seen.add(x)) continue;
@@ -553,9 +607,16 @@ public class TraceExport {
 
     void register(Node x, int index) {
         if (x.getType() == Node.TYPE_DELETE) return;
+        // After a restart (bergdb 030-31) a version read for an older time is not the node's
+        // object; the canonical object is.
+        if (epoch > 0 && x.isIndexNode() && !x.isCanonical()) return;
         PNode pn = nodes.get(mid(x.getId()));
+        // A value never changes, and a read after a restart may load it again as a new object.
+        if (epoch > 0 && pn != null && !x.isIndexNode()) return;
         if (pn == null) {
-            nodes.put(mid(x.getId()), new PNode(mid(x.getId()), x, index));
+            pn = new PNode(mid(x.getId()), x, index);
+            pn.epoch = epoch;
+            nodes.put(mid(x.getId()), pn);
             if (x instanceof TopNode) {
                 topNodes.add((TopNode) x);
                 Collections.sort(topNodes, new Comparator<TopNode>() {
@@ -564,9 +625,41 @@ public class TraceExport {
                     }
                 });
             }
+        } else if (pn.obj != x && pn.epoch < epoch && pn.obj != null) {
+            // The restarted database's object of the node (bergdb 030-31).
+            if (pn.obj instanceof TopNode) {
+                topNodes.set(topNodes.indexOf(pn.obj), (TopNode) x);
+            }
+            pn.obj = x;
+            pn.epoch = epoch;
         } else if (pn.obj != x) {
             error("two objects for node " + mid(x.getId()) + " in run A");
         }
+    }
+
+    /**
+     * The object of node x's pointer i, or null: the pointer's object, or after a restart
+     * (bergdb 030-31) the object that 'nodes' has for the node that the pointer names.
+     */
+    Node ptrObj(Node x, int i) {
+        Node c = x.getPointerNode(i);
+        if (epoch == 0) return c;
+        long id;
+        if (c != null) {
+            id = mid(c.getId());
+        } else {
+            long pos = x.getSerializedRef(i);
+            if (pos == Spos.NULL) return null;
+            if (Spos.isVpos(pos)) {
+                id = mid(pos);
+            } else {
+                long[] v = verByPos.get(pos);
+                if (v == null) return null;
+                id = v[1];
+            }
+        }
+        PNode pn = nodes.get(id);
+        return pn == null || pn.obj == null ? c : pn.obj;
     }
 
     /** Parses R(i) into versions; updates the position map first. */
@@ -767,34 +860,62 @@ public class TraceExport {
         }
     }
 
-    /** Run A: no restarts; records everything, each executed transaction through Db's test
-     *  hooks, so that with reclaim its steps and table stores are records too. */
+    /** Run A's database, stream, node stream, clock and hooks; the database and the streams
+     *  change at a restart (bergdb 030-31). */
+    Db dbA;
+    AppendOnlyStream streamA;
+    NodeStream nsA;
+    CoreTestClock clockA;
+    Db.TestHooks hooksA;
+    /** Run A's restarts so far, and the crashes among them (bergdb 030-31). */
+    int epoch = 0, crashes = 0;
+    /** Steps of reclaim seen, for crash=K; set when the hook makes the crash. */
+    int stepsSeen = 0;
+    boolean crashing = false;
+
+    /** The exception of a crash (crash=K): thrown by the hook of a step's record. */
+    static final class Crash extends RuntimeException {
+        Crash() { super("TraceExport's crash (crash=K)"); }
+    }
+
+    /** Run A: records everything, each executed transaction through Db's test hooks, so that
+     *  with reclaim its steps and table stores are records too; with restart=K, crash=K or a
+     *  workload's restarts, across restarts of its database (bergdb 030-31). */
     AppendOnlyStream runA() {
-        final AppendOnlyStream stream = newStream();
-        CoreTestClock clock = new CoreTestClock();
-        clock.setTime(1);
+        streamA = newStream();
+        clockA = new CoreTestClock();
+        clockA.setTime(1);
         // The retain duration is set below, once the hooks record: its call commits a
         // record of reclaim's settings (bergdb 015-87). The hooks record from the start on:
         // the creating start commits R(1), the startup distance's KV (bergdb 028-15), and
         // R(0) is recorded at the first hook of that transaction, before it changes the tree.
-        final Db db = builder(stream, clock, Eviction.Schedule.NONE).build();
-        final NodeStream ns = db.internal().nodeStream();
+        dbA = builder(streamA, clockA, Eviction.Schedule.NONE).build();
+        nsA = dbA.internal().nodeStream();
         final List<ValueNode> created = new ArrayList<ValueNode>();
         final List<Node> touched = new ArrayList<Node>();
         final boolean[] r0done = {false};
         final Runnable initR0 = () -> {
             if (!r0done[0]) {
                 r0done[0] = true;
-                recordR0(db, ns);
+                recordR0(dbA, nsA);
             }
         };
-        Db.TestHooks hooks = new Db.TestHooks() {
+        hooksA = new Db.TestHooks() {
             public void transExecuted(Db.ExecuteData x) {
                 initR0.run();
-                record(db, x, created, touched, ns);
+                record(dbA, x, created, touched, nsA);
                 created.clear();
                 touched.clear();
                 treeOps.clear();
+                // crash=K (bergdb 030-31): the database fails right after the K-th step's
+                // record is durable, inside the step's call, before Reclaim.step updates its
+                // row (a crash that loses the record is one before the step).
+                if (crashEvery > 0 && x.trans.touch && x.trans.isInternal()
+                        && ++stepsSeen % crashEvery == 0) {
+                    dbA.sync(x.trans.lastPos, SyncLevel.ORDINARY);
+                    crashing = true;
+                    throw new Crash();
+                }
             }
             public void valueNodeCreated(ValueNode node, long[] key) {
                 initR0.run();
@@ -823,17 +944,92 @@ public class TraceExport {
             }
         };
 
-        Db.testHooks = hooks;
+        Db.testHooks = hooksA;
         try {
-            db.start();
+            dbA.start();
             initR0.run();
-            db.setStartupDistance(startupDistance);     // R(2) (bergdb 028-13)
-            runAWorkload(db, stream, clock);
+            dbA.setStartupDistance(startupDistance);     // R(2) (bergdb 028-13)
+            runAWorkload();
         } finally {
             Db.testHooks = null;
         }
-        db.sync(SyncLevel.ORDINARY);
-        return stream;
+        dbA.sync(SyncLevel.ORDINARY);
+        return streamA;
+    }
+
+    /**
+     * Restarts run A's database (bergdb 030-31): after a sync and stop(), or after a crash as
+     * it is, from a copy of the stream. The hooks are off during the start, which must append
+     * nothing. The last record gets the RESTART line and, with steps=1, the RESUME line; after
+     * a crash in a step, the step's STEP line comes from the row that the start read.
+     */
+    void restartA(boolean crash) {
+        Rec last = recs.get(recs.size() - 1);
+        Db.testHooks = null;
+        if (!crash) {
+            dbA.sync(SyncLevel.ORDINARY);
+            dbA.stop();
+        }
+        AppendOnlyStream copy = copyOf(streamA);
+        long length = copy.getLength();
+        if (length < last.nextPos) {
+            error("the stream after R(" + last.index + ") ends at " + length + ", before the record's end, "
+                    + last.nextPos);
+        }
+        Db db = builder(copy, clockA, Eviction.Schedule.NONE).start();
+        if (copy.getLength() != length) {
+            error("the start after R(" + last.index + ") appended " + (copy.getLength() - length)
+                    + " bytes");
+        }
+        if (crash) {
+            try {
+                dbA.stop();
+            } catch (RuntimeException e) {
+                // A failed database: nothing to stop.
+            }
+            crashes++;
+        }
+        epoch++;
+        dbA = db;
+        nsA = db.internal().nodeStream();
+        streamA = copy;
+        last.restartLines.add("RESTART " + (crash ? "crash" : "stop"));
+        if (retain > 0 && stepLines) {
+            if (crash) stepEndedAfterCrash(db);
+            last.restartLines.add(resumeLine(db.internal().reclaim().currentIteration(), last));
+        }
+        Db.testHooks = hooksA;
+    }
+
+    /** The STEP line of a step that a crash ended (bergdb 030-31): lastKey after the step and
+     *  eod from its iteration's row as the start read it from the stream, the row the step
+     *  committed. */
+    void stepEndedAfterCrash(Db db) {
+        if (stepRec == null) return;
+        Reclaim rc = db.internal().reclaim();
+        Reclaim.IterationInfo row = rc.currentIteration();
+        if (row == null || row.pStart != stepRow.pStart) row = rc.lastDoneRow();
+        if (row == null || row.pStart != stepRow.pStart) {
+            error("STEP of R(" + stepRec.index + "): its iteration's row is not in the table after "
+                    + "the crash");
+            stepRec = null;
+            stepRow = null;
+            return;
+        }
+        stepRow = row;
+        stepEnded();
+    }
+
+    /** The RESUME line (bergdb 030-31; 027-02, section 4): the iteration in progress that the
+     *  start read from the stream, as t0, c, lastKey and endKey (E), or - for none. */
+    String resumeLine(Reclaim.IterationInfo it, Rec last) {
+        if (it == null) return "RESUME -";
+        Integer c = idxByTpos.get(it.pCut);
+        if (c == null) error("RESUME after R(" + last.index + "): pCut " + it.pCut + " is not a record's start");
+        if (it.endKey == null) error("RESUME after R(" + last.index + "): a row without endKey");
+        return "RESUME " + timeIndex(it.tStart, "tStart of the row resumed after R(" + last.index + ")")
+                + " " + (c == null ? -1 : c) + " " + (it.lastKey == null ? "-" : segs(it.lastKey))
+                + " " + (it.endKey == null || it.endKey.length == 0 ? "-" : segs(it.endKey));
     }
 
     /** R(0), the primordial record, and the state after it. */
@@ -857,28 +1053,57 @@ public class TraceExport {
         if (tree) recordTreeInit(db, r0, ns);
     }
 
-    /** Run A's workload, its calls recorded through the hooks. */
-    void runAWorkload(Db db, AppendOnlyStream stream, CoreTestClock clock) {
-        {
-            if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
-            for (int i = 0; i < n; i++) {
-                clock.setTime(times[i]);
-                Trans.Builder b = db.trans();
-                String[] ks = wkeys.get(i);
-                byte[][] vs = wvalues.get(i);
+    /** Run A's workload, its calls recorded through the hooks; the restarts and crashes of
+     *  restart=K, crash=K and a workload (bergdb 030-31). */
+    void runAWorkload() {
+        if (retain > 0) dbA.setRetainDuration(retainUnits);
+        if (System.getProperty("fraction") != null) {
+            dbA.setReclaimInternalFraction(Double.parseDouble(System.getProperty("fraction")));
+        }
+        for (int i = 0; i < n; i++) {
+            if (app != null) {
+                app.settingsBefore(i, dbA, clockA, times[i]);
+                app.maintainBefore(i, dbA, clockA, recs);
+            }
+            clockA.setTime(times[i]);
+            Trans.Builder b = dbA.trans();
+            String[] ks = wkeys.get(i);
+            byte[][] vs = wvalues.get(i);
+            if (app != null) {
+                long[][] segs = app.txs.get(i).keys;
+                for (int j = 0; j < segs.length; j++) {
+                    if (vs[j] == null) b.deleteLongKey(segs[j]);
+                    else b.putLongKey(segs[j], null, vs[j], null);
+                }
+            } else {
                 for (int j = 0; j < ks.length; j++) {
                     if (vs[j] == null) b.delete(ks[j]);
                     else b.put(ks[j], vs[j]);
                 }
-                Trans t = b.build();
-                userRec[i] = recs.size();
-                db.execute(t);
-                maintain(db, i);
-                userLast[i] = recs.size() - 1;
-                if (userLast[i] < userRec[i] || recs.get(userRec[i]).tt != t.tt) {
-                    error("transaction " + i + ": no record, or not the first of its call");
-                }
-                if (retain > 0) afterCall(db, stream, i);
+            }
+            Trans t = b.build();
+            userRec[i] = recs.size();
+            try {
+                dbA.execute(t);
+                maintain(dbA, i);
+            } catch (RuntimeException | Error e) {
+                if (!crashing) throw e;
+            }
+            userLast[i] = recs.size() - 1;
+            if (userLast[i] < userRec[i] || recs.get(userRec[i]).tt != t.tt) {
+                error("transaction " + i + ": no record, or not the first of its call");
+            }
+            if (app != null) app.compare(i, recs.get(userRec[i]), dbA);
+            if (crashing) {
+                crashing = false;
+                restartA(true);
+            }
+            if (retain > 0) afterCall(dbA, streamA, i);
+            boolean restart = restartEvery > 0 && (i + 1) % restartEvery == 0
+                    || app != null && app.restartBefore(i + 1);
+            // One restart after a record: none after the crash's.
+            if (restart && i + 1 < n && recs.get(recs.size() - 1).restartLines.isEmpty()) {
+                restartA(false);
             }
         }
     }
@@ -892,6 +1117,7 @@ public class TraceExport {
         rec.index = recs.size();
         rec.tt = t.tt;
         rec.tpos = t.tpos;
+        rec.nextPos = t.nextPos;
         if (idxByTt.containsKey(t.tt)) error("two records with time " + t.tt);
         idxByTt.put(t.tt, rec.index);
         idxByTpos.put(t.tpos, rec.index);
@@ -917,8 +1143,9 @@ public class TraceExport {
     /** The reads of the GET and SCAN lines: a generator of its own, so that the workload is
      *  the same with and without tree=1. */
     final Random treeRnd = new Random(0x5DEECE66DL);
-    /** Every key of the workload, for the GET and SCAN lines. */
-    List<String> treeKeys = null;
+    /** Every key of the workload, for the GET and SCAN lines, as segments: the generator's in
+     *  the order of their strings, a recorded workload's in key order (bergdb 030-31). */
+    List<long[]> treeKeys = null;
 
     static String segs(long[] key) {
         StringBuilder b = new StringBuilder("" + key.length);
@@ -1016,13 +1243,19 @@ public class TraceExport {
             Set<String> all = new TreeSet<String>();
             for (String[] ks : wkeys) for (String k : ks) all.add(k);
             all.add("/absent");
-            treeKeys = new ArrayList<String>(all);
+            treeKeys = new ArrayList<long[]>();
+            for (String k : all) treeKeys.add(Keys.toSegments(k));
+            if (app != null) {
+                TreeSet<long[]> keys = new TreeSet<long[]>(Keys::compareKeys);
+                for (AppRecord.Tx tx : app.txs) keys.addAll(Arrays.asList(tx.keys));
+                treeKeys.addAll(keys);
+            }
         }
         // Reads, from the first available time on (a read below it may expire).
         final GetData gd = db.newGetData();
         for (int g = 0; g < treeGets; g++) {
             int ti = lastFa + treeRnd.nextInt(rec.index - lastFa + 1);
-            long[] key = Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+            long[] key = treeKeys.get(treeRnd.nextInt(treeKeys.size()));
             try {
                 byte[] v = db.internal().dag().getOne(recs.get(ti).tt, key, gd);
                 rec.treeLines.add("GET " + ti + " " + segs(key) + " " + (v == null ? "-" : "" + hash(v)));
@@ -1037,9 +1270,9 @@ public class TraceExport {
             boolean endInclusive = treeRnd.nextBoolean();
             int limit = 1 + treeRnd.nextInt(6);
             long[] start = treeRnd.nextInt(5) == 0 ? null
-                    : Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+                    : treeKeys.get(treeRnd.nextInt(treeKeys.size()));
             long[] end = !forward || treeRnd.nextInt(2) == 0 ? null
-                    : Keys.toSegments(treeKeys.get(treeRnd.nextInt(treeKeys.size())));
+                    : treeKeys.get(treeRnd.nextInt(treeKeys.size()));
             try {
                 GetMany g = db.internal().dag().newGetMany();
                 g.gd.pointerFollower = gd.pointerFollower;
@@ -1664,7 +1897,7 @@ public class TraceExport {
         // Segments, from the root key nodes of the top nodes, through all pointers.
         Deque<KeyNode> todo = new ArrayDeque<KeyNode>();
         for (TopNode tn : topNodes) {
-            KeyNode root = (KeyNode) tn.getPointerNode(0);
+            KeyNode root = (KeyNode) ptrObj(tn, 0);
             if (root != null && !segment.containsKey(mid(root.getId()))) {
                 segment.put(mid(root.getId()), 0);
                 todo.add(root);
@@ -1675,7 +1908,7 @@ public class TraceExport {
             int g = segment.get(mid(k.getId()));
             for (int i = 0; i < k.size; i++) {
                 if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
-                Node c = k.getPointerNode(i);
+                Node c = ptrObj(k, i);
                 if (!(c instanceof KeyNode)) continue;
                 int gc = k.isSegmentLeaf() ? g + 1 : g;
                 Integer old = segment.get(mid(c.getId()));
@@ -1715,7 +1948,7 @@ public class TraceExport {
             int lo = Integer.MAX_VALUE, hi = -1;
             for (int i = 0; i < k.size; i++) {
                 if (Klong.getIntType(k.klongs[i]) != Klong.INT_TYPE_KEY) continue;
-                Node c = k.getPointerNode(i);
+                Node c = ptrObj(k, i);
                 if (!(c instanceof KeyNode)) continue;
                 int hc = heightOf((KeyNode) c);
                 lo = Math.min(lo, hc);
@@ -1751,9 +1984,12 @@ public class TraceExport {
                 + " valsize=" + valsize + " probe=" + probe + " live=" + live
                 + (shape.isEmpty() ? "" : " shape=" + shape)
                 + " segments=" + (bounds[0] + 1) + " height=" + bounds[1]
-                + (retain > 0 ? " retain=" + retain : ""));
+                + (retain > 0 ? " retain=" + retain : "")
+                + (restartEvery > 0 ? " restart=" + restartEvery : "")
+                + (crashEvery > 0 ? " crash=" + crashEvery : "")
+                + (app != null ? " workload=" + app.name : ""));
         if (tree) {
-            KeyNode first = topNodes.isEmpty() ? null : (KeyNode) topNodes.get(0).getPointerNode(0);
+            KeyNode first = topNodes.isEmpty() ? null : (KeyNode) ptrObj(topNodes.get(0), 0);
             out.println("TREE " + maxNode + " " + bounds[0] + " " + bounds[1] + " "
                     + (first == null ? -1 : mid(first.getId()))
                     // PE's thresholds (bergdb 027-02, section 4): minimum fill m, joined
@@ -1801,6 +2037,7 @@ public class TraceExport {
             for (long[] p : rec.dirty) dl.append(" ").append(p[0]).append(" ").append(p[1]);
             out.println(dl);
             for (String s : rec.reclaimLines) out.println(s);
+            for (String s : rec.restartLines) out.println(s);
             for (String s : rec.live) out.println(s);
             for (String s : rec.probes) out.println(s);
             for (String s : rec.firsts) out.println(s);
@@ -1827,7 +2064,19 @@ public class TraceExport {
             System.out.println("Usage: TraceExport seed out.trace (properties: see the class comment)");
             System.exit(2);
         }
-        TraceExport x = new TraceExport(Long.parseLong(args[0]));
+        // A recorded workload (bergdb 030-31) sets the properties that the fields read.
+        AppRecord.Workload w = null;
+        if (System.getProperty("workload") != null) {
+            w = AppRecord.Workload.read(System.getProperty("workload"));
+            w.setProperties();
+        }
+        TraceExport x = new TraceExport(Long.parseLong(args[0]), w);
+        if ((x.crashEvery > 0 || w != null) && (x.probe > 0 || !x.runE.isEmpty())
+                || x.live && (x.crashEvery > 0 || x.restartEvery > 0 || w != null)) {
+            System.out.println("TraceExport: crash=K and workload=F are for run A only (no probe,"
+                    + " no rune), and live=1 has no restarts");
+            System.exit(2);
+        }
         AppendOnlyStream a = x.runA();
         if (x.probe > 0) x.runB(a);
         if (!x.runE.isEmpty()) x.runE(a);
@@ -1848,6 +2097,12 @@ public class TraceExport {
             rc = " (" + (x.recs.size() - 1) + " records: " + steps + " steps, " + tables
                     + " table stores; " + cuts + " cuts decided, " + phys + " physical; "
                     + x.refsBelowCut + " references to versions before a cut)";
+        }
+        if (x.epoch > 0) {
+            rc += " (" + x.epoch + " restarts, " + x.crashes + " of them crashes)";
+        }
+        if (w != null) {
+            rc += " (" + w.summary() + ")";
         }
         String re = x.runE.isEmpty() ? "" : " (run E: " + x.slotLines + " SLOT lines, "
                 + x.handleLines + " handle lines, " + x.evictionSummary + ")";

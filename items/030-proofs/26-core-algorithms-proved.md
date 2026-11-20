@@ -312,9 +312,15 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
 
 - **Java is tested against the model, not proved.** The traces are
   generated workloads (node sizes 8 to 62, short and long keys, deletes,
-  drains, restarts, eviction, reclaim). A case no trace reaches is covered
-  only by the other tests, among them Java's own check of the contract
-  after every transaction of its unit tests and f-tests (`TransCheck`).
+  drains, restarts, crashes, eviction, reclaim), and since
+  [030-31](31-app-traces.md) the workloads of the user applications
+  (`java/stress/apps/`): their Core transactions recorded and replayed
+  with the traced run, the first 60 to 800 of each database, without the
+  apps' threads, eviction and file streams (which do not change the
+  records, section 5, item 9) and without the kills. A case no trace
+  reaches is covered only by the other tests, among them Java's own check
+  of the contract after every transaction of its unit tests and f-tests
+  (`TransCheck`).
   That PE accepts every transaction that Java admits is proved given the
   writer's fill rules, which are tested (2.1); a transaction that the
   model refuses on a trace fails the tree checker.
@@ -340,15 +346,20 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   as a whole. Every step of every iteration in those traces is checked
   against the model of the steps ([030-27](27-step-check.md)): the chain
   of steps, the range each scans, the values it writes again, and the cut
-  at the iteration's last step. Still tested only: that the trace's line
-  for a step is what Java's step holds in memory, Java's end key itself,
-  the steps of runs with restarts and crashes (argued in 030-25, section
-  2, and covered by the reclaim tests), and configurations the traces do
-  not reach (30 to 200 keys, node sizes 8 and 14).
+  at the iteration's last step. Since [030-31](31-app-traces.md) also
+  in runs with restarts, and with crashes right after a step's record:
+  the row each restart resumes (with Java's end key in it) and the step
+  after it. Still tested only: that the trace's line for a step is what
+  Java's step holds in memory, Java's end key where no restart reads it,
+  a crash at another point of reclaim's work (inside a step's record it
+  is a crash before the step; after the call, a restart), and
+  configurations the traces do not reach (30 to 200 keys, node sizes 8
+  and 14; the apps' traces reach few steps).
 - **No cost, time or memory statement is proved,** but the bound on a
   transaction of puts' index nodes (2.7): not the work of a start
   (bounded startup, [007](../007-bounds/readme.md), is measured and
-  tested), not the size of the stream, not the heap, not pauses. The tree's shape rules that only costs depend on (how full the
+  tested), not the size of the stream, not the heap, not pauses. The
+  tree's shape rules that only costs depend on (how full the
   nodes are, balance, dead entries) are not in the contract. These are
   measured and tested: the count gates in `night.sh`, `timing.sh`.
 
@@ -361,19 +372,31 @@ what is left of them follows "Left". Beside each is its test and where it
 runs: `before-commit.sh` before every commit to `java/`; the level
 scripts (`java/stress/level2.sh` to `level4.sh`) in full in `night.sh`,
 about once a day while there is development; `week.sh`, with more kills,
-fuzzing and the large trace set, before every release.
+fuzzing and the large trace set, before every release. The sets of
+traces run on fixed seeds, the same traces each time, and `night.sh`
+runs them on new seeds each day as well (030-30): the conformance sets
+small, drain, reclaim, evict and medium, and the tree sets small, drain
+and reclaim with the tree check, the contract checker, the bridge
+checker and `pecmp`; a failing trace is kept with its seed.
 
 1. ~~The writer meets the contract~~, proved for PE (030-21). Left:
    **Java's writer is PE.** The tree checker compares what Java writes
    with what the model's PE writes, node for node, on every traced
-   transaction of the small, drain and reclaim sets (`level2.sh`). The
-   contract checker checks Java's DAG after every traced transaction
-   (`level2.sh`; the medium set in `night.sh`). Java checks the contract
-   itself (`TransCheck`: the unit tests in `before-commit.sh`, the f-tests
-   in `night.sh`). The tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a
+   transaction of the small, drain and reclaim sets (`level2.sh`, and on
+   the day's seeds in `night.sh`). The contract checker checks Java's DAG
+   after every traced transaction (`level2.sh`; the medium set in
+   `night.sh`; the small and drain sets on the day's seeds in `night.sh`;
+   the user apps' workloads in `night.sh` and `week.sh`, `apptraces.sh`,
+   030-31).
+   Java checks the contract itself at every commit (`TransCheck`: the unit
+   tests in `before-commit.sh`, the f-tests in `night.sh`, and in
+   `week.sh` the user apps' quick and kill rounds, one seed of the kills
+   of `kill-restart.sh` and three rounds of the harness soak; 030-30). The
+   tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a
    copy of the proved one, rule for rule; `pecmp` compares the two at
    every transaction of the same three sets: the writes in their order,
-   the trees and the top nodes (`level2.sh`, step 8c; 030-28). The copy is
+   the trees and the top nodes (`level2.sh`, step 8c; 030-28; and on the
+   day's seeds in `night.sh`). The copy is
    pinned, and its hash is checked every night (`level2.sh`, step 0). So
    on those traces Java writes what the proved writer writes.
 2. **A synced append is durable.** CrashTest (`level2.sh` to
@@ -388,8 +411,8 @@ fuzzing and the large trace set, before every release.
    back what was written: RestartStress, RestartInvariance (`level2.sh`
    to `level4.sh`), `kill-restart.sh`. Damaged bytes: best effort only.
 6. **Java's readers are the model's.** Java's answers to the gets and
-   scans of every traced transaction (`level2.sh`; the medium set in
-   `night.sh`), and Java's own searches of every node and of the top
+   scans of every traced transaction (`level2.sh`; the medium set, and
+   the sets on the day's seeds, in `night.sh`), and Java's own searches of every node and of the top
    nodes in the traces with LIVE lines (`level2.sh`).
 7. **The trace's operations are the user's transaction**, after the key
    and value transformations. Lookups after restarts, against the
@@ -406,14 +429,17 @@ fuzzing and the large trace set, before every release.
 10. **Java's records and dirty nodes are the model's.** The trace checker
     runs the model's step on every traced transaction and compares the
     record and the nodes to write (`level2.sh` to `level4.sh`; the medium
-    set in `night.sh`, the large one in `week.sh`).
+    set, and the sets on the day's seeds, in `night.sh`; the large one in
+    `week.sh`; the user apps' workloads in both, 030-31).
 11. ~~A cut is safe~~, proved from reclaim's contract and the model of its
     steps (030-24, 030-25). Left: **RC1 and RC4 at each cut**, checked at
     every cut of the reclaim traces (`level3.sh`); and **Java's steps are
     the model's**: every step of the reclaim traces checked against the
     model of the steps, after the check's own fault test (C-STEP, 030-27:
-    `level3.sh`), and the reclaim tests (ReclaimStress: `level3.sh`,
-    `level4.sh`). Still tested only: section 4.
+    `level3.sh`), also across restarts and crashes of the traced run
+    (STEP-resume, 030-31: `level3.sh`), and the reclaim tests
+    (ReclaimStress: `level3.sh`, `level4.sh`). Still tested only: section
+    4.
 12. **A trace's lines are Java's change.** The trace's completeness checks
     (030-09) and the trace and tree checkers (`level2.sh` to `level4.sh`).
 13. **Java's startup builds what the stream holds.** Lookups after a
@@ -436,7 +462,13 @@ fuzzing and the large trace set, before every release.
   compares the tree checker's copy of PE with the proved writer on its
   traces (`pecmp`, step 8c; 030-28).
 - **The checks.** The tests of section 5 run as the code changes, in
-  `before-commit.sh`, the level scripts, `night.sh` and `week.sh`.
+  `before-commit.sh`, the level scripts, `night.sh` and `week.sh`. The
+  sets of traces run on fixed seeds, a regression set, and in `night.sh`
+  also on new seeds each day, so that each night checks traces not
+  checked before; a failing trace is kept with its seed and the command
+  that makes it again (030-30). Java's own check of the contract runs at
+  every commit of the unit tests and f-tests, and of a part of
+  `week.sh`'s steps (030-30).
 - **A change to the writer or to reclaim** must keep Java equal to the
   model on the traces, which the level scripts check. So the change is
   made in the model too: in PE (`Contract/PeWriter.lean`) with its proof
@@ -465,6 +497,9 @@ fuzzing and the large trace set, before every release.
   day, every reclaim step on the traces checked against that model
   ([030-27](27-step-check.md)), and the tested writer compared with the
   proved one every night ([030-28](28-writer-copy-checked.md)).
+- 20 November: the user applications' workloads traced and checked, and
+  reclaim's steps checked across restarts and crashes
+  ([030-31](31-app-traces.md)).
 
 
 # Log
@@ -501,6 +536,16 @@ structure, it says "the DAG" or "the stored nodes" (sections 2, 2.3, 3.1,
 
 2026-11-20. Kept up to date with `main`, at least until release 2026.6
 (Frans).
+
+2026-11-20. Brought up to date with 030-31: the user applications'
+workloads in the traces (section 4; section 5, items 1 and 10), reclaim's
+steps checked across restarts and crashes, with Java's end key at each
+restart (section 4; section 5, item 11), and the history (section 7).
+
+2026-11-20. Brought up to date with 030-30 (section 5's introduction and
+items 1, 6 and 10, section 6's checks): the sets of traces on new seeds
+each day in `night.sh`, and Java's own check of the contract in a part
+of `week.sh`.
 
 2026-11-20. Brought up to date with 030-29: the dirty-node bound proved
 for transactions of puts, given the fill rules (2.7, section 4); PE's

@@ -994,6 +994,37 @@ def reclaimStepFailures (i : Nat) (s : SIS.Check.Tree.TStep) (prev : Option SIS.
   [(.put [16] 1, false), (.put [16] 1, false)]).1.map (·.1)) ==
   ["STEP-chain", "STEP-c", "STEP-ops"]
 
+/-- STEP-resume (bergdb 030-31) for the RESUME line ρ after a restart after T(i): the row that
+the start read from the stream is the iteration's row as its last step left it (030-25: a
+restart resumes from the row the step committed). prev is the STEP line before it; e the
+greatest key live after T(ρ.t0), E. If prev is of ρ's iteration: the same c, lastKey the
+step's L', and the iteration not ended (no eod); else the iteration has had no step: lastKey
+none, after an iteration ended by a step with eod, with a later t0, c ≤ t0 + 1 and t0 ≤ i.
+And ρ's E is e. -/
+def resumeFailures (i : Nat) (ρ : SIS.Check.Tree.TResume) (prev : Option SIS.Check.Tree.TStep)
+    (e : Option SIS.Tree.Key) : List String :=
+  let row : List String := match prev with
+    | some q =>
+      if q.t0 == ρ.t0 then
+        (if q.c == ρ.c then [] else [s!"c {ρ.c}, the iteration's last step has c {q.c}"]) ++
+        (if q.next == ρ.last then [] else
+          [s!"lastKey {showKeyOpt ρ.last}, the iteration's last step left {showKeyOpt q.next}"]) ++
+        (if q.eod then [s!"the iteration of t0 {ρ.t0} resumed, but its last step had eod"] else [])
+      else
+        (if ρ.last.isNone then [] else [s!"lastKey {showKeyOpt ρ.last} in an iteration without a step"]) ++
+        (if q.eod then [] else [s!"a new iteration (t0 {ρ.t0}) resumed before a step with eod in the one of t0 {q.t0}"]) ++
+        (if q.t0 < ρ.t0 then [] else [s!"t0 {ρ.t0}, not after the iteration before's, {q.t0}"])
+    | none => if ρ.last.isNone then [] else [s!"lastKey {showKeyOpt ρ.last} in an iteration without a step"]
+  let cf := (if ρ.c ≤ ρ.t0 + 1 then [] else [s!"c {ρ.c} after t0 + 1 = {ρ.t0 + 1}"]) ++
+    (if ρ.t0 ≤ i then [] else [s!"t0 {ρ.t0} after the restart's record {i}"])
+  let ef := if ρ.e == e then [] else
+    [s!"endKey {showKeyOpt ρ.e}, but the greatest key live after T({ρ.t0}) is {showKeyOpt e}"]
+  row ++ cf ++ ef
+
+#guard resumeFailures 9 ⟨1, 2, some [16], some [24]⟩ (some ⟨1, 2, none, some [16], false⟩) (some [24]) == []
+#guard (resumeFailures 9 ⟨1, 2, some [8], some [16]⟩ (some ⟨1, 2, none, some [16], true⟩) (some [24])).length == 3
+#guard resumeFailures 9 ⟨5, 2, none, none⟩ (some ⟨1, 2, none, some [16], true⟩) none == []
+
 /-- The counts of C-STEP, and its failures, each with its record. -/
 structure StepReport where
   /-- STEP lines checked. -/
@@ -1005,6 +1036,13 @@ structure StepReport where
   old : Nat := 0
   /-- CUT lines checked against their iteration's last step. -/
   cuts : Nat := 0
+  /-- Restarts (RESTART lines; bergdb 030-31), the crashes among them, the RESUME lines with
+  an iteration in progress, and the iterations with a step before a restart and the next
+  after it. -/
+  restarts : Nat := 0
+  crashes : Nat := 0
+  resumed : Nat := 0
+  spans : Nat := 0
   fails : List (Nat × List (String × String)) := []
 
 /-- C-STEP over a trace with STEP lines (bergdb 030-27): `reclaimStepFailures` for every STEP line,
@@ -1034,6 +1072,9 @@ def stepCheck (tr : Trace) (tt : SIS.Check.Tree.TTrace) : StepReport := Id.run d
     let mut P : SIS.Check.Tree.PMap := {}
     let mut prev : Option SIS.Check.Tree.TStep := none
     let mut eOf : Option (Nat × Option SIS.Tree.Key) := none
+    -- The row resumed by the last restart, until the next STEP line, and whether its
+    -- iteration had a step before the restart (bergdb 030-31).
+    let mut pending : Option (SIS.Check.Tree.TResume × Bool) := none
     for (r, x) in recs.toList.zip tt.txs.toList do
       let after := SIS.Check.Tree.applyRec p P r
       let mut f : List (String × String) := []
@@ -1045,6 +1086,15 @@ def stepCheck (tr : Trace) (tt : SIS.Check.Tree.TTrace) : StepReport := Id.run d
         if isStep then f := f ++ [("STEP-line", "a step (a TOUCH line) without a STEP line")]
       | some s =>
         if !isStep then f := f ++ [("STEP-line", "a STEP line in a transaction without a TOUCH line")]
+        -- STEP-resume (bergdb 030-31): the first step after a restart goes on from the row
+        -- that the start resumed.
+        match pending with
+        | some (ρ, before) =>
+          if s.t0 != ρ.t0 || s.c != ρ.c || s.last != ρ.last then
+            f := f ++ [("STEP-resume", s!"the first step after the restart (t0 {s.t0}, c {s.c}, lastKey {showKeyOpt s.last}) is not of the row resumed (t0 {ρ.t0}, c {ρ.c}, lastKey {showKeyOpt ρ.last})")]
+          else if before then rep := { rep with spans := rep.spans + 1 }
+          pending := none
+        | none => pure ()
         let view : View BVal := fun y => after[y]?
         let e := match eOf with
           | some (t0, e) => if t0 == s.t0 then e else ((liveKeysAt p view s.t0).getLast?.map (·.1))
@@ -1057,6 +1107,25 @@ def stepCheck (tr : Trace) (tt : SIS.Check.Tree.TTrace) : StepReport := Id.run d
         if s.eod && lastOf[s.t0]? == some r.idx then rep := { rep with ended := rep.ended + 1 }
         rep := { rep with steps := rep.steps + 1, old := rep.old + n }
         prev := some s
+      -- RESTART and RESUME (bergdb 030-31): the iteration that the start read, at the state
+      -- after T(i), against the STEP lines before.
+      match x.restart, x.resume with
+      | none, none => pure ()
+      | none, some _ => f := f ++ [("STEP-resume", "a RESUME line without a restart")]
+      | some _, none => f := f ++ [("STEP-resume", "a restart without a RESUME line")]
+      | some k, some ρo =>
+        rep := { rep with restarts := rep.restarts + 1, crashes := rep.crashes + (if k == "crash" then 1 else 0) }
+        match ρo with
+        | none =>
+          if prev.any (!·.eod) then
+            f := f ++ [("STEP-resume", s!"no iteration resumed, but the one of t0 {(prev.map (·.t0)).getD 0} has had no step with eod")]
+          pending := none
+        | some ρ =>
+          let view : View BVal := fun y => after[y]?
+          let e := (liveKeysAt p view ρ.t0).getLast?.map (·.1)
+          f := f ++ (resumeFailures r.idx ρ prev e).map (fun m => ("STEP-resume", m))
+          rep := { rep with resumed := rep.resumed + 1 }
+          pending := some (ρ, prev.any (·.t0 == ρ.t0))
       match r.cut with
       | some (c, fa) =>
         rep := { rep with cuts := rep.cuts + 1 }

@@ -3,7 +3,7 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|evict|drain] [seeds]
+# Usage: [ONLY=NAME] java/stress/conformance.sh [small|medium|large|all|reclaim|crash|evict|drain] [seeds [first]]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
@@ -17,7 +17,11 @@
 #   are of format 3 with STEP lines (TraceExport's tree=1 and steps=1), and the
 #   checker's C-STEP checks each step of reclaim against the model of the steps
 #   (030-25) and each cut against its iteration's last step; a trace without a STEP
-#   line fails. evict (2026-10-18, bergdb
+#   line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
+#   restarted after every K-th call and crashed right after every K-th step of reclaim
+#   (TraceExport's restart and crash), RESTART and RESUME lines, and C-STEP's
+#   STEP-resume: an iteration across a restart goes on from the row its last step
+#   committed; a trace without a cut, a STEP line or a crash fails. evict (2026-10-18, bergdb
 #   item 001, WP J4): Level 4, configurations of the small, medium and reclaim
 #   sets with run E (TraceExport's rune: run A's workload with a forced eviction
 #   schedule, or the capacity controller with a small budget, since J7), whose
@@ -52,6 +56,16 @@
 #   evict, 3 drain). The checker computes
 #   the model's own definitions, with fast versions proven equal to them
 #   (lean/Check/Fast.lean, since bergdb item 001, WP C2).
+#   first: the first seed (default 1): the seeds are first to first + seeds - 1, and a
+#   trace's seed is in its name (NAME-SEED). The fixed seeds from 1 are the level scripts'
+#   regression set; night.sh adds a run on new seeds each day, from the day's number times
+#   1000 (bergdb 030-30). With a first other than 1 the traces go to
+#   build/traces/SET-FIRST/, so that the fixed seeds' traces stay.
+#
+# ONLY=NAME runs only the configuration NAME of the set: with seeds 1 and first SEED, one
+# trace again (bergdb 030-30). A failing trace gets a line FAILED with its seed and the
+# command that runs it again, and its path in the set's failed.txt (night.sh keeps those
+# traces).
 #
 # PAR=N runs N traces at once (default 4), each an export and its check.
 #
@@ -79,6 +93,9 @@ else
 fi
 SET=${1:-small}
 PAR=${PAR:-4}
+# The first seed, and the suffix of the sets' directories (bergdb 030-30).
+FIRST=${3:-1}
+if [ "$FIRST" = 1 ]; then SUF=; else SUF=-$FIRST; fi
 LEAN=../lean
 CHECK=${CHECK:-$LEAN/.lake/build/bin/tracecheck}
 [ -x "$CHECK" ] || { echo "CONFORMANCE FAILED: no checker; run lake build in lean/"; exit 1; }
@@ -116,6 +133,17 @@ reclaim() {
     # maintain() after every user transaction (bergdb 024-32): its steps, its empty records
     # with a take beyond the share, its fillers and its cuts.
     echo "r-maint -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dretain=1 -Dprobe=10 -Dmaint=1"
+}
+
+crash() {
+    # Reclaim across restarts and crashes of run A (bergdb 030-31): larger values and more
+    # keys than the reclaim set's, so that iterations take several steps and cross a
+    # restart; no run B (probe), whose run has no crash.
+    echo "c-small -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Drestart=10 -Dcrash=2"
+    echo "c-vals  -Dn=400 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=6 -Ddel=20 -Dvalsize=200 -Dretain=1 -Drestart=5 -Dcrash=3"
+    echo "c-long  -Dn=400 -Dkeys=150 -Dmaxnode=14 -Dsd=500 -Dops=6 -Dlong=1 -Ddel=25 -Dvalsize=150 -Dretain=2 -Drestart=7 -Dcrash=2"
+    echo "c-del60 -Dn=300 -Dkeys=60 -Dmaxnode=8 -Dsd=200 -Dops=6 -Ddel=60 -Dvalsize=100 -Dretain=1 -Drestart=4 -Dcrash=2"
+    echo "c-maint -Dn=200 -Dkeys=100 -Dmaxnode=8 -Dsd=300 -Dops=4 -Ddel=25 -Dvalsize=150 -Dretain=1 -Dmaint=2 -Drestart=6 -Dcrash=4"
 }
 
 evict() {
@@ -180,8 +208,8 @@ large() {
 one_trace() {
     set_name=$1; name=$2; s=$3; props=$4
     # The reclaim set: format 3 with STEP lines, for C-STEP (bergdb 030-27).
-    if [ $set_name = reclaim ]; then props="$props -Dtree=1 -Dsteps=1"; fi
-    dir=build/traces/$set_name
+    if [ $set_name = reclaim ] || [ $set_name = crash ]; then props="$props -Dtree=1 -Dsteps=1"; fi
+    dir=build/traces/$set_name$SUF
     t=$dir/$name-$s.trace
     timed $dir/$name-$s.export.time \
         $JAVA -ea $props -cp $CP bergdb.core.TraceExport $s $t > $dir/$name-$s.export.txt 2>&1 \
@@ -197,16 +225,21 @@ one_trace() {
 run_set() {
     set_name=$1
     seeds=$2
-    dir=build/traces/$set_name
+    dir=build/traces/$set_name$SUF
     RAN="$RAN $set_name"
     mkdir -p $dir
     find $dir -type f -delete
-    $set_name > $dir/configs.txt
+    if [ -n "${ONLY:-}" ]; then
+        $set_name | awk -v n="$ONLY" '$1 == n' > $dir/configs.txt
+        [ -s $dir/configs.txt ] || { echo "CONFORMANCE FAILED: no configuration $ONLY in set $set_name"; exit 2; }
+    else
+        $set_name > $dir/configs.txt
+    fi
     # PAR traces at once, in batches.
     running=0
     while read name props; do
-        s=1
-        while [ $s -le $seeds ]; do
+        s=$FIRST
+        while [ $s -lt $((FIRST + seeds)) ]; do
             one_trace $set_name $name $s "$props" &
             running=$((running + 1))
             if [ $running -ge $PAR ]; then
@@ -217,13 +250,38 @@ run_set() {
         done
     done < $dir/configs.txt
     wait
+    : > $dir/failed.txt
     while read name props; do
-        s=1
-        while [ $s -le $seeds ]; do
+        s=$FIRST
+        while [ $s -lt $((FIRST + seeds)) ]; do
             echo "   $name-$s: $(tail -1 $dir/$name-$s.check.txt)"
+            why=$(trace_failure $set_name $dir/$name-$s)
+            if [ -n "$why" ]; then
+                echo "$dir/$name-$s.trace" >> $dir/failed.txt
+                echo "   FAILED $name-$s, set $set_name, seed $s: $why; trace java/$dir/$name-$s.trace;" \
+                    "rerun from the repository's root: ONLY=$name sh java/stress/conformance.sh $set_name 1 $s"
+            fi
             s=$((s + 1))
         done
     done < $dir/configs.txt
+}
+
+# Why the trace $2 (its path without .trace) of set $1 fails, by the checks of the end of
+# this script; nothing if it passes (bergdb 030-30).
+trace_failure() {
+    if ! grep -q 'TRACECHECK OK' $2.check.txt 2> /dev/null; then
+        echo "$(tail -1 $2.check.txt 2> /dev/null)"
+    elif [ $1 = reclaim ] && ! grep -q '^CUT ' $2.trace; then
+        echo "a reclaim trace without a cut"
+    elif [ $1 = reclaim ] && ! grep -q '^STEP ' $2.trace; then
+        echo "a reclaim trace without a STEP line"
+    elif [ $1 = evict ] && ! grep -q '^SLOT ' $2.trace; then
+        echo "an eviction trace without SLOT lines"
+    elif [ $1 = evict ] && ! grep -q '^HANDLE ' $2.trace; then
+        echo "an eviction trace without HANDLE lines"
+    elif ! grep -q '^C-A adoptions below the old parent .*: 0 of' $2.check.txt; then
+        echo "an adoption below the old parent (A6), or no count of them"
+    fi
 }
 
 # The Dag's counters of the exports of set $1, summed (TraceExport's last output line, so
@@ -231,19 +289,19 @@ run_set() {
 # decisions (PeWriter, bergdb 026-25; until record format 8 the delete path's upward unlink,
 # root collapse and take-back, bergdb 024-06, section 4.4).
 dag_counters() {
-    cat build/traces/$1/*.export.txt | sed -nE 's/^Dag counters: transactions ([0-9]+), appends ([0-9]+), replaced ([0-9]+), compactions ([0-9]+), cuts ([0-9]+), joins ([0-9]+), collapses ([0-9]+), new roots ([0-9]+), dropped ([0-9]+)$/\1 \2 \3 \4 \5 \6 \7 \8 \9/p' \
+    cat build/traces/$1$SUF/*.export.txt | sed -nE 's/^Dag counters: transactions ([0-9]+), appends ([0-9]+), replaced ([0-9]+), compactions ([0-9]+), cuts ([0-9]+), joins ([0-9]+), collapses ([0-9]+), new roots ([0-9]+), dropped ([0-9]+)$/\1 \2 \3 \4 \5 \6 \7 \8 \9/p' \
         | awk '{n++; a+=$2; r+=$3; p+=$4; u+=$5; j+=$6; c+=$7; w+=$8; d+=$9; if ($6 > 0) nj++; if ($7 > 0) nc++}
             END {print "   Dag counters (the exports, each with its runs A, B and E): appends " a+0 ", replaced " r+0 ", compactions " p+0 ", cuts " u+0 ", joins " j+0 ", collapses " c+0 ", new roots " w+0 ", dropped " d+0 "; of " n+0 " traces " nj+0 " join a node, " nc+0 " collapse a root"}'
 }
 
 # The joins of the exports of configuration $2 of set $1, over its seeds.
 joins() {
-    cat build/traces/$1/$2-*.export.txt | sed -nE 's/^Dag counters: .*, joins ([0-9]+), .*/\1/p' \
+    cat build/traces/$1$SUF/$2-*.export.txt | sed -nE 's/^Dag counters: .*, joins ([0-9]+), .*/\1/p' \
         | awk '{s+=$1} END {print s+0}'
 }
 
 summary() {
-    dir=build/traces/$1
+    dir=build/traces/$1$SUF
     echo "Summed over the traces of $1, target mode: transactions failing, by check"
     for k in "C-A assumptions" "C-S steps" "diagnostics"; do
         grep -h "^$k" $dir/*.check.txt | sed -E 's/.*\((.*)\)/\1/' | tr ',' '\n' \
@@ -251,9 +309,12 @@ summary() {
     done
     echo "   C-A adoptions below the old parent (A6' allows them, A6 not): $(grep -h '^C-A adoptions below' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of .*/\1/' | awk '{s+=$1} END {print s+0}') transactions"
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
-    if [ $1 = reclaim ]; then
+    if [ $1 = reclaim ] || [ $1 = crash ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
         echo "   C-STEP: $(grep -h '^C-STEP' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail.*; ([0-9]+) STEP lines, ([0-9]+) iterations \(([0-9]+) ended.*, ([0-9]+) old KVs.*, ([0-9]+) CUT lines.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; s+=$3; i+=$4; e+=$5; o+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " s+0 " STEP lines, " i+0 " iterations (" e+0 " ended by a step with eod), " o+0 " old KVs met and checked put again, " c+0 " CUT lines with their iteration'"'"'s last step"}'); traces without a STEP line: $(grep -L '^STEP ' $dir/*.trace | wc -l | tr -d ' ')"
+    fi
+    if [ $1 = crash ]; then
+        echo "   STEP-resume: $(grep -h '^C-STEP' $dir/*.check.txt | sed -nE 's/.*; ([0-9]+) restarts \(([0-9]+) crashes\), ([0-9]+) with an iteration in progress, ([0-9]+) iterations with.*/\1 \2 \3 \4/p' | awk '{r+=$1; c+=$2; i+=$3; s+=$4} END {print r+0 " restarts (" c+0 " crashes), " i+0 " with an iteration in progress, " s+0 " iterations with a step before a restart and the next after it"}')"
     fi
     if [ $1 = evict ]; then
         echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
@@ -286,33 +347,38 @@ case $SET in
     all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium
         run_set large ${2:-2}; summary large ;;
     reclaim) run_set reclaim ${2:-5}; summary reclaim ;;
+    crash) run_set crash ${2:-3}; summary crash ;;
     evict) run_set evict ${2:-3}; summary evict ;;
     drain) run_set drain ${2:-3}; summary drain ;;
-    *) echo "usage: $0 [small|medium|large|all|reclaim|evict|drain] [seeds]"; exit 2 ;;
+    *) echo "usage: $0 [small|medium|large|all|reclaim|crash|evict|drain] [seeds [first]]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
-    if grep -L "TRACECHECK OK" build/traces/$set_name/*.check.txt 2>/dev/null | grep -q .; then
+    if grep -L "TRACECHECK OK" build/traces/$set_name$SUF/*.check.txt 2>/dev/null | grep -q .; then
         echo "CONFORMANCE FAILED"
         exit 1
     fi
-    if [ $set_name = reclaim ] && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
+    if { [ $set_name = reclaim ] || [ $set_name = crash ]; } && grep -L '^CUT ' build/traces/$set_name$SUF/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a cut"
         exit 1
     fi
-    if [ $set_name = reclaim ] && grep -L '^STEP ' build/traces/$set_name/*.trace | grep -q .; then
+    if { [ $set_name = reclaim ] || [ $set_name = crash ]; } && grep -L '^STEP ' build/traces/$set_name$SUF/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a STEP line"
         exit 1
     fi
-    if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name/*.trace | grep -q .; then
+    if [ $set_name = crash ] && grep -L '^RESTART crash' build/traces/$set_name$SUF/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: a crash trace without a crash"
+        exit 1
+    fi
+    if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name$SUF/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: an eviction trace without SLOT lines"
         exit 1
     fi
-    if [ $set_name = evict ] && grep -L '^HANDLE ' build/traces/$set_name/*.trace | grep -q .; then
+    if [ $set_name = evict ] && grep -L '^HANDLE ' build/traces/$set_name$SUF/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: an eviction trace without HANDLE lines"
         exit 1
     fi
-    for f in build/traces/$set_name/*.check.txt; do
+    for f in build/traces/$set_name$SUF/*.check.txt; do
         [ -f $f ] || continue
         if ! grep -q '^C-A adoptions below the old parent .*: 0 of' $f; then
             echo "CONFORMANCE FAILED: a trace with an adoption below the old parent (A6), or without the count ($f)"
@@ -321,9 +387,9 @@ for set_name in $RAN; do
     done
     # A draining configuration must reach the merges (bergdb 024-09, step A1; until record
     # format 8 the take-back, bergdb 026-25).
-    for name in $(sed -n 's/^\([^ ]*drain[^ ]*\) .*/\1/p' build/traces/$set_name/configs.txt); do
+    for name in $(sed -n 's/^\([^ ]*drain[^ ]*\) .*/\1/p' build/traces/$set_name$SUF/configs.txt); do
         if [ "$(joins $set_name $name)" = 0 ]; then
-            echo "CONFORMANCE FAILED: the draining configuration $name of set $set_name joins no node in its seeds: its traces do not reach the merges (the Dag counters in build/traces/$set_name/$name-*.export.txt)"
+            echo "CONFORMANCE FAILED: the draining configuration $name of set $set_name joins no node in its seeds: its traces do not reach the merges (the Dag counters in build/traces/$set_name$SUF/$name-*.export.txt)"
             exit 1
         fi
     done

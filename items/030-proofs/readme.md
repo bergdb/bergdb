@@ -37,6 +37,27 @@ tested assumptions, which 030-26, section 5, lists as they now stand.
 030-26 states the claim for publication, in the words Frans chose,
 "BergDB's core algorithms are proved", with the model and its limits.
 
+**From 2026-11-20 on** (Frans decided, 2026-11-20), with the scope
+unchanged (the Core's algorithms; threads, the Pub layer, Java's code
+itself and the costs stay outside):
+
+1. **Keep it true.** 030-26 stays current with `main`; the proofs change
+   with the code; the gate, the pins and the nightly checks run.
+2. **Strengthen the tested links where a fault would hurt users most.**
+   Wider testing of Java against the model: new trace seeds each day,
+   each recorded so that a failure can be reproduced, and Java's commit
+   check in week.sh on a subset that adds less than an hour (030-30);
+   traces of the user apps' workloads and of reclaim's steps across
+   restarts (030-31). Proofs of the bounds that keep a transaction within
+   the record limit: `dirtyNodeBound` against PE, and the acceptance
+   argument of 030-28, section 5 (030-29).
+3. **The stream format of release 2026.8 designed model first** (032):
+   the model and the proofs change with the format's design, not after it.
+
+Not now: RC1 and RC4 in Lean (arithmetic, checked at every cut), a model
+of threads, the cost and bounded-startup statements (D4, D5), the Pub
+layer.
+
 Before: a fully proved model: "We still try to prove everything now.
 Once that work is done, I may decide on a general policy on this."
 (Frans, 2026-11-15, 08:47.) The goals in order were 006-26, section 8;
@@ -538,6 +559,24 @@ Files
   (224,000 random transactions, none above), not proved; 030-28, section 5,
   in Lean, with H = 126 in place of 100 (`pe_accepts_java`). Written
   2026-11-20. Status: open.
+* [030-30](30-seeds-and-contract-check.md). Two changes to the testing
+  of Java against the model (Frans, 2026-11-20): `night.sh` runs the
+  sets of traces on new seeds each day as well (the conformance sets and
+  the tree sets with the tree check, the contract and bridge checkers
+  and `pecmp`; 406 traces, 13 minutes), every seed recorded, a failing
+  trace kept with the command that makes it again; and `week.sh` runs
+  Java's commit-time check (CC) on the apps' quick and kill rounds, one
+  kill-restart seed and three harness-soak rounds, switched on in every
+  JVM by the environment variable `BERGDB_TRANSCHECK`; its cost
+  measured. Written 2026-11-20. Status: done.
+* [030-31](31-app-traces.md). The user apps' workloads and reclaim
+  across restarts, against the model (Frans, 2026-11-20): AppRecord
+  records an app's Core transactions and TraceExport replays them
+  (`workload=F`), checked by tracecheck, the contract checker and the
+  bridge checker (`apptraces.sh`, in `night.sh` and `week.sh`); run A
+  restarts and crashes (`restart=K`, `crash=K`), RESTART and RESUME
+  lines, and C-STEP's STEP-resume (`conformance.sh crash`, in
+  `level3.sh`). Written 2026-11-20. Status: done.
 
 Log
 ===

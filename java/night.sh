@@ -23,10 +23,15 @@
 # runs it with other seeds and sizes (028-27 lists them).
 #
 # Usage: java/night.sh          the night run, about 2.5 hours on F53 (100 minutes
-#                               before bergdb 030-13, which adds about 30 to 35)
+#                               before bergdb 030-13, which adds about 30 to 35;
+#                               030-30's two steps on the day's seeds about 13 more)
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
 #                               only the night tests, here, about 4.5 minutes
-#        DRY=1 java/night.sh    prints the steps in order with their commands, runs
+#        java/night.sh day      only steps 12 and 12b, the sets on the day's seeds, in a
+#                               clone as the night run (about 15 minutes); with DAY=N in
+#                               the environment, the seeds of day N again (bergdb 030-30)
+#        DRY=1 java/night.sh [day]
+#                               prints the steps in order with their commands, runs
 #                               nothing (no clone, no report)
 # The large conformance set, once "night.sh large", is week.sh's since 2026-11-19 (bergdb
 # 028-27), and week.sh no longer runs this script's steps.
@@ -90,6 +95,24 @@
 #      (pecmp, bergdb 030-28) on the medium set's traces of step 11b, as level2.sh's
 #      step 8c on the small, drain and reclaim sets; its own tests first, on level2.sh's
 #      small and drain traces. About 1.5 minutes on F53 (added 2026-11-20).
+#  11d. stress/apptraces.sh night: the user apps' workloads against the model (bergdb
+#      030-31): nine apps run small with their Core transactions recorded, each
+#      recording replayed by TraceExport and checked by tracecheck, the contract checker
+#      and the bridge checker; about 3 minutes (week.sh runs it larger, other seeds).
+#  12. conformance-day: new seeds each day (bergdb 030-30). Every set of traces above
+#      (conformance.sh, treeconf.sh and contractconf.sh, in the level scripts and steps 11
+#      to 11c) numbers its seeds from 1: the same traces every night, a regression set.
+#      This step runs conformance.sh's sets on the day's seeds, from the day's number
+#      times 1000 (CONFSETS_DAY below): small and drain 10 seeds a configuration, reclaim
+#      4, evict and medium 3; 211 traces.
+#  12b. contract-day: the tree sets on the day's seeds (TREESETS_DAY): contractconf.sh
+#      with TREE=1 (the tree check, the writer's contract, the bridge) on small and drain,
+#      10 seeds a configuration, and reclaim, 3; then pecmp on them; 195 traces.
+#      Both steps 13 minutes on F53 at a load of 20 to 37 (2026-11-20). Each trace's seed
+#      is in its name and on its line in the step's log (NAME-SEED: ...), and the step's
+#      line in the report gives the seeds. A failing trace has a line FAILED in the log
+#      with its seed and the command that makes it again from its seed, and the trace
+#      with its outputs is kept in build/night/RUN/traces/ (runlib.sh's keep_traces).
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
 # line, result and time, and NIGHT OK or NIGHT FAILED), each step's output in
 # STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and
@@ -111,12 +134,13 @@ if [ "$1" = tests ]; then
     exit 0
 fi
 
-if [ -n "${1:-}" ]; then
-    echo "Usage: java/night.sh [tests [OPTIONS]] (\"large\" and \"week\" are week.sh's since bergdb 028-27)"
-    exit 2
-fi
-
-run_start night "Night run"
+DAYONLY=0
+case "${1:-}" in
+    "") ;;
+    day) DAYONLY=1 ;;
+    *) echo "Usage: java/night.sh [tests [OPTIONS] | day] (\"large\" and \"week\" are week.sh's since bergdb 028-27)"
+       exit 2 ;;
+esac
 
 # The night tests in the clone (its night.sh may be older than this one).
 night_tests() {
@@ -134,27 +158,115 @@ pecmp_medium() {
     sh ../lean/pecmp/check.sh medium
 }
 
-step before-commit sh before-commit.sh
-step core-build sh stress/core-build.sh unit f
-step transcheck sh stress/transcheck.sh
-step level1 sh stress/level1.sh
-step level2 sh stress/level2.sh
-step level3 sh stress/level3.sh
-step level4 sh stress/level4.sh
-# Count gates of aims 2 and 3 at 1M keys (bergdb 024-30).
-step count-gates sh stress/count-gates.sh
-step lean-tests sh stress/lean-tests.sh
-# The tree model's small cases (bergdb 024-12): lake exe treetest, on one core.
-step tree-tests sh stress/tree-tests.sh
-step night-tests night_tests
-step harness-soak sh stress/harness-soak.sh -r 2
-step fuzz sh stress/fuzz.sh 12
-step unlinkfuzz sh stress/unlinkfuzz.sh
-step kill-restart sh stress/kill-restart.sh 1000
-step conformance-medium sh stress/conformance.sh medium
-# The writer's contract and the bridge on the medium tree set (bergdb 030-13).
-step contract-medium sh stress/contractconf.sh medium
-# The tested writer against the proved writer on the medium set's traces (bergdb 030-28).
-step pecmp-medium pecmp_medium
+# The day's seeds (bergdb 030-30): from the day's number times 1000; each set with its
+# seeds a configuration.
+DSEED=$((DAY * 1000))
+CONFSETS_DAY="small:10 drain:10 reclaim:4 evict:3 medium:3"
+TREESETS_DAY="small:10 drain:10 reclaim:3"
+
+# conformance_day FIRST SET:SEEDS...: conformance.sh on each set from the seed FIRST; the
+# failing traces kept (runlib.sh's keep_traces).
+conformance_day() {
+    first=$1; shift
+    ./build.sh > /dev/null || { echo "CONFORMANCE DAY FAILED: build"; return 1; }
+    (cd ../lean && lake build) > build/lake-day.txt 2>&1 \
+        || { echo "CONFORMANCE DAY FAILED: lake build (log: build/lake-day.txt)"; return 1; }
+    bad=; max=0; n=0
+    for x in "$@"; do
+        set_name=${x%:*}; seeds=${x#*:}
+        [ $seeds -gt $max ] && max=$seeds
+        echo "== conformance.sh $set_name $seeds $first: seeds $first to $((first + seeds - 1))"
+        sh stress/conformance.sh $set_name $seeds $first || bad="$bad $set_name"
+        keep_traces $set_name-$first
+        n=$((n + $(ls build/traces/$set_name-$first/*.check.txt 2> /dev/null | wc -l)))
+    done
+    line="$n traces, seeds $first to $((first + max - 1)) ($*)"
+    if [ -n "$bad" ]; then
+        echo "CONFORMANCE DAY FAILED:$bad; $line; the FAILED lines in the log"
+        return 1
+    fi
+    echo "CONFORMANCE DAY OK: $line"
+}
+
+# contract_day FIRST SET:SEEDS...: contractconf.sh with the tree check (TREE=1) on each set
+# from the seed FIRST, then pecmp on their traces; the failing traces kept.
+contract_day() {
+    first=$1; shift
+    ./build.sh > /dev/null || { echo "CONTRACT DAY FAILED: build"; return 1; }
+    (cd ../lean/pecmp && lake build) > build/pecmp-day-lake.txt 2>&1 \
+        || { echo "CONTRACT DAY FAILED: lake build in lean/pecmp (log: build/pecmp-day-lake.txt)"; return 1; }
+    # The fixed seeds' traces that the checkers' own tests take (bridge-faults.sh, pecmp's
+    # --cap-h and --top-fault), from level2.sh's step 8; written here when level2.sh did
+    # not run (night.sh day).
+    if ! ls build/traces/tree-small/mixed-1.trace build/traces/tree-drain/d-30-2.trace \
+            build/traces/tree-reclaim/r-del-1.trace > /dev/null 2>&1; then
+        echo "== the fixed traces for the checkers' own tests: TREECHECK=none treeconf.sh small 1, drain 2, reclaim 1"
+        TREECHECK=none sh stress/treeconf.sh small 1 | tail -1
+        TREECHECK=none sh stress/treeconf.sh drain 2 | tail -1
+        TREECHECK=none sh stress/treeconf.sh reclaim 1 | tail -1
+    fi
+    bad=; max=0; n=0; dirs=
+    for x in "$@"; do
+        set_name=${x%:*}; seeds=${x#*:}
+        [ $seeds -gt $max ] && max=$seeds
+        echo "== TREE=1 contractconf.sh $set_name $seeds $first: seeds $first to $((first + seeds - 1))"
+        TREE=1 sh stress/contractconf.sh $set_name $seeds $first || bad="$bad $set_name"
+        dirs="$dirs $set_name-$first"
+        n=$((n + $(ls build/traces/tree-$set_name-$first/*.trace 2> /dev/null | wc -l)))
+    done
+    echo "== lean/pecmp/check.sh$dirs"
+    if ! sh ../lean/pecmp/check.sh $dirs; then
+        bad="$bad pecmp"
+        for d in $dirs; do
+            grep '\.trace: ' build/traces/tree-$d/pecmp.txt 2> /dev/null | grep -v ' 0 differ$' \
+                | sed 's/: .*//' | while read t; do
+                name=$(basename $t .trace); seed=${name##*-}; name=${name%-*}
+                echo "build/traces/$t" >> build/traces/tree-$d/failed.txt
+                echo "   FAILED $name-$seed, seed $seed: pecmp; trace java/build/traces/$t; rerun from the" \
+                    "repository's root: ONLY=$name TREECHECK=none sh java/stress/treeconf.sh ${d%-*} 1 $seed;" \
+                    "lean/pecmp/.lake/build/bin/pecmp java/build/traces/tree-${d%-*}-$seed/$name-$seed.trace"
+            done
+        done
+    fi
+    for d in $dirs; do keep_traces tree-$d; done
+    line="$n traces, seeds $first to $((first + max - 1)) ($*)"
+    if [ -n "$bad" ]; then
+        echo "CONTRACT DAY FAILED:$bad; $line; the FAILED lines in the log"
+        return 1
+    fi
+    echo "CONTRACT DAY OK: $line"
+}
+
+if [ $DAYONLY = 1 ]; then
+    run_start night "Night run" ", the day's seeds only (night.sh day)"
+else
+    run_start night "Night run"
+    step before-commit sh before-commit.sh
+    step core-build sh stress/core-build.sh unit f
+    step transcheck sh stress/transcheck.sh
+    step level1 sh stress/level1.sh
+    step level2 sh stress/level2.sh
+    step level3 sh stress/level3.sh
+    step level4 sh stress/level4.sh
+    # Count gates of aims 2 and 3 at 1M keys (bergdb 024-30).
+    step count-gates sh stress/count-gates.sh
+    step lean-tests sh stress/lean-tests.sh
+    # The tree model's small cases (bergdb 024-12): lake exe treetest, on one core.
+    step tree-tests sh stress/tree-tests.sh
+    step night-tests night_tests
+    step harness-soak sh stress/harness-soak.sh -r 2
+    step fuzz sh stress/fuzz.sh 12
+    step unlinkfuzz sh stress/unlinkfuzz.sh
+    step kill-restart sh stress/kill-restart.sh 1000
+    step conformance-medium sh stress/conformance.sh medium
+    # The writer's contract and the bridge on the medium tree set (bergdb 030-13).
+    step contract-medium sh stress/contractconf.sh medium
+    # The tested writer against the proved writer on the medium set's traces (bergdb 030-28).
+    step pecmp-medium pecmp_medium
+    step apptraces sh stress/apptraces.sh night
+fi
+# The sets of traces on the day's seeds (bergdb 030-30).
+step conformance-day conformance_day $DSEED $CONFSETS_DAY
+step contract-day contract_day $DSEED $TREESETS_DAY
 
 run_finish

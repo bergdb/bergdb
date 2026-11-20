@@ -829,7 +829,9 @@ public class RecoverableStream {
     /**
      * The message of a VersioningStreamException for a meta block whose version is not
      * MetaBlock.CURRENT_VERSION (bergdb 028-15, option A): it names the release that
-     * wrote an older one, and what a user does.
+     * wrote an older one, and what a user does. Until bergdb 028-30 (2026-11-20) it said to
+     * read a database of version 154 with release 2026.5, which refuses one of 2026.4 or
+     * earlier (record format 6 or older): the user reads it with the release that wrote it.
      */
     static String versionRefused(int version) {
         String s = "Cannot read meta block with version " + version + ". Version supported: "
@@ -838,9 +840,11 @@ public class RecoverableStream {
             return s + "Version 154 is a database written by BergDB release 2026.5 or earlier, "
                     + "which this release does not open: its startup distance is in its meta "
                     + "blocks, and this release keeps it elsewhere (bergdb 028-15). To keep its "
-                    + "data, make the database again: read it with release 2026.5 and put the "
-                    + "data into a new database with this release. The start has written "
-                    + "nothing.";
+                    + "data, make the database again: read it with the release that wrote it "
+                    + "(release 2026.5 opens a database of 2026.5, not one of 2026.4 or "
+                    + "earlier) and put the data into a new database with this release, for "
+                    + "example with two programs, one on each release's jar. The start has "
+                    + "written nothing.";
         }
         if (version > MetaBlock.CURRENT_VERSION) {
             return s + "A larger number is a database written by a newer version of BergDB. "
@@ -1869,7 +1873,8 @@ public class RecoverableStream {
         /**
          * Bergdb 028-15 (option A): a meta block of version 154, as every release until
          * 2026.5 wrote, is refused with a message that names release 2026.5 and what a user
-         * does; a newer version with one that says so.
+         * does, reading it with the release that wrote it (bergdb 028-30); a newer version
+         * with one that says so.
          */
         @Nano
         public static void testReadMetaBlockVersion154Refused() throws IOException {
@@ -1889,6 +1894,7 @@ public class RecoverableStream {
                     String s = e.getMessage();
                     Assert.assertTrue(s, s.contains("version " + version));
                     Assert.assertTrue(s, s.contains(version == 154 ? "release 2026.5" : "newer"));
+                    Assert.assertTrue(s, version != 154 || s.contains("the release that wrote it"));
                 }
             }
         }

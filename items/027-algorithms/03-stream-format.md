@@ -356,9 +356,11 @@ recovery copies the last valid block whole, reserved bytes included
   valid or not: the magic (`BadMagicBytes`, an SFE); the version as an
   `i32` (bytes 6 and 7 checked since 019-01), not 155 a
   `VersioningStreamException` (`versionRefused`): 154 with a message that
-  names release 2026.5 and says to make the database again (read with
-  2026.5, put with 2026.6); a larger number as a newer BergDB's. It writes
-  nothing before these checks (005-40).
+  names release 2026.5 and says to make the database again: read it with
+  the release that wrote it (2026.5 opens a database of 2026.5, not one of
+  2026.4 or earlier) and put it with this release (028-30); a larger
+  number as a newer BergDB's. It writes nothing before these checks
+  (005-40).
 * `MetaBlock.checkFormat` (:116), for a valid block: lastTrans below 0 and
   not −1, and a time below 0, are SFEs.
 * `RecoverableStream.checkLastTransSpos` (:170, 019-34): lastTrans must
@@ -1788,6 +1790,11 @@ agent of coord-1118, on the branch `028-18-option-c`.
 2026-11-19. 028-21: 8.3, `dirtyNodeBound` argued for PE and its three
 gaps closed. By an agent of coord-1118, on the branch
 `028-21-dirty-bound`.
+
+2026-11-20. 028-30: section 6's message for meta version 154 says to
+read the database with the release that wrote it, as release 2026.5
+refuses one of 2026.4 or earlier (record format 6 or older). By tx of
+coord-1120, on the branch `028-30-31-texts`.
 
 2026-11-20. 030-29: 8.3, `dirtyNodeBound` proved for PE's transactions of
 puts (Lean, given the fill rules).

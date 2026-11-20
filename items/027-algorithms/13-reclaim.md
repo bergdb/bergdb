@@ -100,9 +100,13 @@ step(it, W) is one internal transaction, at its own time ts:
 
 1. **The scan** (since 026-05): the live KVs at the latest state (the
    last commit's time, just before ts), forward from the first key after
-   lastKey (from the first key if none), up to E inclusive (to the last
-   key for a row stored without E, before 026-05). If E is none, or
-   lastKey is at or after E, there is no scan, and this step is the last.
+   lastKey (from the first key if none), up to E inclusive. Every row
+   has E: a row without it is refused as damaged (`IterationInfo.deserialize`,
+   since 028-15). Such a row, stored before 026-05 by 2026.5 or earlier,
+   was scanned to the last key until 028-15, and is in a stream of meta
+   version 154, which a start refuses first (027-03, section 6). If E is
+   none, or lastKey is at or after E, there is no scan, and this step is
+   the last.
 2. **Each KV met**, in key order, with p its value node's position (none
    if not yet written), s its key's segments and v its value's bytes:
    * rewrite := p < pCut;
@@ -518,7 +522,9 @@ pending, M1's condition holds, or the dead hand has more.
 * The row's text: Java's `HashMap` line order, a lenient parser, no
   version (027-03, G16, Q9; 026-12). E came with 026-05 before Q9, which
   027-03's Q8 asked for first: a reader without E (2026.5 and before)
-  would ignore a row's E and drop it at its next store.
+  would ignore a row's E and drop it at its next store; since 028-15
+  such a reader refuses the stream by its meta version (155) before it
+  reads a row.
 
 
 ## 10. Evidence
@@ -575,3 +581,7 @@ the branch `030-25-iteration-ok`.
 
 2026-11-19. Java's steps checked on the traces (030-27): section 3's
 REWRITES, sections 5 and 9.
+
+2026-11-20. 028-31: 1.4's step 1 as the code is since 028-15, every row
+with E, a row without it refused; the row without E of before 026-05 as
+history; section 9's reader without E refuses the stream first. By tx of coord-1120, on the branch `028-30-31-texts`.
