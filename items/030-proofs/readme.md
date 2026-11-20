@@ -69,6 +69,9 @@ Every direction follows these; a direction's item may add its own.
   agent can go on from it.
 * **The coordinator updates this map** when a direction's state changes
   and at the end of its day (the "Days" section below).
+* **030-26 stays true.** A change to a proof, to the tested assumptions
+  or to the checks that cover them updates 030-26, the public statement,
+  in the same change (Frans, 2026-11-20; at least until release 2026.6).
 
 
 The map
