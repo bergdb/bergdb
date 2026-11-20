@@ -86,6 +86,10 @@
 #      030-13); 32 minutes on F53 under a heavy load (2026-11-17), most of it
 #      the bridge's six traces of m-d30 and m-d62.
 #      level2.sh's step 8b checks both on the small and drain sets.
+#  11c. lean/pecmp/check.sh medium: the tested writer against the proved writer
+#      (pecmp, bergdb 030-28) on the medium set's traces of step 11b, as level2.sh's
+#      step 8c on the small, drain and reclaim sets; its own tests first, on level2.sh's
+#      small and drain traces. About 1.5 minutes on F53 (added 2026-11-20).
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
 # line, result and time, and NIGHT OK or NIGHT FAILED), each step's output in
 # STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and
@@ -122,6 +126,14 @@ night_tests() {
     grep -q '^SUCCESS' build/test/night.txt
 }
 
+# pecmp on the medium set's traces, which contract-medium wrote; its own tests need the
+# small and drain sets' traces of level2.sh's step 8 (bergdb 030-28).
+pecmp_medium() {
+    (cd ../lean/pecmp && lake build) > build/pecmp-medium-lake.txt 2>&1 \
+        || { echo "PECMP FAILED: lake build in lean/pecmp (log: build/pecmp-medium-lake.txt)"; return 1; }
+    sh ../lean/pecmp/check.sh medium
+}
+
 step before-commit sh before-commit.sh
 step core-build sh stress/core-build.sh unit f
 step transcheck sh stress/transcheck.sh
@@ -142,5 +154,7 @@ step kill-restart sh stress/kill-restart.sh 1000
 step conformance-medium sh stress/conformance.sh medium
 # The writer's contract and the bridge on the medium tree set (bergdb 030-13).
 step contract-medium sh stress/contractconf.sh medium
+# The tested writer against the proved writer on the medium set's traces (bergdb 030-28).
+step pecmp-medium pecmp_medium
 
 run_finish

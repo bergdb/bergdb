@@ -105,7 +105,6 @@ Open
 | [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | open |
 | [028-30](30-refusal-message-2026-4.md) | Investigate | 2026.4's refusal message names a release that cannot help | none | open |
 | [028-31](31-reclaim-row-without-end-key.md) | Fix | Text about a reclaim row without an end key | none | open |
-| [028-33](33-timing-perf-refused.md) | Fix | timing.sh's perf step is refused right after a build | none | open |
 
 
 Closed
@@ -113,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-33](33-timing-perf-refused.md) | Fix | timing.sh's perf step is refused right after a build | none | done | 2026-11-20 |
 | [028-32](32-frozen-lookup-time.md) | Fix | IndexHarness bounds a frozen lookup time by an earlier time | none | done | 2026-11-19 |
 | [028-22](22-old-writer-comments.md) | Fix | Java comments that describe the old writer as today's | none | done | 2026-11-19 |
 | [028-24](24-checkers-without-mathlib.md) | Change | The level scripts without Mathlib | none | done | 2026-11-19 |
@@ -254,3 +254,8 @@ commit between; gated on the branch `028-32-frozen-lookup-time`, by an
 agent of coord-1118.
 
 2026-11-20. 028-33 registered by coord-1118 from the first timing runs.
+
+2026-11-20. 028-33 taken and done by an agent of the day's coordinator:
+performance.sh waits for a quiet machine up to QUIETWAIT minutes (timing.sh
+passes its RUNWAIT and MINIDLE), and timing.sh tells a refusal from the
+comparison's alerts; branch `028-33-timing-perf`. Moved to Closed.

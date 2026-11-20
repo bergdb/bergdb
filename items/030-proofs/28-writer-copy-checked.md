@@ -146,8 +146,7 @@ of level 2 is in section 7.
 `(cd lean/pecmp && lake build)`, then `lean/pecmp/check.sh small drain
 reclaim`. night.sh runs level2.sh full, so pecmp runs every night on the
 full sets (10 seeds, reclaim 3). The medium set (night.sh's
-`contractconf.sh medium`) is not compared routinely: an option, a few
-minutes more a night.
+`contractconf.sh medium`) is compared too since 2026-11-20 (Log).
 
 
 # 3. The pins
@@ -327,3 +326,14 @@ writes, the ids' order and the top compared, step 8c of level2.sh; S and
 pecmp pinned; pins.sh, step 0 of level2.sh; the depth guard investigated
 (unreachable); lean/README.md, releases/next.md, 027-08, 027-17, 030's
 readme. Branch `030-28-writer-copy-checked`.
+
+2026-11-20. pecmp on the medium set too (Frans decided, 2026-11-20):
+night.sh's step `pecmp-medium`, after `contract-medium`, which writes the
+medium set's traces, builds pecmp and runs `lean/pecmp/check.sh medium`
+(its own tests on level2.sh's small and drain traces first). No pinned
+file changed. By hand on the branch `028-33-timing-perf`, on the traces of
+`TREECHECK=none treeconf.sh medium` (3 seeds): tree-medium 27 traces,
+13,692 transactions, 811 new top nodes, 0 differ, PECMP OK, 95 s with
+the build and the own tests. LEVEL 2 OK (full) on the branch: pecmp small
+70 traces, 7,240 transactions; drain 110, 14,120; reclaim 15, 8,731; 0
+differ.

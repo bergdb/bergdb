@@ -15,9 +15,9 @@
 # Kind: timing. The only script that needs a quiet machine: it checks the CPU itself, as
 # performance.sh does, and refuses to start when the machine is busy (less than MINIDLE %
 # idle over 2 s, default 90), or waits for it (WAIT); it checks again before each run of
-# CORE and of the pause probe, and stops the step if the machine stays busy. Nothing else
-# heavy may run beside it: no night.sh, week.sh or level script, no build, no other
-# session's tests. FORCE=1 runs it anyway, for a trial of the script: its report then says
+# CORE and of the pause probe, and performance.sh before the perf step's runs, and stops
+# the step if the machine stays busy for RUNWAIT minutes. Nothing else heavy may run
+# beside it: no night.sh, week.sh or level script, no build, no other session's tests. FORCE=1 runs it anyway, for a trial of the script: its report then says
 # "not a measurement" on every figure.
 #
 # Usage: java/timing.sh [STEP...]     STEP: core, pauses, perf; all three without one
@@ -43,7 +43,9 @@
 #   perf    stress/performance.sh ab with SUITE=release (performance-release.suite: 1M and
 #           10M keys), the reference's preserved build (made with the reference's own
 #           performance.sh build) against "current", this tree; its comparison's alerts
-#           (exit code 1) are alerts here. Its sessions stay in build/perf/runs/.
+#           (exit code 1) are alerts here. performance.sh checks the machine after its own
+#           build of "current", with this script's MINIDLE, and waits up to RUNWAIT minutes
+#           (its QUIETWAIT; bergdb 028-33). Its sessions stay in build/perf/runs/.
 # The report is build/timing/RUN/report.txt (RUN the date and time): the commit, the JDK,
 # the CPU's idle share at the start, each step's figures and result, and TIMING OK (no
 # alert), TIMING ALERTS: STEPS (a figure to look at), TIMING FAILED: STEPS (a run that
@@ -52,9 +54,10 @@
 #
 # Environment: JAVA_HOME (the JDK; the PATH's otherwise), MINIDLE, WAIT (minutes to wait
 # for a quiet machine at the start, default 0: refuse at once), RUNWAIT (minutes to wait
-# before each run, default 15), FORCE, REFTAG, ROUNDS, CORE_ALERT, PAUSE_SECONDS,
-# PAUSE_GUIDE_MS, CAND and REF (directories that hold a bergdb.jar and its stress/ classes,
-# made before: no build of that side), and performance.sh's (HEAP, ONLY, RUNS, ...).
+# before each run of core and pauses, and before perf's runs, default 15), FORCE, REFTAG,
+# ROUNDS, CORE_ALERT, PAUSE_SECONDS, PAUSE_GUIDE_MS, CAND and REF (directories that hold a
+# bergdb.jar and its stress/ classes, made before: no build of that side), and
+# performance.sh's (HEAP, ONLY, RUNS, ...).
 #
 # On s1 (a Linux VPS with 2 vCPUs and 3.8 GB, used for timing in 026-25 and 030-20; its
 # ssh destination is not in this repository): s1 has a Java runtime; the builds are made
@@ -290,17 +293,34 @@ perf() {
         }
     fi
     if [ "$FORCE" = 1 ]; then PF=1; else PF=0; fi
-    SUITE=release FORCE=$PF sh stress/performance.sh ab "$REFREPO/java/build/perf/builds/ref" current \
+    # performance.sh checks the machine itself, after its build of "current" (bergdb
+    # 028-33): it waits up to RUNWAIT minutes for MINIDLE % idle, as the steps above do.
+    SUITE=release FORCE=$PF MINIDLE=$MINIDLE QUIETWAIT=$RUNWAIT \
+        sh stress/performance.sh ab "$REFREPO/java/build/perf/builds/ref" current \
         > "$RUN/perf.txt" 2>&1
     rc=$?
-    echo "  $(grep '^Comparison exit code' "$RUN/perf.txt" | cut -c1-60) (log: $RUN/perf.txt)$NOTE" \
-        >> "$REPORT"
-    case $rc in
-        0) ;;
-        1) ALERTS="$ALERTS perf" ;;
-        *) if grep -q 'not quiet' "$RUN/perf.txt"; then INTERRUPTED="$INTERRUPTED perf"
-           else FAILED="$FAILED perf"; fi ;;
-    esac
+    q=$(grep '^CPU idle before the runs' "$RUN/perf.txt" | tail -1)
+    [ -n "$q" ] && echo "  $q" >> "$REPORT"
+    # The comparison's exit code is the result only if the comparison ran; a refusal or a
+    # failed run also exits with 1 (performance.sh's die and its runs' failures).
+    if grep -q '^Comparison exit code' "$RUN/perf.txt"; then
+        echo "  $(grep '^Comparison exit code' "$RUN/perf.txt" | cut -c1-60) (log: $RUN/perf.txt)$NOTE" \
+            >> "$REPORT"
+        case $rc in
+            0) ;;
+            1) ALERTS="$ALERTS perf" ;;
+            *) FAILED="$FAILED perf" ;;
+        esac
+    elif grep -q '^performance.sh: the machine is not quiet' "$RUN/perf.txt"; then
+        INTERRUPTED="$INTERRUPTED perf"
+        echo "  stopped: $(grep '^performance.sh: the machine is not quiet' "$RUN/perf.txt" \
+            | tail -1 | sed -e 's/^performance.sh: //' -e 's/: stop other jobs.*//') (log: $RUN/perf.txt)" \
+            >> "$REPORT"
+    else
+        FAILED="$FAILED perf"
+        echo "  failed, exit code $rc, no comparison: $(tail -1 "$RUN/perf.txt" | cut -c1-100)" \
+            "(log: $RUN/perf.txt)" >> "$REPORT"
+    fi
 }
 
 for s in $STEPS; do

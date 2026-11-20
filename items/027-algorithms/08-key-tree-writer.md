@@ -629,8 +629,9 @@ transactions are not checked (027-13, 1.4).
   tree model's P, with Java's ids (a delete node takes one), bitmaps as
   bit sets and cap = B / 2, for the tree checker; `pecmp` (lean/pecmp/,
   first 026-25's, section 3) runs the two on Java's structure before every
-  transaction of `level2.sh`'s tree sets and fails if they write anything
-  different, the top node included (030-28); Pe.lean is pinned in
+  transaction of `level2.sh`'s tree sets, and of `night.sh`'s medium set,
+  and fails if they write anything different, the top node included
+  (030-28); Pe.lean is pinned in
   lean/contract/statements.pin, which `level2.sh` checks (030-28).
 * **Proved** (030-21; lean/contract, `gate.sh`, Lean's three standard
   axioms):
@@ -912,3 +913,5 @@ Java's remaining comments about the old writer.
 2026-11-19. 030-28: pecmp, the comparison of Pe.lean with the proved
 writer, is a step of level2.sh, with the top node and the writes in their
 order; Pe.lean is pinned (section 5).
+
+2026-11-20. 030-28: pecmp also on night.sh's medium set (section 5).

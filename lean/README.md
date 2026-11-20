@@ -14,8 +14,8 @@ traces by the level scripts. The tree checker's writer,
 lean/SIS/Tree/Pe.lean, is a copy of the proved writer, which the tree
 checker compares with Java node for node; `level2.sh` (so `night.sh`)
 compares the copy with the proved writer on every transaction of its tree
-sets (`pecmp`, bergdb 030-28), so on those traces Java writes what the
-proved writer writes.
+sets (`pecmp`, bergdb 030-28), and `night.sh` on the medium set, so on
+those traces Java writes what the proved writer writes.
 
 The directory holds the executable model that Java's runs are checked
 against (the trace checkers of `level2.sh` to `level4.sh` and `night.sh`),
