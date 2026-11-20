@@ -104,11 +104,43 @@ structure IterStep where
 def stepScan (h : BHist) (E L : Option Key) (st : IterStep) : ScanOut :=
   scanWalk st.rule [] (scanRange ((h.tree st.j).at st.j) L E)
 
-/-- A step's transaction, for its scan's result: a put of each KV met whose
-value node is old (the rewrites), a put of the row, one operation a key. -/
-def StepTx (h : BHist) (c : Nat) (out : ScanOut) (ops : List Op) : Prop :=
+/-- The segment interval of reclaim's reserved prefix, `/#i/dreclaim/`.
+The bounds are its byte-key encoding as compare values; the upper bound
+increments its last byte. This includes the prefix itself. -/
+def reclaimKey (k : Key) : Bool :=
+  !keyLt k [0x495ac0599d19f8, 0x195b98dadbc04030] &&
+    keyLt k [0x495ac0599d19f8, 0x195b98dadbc08030]
+
+/-- Reclaim's current row (`-current.txt` under `/#i/dreclaim/`), as compare values. -/
+def reclaimRow : Key :=
+  [0x495ac0599d19f8, 0x195b98dadbc04bf8, 0x195ddd1d19dc1db8, 0xc1d9e9d80000020]
+
+theorem reclaimRow_reserved : reclaimKey reclaimRow = true := by decide
+
+/-- The user keys for reclaim's preservation theorem: every key outside
+reclaim's reserved prefix. Other internal namespaces are protected too. -/
+def userKey (k : Key) : Bool := !reclaimKey k
+
+/-- A step operation is its row put, or a put of an old key met with the
+value the key had immediately before the step. -/
+def StepOpOK (h : BHist) (c j : Nat) (out : ScanOut) : Op → Prop
+  | .put k v => k = reclaimRow ∨
+      (∃ kv ∈ out.met, kv.1 = k ∧ oldNode h c kv.2 = true) ∧
+      refGet (contents ((h.tree j).at j)) k = some v
+  | .del _ => False
+
+instance (h : BHist) (c j : Nat) (out : ScanOut) (op : Op) :
+    Decidable (StepOpOK h c j out op) := by
+  cases op <;> unfold StepOpOK <;> infer_instance
+
+/-- A step's transaction, scanning the state after j (bergdb 030-35): a put
+of every old KV met, a put of its current row, and one operation a key.
+Besides its row, it puts only old KVs met, with their values immediately
+before the step. It deletes no key. The row may replace its own rewrite. -/
+def StepTx (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) : Prop :=
   (∀ kv ∈ out.met, oldNode h c kv.2 = true → kv.1 ∈ putKeys ops) ∧
-  putKeys ops ≠ [] ∧ (ops.map Op.key).Nodup
+  reclaimRow ∈ putKeys ops ∧ (ops.map Op.key).Nodup ∧
+  ∀ op ∈ ops, StepOpOK h c j out op
 
 /-- The steps from lastKey L on, the first after transaction `prev`: each is a
 transaction of the history after the one before, each scans from the lastKey
@@ -117,7 +149,7 @@ def StepsFrom (h : BHist) (c : Nat) (E : Option Key) : Nat → Option Key → Li
   | _, _, [] => True
   | prev, L, st :: rest =>
     prev ≤ st.j ∧
-    (∃ hj : st.j < h.txs.length, StepTx h c (stepScan h E L st) h.txs[st.j].ops) ∧
+    (∃ hj : st.j < h.txs.length, StepTx h c st.j (stepScan h E L st) h.txs[st.j].ops) ∧
     (rest = [] → (stepScan h E L st).eod = true) ∧
     StepsFrom h c E (st.j + 1) (nextKey L (stepScan h E L st).met) rest
 
@@ -355,7 +387,7 @@ after the step, it is written from a on if it is at or before the new lastKey,
 and if the step was the last. -/
 theorem step_covers (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hv : ValNew h) {c : Nat}
     {E L : Option Key} {st : IterStep} (hj : st.j < h.txs.length)
-    (hT : StepTx h c (stepScan h E L st) h.txs[st.j].ops)
+    (hT : StepTx h c st.j (stepScan h E L st) h.txs[st.j].ops)
     {k : Key} {y : NodeId} {a prev : Nat} (ha : a ≤ st.j) (hprev : prev ≤ st.j + 1)
     (hy : (idContents ((h.tree a).at a)).lookup k = some y) (hold : oldNode h c y = true)
     (hE : upToKey E k = true)
@@ -465,7 +497,7 @@ theorem stepsFrom_bounds {c : Nat} {E : Option Key} : ∀ (steps : List IterStep
 theorem stepsFrom_lastTx {c : Nat} {E : Option Key} : ∀ (steps : List IterStep) (prev : Nat)
     (L : Option Key), StepsFrom h c E prev L steps →
       ∀ st, steps.getLast? = some st →
-        ∃ L', ∃ hj : st.j < h.txs.length, StepTx h c (stepScan h E L' st) h.txs[st.j].ops
+        ∃ L', ∃ hj : st.j < h.txs.length, StepTx h c st.j (stepScan h E L' st) h.txs[st.j].ops
   | [], _, _, _, st, hl => by simp at hl
   | st0 :: rest, prev, L, hS, st, hl => by
     obtain ⟨-, ⟨hj, hT⟩, -, hrest⟩ := hS
@@ -548,9 +580,8 @@ theorem stepsOK_live (hm : MeetsFull p h top) {it : Iteration} (hst : StepsOK h 
     contents ((h.tree it.last).at it.last) ≠ [] := by
   obtain ⟨-, stl, -, hlast, -, hl, -, -, -⟩ := hst.ends
   obtain ⟨-, -, hS⟩ := hst
-  obtain ⟨L', hj, -, hne, hnd⟩ := stepsFrom_lastTx _ _ _ hS stl hl
-  obtain ⟨k, hk⟩ := List.exists_mem_of_ne_nil _ hne
-  obtain ⟨v, hput⟩ := mem_putKeys.mp hk
+  obtain ⟨L', hj, -, hrow, hnd, -⟩ := stepsFrom_lastTx _ _ _ hS stl hl
+  obtain ⟨v, hput⟩ := mem_putKeys.mp hrow
   have hc := (hm.step stl.j hj).1.1
   simp only [contractOk, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at hc
   rw [hlast, hc.2]

@@ -5,7 +5,8 @@ steps that follow the model (`StepsOK`): the cut 2, so the four values put by
 transaction 1 are old; the start t0 = 1, so E = [96]; transaction 2 puts a key
 above E (as reclaim's table store does); the first step (transaction 3) stops
 after two KVs and rewrites them, with its row; a user transaction (4) puts a
-key behind the cursor and puts again a key ahead of it; the last step
+key behind the cursor, puts again a key ahead of it, and deletes a key
+already rewritten; the last step
 (transaction 5) meets the rest up to E and rewrites the old one, with its row.
 Every key live before the first step is old, and each is written from the first
 step to the last: `IterationOK` from 3 to 5, by `iterationOK_steps`.
@@ -17,15 +18,15 @@ namespace Contract.StepsExample
 
 open Contract Contract.PE Contract.PE.Example
 
-/-- The operations: four keys put; a key above them; step 1 (two rewrites and
-the row, [112]); a key behind the cursor and a key ahead of it; step 2 (one
-rewrite and the row). -/
+/-- The operations: four keys put; a reserved key above them; step 1 (two
+rewrites and the current row); user puts behind and ahead of the cursor and
+a delete; step 2 (one rewrite and the row). -/
 def txs5 : List (List Op) :=
   [[.put [72] 5, .put [80] 6, .put [88] 7, .put [96] 8],
-   [.put [104] 1],
-   [.put [72] 5, .put [80] 6, .put [112] 2],
-   [.put [76] 9, .put [88] 10],
-   [.put [96] 8, .put [112] 3]]
+   [.put [0x495ac0599d19f8, 0x195b98dadbc04030] 1],
+   [.put [72] 5, .put [80] 6, .put reclaimRow 2],
+   [.put [76] 9, .put [88] 10, .del [80]],
+   [.put [96] 8, .put reclaimRow 3]]
 
 theorem accS : (peHist cfE txs5).isSome = true := by decide +kernel
 
@@ -48,8 +49,8 @@ def itS : Iteration :=
   { c := 2, t0 := 1,
     steps := [⟨2, fun met _ => (false, met.length == 1)⟩, ⟨4, fun _ _ => (false, false)⟩] }
 
-instance (h : BHist) (c : Nat) (out : ScanOut) (ops : List Op) :
-    Decidable (StepTx h c out ops) := by
+instance (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) :
+    Decidable (StepTx h c j out ops) := by
   unfold StepTx
   infer_instance
 

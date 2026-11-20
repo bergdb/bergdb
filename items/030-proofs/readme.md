@@ -587,6 +587,13 @@ Files
   (reclaim's step model does not require the value written back to be the
   value read; C-STEP neither), two medium (values as hashes; TransCheck's
   coverage), one low. Status: open, to act on before release 2026.6.
+* [030-35](35-reclaim-preserves-values.md). Reclaim preserves users'
+  values (030-33, F1): steps put the old keys met with their pre-step
+  values, plus the current row, and no other operations; reads after cuts
+  proved against a reference excluding maintenance, at every retained
+  time (`PE.pe_reclaim_user_reads_steps`). The changes to pinned
+  statements and proposed sentences for 030-26, section 2.5. Written
+  2026-11-20. Status: done.
 
 Log
 ===
