@@ -37,6 +37,27 @@ tested assumptions, which 030-26, section 5, lists as they now stand.
 030-26 states the claim for publication, in the words Frans chose,
 "BergDB's core algorithms are proved", with the model and its limits.
 
+**From 2026-11-20 on** (Frans decided, 2026-11-20), with the scope
+unchanged (the Core's algorithms; threads, the Pub layer, Java's code
+itself and the costs stay outside):
+
+1. **Keep it true.** 030-26 stays current with `main`; the proofs change
+   with the code; the gate, the pins and the nightly checks run.
+2. **Strengthen the tested links where a fault would hurt users most.**
+   Wider testing of Java against the model: new trace seeds each day,
+   each recorded so that a failure can be reproduced, and Java's commit
+   check in week.sh on a subset that adds less than an hour (030-30);
+   traces of the user apps' workloads and of reclaim's steps across
+   restarts (030-31). Proofs of the bounds that keep a transaction within
+   the record limit: `dirtyNodeBound` against PE, and the acceptance
+   argument of 030-28, section 5 (030-29).
+3. **The stream format of release 2026.8 designed model first** (032):
+   the model and the proofs change with the format's design, not after it.
+
+Not now: RC1 and RC4 in Lean (arithmetic, checked at every cut), a model
+of threads, the cost and bounded-startup statements (D4, D5), the Pub
+layer.
+
 Before: a fully proved model: "We still try to prove everything now.
 Once that work is done, I may decide on a general policy on this."
 (Frans, 2026-11-15, 08:47.) The goals in order were 006-26, section 8;
