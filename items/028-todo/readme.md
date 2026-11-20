@@ -105,6 +105,8 @@ Open
 | [028-35](35-killempty-not-created.md) | Fix | The user app KillEmpty and a kill during a database's creation | none | open |
 | [028-36](36-index-jobs-retried-fault-flake.md) | Investigate | IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild under load | none | open |
 | [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh runs the bridge checker twice | none | open |
+| [028-38](38-fresh-tree-bound-small-nodes.md) | Fix | Dag.freshTreeBound does not end at node sizes of 4 or less | none | open |
+| [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc repeats a false step about joins | none | open |
 
 
 Closed
