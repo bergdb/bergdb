@@ -544,6 +544,14 @@ Files
   depth guard unreachable on an undamaged stream, and `pe_accepts`'
   premises met by every transaction Java admits (G = 8,192, H = 100); the
   digests of record format 8. Written 2026-11-19. Status: done.
+* [030-31](31-app-traces.md). The user apps' workloads and reclaim
+  across restarts, against the model (Frans, 2026-11-20): AppRecord
+  records an app's Core transactions and TraceExport replays them
+  (`workload=F`), checked by tracecheck, the contract checker and the
+  bridge checker (`apptraces.sh`, in `night.sh` and `week.sh`); run A
+  restarts and crashes (`restart=K`, `crash=K`), RESTART and RESUME
+  lines, and C-STEP's STEP-resume (`conformance.sh crash`, in
+  `level3.sh`). Written 2026-11-20. Status: done.
 
 Log
 ===

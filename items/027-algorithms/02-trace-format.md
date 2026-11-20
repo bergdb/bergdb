@@ -403,6 +403,36 @@ line is not part of the grammar that the contract's checkers read
 (`lineKinds`), so their traces (`treeconf.sh`) have none; the traces of
 `conformance.sh reclaim` have them.
 
+Since bergdb 030-31 (2026-11-20) run A may restart its database: the
+exporter's `restart=K` (a sync, `stop()` and a start from a copy of the
+stream after every K-th user transaction's call), `crash=K` (the database
+fails right after the K-th step's record is durable, inside the step's
+call, and starts again from a copy of the stream) and a recorded
+application's restarts (`workload=F`). The start appends no record; the
+last record before it gets the lines:
+
+    RESTART k                    in TX i, after the reclaim lines: run A's
+                                 database started again after R(i), k is
+                                 `stop` or `crash`; one a transaction
+    RESUME t0 c L E              with `steps=1`, after RESTART: the iteration
+    RESUME -                     in progress that the start read from the
+                                 stream (`Reclaim.currentIteration()`), its
+                                 t0, c and L as on a STEP line and E its
+                                 endKey, the greatest key live at tStart (`-`
+                                 for none); `-` alone for no iteration
+
+A step that the crash ended has its STEP line from the row that the start
+read, the row the step committed (its L' and eod). C-STEP's STEP-resume
+checks each RESUME line: the row is the iteration's row as its last step
+left it (the same c, lastKey that step's L', the iteration not ended by a
+step with eod), or, for an iteration without a step yet, lastKey none
+after an iteration ended by a step with eod, with a later t0 and c ≤ t0 +
+1; its E is the greatest key live after T(t0); and the first step after
+the restart goes on from it (its t0, c and L the RESUME line's). The
+contract's checkers do not read RESTART and RESUME lines (`lineKinds`):
+their traces of a recorded application are replayed without its restarts
+(`apprestarts=0`), which writes the same records.
+
 The reads of the GET and SCAN lines are at random times from the first
 available time on, of keys of the workload, `gets=N` GET lines and one
 SCAN line a transaction (default 4; with `gets=0` none), from a generator

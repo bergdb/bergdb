@@ -50,7 +50,11 @@
 #   7. conformance-large: the Lean checker built (lake build in lean/), then
 #      stress/conformance.sh large, 12 traces of 1,000 to 5,000 transactions at node sizes
 #      8 to 62 (night.sh runs the medium set); about 5 hours.
-#   8. android: stress/android.sh, the unit tests and the demos on an Android emulator;
+#   8. apptraces-week: stress/apptraces.sh week, the user apps' workloads against the
+#      model (bergdb 030-31): the apps larger than night.sh's apptraces step, DeleteHeavy
+#      at node sizes 8 to 62 and WorstCase too, with seeds from the day's number (night.sh:
+#      fixed seeds, small); about 15 minutes.
+#   9. android: stress/android.sh, the unit tests and the demos on an Android emulator;
 #      about 3 minutes.
 # With "short": before-commit, apps quick, kill-restart 10 kills on two seeds, fuzz 1
 # minute, unlinkfuzz the day's block, harness-soak -r 1, conformance small with 1 seed in
@@ -131,6 +135,7 @@ if [ $SHORT = 0 ]; then
     step harness-soak-week sh stress/harness-soak.sh -r 10 -b $((DAY * 1000 + 100)) \
         -o build/harness-soak-week
     step conformance-large conformance large
+    step apptraces-week sh stress/apptraces.sh week
 else
     step apps-quick sh stress/apps.sh quick
     step kill-restart-week kill_seeds 10 $((DAY * 10 + 1)) $((DAY * 10 + 2))

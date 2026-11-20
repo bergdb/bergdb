@@ -90,6 +90,10 @@
 #      (pecmp, bergdb 030-28) on the medium set's traces of step 11b, as level2.sh's
 #      step 8c on the small, drain and reclaim sets; its own tests first, on level2.sh's
 #      small and drain traces. About 1.5 minutes on F53 (added 2026-11-20).
+#  11d. stress/apptraces.sh night: the user apps' workloads against the model (bergdb
+#      030-31): nine apps run small with their Core transactions recorded, each
+#      recording replayed by TraceExport and checked by tracecheck, the contract checker
+#      and the bridge checker; about 3 minutes (week.sh runs it larger, other seeds).
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
 # line, result and time, and NIGHT OK or NIGHT FAILED), each step's output in
 # STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and
@@ -156,5 +160,6 @@ step conformance-medium sh stress/conformance.sh medium
 step contract-medium sh stress/contractconf.sh medium
 # The tested writer against the proved writer on the medium set's traces (bergdb 030-28).
 step pecmp-medium pecmp_medium
+step apptraces sh stress/apptraces.sh night
 
 run_finish

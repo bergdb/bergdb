@@ -58,7 +58,12 @@ Checks, per transaction i (R(0) included):
        (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-ops); a STEP line in every
        record with a TOUCH line and in no other (STEP-line); and per CUT line, the
        iteration with its c has its last step, with eod, at the CUT's first available
-       time (CUT-steps)
+       time (CUT-steps). Since bergdb 030-31, at each restart of run A (RESTART, after
+       a stop or a crash), the RESUME line: the row that the start read is the
+       iteration's row as its last step left it (the same c, lastKey its L', not
+       ended), or a new iteration's without a step (lastKey none), with E the
+       greatest key live after T(t0); and the first step after the restart goes on
+       from that row (STEP-resume)
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
        physical states (`slotFailures`; INV-SLOT of the design before handles,
        SIS/EvictExample.lean's `invSlotB`, which `TC_records` proved, until
@@ -142,7 +147,11 @@ def main (args : List String) : IO UInt32 := do
   | file :: rest =>
     let o := parseOpts rest {}
     let text ← IO.FS.readFile file
-    let t := parseTrace text
+    -- RESTART and RESUME lines (bergdb 030-31) are read by Check/Tree.lean only: the trace
+    -- parser of Check/Trace.lean is pinned (lean/contract/statements.pin), and a restart
+    -- changes nothing that its checks read.
+    let t := parseTrace ("\n".intercalate ((text.splitOn "\n").filter (fun l =>
+      !(l.startsWith "RESTART " || l.startsWith "RESUME "))))
     IO.println s!"TRACECHECK {file}"
     IO.println s!"CONFIG {t.config}"
     IO.println s!"options: step3 {if o.mark then "mark" else "exact"}, step7 {if o.java7 then "java" else "exact"}, root {if o.virtual then "virtual" else "model"}{if o.inv then ", INV-2" else ""}"
@@ -405,7 +414,9 @@ def main (args : List String) : IO UInt32 := do
       for (i, f) in rep.fails do cstep := cstep.add i f
       IO.println (s!"C-STEP reclaim's steps (bergdb 030-27): {cstep.failing} of {total} transactions fail" ++
         (if cstep.byName.isEmpty then "" else s!" ({", ".intercalate (cstep.byName.map (fun p => s!"{p.1} {p.2}"))})") ++
-        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again, {rep.cuts} CUT lines with their iteration's last step")
+        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again, {rep.cuts} CUT lines with their iteration's last step" ++
+        (if rep.restarts == 0 then "" else
+          s!"; {rep.restarts} restarts ({rep.crashes} crashes), {rep.resumed} with an iteration in progress, {rep.spans} iterations with a step before a restart and the next after it"))
       for e in cstep.examples do IO.println s!"  {e}"
     | none => pure ()
     diag.show "diagnostics" total

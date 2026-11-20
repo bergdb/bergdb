@@ -48,8 +48,11 @@
 #      decides, the touch assumptions, and the probes after restarts from the
 #      cut stream; since bergdb 030-27 also each step of reclaim against the
 #      model of the steps (C-STEP, on STEP lines), after the check's own fault
-#      test (lean/test-traces/step-faults.sh). It needs the checker (cd ../lean
-#      && lake build, Lean 4 v4.34.1), which the step builds.
+#      test (lean/test-traces/step-faults.sh). Since bergdb 030-31 also
+#      conformance.sh crash (1 seed quick, 3 full): reclaim across restarts and
+#      crashes of the traced run, each iteration that spans a restart checked
+#      (C-STEP's STEP-resume). It needs the checker (cd ../lean && lake build,
+#      Lean 4 v4.34.1), which the step builds.
 #   9. InterruptStress (bergdb 005-46): a writer with syncs, readers, reclaim's
 #      cuts, eviction and restarts on a FileStream, while a thread interrupts
 #      them at random every 100 microseconds and the storage threads every
@@ -70,10 +73,10 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
     QUICK=1; ROUNDS=40; INV_N=800; CRASH_ROUNDS=4; READER_ROUNDS=3; POWER_ROUNDS=1; POWER_TRANS=600; POWER_EVENTS=1
-    CONF_SEEDS=2; INTERRUPT_SEC=10
+    CONF_SEEDS=2; CRASH_SEEDS=1; INTERRUPT_SEC=10
 else
     QUICK=0; ROUNDS=200; INV_N=2000; CRASH_ROUNDS=20; READER_ROUNDS=12; POWER_ROUNDS=8; POWER_TRANS=1500; POWER_EVENTS=3
-    CONF_SEEDS=5; INTERRUPT_SEC=60
+    CONF_SEEDS=5; CRASH_SEEDS=3; INTERRUPT_SEC=60
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -182,6 +185,11 @@ sh stress/conformance.sh reclaim $CONF_SEEDS > $LOG/conformance.txt 2>&1
 grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh reclaim" $LOG/conformance.txt
 echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-CUT $(grep '^   C-CUT:' $LOG/conformance.txt | sed 's/^ *C-CUT: //')"
 echo "   C-STEP: $(grep '^   C-STEP:' $LOG/conformance.txt | sed 's/^ *C-STEP: //')"
+sh stress/conformance.sh crash $CRASH_SEEDS > $LOG/conformance-crash.txt 2>&1
+grep -q '^CONFORMANCE OK' $LOG/conformance-crash.txt || fail "conformance.sh crash" $LOG/conformance-crash.txt
+echo "   across restarts and crashes: $(grep '^   traces:' $LOG/conformance-crash.txt | sed 's/^ *//')"
+echo "   C-STEP: $(grep '^   C-STEP:' $LOG/conformance-crash.txt | sed 's/^ *C-STEP: //')"
+echo "   STEP-resume: $(grep '^   STEP-resume:' $LOG/conformance-crash.txt | sed 's/^ *STEP-resume: //')"
 
 echo "9. InterruptStress, interrupts everywhere"
 $JAVA -ea -Xmx2g -cp $CP bergdb.core.InterruptStress $INTERRUPT_SEC build/level3/interruptstress \

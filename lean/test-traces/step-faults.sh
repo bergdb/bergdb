@@ -20,6 +20,14 @@
 #   nostep   the first STEP line left out (STEP-line)
 #   extra    a STEP line in TX 3, a user transaction (STEP-line)
 #   badline  a STEP line whose eod is 2 (STEP-form)
+# Since bergdb 030-31 also a second good trace, with restarts and crashes of run A
+# (restart=10, crash=2), RESTART and RESUME lines, which must pass with a crash and an
+# iteration with a step before a restart and the next after it, and its faults:
+#   rmiss    the first RESUME line left out (STEP-resume)
+#   rc       the first RESUME line with an iteration, its c plus 1 (STEP-resume)
+#   rlast    the first RESUME line with a lastKey, its lastKey - (STEP-resume)
+#   re       the first RESUME line with an iteration and no lastKey, its E the key [8]
+#            (STEP-resume)
 #
 # Usage: lean/test-traces/step-faults.sh
 # Needs: the checker (cd lean && lake build tracecheck) and java/build (java/build.sh).
@@ -91,6 +99,22 @@ fault nostep STEP-line '/^STEP / && !d {d = 1; next} {print}'
 S1=$(grep -m1 '^STEP ' $G)
 fault extra STEP-line '{print} /^TX 3$/{gsub(/_/, " ", s); print s}' "-v s=$(echo $S1 | tr ' ' '_')"
 fault badline STEP-form '/^STEP / && !d {$NF = "2"; d = 1} {print}'
+
+# Restarts and crashes (bergdb 030-31).
+PROPS="-Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Drestart=10 -Dcrash=2 -Dtree=1 -Dsteps=1"
+$JAVA -ea $PROPS -cp $CP bergdb.core.TraceExport 1 $DIR/good2.trace > $DIR/good2.txt 2>&1 \
+    || { echo "STEP FAULTS FAILED: TraceExport: $(tail -1 $DIR/good2.txt)"; exit 1; }
+G=$DIR/good2.trace
+expect good2 PASS $G
+grep '^C-STEP' $DIR/good2.out | sed -E 's/.*restarts \(([0-9]+) crashes\), [0-9]+ with an iteration in progress, ([0-9]+) iterations with a step before.*/\1 \2/' \
+    | awk '{exit !($1 > 0 && $2 > 0)}' \
+    || { echo "   good2: WRONG, no crash, or no iteration with a step before a restart and after it"; FAILED=$((FAILED + 1)); }
+fault rmiss STEP-resume '/^RESUME / && !d {d = 1; next} {print}'
+fault rc STEP-resume '/^RESUME [0-9]/ && !d {$3 = $3 + 1; d = 1} {print}'
+fault rlast STEP-resume '/^RESUME [0-9]/ && $4 != "-" && !d {
+    e = ""; for (i = 5 + $4; i <= NF; i++) e = e " " $i
+    print "RESUME " $2 " " $3 " -" e; d = 1; next} {print}'
+fault re STEP-resume '/^RESUME [0-9]/ && $4 == "-" && !d {print "RESUME " $2 " " $3 " - 1 8"; d = 1; next} {print}'
 
 rm -rf $DIR
 if [ $FAILED -eq 0 ]; then
