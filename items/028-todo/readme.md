@@ -102,6 +102,9 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
+| [028-35](35-killempty-not-created.md) | Fix | The user app KillEmpty and a kill during a database's creation | none | open |
+| [028-36](36-index-jobs-retried-fault-flake.md) | Investigate | IndexJobsHarness.testRetriedFaultThenDeletedDuringBuild under load | none | open |
+| [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh runs the bridge checker twice | none | open |
 
 
 Closed
