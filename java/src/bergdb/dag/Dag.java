@@ -554,8 +554,9 @@ public class Dag {
      * 
      * <p>The count above was argued for the writer of record formats 6 and 7, whose
      * mechanisms it names. Since format 8 the writer is PE (PeWriter; bergdb 026-25), and the
-     * count is argued for it as follows (bergdb 028-21, which found it short in three ways and
-     * added them: a new segment tree of h + 1 entries or more, which PE cuts into parts where
+     * count is argued for it as follows, proved for puts and tested for deletes (see the
+     * end; bergdb 028-21, which found it short in three ways and added them: a new segment
+     * tree of h + 1 entries or more, which PE cuts into parts where
      * the old writer made one node, 18 to 28 keys at node size 30 counted as one node and made
      * as three; a list cut into more parts than the overflows and one, 31 entries at node size
      * 30 into three, whose parent got one klong too few; and the new root above a segment
@@ -583,25 +584,35 @@ public class Dag {
      * <li>joins (PeWriter.rebalance, joinAt) and the rebalance of a joined list one level
      * down: a child is joined only if it was changed and holds fewer than m entries. Every
      * key node but a root holds m or more (V1, the tree checker's C-T6 on every traced
-     * transaction), the parts of a cut hold at least (h + 1) / 2 >= m and a joined node m or
-     * more unless it is its parent's only child, so a child is small only with a delete below
-     * it, and two small children have different deletes below them. A joined group is its
-     * small children and at most one other node: an untouched neighbour of at most B - 1
-     * entries, at most two parts of c (B - 1 <= 2 c), or a node of the paths, whose own parts
-     * are counted above; as ceil((a + b) / c) <= ceil(a / c) + ceil(b / c), its parts are at
-     * most one for each small child and two more, or the other node's parts. So each delete's
-     * joins make at most three nodes a level, and give the parent at most three entries and a
-     * bitmap: the four nodes a level of a delete's path (two levels more as a margin) and the
-     * four klongs in each node of it cover them. A join one level down opens the nodes it
-     * joins, and its group replaces the one counted there;</li>
+     * transaction), and the parts of a cut hold at least (h + 1) / 2 >= m, so in a transaction
+     * of puts no child is small and nothing is joined (proved, bergdb 030-29), and with
+     * deletes a child is small only with a delete below it. For deletes the count gives four
+     * nodes a level of a delete's path (two levels more as a margin) and four klongs in each
+     * node of it, for the joins. 028-21 argued that this covers them, from "a joined group is
+     * its small children and at most one other node", so at most three nodes a level a
+     * delete and three entries and a bitmap in the parent. That step is false (bergdb 030-29,
+     * section 4; 028-39): the joined list of two inner nodes is rebalanced one level down,
+     * where cut parts can merge again, so a node joined from a small and a non-small node can
+     * end with fewer than m entries and be joined again, with a second node that is not
+     * small. The count still covers 030-29's example many times over (node size 30, one
+     * transaction of 170 operations: 8 key nodes written, a count of 2,279), as such a join
+     * needs many deletes below the small node, each counted four nodes a level; for deletes
+     * the count is tested, not proved (below);</li>
      * <li>root collapse and an emptied root make no node, but for an empty space root a new
      * empty segment leaf, which replaces the space root, walked.</li>
      * </ul>
-     * <p>An argument, not a proof, given V1; checked by DagTester's tests of the bound
-     * (testDirtyNodeBoundOfPe, testDirtyNodeBoundOfDeletes) and by the tree checker on every
-     * traced transaction (C-T8, with the Lean model's copy of this count, SIS/Tree/Bound.lean).
-     * A delete's count is generous for PE (at least five times the nodes marked in 028-21's
-     * tests), a put's is tight: every node of its path is marked when it is appended to.</p>
+     * <p>Proved for transactions of puts (bergdb 030-29, Contract.PE.pe_dirtyNodeBound_puts,
+     * with the Lean model of this count, Contract/DirtyBound.lean): the key nodes the proved
+     * writer PE writes are at most the count, at every node size from 8, given the fill
+     * rules V1 and V2, which the tree checker checks on Java's tree after every traced
+     * transaction (C-T6). For transactions with deletes not proved: the argument above has a
+     * false step at the joins. Tested: DagTester's tests of the bound
+     * (testDirtyNodeBoundOfPe, testDirtyNodeBoundOfDeletes), the tree checker on every traced
+     * transaction (C-T8, with the Lean model's copy of this count, SIS/Tree/Bound.lean), and
+     * 030-29's 421,000 random transactions of the Lean model, about 128,000 with deletes,
+     * none above the count. A delete's count is generous for PE (at least five times the
+     * nodes marked in 028-21's tests), a put's is tight: every node of its path is marked
+     * when it is appended to.</p>
      * 
      * @param deletes  deletes[i] is true if keys[i] is deleted; a delete of a missing key
      *      changes nothing.

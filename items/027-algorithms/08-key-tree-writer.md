@@ -625,7 +625,9 @@ and added them (a new segment tree of more than h entries cut into
 parts; a node cut into more parts than its overflows and one, its
 parent a klong short; the new root above a cut segment root). Joins are
 covered by a delete's four nodes a level, as a child is joined only if a
-delete below it left it under m entries (V1). Checked by C-T8 (the key
+delete below it left it under m entries (V1); 028-21's argument for that
+had a false step (a joined node can end small and be joined again;
+030-29, section 4; 028-39). Checked by C-T8 (the key
 nodes the transaction marks are at most the bound, every traced
 transaction, with the Lean copy) and DagTester's
 `testDirtyNodeBoundOfPe`, `testDirtyNodeBoundOfDeletes`,
