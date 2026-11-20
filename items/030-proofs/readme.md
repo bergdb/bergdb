@@ -582,6 +582,11 @@ Files
   being given up, through the contract approach (Tuesday), to the core
   algorithms proved; and the idea of a contract tested after every
   operation. Written 2026-11-20. Status: done.
+* [030-33](33-statements-review.md). An independent review of the
+  statements against 030-26 (Codex, 2026-11-20): four findings, one high
+  (reclaim's step model does not require the value written back to be the
+  value read; C-STEP neither), two medium (values as hashes; TransCheck's
+  coverage), one low. Status: open, to act on before release 2026.6.
 
 Log
 ===

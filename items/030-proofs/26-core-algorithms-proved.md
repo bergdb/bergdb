@@ -7,6 +7,14 @@ Kept up to date with `main`, at least until release 2026.6 (Frans,
 checks that cover them updates this page in the same change, and the
 release checks it before the tag (026, "How the release is made").
 
+**Under correction (2026-11-20).** An independent review (030-33) found
+four places where this page says more than is proved or checked: reclaim's
+step model does not require a step to write back the value it read (F1);
+values are compared by a 63-bit hash, not as bytes (F2); Java's
+commit-time check covers the transaction's paths, not the whole contract
+(F3); and which week.sh rounds run that check (F4). Until they are
+corrected here, read the page with 030-33.
+
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
 of proved. It is written for a reader outside the project, a developer who
