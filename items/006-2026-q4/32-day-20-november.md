@@ -87,6 +87,10 @@ Decisions of the morning:
   (`PE.pe_reclaim_user_reads_steps`; 215 theorems). 030-33 done.
 
 
+## 5. Outcome
+
+Not yet.
+
 ## 6. Next: Monday 23 November and the release
 
 Decided by Frans (2026-11-20), for the coordinator of Monday (after the
@@ -110,7 +114,3 @@ usage reset of Monday 22:00 where usage requires it):
 * Release 2026.6 on Tuesday 24 November: the notes from `releases/next.md`,
   033's RB-001 to RB-003, 030-26 current.
 
-
-## 5. Outcome
-
-Not yet.
