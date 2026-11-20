@@ -20,6 +20,14 @@
 #   nostep   the first STEP line left out (STEP-line)
 #   extra    a STEP line in TX 3, a user transaction (STEP-line)
 #   badline  a STEP line whose eod is 2 (STEP-form)
+# Since bergdb 030-34, in the second step with three puts or more (the row is known from
+# the trace's first step):
+#   value    the put of its first key of one segment (a user key; the row's key has four
+#            segments) with the value 12345: a rewrite with another value than the scan
+#            read (STEP-values)
+#   del      an OP D line of a user key added: the key of the first user key's put of the
+#            next such step, a key that reclaim rewrites later (STEP-ops)
+#   put      an OP P line of that key added, with the value 12345 (STEP-ops)
 # Since bergdb 030-31 also a second good trace, with restarts and crashes of run A
 # (restart=10, crash=2), RESTART and RESUME lines, which must pass with a crash and an
 # iteration with a step before a restart and the next after it, and its faults:
@@ -99,6 +107,12 @@ fault nostep STEP-line '/^STEP / && !d {d = 1; next} {print}'
 S1=$(grep -m1 '^STEP ' $G)
 fault extra STEP-line '{print} /^TX 3$/{gsub(/_/, " ", s); print s}' "-v s=$(echo $S1 | tr ' ' '_')"
 fault badline STEP-form '/^STEP / && !d {$NF = "2"; d = 1} {print}'
+# The values and the step's other operations (bergdb 030-34).
+SECOND='/^TX /{tx = $2} /kind=step/ {split($4, a, "="); if (a[2] >= 3) {n++; if (n == 2) s = tx}}'
+K=$(awk '/kind=step/ {split($4, a, "="); if (a[2] >= 3) n++} n == 3 && /^OP P 1 / {print $4; exit}' $G)
+fault value STEP-values "$SECOND"' tx == s && /^OP P 1 / && !d {$NF = "12345"; d = 1} {print}'
+fault del STEP-ops "$SECOND"' {print} tx == s && /^BASE / {print "OP D 1 " k}' "-v k=$K"
+fault put STEP-ops "$SECOND"' {print} tx == s && /^BASE / {print "OP P 1 " k " 12345"}' "-v k=$K"
 
 # Restarts and crashes (bergdb 030-31).
 PROPS="-Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Drestart=10 -Dcrash=2 -Dtree=1 -Dsteps=1"

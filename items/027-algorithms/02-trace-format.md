@@ -398,7 +398,15 @@ iteration's step before (none for its first), c ≤ t0 + 1, L' is L or a key
 of the range (the live keys after L up to E, the greatest key live after
 T(t0)), with eod the range's last key, the step puts again (OP P) every KV
 of the range up to L' whose value node was made before c, and its
-operations have distinct keys and a put; a STEP line in every record with
+operations have distinct keys and a put; since bergdb 030-34 (2026-11-20)
+each of those puts with the value that the scan read, the key's value
+before the step as the tree model reads it (its hash, as V's), and the
+step's operations are those puts and the row's put, and no delete
+(STEP-values, STEP-ops). The trace does not name the row's key: C-STEP
+takes it from the trace's first step, the key of its one put that is not
+such a rewrite, and checks that every step puts the row at that key; a
+step may put the row at a key it met with an old value (the row's put
+then writes another value there). Also: a STEP line in every record with
 a TOUCH line and in no other; and per CUT line, the iteration with its c
 has its last step, with eod, at the CUT's first available time. The STEP
 line is not part of the grammar that the contract's checkers read

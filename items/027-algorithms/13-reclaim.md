@@ -305,7 +305,9 @@ pending, M1's condition holds, or the dead hand has more.
   rewrote it. That Java's steps are the model's: checked step by step on
   the reclaim traces since 030-27 (C-STEP, on 027-02's STEP lines: each
   step against the model's step at its state, each cut against its
-  iteration's last step), and through RC2 (C-CUT's part 2); gated
+  iteration's last step; since 030-34 also that each rewrite writes the
+  value the scan read and that the step writes nothing else than the
+  rewrites and its row), and through RC2 (C-CUT's part 2); gated
   (`testIterationRewritesAllOldValues`, `testStepScansAtItsOwnTime`,
   `testEndKeyBoundsTheScan`).
 * **LIVEBELOW** (part 4): each index node a lookup reaches, but an empty
@@ -435,7 +437,8 @@ pending, M1's condition holds, or the dead hand has more.
   model's step against Java's records, D on the cut stream), C-CUT
   (`CutOK` at every cut Java decides; `CUT-live`; RC, 030-23), C-STEP
   (each step of reclaim against the model of the steps, `StepsOK`, and
-  each cut against its iteration's last step; 030-27), C-L (the first
+  each cut against its iteration's last step; 030-27; the values written
+  back and the step's other operations, 030-34), C-L (the first
   touches after restarts); C-P and C-H with eviction.
 
 
@@ -585,3 +588,7 @@ REWRITES, sections 5 and 9.
 2026-11-20. 028-31: 1.4's step 1 as the code is since 028-15, every row
 with E, a row without it refused; the row without E of before 026-05 as
 history; section 9's reader without E refuses the stream first. By tx of coord-1120, on the branch `028-30-31-texts`.
+
+2026-11-20. C-STEP checks the values a step writes back and that it
+writes nothing else than its rewrites and its row (030-34): section 3's
+REWRITES, section 9.
