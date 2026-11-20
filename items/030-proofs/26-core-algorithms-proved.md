@@ -6,7 +6,7 @@ The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
 of proved. It is written for a reader outside the project, a developer who
 decides whether to trust BergDB or a contributor, and describes `main` as
-of 2026-11-19. The details are in the items it links.
+of 2026-11-20. The details are in the items it links.
 
 
 # 1. The claim
@@ -89,9 +89,16 @@ meet the contract by refusing work: it accepts every transaction whose
 keys the tree can hold (`Contract.PE.pe_accepts`), given two bounds of
 the proof, on the tree's height and on the program's steps, and refuses a
 put of a key the tree cannot hold (`Contract.PE.pe_refuses`). The two
-bounds suffice for the proof; they are not limits that Java checks. So it
-is not proved that PE accepts every transaction that Java admits
-(section 4).
+bounds are premises of the proof, on the model's parameters G and H (the
+most key segments and the most node heights, less one), which Java does
+not have. For G = 8,192 and H = 100, every transaction that Java admits
+meets them, on every tree a stream can hold
+([030-28](28-writer-copy-checked.md), section 5). That argument is
+arithmetic on paper, not in Lean, and uses how full PE keeps its nodes,
+which the tree checker checks on Java's tree after every traced
+transaction. Java's PE itself refuses nothing; its one guard, a descent
+of more than 1,000 nodes in one segment tree, cannot be reached on an
+undamaged stream (the same section).
 
 ## 2.2 Reads
 
@@ -167,7 +174,8 @@ The theorems about PE's histories have these premises:
 - distinct keys within a transaction (Java's writer gets one operation
   per key);
 - the base level of the top nodes (`cf.topBase`, the start top node's
-  level, which the parameters give) at most 2^62;
+  level, which the parameters give) at most 2^62: it is 827,494 for
+  G = 8,192 and H = 100 (030-28, section 5);
 - a history of fewer than 2^48 − 1 transactions. This is a premise of
   the proof, not a limit Java checks: Java bounds the top nodes'
   ordinals (005-02), not the number of transactions, and a transaction
@@ -209,9 +217,12 @@ it; that PE meets it is proved apart.
   the project's own.
 - **Statements pinned.** What a theorem says depends on its statement and
   on the definitions it uses. The files that hold them, with the
-  toolchain's and the gate's own, are listed with their hashes in
-  `lean/contract/statements.pin` (99 files); a change to one must change
-  that file in the same commit, so that it shows in review.
+  toolchain's and the gate's own, and since 030-28 the tree checker's copy
+  of PE and the tool that compares it with the proved writer, are listed
+  with their hashes in `lean/contract/statements.pin` (106 files). A
+  change to one must change that file in the same commit, so that it
+  shows in review; `lean/contract/pins.sh` checks the hashes every night
+  (`level2.sh`, step 0).
 - **Not vacuous.** Examples in Lean meet the main theorems' premises: a
   history PE writes (`Contract.PE.Example.meetsTop`), one that meets every
   statement of the bridge (`Contract.BridgeExample4.meetsAll`), one with a
@@ -222,18 +233,20 @@ it; that PE meets it is proved apart.
   answer) found faults in the trace checkers and gaps in what was stated;
   each was fixed or added to the tested assumptions. The reviews of 030-24
   and of 030-25 (2026-11-19) found no defect in a statement; their
-  qualifications are in section 4. An independent review of 030-21's
+  qualification, that Java's reclaim steps were checked only through
+  their consequence at each cut, is answered by a check of every step
+  (030-27; section 4). An independent review of 030-21's
   statements (2026-11-19) found PE's top statements substantive and not
   vacuous within their premises, and the two Lean writers, the proved one
   and the tree checker's copy, making the same choices of tree. It found
   prose that said more than the Lean: the frame's rule for new values, the
   acceptance bounds called limits of Java, the bound on transactions
   taken for Java's, and the top nodes' level where the premise is on
-  their base level. These are corrected
-  here and in dated notes in 030-04 and 030-21. Its other two findings:
-  the copy is neither pinned nor compared with the proved writer as a
-  routine step (section 5, item 1), and PE's short way in Java reported
-  its dirty nodes in another order than emit's, which 028-25 fixed.
+  their base level. These are corrected here and in dated notes in
+  030-04 and 030-21. Its other two findings are fixed: the copy was
+  neither pinned nor compared with the proved writer as a routine step,
+  and is both since 030-28 (section 5, item 1); PE's short way in Java
+  reported its dirty nodes in another order than emit's (028-25).
 
 `lean/contract/gate.sh` checks the first three.
 
@@ -258,8 +271,9 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   drains, restarts, eviction, reclaim). A case no trace reaches is covered
   only by the other tests, among them Java's own check of the contract
   after every transaction of its unit tests and f-tests (`TransCheck`).
-  That PE accepts every transaction that Java admits is not proved (2.1);
-  a transaction that the model refuses on a trace fails the tree checker.
+  That PE accepts every transaction that Java admits rests on an
+  argument on paper, not in Lean (2.1); a transaction that the model
+  refuses on a trace fails the tree checker.
   An independent review of Java's PE writer (2026-11-19) found one fault,
   in reclaim's accounting, not in the tree; it is fixed (028-26).
 - **The platform.** The model assumes that a synced append is durable,
@@ -278,14 +292,15 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   ([020-29](../020-release-2026-4/29-index-proof/readme.md)) has proofs of
   its own, not part of this claim.
 - **Reclaim's arithmetic and Java's steps are tested.** RC1 and RC4 are
-  checked at every cut of the reclaim traces. That Java's steps are the
-  model's is not checked directly: the trace does not yet say which
-  iteration a step belongs to or where the iteration began. Its
-  consequence, that every value a read reaches at the iteration's end was
-  written at the cut or later, and the cut's safety as a whole, are
-  checked at every cut. An independent review of 030-24 (2026-11-19)
-  called this a check in a weaker form. A direct check of each step is
-  being built (030-27).
+  checked at every cut of the reclaim traces, and so is the cut's safety
+  as a whole. Every step of every iteration in those traces is checked
+  against the model of the steps ([030-27](27-step-check.md)): the chain
+  of steps, the range each scans, the values it writes again, and the cut
+  at the iteration's last step. Still tested only: that the trace's line
+  for a step is what Java's step holds in memory, Java's end key itself,
+  the steps of runs with restarts and crashes (argued in 030-25, section
+  2, and covered by the reclaim tests), and configurations the traces do
+  not reach (30 to 200 keys, node sizes 8 and 14).
 - **No cost, time or memory statement is proved:** not the work of a
   start (bounded startup, [007](../007-bounds/readme.md), is measured and
   tested), not the size of records or of the stream, not the heap, not
@@ -312,11 +327,11 @@ fuzzing and the large trace set, before every release.
    medium set in `night.sh`). Java checks the contract itself
    (`TransCheck`: the unit tests in `before-commit.sh`, the f-tests in
    `night.sh`). The tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a copy
-   of the proved one, rule for rule. A run of both on Java's traces gave
-   the same trees from the space roots (026-25, section 3); it did not
-   compare how the top nodes are made, and it is not a step of the
-   scripts. The copy is not pinned. A routine comparison of the two is
-   being added (030-28).
+   of the proved one, rule for rule; `pecmp` compares the two at every
+   transaction of the same three sets: the writes in their order, the
+   trees and the top nodes (`level2.sh`, step 8c; 030-28). The copy is
+   pinned, and its hash is checked every night (`level2.sh`, step 0). So
+   on those traces Java writes what the proved writer writes.
 2. **A synced append is durable.** CrashTest (`level2.sh` to
    `level4.sh`), PowerLossTest (`level3.sh`), `kill-restart.sh`
    (`night.sh`: 1,000 kills; `week.sh`: 3,000 more).
@@ -351,9 +366,10 @@ fuzzing and the large trace set, before every release.
 11. ~~A cut is safe~~, proved from reclaim's contract and the model of its
     steps (030-24, 030-25). Left: **RC1 and RC4 at each cut**, checked at
     every cut of the reclaim traces (`level3.sh`); and **Java's steps are
-    the model's**, checked through their consequence and the cut's safety
-    at every cut (`level3.sh`) and by the reclaim tests (ReclaimStress:
-    `level3.sh`, `level4.sh`); a direct check is being built (030-27).
+    the model's**: every step of the reclaim traces checked against the
+    model of the steps, after the check's own fault test (C-STEP, 030-27:
+    `level3.sh`), and the reclaim tests (ReclaimStress: `level3.sh`,
+    `level4.sh`). Still tested only: section 4.
 12. **A trace's lines are Java's change.** The trace's completeness checks
     (030-09) and the trace and tree checkers (`level2.sh` to `level4.sh`).
 13. **Java's startup builds what the stream holds.** Lookups after a
@@ -369,17 +385,22 @@ fuzzing and the large trace set, before every release.
   before it lands on `main` (030, "The rules"): the build, no `sorry`, the
   standard axioms only, the pinned statements. A statement changes only
   by Frans's decision, and the change shows in `statements.pin`. The gate
-  runs on changes to the proofs; it is not a step of `night.sh` or
-  `week.sh`.
+  runs on changes to the proofs, with a build that needs Mathlib.
+- **The pins and the copy, every night.** `level2.sh`, in `night.sh`,
+  checks the hashes of `statements.pin` without a build (step 0), so a
+  pinned file changed outside proof work fails that night; and it
+  compares the tree checker's copy of PE with the proved writer on its
+  traces (`pecmp`, step 8c; 030-28).
 - **The checks.** The tests of section 5 run as the code changes, in
   `before-commit.sh`, the level scripts, `night.sh` and `week.sh`.
 - **A change to the writer or to reclaim** must keep Java equal to the
   model on the traces, which the level scripts check. So the change is
   made in the model too: in PE (`Contract/PeWriter.lean`) with its proof
   and in the tree checker's copy, or in the model of reclaim's steps with
-  its proof. A change the proofs do not cover is a change of this claim.
-- **This page** names the theorems and items of 2026-11-19; a renamed
-  theorem or a changed statement changes it too.
+  its proof and in the step check. A change the proofs do not cover is a
+  change of this claim.
+- **This page** states the claim as of 2026-11-20, with the theorems and
+  items of that day.
 
 
 # 7. History
@@ -396,7 +417,10 @@ fuzzing and the large trace set, before every release.
   8 ([026-25](../026-release-2026-6/25-pe-java.md)).
 - 19 November: reclaim's contract and safe cuts (030-22 to 030-24), and
   its iteration proved from a model of its steps
-  ([030-25](25-iteration-ok.md)). The aim of 030 was reached.
+  ([030-25](25-iteration-ok.md)). The aim of 030 was reached. The same
+  day, every reclaim step on the traces checked against that model
+  ([030-27](27-step-check.md)), and the tested writer compared with the
+  proved one every night ([030-28](28-writer-copy-checked.md)).
 
 
 # Log
@@ -411,3 +435,9 @@ states it (2.1), the acceptance bounds as premises of the proof (2.1,
 section 4), the bound on transactions and the top nodes' base level
 (2.6), the copy of PE in the tree checker (section 5, item 1), and the
 review itself (3.2). Dated notes in 030-04, section 3.2, and 030-21.
+
+2026-11-20. Brought up to date with 030-27 (every reclaim step checked on
+the traces), 030-28 (the copy of PE compared with the proved writer and
+pinned, the pins checked every night, `pe_accepts`' premises met for
+Java's G and H) and 028-27 (`night.sh` and `week.sh` disjoint), on main
+7d02a8ef, each against those items and the scripts.
