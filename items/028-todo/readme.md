@@ -103,6 +103,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-28](28-kill-restart-verify-old-times.md) | Investigate | The kill-and-restart harness's check at old times | none | open |
 | [028-29](29-index-jobs-harness-stuck.md) | Investigate | IndexJobsHarness counts a slow cleanup as stuck | none | open |
+| [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
 
 
 Closed
