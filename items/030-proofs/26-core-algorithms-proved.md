@@ -8,13 +8,14 @@ checks that cover them updates this page in the same change, and the
 release checks it before the tag (026, "How the release is made").
 
 **Under correction (2026-11-20).** An independent review (030-33) found
-four places where this page says more than is proved or checked: reclaim's
-step model does not require a step to write back the value it read (F1);
-values are compared by a 63-bit hash, not as bytes (F2); Java's
-commit-time check covers the transaction's paths, not the whole contract
-(F3); and which week.sh rounds run that check (F4, corrected in section
-5, item 1). Until the others are corrected here, read the page with
-030-33.
+four places where this page said more than is proved or checked. F2
+(values as hashes), F3 (Java's commit-time check is partial) and F4 (the
+week.sh rounds that run it) are corrected here (section 4; section 5,
+items 1, 7 and 9; section 6). F1 is open: reclaim's step model does not
+require a step to write back the value it read, and neither does the
+trace check C-STEP; both are being fixed (030-34, 030-35). Until then,
+that reclaim keeps the users' values is tested by the workloads' reads,
+not by the step check or the proof.
 
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
@@ -176,8 +177,12 @@ the first available time on: `Contract.PE.pe_reclaim_reads_steps`
 In the model, each step scans the live keys at its own time, from where
 the step before stopped up to the greatest key live when the iteration
 began, may stop before or after any key by any rule, and writes again
-every value it met that was written before the cut; the last step's scan
-reaches the end. Such an iteration writes again every key whose value
+every key it met whose value was written before the cut; the last step's
+scan reaches the end. The model requires that such a key is written
+again, not yet that it is written with the value the step read, nor that
+the step writes no other user key (030-33, F1; being fixed in 030-34 and
+030-35): the cut's safety below is proved; that reclaim keeps the users'
+values is tested by the workloads' reads. Such an iteration writes again every key whose value
 predates the cut (`iterationOK_of_stepsOK`), and a cut that meets
 reclaim's contract is safe: nothing a read from the first available time
 on can reach lies before it (`cutOK_of_rc`,
@@ -327,9 +332,27 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   with the traced run, the first 60 to 800 of each database, without the
   apps' threads, eviction and file streams (which do not change the
   records, section 5, item 9) and without the kills. A case no trace
-  reaches is covered only by the other tests, among them Java's own check
-  of the contract after every transaction of its unit tests and f-tests
-  (`TransCheck`).
+  reaches is covered only by the other tests, among them Java's own quick,
+  partial check of the contract after every transaction of its unit tests
+  and f-tests (`TransCheck`, below).
+- **Java's commit-time check is partial.** `TransCheck` checks the parts
+  of the contract that can be checked locally and cheaply: the nodes on
+  the transaction's paths and the nodes it made, changed or replaced, as
+  far as they are in memory, without reading the stream. It does not
+  check that a node outside the transaction's dirty nodes is unchanged,
+  nor the key order, kinds, levels and contents beyond the nodes it
+  visits. It is a quick test, not a complete check of the contract; the
+  complete check is the trace checkers' (`lean/contract/check.sh`), whose
+  soundness is proved.
+- **Values are tokens in the model, hashes on the traces.** The proofs
+  treat a value as an opaque token: they show that a read returns the
+  right version of a key, whatever its bytes. The traces carry a 63-bit
+  hash of each value (FNV-1a), and the checkers compare hashes, not
+  bytes; a wrong value goes unseen only if it has the same hash, about
+  one chance in 2^63 for each compare. That the bytes of a value are the
+  bytes put is tested outside the model, by the tests that compare whole
+  values (the unit tests, the f-tests, the user apps, the kill and
+  restart tests; section 5, item 5).
   That PE accepts every transaction that Java admits is proved given the
   writer's fill rules, which are tested (2.1); a transaction that the
   model refuses on a trace fails the tree checker.
@@ -397,7 +420,8 @@ checker and `pecmp`; a failing trace is kept with its seed.
    `night.sh`; the small and drain sets on the day's seeds in `night.sh`;
    the user apps' workloads in `night.sh` and `week.sh`, `apptraces.sh`,
    030-31).
-   Java checks the contract itself at every commit (`TransCheck`: the unit
+   Java makes a quick, partial check of the contract itself at every
+   commit (`TransCheck`, section 4; not a complete check: the unit
    tests in `before-commit.sh`, the f-tests in `night.sh`, and in
    `week.sh` the user apps' soak and kill rounds (the quick round in
    `week.sh short`), one seed of the kills
@@ -427,7 +451,7 @@ checker and `pecmp`; a failing trace is kept with its seed.
 7. **The trace's operations are the user's transaction**, after the key
    and value transformations. Lookups after restarts, against the
    workload (`conformance.sh`, in `level2.sh` to `level4.sh`); the unit
-   tests and f-tests; `TransCheck`.
+   tests and f-tests; `TransCheck` (partial).
 8. **A refused transaction changes nothing.** DbTesterLimits,
    `DbTesterDelete.testRefusedTransUnchanged`,
    `DbTesterRestart.testEndOfOrdinals` (unit tests, `before-commit.sh`).
@@ -435,7 +459,7 @@ checker and `pecmp`; a failing trace is kept with its seed.
    with eviction and reclaim. The same stream, byte for byte, with and
    without restarts or eviction (RestartInvariance, EvictionInvariance,
    and `conformance.sh`'s runs B and E: `level2.sh` to `level4.sh`);
-   `TransCheck` in every unit test and f-test.
+   `TransCheck` (partial) in every unit test and f-test.
 10. **Java's records and dirty nodes are the model's.** The trace checker
     runs the model's step on every traced transaction and compares the
     record and the nodes to write (`level2.sh` to `level4.sh`; the medium
@@ -476,8 +500,9 @@ checker and `pecmp`; a failing trace is kept with its seed.
   sets of traces run on fixed seeds, a regression set, and in `night.sh`
   also on new seeds each day, so that each night checks traces not
   checked before; a failing trace is kept with its seed and the command
-  that makes it again (030-30). Java's own check of the contract runs at
-  every commit of the unit tests and f-tests, and of a part of
+  that makes it again (030-30). Java's own quick, partial check of the
+  contract runs at every commit of the unit tests and f-tests, and of a
+  part of
   `week.sh`'s steps (030-30).
 - **A change to the writer or to reclaim** must keep Java equal to the
   model on the traces, which the level scripts check. So the change is

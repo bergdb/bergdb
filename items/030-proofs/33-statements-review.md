@@ -15,8 +15,15 @@ repository. What is done about each finding is in section "Actions".
 * F4: corrected 2026-11-20 (Frans): 030-26, section 5, item 1, and 030's
   readme name the apps' soak and kill rounds (the quick round in
   `week.sh short`).
-* F1 to F3: to be decided and done before release 2026.6 (026's release
-  steps check that 030-26 is current).
+* F2, F3: corrected 2026-11-20 (Frans): 030-26 says that values are
+  tokens in the model and 63-bit hashes on the traces, byte equality
+  tested by the functional tests (section 4), and that Java's commit-time
+  check is a quick, partial check, not a complete check of the contract
+  (section 4; section 5, items 1, 7, 9; section 6; TransCheck's Javadoc).
+* F1: the trace check C-STEP to compare the values a step writes back
+  (030-34) and the step model and a theorem that reads after reclaim give
+  the users' values (030-35), both started 2026-11-20 (Frans); 030-26,
+  section 2.5, says what is open meanwhile.
 
 
 

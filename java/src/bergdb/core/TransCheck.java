@@ -19,8 +19,11 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 
 /**
- * Java's own check of the writer's contract (bergdb 030-09, section 3; the contract is
- * 030-04, section 3.2, in Lean lean/contract/Contract/Statement.lean), test-only: on with the
+ * Java's own quick, partial check of the writer's contract, not a complete check of it:
+ * it checks what can be checked locally, on the transaction's nodes in memory (below, and
+ * "Not local"); the complete check is the trace checkers' (lean/contract/check.sh; bergdb
+ * 030-26, section 4; 030-33, F3). Its design is bergdb 030-09, section 3; the contract is
+ * 030-04, section 3.2, in Lean lean/contract/Contract/Statement.lean. Test-only: on with the
  * system property transcheck=1, or with the environment variable BERGDB_TRANSCHECK (below),
  * off by default; the unit tests and the f-tests run with it (before-commit.sh, unit.sh,
  * f.sh), and week.sh's steps with "cc" in their names (bergdb 030-30). Db calls it at the start and at the end of each
