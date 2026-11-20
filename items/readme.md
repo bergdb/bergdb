@@ -222,3 +222,6 @@ Index
 * **032-release-2026-8** (open). Release 2026.8, after 2026.7: its plan,
   its decisions and the work towards it. Preliminary theme: the stream
   format, with encryption and replication.
+* **033-bugs** (open). The register of released bugs, RB-001 and on,
+  from release 2026.5: what a user sees, severity S1 to S4, found and
+  fixed where; counts by release, for judging stability.
