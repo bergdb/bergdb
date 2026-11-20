@@ -327,11 +327,13 @@ On the branch's Lean commit 9cd46821, in lean/contract/:
 
 # State
 
-2026-11-20, 13:15. Done for puts, gated (9cd46821): the model, the
-theorem, the walk's equality, the example, section 5; 030-26, 030-28,
-027-03 and 027-08 updated. The delete case: the leaf, the segment tree and
-the new segment tree with deletes are proved by a helper outside the
-branch; the inner nodes' joins are being tried by the same helper, with a
+2026-11-20, 13:25. Done for puts, gated: the model, the theorem and its
+form for histories, the walk's equality, the example, section 5; 030-26,
+030-28, 027-03 and 027-08 updated; the model read a second time against
+the Java (section 1). The delete case: the leaf, the segment tree and the
+new segment tree with deletes are proved by a helper outside the branch;
+the inner nodes' joins are being tried (a design with a loss lemma and the
+chains of lone small children; section 4's case constructed), with a
 report due by 03:30. If they are proved, the theorem for every transaction
 replaces the one for puts; if not, section 4 says what is open.
 
