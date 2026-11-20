@@ -109,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-41](41-jdeps-check-jvm-banner.md) | Fix | build.sh's jdeps check and the JVM's "Picked up" line | none | done | 2026-11-20 |
 | [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation durable at its first sync: Javadoc; RB-003 | decided | done | 2026-11-20 |
 | [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh and level2.sh run the bridge checker once | none | done | 2026-11-20 |
 | [028-39](39-dirty-node-bound-javadoc.md) | Fix | dirtyNodeBound's Javadoc: the false step about joins, proved and tested | none | done | 2026-11-20 |
@@ -302,3 +303,9 @@ it returned, as the Core API's creation is not synced). 028-36: 028-29's
 second race, fixed in main; no fault of the database. Moved to Closed.
 
 2026-11-20. 028-40 done by coord-1120: the Javadoc of the Core's creation (Frans decided); RB-003. Moved to Closed.
+
+2026-11-20. 028-41 registered and done by an agent of coord-1120 on the
+branch `026-26-app-hunt`, from 026-26's S4-B1: `java/build.sh`'s jdeps
+check drops the JVM's "Picked up" lines of `JAVA_TOOL_OPTIONS` and
+`_JAVA_OPTIONS`, which failed the build with no class missing; a fault
+of the build script, not a released bug (033). Moved to Closed.

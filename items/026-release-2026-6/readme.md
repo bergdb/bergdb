@@ -310,6 +310,14 @@ Files
   `026-25-pe-java`, not merged; on s1 about 8 % slower than main's
   writer in CCBench, for Frans.
 
+* 26-pub-app-hunt.md. 026-26, an independent hunt, with apps designed
+  apart from the earlier ones (024-26, 026-13): eight Pub API apps with
+  their own oracles on `main` at `bdf7c1ba`, 31 runs with 160 forced
+  stops of a child JVM; no database fault. One finding outside the
+  database, S4-B1: `java/build.sh` failed falsely with
+  `JAVA_TOOL_OPTIONS` set, fixed as 028-41. The apps maintained in
+  java/stress/apps/d1-* to d8-*, run by apps.sh since 2026-11-20.
+
 
 Log
 ===
@@ -400,3 +408,7 @@ together with encryption and replication (Frans).
 2026-11-20. 026-01, 026-12, QM1 and PA5/PA9 moved to release 2026.8
 (032), with the stream format, encryption and replication; their IDs
 kept (Frans). Releases 2026.7 (031) and 2026.8 (032) created.
+
+2026-11-20. 026-26 done: an independent hunt with eight Pub API apps, no
+database fault; S4-B1 fixed as 028-41; the apps landed in apps.sh (an
+agent of coord-1120).

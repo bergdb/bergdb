@@ -127,8 +127,12 @@ if [ -n "$LEGALFILES" ]; then
     done
 fi
 
-# Check 2: jdeps prints each use of a class that is not there.
-$JDEPS --missing-deps $REL > $CHECK/jdeps.txt 2>&1 || { cat $CHECK/jdeps.txt >&2; release_failed "jdeps"; }
+# Check 2: jdeps prints each use of a class that is not there. The JVM's own line for
+# JAVA_TOOL_OPTIONS or _JAVA_OPTIONS ("Picked up ...", "NOTE: Picked up ...") is not one
+# (bergdb 028-41).
+$JDEPS --missing-deps $REL > $CHECK/jdeps-out.txt 2>&1 ||
+    { cat $CHECK/jdeps-out.txt >&2; release_failed "jdeps"; }
+grep -vE '^(NOTE: )?Picked up [A-Z_]+: ' $CHECK/jdeps-out.txt > $CHECK/jdeps.txt || true
 if [ -s $CHECK/jdeps.txt ]; then
     head -20 $CHECK/jdeps.txt >&2
     release_failed "it uses classes that it does not hold (jdeps --missing-deps)"

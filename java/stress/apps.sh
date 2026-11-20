@@ -1,13 +1,13 @@
 #!/bin/sh
 # The user applications as regression tests (bergdb 028-23): programs that agents wrote as
 # new users of BergDB from the README and the Javadoc only, each with an oracle of its own
-# that checks every result (024-26, against 2026.5; 026-13, against 2026.6; both items have
-# the scenarios in full and the runs' records). Compiled with javac against
-# build/bergdb-release.jar, the jar for users; the apps at node sizes 8, 14 and 62 reach
-# them through bergdb.core.TestNodeSize, which that jar has (since 026-08 no Core API method
-# sets a node size). Kind: functional: the result does not depend on speed (the checks
-# that wait for something have limits that only a hang meets, or give a NOTE). Not a commit
-# gate.
+# that checks every result (024-26, against 2026.5; 026-13, against 2026.6; 026-26, an
+# independent hunt on the Pub API alone; the items have the scenarios in full and the runs'
+# records). Compiled with javac against build/bergdb-release.jar, the jar for users; the
+# apps at node sizes 8, 14 and 62 reach them through bergdb.core.TestNodeSize, which that
+# jar has (since 026-08 no Core API method sets a node size). Kind: functional: the result
+# does not depend on speed (the checks that wait for something have limits that only a
+# hang meets, or give a NOTE). Not a commit gate.
 #
 # Usage: java/stress/apps.sh [quick]   each app once, small (about 6 minutes on F53)
 #        java/stress/apps.sh soak N    round N of the long runs, new seeds per N
@@ -15,9 +15,11 @@
 #        java/stress/apps.sh kill N    round N of the kill runs (about 30 minutes)
 # Round N of soak or kill takes the seeds of the items' round N (024-26 and 026-13,
 # section 3), and soak's node sizes are 024-26's, so a round of the records reruns as it
-# was; a new N gives new seeds. The times are F53's from the items' records.
+# was; a new N gives new seeds (d1 to d8's too, 100 N + 11 and 12; 026-26's records used
+# other seeds). The times are F53's from the items' records.
 #
-# The apps (sources in stress/apps/, by item: a1 to a7 024-26's, b1 to c2 026-13's):
+# The apps (sources in stress/apps/, by item: a1 to a7 024-26's, b1 to c2 026-13's, d1 to
+# d8 026-26's):
 #   DeleteHeavy (a1)   bulk loads of six key shapes, scattered, ranged and near-total
 #                      deletes, refills, builders whose last call wins (Core API, file
 #                      streams, node sizes 8 to 62, some with a cache below the data):
@@ -65,17 +67,43 @@
 #   OldNodeSize (c1)   a node-size-62 database made by an earlier jar is refused, no file
 #                      changed; runs only if build/apps/old-dbs/b2-node62 exists (026-13's,
 #                      not in the repository), else a note.
+#   D1Ledger (d1)      writer threads transfer between accounts, readers check saved views:
+#                      every balance and the journal against a replay in commit order, the
+#                      views again after a restart (Pub API, as all of d1 to d8).
+#   D2ScanHistory (d2) each key's versions: gets and scans both ways at the latest and older
+#                      times, odd and supplementary characters; a moved clock and maintain()
+#                      drive reclaim, the first available time kept and refused just before.
+#   D3ObjectIndex (d3) objects with compound indexes of long, double, string, bytes and
+#                      nested fields: index scans against the oracle, indexes deleted and
+#                      made again, pinned builders, restarts; with "retain", reclaim too.
+#   D4CrashBatches (d4)
+#                      SIGKILLs of a child JVM before, during and after writes and syncs:
+#                      each recovery a whole prefix of the batches, at least to the last
+#                      sync and at most to the last one started.
+#   D5ContractEdges (d5)
+#                      the Pub limits taken at the limit and refused one beyond, a refusal
+#                      changing nothing; spoiled builders, nesting, ownership refusals.
+#   D6SchemaValues (d6)
+#                      stored values read through twelve field types (numbers' extremes,
+#                      NaN, text, bytes) against an oracle, before and after a restart.
+#   D7RwConflicts (d7) RW conflicts forced with latches (write skew, absent reads, retries):
+#                      each outcome and the committed directory as the oracle has them.
+#   D8OnlineIndex (d8) index builds beside a writer, cancelled, renamed and joined by the
+#                      next start; a build that must fail on an old object, then succeed.
 # Not in a mode: c2 SlowDrive (U13-4's reproduction, 026-13 section 4) and b3 OneBuffer (a
 # measurement of one buffer's shrink); run them by hand on the classes in build/apps/.
 #
 # The modes:
-#   quick   the union of the two items' quick modes: each app once, small; Kill 10 kills,
-#           KillEmpty 12, Buffers kill 6.
+#   quick   the union of the items' quick modes: each app once, small; Kill 10 kills,
+#           KillEmpty 12, Buffers kill 6, D4CrashBatches 10; d1 to d8 at 026-26's seeds,
+#           about 30 seconds in all.
 #   soak N  024-26's soak (DeleteHeavy 18 runs at node sizes 8 to 62, Churn 16, Readers 4
 #           of 60 s, IndexChurn 3, Limits, WorstCase at 100,000 keys) and 026-13's
 #           (BackToEmpty 14, Transform 4 of 90 s, Buffers many at 150 databases for 90 s,
-#           KeyLimits 3, Readers of 20,000 keys, GivenBack 2, Huge 16 rounds).
-#   kill N  Kill 300 kills (024-26's Kill at scale), KillEmpty 250 kills, Buffers kill 60.
+#           KeyLimits 3, Readers of 20,000 keys, GivenBack 2, Huge 16 rounds) and 026-26's
+#           full runs of d1 to d8 but d4 (about 35 seconds).
+#   kill N  Kill 300 kills (024-26's Kill at scale), KillEmpty 250 kills, Buffers kill 60,
+#           D4CrashBatches 60 kills (about 95 seconds).
 #
 # Environment: JAVA_HOME (the JDK; the PATH's otherwise). Builds with build.sh, then runs on
 # a copy of build/bergdb-release.jar in build/apps/MODE-N/ (classes, data, out.txt), so that
@@ -190,6 +218,16 @@ if [ $mode = quick ]; then
     r -Xmx3g Huge $D/huge 4
     r KillEmpty parent 1 $D/b5 12 6 2500
     r Buffers kill 1 $D/b3k 6 8
+    # 026-26's: the final runs' seeds, D4's smoke run
+    r -Xmx512m D1Ledger $D/d1 601 4 250
+    r -Xmx512m D2ScanHistory $D/d2 601 1800
+    r -Xmx512m D3ObjectIndex $D/d3 601 1500 retain
+    r -Xmx512m D3ObjectIndex $D/d3i 607 1000
+    r -Xmx512m D4CrashBatches $D/d4 101 10
+    r -Xmx768m D5ContractEdges $D/d5 601
+    r -Xmx512m D6SchemaValues $D/d6 601
+    r -Xmx512m D7RwConflicts $D/d7 601 120
+    r -Xmx512m D8OnlineIndex $D/d8 601 6 3000
 elif [ $mode = soak ]; then
     # 024-26's soak
     for s in 1 2 3 4; do
@@ -231,10 +269,20 @@ elif [ $mode = soak ]; then
     r GivenBack $D/gb 300
     r GivenBack $D/gb 300 moving
     r -Xmx3g Huge $D/huge 16
+    # 026-26's full runs (D4's is in kill)
+    r -Xmx512m D1Ledger $D/d1 $((b + 11)) 8 300
+    r -Xmx512m D2ScanHistory $D/d2 $((b + 11)) 6000
+    r -Xmx512m D3ObjectIndex $D/d3 $((b + 11)) 4000 retain
+    r -Xmx512m D3ObjectIndex $D/d3i $((b + 12)) 1800
+    r -Xmx768m D5ContractEdges $D/d5 $((b + 11))
+    r -Xmx512m D6SchemaValues $D/d6 $((b + 11))
+    r -Xmx512m D7RwConflicts $D/d7 $((b + 11)) 200
+    r -Xmx512m D8OnlineIndex $D/d8 $((b + 11)) 6 4000
 else
     r Kill parent $((b + 3)) $D/a4 300 10 2500
     r KillEmpty parent $((b + 1)) $D/b5 250 10 2500
     r Buffers kill $((b + 2)) $D/b3k 60 12
+    r -Xmx512m D4CrashBatches $D/d4 $((b + 11)) 60
 fi
 rm -f $TMP
 
