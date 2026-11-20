@@ -45,6 +45,19 @@ Decisions of the morning:
 * 11:05 coord-1120 started; coord-1118 closing.
 * 11:36 033 created (14436f96).
 * 11:40 hf and tx started.
+* 11:44 028-31, 028-30 landed (289b2dc8): the refusal message was main's
+  (028-15), not 2026.4's; not a released bug.
+* 12:32 028-34 registered: transactionInfo(), Decide, open.
+* 12:39 028-29, 028-28 landed (906f9854): four races of the harnesses
+  under load, no fault of the database.
+* 13:29 030-31 and 030-30 landed together (0613b4ef): the user apps'
+  traces and reclaim across restarts and crashes against the model; the
+  day's seeds in night.sh; Java's contract check in week.sh. 028-35 to
+  028-37 registered from their findings.
+* 13:30 The week's usage reached 95 %: the work stops for the day.
+* 13:35 030-29 landed (6954f1d6): PE's dirty nodes within Java's
+  dirtyNodeBound for transactions of puts (deletes open); PE accepts
+  Java's transactions at G = 8192, H = 126. 028-38, 028-39 registered.
 
 
 ## 5. Outcome
