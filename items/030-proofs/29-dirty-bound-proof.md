@@ -32,7 +32,8 @@ Done by an agent of the day's coordinator on the branch
   segment trees' parts are proved (section 4), but not the joins of
   `rebalance`, in particular a join of two inner nodes that is rebalanced
   one level down, where cut parts merge again; there 028-21's paper argument
-  has a gap (section 4). The count holds on every transaction tried
+  needs a step it does not give (section 4). The count holds on every
+  transaction tried
   (section 3): its deletes' terms are generous (4 nodes a level and 8 a
   delete), and 028-21 found deletes at least 5.7 times under it.
 - **The model of Java's count** is `Contract/DirtyBound.lean`, a
@@ -121,9 +122,9 @@ lines as on `main` 6d379122):
   (`Out.top`), and Db counts it apart.
 
 That the model is Java's count rests on this reading, as PE's model rests
-on 030-21's; the tree checker's own copy of the count (lean/SIS/Tree/
-Bound.lean, C-T8) is a second restatement, checked on the traces against the
-nodes Java marks.
+on 030-21's; the tree checker's own copy of the count
+(lean/SIS/Tree/Bound.lean, C-T8) is a second restatement, checked on the
+traces against the nodes Java marks.
 
 
 # 2. The theorem
@@ -189,7 +190,7 @@ equality.
 
 # 4. Deletes
 
-What is proved toward them, in the branch's scratch and not landed: the
+What is proved toward them, outside the branch and not landed: the
 segment leaf with deletes (each compare value adds or removes at most one
 entry, and Java counts at least one klong for an entry added and four for
 one removed), a new segment tree with deletes (`freshTreeBound` of the
@@ -213,6 +214,7 @@ joined nodes (a small node lost entries, each through a delete), so the
 count's four nodes a level a delete would still cover it; a proof needs an
 invariant that charges each join to the deletes below it, through the joins
 one level down. That is left for later work.
+
 
 # 5. PE's acceptance at Java's parameters
 
