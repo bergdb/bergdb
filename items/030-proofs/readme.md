@@ -587,6 +587,12 @@ Files
   (reclaim's step model does not require the value written back to be the
   value read; C-STEP neither), two medium (values as hashes; TransCheck's
   coverage), one low. Status: open, to act on before release 2026.6.
+* [030-34](34-c-step-values.md). 030-33's F1 in the trace checker
+  (Frans decided, 2026-11-20): C-STEP checks that each step of reclaim
+  writes back, at every old key its scan met, the value the scan read
+  (STEP-values), and that it puts nothing else than those rewrites and its
+  row and deletes nothing (STEP-ops); three faults more in the fault test;
+  the Lean model of the steps unchanged. Written 2026-11-20. Status: done.
 * [030-35](35-reclaim-preserves-values.md). Reclaim preserves users'
   values (030-33, F1): steps put the old keys met with their pre-step
   values, plus the current row, and no other operations; reads after cuts
