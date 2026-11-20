@@ -1133,8 +1133,9 @@ public class Db implements AutoCloseable {
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
      *          005-50); and with a VersioningStreamException, a database of release 2026.5 or
-     *          earlier, of the meta block's version 154 (bergdb 028-15, option A). The
-     *          start then writes nothing.
+     *          earlier, of the meta block's version 154 (bergdb 028-15, option A), whose
+     *          data is read with the release that wrote it and put into a new database with
+     *          this release (bergdb 028-30). The start then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33): a part of the creation's first record, or the

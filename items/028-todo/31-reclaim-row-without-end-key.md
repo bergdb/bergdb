@@ -1,7 +1,7 @@
 028-31. Fix: text about a reclaim row without an end key
 ========================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-19 by Frans Lundberg.
 
 What: 027-13, section 1.4, step 1, says "(to the last key for a row stored
@@ -28,3 +28,14 @@ Log
 ---
 
 2026-11-19. Registered by coord-1118 from a report of the day's work.
+
+2026-11-20. Taken by tx of coord-1120, on the branch `028-30-31-texts`.
+
+2026-11-20. Done by tx of coord-1120: 027-13, section 1.4, step 1, and
+`Reclaim.step`'s Javadoc say that every row has its end key and that
+`IterationInfo.deserialize` refuses a row without it since 028-15, the
+row without it of before 026-05 as history; 027-13, section 9, adds that
+a reader of 2026.5 or earlier refuses a stream of meta version 155
+before it reads a row. A grep of `java/`, `lean/` and 027 found no other
+text of such a row as today's: 027-03, section 15, and
+`IterationInfo.endKey`'s comment already said it. Comments only.

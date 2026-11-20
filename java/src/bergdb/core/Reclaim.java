@@ -790,8 +790,10 @@ public class Reclaim implements Db.TransactionListener {
      *
      * <ul>
      * <li>endKey, the last key live at tStart (lastKeyAt), ends the scan (GetMany.endKey): the
-     * keys put after it since tStart are not met, and their values are after pStart. A row
-     * stored before 026-05 has none (null): its scan is not bounded so.</li>
+     * keys put after it since tStart are not met, and their values are after pStart. Every
+     * row has it (IterationInfo.endKey): deserialize() refuses a row without it since bergdb
+     * 028-15. Until then a row stored before 026-05 had none, and its scan was not bounded
+     * so.</li>
      * <li>Only a KV whose value is stored before pStart counts toward writeSize. Such a KV was
      * live at tStart with that value, and the scan moves forward, so an iteration takes at
      * most (the KVs live at tStart) / writeSize steps, as with the scan at tStart, whatever

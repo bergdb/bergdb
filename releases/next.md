@@ -34,9 +34,16 @@ algorithms. The stable stream format waits for a later release.
   own, `/#i/-sd`, and the meta block's version is 155 (154
   until now). A start of an older database throws a
   `VersioningStreamException` whose message names release 2026.5, and
-  writes nothing. To keep the data, read it with release 2026.5 and put
-  it into a new database with this release. Release 2026.5 refuses a
-  database of this release in the same way. A change of the startup
+  writes nothing. To keep the data, read it with the release that wrote
+  it and put it into a new database with this release, for example with
+  two programs, one on each release's jar (the releases' classes have
+  the same names); the history is not copied. Release 2026.5 opens a
+  database of 2026.5, not one of 2026.4 or earlier: read a database of
+  2026.4 with 2026.4, and one of 2026.3 or earlier with the release that
+  wrote it (bergdb 028-30). Releases 2026.5 and 2026.4 refuse a database
+  of this release by its meta block's version, with the message "Cannot
+  read meta block with version 155. Version supported: 154", and write
+  nothing. A change of the startup
   distance (`Database.setStartupDistanceInMb`, `Db.setStartupDistance`)
   now writes a small transaction, not one of 200 kB, and a crash inside
   it starts with the old setting. The Core API: every database has that
