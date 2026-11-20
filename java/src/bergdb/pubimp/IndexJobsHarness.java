@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import bergdb.core.Db;
@@ -95,8 +96,9 @@ import bergdb.stream.MemoryStream;
  *     ACTIVE, an index active at the start has a job ACTIVE with count 0; every marker goes
  *     (the cleanup resumed); the entries are the function of the data read back, and no
  *     other generation's entry is left; the data is the data the calls wrote.</li>
- * <li><b>No hang, no thread left.</b> Every call and join returns within its bound, and no
- *     thread of BergDB is alive two seconds after a close.</li>
+ * <li><b>No hang, no thread left.</b> Every call returns within its bound, a build and a
+ *     cleanup make progress within theirs (a committed step, an entry deleted: bergdb
+ *     028-29), and no thread of BergDB is alive two seconds after a close.</li>
  * </ol>
  *
  * <p>The unit test injects every fault at every point once (a middle step of the first
@@ -125,10 +127,17 @@ public final class IndexJobsHarness {
      */
     static final int SLOW = Math.max(1, Integer.getInteger("harness.slow", 1));
 
-    /** The bound of a call or a join (a hang beyond it is a finding), ms. */
+    /**
+     * The bound of a call, and of a build's join without progress (its count the same), ms:
+     * a hang beyond it is a finding (bergdb 028-29).
+     */
     static final int JOIN_MS = 10000 * SLOW;
 
-    /** The longest wait for a cleanup to remove its marker, ms. */
+    /**
+     * The longest time that the cleanups may go without progress (an entry of a marked
+     * generation deleted, or a marker), ms: a cleanup that makes none for this long is stuck
+     * (bergdb 028-29). A slow cleanup that makes progress is waited for.
+     */
     static final int CLEANUP_MS = 30000 * SLOW;
 
     /** The longest wait for BergDB's threads to end after a close, ms. */
@@ -451,6 +460,14 @@ public final class IndexJobsHarness {
         final Set<Long> gens = new TreeSet<Long>();
         /** The generation whose cleanup a RuntimeException ended: its marker stays. */
         volatile long stuckMarker;
+        /** A test's action between the restart's read of memory and its read of the stream. */
+        volatile Consumer<Database> betweenReads;
+        /** A test's action at each point of the hook, before a fault. */
+        volatile Consumer<Point> atHook;
+        /** CLEANUP_MS, or a test's own. */
+        volatile int cleanupMs = CLEANUP_MS;
+        /** The time of joinProgress()'s last join, ms. */
+        long lastJoinMs;
         volatile boolean deletedDuringBuild;
         /**
          * The deletion during build 1 has begun: set before its call, as the build's thread
@@ -562,6 +579,10 @@ public final class IndexJobsHarness {
             Point point = Point.of(hook);
             if (point == null) {
                 return;
+            }
+            Consumer<Point> a = atHook;
+            if (a != null) {
+                a.accept(point);
             }
             int n;
             synchronized (calls) {
@@ -833,7 +854,13 @@ public final class IndexJobsHarness {
             }
             if (alive(what)) {
                 IndexDefinition s = streamDefinition();
-                if (s == null || s.gen() != d.gen()) {
+                // The deletion during build 1 may commit between the read of memory and that
+                // of the stream (bergdb 028-29, seen once on a loaded machine): it deletes under
+                // IndexManager's lock, the commit before memory's change, and definition()
+                // takes the lock, so memory read again after the stream has none.
+                boolean deletedBetween = s == null && b == 1 && deletingDuringBuild
+                        && manager(db).definition(NAME) == null;
+                if ((s == null || s.gen() != d.gen()) && !deletedBetween) {
                     finding("call made its change", what + " returned; memory has " + d
                             + ", the stream " + s);
                 }
@@ -1060,9 +1087,7 @@ public final class IndexJobsHarness {
 
         /** Waits for build b and checks its last status. */
         void joinBuild(int b) {
-            long t0 = System.nanoTime();
-            JobStatus st = joinJob(jobs[b], JOIN_MS, b, "build " + b);
-            long ms = (System.nanoTime() - t0) / 1000000;
+            JobStatus st = joinProgress(jobs[b], b, "build " + b);
             if (Thread.interrupted()) {
                 finding("workload", "the workload's thread was interrupted in join()");
             }
@@ -1070,8 +1095,9 @@ public final class IndexJobsHarness {
                 snaps.add(new Snap(b, "join()", st));
             }
             finals[b] = st;
-            if (st.state() == State.BUILDING && ms >= JOIN_MS - 100) {
-                finding("hang", "build " + b + " did not end in " + JOIN_MS + " ms");
+            if (st.state() == State.BUILDING && lastJoinMs >= JOIN_MS - 100) {
+                finding("hang", "build " + b + " did not end, with no progress for " + JOIN_MS
+                        + " ms");
             }
             boolean up = alive("after build " + b);
             checkFinal(b, st, up);
@@ -1097,6 +1123,26 @@ public final class IndexJobsHarness {
                         finding("indexJob", "indexJob() of build " + b + ": " + describe(e));
                     }
                 }
+            }
+        }
+
+        /**
+         * joinJob() with JOIN_MS, again while the build makes progress: a join that returns
+         * BUILDING with a count above the last join's (bergdb 028-29). A slow build on a
+         * loaded machine is waited for; a build with no committed step for JOIN_MS, or ended
+         * BUILDING by a stop, returns BUILDING. lastJoinMs is the last join's time: JOIN_MS
+         * or more for a build with no progress.
+         */
+        JobStatus joinProgress(Job job, int b, String what) {
+            long count = -1;
+            while (true) {
+                long t0 = System.nanoTime();
+                JobStatus st = joinJob(job, JOIN_MS, b, what);
+                lastJoinMs = (System.nanoTime() - t0) / 1000000;
+                if (st.state() != State.BUILDING || st.count() <= count) {
+                    return st;
+                }
+                count = st.count();
             }
         }
 
@@ -1233,32 +1279,92 @@ public final class IndexJobsHarness {
         }
 
         /**
-         * Waits until the markers are gone, or the cleanup ended by the fault: a
-         * RuntimeException at a cleanup's point leaves its marker. False if the database
+         * Waits until the markers are gone, but the one of the cleanup that the fault ended:
+         * a RuntimeException at a cleanup's point leaves its marker. A finding if the
+         * cleanups made no progress for cleanupMs (awaitMarkers). False if the database
          * stopped or failed.
          */
         boolean awaitCleanup() {
-            long end = System.nanoTime() + CLEANUP_MS * 1000000L;
-            long firedAt = -1;
+            List<IndexKeys.Marker> left = awaitMarkers(db, true);
+            if (left == null) {
+                return false;
+            }
+            if (!left.isEmpty()) {
+                finding("cleanup", "no progress for " + cleanupMs + " ms, markers left: "
+                        + left);
+            }
+            return true;
+        }
+
+        /**
+         * The generation of the cleanup that the fault ended, or 0: a RuntimeException at a
+         * cleanup's point ends its thread at once and leaves its marker for good
+         * (IndexManager.startCleanup), so no wait decides it. The generation is in the name
+         * of the thread that the fault fired in, "IndexCleanup-NAME-GEN".
+         */
+        long faultEndedCleanup() {
+            Thread t = firedThread;
+            if (!fired || t == null || !cfg.point.inCleanup() || cfg.fault != Fault.RUNTIME) {
+                return 0;
+            }
+            String head = "IndexCleanup-" + NAME + "-";
+            String name = t.getName();
+            if (!name.startsWith(head)) {
+                finding("cleanup", "the fault fired in " + name + ", not a cleanup's thread");
+                return 0;
+            }
+            return Long.parseLong(name.substring(head.length()));
+        }
+
+        /**
+         * Waits until no marker is left at the latest time, but the one of the cleanup that
+         * the fault ended (faultEndedCleanup(), kept in stuckMarker) on the live database.
+         * Progress, not the time alone, decides a stuck cleanup (bergdb 028-29): the markers
+         * left and the number of entries of each marked generation, counted at most every
+         * 100 ms; no one writes a deleted generation, so a change is a cleanup's progress.
+         * Returns the markers left when none was made for cleanupMs, empty when done; null
+         * if 'live' and the database stopped or failed (alive()).
+         */
+        List<IndexKeys.Marker> awaitMarkers(Database d, boolean live) {
+            IndexManager m = manager(d);
+            String last = null;
+            long progressAt = System.nanoTime();
+            long countAt = progressAt - 1000000000L;
+            long countEvery = 100000000L;
             while (true) {
-                if (!alive("in the cleanup")) {
-                    return false;
+                if (live && !alive("in the cleanup")) {
+                    return null;
                 }
-                List<IndexKeys.Marker> markers = manager(db).markers(LATEST);
-                if (markers.isEmpty()) {
-                    return true;
+                long stay = live ? faultEndedCleanup() : 0;
+                if (stay != 0) {
+                    stuckMarker = stay;
                 }
-                if (fired && cfg.point.inCleanup() && cfg.fault == Fault.RUNTIME) {
-                    if (firedAt < 0) {
-                        firedAt = System.nanoTime();
-                    } else if (System.nanoTime() - firedAt > 50000000L) {
-                        stuckMarker = markers.get(0).gen;
-                        return true;
+                List<IndexKeys.Marker> left = new ArrayList<IndexKeys.Marker>();
+                for (IndexKeys.Marker k : m.markers(LATEST)) {
+                    if (!(k.name.equals(NAME) && k.gen == stay)) {
+                        left.add(k);
                     }
                 }
-                if (System.nanoTime() > end) {
-                    finding("cleanup", "markers left after " + CLEANUP_MS + " ms: " + markers);
-                    return true;
+                if (left.isEmpty()) {
+                    return left;
+                }
+                long now = System.nanoTime();
+                if (now - countAt >= countEvery) {
+                    // The count reads the generations' keys; on a large run it is taken less
+                    // often, so that it takes at most a tenth of the time.
+                    StringBuilder state = new StringBuilder();
+                    for (IndexKeys.Marker k : left) {
+                        state.append(k).append(": ").append(rawKeys(dbOf(d),
+                                IndexKeys.generationPrefix(k.name, k.gen)).size()).append("; ");
+                    }
+                    countAt = System.nanoTime();
+                    countEvery = Math.max(100000000L, 10 * (countAt - now));
+                    if (!state.toString().equals(last)) {
+                        last = state.toString();
+                        progressAt = countAt;
+                    } else if (countAt - progressAt > cleanupMs * 1000000L) {
+                        return left;
+                    }
                 }
                 sleep(2);
             }
@@ -1492,10 +1598,14 @@ public final class IndexJobsHarness {
                 IndexManager m = manager(d);
                 Map<String, Object> values = readBack(d);
                 IndexDefinition def = m.definition(NAME);
+                Consumer<Database> between = betweenReads;
+                if (between != null) {
+                    between.accept(d);
+                }
                 IndexDefinition str = IndexDefinition.read(dbOf(d), NAME, LATEST);
-                if (!Objects.equals(def, str)) {
-                    finding("restart", "after the start, memory has " + def + ", the stream "
-                            + str);
+                String disagree = disagree(def, str, () -> m.definition(NAME));
+                if (disagree != null) {
+                    finding("restart", "after the start, " + disagree);
                 }
                 long g = def == null ? 0 : def.gen();
                 if (!failed && !broken && g != expectGen) {
@@ -1516,14 +1626,11 @@ public final class IndexJobsHarness {
                         // Expected.
                     }
                 }
-                long end = System.nanoTime() + CLEANUP_MS * 1000000L;
-                List<IndexKeys.Marker> markers;
-                while (!(markers = m.markers(LATEST)).isEmpty() && System.nanoTime() < end) {
-                    sleep(2);
-                }
+                List<IndexKeys.Marker> markers = awaitMarkers(d, false);
                 if (!markers.isEmpty()) {
-                    finding("restart", "markers left " + CLEANUP_MS + " ms after the start: "
-                            + markers + " (020-10, 6.2: a start resumes the cleanup)");
+                    finding("restart", "markers left after the start, with no progress for "
+                            + cleanupMs + " ms: " + markers + " (020-10, 6.2: a start resumes "
+                            + "the cleanup)");
                 }
                 if (def != null) {
                     checkEntries(d, def, values, "after the restart");
@@ -1561,13 +1668,12 @@ public final class IndexJobsHarness {
                 finding("restart", "an index active at the start: its job is " + first.state()
                         + " with count " + first.count() + ", not ACTIVE with 0 (020-10, 3.2)");
             }
-            long t0 = System.nanoTime();
-            JobStatus st = joinJob(job, JOIN_MS, 0, "the build resumed at the start");
+            JobStatus st = joinProgress(job, 0, "the build resumed at the start");
             restartStatus = st;
             if (st.state() != State.ACTIVE) {
                 finding("restart", "the build resumed at the start ended " + st.state() + " ("
-                        + st.note() + ")" + ((System.nanoTime() - t0) / 1000000 >= JOIN_MS - 100
-                        ? ", after " + JOIN_MS + " ms" : ""));
+                        + st.note() + ")" + (lastJoinMs >= JOIN_MS - 100
+                        ? ", with no progress for " + JOIN_MS + " ms" : ""));
             } else if (!def.isActive() && st.count() != own) {
                 finding("restart", "the build resumed at the start: count " + st.count()
                         + ", and the directory has " + own + " values");
@@ -1695,6 +1801,32 @@ public final class IndexJobsHarness {
 
     static Db dbOf(Database d) {
         return ((DatabaseImp) d).getDb();
+    }
+
+    /**
+     * Whether memory's definition and the stream's agree while a build may run: null if they
+     * do, else what each has. 'mem' is read first, 'str' after it, and 'memAgain' reads
+     * memory again. A build may activate the index between the first two reads: memory's
+     * definition building, the stream's the same activated (028-29; seen once at a load near
+     * 80, STOP at CLEANUP_STEP 2, the start resuming build 2). IndexManager.activate holds
+     * its lock from before the activation's commit to after memory's change, and
+     * definition() takes the lock, so a read of memory after the stream showed the
+     * activation sees it: memAgain must give the stream's.
+     */
+    static String disagree(IndexDefinition mem, IndexDefinition str,
+            Supplier<IndexDefinition> memAgain) {
+        if (Objects.equals(mem, str)) {
+            return null;
+        }
+        if (mem != null && !mem.isActive() && str != null && str.equals(mem.activated())) {
+            IndexDefinition again = memAgain.get();
+            if (str.equals(again)) {
+                return null;
+            }
+            return "memory has " + mem + ", the stream " + str + " (activated), and memory "
+                    + "read again " + again;
+        }
+        return "memory has " + mem + ", the stream " + str;
     }
 
     /** Creates the index def with IndexBuilder (020-10, section 3.1). */
@@ -2019,6 +2151,106 @@ public final class IndexJobsHarness {
             check(res.knownFound.containsKey(k[0]), "the known fault " + k[1] + " is no longer "
                     + "found (" + k[0] + "): if it is fixed, remove its line from KNOWN");
         }
+    }
+
+    /**
+     * 028-29: a slow cleanup that makes progress is not stuck. Each cleanup step sleeps
+     * 150 ms, and the cleanup of about 1,000 entries takes 11 steps, 1.6 s, more than the
+     * run's bound of 1 s without progress: no finding. A bound by the time alone would
+     * count it stuck.
+     */
+    @Nano
+    public static void testSlowCleanupNotStuck() {
+        Config cfg = new Config();
+        cfg.objects = 10 * IndexManager.CLEANUP_KEYS;
+        Run r = new Run(cfg);
+        r.cleanupMs = 1000;
+        int[] steps = new int[1];
+        r.atHook = p -> {
+            if (p == Point.CLEANUP_STEP) {
+                steps[0]++;
+                sleep(150);
+            }
+        };
+        r.execute();
+        Results res = new Results();
+        res.add(r);
+        res.assertClean();
+        check(steps[0] * 150 > r.cleanupMs, "the cleanup took " + steps[0] + " steps");
+    }
+
+    /**
+     * 028-29: a cleanup that makes no progress is stuck. The second cleanup step waits
+     * 1.5 s, longer than the run's bound of 300 ms without progress: a finding "cleanup";
+     * the step then goes on, and the cleanup ends.
+     */
+    @Nano
+    public static void testNoProgressStuck() {
+        Run r = new Run(new Config());
+        r.cleanupMs = 300;
+        int[] steps = new int[1];
+        r.atHook = p -> {
+            if (p == Point.CLEANUP_STEP && ++steps[0] == 2) {
+                sleep(1500);
+            }
+        };
+        r.execute();
+        boolean stuck = false;
+        synchronized (r.findings) {
+            for (String[] f : r.findings) {
+                stuck |= f[0].equals("cleanup") && f[1].startsWith("no progress for 300 ms");
+            }
+        }
+        check(stuck, "no finding of a stuck cleanup: " + r.findings.size() + " findings");
+    }
+
+    /**
+     * 028-29, the failure of testEveryPointAndFault at a load near 80 (2026-11-19): the
+     * restart read memory's definition building and the stream's active, as the build that
+     * the start resumed activated the index between the two reads. Here the restart's reads
+     * wait, between them, for the resumed build to end (a stop at the build's second step
+     * leaves it to the start): the race made each time it is reached, and no finding.
+     */
+    @Nano
+    public static void testActivationBetweenRestartReads() {
+        boolean raced = false;
+        for (int i = 0; i < 5 && !raced; i++) {
+            Config cfg = new Config(Point.BUILD_STEP, unitCall(Point.BUILD_STEP), Fault.STOP);
+            cfg.objects = 1000;
+            Run r = new Run(cfg);
+            boolean[] building = new boolean[1];
+            r.betweenReads = d -> {
+                IndexDefinition def = manager(d).definition(NAME);
+                if (def != null && !def.isActive()) {
+                    building[0] = true;
+                    d.indexJob(NAME).join(JOIN_MS);
+                }
+            };
+            r.execute();
+            Results res = new Results();
+            res.add(r);
+            res.assertClean();
+            raced = building[0];
+        }
+        check(raced, "the resumed build ended before the restart's reads in 5 runs");
+    }
+
+    /** disagree(): equal; the activation between the reads; the rest disagrees. */
+    @Nano
+    public static void testDisagree() {
+        IndexDefinition b = new IndexDefinition(NAME, DIR, 7, false, new String[] {"long"},
+                new String[][] {{"n"}});
+        IndexDefinition a = b.activated();
+        IndexDefinition other = new IndexDefinition(NAME, DIR, 8, true, new String[] {"long"},
+                new String[][] {{"n"}});
+        check(disagree(b, b, () -> null) == null, "equal");
+        check(disagree(null, null, () -> null) == null, "none");
+        check(disagree(b, a, () -> a) == null, "activated between the reads");
+        check(disagree(b, a, () -> b) != null, "memory not activated after the stream");
+        check(disagree(a, b, () -> b) != null, "the stream behind memory");
+        check(disagree(b, other, () -> other) != null, "another generation");
+        check(disagree(b, null, () -> null) != null, "none in the stream");
+        check(disagree(null, a, () -> a) != null, "none in memory");
     }
 
     /**
