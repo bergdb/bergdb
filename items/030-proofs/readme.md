@@ -565,7 +565,7 @@ Files
   the tree sets with the tree check, the contract and bridge checkers
   and `pecmp`; 406 traces, 13 minutes), every seed recorded, a failing
   trace kept with the command that makes it again; and `week.sh` runs
-  Java's commit-time check (CC) on the apps' quick and kill rounds, one
+  Java's commit-time check (CC) on the apps' soak and kill rounds, one
   kill-restart seed and three harness-soak rounds, switched on in every
   JVM by the environment variable `BERGDB_TRANSCHECK`; its cost
   measured. Written 2026-11-20. Status: done.

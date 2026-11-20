@@ -12,8 +12,11 @@ repository. What is done about each finding is in section "Actions".
 
 ## Actions
 
-* F1 to F4: to be decided and done before release 2026.6 (026's release
-  steps check that 030-26 is current). Not yet started.
+* F4: corrected 2026-11-20 (Frans): 030-26, section 5, item 1, and 030's
+  readme name the apps' soak and kill rounds (the quick round in
+  `week.sh short`).
+* F1 to F3: to be decided and done before release 2026.6 (026's release
+  steps check that 030-26 is current).
 
 
 

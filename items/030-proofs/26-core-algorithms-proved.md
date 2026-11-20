@@ -12,8 +12,9 @@ four places where this page says more than is proved or checked: reclaim's
 step model does not require a step to write back the value it read (F1);
 values are compared by a 63-bit hash, not as bytes (F2); Java's
 commit-time check covers the transaction's paths, not the whole contract
-(F3); and which week.sh rounds run that check (F4). Until they are
-corrected here, read the page with 030-33.
+(F3); and which week.sh rounds run that check (F4, corrected in section
+5, item 1). Until the others are corrected here, read the page with
+030-33.
 
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
@@ -398,7 +399,8 @@ checker and `pecmp`; a failing trace is kept with its seed.
    030-31).
    Java checks the contract itself at every commit (`TransCheck`: the unit
    tests in `before-commit.sh`, the f-tests in `night.sh`, and in
-   `week.sh` the user apps' quick and kill rounds, one seed of the kills
+   `week.sh` the user apps' soak and kill rounds (the quick round in
+   `week.sh short`), one seed of the kills
    of `kill-restart.sh` and three rounds of the harness soak; 030-30). The
    tree checker's PE (`lean/SIS/Tree/Pe.lean`) is a
    copy of the proved one, rule for rule; `pecmp` compares the two at
