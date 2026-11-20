@@ -113,7 +113,7 @@ lines as on `main` 6d379122):
   `4 * mergeLevels` after a delete (line 706).
 - Java's arguments: Db passes the transaction's keys and, for each,
   whether it is a delete (`Db.checkDirtyNodes`, java/src/bergdb/core/Db.java,
-  line 3304); `opsKd` gives them for a transaction without key or value
+  line 3306 on main 4de9ca7f); `opsKd` gives them for a transaction without key or value
   transformations. A key transformation is counted coarsely by Db itself; a
   value transformation is walked as a put and as a delete, which the
   theorem does not cover (a transaction of puts has none).
