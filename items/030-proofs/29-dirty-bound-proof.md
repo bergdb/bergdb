@@ -143,8 +143,11 @@ In words: take a state that PE keeps after the transaction of time t
 (030-21's `Inv`: the contract's invariants, TREE, PE's shapes) at Java's
 parameters at node size b ≥ 8 (`Cfg.java`: h = c = 17 b / 30, m, theta, the
 cut size b / 2; G and H are the model's level bounds, free), whose tree meets
-the writer's fill rules (`FillOk`: the trace checker's `shapeFaults` finds
-no fault). For every transaction of puts that PE accepts, at any time i, the
+the writer's fill rules (`FillOk`: `shapeFaults`, Contract/Shape.lean, finds
+no fault; the contract checker reports its faults on Java's tree after every
+traced transaction, and the tree checker's C-T6, its own restatement of the
+rules, fails on them). For every transaction of puts that PE accepts, at any
+time i, the
 key nodes PE writes are at most Java's `dirtyNodeBound` of the transaction
 on the tree read at t, the lookup time Db uses (the latest). A transaction
 without operations writes none.
