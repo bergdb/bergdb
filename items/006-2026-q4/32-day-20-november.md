@@ -26,7 +26,8 @@ Decisions of the morning:
 
 ## 2. The ground rules
 
-* Usage level tight; the stop file at week 95 %. Subagents on Opus 5.5,
+* Usage level tight; the stop file at week 95 %, 98 % from 14:00
+  (Frans). Subagents on Opus 5.5,
   high.
 * Each agent works in its own clone under the day's bench directory;
   coord-1120 lands on `main` after the gates.
@@ -38,6 +39,8 @@ Decisions of the morning:
 |---|---|---|---|
 | hf | 028-29, then 028-28 | the harnesses on a loaded machine; the unit test flake | Opus high |
 | tx | 028-31, 028-30 | a reclaim text since 028-15; 2026.4's refusal message | Opus high |
+| fx1 | 028-38, 028-39, 028-37 | freshTreeBound; dirtyNodeBound's Javadoc; the bridge checker once | Opus high |
+| fx2 | 028-35, 028-36 | KillEmpty; an IndexJobsHarness test under load | Opus high |
 
 
 ## 4. Progress
@@ -58,6 +61,8 @@ Decisions of the morning:
 * 13:35 030-29 landed (6954f1d6): PE's dirty nodes within Java's
   dirtyNodeBound for transactions of puts (deletes open); PE accepts
   Java's transactions at G = 8192, H = 126. 028-38, 028-39 registered.
+* 14:03 The usage stop raised to 98 % (Frans); fx1 and fx2 started on
+  the small 028 fixes.
 
 
 ## 5. Outcome

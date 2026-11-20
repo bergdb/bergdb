@@ -51,7 +51,11 @@
 #      minutes.
 #   7. conformance-large: the Lean checker built (lake build in lean/), then
 #      stress/conformance.sh large, 12 traces of 1,000 to 5,000 transactions at node sizes
-#      8 to 62 (night.sh runs the medium set); about 5 hours.
+#      8 to 62, on the day's seeds: 2 a configuration, from the day's number times 1000
+#      plus 700 (Frans, 2026-11-20; night.sh runs the medium set, and its day steps the
+#      other sets from times 1000). Each trace's seed is in its name and its log line; a
+#      failing trace has a FAILED line with the command that makes it again from its seed,
+#      and is kept with its outputs in build/week/RUN/traces/; about 5 hours.
 #   8. apptraces-week: stress/apptraces.sh week, the user apps' workloads against the
 #      model (bergdb 030-31): the apps larger than night.sh's apptraces step, DeleteHeavy
 #      at node sizes 8 to 62 and WorstCase too, with seeds from the day's number (night.sh:
@@ -155,13 +159,16 @@ with_cc() {
     return $st
 }
 
-# conformance SET SEEDS...: the jar and the Lean checker built first, as the level scripts
+# conformance SET [SEEDS [FIRST]]: the jar and the Lean checker built first, as the level scripts
 # do for theirs (no step before it builds the checker), then stress/conformance.sh.
 conformance() {
     ./build.sh > /dev/null || { echo "CONFORMANCE FAILED: build"; return 1; }
     (cd ../lean && lake build) > build/lake-week.txt 2>&1 \
         || { echo "CONFORMANCE FAILED: lake build (log: java/build/lake-week.txt)"; return 1; }
-    sh stress/conformance.sh "$@"
+    sh stress/conformance.sh "$@"; st=$?
+    # A run from a first seed (the day's): its failing traces kept (runlib.sh's keep_traces).
+    [ -n "$3" ] && keep_traces $1-$3
+    return $st
 }
 
 if ! step before-commit sh before-commit.sh; then
@@ -182,7 +189,7 @@ if [ $SHORT = 0 ]; then
         -o build/harness-soak-week
     step harness-soak-cc with_cc harness-soak sh stress/harness-soak.sh -f 7 -r 3 \
         -b $((DAY * 1000 + 100)) -o build/harness-soak-cc
-    step conformance-large conformance large
+    step conformance-large conformance large 2 $((DAY * 1000 + 700))
     step apptraces-week sh stress/apptraces.sh week
 else
     step apps-quick-cc with_cc apps-quick sh stress/apps.sh quick
