@@ -1810,6 +1810,11 @@ public class PubTester {
                 // Runtime.gc(), which System.gc() calls on a JVM; on Android System.gc()
                 // collects only after a finalization (bergdb 006-18-03).
                 Runtime.getRuntime().gc();
+                // The JVM's reference handler thread queues the cleared keys after the
+                // collection, and the map drops their entries at its next use: on a loaded
+                // machine it may not have run yet (week.sh, 2026-11-20: 20 of 20 kept, the
+                // unit tests at a low priority). A short wait each round lets it run.
+                Thread.sleep(20);
                 db.connection();
                 kept = 0;
                 for (java.lang.ref.WeakReference<Connection> ref : refs) {
