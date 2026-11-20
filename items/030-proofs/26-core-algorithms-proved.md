@@ -223,7 +223,10 @@ it; that PE meets it is proved apart.
   change to one must change that file in the same commit, so that it
   shows in review; `lean/contract/pins.sh` checks the hashes every night
   (`level2.sh`, step 0).
-- **Not vacuous.** Examples in Lean meet the main theorems' premises: a
+- **Not vacuous.** A theorem of the form "if these premises hold, then
+  ..." is vacuous when its premises can never all hold at once: it is
+  true but promises nothing, and with many premises that is easy to miss.
+  Examples in Lean show that the main theorems' premises can hold: a
   history PE writes (`Contract.PE.Example.meetsTop`), one that meets every
   statement of the bridge (`Contract.BridgeExample4.meetsAll`), one with a
   reclaim iteration of two steps (`Contract.StepsExample.stepsOK`).
