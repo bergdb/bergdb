@@ -3,10 +3,13 @@
 # treeconf.sh writes the set's traces (format 3), with TREECHECK=none: no check
 # by the old tree model (treecheck), which takes 10 to 30 minutes per trace of
 # the medium set's m-d8, m-d30 and m-d62; TREE=1 runs it too. Then
-# lean/contract/check.sh (contractcheck, bergdb 030-04, 030-09) and
-# lean/contract/bridge-check.sh (bridgecheck, bergdb 030-07) check each trace,
-# each after its own fault tests. level2.sh does the same on the small and
-# drain sets inline, after treeconf.sh's tree check (its step 8b); night.sh
+# lean/contract/check.sh checks each trace with both checkers, contractcheck
+# (bergdb 030-04, 030-09) and bridgecheck (030-07), after their own fault tests
+# (faults.sh, faults-top.sh, and bridge-faults.sh if a small and a reclaim trace
+# are in build/traces/: in night.sh, from level2.sh's step 8). Until 2026-11-20
+# lean/contract/bridge-check.sh then ran bridgecheck and its fault test a second
+# time on the same traces (bergdb 028-37). level2.sh does the same on the small
+# and drain sets inline, after treeconf.sh's tree check (its step 8b); night.sh
 # runs this script on the medium set (9 configurations, 3 seeds, 120 to 800
 # transactions, node sizes 8 to 62).
 #
@@ -82,23 +85,18 @@ failed_traces() {
     done
 }
 
+# Both checkers, at once, each trace once (bergdb 028-37). bridge-faults.sh, the bridge
+# checker's fault test, runs only if a small and a reclaim trace are in build/traces/ (in
+# night.sh, from level2.sh's step 8); check.sh says so when it does not.
 s=$(date +%s)
 sh ../lean/contract/check.sh $D > $LOG/$D-contract.txt 2>&1
 if ! grep -q '^CONTRACT OK' $LOG/$D-contract.txt; then
     failed_traces "lean/contract/check.sh"
     fail "lean/contract/check.sh $D" $LOG/$D-contract.txt
 fi
-echo "contract, $(( $(date +%s) - s )) s: $(grep '^tree-' $LOG/$D-contract.txt | cut -c1-200)"
-
-# bridge-check.sh runs its fault test only if a small and a reclaim trace are
-# in build/traces/ (in night.sh, from level2.sh's step 8).
-s=$(date +%s)
-sh ../lean/contract/bridge-check.sh $D > $LOG/$D-bridge.txt 2>&1
-if ! grep -q '^BRIDGE OK' $LOG/$D-bridge.txt; then
-    failed_traces "lean/contract/bridge-check.sh"
-    fail "lean/contract/bridge-check.sh $D" $LOG/$D-bridge.txt
-fi
-echo "bridge, $(( $(date +%s) - s )) s: $(grep '^tree-' $LOG/$D-bridge.txt | cut -c1-200)"
+grep '^(bridge-faults.sh not run' $LOG/$D-contract.txt
+echo "contract and bridge (check.sh), $(( $(date +%s) - s )) s:"
+grep '^tree-' $LOG/$D-contract.txt | cut -c1-200 | sed 's/^/   /'
 
 echo "Time: $(( $(date +%s) - START )) s"
 echo "CONTRACTCONF OK"

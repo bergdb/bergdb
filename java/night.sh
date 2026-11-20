@@ -86,10 +86,11 @@
 #  11b. stress/contractconf.sh medium: the medium tree set (treeconf.sh medium,
 #      27 traces of 120 to 800 transactions, node sizes 8 to 62, written with
 #      no tree check, which would take over an hour), then the writer's
-#      contract (lean/contract/check.sh) and the bridge
-#      (lean/contract/bridge-check.sh) on its traces, four at a time (bergdb
-#      030-13); 32 minutes on F53 under a heavy load (2026-11-17), most of it
-#      the bridge's six traces of m-d30 and m-d62.
+#      contract and the bridge on its traces (lean/contract/check.sh, both
+#      checkers, each trace once), four at a time (bergdb 030-13); 32 minutes
+#      on F53 under a heavy load (2026-11-17), most of it the bridge's six
+#      traces of m-d30 and m-d62, with the bridge checker run a second time by
+#      lean/contract/bridge-check.sh, until 2026-11-20 (bergdb 028-37).
 #      level2.sh's step 8b checks both on the small and drain sets.
 #  11c. lean/pecmp/check.sh medium: the tested writer against the proved writer
 #      (pecmp, bergdb 030-28) on the medium set's traces of step 11b, as level2.sh's
