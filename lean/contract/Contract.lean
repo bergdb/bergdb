@@ -86,3 +86,9 @@ import Contract.ReclaimTree
 import Contract.ReclaimSchemeFalse
 import Contract.ReclaimSteps
 import Contract.ReclaimStepsExample
+import Contract.DirtyBound
+import Contract.DirtyBoundStatement
+import Contract.Proof.DnbRoom
+import Contract.Proof.DnbTop
+import Contract.Proof.DnbMain
+import Contract.DnbExample

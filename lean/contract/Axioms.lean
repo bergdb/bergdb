@@ -198,3 +198,9 @@ open Contract
 #print axioms Contract.PE.pe_reclaim_reads_steps
 #print axioms Contract.StepsExample.stepsOK
 #print axioms Contract.StepsExample.iterationOK
+#print axioms Contract.PE.dirtyNodeBound_eq_sb
+#print axioms Contract.PE.pe_dirtyNodeBound_puts
+#print axioms Contract.PE.pe_accepts_java
+#print axioms Contract.PE.DnbExample.bound
+#print axioms Contract.PE.DnbExample.writes_one
+#print axioms Contract.PE.DnbExample.count_one
