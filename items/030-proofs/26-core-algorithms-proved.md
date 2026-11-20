@@ -96,12 +96,16 @@ the proof, on the tree's height and on the program's steps, and refuses a
 put of a key the tree cannot hold (`Contract.PE.pe_refuses`). The two
 bounds are premises of the proof, on the model's parameters G and H (the
 most key segments and the most node heights, less one), which Java does
-not have. For G = 8,192 and H = 100, every transaction that Java admits
-meets them, on every tree a stream can hold
-([030-28](28-writer-copy-checked.md), section 5). That argument is
-arithmetic on paper, not in Lean, and uses how full PE keeps its nodes,
-which the tree checker checks on Java's tree after every traced
-transaction. Java's PE itself refuses nothing; its one guard, a descent
+not have. For G = 8,192 and H = 126, PE accepts every transaction of at
+most 2^20 operations whose puts' keys the tree can hold, on every tree of
+fewer than 2^63 nodes that meets the writer's fill rules
+(`Contract.PE.pe_accepts_java`, [030-29](29-dirty-bound-proof.md),
+section 5; argued first in [030-28](28-writer-copy-checked.md), section 5);
+Java admits at most 500 operations a user transaction. The fill rules (how
+full PE keeps its nodes: an inner root has two live entries, every other
+node at least m) are checked by the tree checker on Java's tree after
+every traced transaction; that PE keeps them is not proved. Java's PE
+itself refuses nothing; its one guard, a descent
 of more than 1,000 nodes in one segment tree, cannot be reached on an
 undamaged stream (the same section).
 
@@ -179,14 +183,30 @@ The theorems about PE's histories have these premises:
 - distinct keys within a transaction (Java's writer gets one operation
   per key);
 - the base level of the top nodes (`cf.topBase`, the start top node's
-  level, which the parameters give) at most 2^62: it is 827,494 for
-  G = 8,192 and H = 100 (030-28, section 5);
+  level, which the parameters give) at most 2^62: it is 1,040,512 for
+  G = 8,192 and H = 126 (030-28, section 5; 030-29);
 - a history of fewer than 2^48 − 1 transactions. This is a premise of
   the proof, not a limit Java checks: Java bounds the top nodes'
   ordinals (005-02), not the number of transactions, and a transaction
   that leaves the tree's root as it was makes no top node.
 
 `pe_accepts` adds its two bounds (2.1).
+
+## 2.7 A transaction's index nodes: the dirty-node bound
+
+Before a transaction's go point, Java counts the index nodes it can make
+dirty or create (`Dag.dirtyNodeBound`) and refuses the transaction if those
+nodes, each at its largest, could take its record past the record limit;
+after the go point a failure would fail the database. Proved, for
+transactions of puts: from a state PE keeps whose tree meets the writer's
+fill rules, the key nodes PE writes for any transaction of puts it accepts
+are at most Java's count (`Contract.PE.pe_dirtyNodeBound_puts`,
+[030-29](29-dirty-bound-proof.md)). Java's count is modelled in Lean
+function for function (`Contract/DirtyBound.lean`); that the model is
+Java's rests on reading the two side by side, as PE's model does. For
+transactions with deletes the bound is tested, not proved: its terms for
+deletes are large (four nodes a level of a delete's path, and eight more),
+and the tests find deletes far under it (028-21; 030-29, section 3).
 
 
 # 3. The model, and what "proved" means
@@ -204,8 +224,8 @@ assistant, in two packages:
 - `lean/contract/`: the key tree, the writer's contract, PE as Lean
   functions that run (`Contract/PeWriter.lean`), the bridge from the
   DAG to the abstract model, reclaim's contract, the model of its steps,
-  and the proofs. It uses Mathlib, Lean's library of mathematics. 131
-  files, about 48,000 lines; the gate checks 191 theorems.
+  and the proofs. It uses Mathlib, Lean's library of mathematics. 152
+  files, about 57,000 lines; the gate checks 197 theorems.
 
 The writer's contract is the centre. It says what must hold when a
 transaction ends, not how the writer gets there. Reads, recovery,
@@ -230,7 +250,7 @@ the whole DAG at that point, each node with all its time-marked entries;
 ## 3.2 What "proved" means here
 
 - **Checked by machine.** Lean's kernel checks every step of every proof.
-- **No extra axioms.** The 191 theorems of `lean/contract/Axioms.lean`
+- **No extra axioms.** The 197 theorems of `lean/contract/Axioms.lean`
   rest only on Lean's three standard axioms (`propext`,
   `Classical.choice`, `Quot.sound`): no `sorry` (a step left unproved),
   no `admit`, no `native_decide` (which trusts compiled code), no axiom of
@@ -239,7 +259,7 @@ the whole DAG at that point, each node with all its time-marked entries;
   on the definitions it uses. The files that hold them, with the
   toolchain's and the gate's own, and since 030-28 the tree checker's copy
   of PE and the tool that compares it with the proved writer, are listed
-  with their hashes in `lean/contract/statements.pin` (106 files). A
+  with their hashes in `lean/contract/statements.pin` (112 files). A
   change to one must change that file in the same commit, so that it
   shows in review; `lean/contract/pins.sh` checks the hashes every night
   (`level2.sh`, step 0).
@@ -295,9 +315,9 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   drains, restarts, eviction, reclaim). A case no trace reaches is covered
   only by the other tests, among them Java's own check of the contract
   after every transaction of its unit tests and f-tests (`TransCheck`).
-  That PE accepts every transaction that Java admits rests on an
-  argument on paper, not in Lean (2.1); a transaction that the model
-  refuses on a trace fails the tree checker.
+  That PE accepts every transaction that Java admits is proved given the
+  writer's fill rules, which are tested (2.1); a transaction that the
+  model refuses on a trace fails the tree checker.
   An independent review of Java's PE writer (2026-11-19) found one fault,
   in reclaim's accounting, not in the stored nodes; it is fixed (028-26).
 - **The platform.** The model assumes that a synced append is durable,
@@ -325,10 +345,10 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   the steps of runs with restarts and crashes (argued in 030-25, section
   2, and covered by the reclaim tests), and configurations the traces do
   not reach (30 to 200 keys, node sizes 8 and 14).
-- **No cost, time or memory statement is proved:** not the work of a
-  start (bounded startup, [007](../007-bounds/readme.md), is measured and
-  tested), not the size of records or of the stream, not the heap, not
-  pauses. The tree's shape rules that only costs depend on (how full the
+- **No cost, time or memory statement is proved,** but the bound on a
+  transaction of puts' index nodes (2.7): not the work of a start
+  (bounded startup, [007](../007-bounds/readme.md), is measured and
+  tested), not the size of the stream, not the heap, not pauses. The tree's shape rules that only costs depend on (how full the
   nodes are, balance, dead entries) are not in the contract. These are
   measured and tested: the count gates in `night.sh`, `timing.sh`.
 
@@ -481,3 +501,9 @@ structure, it says "the DAG" or "the stored nodes" (sections 2, 2.3, 3.1,
 
 2026-11-20. Kept up to date with `main`, at least until release 2026.6
 (Frans).
+
+2026-11-20. Brought up to date with 030-29: the dirty-node bound proved
+for transactions of puts, given the fill rules (2.7, section 4); PE's
+acceptance at Java's parameters proved in Lean, at H = 126 (2.1, 2.6,
+section 4), H = 100 having left room on every tree of fewer than 2^63 nodes
+only at node sizes 30 and 62; the counts of 3.1 and 3.2.

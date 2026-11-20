@@ -584,7 +584,8 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
   `Db.checkDirtyNodes` with `Dag.dirtyNodeBound`): value nodes at most 7/8
   of the limit (`valueLimit`, :76), index nodes at most 15/16
   (`dirtyLimit`, :86). `dirtyNodeBound` was argued for the writer of
-  formats 6 and 7; for PE it is argued in its Javadoc since 028-21,
+  formats 6 and 7; for PE it is proved for transactions of puts since
+  030-29 (given the fill rules), and argued in its Javadoc since 028-21,
   which found the old count short for PE in three ways and added them: a
   new segment tree of more than h entries, which PE cuts into parts (18
   keys at node size 30 made three nodes, counted as one); a node cut
@@ -1787,3 +1788,6 @@ agent of coord-1118, on the branch `028-18-option-c`.
 2026-11-19. 028-21: 8.3, `dirtyNodeBound` argued for PE and its three
 gaps closed. By an agent of coord-1118, on the branch
 `028-21-dirty-bound`.
+
+2026-11-20. 030-29: 8.3, `dirtyNodeBound` proved for PE's transactions of
+puts (Lean, given the fill rules).

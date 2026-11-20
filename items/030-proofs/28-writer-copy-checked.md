@@ -48,7 +48,8 @@ Done by an agent of the day's coordinator, on the branch
   most 63 levels in a segment tree at any node size. 030-21's acceptance
   premises (`FuelOk`, `Room`) are premises on the model's parameters G and
   H, which Java does not have, and hold for every transaction Java admits
-  with G = 8,192 and H = 100. No 028 entry.
+  with G = 8,192 and H = 126 (H = 100 until 030-29 corrected it, 2026-11-20;
+  proved in Lean there, `pe_accepts_java`). No 028 entry.
 - lean/README.md's opening states the proofs' state; releases/next.md has
   the entry for PE and record format 8, with the StreamDigest digests
   before and after in section 6.
@@ -246,16 +247,26 @@ model's parameters G (the most segments, less one) and H (the most
 heights, less one), which number and bound the levels and decide no node:
 `decideNode`, `rebalance` and `settleRoot` do not read them, and `mkNode`
 only refuses a node outside them. Java has neither. For the parameters
-G = 8,192 (a key of BergDB's own has at most 8,193 segments) and H = 100:
+G = 8,192 (a key of BergDB's own has at most 8,193 segments) and H = 126:
 
-- `Room`: h = 17 and cap = 15 at node size 30 (at least 2); and
-  2^(H - e) > nodes + p holds for e <= 21 (above) whenever the tree has
-  fewer than 2^78 nodes, beyond any stream;
-- `FuelOk`: (G + 1)(H + 1)(M + p + 2H + 6) = 8,193 * 101 * (236 + p) <=
-  2^40 for p up to about 1.3 million operations; a user transaction has at
-  most 500 (L1), a reclaim step puts at most 16 kB of scanned KVs and its
-  row (024-17, 5.5), the start's rerun a record's KVs;
-- `pe_full`'s top base, (G + 1)(H + 1) + 1 = 827,494, is below 2^62.
+- `Room`: h and cap at least 2 (17 and 15 at node size 30); and
+  2^(H - e) > nodes + p holds for every height e of a tree of fewer than
+  2^63 nodes, beyond any stream: a key node at height e has at least 2^e
+  nodes below it (each inner node has two live entries at least), so
+  e <= 62;
+- `FuelOk`: (G + 1)(H + 1)(M + p + 2H + 6) = 8,193 * 127 * (M + 258 + p)
+  <= 2^40 for p up to 2^20 operations; a user transaction has at most 500
+  (L1), a reclaim step puts at most 16 kB of scanned KVs and its row
+  (024-17, 5.5), the start's rerun a record's KVs;
+- `pe_full`'s top base, (G + 1)(H + 1) + 1 = 1,040,512, is below 2^62.
+
+Corrected 2026-11-20 by 030-29, which proves this section's argument in
+Lean (`pe_accepts_java`, section 5 there). Until then this section said
+H = 100, with e <= 21 for every tree: that is node size 30's bound (m = 8);
+at node size 8 (m = 2) a segment tree can be 62 high on a tree of fewer than
+2^63 nodes, and H = 100 leaves room there only on trees of fewer than 2^50
+nodes (2^61 at node size 14; every tree of fewer than 2^63 nodes at 30 and
+62). H is the model's parameter; H = 126 serves every node size.
 
 So every transaction that Java admits meets `pe_accepts`' premises for
 those parameters, on every tree a stream can hold, and the review's
@@ -337,3 +348,8 @@ file changed. By hand on the branch `028-33-timing-perf`, on the traces of
 the build and the own tests. LEVEL 2 OK (full) on the branch: pecmp small
 70 traces, 7,240 transactions; drain 110, 14,120; reclaim 15, 8,731; 0
 differ.
+
+2026-11-20. Section 5's acceptance premises corrected by 030-29: H = 126,
+not 100 (H = 100 does not leave room on every tree of fewer than 2^63 nodes
+at node sizes 8 and 14), and the argument proved in Lean
+(`pe_accepts_java`).

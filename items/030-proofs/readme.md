@@ -113,6 +113,13 @@ D0. The contract approach, a fresh start
   reclaim's cuts are safe given RC1, RC4 and Java's steps (030-24,
   030-25). What stays tested is 030-26, section 5; 030-26 is the public
   statement of the claim.
+* **Beyond the aim, the dirty-node bound** (030-29, 2026-11-20; Frans
+  decided to prove it): Java's `Dag.dirtyNodeBound` modelled in Lean and
+  proved to bound the key nodes PE writes, for transactions of puts, given
+  the fill rules (`pe_dirtyNodeBound_puts`); with deletes tested, not
+  proved (the joins one level down are open). And 030-28, section 5, in
+  Lean: PE accepts every transaction Java admits at H = 126
+  (`pe_accepts_java`).
 * **What it changes here:** D1 is paused; D3's goal moves to 030-04's
   step 4. "The aim" above is as written on 16 November; D0's aim is its
   goal. The rules above hold for `lean/` as before; the new package's
@@ -523,6 +530,14 @@ Files
   depth guard unreachable on an undamaged stream, and `pe_accepts`'
   premises met by every transaction Java admits (G = 8,192, H = 100); the
   digests of record format 8. Written 2026-11-19. Status: done.
+* [030-29](29-dirty-bound-proof.md). The dirty-node bound proved for PE:
+  Java's `Dag.dirtyNodeBound` modelled on the contract's tree, function for
+  function (`Contract/DirtyBound.lean`), and proved to bound the key nodes
+  PE writes for every transaction of puts PE accepts, from a state PE keeps
+  whose tree meets the fill rules (`pe_dirtyNodeBound_puts`); deletes tested
+  (224,000 random transactions, none above), not proved; 030-28, section 5,
+  in Lean, with H = 126 in place of 100 (`pe_accepts_java`). Written
+  2026-11-20. Status: open.
 
 Log
 ===

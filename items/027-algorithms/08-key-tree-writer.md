@@ -616,7 +616,10 @@ the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
 * each node at 32 + 16 (B + 1) + 16 bytes, and two top nodes.
 
 The count was argued for the writer of formats 6 and 7; for PE it is
-argued in its Javadoc since 028-21, which found it short in three ways
+proved for transactions of puts since 030-29 (Lean: the key nodes PE
+writes are at most the count, given the fill rules V1 and V2), and
+for transactions with deletes argued in its Javadoc since 028-21 and
+tested. 028-21 found it short in three ways
 and added them (a new segment tree of more than h entries cut into
 parts; a node cut into more parts than its overflows and one, its
 parent a klong short; the new root above a cut segment root). Joins are
@@ -763,7 +766,8 @@ transactions are not checked (027-13, 1.4).
 
 ## 9. Limits and open work
 
-* **dirtyNodeBound** is argued for PE since 028-21 (4.2), given V1.
+* **dirtyNodeBound** is proved for PE's transactions of puts since 030-29
+  and argued for those with deletes since 028-21 (4.2), given V1.
 * **The model's order of the marks** is not checked: D is compared as a
   set. Both Java ways use emit's order (1.10; 028-25).
 * **Speed**: PE's set test 11 to 18 % slower than format 7's writer, the
@@ -938,3 +942,6 @@ decided, 2026-11-20): 1.1 defines the persistent DAG, the key tree at a
 lookup time and TREE (030-26, section 3.1), checked against the Lean.
 Where "tree" meant the whole stored structure, it says "the DAG" or what
 the writer writes (1.10, 2, 3, 5).
+
+2026-11-20. 030-29: 4.2 and 9, `dirtyNodeBound` proved for transactions
+of puts (Lean, given the fill rules); with deletes argued and tested.
