@@ -132,7 +132,7 @@ lines as on `main` 6d379122):
   level of a put's path, twenty of a delete's) fits, Db does not call
   `dirtyNodeBound` at all, and a key with a key transformation is counted
   only by that estimate. That the estimate bounds PE is not proved here
-  (027-08, 4.2: it is above PE's own count for puts).
+  (028-21 argues that it is above PE's own count).
 - Java's long arithmetic does not overflow for any transaction Db admits;
   the model's numbers are unbounded.
 - One difference outside the theorem: at node sizes of 4 and below, Java's
