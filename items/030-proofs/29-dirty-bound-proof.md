@@ -219,7 +219,12 @@ at every transaction that PE's key writes are at most the model's count:
 224,000 transactions, none above, 1,468 exactly at it (puts that append to
 every node of their paths), every tree meeting the fill rules. The model's
 count and `sbTop` were equal on all of them, before the proof of their
-equality.
+equality. A second batch with more deletes (ranges thinned to every third to
+fourteenth key, with and without runs of puts beside them, at node sizes 8,
+14 and 30): 197,000 transactions, 127,615 of them with deletes, none above
+the count; some transactions with deletes at it exactly (their deletes of
+keys whose walk stops at a missing segment count nothing, and their puts
+are tight).
 
 
 # 4. Deletes
@@ -327,15 +332,16 @@ On the branch's Lean commit 9cd46821, in lean/contract/:
 
 # State
 
-2026-11-20, 13:25. Done for puts, gated: the model, the theorem and its
-form for histories, the walk's equality, the example, section 5; 030-26,
-030-28, 027-03 and 027-08 updated; the model read a second time against
-the Java (section 1). The delete case: the leaf, the segment tree and the
-new segment tree with deletes are proved by a helper outside the branch;
-the inner nodes' joins are being tried (a design with a loss lemma and the
-chains of lone small children; section 4's case constructed), with a
-report due by 03:30. If they are proved, the theorem for every transaction
-replaces the one for puts; if not, section 4 says what is open.
+2026-11-20, 13:30. Stopped at Frans's stop for the day (the week's usage at
+95 %). Done for puts, gated on the branch's head (merged with main
+4de9ca7f): the model, the theorem and its form for histories, the walk's
+equality, the example, section 5; 030-26, 030-28, 027-03 and 027-08
+updated; the model read a second time against the Java (section 1). The
+delete case is open (section 4): the leaf, the segment tree, the new
+segment tree with deletes, and the decision and rebalance facts are proved
+by helpers outside the branch, kept in the session's scratch for a later
+session; the joins (a loss lemma, and the chains of lone small children
+one level down) are not started in Lean.
 
 
 # Log
@@ -344,3 +350,6 @@ replaces the one for puts; if not, section 4 says what is open.
 prove the bound, 2026-11-20): the model of Java's count, a random test of
 it against PE (no counterexample), the proof for puts, PE's acceptance at
 Java's parameters.
+
+2026-11-20. Merged with main (4de9ca7f); gated again. Stopped at 13:30 at
+Frans's stop, with the delete case open.
