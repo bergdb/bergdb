@@ -222,3 +222,15 @@ open Contract
 #print axioms Contract.PE.DnbExample.bound
 #print axioms Contract.PE.DnbExample.writes_one
 #print axioms Contract.PE.DnbExample.count_one
+#print axioms Contract.PE.pe_dirtyNodeBound_noJoins
+#print axioms Contract.PE.pe_dirtyNodeBound_noJoins_hist
+#print axioms Contract.PE.pe_dirtyNodeBound_leaf
+#print axioms Contract.PE.fresh_le_del
+#print axioms Contract.PE.leaf_stepD
+#print axioms Contract.PE.settle_one
+#print axioms Contract.PE.leaf_join_cost
+#print axioms Contract.PE.rebalance_exit
+#print axioms Contract.PE.DnbDeletesExample.bound
+#print axioms Contract.PE.DnbDeletesExample.changes
+#print axioms Contract.PE.DnbDeletesExample.collapse_case
+#print axioms Contract.PE.DnbDeletesExample.collapse_bound
