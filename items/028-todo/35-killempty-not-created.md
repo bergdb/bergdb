@@ -1,7 +1,7 @@
 028-35. Fix: the user app KillEmpty and a kill during a database's creation
 ===========================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: in progress. Kind: Fix. Frans: none.
 Created 2026-11-20 by Frans Lundberg.
 
 What: in `week.sh short` on 2026-11-20 (030-30's gates), the user app
@@ -25,7 +25,63 @@ First step: compare KillEmpty's start and final check with Kill.java, line
 172.
 
 
+Findings
+--------
+
+**A fault of the app, not of the database.** In 030-30's first `week.sh
+short` (run 2026-11-20-1156, `apps-quick-cc`), KillEmpty's final check of
+database 3 threw from `b.start()`: "The database was not completely created
+... its stream, of length 272, holds the creation's first record and not
+its second, the startup distance, and no data" (`Db.refuseIncompleteCreation`).
+KillEmpty's child started its database with no handling of
+`DatabaseNotCreatedException`; Kill (a4) removes the stream's files and
+starts again.
+
+**Two ways to the refused stream, both as the Core is made.** A kill
+inside the creating start, and, since the Core API's creating start does
+not sync (only a start with `created.txt`, the Pub API, syncs both records,
+`Db.startInner`, 028-18), a kill after `start()` returned and before the
+writer wrote the second record. The comment in `Db.startInner` says so: "a
+crash before the record is durable, leaves the primordial record alone".
+A probe that created a Core database on files and halted the JVM at once
+after `start()` returned found no stream file at all; under load the
+writer had written the first record alone. So a refusal is expected for
+a database of which nothing durable was seen, and not after a sync or the
+recovery of a transaction, which read both records from the files.
+
+**The fix** (`KillEmpty.java`, the app only):
+
+- The child takes the stream's files and their lengths before the start;
+  on `DatabaseNotCreatedException` it checks that the refused start
+  changed none of them ("the start writes nothing"), prints `NOTCREATED`,
+  removes the files and starts again, which creates the database.
+- The parent accepts `NOTCREATED`, from a killed child or from the final
+  check, only while no child of the database reported a sync ("S i") or
+  recovered a transaction ("R n", n >= 0); otherwise it fails ("a start
+  refused it as not created after a sync ... or a recovery ..."). It
+  counts the cases: "N creations cut and made again" in its OK line.
+- A first version accepted the refusal only before any "R" line; two
+  parents under load failed it (seeds 61 and 63: "R -1" from the creating
+  child, then a refusal), which is the Core's second way above, not a
+  fault. Hence the rule by sync and recovery.
+
+**The case shown.**
+
+- A Core database made by the child with no transaction, its stream cut
+  to 272 bytes (the primordial record alone, the 030-30 state): the next
+  child printed `NOTCREATED`, made the database again, recovered -1 and
+  committed 40 transactions; the child after it recovered 39.
+- Children at background QoS (`taskpolicy -b`, a slow creation) killed at
+  0.4 to 3 s in steps of 0.1 s: 2 of 26 left the stream of 272 bytes; the
+  next start printed `NOTCREATED` and recovered -1.
+- Six parents (`KillEmpty parent 51..53, 61..63 DIR 120 1 500`, one kill a
+  database) beside 12 JVMs of 028-36's probe, at a load of 11 to 38: all
+  OK, with 4 creations cut and made again (seeds 51, 62 twice, 63).
+
+
 Log
 ---
 
 2026-11-20. Registered by coord-1120, from 030-30's report.
+
+2026-11-20. Taken by fx2 of coord-1120, on the branch `028-fx2`.
