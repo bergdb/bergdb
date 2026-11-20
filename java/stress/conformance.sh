@@ -3,7 +3,7 @@
 # configurations, and checks each trace with the Lean checker (lean/, lake exe
 # tracecheck). Written 2026-10-15 for F1-008-11, WPs C3 and F1.
 #
-# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|evict|drain] [seeds]
+# Usage: java/stress/conformance.sh [small|medium|large|all|reclaim|crash|evict|drain] [seeds]
 #   small (default): the Lean tier on every transaction, in the target mode
 #   (marking, Java's still-dirty test, the virtual root) and, for the first
 #   three seeds of the first two configurations, in the unchanged model's mode
@@ -17,7 +17,11 @@
 #   are of format 3 with STEP lines (TraceExport's tree=1 and steps=1), and the
 #   checker's C-STEP checks each step of reclaim against the model of the steps
 #   (030-25) and each cut against its iteration's last step; a trace without a STEP
-#   line fails. evict (2026-10-18, bergdb
+#   line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
+#   restarted after every K-th call and crashed right after every K-th step of reclaim
+#   (TraceExport's restart and crash), RESTART and RESUME lines, and C-STEP's
+#   STEP-resume: an iteration across a restart goes on from the row its last step
+#   committed; a trace without a cut, a STEP line or a crash fails. evict (2026-10-18, bergdb
 #   item 001, WP J4): Level 4, configurations of the small, medium and reclaim
 #   sets with run E (TraceExport's rune: run A's workload with a forced eviction
 #   schedule, or the capacity controller with a small budget, since J7), whose
@@ -118,6 +122,17 @@ reclaim() {
     echo "r-maint -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dretain=1 -Dprobe=10 -Dmaint=1"
 }
 
+crash() {
+    # Reclaim across restarts and crashes of run A (bergdb 030-31): larger values and more
+    # keys than the reclaim set's, so that iterations take several steps and cross a
+    # restart; no run B (probe), whose run has no crash.
+    echo "c-small -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Drestart=10 -Dcrash=2"
+    echo "c-vals  -Dn=400 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=6 -Ddel=20 -Dvalsize=200 -Dretain=1 -Drestart=5 -Dcrash=3"
+    echo "c-long  -Dn=400 -Dkeys=150 -Dmaxnode=14 -Dsd=500 -Dops=6 -Dlong=1 -Ddel=25 -Dvalsize=150 -Dretain=2 -Drestart=7 -Dcrash=2"
+    echo "c-del60 -Dn=300 -Dkeys=60 -Dmaxnode=8 -Dsd=200 -Dops=6 -Ddel=60 -Dvalsize=100 -Dretain=1 -Drestart=4 -Dcrash=2"
+    echo "c-maint -Dn=200 -Dkeys=100 -Dmaxnode=8 -Dsd=300 -Dops=4 -Ddel=25 -Dvalsize=150 -Dretain=1 -Dmaint=2 -Drestart=6 -Dcrash=4"
+}
+
 evict() {
     # Run E with the random schedule (each slot to a detachable object with probability
     # 0.3, seeded by the trace's seed), every, values, and the capacity controller; SLOT
@@ -180,7 +195,7 @@ large() {
 one_trace() {
     set_name=$1; name=$2; s=$3; props=$4
     # The reclaim set: format 3 with STEP lines, for C-STEP (bergdb 030-27).
-    if [ $set_name = reclaim ]; then props="$props -Dtree=1 -Dsteps=1"; fi
+    if [ $set_name = reclaim ] || [ $set_name = crash ]; then props="$props -Dtree=1 -Dsteps=1"; fi
     dir=build/traces/$set_name
     t=$dir/$name-$s.trace
     timed $dir/$name-$s.export.time \
@@ -251,9 +266,12 @@ summary() {
     done
     echo "   C-A adoptions below the old parent (A6' allows them, A6 not): $(grep -h '^C-A adoptions below' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of .*/\1/' | awk '{s+=$1} END {print s+0}') transactions"
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
-    if [ $1 = reclaim ]; then
+    if [ $1 = reclaim ] || [ $1 = crash ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
         echo "   C-STEP: $(grep -h '^C-STEP' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail.*; ([0-9]+) STEP lines, ([0-9]+) iterations \(([0-9]+) ended.*, ([0-9]+) old KVs.*, ([0-9]+) CUT lines.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; s+=$3; i+=$4; e+=$5; o+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " s+0 " STEP lines, " i+0 " iterations (" e+0 " ended by a step with eod), " o+0 " old KVs met and checked put again, " c+0 " CUT lines with their iteration'"'"'s last step"}'); traces without a STEP line: $(grep -L '^STEP ' $dir/*.trace | wc -l | tr -d ' ')"
+    fi
+    if [ $1 = crash ]; then
+        echo "   STEP-resume: $(grep -h '^C-STEP' $dir/*.check.txt | sed -nE 's/.*; ([0-9]+) restarts \(([0-9]+) crashes\), ([0-9]+) with an iteration in progress, ([0-9]+) iterations with.*/\1 \2 \3 \4/p' | awk '{r+=$1; c+=$2; i+=$3; s+=$4} END {print r+0 " restarts (" c+0 " crashes), " i+0 " with an iteration in progress, " s+0 " iterations with a step before a restart and the next after it"}')"
     fi
     if [ $1 = evict ]; then
         echo "   C-P: $(grep -h '^C-P slots' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail; ([0-9]+) SLOT lines, ([0-9]+) checked.*/\1 \2 \3 \4/' | awk '{f+=$1; t+=$2; n+=$3; c+=$4} END {print f+0 " of " t+0 " transactions fail; " n+0 " SLOT lines, " c+0 " checked"}'); traces without SLOT lines: $(grep -L '^SLOT ' $dir/*.trace | wc -l | tr -d ' ')"
@@ -286,9 +304,10 @@ case $SET in
     all) run_set small ${2:-10}; summary small; run_set medium ${2:-3}; summary medium
         run_set large ${2:-2}; summary large ;;
     reclaim) run_set reclaim ${2:-5}; summary reclaim ;;
+    crash) run_set crash ${2:-3}; summary crash ;;
     evict) run_set evict ${2:-3}; summary evict ;;
     drain) run_set drain ${2:-3}; summary drain ;;
-    *) echo "usage: $0 [small|medium|large|all|reclaim|evict|drain] [seeds]"; exit 2 ;;
+    *) echo "usage: $0 [small|medium|large|all|reclaim|crash|evict|drain] [seeds]"; exit 2 ;;
 esac
 
 for set_name in $RAN; do
@@ -296,12 +315,16 @@ for set_name in $RAN; do
         echo "CONFORMANCE FAILED"
         exit 1
     fi
-    if [ $set_name = reclaim ] && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
+    if { [ $set_name = reclaim ] || [ $set_name = crash ]; } && grep -L '^CUT ' build/traces/$set_name/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a cut"
         exit 1
     fi
-    if [ $set_name = reclaim ] && grep -L '^STEP ' build/traces/$set_name/*.trace | grep -q .; then
+    if { [ $set_name = reclaim ] || [ $set_name = crash ]; } && grep -L '^STEP ' build/traces/$set_name/*.trace | grep -q .; then
         echo "CONFORMANCE FAILED: a reclaim trace without a STEP line"
+        exit 1
+    fi
+    if [ $set_name = crash ] && grep -L '^RESTART crash' build/traces/$set_name/*.trace | grep -q .; then
+        echo "CONFORMANCE FAILED: a crash trace without a crash"
         exit 1
     fi
     if [ $set_name = evict ] && grep -L '^SLOT ' build/traces/$set_name/*.trace | grep -q .; then

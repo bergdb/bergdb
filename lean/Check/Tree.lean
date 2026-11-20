@@ -35,6 +35,16 @@ structure TStep where
   eod : Bool
   deriving BEq, Repr, Inhabited
 
+/-- A RESUME line (bergdb 030-31; 027-02, section 4): the iteration in progress that the
+start after a restart read from the stream: t0, c, lastKey (none: `-`) and endKey, E (none:
+`-`, no key was live at tStart). -/
+structure TResume where
+  t0 : Nat
+  c : Nat
+  last : Option Key
+  e : Option Key
+  deriving BEq, Repr, Inhabited
+
 /-- The tree lines of one transaction, `TX i` to `END i`. -/
 structure TTx where
   idx : Nat
@@ -49,6 +59,12 @@ structure TTx where
   scans : Array TScan := #[]
   /-- STEP lines (bergdb 030-27): one in a step of reclaim, with the exporter's steps=1. -/
   steps : Array TStep := #[]
+  /-- RESTART (bergdb 030-31): run A's database was started again after this transaction,
+  after a stop (`stop`) or a crash right after its record's commit (`crash`). -/
+  restart : Option String := none
+  /-- The RESUME line after a restart (bergdb 030-31): `some none` for `RESUME -`, no
+  iteration in progress. -/
+  resume : Option (Option TResume) := none
   deriving Inhabited
 
 /-- The tree lines of a trace. -/
@@ -196,6 +212,16 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
         else modTx t (fun x => { x with steps := x.steps.push ⟨t0, c, l, l', e == "1"⟩ })
       | _ => bad "bad STEP"
     | _, _, _ => bad "bad STEP"
+  | ["RESTART", k] =>
+    if k != "stop" && k != "crash" then bad "bad RESTART"
+    else if t.txs.back?.any (·.restart.isSome) then bad "two RESTART lines in a transaction"
+    else modTx t (fun x => { x with restart := some k })
+  | ["RESUME", "-"] => modTx t (fun x => { x with resume := some none })
+  | "RESUME" :: t0 :: c :: r => match t0.toNat?, c.toNat?, takeKeyOpt r with
+    | some t0, some c, some (l, r) => match takeKeyOpt r with
+      | some (e, []) => modTx t (fun x => { x with resume := some (some ⟨t0, c, l, e⟩) })
+      | _ => bad "bad RESUME"
+    | _, _, _ => bad "bad RESUME"
   | _ => t
 
 def parseTree (s : String) : TTrace :=
