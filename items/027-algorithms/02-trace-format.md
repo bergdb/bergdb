@@ -292,9 +292,11 @@ values (`Keys.toSegments`); `-` stands for no key.
                                  merge's one new node. Since 024-23 a ninth
                                  token, th: option 2's theta, the most dead
                                  klongs a key node holds after a write
-                                 (Dag.theta: 7 at node size 30; 0 below 8,
-                                 none). The checker reads a line of 7 numbers
-                                 too (theta 0, off), of 4 (2026.4's writer: no
+                                 (Dag.theta: 7 at node size 30, 2 at 8;
+                                 a node size below 8, where it was 0,
+                                 is refused since 028-38). The checker
+                                 reads a line of 7 numbers too (theta 0,
+                                 off), of 4 (2026.4's writer: no
                                  merges, h = M / 2), and of 6 (sa = mc); its
                                  writer is PE in each case
     BASE b                       in TX i, i > 0, first: the id of the first node

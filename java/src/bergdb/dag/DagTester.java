@@ -237,9 +237,10 @@ public class DagTester {
         // Splits space root node. New super root node (top node) needed.
         
         String[] kvs = new String[] {
-                "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0", "/k5", "v5"
+                "/k1", "v1", "/k2", "v2", "/k3", "v3", "/k4", "v4", "/k0", "v0", "/k5", "v5",
+                "/k6", "v6", "/k7", "v7", "/k8", "v8", "/k9", "v9"
         };
-        Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        Dag dag = Dag.createEmpty(0, 8, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         
         PutData pd = pd(dag);
         pd.tt = 10;
@@ -247,9 +248,10 @@ public class DagTester {
         final TopNode top0 = dag.getTopDs().getSuperRoot();
         batchOf(dag, pd, kvs);
         
-        // Since record format 8 the transaction's six keys, more than h = 3 and more than the
-        // node with its time klong holds, are cut into two leaves under a new root, which a
-        // new top node names (bergdb 026-25). Five keys fill the empty root.
+        // Since record format 8 the transaction's ten keys, more than h = 4 and more than the
+        // node with its time klong holds, are cut into leaves under a new root, which a new
+        // top node names (bergdb 026-25). Seven keys fill the empty root of node size 8.
+        // Node size 6 until 2026-11-20, when sizes below 8 became refused (bergdb 028-38).
         Assert.assertTrue("a new super root", dag.getTopDs().getSuperRoot() != top0);
         Assert.assertTrue("an inner space root",
                 !dag.getTopDs().findRoot(10, gd(dag)).isSegmentLeaf());
@@ -266,13 +268,14 @@ public class DagTester {
     }
     
     /**
-     * A key put again and again, one transaction a time, at node size 6: its segment leaf
+     * A key put again and again, one transaction a time, at node size 8 (6 until 2026-11-20,
+     * bergdb 028-38): its segment leaf
      * fills with dead klongs and is replaced by one new node, its live list (until record
      * format 8 a time split, "time-split-1"); every value at its time.
      */
     @Nano
     public static void testTimeSplit1a() {
-        Dag dag = Dag.createEmpty(0, 6, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        Dag dag = Dag.createEmpty(0, 8, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
         PutData pd = pd(dag);
         final long replaced0 = Dag.statReplaces + Dag.statCompactions;
         
@@ -813,6 +816,32 @@ public class DagTester {
     }
 
     /**
+     * 8 is the smallest node size (Frans, 2026-11-20; bergdb 028-38): a Dag of 7 or less is
+     * refused when it is made, by both constructors, with a message that names 8; 8 is taken.
+     */
+    @Nano
+    public static void testNodeSizeBelow8Refused() {
+        Assert.assertEquals(8, Dag.MIN_NODE_SIZE);
+        Dag.createEmpty(0, 8, DUMMY_POINTER_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        for (int b : new int[] {7, 6, 4, 1, 0, -1}) {
+            try {
+                Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
+                        Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+                throw new AssertionError("createEmpty took node size " + b);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                        "The node size " + b + " is below 8, the smallest"));
+            }
+            try {
+                new Dag(null, b);
+                throw new AssertionError("new Dag took node size " + b);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("below 8"));
+            }
+        }
+    }
+    
+    /**
      * 62 is the largest node size (bergdb 024-19, Q6): a Dag of 63 or more is refused when it
      * is made, by both constructors, with a message that names 62; 62 is taken.
      */
@@ -855,7 +884,7 @@ public class DagTester {
     public static void testNoKlongNamesATakenBackNode() {
         Random r = new Random(1);
         for (int iter = 0; iter < 40; iter++) {
-            final int b = 4 + r.nextInt(5);
+            final int b = 8 + r.nextInt(5);     // 4 to 8 until 2026-11-20 (bergdb 028-38)
             Dag dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
                     Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
             PutData pd = pd(dag);
@@ -911,13 +940,13 @@ public class DagTester {
      * an earlier one, so that the space root and its nodes are split by it, and deletes every
      * old key, one operation a key; the next deletes the new keys. Root collapse lowers the
      * space root as it loses its children: at the last time it is a segment leaf, empty, and
-     * every key is gone; at the times before, the keys put then are there. Node sizes 4 and
-     * 8, keys of one segment and of two.
+     * every key is gone; at the times before, the keys put then are there. Node sizes 8 and
+     * 14 (4 and 8 until 2026-11-20, bergdb 028-38), keys of one segment and of two.
      */
     @Nano
     public static void testDeleteEveryKeyAfterTheRootSplit() {
         final long collapses0 = Dag.statCollapses + Dag.statDropped;
-        for (int b : new int[] {4, 8}) {
+        for (int b : new int[] {8, 14}) {
             for (String prefix : new String[] {"/k", "/key/prefix/"}) {
                 String at = "b " + b + ", prefix " + prefix + ": ";
                 Dag dag = Dag.createEmpty(0, b, DUMMY_POINTER_FOLLOWER,
@@ -970,17 +999,18 @@ public class DagTester {
      * transaction makes dirty: those the writer follows, makes or changes, less those it
      * replaces, unlinks or takes back (review C's BoundProbe2). At node sizes 8, 14 and 30:
      * (1) random histories, thinned out to leave chains of single children, and a transaction
-     * of deletes and some puts; (2) a chain that root collapse takes in one delete, several
-     * levels, each a klong in the segment leaf above; (3) transactions of 1,000 deletes, and
-     * one of 100,000 at node size 30. Since the merges at the delete (bergdb 024-21) every key
-     * node but a root holds at least m >= 2 live klongs at node sizes 8 and more, so no chain
-     * of single children forms there: (2) runs at node size 6, which has no merges (Dag.
-     * minFill), and (1) and (3) at 6 too.
+     * of deletes and some puts; (3) transactions of 1,000 deletes, and one of 100,000 at node
+     * size 30. Since the merges at the delete (bergdb 024-21) every key node but a root holds
+     * at least m >= 2 live klongs at node sizes 8 and more, so no chain of single children
+     * forms there. (2), a chain that root collapse takes in one delete, several levels, each
+     * a klong in the segment leaf above, ran at node size 6, which had no merges, until
+     * 2026-11-20, when node sizes below 8 became refused (bergdb 028-38); (1) and (3) at 6
+     * too.
      */
     @Nano
     public static void testDirtyNodeBoundOfDeletes() {
         Random r = new Random(5);
-        for (int b : new int[] {6, 8, 14, 30}) {
+        for (int b : new int[] {8, 14, 30}) {
             for (int iter = 0; iter < 40; iter++) {
                 BoundCase c = new BoundCase(b);
                 int nk = 20 + r.nextInt(b * b * 3);
@@ -1027,40 +1057,6 @@ public class DagTester {
                 c.run(puts, dels, true);
             }
             
-            if (Dag.minFill(b) < 2) {        // no merges: chains of single children
-                // (2) A chain: keep the first and the last key of a segment tree of three or more
-                // levels; then a delete of the first leaves the root one child, a chain of single
-                // children down to the last key's leaf, which root collapse takes in one delete.
-                BoundCase c = new BoundCase(b);
-                List<String> all = new ArrayList<String>();
-                int n = b * b * 2;
-                for (int i = 0; i < n; i++) all.add("/prefix/" + String.format("%05d", i));
-                c.run(all, null, false);
-                c.run(new ArrayList<String>(), all.subList(1, n - 1), true);
-                long collapses0 = Dag.statCollapses;
-                c.run(new ArrayList<String>(), all.subList(0, 1), true);
-                Assert.assertTrue("b " + b + ": a collapse of several levels in one delete",
-                        Dag.statCollapses - collapses0 >= 2);
-            
-                // (2b) The same chain below a segment leaf filled with live klongs to one klong
-                // short of full, so that the collapses' klongs overflow it.
-                for (int extra = 0; extra < 3; extra++) {
-                    c = new BoundCase(b);
-                    c.run(all, null, false);
-                    c.run(new ArrayList<String>(), all.subList(1, n - 1), false);
-                    KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
-                    Assert.assertTrue("b " + b + ": the space root is a segment leaf", leaf.isSegmentLeaf());
-                    List<String> fill = new ArrayList<String>();
-                    for (int i = 0; i < b - 2 - leaf.size + extra && i < 20; i++) {
-                        fill.add("/" + (char) ('a' + i) + "aaaaa/x");
-                    }
-                    c.run(fill, null, false);
-                    collapses0 = Dag.statCollapses;
-                    c.run(new ArrayList<String>(), all.subList(0, 1), true);
-                    Assert.assertTrue("b " + b + ", extra " + extra + ": collapses of several levels",
-                            Dag.statCollapses - collapses0 >= 2);
-                }
-            }
             BoundCase c;
             List<String> all = new ArrayList<String>();
             
@@ -1211,50 +1207,45 @@ public class DagTester {
     /**
      * Dag.dirtyNodeBound sums the klongs that root collapse gives a segment leaf over the
      * trees below it (bergdb 023-11, review B, B1, its SiblingCollapseProbe): the space root,
-     * a segment leaf, names two trees of 1,024 keys at node size 6; a transaction deletes
-     * every key of each but its first and last, so each root has two chains of single
-     * children; the next deletes the first key of each tree, and root collapse lowers each
-     * root eight levels, a klong in the space root for each: 16. The count gives the space
-     * root at least the collapses and two klongs a delete; before the fix it took the most of
-     * one tree (2 x 2 + 8 = 12). The bound also covers the dirty key nodes. Until the merges
-     * at the delete (bergdb 024-21) three trees at node size 8, five levels each: at 8 and
-     * more every key node but a root now holds at least m >= 2 live klongs, so no chain of
-     * single children forms; 6 has no merges (Dag.minFill), and three trees split its space
-     * root, a segment leaf of at most 3 klongs in a last version.
+     * a segment leaf, names two trees at node size 8, each a root of two leaves (five keys,
+     * cut by PE into parts of three and two); a transaction deletes the first and the last
+     * key of each, so a leaf of each tree is joined with its sibling and each root collapses:
+     * a klong in the space root for each. The count gives the space root at least the
+     * collapses and two klongs a delete. The bound also covers the dirty key nodes. Until
+     * 2026-11-20 two trees of 1,024 keys at node size 6, which had no merges, thinned to
+     * chains of single children that root collapse lowered eight levels each (16 klongs;
+     * before the fix of B1 the count took the most of one tree, 2 x 2 + 8 = 12); node sizes
+     * below 8 are refused since (bergdb 028-38), and from 8 every key node but a root holds
+     * at least m >= 2 live klongs, so no such chain forms.
      */
     @Nano
     public static void testDirtyNodeBoundSumsCollapsesOverTrees() {
-        BoundCase c = new BoundCase(6);
-        List<String> all = new ArrayList<String>(), thin = new ArrayList<String>();
-        List<String> firsts = new ArrayList<String>();
+        BoundCase c = new BoundCase(8);
+        List<String> all = new ArrayList<String>(), dels = new ArrayList<String>();
         for (int m = 0; m < 2; m++) {
-            for (int i = 0; i < 1024; i++) {
+            for (int i = 0; i < 5; i++) {
                 String k = "/pref0" + m + "/k" + String.format("%04d", i);
                 all.add(k);
-                if (i == 0) firsts.add(k);
-                else if (i < 1023) thin.add(k);
+                if (i == 0 || i == 4) dels.add(k);
             }
         }
         c.run(all, null, false);
-        c.run(new ArrayList<String>(), thin, false);
         KeyNode leaf = c.dag.getTopDs().findRoot(c.t - 1, gd(c.dag));
         Assert.assertTrue("the space root is a segment leaf", leaf.isSegmentLeaf());
-        long[][] keys = new long[firsts.size()][];
-        boolean[] deletes = new boolean[firsts.size()];
+        long[][] keys = new long[dels.size()][];
+        boolean[] deletes = new boolean[dels.size()];
         for (int i = 0; i < keys.length; i++) {
-            keys[i] = Keys.toSegments(firsts.get(i));
+            keys[i] = Keys.toSegments(dels.get(i));
             deletes[i] = true;
         }
         java.util.Map<KeyNode, Long> klongs = new IdentityHashMap<KeyNode, Long>();
         c.dag.dirtyNodeBound(c.t - 1, keys, deletes, gd(c.dag), klongs);
         long collapses0 = Dag.statCollapses;
-        c.run(new ArrayList<String>(), firsts, true);
+        c.run(new ArrayList<String>(), dels, true);
         long collapses = Dag.statCollapses - collapses0;
-        // Eight levels in each tree until record format 8; six since, whose writer cuts the
-        // 1,024 keys put in one transaction into fuller nodes (bergdb 026-25).
-        Assert.assertTrue("collapses, four or more in each tree: " + collapses, collapses >= 8);
+        Assert.assertTrue("collapses, one in each tree: " + collapses, collapses >= 2);
         Assert.assertTrue("klongs counted for the space root: " + klongs.get(leaf),
-                klongs.get(leaf) >= collapses + 2 * 2);
+                klongs.get(leaf) >= collapses + 2 * dels.size());
     }
     
     /** A Dag and the key nodes a transaction makes dirty, for testDirtyNodeBoundOfDeletes. */

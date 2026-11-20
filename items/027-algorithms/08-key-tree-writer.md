@@ -47,8 +47,9 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
   transaction j (`h.tree j`) are the whole DAG at that point.
 * **B**, the node size: the most klongs of a key node, kept in the stream
   (027-03, section 6). Every database a user makes has B = 30;
-  `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. Sizes below
-  8 exist for the Dag's own tests only.
+  `DbBuilder`'s sizes 8, 14 and 62 are internal test settings. A `Dag`
+  refuses a size below 8 (`Dag.MIN_NODE_SIZE`) or above 62 when it is made;
+  until 2026-11-20 the Dag's own tests used sizes below 8 (028-38).
 * **The thresholds**, functions of B by integer division, rules of record
   format 8 (a start's rerun uses them, so a change of any is a change of
   the format; `Dag.splitAbove`, `minFill`, `mergeCap`, `theta`,

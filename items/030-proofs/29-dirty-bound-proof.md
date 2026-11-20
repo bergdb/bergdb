@@ -141,6 +141,9 @@ lines as on `main` 6d379122):
   it. Only Dag's own tests use such sizes (a database has node size 30; 8,
   14 and 62 are for BergDB's tests; DbBuilder), and the theorem needs 8 or
   more. A defect of test sizes only, for a later 028 entry if wanted.
+  Since 028-38 (2026-11-20) a Dag refuses node sizes below 8
+  (`Dag.MIN_NODE_SIZE`); the difference is gone, and Java's count is
+  unchanged from 8.
 
 A second reading of the model against Dag.java, KeyNode's searches and
 Db.checkDirtyNodes, by a helper agent, found no difference that could make

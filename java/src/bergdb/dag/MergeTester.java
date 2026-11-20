@@ -383,9 +383,9 @@ public class MergeTester {
     
     /**
      * The thresholds of format 7 (bergdb 024-21, section 2; 024-14, QT1: 8/17/17 at node size
-     * 30, scaled to other node sizes): the values at the database's node sizes, h = B / 2
-     * below 8 as in 2026.4, no merges there, and V1's conditions (024-11, section 5.4) for
-     * every node size from 8 to 64. The historical format 7 inequalities below say a space
+     * 30, scaled to other node sizes): the values at the database's node sizes, and V1's
+     * conditions (024-11, section 5.4) for every node size from 8 to 64. Until 2026-11-20 also
+     * m = 1 and h = B / 2 below 8; such node sizes are refused since (bergdb 028-38). The historical format 7 inequalities below say a space
      * split's halves and a redistribution's halves hold at least m, a merge into one node
      * fits in c, and h and c leave room. PE's cut parts are checked separately above them.
      */
@@ -403,10 +403,6 @@ public class MergeTester {
             int b = x[0], m = Dag.minFill(b), cap = Dag.cutSize(b), h = Dag.splitAbove(b);
             Assert.assertEquals("cut size at " + b, b / 2, cap);
             Assert.assertTrue("b " + b + ": a cut's parts", (Math.min(h, cap) + 1) / 2 >= m);
-        }
-        for (int b = 2; b < 8; b++) {
-            Assert.assertEquals("m at " + b, 1, Dag.minFill(b));
-            Assert.assertEquals("h at " + b, b / 2, Dag.splitAbove(b));
         }
         for (int b = 8; b <= 64; b++) {
             int m = Dag.minFill(b), h = Dag.splitAbove(b), c = Dag.mergeCap(b);

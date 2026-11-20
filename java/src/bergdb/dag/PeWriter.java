@@ -79,6 +79,8 @@ final class PeWriter {
         this.h = Dag.splitAbove(b);
         this.theta = Dag.theta(b);
         this.cap = Dag.cutSize(b);
+        // Always true since node sizes below 8 are refused (Dag.MIN_NODE_SIZE, bergdb 028-38);
+        // kept as the Lean model's Cfg.merges (PeWriter.lean), which this class follows.
         this.merges = m >= 2;
     }
 

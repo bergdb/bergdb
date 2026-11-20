@@ -51,7 +51,18 @@ public class Dag {
      */
     public static final int MAX_NODE_SIZE = 62;
     
-    /** @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62. */
+    /**
+     * The smallest node size, 8 (Frans, 2026-11-20; bergdb 028-38): a database has node size
+     * 8, 14, 30 or 62 (DbBuilder), and from 8 the writer joins small nodes (m = minFill(b) >= 2;
+     * PE's cut parts hold at least m) and compacts dead klongs (theta(b) >= 2). A Dag refuses
+     * a smaller size when it is made (checkNodeSize). Until 2026-11-20 Dag's own tests used
+     * smaller sizes, with m = 1, no joins and theta off, and freshTreeBound's loop of the
+     * splits did not end at 4 or less (bergdb 030-29, section 1).
+     */
+    public static final int MIN_NODE_SIZE = 8;
+    
+    /** @throws IllegalArgumentException  If maxNodeSize is below MIN_NODE_SIZE, 8, or above
+     *      MAX_NODE_SIZE, 62. */
     public Dag(TopNode superRoot, int maxNodeSize) {
         checkNodeSize(maxNodeSize);
         this.topDs = new TopDs(superRoot);
@@ -59,10 +70,16 @@ public class Dag {
     }
     
     /**
-     * Refuses a node size above MAX_NODE_SIZE (bergdb 024-19, Q6). Until 2026-11-12 a Dag took
-     * any size, and one above 62 failed at its first delete bit beyond 61 (024-19, 2.2).
+     * Refuses a node size above MAX_NODE_SIZE (bergdb 024-19, Q6) or below MIN_NODE_SIZE
+     * (bergdb 028-38). Until 2026-11-12 a Dag took any size, and one above 62 failed at its
+     * first delete bit beyond 61 (024-19, 2.2); until 2026-11-20 any size up to 62.
      */
     private static void checkNodeSize(int maxNodeSize) {
+        if (maxNodeSize < MIN_NODE_SIZE) {
+            throw new IllegalArgumentException("The node size " + maxNodeSize + " is below "
+                    + MIN_NODE_SIZE + ", the smallest: a database has node size 8, 14, 30 or "
+                    + "62 (bergdb 028-38).");
+        }
         if (maxNodeSize > MAX_NODE_SIZE) {
             throw new IllegalArgumentException("The node size " + maxNodeSize + " is above "
                     + MAX_NODE_SIZE + ", the largest: a delete bitmap names " + MAX_NODE_SIZE
@@ -74,7 +91,8 @@ public class Dag {
      * Factory method to create minimal Dag with two nodes: a top node and a key node.
      * The database is empty; no KVs.
      * 
-     * @throws IllegalArgumentException  If maxNodeSize is above MAX_NODE_SIZE, 62.
+     * @throws IllegalArgumentException  If maxNodeSize is below MIN_NODE_SIZE, 8, or above
+     *      MAX_NODE_SIZE, 62.
      */
     public static Dag createEmpty(long time, int maxNodeSize, PointerFollower pointerFollower, 
             Dag.PointerCreatedListener pointerCreationListener) {
@@ -522,8 +540,7 @@ public class Dag {
      * positions of the walk (its left and its right node), floor((a + b) / q) <= floor(a /
      * q) + floor(b / q) + 1. A merged node starts with up to c + 1 klongs, so a node of a
      * delete's path overflows as if it had at most q klongs of room (roomAfterReplacement).
-     * A sibling that a merge leaves out is not made dirty. With m < 2 (minFill) there are
-     * no merges, and these are counted as a margin. An argument, checked by DagTester's tests
+     * A sibling that a merge leaves out is not made dirty. An argument, checked by DagTester's tests
      * of the bound (bergdb 024-11, TU8), not a proof. For node size 30 and a path of 5 nodes,
      * about 30 nodes a delete: a record's limit takes about 120,000 deletes in one
      * transaction; a larger one is refused (Db.checkDirtyNodes), as one of puts that can make
@@ -777,6 +794,8 @@ public class Dag {
             return 0;
         }
         final int theta = theta(maxNodeSize);
+        // theta > 0 holds at every node size since 2026-11-20 (MIN_NODE_SIZE); kept as the
+        // Lean model's overflowsD (bergdb 030-29, section 1).
         final long least = theta > 0 && dead >= 0 && dead + klongs > theta ? 1 : 0;
         final long k = klongs + 1;
         final long q = roomAfterReplacement();
@@ -1072,23 +1091,18 @@ public class Dag {
      *  than two (PeWriter.nParts, partSizes; bergdb 027-08, sections 1.4 and 1.7). */
     static final int MERGE_CAP_30 = 17;
 
-    /**
-     * The smallest node size with joins. Below it PE's cuts can make parts with fewer than
-     * 2 entries, so V1 cannot hold with m = 2: m is 1 there and no node is joined. Until
-     * record format 8 this was the limit for a space split's halves (h / 2 < 2).
-     * A database has node size 8, 14, 30 or 62 (DbBuilder); smaller ones are for Dag's tests.
-     */
-    static final int MERGE_MIN_NODE_SIZE = 8;
-
-    /** h for node size 'b' (see SPLIT_ABOVE_30): b / 2 below 8 too, as in 2026.4. */
+    /** h for node size 'b' (see SPLIT_ABOVE_30). */
     public static int splitAbove(int b) {
         return SPLIT_ABOVE_30 * b / THRESHOLDS_NODE_SIZE;
     }
 
-    /** m for node size 'b' (see MIN_FILL_30, MERGE_MIN_NODE_SIZE). */
+    /**
+     * m for node size 'b' (see MIN_FILL_30), at least 2: below node size 8 PE's cuts could
+     * make parts of fewer than 2 entries, so V1 could not hold with m = 2; such sizes are
+     * refused (MIN_NODE_SIZE). Until 2026-11-20 m was 1 below 8, with no joins (bergdb 028-38).
+     */
     public static int minFill(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 1
-                : Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
+        return Math.max(2, MIN_FILL_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
     /** c for node size 'b' (see MERGE_CAP_30). */
@@ -1149,16 +1163,15 @@ public class Dag {
     static final int THETA_MIN = 2;
 
     /**
-     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2, from node size
-     * 8 (2 at 8, 3 at 14, 14 at 62); 0, off, below it, where format 7 merges nothing either
-     * (bergdb 024-23, OD2; other node sizes are open with 024-14's QT2). A rule of record
-     * formats 7 and 8, as the thresholds are. The floor was 1 until 2026-11-12 (Frans, 024-19, Q4):
-     * theta 1 at 8 compacted a node at every second dead klong and cost 25 percent of the
-     * bytes a put (024-19, section 4.5).
+     * theta for node size 'b': THETA_30 * b / 30 by integer division, at least 2 (2 at 8, 3 at
+     * 14, 14 at 62; other node sizes are open with 024-14's QT2). It was 0, off, below node
+     * size 8 until 2026-11-20 (bergdb 024-23, OD2), when such sizes became refused
+     * (MIN_NODE_SIZE; 028-38). A rule of record formats 7 and 8, as the thresholds are. The
+     * floor was 1 until 2026-11-12 (Frans, 024-19, Q4): theta 1 at 8 compacted a node at every
+     * second dead klong and cost 25 percent of the bytes a put (024-19, section 4.5).
      */
     public static int theta(int b) {
-        return b < MERGE_MIN_NODE_SIZE ? 0
-                : Math.max(THETA_MIN, THETA_30 * b / THRESHOLDS_NODE_SIZE);
+        return Math.max(THETA_MIN, THETA_30 * b / THRESHOLDS_NODE_SIZE);
     }
 
     /**
@@ -1225,8 +1238,7 @@ public class Dag {
      * nodes are at most S + (n + S - 1) / (m - 1) for S segment trees and n live keys, which
      * V1, V2 and V4 give; and TP39 of option 2 (bergdb 024-23), every node holds at most
      * theta dead klongs (deadCount, at the latest time). For tests: it reads as a reader at
-     * 'time' does, loading nodes through gd's follower. With m < 2 (node size below
-     * MERGE_MIN_NODE_SIZE) it checks V2 and V4, and V1 as "not empty".
+     * 'time' does, loading nodes through gd's follower.
      */
     public Fill checkFill(long time, GetData gd) {
         final Fill f = new Fill();
@@ -1251,7 +1263,7 @@ public class Dag {
             final int dead = deadCount(node);
             f.deadKlongs += dead;
             f.deadMax = Math.max(f.deadMax, dead);
-            if (theta > 0 && dead > theta && f.error == null) {
+            if (dead > theta && f.error == null) {
                 f.error = "TP39: " + what(node, isRoot, depth) + " holds " + dead
                         + " dead klongs, more than theta = " + theta;
             }
@@ -1308,7 +1320,7 @@ public class Dag {
                 }
             }
         }
-        if (f.error == null && m >= 2 && f.keyNodes > f.trees + f.leafKlongs / (m - 1)) {
+        if (f.error == null && f.keyNodes > f.trees + f.leafKlongs / (m - 1)) {
             f.error = "TU2: " + f.keyNodes + " key nodes, more than S + (n + S - 1) / (m - 1) = "
                     + (f.trees + f.leafKlongs / (m - 1)) + " for S = " + f.trees + ", m = " + m;
         }
