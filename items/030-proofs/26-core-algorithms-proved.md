@@ -441,3 +441,6 @@ the traces), 030-28 (the copy of PE compared with the proved writer and
 pinned, the pins checked every night, `pe_accepts`' premises met for
 Java's G and H) and 028-27 (`night.sh` and `week.sh` disjoint), on main
 7d02a8ef, each against those items and the scripts.
+
+2026-11-20. Landed on `main` by coord-1118: Frans decided to land it and
+then read it there, and to decide afterwards how it is kept.
