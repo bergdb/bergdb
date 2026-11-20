@@ -45,6 +45,7 @@ The list
 | [006-29](29-day-16-november.md) | 2026-11-16 | Day work of 16 November (a Monday), with the coordinator coord-1116: the plan, the progress and the outcome |
 | [006-30](30-day-17-november.md) | 2026-11-17 | Day work of 17 November (a Tuesday), with the coordinator coord-1117: the plan, the progress and the outcome |
 | [006-31](31-day-18-november.md) | 2026-11-18 | Day work of 18 November (a Wednesday), with the coordinator coord-1118: the plan, the progress and the outcome |
+| [006-32](32-day-20-november.md) | 2026-11-20 | Day work of 20 November (a Friday), with the coordinator coord-1120: the plan, the progress and the outcome |
 
 
 Files
