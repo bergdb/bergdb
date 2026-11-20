@@ -1,5 +1,8 @@
 package bergdb.core;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -18,8 +21,9 @@ import bergdb.dag.ValueNode;
 /**
  * Java's own check of the writer's contract (bergdb 030-09, section 3; the contract is
  * 030-04, section 3.2, in Lean lean/contract/Contract/Statement.lean), test-only: on with the
- * system property transcheck=1, off by default; the unit tests and the f-tests run with it
- * (before-commit.sh, unit.sh, f.sh). Db calls it at the start and at the end of each
+ * system property transcheck=1, or with the environment variable BERGDB_TRANSCHECK (below),
+ * off by default; the unit tests and the f-tests run with it (before-commit.sh, unit.sh,
+ * f.sh), and week.sh's steps with "cc" in their names (bergdb 030-30). Db calls it at the start and at the end of each
  * transaction's puts (Db.putKvs), under the write lock, and tells it the key nodes the
  * transaction made, changed and replaced (Dag.NodeChangeListener; until record format 8 also
  * the nodes it took back). It checks what
@@ -57,10 +61,24 @@ import bergdb.dag.ValueNode;
  * kinds beyond the nodes visited, the levels, and the contents beyond the leaves touched. The
  * traces check them (lean/contract/check.sh). A failure throws an AssertionError, which fails
  * the transaction's database (Db.fail) and so the test.</p>
+ *
+ * <p>At its exit a JVM with the check on prints a summary line, TRANSCHECK: ... With the
+ * environment variable BERGDB_TRANSCHECK set to a file, the check is on in every JVM that
+ * sees the variable, also in those that a test program starts as its children, whose command
+ * lines and output stay as they are: the summary line is appended to the file instead of
+ * printed, and the first failure is appended at once, as TRANSCHECK FAILURE: ..., so that a
+ * JVM killed after it still leaves it (bergdb 030-30). A JVM killed with SIGKILL leaves no
+ * summary line.</p>
  */
 final class TransCheck {
-    /** On with the system property transcheck=1 (bergdb 030-09); off by default. */
-    static final boolean ON = "1".equals(System.getProperty("transcheck"));
+    /** The file of the environment variable BERGDB_TRANSCHECK, or null (bergdb 030-30). */
+    private static final String FILE = file();
+
+    /**
+     * On with the system property transcheck=1 (bergdb 030-09) or the environment variable
+     * BERGDB_TRANSCHECK set to a file (bergdb 030-30); off by default.
+     */
+    static final boolean ON = "1".equals(System.getProperty("transcheck")) || FILE != null;
 
     private static final long NONE = Long.MAX_VALUE;     // no end of a range
     private static final Object UNKNOWN = new Object();  // a read met a node not in memory
@@ -75,9 +93,27 @@ final class TransCheck {
         if (ON) {
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 public void run() {
-                    System.out.println(summary());
+                    if (FILE != null) {
+                        record(summary());
+                    } else {
+                        System.out.println(summary());
+                    }
                 }
             });
+        }
+    }
+
+    private static String file() {
+        String f = System.getenv("BERGDB_TRANSCHECK");
+        return f == null || f.isEmpty() ? null : f;
+    }
+
+    /** Appends the line to FILE in one write, which other JVMs may append to as well. */
+    private static void record(String line) {
+        try (FileOutputStream out = new FileOutputStream(FILE, true)) {
+            out.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            System.err.println("TransCheck: the file of BERGDB_TRANSCHECK, " + FILE + ": " + e);
         }
     }
 
@@ -138,6 +174,7 @@ final class TransCheck {
                     faultsFound++;
                 } else if (firstFailure == null) {
                     firstFailure = e.getMessage();
+                    if (FILE != null) record("TRANSCHECK FAILURE: " + firstFailure);
                 }
             }
             throw e;

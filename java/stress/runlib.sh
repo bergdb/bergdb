@@ -19,14 +19,20 @@
 #       (N minutes)", prints it, and adds a line to news.md with tools/news.sh (AGENTS.md,
 #       "News"). Returns 1 if a step failed.
 #   DAY
-#       The day's number (days since 1970), for seeds that are new each day.
+#       The day's number (days since 1970), for seeds that are new each day; DAY=N in the
+#       environment takes day N's seeds again (bergdb 030-30).
+#   keep_traces DIR...
+#       In a step, in the clone's java/: copies the traces that build/traces/DIR/failed.txt
+#       lists (conformance.sh, treeconf.sh and contractconf.sh write it: the failing traces),
+#       each with its outputs (NAME-SEED.*), to RUN/traces/DIR/, which run_finish keeps; so a
+#       failing trace of new seeds stays with its seed in its name (bergdb 030-30).
 #
 # DRY=1: run_start, step and run_finish print the steps with their commands instead of
 # running them: no clone, no report, no news entry; a check of a script's steps and order.
 
 if [ -n "${JAVA_HOME:-}" ]; then JAVA=$JAVA_HOME/bin/java; else JAVA=${JAVA:-java}; fi
 DRY=${DRY:-0}
-DAY=$(( $(date +%s) / 86400 ))
+DAY=${DAY:-$(( $(date +%s) / 86400 ))}
 
 run_start() {
     KIND=$1
@@ -73,6 +79,19 @@ step() {
     if [ $status = 0 ]; then result=ok; else result=FAILED; FAILED="$FAILED $name"; fi
     printf '%-18s %-6s %5d s   %s\n' $name $result $t "$(tail -1 $RUN/$name.txt)" >> $REPORT
     return $status
+}
+
+keep_traces() {
+    for d in "$@"; do
+        f=build/traces/$d/failed.txt
+        [ -s $f ] || continue
+        mkdir -p $RUN/traces/$d
+        cp build/traces/$d/configs.txt $RUN/traces/$d/ 2> /dev/null
+        sort -u $f | while read t; do
+            cp ${t%.trace}.* $RUN/traces/$d/
+        done
+        echo "kept: $(sort -u $f | wc -l | tr -d ' ') failing traces of build/traces/$d/ in $RUN/traces/$d/"
+    done
 }
 
 run_finish() {

@@ -9,7 +9,7 @@
 # the tree with the model's step, writes Java's records (the checks C-T1 to
 # C-T9, in lean/TreeCheck.lean's header).
 #
-# Usage: java/stress/treeconf.sh [small|drain|reclaim|all|medium|large] [seeds]
+# Usage: [ONLY=NAME] java/stress/treeconf.sh [small|drain|reclaim|all|medium|large] [seeds [first]]
 #   small (default): conformance.sh's small set, with tree=1.
 #   drain: draining workloads, which reach the joins (merges) and root
 #   collapse (until record format 8, bergdb 026-25: the upward unlink, LE-b,
@@ -22,6 +22,11 @@
 #   set, up to 5,000 transactions (the two l-big62 traces take long).
 #   seeds: per configuration (default 10 small, 10 drain, 3 reclaim, 3 medium,
 #   1 large).
+#   first: the first seed (default 1), as in conformance.sh (bergdb 030-30): the seeds are
+#   first to first + seeds - 1, a trace's seed is in its name, and with a first other than
+#   1 the traces go to build/traces/tree-SET-FIRST/. ONLY=NAME runs only the configuration
+#   NAME. A failing trace gets a line FAILED with its seed and the command that runs it
+#   again, and its path in the set's failed.txt.
 #   hot (small) and d-random (drain) run with live=1: their LIVE lines (Java's
 #   searches and top search at every time) are for lean/contract/check.sh
 #   (bergdb 030-09).
@@ -46,6 +51,9 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 CP=build/bergdb.jar:build/stress
 SET=${1:-small}
 PAR=${PAR:-4}
+# The first seed, and the suffix of the sets' directories (bergdb 030-30).
+FIRST=${3:-1}
+if [ "$FIRST" = 1 ]; then SUF=; else SUF=-$FIRST; fi
 CHECK=${TREECHECK:-../lean/.lake/build/bin/treecheck}
 [ "$CHECK" = none ] || [ -x "$CHECK" ] || { echo "TREECONF FAILED: no checker; run lake build in lean/"; exit 1; }
 
@@ -126,14 +134,19 @@ FAILED=0
 run_set() {
     set_name=$1
     seeds=$2
-    dir=build/traces/tree-$set_name
+    dir=build/traces/tree-$set_name$SUF
     mkdir -p $dir
     find $dir -type f -delete
-    $set_name > $dir/configs.txt
+    if [ -n "${ONLY:-}" ]; then
+        $set_name | awk -v n="$ONLY" '$1 == n' > $dir/configs.txt
+        [ -s $dir/configs.txt ] || { echo "TREECONF FAILED: no configuration $ONLY in set $set_name"; exit 2; }
+    else
+        $set_name > $dir/configs.txt
+    fi
     running=0
     while read name props; do
-        s=1
-        while [ $s -le $seeds ]; do
+        s=$FIRST
+        while [ $s -lt $((FIRST + seeds)) ]; do
             one_trace $dir $name $s "$props" &
             running=$((running + 1))
             if [ $running -ge $PAR ]; then
@@ -144,13 +157,18 @@ run_set() {
         done
     done < $dir/configs.txt
     wait
+    : > $dir/failed.txt
     while read name props; do
-        s=1
-        while [ $s -le $seeds ]; do
+        s=$FIRST
+        while [ $s -lt $((FIRST + seeds)) ]; do
             last=$(tail -1 $dir/$name-$s.tree.txt)
-            [ "$last" = "TREE OK" ] || { [ "$CHECK" = none ] && [ "$last" = EXPORTED ]; } \
-                || FAILED=$((FAILED + 1))
             echo "   $name-$s: $last"
+            if ! { [ "$last" = "TREE OK" ] || { [ "$CHECK" = none ] && [ "$last" = EXPORTED ]; }; }; then
+                FAILED=$((FAILED + 1))
+                echo "$dir/$name-$s.trace" >> $dir/failed.txt
+                echo "   FAILED $name-$s, set $set_name, seed $s: $last; trace java/$dir/$name-$s.trace;" \
+                    "rerun from the repository's root: ONLY=$name sh java/stress/treeconf.sh $set_name 1 $s"
+            fi
             s=$((s + 1))
         done
     done < $dir/configs.txt
@@ -175,7 +193,7 @@ case $SET in
     all) run_set small ${2:-10}; run_set drain ${2:-10}; run_set reclaim ${2:-3} ;;
     medium) run_set medium ${2:-3} ;;
     large) run_set large ${2:-1} ;;
-    *) echo "Usage: treeconf.sh [small|drain|reclaim|all|medium|large] [seeds]"; exit 2 ;;
+    *) echo "Usage: treeconf.sh [small|drain|reclaim|all|medium|large] [seeds [first]]"; exit 2 ;;
 esac
 echo "Time: $(( $(date +%s) - START )) s"
 if [ $FAILED -eq 0 ]; then
