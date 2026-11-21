@@ -16,6 +16,13 @@ clone of `main` and wrote applications from the README, the Javadoc and
 of its own that checks every result. Nothing in the product code was
 changed.
 
+Made by: Claude, Anthropic's model Opus 5.5 at effort xhigh, as the
+agents "apps" (from 10:26) and "apps2" of coord-1113, on 2026-11-13. The
+first stopped at 10:47 when the agents' authentication failed; "apps2"
+went on from its clone at 11:22 and finished at 13:08. They wrote the
+apps b1 to c2, ran them and wrote this record. Recorded at Frans's request
+(2026-11-21).
+
 Findings are U13-1, U13-2, ...; cited from elsewhere as "026-13, U13-1"
 (020-24-13 also had findings named U13-n).
 
@@ -562,3 +569,6 @@ B1 round 3 and quick 2: three app bugs fixed in B1 and Common, all OK
 after; Q1 and the proposed entries written (12:40). `main` merged
 (12:42, with 026-10), the jar rebuilt: quick 3, soak 3 and kill 3 all
 OK (12:43 to 13:02).
+
+2026-11-21. The apps' maker (Claude Opus 5.5, xhigh) added, at Frans's
+request, by coord-1120.

@@ -13,6 +13,11 @@ applications from the README, the Javadoc and `releases/next.md` only, not
 from the implementation, each with an oracle of its own that checks every
 result. Nothing in the product code was changed.
 
+Made by: Claude, Anthropic's model Opus 5.5 at effort high, as the
+agent "apps" of coord-1111, from 2026-11-11 20:21 to 2026-11-12 00:39;
+it wrote the seven apps a1 to a7 (DeleteHeavy to the last), ran them and
+wrote this record. Recorded at Frans's request (2026-11-21).
+
 Findings are U26-1, U26-2, ...
 
 Since 2026-11-19 (028-23) the apps are maintained in `java/stress/apps/`,
@@ -323,3 +328,6 @@ short runs (20:24 to 20:50).
 range-check bug fixed at 22:47; State written at 00:30.
 
 2026-11-13. Status set after the release (coord-1113).
+
+2026-11-21. The apps' maker (Claude Opus 5.5, high) added, at Frans's
+request, by coord-1120.
