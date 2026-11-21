@@ -606,6 +606,12 @@ Files
   collapse (`pe_dirtyNodeBound_noJoins`, its history form); a leaf-root
   corollary and one local planned-leaf join. The general joins and removal
   of the fill premise remain open. Written 2026-11-20. Status: open.
+* [030-37](37-dirty-bound-joins.md). The dirty-node bound through all leaf
+  joins and one level of inner joins, including recursive leaf rebalances,
+  untouched neighbours and groups already joined; transaction and history
+  theorems (`pe_dirtyNodeBound_twoJoinLevels`). Higher inner joins and
+  removal of the fill and original-key premises remain open. Written
+  2026-11-21. Status: open.
 
 
 Log

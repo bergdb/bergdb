@@ -96,3 +96,6 @@ import Contract.Proof.DnbMain
 import Contract.DnbExample
 import Contract.Proof.DnbDelJoin
 import Contract.DnbDeletesExample
+import Contract.DnbJoinsExample
+import Contract.DnbInnerExample
+import Contract.Proof.DnbFillRoot

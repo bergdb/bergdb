@@ -24,6 +24,9 @@ DnbPlan.lean).
 import Contract.Proof.DnbWalk
 import Contract.Proof.DnbTop
 import Contract.Proof.DnbDelTop
+import Contract.Proof.DnbLeavesTop
+import Contract.Proof.DnbTwoTop
+import Contract.Proof.DnbFilledTop
 
 namespace Contract.PE
 
@@ -87,6 +90,146 @@ theorem pe_dirtyNodeBound_noJoins_hist {b G H : Nat} (hb : 8 ≤ b)
   obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
   have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
   exact pe_dirtyNodeBound_noJoins hb hI hfill hkeys hNo hw
+
+/-- Every leaf join in a transaction is covered when the space tree has
+height at most one and the keys have one segment. No restriction on the
+number of leaf joins is imposed; the result may collapse or grow the root. -/
+theorem pe_dirtyNodeBound_leafJoins {b G H : Nat} (hb : 8 ≤ b)
+    {t i : Time} {s : Tree} {tp : Top} {next : NodeId} {ops : List Op} {o : Out}
+    (hI : Inv (Cfg.java b G H) t s tp next) (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hheight : ∀ r, s.root = some r → htIn (Cfg.java b G H) s r ≤ 1)
+    (hEnds : ∀ op ∈ ops, op.key.length = 1)
+    (hw : peTx (Cfg.java b G H) i s tp next ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s t (opsKd ops) := by
+  rw [dirtyNodeBound_eq_sb b hI hkeys]
+  exact pe_keyWrites_le_sb_noInnerJoins hb hI hfill hkeys
+    (noInnerJoins_shallow hI.shaped hheight hEnds) hw
+
+/-- The leaf-join bound after any history from the empty tree. Earlier
+transactions are unrestricted. Fill and the next transaction's domain
+conditions remain premises. -/
+theorem pe_dirtyNodeBound_leafJoins_hist {b G H : Nat} (hb : 8 ≤ b)
+    {txs : List (List Op)} {s : Tree} {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hheight : ∀ r, s.root = some r → htIn (Cfg.java b G H) s r ≤ 1)
+    (hEnds : ∀ op ∈ ops, op.key.length = 1)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
+  have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
+  exact pe_dirtyNodeBound_leafJoins hb hI hfill hkeys hheight hEnds hw
+
+/-- All joins of segment leaves, at every depth and through every segment
+of a key. The structural premise excludes only joins of inner nodes. -/
+theorem pe_dirtyNodeBound_noInnerJoins {b G H : Nat} (hb : 8 ≤ b)
+    {t i : Time} {s : Tree} {tp : Top} {next : NodeId} {ops : List Op} {o : Out}
+    (hI : Inv (Cfg.java b G H) t s tp next) (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoInnerJoins (Cfg.java b G H) i s ops)
+    (hw : peTx (Cfg.java b G H) i s tp next ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s t (opsKd ops) := by
+  rw [dirtyNodeBound_eq_sb b hI hkeys]
+  exact pe_keyWrites_le_sb_noInnerJoins hb hI hfill hkeys hNo hw
+
+/-- The same leaf-join bound after any history from the empty tree.
+Earlier transactions may contain arbitrary inner joins as well. -/
+theorem pe_dirtyNodeBound_noInnerJoins_hist {b G H : Nat} (hb : 8 ≤ b)
+    {txs : List (List Op)} {s : Tree} {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoInnerJoins (Cfg.java b G H) (txs.length + 1) s ops)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
+  have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
+  exact pe_dirtyNodeBound_noInnerJoins hb hI hfill hkeys hNo hw
+
+/-- Arbitrary leaf joins and arbitrary joins of inner nodes immediately
+above leaves, at every depth and segment. Only joins of nodes at height
+two or more remain excluded. -/
+theorem pe_dirtyNodeBound_twoJoinLevels {b G H : Nat} (hb : 8 ≤ b)
+    {t i : Time} {s : Tree} {tp : Top} {next : NodeId} {ops : List Op} {o : Out}
+    (hI : Inv (Cfg.java b G H) t s tp next) (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoHigherJoins (Cfg.java b G H) i s ops)
+    (hw : peTx (Cfg.java b G H) i s tp next ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s t (opsKd ops) := by
+  rw [dirtyNodeBound_eq_sb b hI hkeys]
+  exact pe_keyWrites_le_sb_twoJoinLevels hb hI hfill hkeys hNo hw
+
+/-- The two-level join bound for the next transaction after any history
+from the empty tree. Earlier transactions may contain joins at any height.
+The current fill and original-operation key validity remain premises. -/
+theorem pe_dirtyNodeBound_twoJoinLevels_hist {b G H : Nat} (hb : 8 ≤ b)
+    {txs : List (List Op)} {s : Tree} {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoHigherJoins (Cfg.java b G H) (txs.length + 1) s ops)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
+  have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
+  exact pe_dirtyNodeBound_twoJoinLevels hb hI hfill hkeys hNo hw
+
+/-- No extra join condition is needed for a space tree of height at most
+two and one-segment keys. The result may grow or collapse the tree. -/
+theorem pe_dirtyNodeBound_heightTwo {b G H : Nat} (hb : 8 ≤ b)
+    {t i : Time} {s : Tree} {tp : Top} {next : NodeId} {ops : List Op} {o : Out}
+    (hI : Inv (Cfg.java b G H) t s tp next) (hfill : FillOk b H s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hheight : ∀ r, s.root = some r → htIn (Cfg.java b G H) s r ≤ 2)
+    (hEnds : ∀ op ∈ ops, op.key.length = 1)
+    (hw : peTx (Cfg.java b G H) i s tp next ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s t (opsKd ops) :=
+  pe_dirtyNodeBound_twoJoinLevels hb hI hfill hkeys
+    (noHigherJoins_shallow hI.shaped hheight hEnds) hw
+
+/-- The two-level join bound needs only live occupancy, rather than all
+the conditions of `FillOk`. -/
+theorem pe_dirtyNodeBound_twoJoinLevels_filled {b G H : Nat} (hb : 8 ≤ b)
+    {t i : Time} {s : Tree} {tp : Top} {next : NodeId} {ops : List Op} {o : Out}
+    (hI : Inv (Cfg.java b G H) t s tp next) (hfill : RootFilled (Cfg.java b G H) s)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoHigherJoins (Cfg.java b G H) i s ops)
+    (hw : peTx (Cfg.java b G H) i s tp next ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s t (opsKd ops) := by
+  rw [dirtyNodeBound_eq_sb b hI hkeys]
+  exact pe_keyWrites_le_sb_twoJoinLevels_filled hb hI hfill hkeys hNo hw
+
+/-- After any history PE writes from the empty tree, the two-level join
+bound needs no fill premise. Occupancy is preserved even by higher joins
+in the preceding transactions. Only the next transaction's higher joins
+and original-operation key domain remain restricted. -/
+theorem pe_dirtyNodeBound_twoJoinLevels_history {b G H : Nat} (hb : 8 ≤ b)
+    {txs : List (List Op)} {s : Tree} {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hNo : NoHigherJoins (Cfg.java b G H) (txs.length + 1) s ops)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
+  have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
+  exact pe_dirtyNodeBound_twoJoinLevels_filled hb hI (pe_rootFilled_hist hb hh) hkeys hNo hw
+
+/-- The history bound without a join or fill premise when the next
+transaction has one-segment keys and the space tree has height at most two. -/
+theorem pe_dirtyNodeBound_heightTwo_history {b G H : Nat} (hb : 8 ≤ b)
+    {txs : List (List Op)} {s : Tree} {tp : Top} {nx : NodeId} {ops : List Op} {o : Out}
+    (hh : PeHist (Cfg.java b G H) (startTree (Cfg.java b G H)) startTop startNext txs s tp nx)
+    (hkeys : ∀ op ∈ ops, keyOk (Cfg.java b G H) op.key = true)
+    (hheight : ∀ r, s.root = some r → htIn (Cfg.java b G H) s r ≤ 2)
+    (hEnds : ∀ op ∈ ops, op.key.length = 1)
+    (hw : peTx (Cfg.java b G H) (txs.length + 1) s tp nx ops = some o) :
+    keyWrites o.ws ≤ dirtyNodeBound b s txs.length (opsKd ops) := by
+  obtain ⟨h0, hst, htop⟩ := start_inv (cfgOk_java8 hb)
+  have hI := (pe_meetsTop (cfgOk_java8 hb) h0 hst htop hh).2
+  exact pe_dirtyNodeBound_twoJoinLevels_history hb hh hkeys
+    (noHigherJoins_shallow hI.shaped hheight hEnds) hw
 
 /-- On a space root that is a segment leaf, every mixed transaction of
 one-segment keys has the bound, without the no-join premise. Its result may
