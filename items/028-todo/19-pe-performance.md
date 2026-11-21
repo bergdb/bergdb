@@ -59,6 +59,31 @@ how close to the old writer, or better, each point came.
 Sources: 026-25 (sections 2, 6, 7), 026-24, 030-21.
 
 
+Measurements of 2026-11-21
+--------------------------
+
+`java/timing.sh` on F53, quiet, `main` at `40cb9ae9` (PE, with 028-26)
+against release 2026.5 (the old writer), run `2026-11-21-0800`
+(`java/build/timing/`, not in the repository):
+
+* CORE: 0.265 against 0.250, ratio 1.060 (alert above 1.10). The run of
+  01:52 the same night had 1.102.
+* Pauses (PauseProbe, ZGC): the longest get or commit 14.5 ms against
+  14.4 ms (guide 50 ms).
+* Writes with reclaim at work, faster: `w10m-fin` +27.4 % commits/s
+  (68,936 against 54,104), `r-100-fin` +27.2 % in its mixed phase,
+  `w-uni-100-fin` +10.2 %.
+* Writes with no reclaim (retain=inf), slower: `w10m-inf` -6.3 %,
+  `w-uni-100-inf` -9.7 %; restart after `w-uni-100-inf` 1.98 s against
+  1.75 s.
+* Reads: -1 % to -5 %; `get_longkey` -5.4 %, the run's one alert
+  (unconfirmed, threshold 5 %); `r-100-fin`'s mixed gets -12.3 % (no
+  threshold for it).
+
+The rest of the done criterion (each point measured before and after a
+change, s1, reclaim's pace explained) is open.
+
+
 Log
 ===
 
@@ -66,3 +91,5 @@ Log
 
 2026-11-19. Reclaim's pace: the uncharged PE nodes fixed in 028-26; what
 to remeasure noted above. By an agent of coord-1118.
+
+2026-11-21. timing.sh's figures against 2026.5 added, by coord-1120.
