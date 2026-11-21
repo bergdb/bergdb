@@ -6,6 +6,11 @@
 # a heap of about 8 GB: on a smaller machine (s1) leave them out with ONLY='^(read|w|r)-'.
 # The times are estimates of 2026-11-19, not yet measured: about 60 minutes for the 1M
 # scenarios and 40 for the 10M ones on F53, both builds.
+# w10m-fin's first physical cut frees the whole load at once: it comes when reclaim's
+# first iteration, which rewrites each of the 10M values at its pace (a quarter of the
+# stream's growth), has ended, and the retention (retain=0.1: 1M transactions) has passed
+# since. On F53 that was after 4.01M commits on main and 3.87M on release 2026.5
+# (2026-11-21, bergdb 028-42); maxops=6000000 leaves a margin, and the run ends at the cut.
 
 read-100        read     3   n=1000000 nlong=100000 valsize=100 history=1000000
 w-uni-100-inf   write    3   n=1000000 valsize=100 work=uniform retain=inf ops=4500000
@@ -13,4 +18,4 @@ w-uni-100-fin   write    3   n=1000000 valsize=100 work=uniform retain=1 mincuts
 r-100-fin       restart  3   n=1000000 valsize=100 work=uniform retain=1 mincuts=6 ops=4500000 maxops=12000000 halt=1 firstgets=300000 mixops=300000
 
 w10m-inf        write    2   n=10000000 valsize=8 work=uniform warmup=200000 retain=inf ops=1000000
-w10m-fin        write    2   n=10000000 valsize=8 work=uniform warmup=200000 retain=0.1 mincuts=1 ops=2000000 maxops=4000000
+w10m-fin        write    2   n=10000000 valsize=8 work=uniform warmup=200000 retain=0.1 mincuts=1 ops=2000000 maxops=6000000

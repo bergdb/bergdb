@@ -102,7 +102,6 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
-| [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin never reaches a cut | none | open |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin reaches its cut: maxops 6M | none | done | 2026-11-21 |
 | [028-41](41-jdeps-check-jvm-banner.md) | Fix | build.sh's jdeps check and the JVM's "Picked up" line | none | done | 2026-11-20 |
 | [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation durable at its first sync: Javadoc; RB-003 | decided | done | 2026-11-20 |
 | [028-37](37-contractconf-bridge-twice.md) | Change | contractconf.sh and level2.sh run the bridge checker once | none | done | 2026-11-20 |
@@ -314,3 +314,10 @@ of the build script, not a released bug (033). Moved to Closed.
 2026-11-21. 028-42 registered by coord-1120, from timing.sh's first full
 run of the release suite: w10m-fin wants a cut in 4M commits and gets
 none, on the candidate and on 2026.5.
+
+2026-11-21. 028-42 done by an agent of coord-1120 on the branch
+`028-42-w10m-fin`: w10m-fin's first cut waits for reclaim's first
+iteration over the 10M values and then the retention, after 4.01M
+commits on main and 3.87M on 2026.5; maxops 4M to 6M in the release
+suite. No fault of reclaim. Moved to Closed; the full timing.sh run is
+the coordinator's.
