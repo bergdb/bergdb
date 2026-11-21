@@ -102,6 +102,7 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
+| [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin never reaches a cut | none | open |
 
 
 Closed
@@ -309,3 +310,7 @@ branch `026-26-app-hunt`, from 026-26's S4-B1: `java/build.sh`'s jdeps
 check drops the JVM's "Picked up" lines of `JAVA_TOOL_OPTIONS` and
 `_JAVA_OPTIONS`, which failed the build with no class missing; a fault
 of the build script, not a released bug (033). Moved to Closed.
+
+2026-11-21. 028-42 registered by coord-1120, from timing.sh's first full
+run of the release suite: w10m-fin wants a cut in 4M commits and gets
+none, on the candidate and on 2026.5.
