@@ -109,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-43](43-large-reclaim-run.md) | Change | Long large reclaim run | none | done | 2026-11-21 |
 | [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin reaches its cut: maxops 6M | none | done | 2026-11-21 |
 | [028-41](41-jdeps-check-jvm-banner.md) | Fix | build.sh's jdeps check and the JVM's "Picked up" line | none | done | 2026-11-20 |
 | [028-40](40-core-creation-durable-at-sync.md) | Fix | The Core's creation durable at its first sync: Javadoc; RB-003 | decided | done | 2026-11-20 |
@@ -321,3 +322,10 @@ iteration over the 10M values and then the retention, after 4.01M
 commits on main and 3.87M on 2026.5; maxops 4M to 6M in the release
 suite. No fault of reclaim. Moved to Closed; the full timing.sh run is
 the coordinator's.
+
+2026-11-21. 028-43 registered by coord-1120 and done in a clone: a long
+functional run at 10 million keys with reclaim, retention, bounded storage
+and recovery (java/stress/large.sh), a step of week.sh. Quick and full
+passed: 100 million transactions, 89 physical cuts, bounded kept bytes,
+recovery checked; BEFORE COMMIT OK; no database code change. Moved to
+Closed.

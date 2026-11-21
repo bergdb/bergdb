@@ -18,10 +18,10 @@
 # harness-soak), this script runs it with other seeds, sizes or durations; 028-27 lists
 # each pair and what differs.
 #
-# Usage: java/week.sh          the week run, about 9 hours on F53 (an estimate of
-#                              2026-11-19 from the steps' times below)
-#        java/week.sh short    a trial of the script: its steps small (13 minutes on
-#                              F53 at a load of 13 to 22, 2026-11-19)
+# Usage: java/week.sh          the week run, about 10 to 10.5 hours on F53 (an estimate of
+#                              2026-11-21 from the steps' times below)
+#        java/week.sh short    a trial of the script: its steps small (about 16 minutes;
+#                              13 before the large quick step, 2026-11-19)
 #        DRY=1 java/week.sh [short]
 #                              prints the steps in order with their commands, runs
 #                              nothing (no clone, no report)
@@ -62,9 +62,15 @@
 #      fixed seeds, small); about 15 minutes.
 #   9. android: stress/android.sh, the unit tests and the demos on an Android emulator;
 #      about 3 minutes.
+#  10. large-reclaim: stress/large.sh full, 10 million keys and a long history with
+#      reclaim, old reads, bounded kept bytes, clean restarts and a child JVM killed
+#      during writes; the day's seed (028-43). About 60 to 90 minutes. This workload
+#      is only here, disjoint from night.sh's smaller reclaim tests and timing.sh.
+#      A failing run's data and build stay in RUN/large-reclaim-failure/ when this
+#      script removes its temporary clone.
 # With "short": before-commit, apps quick with CC (so that the trial takes the apps' path
 # of CC), kill-restart 10 kills on two seeds, the second with CC, fuzz 1 minute, unlinkfuzz the day's block, harness-soak rounds 0 and 1,
-# round 1 with CC, conformance small with 1 seed in place of large, android.
+# round 1 with CC, conformance small with 1 seed in place of large, android, large-reclaim quick.
 #
 # CC (bergdb 030-30): the steps whose names end in -cc run with Java's commit-time check
 # of the writer's contract on (TransCheck; bergdb 030-09, section 3; 030-20) at every
@@ -171,6 +177,22 @@ conformance() {
     return $st
 }
 
+# Preserve the large database and its exact build on failure, before run_finish removes
+# the temporary clone. Passing logs are collected by run_finish as for the other steps.
+large_reclaim() {
+    sh stress/large.sh "$@"
+    large_status=$?
+    if [ "$large_status" -ne 0 ] && [ -d build/large ]; then
+        mkdir -p "$RUN/large-reclaim-failure" || return 1
+        for large_result in build/large/*; do
+            [ -d "$large_result" ] || continue
+            mv "$large_result" "$RUN/large-reclaim-failure/" || return 1
+        done
+        echo "LARGE RECLAIM FAILED: data and build kept in $RUN/large-reclaim-failure/"
+    fi
+    return "$large_status"
+}
+
 if ! step before-commit sh before-commit.sh; then
     echo "(the other steps not run: before-commit.sh failed)" >> $REPORT
     run_finish
@@ -204,5 +226,10 @@ else
     step conformance-small conformance small 1
 fi
 step android sh stress/android.sh
+if [ $SHORT = 0 ]; then
+    step large-reclaim large_reclaim full $DAY
+else
+    step large-reclaim-quick large_reclaim quick $DAY
+fi
 
 run_finish

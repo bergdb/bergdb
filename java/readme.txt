@@ -47,7 +47,7 @@ are not on the path. level2.sh to level4.sh and the proofs need Lean (elan).
     java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
     java/javadoc-pub.sh            # the Pub API's Javadoc, in build/javadoc-pub/
     java/night.sh                  # the night run: the checks below, on a clone of HEAD (about 2.5 hours)
-    java/week.sh                   # the week run: conformance large, the apps, more kills and fuzzing, Android (about 9 hours)
+    java/week.sh                   # the week run: conformance large, apps, kills, fuzzing, Android, large reclaim (about 10 hours)
     java/timing.sh                 # the timing run: CORE, pauses, performance.sh ab against the last release (quiet machine)
     java/night.sh tests            # only the night tests (about 4.5 minutes)
     java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
@@ -58,6 +58,7 @@ are not on the path. level2.sh to level4.sh and the proofs need Lean (elan).
     java/stress/harness-soak.sh    # the Pub layer's randomized harnesses
     java/stress/fuzz.sh            # fuzzing of the readers of bytes
     java/stress/kill-restart.sh    # the Pub layer under kills of its JVM (1,000 kills: about 26 minutes)
+    java/stress/large.sh           # long functional reclaim: 10M keys, old reads and restarts (60 to 90 minutes; quick: a few)
     java/stress/apps.sh            # the user apps of 024-26 and 026-13 (quick: 6 minutes; soak N, kill N)
     java/stress/android.sh         # the unit tests and demos on an Android emulator (ANDROID_SDK; week.sh runs it)
     cd lean && lake build          # checks all proofs
