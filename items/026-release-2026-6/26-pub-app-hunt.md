@@ -12,6 +12,14 @@ not read. They ran on the release jar of `main` at `bdf7c1ba`, on
 comparison for the one finding. Nothing in BergDB's code was changed by
 the hunt.
 
+Made by: Codex, OpenAI's coding agent, with the model GPT-6.1 Sol at
+reasoning effort max, in a session Frans started on 2026-11-20 at 20:05;
+it wrote the eight apps, ran them and wrote the report between 20:11 and
+20:51. An earlier start of the same task, at reasoning effort xhigh
+(18:54), stopped at 18:57 before it wrote anything. The coordinator's
+agent that landed the apps changed two import lines (section 6). Recorded
+at Frans's request (2026-11-21).
+
 Findings are named by severity: S1 data lost or wrong, S2 a database that
 fails or cannot start, S3 a call refused wrongly, S4 minor or
 documentation.
@@ -24,10 +32,10 @@ documentation.
   whole recovered state.
 * **One S4 finding outside the database, S4-B1**: `java/build.sh` fails
   falsely when `JAVA_TOOL_OPTIONS` is set, on `main` and on 2026.5
-  (section 4). Fixed as 028-41; not a released bug of the database, so not
+  (section 5). Fixed as 028-41; not a released bug of the database, so not
   in 033.
 * **The apps are maintained** in `java/stress/apps/d1-*` to `d8-*`, run by
-  `java/stress/apps.sh` in its three modes (section 5).
+  `java/stress/apps.sh` in its three modes (sections 3 and 6).
 
 
 ## 2. The applications
@@ -71,7 +79,32 @@ wrong result.
   an object of an old format, and succeed once it is replaced.
 
 
-## 3. The runs
+## 3. How to run them
+
+From `java/`, all eight with the other apps (024-26's and 026-13's):
+
+* `sh stress/apps.sh quick`: each app once, small, about 6 minutes on
+  F53 (d1 to d8 take about 30 seconds of it).
+* `sh stress/apps.sh soak N` and `sh stress/apps.sh kill N`: round N of
+  the larger runs and of D4's forced stops, new seeds for each N; with
+  `BERGDB_TRANSCHECK=1` as `week.sh` runs them (its step 2).
+
+One app alone, after a run of `apps.sh quick` has built the release jar
+and compiled the apps into `build/apps/quick/`:
+
+```sh
+cd java
+J="java -ea -Xmx512m -cp build/apps/quick/bergdb-release.jar:build/apps/quick/classes"
+$J D1Ledger /tmp/d1 601 4 250        # data directory, then the app's arguments
+```
+
+Each app's arguments are in `apps.sh` (its quick, soak and kill lines)
+and in the runs below; each prints an OK line and exits 0, or exits
+non-zero on a wrong result. The sources are one file each, in
+`java/stress/apps/d1-ledger/` to `d8-online-index/`.
+
+
+## 4. The runs
 
 31 runs, every one with exit 0 and an OK line; none reached the runner's
 guard of 20 or 25 minutes. Each JVM had a heap cap (512 MiB, 768 MiB for
@@ -107,7 +140,7 @@ exact boundary; the checks of older times read sampled whole views, not
 every time.
 
 
-## 4. S4-B1: the jdeps check and the JVM's "Picked up" line
+## 5. S4-B1: the jdeps check and the JVM's "Picked up" line
 
 With `JAVA_TOOL_OPTIONS=-Xmx1g`, to cap the heap of every JVM of a build,
 `sh java/build.sh` exits 1 with "BUILD FAILED: build/bergdb-release.jar:
@@ -123,7 +156,7 @@ Registered and fixed as 028-41 (2026-11-20): the check drops the JVM's
 "Picked up" lines before it reads the file.
 
 
-## 5. Landed in the repository
+## 6. Landed in the repository
 
 On the branch `026-26-app-hunt` (2026-11-20, from `main` at `591251a5`):
 
@@ -163,3 +196,6 @@ report at 20:51.
 
 2026-11-20. Written and landed by an agent of coord-1120 on the branch
 `026-26-app-hunt`, with 028-41 (S4-B1, fixed).
+
+2026-11-21. The maker (Codex, GPT-6.1 Sol, max) and how to run the apps
+added, at Frans's request, by coord-1120.
