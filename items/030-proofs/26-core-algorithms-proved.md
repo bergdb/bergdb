@@ -235,11 +235,15 @@ bound holds when no node made small by the deletes is joined with a
 neighbour, empty children removed and the root collapsed included
 (`Contract.PE.pe_dirtyNodeBound_noJoins`, and after every history PE
 writes, `pe_dirtyNodeBound_noJoins_hist`; [030-36](36-dirty-bound-deletes.md)).
-For transactions whose deletes join nodes the bound is tested, not proved:
-its terms for deletes are large (four nodes a level of a delete's path, and
-eight more), and the tests find deletes far under it (028-21; 030-29,
-section 3). One join of two leaves is bounded (030-36); repeated joins
-and joins of inner nodes are open.
+Proved also through joins: every join of leaves and every join of inner
+nodes just above the leaves, repeated joins included
+(`pe_dirtyNodeBound_twoJoinLevels`, [030-37](37-dirty-bound-joins.md)); and
+after every history PE writes from the empty tree with no fill rule as a
+premise, since PE's histories keep the root filled
+(`pe_dirtyNodeBound_twoJoinLevels_history`). For transactions that join
+inner nodes higher up the bound is tested, not proved: its terms for
+deletes are large (four nodes a level of a delete's path, and eight more),
+and the tests find deletes far under it (028-21; 030-29, section 3).
 
 
 # 3. The model, and what "proved" means
