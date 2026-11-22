@@ -318,6 +318,13 @@ Files
   `JAVA_TOOL_OPTIONS` set, fixed as 028-41. The apps maintained in
   java/stress/apps/d1-* to d8-*, run by apps.sh since 2026-11-20.
 
+* 27-release-plan.md. 026-27, the release plan for 2026.6, of
+  2026-11-22: where things stand (the release runs passed, no known
+  bug), the work left in order with who does it, when and how it is
+  checked (the guarantee list 030-38 and its independent review, 030-26
+  and 033 current, the notes, commit A and its gate, commit B, the tag,
+  the release on GitHub), and five decisions for Frans, D1 to D5.
+
 
 Log
 ===
@@ -412,3 +419,6 @@ kept (Frans). Releases 2026.7 (031) and 2026.8 (032) created.
 2026-11-20. 026-26 done: an independent hunt with eight Pub API apps, no
 database fault; S4-B1 fixed as 028-41; the apps landed in apps.sh (an
 agent of coord-1120).
+
+2026-11-22. 026-27 written: the release plan, for the release on Tuesday
+24 November.

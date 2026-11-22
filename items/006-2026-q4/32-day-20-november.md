@@ -1,6 +1,6 @@
 # 006-32 Day work, 20 November 2026
 
-Created 2026-11-20 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-20 by Frans Lundberg. Status: done (2026-11-22). The plan for the
 coordinator's day of 2026-11-20 (coord-1120), a Friday: the progress and
 the outcome. The way of working is 013-02's (the coordinator).
 
@@ -85,11 +85,40 @@ Decisions of the morning:
 * 18:07 030-35 landed (2151cd4b): reclaim's step model requires the
   values read, and reads after reclaim give the users' values, proved
   (`PE.pe_reclaim_user_reads_steps`; 215 theorems). 030-33 done.
+* 19:20 Section 6, the plan for Monday (Frans).
+* 19:52 night.sh on 2bb2b851: NIGHT OK (206 minutes).
+* 21:26 030-36 landed (880328e7, 591251a5): the dirty-node bound for
+  transactions of puts and deletes without joins; 227 theorems.
+* 22:05 026-26 landed (225a645e): an independent hunt, eight Pub API
+  apps in `apps.sh`, no database fault; 028-41 (build.sh's jdeps check)
+  fixed.
+* 2026-11-21 00:52 week.sh on 2bb2b851: WEEK OK (488 minutes).
+* 03:55 timing.sh: its perf step failed on the scenario w10m-fin; 028-42
+  registered (36e01859).
+* 04:14 030-37 landed (b7f7039c): the bound through all leaf joins and
+  one level of inner joins, with no fill premise after PE's histories;
+  252 theorems.
+* 07:45 to 18:00 unattended (Frans). 08:02 028-42 fixed (40cb9ae9:
+  maxops 6M, no fault of reclaim). 09:38 timing.sh complete: CORE 1.060
+  against 2026.5, pauses 14.5 ms, one unconfirmed alert; figures in 028-19
+  (8bb08ad6). 15:56 028-43 landed (26934434): `java/stress/large.sh`,
+  week.sh's step 10, a full run passed (10 million keys, 100 million
+  transactions, 89 cuts).
+* 2026-11-22 09:20 028-34: `transactionInfo()` kept as it is for 2026.6
+  (Frans; 32f7bb74). The release plan written as 026-27.
 
 
 ## 5. Outcome
 
-Not yet.
+The day's work ran from Friday 20 to Sunday 22 November. No database
+fault was found: every failure was in a test harness, a test app, a test
+setting or documentation. The released bugs of 2026.5 have a register
+(033, RB-001 to RB-003). The proofs grew to 252 theorems:
+reclaim keeps the users' values (030-35), and the dirty-node bound covers
+deletes and joins up to one level above the leaves (030-36, 030-37). The
+release runs passed: night.sh, week.sh and timing.sh. New tests: eight
+Pub API apps (026-26) and a long run at 10 million keys with reclaim
+(028-43). Left for the release: section 6, planned in 026-27.
 
 ## 6. Next: Monday 23 November and the release
 
@@ -113,4 +142,6 @@ usage reset of Monday 22:00 where usage requires it):
   028-19's decision (not blocking unless a large loss at 1M or 10M).
 * Release 2026.6 on Tuesday 24 November: the notes from `releases/next.md`,
   033's RB-001 to RB-003, 030-26 current.
+
+The release plan with the steps left, as of 2026-11-22: 026-27.
 
