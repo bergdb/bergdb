@@ -12,16 +12,9 @@ The choices made from this comparison (2026-10-30, revised 2026-11-10):
 
 - **Claude Opus 5.5 xHigh** (57): the default, for interactive work, for
   the coordinator (013-02) and for subagents.
-- **Claude Opus 5.5 Max** (59): seldom; planning, Lean proofs and hard
-  programming such as concurrency.
-- **Claude Opus 5.5 Medium** (48): short factual questions.
-- **Claude Fable 5.2** (released 2026-11-10): Medium (56) is about as
-  smart as Opus 5.5 xHigh and faster; High (62) can replace Opus 5.5 Max;
-  Max (65), the highest score in the table, is slow and costly, for
-  verification and second opinions rather than coding.
-- **GPT-6.1 Sol Max** (55): second opinions.
-- Sonnet and Haiku are not needed. Changing the effort of one model keeps
-  its context, which makes effort the easiest thing to change.
+- **Claude Fable 5.2 High** (62): for higher intelligence.
+  Verification and second opinions. Proofs.
+- **GPT-6.1 Sol Max** (55): second opinions. To save Claude usage.
 
 Which models the sessions use now is in 013-02, section 9.
 
