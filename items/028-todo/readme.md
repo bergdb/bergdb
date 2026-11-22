@@ -101,7 +101,7 @@ Open
 |---|---|---|---|---|
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
-| [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | to decide | open |
+| [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 
 
 Closed
@@ -329,3 +329,6 @@ and recovery (java/stress/large.sh), a step of week.sh. Quick and full
 passed: 100 million transactions, 89 physical cuts, bounded kept bytes,
 recovery checked; BEFORE COMMIT OK; no database code change. Moved to
 Closed.
+
+2026-11-22. 028-34: Frans kept transactionInfo() as it is for 2026.6; open
+for a later release.

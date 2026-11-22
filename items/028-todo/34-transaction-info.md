@@ -1,7 +1,8 @@
 028-34. Decide: transactionInfo() in the Pub API, or the walk in the Core
 =========================================================================
 
-Status: open. Kind: Decide. Frans: to decide (no decision on 2026-11-20).
+Status: open, for a later release. Kind: Decide. Frans: decided for 2026.6
+(2026-11-22): keep it as it is.
 Created 2026-11-20 by Frans Lundberg.
 
 What: `Connection.transactionInfo()` (Pub API) gives the time and the
@@ -78,8 +79,16 @@ Options
 Done when: Frans has chosen; the choice is recorded here with its date,
 and the work it needs is an entry or a release item's subitem.
 
+Decision for 2026.6: Frans chose (2026-11-22) to keep
+`transactionInfo()` as it is for release 2026.6: no change to the Pub API
+or the Core for it in this release. The choice between the options above
+stays open for a later release.
+
 
 Log
 ---
 
 2026-11-20. Created (coord-1120), with both options as Frans named them.
+
+2026-11-22. Frans: as it is for 2026.6; the choice stays open for a later
+release (coord-1120).
