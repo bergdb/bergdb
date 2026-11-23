@@ -324,6 +324,8 @@ Files
   checked (the guarantee list 030-38 and its independent review, 030-26
   and 033 current, the notes, commit A and its gate, commit B, the tag,
   the release on GitHub), and five decisions for Frans, D1 to D5.
+  Its directory `27-release-plan/` holds the release scripts of
+  2026.6 (step 10, its section 4), 024-38's adapted.
 
 
 Log

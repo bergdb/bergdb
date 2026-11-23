@@ -153,6 +153,73 @@ Tuesday 24 November (Frans, with the day's coordinator):
   2026-11-24`.
 
 
+## 4. The release scripts (step 10)
+
+024-38's morning scripts, adapted for 2026.6 on 2026-11-23, are in this
+plan's directory, `27-release-plan/`; each header says what it does and
+how it is called. Their work directory is `R`, by default
+`/Users/f/fl/bench/2026-11-24/release` (outside the repository).
+
+* `to-main.sh SRC A` (step 12): A from the clone SRC into `main`, a
+  fast-forward, or a merge if `main` moved in `items/` only; it stops if
+  `main` moved elsewhere. New: A is given by its hash, and A's BuildInfo
+  must say 2026.6. It no longer runs 2026.5's `clean.sh`: A's gate and
+  the D4 checks are the lead's to read before the call.
+* `release.sh A` (step 13), in two calls: the first builds the files and
+  the notes, and stops at `RELEASE WAITS` so that Frans reads the notes,
+  `R/out/readme.md`; the second, `FROM=stage COMMIT=1`, makes commit B,
+  gates it with `before-commit.sh` and pushes `main`. It calls:
+  * `build-a.sh`: the jar and the Javadoc zip from a new clone at A; no
+    source zip.
+  * `finish.sh`: `SHA256SUMS` of the jar and the Javadoc zip only;
+    `baseline.zip` from `R/out/baseline/` if there is one, not published.
+  * `notes.sh` (new, in place of 2026.5's template and `notes.py`): the
+    notes from A's `releases/next.md`, with Files (the GitHub release,
+    each file's SHA-256) and Identity (tag, commit, BuildInfo, JDK).
+  * `stage-b.sh`: `releases/2026.6/` with `readme.md` and `SHA256SUMS`
+    only; next.md emptied; docs/log.md's entry; BuildInfo 2026.7-dev,
+    267 (`set-buildinfo.sh`).
+  * `commit-b.sh`: commit B. It prints last, for Frans, the tag's command
+    (message `BergDB 2026.6, DATE`, D5) and its push, then the `gh release
+    create` command of 026's readme with the two files from `R/out`, then
+    the download of the release's files and `shasum -a 256 -c SHA256SUMS`
+    (step 15). It runs none of them.
+* **README.md needs a text written for it.** Its section on the latest
+  release says how that release was tested, which no script knows; the
+  lead writes README.md as it is to be after the release and passes the
+  file as `READMEMD` to both calls of `release.sh`. Without it the first
+  call stops before the build.
+* `clean.sh` and `collect.sh` of 2026.5 are not carried over: they read
+  2026.5's release night, which 2026.6 does not have.
+
+The smoke run, 2026-11-23, 22:19 to 22:21, on scratch repositories in a
+temporary directory (a bare clone of `main` at `004382f9` as `origin`,
+its clone as `MAIN`, a commit A with BuildInfo 2026.6 in a third clone):
+
+* `to-main.sh`: the fast-forward (TO MAIN READY, then TO MAIN OK, pushed
+  to the scratch origin); the merge after an `items/` commit, with an
+  untracked file in `MAIN` that stayed (TO MAIN OK); a change in `java/`
+  stopped it (TO MAIN FAILED: main moved outside items/).
+* `release.sh` without `READMEMD`: RELEASE FAILED before the build.
+* `release.sh` with `READMEMD`: BUILD A OK (jar 2.1 MB, Javadoc zip 4.2
+  MB), FINISH OK, NOTES OK (207 lines), RELEASE WAITS; then, after an
+  edit of the notes, `FROM=stage COMMIT=1`: STAGE B OK, BEFORE COMMIT OK
+  (62 s, the real gate), RELEASE OK, the scratch origin's `main` at B,
+  no tag made, and the FOR FRANS lines. B changed its six paths only;
+  `releases/2026.6/` held `readme.md` and `SHA256SUMS`; the jar and
+  the zip, copied beside B's `SHA256SUMS`, passed `shasum -a 256 -c`.
+* A `[[` marker in next.md: NOTES NEED EDITS, and `stage-b.sh` refused
+  the notes; a relative link of next.md moved one directory down.
+
+Not tested: the push of the tag, `gh release create` and `gh release
+download` (printed only, never run against github.com); a push to
+github.com; a merge conflict in `to-main.sh`; `commit-b.sh` with
+`COMMIT=0`.
+
+
 ## Log
 
 2026-11-22. Written, from 006-32, section 6, and 026's release steps.
+
+2026-11-23. Step 10: the release scripts adapted in `27-release-plan/`
+and smoke-tested on scratch repositories (section 4).
