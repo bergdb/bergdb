@@ -321,6 +321,14 @@ decisions; the lessons.
 
 ### 9.2 The rehearsal
 
+Replaced by the first night (Frans, 2026-11-23): no separate rehearsal
+on an afternoon. The first night with the new skill does real work and
+is the test; at night, when it disturbs no one, the lead stages the
+network gap (step 6) and the killed watchdog (step 7); `STOP` and the
+other staged steps are covered by the scripts' tests (section 12, steps
+2 to 4) and by what the night brings. The audit below applies to that
+night. The rehearsal as planned:
+
 About three hours on an afternoon, on the new skill, with two small real
 tasks (028 entries, Opus high). The lead stages all but Frans's four
 actions. For the test, the limit is the week's figure plus two points
@@ -432,7 +440,8 @@ In a clone; an agent on Opus high for steps 2 to 4, Opus xhigh for 5 and
 6. **013-04's description**: a lead needs nothing from 013-01 or 013-02,
    and a review by Codex of description and skill against this plan has
    no open finding.
-7. **The rehearsal** (section 9.2), with the link `lead` pointing at the
+7. **The rehearsal**: replaced by the first night, step 9 (Frans,
+   2026-11-23; section 9.2). As planned: (section 9.2), with the link `lead` pointing at the
    clone's skill: every step gives its expected result, or each miss is
    fixed and its step repeated.
 8. **Landing** (section 11, step 4), the link back, 013's readme and
