@@ -94,7 +94,7 @@ a snapshot of the former `docs/` of 2026-11-12.
   The task's item says what it needs.
 - `java/night.sh` and `java/week.sh` run on a clone of the committed code;
   their reports are in `java/build/night/` and `java/build/week/`. They
-  have no fixed time: the day's coordinator (013-02) starts them as a step
+  have no fixed time: the lead (013-04) starts them as a step
   of its plan, or Frans by hand (the commands are in their headers).
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 

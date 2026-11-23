@@ -2,7 +2,7 @@
 # The week run (bergdb 028-23, 028-27): the deepest functional testing, on demand, and
 # before every release, on a commit near it, not necessarily the one that ships; a minor
 # change after it is acceptable (Frans decided, 2026-11-19). Not a gate; read its report
-# when it ends. Started by hand, or by the day's coordinator (013-02) as a step of its
+# when it ends. Started by hand, or by the lead (013-04) as a step of its
 # plan, from the main tree, with the Android SDK set (see Android below):
 #     ANDROID_SDK=/path/to/android/sdk nohup caffeinate -i sh java/week.sh >/dev/null 2>&1 &
 #

@@ -1,7 +1,8 @@
 # 013-02 The daily coordinator
 
 Created 2026-10-28 by Claude (Opus 5.5, Claude Code), at Frans's request.
-Status: open.
+Status: done; superseded by 013-04, the lead, from 2026-11-23. Kept as the
+record of the coordinator (2026-10-28 to 2026-11-22); not updated.
 
 This describes how Frans works with one AI session, the *coordinator*. He
 talks to it, and it runs most of the work through subagents, whether he is

@@ -19,7 +19,8 @@ Files
   the morning's write-up, and the lessons of the first night (006-09).
   [01-night/](01-night/) has the conductor script and an example of its
   steps file.
-* [02-coordinator.md](02-coordinator.md). 013-02, the daily coordinator:
+* [02-coordinator.md](02-coordinator.md). 013-02, the daily coordinator,
+  superseded by 013-04 from 2026-11-23 and kept as the record:
   one session a day that Frans talks to and that runs the work through
   subagents, in three modes (attended, unattended, closing); a new one
   each morning; the shared things it owns; its state; how it resumes after
@@ -32,6 +33,11 @@ Files
   Sonnet and Haiku 5.5: intelligence, estimated task time, time to first
   token, time for a 500-token answer and API-equivalent cost per task;
   the model choices made from it.
+* [04-lead.md](04-lead.md). 013-04, the lead: the daily session Frans
+  works with, 013-02's coordinator under a new name. [04-lead/skill/](04-lead/skill/)
+  is the Claude Code skill `lead`, a copy of 013-02's skill with the names
+  changed, linked from `~/.claude/skills/lead`; [04-lead/plan.md](04-lead/plan.md)
+  is the plan for its cleanup.
 
 
 Log
@@ -90,3 +96,20 @@ replaces xhigh for every subagent.
 2026-11-17. 013-03 rewritten for the public repository (029): the
 comparison kept (the table, the figures, the method), the personal and
 business details removed; the earlier versions are not published.
+
+2026-11-23. 013-04, the lead, by Claude (Opus 5.5, Claude Code). Frans
+renamed the coordinator to the lead and started it as subitem 013-04, with
+the skill `lead`, a copy of 013-02's skill with the names changed; at its
+start it also finds a coordinator that is not closed. 013-02 is done and
+kept as the record of the coordinator (2026-10-28 to 2026-11-22), not
+updated; it still explains the mechanism until 013-04 is rewritten.
+
+2026-11-23. 013-04's plan for the cleanup of the skill,
+[04-lead/plan.md](04-lead/plan.md), by Claude (Fable 5.2, Claude Code):
+no attended and unattended modes; decisions in three classes (the lead
+decides; it goes ahead by default at a stated time; it waits for Frans);
+07:00 on weekdays as the fixed point to consolidate; no phone
+notifications (Frans, 2026-11-23). Frans chose the plan's ten
+recommendations the same day. AGENTS.md and the headers of `night.sh` and
+`week.sh` name the lead (013-04); the link `~/.claude/skills/coordinator`
+is removed.

@@ -2,8 +2,8 @@
 # The night run (since 2026-10-20, bergdb 006-03): the checks that
 # before-commit.sh leaves out, on a clean copy of the committed code. Not a
 # gate; read its report when it ends. No fixed time (since 2026-11-06,
-# bergdb 013-02, section 2): it is started by hand, or by the day's
-# coordinator session (013-02) when the machine has room for it, from the
+# bergdb 013-02, section 2): it is started by hand, or by the lead
+# session (013-04) when the machine has room for it, from the
 # main tree:
 #     nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
 # caffeinate -i keeps the Mac awake.
