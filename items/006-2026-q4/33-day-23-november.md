@@ -72,6 +72,9 @@ Decisions (Frans, 2026-11-23):
 * 22:29 013-04, agent A: usage.sh, status.sh and watchdog.sh with their tests (LEAD TESTS OK, 106 checks), in the implementation clone. 22:32 agent B (Opus, xhigh): SKILL.md, the state template, 013-04's description, Codex's review.
 * 22:28 Codex's review of 030-38: nine findings, three of them overclaims (C-STEP does not fix the reclaim row's key; power-loss durability needs forcing on; reads beside reclaim may expire). 22:36 an agent (Opus, xhigh) closes them and brings 030-26 up to date (026-27, steps 5 and 7).
 * 22:34 026-27 steps 6, 8 and 9 done: 030's goal 2 recorded as done; 033 checked (RB-001 to RB-003, no new entry); releases/next.md complete. README.md's text for after the release drafted for Frans, outside the repository.
+* 23:09 026-27 steps 3, 5 and 7 done: the review recorded as 030-39, its nine findings and 030-38's eight differences closed; C-STEP checks the reclaim row's key (GATE OK, 254 theorems; LEVEL 2 OK; LEVEL 3 OK); 030-26 current. 23:13 step 11 started: commit A in a clone, its gate and the D4 checks.
+* 23:37 013-04, agent B: SKILL.md (120 lines), the state template and 013-04's description rewritten (its plan's steps 5 and 6); a fresh agent answered all twenty sample decisions; Codex's review in seven rounds, 17 of 18 points fixed, one for Frans. In the implementation clone, for Frans's review.
+* 00:12 026-27 step 11 done: commit A, bbcd802f (BuildInfo 2026.6; releases/next.md in line with 030-38 and 030-39), in a clone, not pushed. Its gate in a new clone: BEFORE COMMIT OK; lake build OK; GATE OK (254 theorems, 144 pinned files); MODEL AXIOMS OK; StreamDigest: all 12 configurations differ from 2026.5, each named in the notes. D4: JCSTRESS OK (8 tests); the jar's tests on s1, JDK 27 and 17: S1 TESTS OK. Steps 12 to 16 wait for Frans.
 
 
 ## 5. Outcome

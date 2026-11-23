@@ -223,3 +223,17 @@ github.com; a merge conflict in `to-main.sh`; `commit-b.sh` with
 
 2026-11-23. Step 10: the release scripts adapted in `27-release-plan/`
 and smoke-tested on scratch repositories (section 4).
+
+2026-11-24. Steps 1 to 11 done (006-33): NIGHT OK on 8056d259 (step 1);
+030-38 (step 2), reviewed by Codex in 030-39 (step 3), its findings
+closed and 030-26 current (steps 5, 7); 030's goal 2 done (step 6); 033
+checked, RB-001 to RB-003, no new entry (step 8); `releases/next.md`
+complete (step 9). Step 11: commit A, `bbcd802f` on `d8ac615c`
+(BuildInfo 2026.6; next.md in line with 030-38 and 030-39), not yet on
+`main`. Its gate in a new clone: BEFORE COMMIT OK; `lake build` OK; GATE
+OK (254 theorems, 144 pinned files); MODEL AXIOMS OK; StreamDigest: all
+12 configurations differ from 2026.5 in every mode, each named in the
+notes (2026.5's jars reproduce 024-38's digests, 48 of 48). D4: the
+eight jcstress tests OK; the jar's tests on s1, JDK 27 and 17: Unit
+1738, F 89, Night 26, userprog OK on each. Steps 12 to 16 follow with
+Frans.
