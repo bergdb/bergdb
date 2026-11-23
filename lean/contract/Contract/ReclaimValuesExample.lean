@@ -2,9 +2,12 @@
 bergdb 030-35: a nonempty users-only reference, two genuine steps, a
 namespace-only store, intervening user puts and a delete. Wrong-value
 rewrites, extra puts and deletes are rejected by the strengthened model.
+And the key at which the trace checker's C-STEP checks a step's row is the
+model's `reclaimRow` (`checker_row`; bergdb 030-39, F1).
 -/
 import Contract.ReclaimValues
 import Contract.ReclaimStepsExample
+import Check.Steps
 
 namespace Contract.ValuesExample
 
@@ -68,5 +71,9 @@ theorem extra_delete_rejected : ¬ StepTx hS 2 2 firstScan
 theorem missing_row_rejected : ¬ StepTx hS 2 2 firstScan
     [.put [72] 5, .put [80] 6] := by
   decide +kernel
+
+/-- The trace checker's C-STEP checks each step's row at the model's key
+(`SIS.Check.reclaimRowKey`, lean/Check/Steps.lean; bergdb 030-39, F1). -/
+theorem checker_row : SIS.Check.reclaimRowKey = reclaimRow := rfl
 
 end Contract.ValuesExample

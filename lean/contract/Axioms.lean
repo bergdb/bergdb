@@ -215,6 +215,7 @@ open Contract
 #print axioms Contract.ValuesExample.extra_put_rejected
 #print axioms Contract.ValuesExample.extra_delete_rejected
 #print axioms Contract.ValuesExample.missing_row_rejected
+#print axioms Contract.ValuesExample.checker_row
 #print axioms Contract.PE.dirtyNodeBound_eq_sb
 #print axioms Contract.PE.pe_dirtyNodeBound_puts
 #print axioms Contract.PE.pe_dirtyNodeBound_puts_hist
@@ -250,6 +251,7 @@ open Contract
 #print axioms Contract.PE.plan_inner_resourcesTwo
 #print axioms Contract.PE.pe_dirtyNodeBound_twoJoinLevels
 #print axioms Contract.PE.pe_dirtyNodeBound_twoJoinLevels_hist
+#print axioms Contract.PE.pe_dirtyNodeBound_twoJoinLevels_history
 #print axioms Contract.PE.pe_dirtyNodeBound_heightTwo
 #print axioms Contract.PE.DnbInnerExample.bound
 #print axioms Contract.PE.DnbInnerExample.repeated_non_small

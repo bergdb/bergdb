@@ -56,14 +56,15 @@ Checks, per transaction i (R(0) included):
        with eod the range's last, the step puts every KV of the range up to L' whose
        value node was made before c, each with the value the scan read (since bergdb
        030-34), and its operations have distinct keys, are those puts and the row's
-       put, at the key of the trace's first step's row, and no delete (STEP-chain,
-       STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops); a STEP line in every
-       record with a TOUCH line and in no other (STEP-line); and per CUT line, the
-       iteration with its c has its last step, with eod, at the CUT's first available
-       time (CUT-steps). Since bergdb 030-31, at each restart of run A (RESTART, after
-       a stop or a crash), the RESUME line: the row that the start read is the
-       iteration's row as its last step left it (the same c, lastKey its L', not
-       ended), or a new iteration's without a step (lastKey none), with E the
+       put, at the row's key in the model (`-current.txt` under `/#i/dreclaim/`, since
+       bergdb 030-39; until then the key of the trace's first step's row), and no
+       delete (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops); a
+       STEP line in every record with a TOUCH line and in no other (STEP-line); and per
+       CUT line, the iteration with its c has its last step, with eod, at the CUT's
+       first available time (CUT-steps). Since bergdb 030-31, at each restart of run A
+       (RESTART, after a stop or a crash), the RESUME line: the row that the start
+       read is the iteration's row as its last step left it (the same c, lastKey its
+       L', not ended), or a new iteration's without a step (lastKey none), with E the
        greatest key live after T(t0); and the first step after the restart goes on
        from that row (STEP-resume)
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's

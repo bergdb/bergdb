@@ -28,6 +28,11 @@
 #   del      an OP D line of a user key added: the key of the first user key's put of the
 #            next such step, a key that reclaim rewrites later (STEP-ops)
 #   put      an OP P line of that key added, with the value 12345 (STEP-ops)
+# Since bergdb 030-39 (F1), the row at the model's key (`reclaimRowKey`, Check/Steps.lean):
+#   row      every put of the row's key, `-current.txt` under `/#i/dreclaim/`, made a put of
+#            the key [8]: a step that puts no row and puts another key; until 2026-11-23,
+#            when C-STEP took the row's key from the trace's first step, the trace passed
+#            (STEP-ops)
 # Since bergdb 030-31 also a second good trace, with restarts and crashes of run A
 # (restart=10, crash=2), RESTART and RESUME lines, which must pass with a crash and an
 # iteration with a step before a restart and the next after it, and its faults:
@@ -113,6 +118,9 @@ K=$(awk '/kind=step/ {split($4, a, "="); if (a[2] >= 3) n++} n == 3 && /^OP P 1 
 fault value STEP-values "$SECOND"' tx == s && /^OP P 1 / && !d {$NF = "12345"; d = 1} {print}'
 fault del STEP-ops "$SECOND"' {print} tx == s && /^BASE / {print "OP D 1 " k}' "-v k=$K"
 fault put STEP-ops "$SECOND"' {print} tx == s && /^BASE / {print "OP P 1 " k " 12345"}' "-v k=$K"
+# The row at the model's key (bergdb 030-39, F1).
+ROW="OP P 4 20647455483566584 1827222139585973240 1827860140839935416 873028302074282016 "
+fault row STEP-ops 'index($0, "'"$ROW"'") == 1 {print "OP P 1 8 " $NF; next} {print}'
 
 # Restarts and crashes (bergdb 030-31).
 PROPS="-Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Dretain=1 -Drestart=10 -Dcrash=2 -Dtree=1 -Dsteps=1"
