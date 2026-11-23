@@ -612,6 +612,13 @@ Files
   theorems (`pe_dirtyNodeBound_twoJoinLevels`). Higher inner joins and
   removal of the fill and original-key premises remain open. Written
   2026-11-21. Status: open.
+* [030-38](38-guarantees.md). The guarantees of release 2026.6 (006-32,
+  section 6; 026-27, step 2): 030-26's "What it means for a user" as a
+  closed list G1 to G14, each proved (its gated theorem and the
+  statement's assumptions) or tested on purpose (its item of 030-26,
+  section 5, its check and script), and eight places where 030-26 says
+  more than a statement or a check gives. Written 2026-11-23; reviewed in
+  026-27, step 3. Status: open.
 
 
 Log
