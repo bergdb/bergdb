@@ -51,6 +51,15 @@ itself and the costs stay outside):
    restarts (030-31). Proofs of the bounds that keep a transaction within
    the record limit: `dirtyNodeBound` against PE, and the acceptance
    argument of 030-28, section 5 (030-29).
+   **Done (2026-11-23)**, by the rule of 006-32, section 6 (done when
+   030-36 lands; Frans, 2026-11-20): the new seeds and the commit check
+   in week.sh (030-30) and the app and restart traces (030-31) run;
+   the acceptance argument is proved (`pe_accepts_java`, 030-29); the
+   dirty-node bound is proved for puts (030-29), for deletes without
+   joins (030-36) and through every leaf join and one level of inner
+   joins (030-37), all three on `main`. The joins of inner nodes at
+   height two and above are left tested. A further link is a new
+   decision.
 3. **The stream format of release 2026.8 designed model first** (032):
    the model and the proofs change with the format's design, not after it.
 
@@ -625,3 +634,6 @@ Log
 ===
 
 2026-11-16. Created the item (Frans, 14:32), by coord-1116.
+
+2026-11-23. Goal 2 done, by 006-32, section 6: 030-36 and 030-37 on
+`main`; the higher inner joins left tested (026-27, step 6).
