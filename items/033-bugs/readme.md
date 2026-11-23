@@ -111,3 +111,19 @@ Log
 Registered RB-001 and RB-002, both fixed by 026-06.
 
 2026-11-20. RB-003 registered (028-40), S4.
+
+2026-11-23. Checked for release 2026.6 (026-27, step 8): the 67 commits
+of `git log release-2026.5..main` that change `java/src` read for fixes
+of faults that 2026.5 has. RB-001 to RB-003 are the only ones; no new
+entry, and the counts agree. The other fixes are not released bugs:
+028-09 and 028-14 (a damaged stream; 2026.5's Javadoc calls the
+detection of damage a best effort), 028-10 (`Db.StartParams`, internal
+by 2026.5's Javadoc, "used for testing"), 028-16 and 028-38 (reachable
+only from BergDB's own tests), 028-07 (starts that waited for each
+other's sync, a cost; its race of `SimpleDateFormat` could only
+give a wrong date in created.txt, a text for people, when starts not
+ordered by the lock formatted it at once at midnight; never seen)
+and 028-12 (the builder's startup distance up to 2^31 - 1: a corner of
+the bound on startup, a cost); 028-17, 028-21 and 028-26 fix faults of
+code that 2026.5 does not have, and 026-05's pending cut (`4b4999aa`)
+was reached only with 026-05's steps and delayed cuts, a cost.
