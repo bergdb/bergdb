@@ -65,6 +65,13 @@ Decisions (Frans, 2026-11-23):
 ## 4. Progress
 
 * 15:12 night.sh started on 8056d259.
+* 18:13 NIGHT OK (181 minutes), every step ok; java/build/night/2026-11-23-1512/report.txt. 026-27, step 1, done.
+* 22:14 After the week's reset: three agents (Opus, high): 030-38 (026-27, step 2), the release scripts (step 10), and 013-04's agent A (its plan's steps 2 to 4).
+* 22:20 030-38 written (14 guarantees: 9 proved, 5 tested; 8 differences from 030-26), 951e15f9. 22:23 Codex review of 030-38 started (026-27, step 3).
+* 22:22 Release scripts adapted and smoke-tested on scratch repositories (026-27, step 10, section 4). release.sh needs README.md's text for after the release (READMEMD), written by hand.
+* 22:29 013-04, agent A: usage.sh, status.sh and watchdog.sh with their tests (LEAD TESTS OK, 106 checks), in the implementation clone. 22:32 agent B (Opus, xhigh): SKILL.md, the state template, 013-04's description, Codex's review.
+* 22:28 Codex's review of 030-38: nine findings, three of them overclaims (C-STEP does not fix the reclaim row's key; power-loss durability needs forcing on; reads beside reclaim may expire). 22:36 an agent (Opus, xhigh) closes them and brings 030-26 up to date (026-27, steps 5 and 7).
+* 22:34 026-27 steps 6, 8 and 9 done: 030's goal 2 recorded as done; 033 checked (RB-001 to RB-003, no new entry); releases/next.md complete. README.md's text for after the release drafted for Frans, outside the repository.
 
 
 ## 5. Outcome
