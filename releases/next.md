@@ -34,9 +34,13 @@ layer, threads and the costs are outside the model.
 [bergdb 030-26](../items/030-proofs/26-core-algorithms-proved.md) states
 the claim, what is proved, the model and its limits;
 [bergdb 030-38](../items/030-proofs/38-guarantees.md) gives what a user
-gets from it as a closed list of guarantees, G1 and on, each marked
+gets from it as a closed list of guarantees, G1 to G14, each marked
 proved, with its theorem and its conditions, or tested on purpose, with
-its check and the script that runs it. The conditions are under Known
+its check and the script that runs it. An independent review,
+[bergdb 030-39](../items/030-proofs/39-guarantees-review.md), read each
+guarantee against its theorem's statement and its check's script; each
+place where the list said more than is proved or checked is corrected
+there, or accepted with its reason. The conditions are under Known
 issues and limits, below.
 
 In short:
@@ -382,7 +386,6 @@ Landed after the runs of 2026-11-20, each through its gate (bergdb
 * The dirty-node bound proved for deletes without joins (bergdb 030-36)
   and through the joins of leaves and of the inner nodes just above them
   (030-37); the higher joins stay tested.
-* The guarantee list (bergdb 030-38) and its independent review.
 * Eight new Pub API apps with their own oracles, 31 runs with 160 forced
   stops of a child JVM: no database fault (bergdb 026-26); its one
   finding, in the build script, fixed (028-41).
@@ -390,6 +393,16 @@ Landed after the runs of 2026-11-20, each through its gate (bergdb
   keys (028-43), both in the test scripts.
 * `Connection.transactionInfo()` kept as it is for 2026.6 (bergdb
   028-34; Frans, 2026-11-22).
+
+Landed after the night of 2026-11-23, outside the Java code:
+
+* The guarantee list (bergdb 030-38) and its independent review
+  (030-39); 030-38 and 030-26 corrected after the review.
+* The trace checker's C-STEP checks each reclaim step's row at the
+  model's key since 2026-11-23 (bergdb 030-39, F1); until then it took
+  the row's key from the trace's first step. Gated by
+  `lean/contract/gate.sh` (GATE OK, 254 theorems), `level2.sh` (LEVEL 2
+  OK) and `level3.sh` (LEVEL 3 OK).
 
 
 Speed against 2026.5
@@ -489,26 +502,62 @@ theorem or a fact tested instead of proved:
   most 2^62 (1,040,512 at the model's parameters).
 * **The writer accepts every transaction that BergDB admits**, proved at
   the model's parameters G = 8,192 and H = 126, which Java does not
-  have, and given the writer's fill rules, which are tested on Java's
-  tree after every traced transaction, not proved.
+  have, and given the writer's fill rules (`FillOk`, five rules: an
+  inner root of a segment tree has two live entries, every other key
+  node at least m, an inner node's smallest live entry is the empty
+  key's, at most theta dead entries a key node, and the tree balanced by
+  height). The tree checker tests them on Java's tree after every traced
+  transaction. That the writer keeps the first two is proved, by a
+  theorem outside the gate's list; that it keeps the other three is not
+  (bergdb 030-38, G8).
 * **A transaction's index nodes stay within the count that Java checks
   before its go point**: proved for puts and for deletes that join
   leaves and the inner nodes just above them; for deletes that join
   inner nodes at height two and above, tested (bergdb 030-36, 030-37).
-  Where Java uses its cheap estimate instead of the count, that the
-  estimate is enough is argued (bergdb 028-21), not proved.
+  Java's admission check counts otherwise than the theorems in three
+  cases: where its cheap estimate fits, it does not call the count; a
+  key with a key transformation is counted by that estimate only; and a
+  key with a value transformation is counted as a put and as a delete.
+  That these counts are enough is argued (bergdb 028-21; 023-11), not
+  proved and not tested on purpose (030-38, G9).
 * **Values are tokens in the model and 63-bit hashes on the traces.**
   That a value read back has the bytes that were put is tested.
-* **The platform**: that a synced append is durable, that a crash leaves
-  at most a torn tail, and that bytes read back are the bytes written,
-  are tested (crash, power-loss and kill tests). Damaged bytes are
-  detected on a best-effort basis only.
+* **The platform**, tested (crash, power-loss and kill tests), not
+  proved. With hard sync, the storage's default (`FileStream(dir)`:
+  every append is forced to the device before it returns), a synced
+  transaction survives a crash of the process, a crash of the operating
+  system or a power loss, and a crash leaves at most a torn tail, which a
+  start leaves out. With per-append forcing off (`FileStream(dir,
+  false)`), a synced transaction survives a crash of the process only: a
+  crash of the operating system or a power loss can lose it, and can
+  leave a hole in the tail that recovery does not handle (bergdb 014-01),
+  so that the database may refuse to start or fail reads (030-38, G12).
+  The power-loss test models the storage's persistence boundaries; it is
+  not a physical power cycle. That bytes read back are the bytes written
+  is tested too; damaged bytes are detected on a best-effort basis only.
 * **Threads are not modelled.** One transaction writes at a time;
-  readers, eviction and the storage's threads beside it are tested.
+  readers, eviction and the storage's threads beside it are tested. A
+  read that returns gives the answer at its own time. A read beside
+  reclaim can instead throw `LookupTimeNotAvailableException` when a cut
+  overtakes it, also a read of the latest state or of a time that was
+  still available when it began (bergdb 030-38, G14).
 * **The Pub layer is not modelled**: objects, user indexes and index
   jobs are built on the Core and tested.
 * **Reclaim's arithmetic and Java's steps are tested** at every cut and
-  every step of the reclaim traces.
+  every step of the reclaim traces; C-STEP checks each step's row at the
+  model's key since 2026-11-23 (bergdb 030-39, F1).
+* **Reclaim's cuts in a running process.** The theorem on reads after
+  reclaim's cuts takes a run that starts again from the cut stream at
+  every cut, with its memory made anew. Java cuts while it runs and
+  keeps its memory: that case is proved for the abstract model of the
+  stream (`SIS.T9_handles`), not tied to the proved writer, and tested
+  for Java (ReclaimStress, ReclaimReaders, the reclaim traces; bergdb
+  030-38, G6).
+* **No theorem says that reclaim makes progress or bounds the stream's
+  size**: the theorems take reclaim's iterations that end as a premise.
+  That the stream stays within a bound is tested: `java/stress/large.sh`
+  checks a fixed bound on the kept bytes over a long history at 10
+  million keys (in `java/week.sh`; bergdb 028-43).
 * **No cost, time or memory statement is proved**, but the bound on a
   transaction's index nodes above: not a start's work, the stream's size,
   the heap or pauses. They are measured and tested (the count gates every
