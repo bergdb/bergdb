@@ -628,6 +628,13 @@ Files
   section 5, its check and script), and eight places where 030-26 says
   more than a statement or a check gives. Written 2026-11-23; reviewed in
   026-27, step 3. Status: open.
+* [030-39](39-guarantees-review.md). An independent review of 030-38
+  (Codex, 2026-11-23; 026-27, step 3): nine findings, among them that
+  C-STEP took reclaim's row key from the trace (it checks the model's key
+  since), that G12's power-loss durability needs hard sync, the default,
+  and that reads beside reclaim can expire; each corrected in 030-38,
+  030-26 or the checks, or accepted with its reason, and 030-38's eight
+  differences closed (026-27, step 5). Written 2026-11-23. Status: done.
 
 
 Log
