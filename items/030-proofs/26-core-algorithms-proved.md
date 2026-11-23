@@ -7,20 +7,11 @@ Kept up to date with `main`, at least until release 2026.6 (Frans,
 checks that cover them updates this page in the same change, and the
 release checks it before the tag (026, "How the release is made").
 
-**Under correction (2026-11-20).** An independent review (030-33) found
-four places where this page said more than is proved or checked, all
-corrected on 2026-11-20. F1: reclaim's step model did not require a step
-to write back the value it read; it does now, and reads after reclaim
-are proved to give the users' values (030-35, section 2.5), and the
-trace check C-STEP checks the same on every step (030-34). F2 (values as
-hashes), F3 (Java's commit-time check is partial) and F4 (the week.sh
-rounds that run it): section 4; section 5, items 1, 7 and 9; section 6.
-
 The public statement of what BergDB's proofs cover: the claim, what is
 proved, the model, its limits, and the assumptions that are tested instead
 of proved. It is written for a reader outside the project, a developer who
 decides whether to trust BergDB or a contributor, and describes `main` as
-of 2026-11-20. The details are in the items it links.
+of 2026-11-23. The details are in the items it links.
 
 
 # 1. The claim
@@ -42,7 +33,9 @@ cover. The coming release, 2026.6, has the theme "proven algorithms"
 (026).
 
 What it means for a user. If Java does what the model does, which the
-tests check transaction by transaction, then:
+tests check transaction by transaction, and the platform and the threads
+behave as the tests check (section 5, items 2 to 5), then, for histories
+of fewer than 2^48 − 1 transactions with distinct keys in each (2.6):
 
 - every transaction is applied whole: the database after it holds the
   contents before it with exactly the transaction's puts and deletes;
@@ -52,7 +45,15 @@ tests check transaction by transaction, then:
 - this holds after a crash, after restarts, while data is dropped from
   memory and read back, and after reclaim has cut the front of the
   stream. After a crash, the database is as it was after the last
-  transaction whose record the storage kept whole.
+  transaction whose record the storage kept whole: proved, given that a
+  start reads whole records (2.3); that the storage keeps every synced
+  record whole, with hard sync, its default, is tested (section 4, "The
+  platform").
+
+[030-38](38-guarantees.md) lists these guarantees for release 2026.6 as a
+closed list, G1 to G14: each proved, with its theorem and the
+statement's assumptions, or tested on purpose, with its check and the
+script that runs it.
 
 
 # 2. What is proved
@@ -100,33 +101,37 @@ every transaction:
 `Contract.PE.pe_meetsTop_start` ([030-21](21-pe-proof.md)), with the top
 nodes that readers use to find the tree of an earlier time. PE does not
 meet the contract by refusing work: it accepts every transaction whose
-keys the tree can hold (`Contract.PE.pe_accepts`), given two bounds of
-the proof, on the tree's height and on the program's steps, and refuses a
-put of a key the tree cannot hold (`Contract.PE.pe_refuses`). The two
-bounds are premises of the proof, on the model's parameters G and H (the
-most key segments and the most node heights, less one), which Java does
-not have. For G = 8,192 and H = 126, PE accepts every transaction of at
-most 2^20 operations whose puts' keys the tree can hold, on every tree of
-fewer than 2^63 nodes that meets the writer's fill rules
-(`Contract.PE.pe_accepts_java`, [030-29](29-dirty-bound-proof.md),
-section 5; argued first in [030-28](28-writer-copy-checked.md), section 5);
-Java admits at most 500 operations a user transaction. The fill rules (how
-full PE keeps its nodes: an inner root has two live entries, every other
-node at least m) are checked by the tree checker on Java's tree after
-every traced transaction; that PE keeps them is not proved. Java's PE
-itself refuses nothing; its one guard, a descent
-of more than 1,000 nodes in one segment tree, cannot be reached on an
-undamaged stream (the same section).
+keys the tree can hold (`Contract.PE.pe_accepts`), given two bounds of the
+proof, on the tree's height and on the program's steps, and refuses a put
+of a key the tree cannot hold (`Contract.PE.pe_refuses`). The two bounds
+are premises of the proof, on the model's parameters G and H (the most key
+segments and the most node heights, less one), which Java does not have.
+For G = 8,192 and H = 126, PE accepts every transaction of at most 2^20
+operations whose puts' keys the tree can hold, on every tree of fewer than
+2^63 nodes that meets the writer's fill rules
+(`Contract.PE.pe_accepts_java`, [030-29](29-dirty-bound-proof.md), section
+5; argued first in [030-28](28-writer-copy-checked.md), section 5); Java
+admits at most 500 operations a user transaction. The fill rules
+(`FillOk`: an inner root has two live entries, every other node at least
+m, an inner node's smallest live entry is the empty key's, a node has at
+most theta dead entries, and a node is a segment leaf exactly at height 0,
+with each child one level below its parent) are checked by the tree
+checker (C-T6) on Java's tree after every traced transaction; that PE
+keeps them is not proved. Java's PE itself refuses nothing; its one guard,
+a descent of more than 1,000 nodes in one segment tree, cannot be reached
+on an undamaged stream (the same section).
 
 ## 2.2 Reads
 
-For every history that meets the contract, a get and a scan at time t,
-the latest or an earlier one, give what the plain map after the first t
+For every history that meets the contract, a get and a scan at time t, the
+latest or an earlier one, give what the plain map after the first t
 transactions gives: `get_right`, `scan_right`
 ([030-05](05-contract-spike.md)). Scans go forward or backward, with or
-without a start key and an end key, with a limit. The same holds for
-Java's way of finding the tree of an earlier time, a search through the
-top nodes' skip pointers: `jget_right`, `jscan_right`
+without a start key, with a limit, and with an end key when they go
+forward (`ScanReq.wf`; Java refuses a backward scan with an end key);
+their start and end keys are as `Keys.toSegments` makes them. The same
+holds for Java's way of finding the tree of an earlier time, a search
+through the top nodes' skip pointers: `jget_right`, `jscan_right`
 ([030-08](08-shape-top.md)). By 2.1, all of it holds for PE.
 
 ## 2.3 Crash recovery and restarts
@@ -145,6 +150,11 @@ histories meet the clauses that tie the DAG to the model of the stream
   as one without (`full_restart`), and Java's reads after restarts and a
   crash are right (`restart_java_reads`).
 
+Java's readers are proved right given that Java's tree after the start
+holds what the model's start gives back at the time read, with the top
+nodes the start's structure holds (`HoldsView`, `TopFrom`); that is
+tested (section 5, item 13), as the same premises of 2.4 and 2.5 are.
+
 ## 2.4 Eviction
 
 When the cache's budget is reached, BergDB drops nodes from memory and
@@ -158,46 +168,59 @@ scan are right under eviction and after a lazy startup
 
 ## 2.5 Reclaim's cuts
 
-With a finite retain duration, reclaim keeps the stream from growing
-without end. In each iteration it walks the live keys in steps, each step
-a small transaction that writes again the values written before the
-planned cut. Then the part before the cut is deleted, and reads are
-possible from the first available time on.
+With a finite retain duration, reclaim deletes the front of the stream,
+so that the stream need not grow without end; no theorem says that it
+stays within a bound (section 4). In each iteration it walks the live
+keys in steps, each step a small transaction that writes again the values
+written before the planned cut. Then the part before the cut is deleted,
+and reads are possible from the first available time on.
 
 Proved, for every history PE writes: if each iteration's steps follow the
 model of reclaim's steps, and each cut meets RC1 (it is at or after the
 earlier cuts, and its iteration ended no later than the first available
 time) and RC4 (Java's two waits, so that a start no longer reads the part
-that is cut), then Java's get and scan, after any run with handles,
-evictions and restarts from the cut streams, are right at every time from
-the first available time on: `Contract.PE.pe_reclaim_reads_steps`
-([030-22](22-reclaim-contract.md) to [030-25](25-iteration-ok.md)).
+that is cut), then Java's get and scan are right at every time from the
+first available time on, after any run with handles, reads and evictions
+in which every cut is followed by a start from the cut stream:
+`Contract.PE.pe_reclaim_reads_steps` ([030-22](22-reclaim-contract.md) to
+[030-25](25-iteration-ok.md)). Its other premises: the policies that
+choose each transaction's startup position and first available time
+choose the same on a stream cut at or before its first available time
+(`PolicyCutOK`; it holds for policies that read no stream,
+`policyCutOK_of_blind`, as the trace checker's); between cuts, reads are
+made only at times from the first available time on; and 2.3's
+`HoldsView` and `TopFrom`. In the theorem's run the database starts again
+at every cut, its memory made anew. Java cuts while it runs and keeps its
+memory: that case is proved for the abstract model of the stream
+(`SIS.T9_handles`, in `lean/SIS/`), not for PE's histories, and tested
+(section 5, item 11).
 
 In the model, each step scans the live keys at its own time, from where
 the step before stopped up to the greatest key live when the iteration
 began, and may stop before or after any key by any rule. Each step puts
 every old key its scan met, with the value the key had immediately
 before the step, and puts its current row under reclaim's reserved
-prefix. It puts no other key and deletes none; the row may replace its
-own rewrite. The last step's scan reaches the end (030-35; until
-2026-11-20 the model did not require the value or forbid other writes,
-030-33, F1).
+prefix, at the row's key (`reclaimRow`, Java's `-current.txt`). It puts
+no other key and deletes none; the row may replace its own rewrite. The
+last step's scan reaches the end (030-35; until 2026-11-20 the model did
+not require the value or forbid other writes, 030-33, F1).
 
 **Reclaim keeps the users' values.** For every accepted history PE
 writes, with all of reclaim's maintenance transactions meeting this step
 model or writing only reclaim's reserved namespace, and with the cut and
-reader premises below, reads after cuts, handles, eviction and restarts
+reader premises above, reads after cuts, handles, eviction and restarts
 agree with the reference made from the users' operations alone, at every
 retained lookup time (`Contract.PE.pe_reclaim_user_reads_steps`,
 [030-35](35-reclaim-preserves-values.md)). Reclaim's transactions add no
 operations to that reference and do not change its lookup times. Gets
 and scans in the users' ranges agree directly, scan limits included; a
 Core scan across reclaim's namespace can also return its rows, and
-without them it gives the users' scan. Such an iteration writes again every key whose value
-predates the cut (`iterationOK_of_stepsOK`), and a cut that meets
-reclaim's contract is safe: nothing a read from the first available time
-on can reach lies before it (`cutOK_of_rc`,
-[030-24](24-reclaim-step2.md)).
+without them it gives the start of the users' scan, every user entry in
+order and none skipped: the rows count towards the limit. Such an
+iteration writes again every key whose value predates the cut
+(`iterationOK_of_stepsOK`), and a cut that meets reclaim's contract is
+safe: nothing a read from the first available time on can reach lies
+before it (`cutOK_of_rc`, [030-24](24-reclaim-step2.md)).
 
 ## 2.6 The bounds the theorems carry
 
@@ -240,10 +263,21 @@ nodes just above the leaves, repeated joins included
 (`pe_dirtyNodeBound_twoJoinLevels`, [030-37](37-dirty-bound-joins.md)); and
 after every history PE writes from the empty tree with no fill rule as a
 premise, since PE's histories keep the root filled
-(`pe_dirtyNodeBound_twoJoinLevels_history`). For transactions that join
-inner nodes higher up the bound is tested, not proved: its terms for
+(`pe_dirtyNodeBound_twoJoinLevels_history`, among the gate's theorems
+since 2026-11-23, [030-39](39-guarantees-review.md)). For transactions that
+join inner nodes higher up the bound is tested, not proved: its terms for
 deletes are large (four nodes a level of a delete's path, and eight more),
-and the tests find deletes far under it (028-21; 030-29, section 3).
+and the tests find deletes far under it (028-21; 030-29, section 3;
+section 5, item 14).
+
+The theorems count a transaction's operations as the model has them, each
+key once, as a put or a delete. Java's admission check counts otherwise in
+three cases, whose link to the theorems is argued, not proved, and not
+tested on purpose: where Db's cheap estimate (three nodes a level of a
+put's path, twenty of a delete's) fits, Db does not call the count
+(028-21); a key with a key transformation is counted only by that
+estimate; and a key with a value transformation, which may give a put or
+a delete, is walked as both (023-11, review B, B2).
 
 
 # 3. The model, and what "proved" means
@@ -261,8 +295,8 @@ assistant, in two packages:
 - `lean/contract/`: the key tree, the writer's contract, PE as Lean
   functions that run (`Contract/PeWriter.lean`), the bridge from the
   DAG to the abstract model, reclaim's contract, the model of its steps,
-  and the proofs. It uses Mathlib, Lean's library of mathematics. 152
-  files, about 57,000 lines; the gate checks 198 theorems.
+  and the proofs. It uses Mathlib, Lean's library of mathematics. 209
+  files, about 68,000 lines; the gate checks 254 theorems.
 
 The writer's contract is the centre. It says what must hold when a
 transaction ends, not how the writer gets there. Reads, recovery,
@@ -287,7 +321,7 @@ the whole DAG at that point, each node with all its time-marked entries;
 ## 3.2 What "proved" means here
 
 - **Checked by machine.** Lean's kernel checks every step of every proof.
-- **No extra axioms.** The 198 theorems of `lean/contract/Axioms.lean`
+- **No extra axioms.** The 254 theorems of `lean/contract/Axioms.lean`
   rest only on Lean's three standard axioms (`propext`,
   `Classical.choice`, `Quot.sound`): no `sorry` (a step left unproved),
   no `admit`, no `native_decide` (which trusts compiled code), no axiom of
@@ -296,7 +330,7 @@ the whole DAG at that point, each node with all its time-marked entries;
   on the definitions it uses. The files that hold them, with the
   toolchain's and the gate's own, and since 030-28 the tree checker's copy
   of PE and the tool that compares it with the proved writer, are listed
-  with their hashes in `lean/contract/statements.pin` (112 files). A
+  with their hashes in `lean/contract/statements.pin` (144 files). A
   change to one must change that file in the same commit, so that it
   shows in review; `lean/contract/pins.sh` checks the hashes every night
   (`level2.sh`, step 0).
@@ -326,7 +360,16 @@ the whole DAG at that point, each node with all its time-marked entries;
   030-04 and 030-21. Its other two findings are fixed: the copy was
   neither pinned nor compared with the proved writer as a routine step,
   and is both since 030-28 (section 5, item 1); PE's short way in Java
-  reported its dirty nodes in another order than emit's (028-25).
+  reported its dirty nodes in another order than emit's (028-25). An
+  independent review of this page against the statements
+  ([030-33](33-statements-review.md), 2026-11-20) found four places where
+  it said more than is proved or checked, among them that the model of
+  reclaim's steps did not require a step to write back the value it read;
+  each is corrected (030-34, 030-35; section 4). An independent review of
+  the guarantee list ([030-39](39-guarantees-review.md), 2026-11-23) found
+  nine more, among them that C-STEP took the row's key from the trace;
+  each is corrected here, in 030-38 or in the checks, or accepted with its
+  reason.
 
 `lean/contract/gate.sh` checks the first three.
 
@@ -384,12 +427,24 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
 - **The platform.** The model assumes that a synced append is durable,
   that a crash leaves at most a torn tail (a partly written last record),
   and that bytes read back are the bytes written. Covered by the crash,
-  power-loss and kill tests (section 5, items 2, 3, 5). Damaged bytes are
-  detected on a best-effort basis only.
+  power-loss and kill tests (section 5, items 2, 3, 5). A synced append
+  is durable through a crash of the process, of the operating system or
+  a power loss with hard sync, the storage's default (`FileStream(dir)`,
+  every append forced to the device); with per-append forcing off
+  (`FileStream(dir, false)`), through a crash of the process only: a
+  crash of the operating system or a power loss can lose synced
+  transactions, and can leave a hole in the tail that was not forced,
+  which recovery does not handle ([014-01](../014-stream/01-correction.md)).
+  The power-loss tests model the storage's persistence boundaries; they
+  are not a physical power cycle. Damaged bytes are detected on a
+  best-effort basis only.
 - **One writer; threads are not modelled.** Java's write lock lets one
   transaction write at a time, with readers beside it. Races between
   readers, the writer, eviction and storage threads are outside the
-  model; covered by tests with threads (item 4).
+  model; covered by tests with threads (item 4). A read beside reclaim
+  that a cut overtakes throws `LookupTimeNotAvailableException`, also a
+  read of the latest state or of a time still available when it began;
+  the reads that return are right.
 - **The Pub layer is not modelled:** objects, user indexes, index jobs.
   It is built on the Core and tested (unit tests, randomized harnesses,
   user applications, kills). A separate Lean model of the user indexes'
@@ -408,7 +463,9 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   checks that each step writes back, at every old key its scan met, the
   value the scan read (by the trace's value hashes, above), and that it
   puts nothing else than those rewrites and its row and deletes nothing:
-  what the model of the steps (`StepTx`) requires since 030-35. Still
+  what the model of the steps (`StepTx`) requires since 030-35; since
+  2026-11-23 the row at the model's key, `reclaimRow` (030-39, F1; until
+  then C-STEP took the row's key from the trace's first step). Still
   tested only: that the trace's line for a step is what
   Java's step holds in memory, Java's end key where no restart reads it,
   a crash at another point of reclaim's work (inside a step's record it
@@ -418,7 +475,8 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
 - **No cost, time or memory statement is proved,** but the bound on a
   transaction of puts' index nodes (2.7): not the work of a start
   (bounded startup, [007](../007-bounds/readme.md), is measured and
-  tested), not the size of the stream, not the heap, not pauses. The
+  tested), not the size of the stream (`java/stress/large.sh` checks a
+  bound on the kept bytes, in `week.sh`), not the heap, not pauses. The
   tree's shape rules that only costs depend on (how full the
   nodes are, balance, dead entries) are not in the contract. These are
   measured and tested: the count gates in `night.sh`, `timing.sh`.
@@ -428,7 +486,9 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
 
 [030-04](04-contract-fresh-start.md), section 3.5, listed 13
 assumptions, each tested. Two of them, 1 and 11, are now proved in part;
-what is left of them follows "Left". Beside each is its test and where it
+what is left of them follows "Left". Item 14, the tested part of the
+dirty-node bound (2.7), is added since 2026-11-23 (030-38, section 4,
+item 7). Beside each is its test and where it
 runs: `before-commit.sh` before every commit to `java/`; the level
 scripts (`java/stress/level2.sh` to `level4.sh`) in full in `night.sh`,
 about once a day while there is development; `week.sh`, with more kills,
@@ -461,17 +521,24 @@ checker and `pecmp`; a failing trace is kept with its seed.
    day's seeds in `night.sh`). The copy is
    pinned, and its hash is checked every night (`level2.sh`, step 0). So
    on those traces Java writes what the proved writer writes.
-2. **A synced append is durable.** CrashTest (`level2.sh` to
-   `level4.sh`), PowerLossTest (`level3.sh`), `kill-restart.sh`
-   (`night.sh`: 1,000 kills; `week.sh`: 3,000 more).
+2. **A synced append is durable**, with hard sync, the storage's
+   default; with per-append forcing off, through a crash of the process
+   only (section 4, "The platform"). CrashTest (`level2.sh` to
+   `level4.sh`), PowerLossTest (`level3.sh`: a model of the storage's
+   persistence boundaries, each seed with forcing on and off),
+   `kill-restart.sh` (`night.sh`: 1,000 kills; `week.sh`: 3,000 more).
 3. **A crash leaves at most a torn tail.** The same tests.
 4. **One writer.** ReclaimReaders, readers at old times while reclaim
-   cuts (`level3.sh`, `level4.sh`); the eviction readers' tests
-   (`level4.sh`); InterruptStress (`level3.sh`); jcstress's tests of how
-   nodes are published to readers (by hand, before a release).
+   cuts (`level3.sh`, `level4.sh`): each read gives the model's answer or
+   throws `LookupTimeNotAvailableException`, which it allows only once
+   the read's time is before the first available time (section 4); the
+   eviction readers' tests (`level4.sh`); InterruptStress (`level3.sh`);
+   jcstress's tests of how nodes are published to readers (by hand,
+   before a release).
 5. **The bytes decode to what was written.** Every restart test reads
-   back what was written: RestartStress, RestartInvariance (`level2.sh`
-   to `level4.sh`), `kill-restart.sh`. Damaged bytes: best effort only.
+   back what was written: RestartStress (`level1.sh`, `level2.sh`),
+   RestartInvariance (`level1.sh` to `level4.sh`), `kill-restart.sh`.
+   Damaged bytes: best effort only.
 6. **Java's readers are the model's.** Java's answers to the gets and
    scans of every traced transaction (`level2.sh`; the medium set, and
    the sets on the day's seeds, in `night.sh`), and Java's own searches of every node and of the top
@@ -499,10 +566,11 @@ checker and `pecmp`; a failing trace is kept with its seed.
     the model's**: every step of the reclaim traces checked against the
     model of the steps, after the check's own fault test (C-STEP, 030-27:
     `level3.sh`; since 030-34 also the values each step writes back and
-    no other write of a user key), also across restarts and crashes of the traced run
+    no other write, and since 2026-11-23 the row at the model's key,
+    030-39), also across restarts and crashes of the traced run
     (STEP-resume, 030-31: `level3.sh`), and the reclaim tests
-    (ReclaimStress: `level3.sh`, `level4.sh`). Still tested only: section
-    4.
+    (ReclaimStress: `level3.sh`, `level4.sh`). Java's cuts, made while it
+    runs, are these tests' (2.5). Still tested only: section 4.
 12. **A trace's lines are Java's change.** The trace's completeness checks
     (030-09) and the trace and tree checkers (`level2.sh` to `level4.sh`).
 13. **Java's startup builds what the stream holds.** Lookups after a
@@ -510,6 +578,15 @@ checker and `pecmp`; a failing trace is kept with its seed.
     (`conformance.sh`, in `level2.sh` to `level4.sh`); ReclaimReaders on a
     cold cache (`level3.sh`, `level4.sh`); probes after restarts from the
     cut stream (`level3.sh`).
+14. **Java's count bounds the joins of inner nodes at height two and
+    above** (2.7). The tree checker's C-T8 checks the bound on every
+    traced transaction of the tree sets (`level2.sh`, and on the day's
+    seeds in `night.sh`); `DagTester.testDirtyNodeBoundOfPe` (a unit test,
+    `before-commit.sh`; 028-21) on random histories at node sizes 8, 14,
+    30 and 62 and on purpose-made deletes under several inner nodes at
+    node sizes 8, 14 and 30, each with at least ten joins; it counts the
+    joins, not the heights at which they happen. The cheap estimate and
+    the transformations of 2.7 are argued, not tested.
 
 
 # 6. How it stays true
@@ -539,7 +616,7 @@ checker and `pecmp`; a failing trace is kept with its seed.
   and in the tree checker's copy, or in the model of reclaim's steps with
   its proof and in the step check. A change the proofs do not cover is a
   change of this claim.
-- **This page** states the claim as of 2026-11-20, with the theorems and
+- **This page** states the claim as of 2026-11-23, with the theorems and
   items of that day.
 
 
@@ -563,7 +640,17 @@ checker and `pecmp`; a failing trace is kept with its seed.
   proved one every night ([030-28](28-writer-copy-checked.md)).
 - 20 November: the user applications' workloads traced and checked, and
   reclaim's steps checked across restarts and crashes
-  ([030-31](31-app-traces.md)).
+  ([030-31](31-app-traces.md)); reclaim proved to keep the users' values
+  ([030-35](35-reclaim-preserves-values.md)), after an independent review
+  ([030-33](33-statements-review.md)); the dirty-node bound proved for
+  transactions of puts ([030-29](29-dirty-bound-proof.md)) and of deletes
+  without joins ([030-36](36-dirty-bound-deletes.md)).
+- 21 November: the dirty-node bound proved through every join of leaves
+  and of the inner nodes just above them
+  ([030-37](37-dirty-bound-joins.md)).
+- 23 November: the guarantees of release 2026.6 as a closed list
+  ([030-38](38-guarantees.md)), reviewed independently
+  ([030-39](39-guarantees-review.md)), and this page corrected after it.
 
 
 # Log
@@ -616,3 +703,30 @@ for transactions of puts, given the fill rules (2.7, section 4); PE's
 acceptance at Java's parameters proved in Lean, at H = 126 (2.1, 2.6,
 section 4), H = 100 having left room on every tree of fewer than 2^63 nodes
 only at node sizes 30 and 62; the counts of 3.1 and 3.2.
+
+2026-11-20. Under correction after an independent review, 030-33, which
+found four places where this page said more than is proved or checked,
+all corrected on 2026-11-20. F1: reclaim's step model did not require a
+step to write back the value it read; it does now, reads after reclaim
+are proved to give the users' values (030-35, section 2.5), and the trace
+check C-STEP checks the same on every step (030-34). F2 (values as
+hashes), F3 (Java's commit-time check is partial) and F4 (the week.sh
+rounds that run it): section 4; section 5, items 1, 7 and 9; section 6.
+Until 2026-11-23 a note at the top of this page said so.
+
+2026-11-23. Brought up to date with `main` for release 2026.6 (026-27,
+step 7), against `lean/contract/gate.sh`'s output (GATE OK, 254 theorems,
+144 files pinned) and 030-38, with the corrections of 030-39 (its
+"Actions") and of 030-38, section 4: the counts of 3.1 and 3.2; the user
+section's conditions, the bounds on the history, the crash sentence's
+tested part and a link to 030-38 (section 1); the fill rules as `FillOk`
+(2.1); scans with an end key (2.2); `HoldsView` and `TopFrom` (2.3);
+reclaim's cuts: no bound on the stream's size proved, the start at every
+cut in the theorem's run, `PolicyCutOK`, reads between cuts, the row's
+key, scans across reclaim's namespace (2.5);
+`pe_dirtyNodeBound_twoJoinLevels_history` among the gate's theorems, and
+Java's admission count with its cheap estimate and the transformations
+(2.7); the reviews (3.2); hard sync and forcing off, reads that reclaim
+overtakes, C-STEP's row, the stream's size (section 4); section 5, items
+2, 4, 5 and 11, and item 14 added; the history (section 7). The note
+"Under correction" moved into the log (the entry above).
