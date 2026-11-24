@@ -636,8 +636,9 @@ final class PeWriter {
         return new NodeFrame(x, from, g, lo, hi, depth);
     }
 
-    /** At most this many operations an inner node routes by searches, not by its live list. */
-    private static final int SEARCH_ROUTE = 16;
+    /** At most this many operations an inner node routes by searches, not by its live list
+     *  (16 until bergdb 028-19, when the list was an object of its own). */
+    private static final int SEARCH_ROUTE = 4;
 
     /**
      * plan of an inner node x (PeWriter.lean's plan, planKids): its operations divided among its
@@ -646,8 +647,10 @@ final class PeWriter {
      *
      * <p>The children of a few operations are found by searches (KeyNode.searchLte at the
      * latest time: the live klong of the greatest compare value at or below the operation's,
-     * which is route's child when the first live klong is the empty key), not by the whole
-     * live list, which is made only if the node is not kept as it was.</p>
+     * which is route's child when the first live klong is the empty key); of more, by route
+     * over the live compare values of liveInto's pass, in live()'s work arrays (bergdb
+     * 028-19). Neither makes the live list, which is made only if the node is not kept as it
+     * was, or appended to by counts.</p>
      */
     private final class NodeFrame extends Frame {
         final KeyNode x;
@@ -674,7 +677,7 @@ final class PeWriter {
             if (hi - lo > SEARCH_ROUTE || !routeBySearch(lo, hi)) {
                 nc = 0;
                 emptyKeyFirst = false;
-                routeByList(lo, hi);
+                routeByLive(lo, hi);
             }
         }
 
@@ -710,8 +713,10 @@ final class PeWriter {
                 if (cv == 0) {
                     emptyKeyFirst = true;
                 }
-                for (int o = 0; o < k; o++) {
-                    if (cv <= keys[lo + o][g] && (bestIdx[o] < 0 || cv > bestCv[o])) {
+                // The operations are in increasing order of segment g: those at or above cv are
+                // the last ones.
+                for (int o = k - 1; o >= 0 && cv <= keys[lo + o][g]; o--) {
+                    if (bestIdx[o] < 0 || cv > bestCv[o]) {
                         bestCv[o] = cv;
                         bestIdx[o] = i;
                     }
@@ -736,26 +741,47 @@ final class PeWriter {
             return true;
         }
 
-        /** The children of the operations by the live list (route). */
-        private void routeByList(int lo, int hi) {
-            lv = live(x);
-            if (lv.n == 0) {
+        /**
+         * The children of the operations by the live list (PeWriter.lean's route: by segment g
+         * of the keys of [lo, hi), which are in key order, the first child every operation
+         * below the second compare value, each other child those from its compare value to the
+         * next one's), the list read by liveInto's pass into the work arrays, not made; the
+         * children with operations kept, in order.
+         */
+        private void routeByLive(int lo, int hi) {
+            final int sz = x.size;
+            final long[][] work = liveWork(sz);
+            final long[] wcv = work[0];
+            final long[] widx = work[1];
+            final int n = (int) liveInto(x.klongs, sz, wcv, widx);
+            if (n == 0) {
                 throw new DbException("Key node " + x.getId() + ", not a segment leaf, has no "
                         + "live klong at time " + tt + ": corrupt data.");
             }
-            emptyKeyFirst = lv.cv[0] == 0;
-            final int[] start = route(lv, g, lo, hi);
-            cCv = new long[lv.n];
-            cIdx = new int[lv.n];
-            cStart = new int[lv.n + 1];
+            final int b = sz - n;
+            emptyKeyFirst = wcv[b] == 0;
+            final int most = Math.min(n, hi - lo);
+            cCv = new long[most];
+            cIdx = new int[most];
+            cStart = new int[most + 1];
             nc = 0;
-            for (int k = 0; k < lv.n; k++) {
-                if (start[k] < start[k + 1]) {
-                    cCv[nc] = lv.cv[k];
-                    cIdx[nc] = lv.idx[k];
-                    cStart[nc] = start[k];
+            int i = lo;
+            for (int j = 0; j < n && i < hi; j++) {
+                int e = hi;
+                if (j + 1 < n) {
+                    final long next = wcv[b + j + 1];
+                    e = i;
+                    while (e < hi && keys[e][g] < next) {
+                        e++;
+                    }
+                }
+                if (e > i) {
+                    cCv[nc] = wcv[b + j];
+                    cIdx[nc] = (int) widx[b + j];
+                    cStart[nc] = i;
                     nc++;
-                    cStart[nc] = start[k + 1];
+                    cStart[nc] = e;
+                    i = e;
                 }
             }
         }
@@ -1212,25 +1238,6 @@ final class PeWriter {
     private static ArrayList<Ent> entries(VN v) {
         return v.sparse ? entries(v.base, v.lb(), v.es)
                 : v.changes != null ? merged(v.base, v.lb, v.changes) : v.es;
-    }
-
-    /**
-     * route: the first operation of each child of the live list lv, by segment g of the keys
-     * of [lo, hi), which are in key order: the first child every operation below the second
-     * compare value, each other child those from its compare value to the next one's.
-     */
-    private int[] route(Live lv, int g, int lo, int hi) {
-        final int[] start = new int[lv.n + 1];
-        start[0] = lo;
-        int i = lo;
-        for (int j = 1; j < lv.n; j++) {
-            while (i < hi && keys[i][g] < lv.cv[j]) {
-                i++;
-            }
-            start[j] = i;
-        }
-        start[lv.n] = hi;
-        return start;
     }
 
     /** partSizes: the sizes of k parts of n entries, as even as possible, the larger ones
