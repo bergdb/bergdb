@@ -1,0 +1,347 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index 7235dd37..ca39c979 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -1250,6 +1250,10 @@ public class Db implements AutoCloseable {
+         
+         long startupPos = readStartupPos();
+         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
++        long lastAppPos = -1;       // PROTO 028-53: the section's newest record of the application's.
++        for (StoredTrans st : transactions) {
++            if (Reclaim.isApplicationRecord(st)) lastAppPos = st.tpos;
++        }
+         // A start that creates the database finds the primordial record alone (bergdb
+         // 028-18); any other start that would has refused the stream already.
+         assert !creating || transactions.size() == 1 : transactions.size() + " records";
+@@ -1267,7 +1271,7 @@ public class Db implements AutoCloseable {
+         
+         this.state = DbState.ACTIVE;
+         readStartupDistanceKv(creating);
+-        reclaim.initFromDb();
++        reclaim.initFromDb(startupPos, lastAppPos);
+         synchronized (writeLock) {
+             // The admission of the large values that the start made resident, as after a
+             // record that this database writes (Eviction.recordWritten): their records are in
+@@ -1466,6 +1470,26 @@ public class Db implements AutoCloseable {
+         return transactions;
+     }
+     
++    /**
++     * PROTO 028-53: the position of the newest record of the application's
++     * (Reclaim.isApplicationRecord) among the records from 'from', a record's position, to
++     * before 'to', or -1 if none is.
++     */
++    long lastApplicationRecord(long from, long to) {
++        long result = -1;
++        NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(from);
++        while (ti.next()) {
++            StoredTrans st = ti.getStoredTrans();
++            if (st.tpos >= to) {
++                break;
++            }
++            if (Reclaim.isApplicationRecord(st)) {
++                result = st.tpos;
++            }
++        }
++        return result;
++    }
++    
+     private void setLastTransTimeOfDbClock(ArrayList<StoredTrans> transactions) {
+         long lastTransTime;
+         int size = transactions.size();
+diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
+index 28bfc607..14517814 100644
+--- a/java/src/bergdb/core/Reclaim.java
++++ b/java/src/bergdb/core/Reclaim.java
+@@ -304,6 +304,7 @@ public class Reclaim implements Db.TransactionListener {
+         
+         this.retainDuration = retainDuration;
+         this.internalFraction = internalFraction;
++        storeTableIfStartupPosPassed();     // PROTO 028-53
+     }
+     
+     /** Refuses a retain duration below one second with an IllegalArgumentException. */
+@@ -509,6 +510,7 @@ public class Reclaim implements Db.TransactionListener {
+         markSafePositions();    // The length after the records above (bergdb 015-54).
+         pretruncateIfPossible(t.tt);
+         cutIfDurable();
++        storeTableIfStartupPosPassed();     // PROTO 028-53
+     }
+     
+     /**
+@@ -647,6 +649,7 @@ public class Reclaim implements Db.TransactionListener {
+         
+         pretruncateIfPossible(now);                                 // M6
+         cutIfDurable();
++        storeTableIfStartupPosPassed();                             // PROTO 028-53
+         return maintainDue(now);
+     }
+     
+@@ -683,6 +686,71 @@ public class Reclaim implements Db.TransactionListener {
+         cutIfDurable();
+     }
+     
++    /**
++     * PROTO 028-53 (option A, not landed): W, the position of the newest record of the
++     * application's (a record with a value or delete node, none under KEY_PREFIX_SKEY), or
++     * -1. Canonical at each store of the table: -1 if before the first row's pCut, as no
++     * rule compares it with a position before that. Kept in the table's last row ("w");
++     * a start takes it from there, then from the startup section's records after the
++     * table's store (initFromDb).
++     */
++    long appPos = -1;
++    
++    /**
++     * PROTO 028-53: q, the position of the record of the table's last store, or -1 if none
++     * is stored. No step rewrites the table: its value is after the running iteration's
++     * pStart, so after its pCut.
++     */
++    long tableStorePos = -1;
++    
++    /** PROTO 028-53: X, the most that the last iteration rewrote for M1 to drain. */
++    static final long PROTO_X = Long.getLong("proto53.x", 100_000L);
++    
++    /**
++     * PROTO 028-53: K, the growth of the stream since the table's last store after which
++     * the table is stored again once the startup pos has passed that store: it bounds what
++     * a start reads before its section (initFromDb).
++     */
++    static final long PROTO_K = Long.getLong("proto53.k", 1_000_000L);
++    
++    /** PROTO 028-53: whether a record holds a KV of the application's (see appPos). */
++    static boolean isApplicationRecord(TransNodes n) {
++        if (n.valueCount == 0) return false;
++        for (int i = 0; i < n.valueCount; i++) {
++            if (Keys.isPrefix(KEY_PREFIX_SKEY, n.keys[i])) return false;
++        }
++        return true;
++    }
++    
++    /** PROTO 028-53: as isApplicationRecord(TransNodes), for a record read by a start. */
++    static boolean isApplicationRecord(StoredTrans st) {
++        boolean any = false;
++        for (StoredNode node : st.nodes) {
++            if (node instanceof StoredValueNode) {
++                if (Keys.isPrefix(KEY_PREFIX_SKEY, ((StoredValueNode) node).getKey())) return false;
++                any = true;
++            }
++        }
++        return any;
++    }
++    
++    /**
++     * PROTO 028-53: stores the table when the startup pos has passed its last store and the
++     * stream has grown by K since it, so that a start reads at most about K before its
++     * section to find the application's records after that store (initFromDb). Called
++     * after every record reclaim does not write itself as part of a store: at the end of
++     * transactionCompleted (a user transaction), of maintain() and of setSettings().
++     */
++    private void storeTableIfStartupPosPassed() {
++        if (Boolean.getBoolean("proto53.nostore")) return;     // PROTO 028-53: to compare.
++        if (tableStorePos != -1 && !table.rows.isEmpty()
++                && db.internal().getStartupPosForEvict() > tableStorePos
++                && db.getStreamLength() - tableStorePos >= PROTO_K) {
++            if (stats != null) stats.protoStores++;
++            storeTable();
++        }
++    }
++    
+     /** maintain()'s M1 condition; see maintain() and MAINTAIN_MIN_RELEASE. */
+     private boolean maintainBeginDue(long now) {
+         if (retainDuration == Long.MAX_VALUE || currentIteration() != null
+@@ -698,11 +766,27 @@ public class Reclaim implements Db.TransactionListener {
+         if (table.rows.isEmpty()) {
+             return length - firstAvailablePos >= MAINTAIN_MIN_RELEASE;
+         }
+-        // The new iteration's cut releases the stream from firstAvailablePos to the last
+-        // pStart; the next one's at least the stream written since the table was last
+-        // stored, after every record of reclaim's (bergdb 028-51).
++        if (Boolean.getBoolean("proto53.min")) {
++            // PROTO 028-53, the least A: 028-51's two rules and RB-007's, no X.
++            return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
++                    || length - tablePos() >= MAINTAIN_MIN_RELEASE
++                    || (appPos >= lastPStart() && length - lastPStart() >= MAINTAIN_MIN_RELEASE);
++        }
++        if (appPos < firstAvailablePos) {
++            // PROTO 028-53: the application wrote nothing in the kept stream: only an
++            // iteration that rewrote little (an emptied database) may lead to another.
++            IterationInfo lastRow = table.rows.get(table.rows.size() - 1);
++            if (lastRow.rewritten > PROTO_X) {
++                return false;
++            }
++            return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
++                    || length - lastPStart() >= MAINTAIN_MIN_RELEASE;
++        }
++        // PROTO 028-53: the application wrote in the kept stream: 028-51's two rules, and
++        // the next one's cut when the application wrote after the last pStart (RB-007).
+         return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
+-                || length - tablePos() >= MAINTAIN_MIN_RELEASE;
++                || length - tablePos() >= MAINTAIN_MIN_RELEASE
++                || (appPos >= lastPStart() && length - lastPStart() >= MAINTAIN_MIN_RELEASE);
+     }
+     
+     /**
+@@ -1119,6 +1203,18 @@ public class Reclaim implements Db.TransactionListener {
+      *      formatted.
+      */
+     public void initFromDb() {
++        initFromDb(0, -1);
++    }
++    
++    /**
++     * PROTO 028-53: as initFromDb(), with 'startupPos', the section's first position, and
++     * 'lastAppPos', the position of the section's newest record of the application's, or
++     * -1: W is the table's "w", or the newest record of the application's after the table's
++     * store: in the section, or, if the startup pos is after the store, in the records from
++     * the store to the startup pos, which this method reads (at most about PROTO_K and the
++     * records of one call).
++     */
++    public void initFromDb(long startupPos, long lastAppPos) {
+         GetData g = db.newGetData();
+         
+         // The settings kept in the stream (bergdb 015-87).
+@@ -1128,6 +1224,7 @@ public class Reclaim implements Db.TransactionListener {
+         }
+         
+         byte[] value = db.getOne(Long.MAX_VALUE, tableKey, g);
++        final long tableTpos = g.tpos;      // PROTO 028-53: the record of its last store.
+         
+         if (value != null) {
+             String s = StringUtil.toString(value);
+@@ -1173,6 +1270,24 @@ public class Reclaim implements Db.TransactionListener {
+             this.firstAvailableLookupTime = firstTime;
+             this.firstAvailablePos = firstPos;
+         }
++        
++        // PROTO 028-53: W.
++        appPos = -1;
++        tableStorePos = -1;
++        if (!table.rows.isEmpty()) {
++            tableStorePos = tableTpos;
++            final long w = table.rows.get(table.rows.size() - 1).w;
++            appPos = w == Long.MIN_VALUE ? tableStorePos : w;   // None stored: after it.
++            if (startupPos > tableStorePos) {
++                final long p = db.lastApplicationRecord(tableStorePos, startupPos);
++                if (p > tableStorePos) {
++                    appPos = p;
++                }
++            }
++            if (lastAppPos > tableStorePos) {
++                appPos = lastAppPos;
++            }
++        }
+     }
+     
+     /**
+@@ -1287,6 +1402,9 @@ public class Reclaim implements Db.TransactionListener {
+ 
+     /** Stores the iteration table in an internal transaction. */
+     private void storeTable() {
++        if (!table.rows.isEmpty() && appPos < table.rows.get(0).pCut) {
++            appPos = -1;    // PROTO 028-53: canonical.
++        }
+         byte[] tableBytes = StringUtil.toBytes(table.serialize());
+         if (stats != null) {
+             stats.tableBytes += tableBytes.length;
+@@ -1298,6 +1416,7 @@ public class Reclaim implements Db.TransactionListener {
+         } catch (RerunException e) {
+             throw new Bug("RerunException for write-only trans unexpected, " + e.getMessage());
+         }
++        tableStorePos = t.tpos;     // PROTO 028-53: no read.
+     }
+ 
+     /**
+@@ -1305,6 +1424,9 @@ public class Reclaim implements Db.TransactionListener {
+      * after it has written the record of 't'.
+      */
+     void recordWritten(Trans t, TransNodes n) {
++        if (isApplicationRecord(n)) {
++            appPos = t.tpos;    // PROTO 028-53
++        }
+         final Stats st = this.stats;
+         if (st == null) {
+             return;
+@@ -1358,6 +1480,7 @@ public class Reclaim implements Db.TransactionListener {
+         final List<Cut> cuts = new ArrayList<Cut>();
+         boolean countTouch = true;      // Counting the touch costs time in the writer.
+         long tableBytes;                // Bytes of the table stored outside steps.
++        long protoStores;               // PROTO 028-53: stores when sp passed the table.
+ 
+         /** Records written, by who wrote them (2026-10-13, W4.1; see Record). */
+         final Record user = new Record();       // External (user) transactions.
+@@ -1539,6 +1662,7 @@ public class Reclaim implements Db.TransactionListener {
+         long rewritten;     // Approximate bytes rewritten so far (2026-10-13).
+         long pEnd = -1;     // Position of the last step, when done (2026-10-13).
+         long pSafe = -1;    // See the class comment; -1 until known (2026-10-13).
++        long w = Long.MIN_VALUE;    // PROTO 028-53: "w" as read, MIN_VALUE if none.
+         
+         /**
+          * The cut point (2026-10-13, bergdb 011-04, "Level 3 cost"): values
+@@ -1573,9 +1697,15 @@ public class Reclaim implements Db.TransactionListener {
+          * Serializes data to a string.
+          */
+         public String serialize() {
++            return serialize(Long.MIN_VALUE);
++        }
++        
++        /** PROTO 028-53: with "w" if w is not Long.MIN_VALUE. */
++        String serialize(long w) {
+             // Note, lastKey = null is serialized in a special way.
+             
+             StringMap m = new StringMap();
++            if (w != Long.MIN_VALUE) m.put("w", "" + w);
+             m.put("pStart", "" + pStart);
+             m.put("pCut", "" + pCut);
+             m.put("tStart", "" + tStart);
+@@ -1682,6 +1812,7 @@ public class Reclaim implements Db.TransactionListener {
+             pEnd = m.hasLong("pEnd") ? m.getLong("pEnd") : pStart;
+             pSafe = m.hasLong("pSafe") ? m.getLong("pSafe") : -1;
+             pCut = m.hasLong("pCut") ? m.getLong("pCut") : pStart;     // Since 2026-10-13.
++            w = m.hasLong("w") ? m.getLong("w") : Long.MIN_VALUE;     // PROTO 028-53
+         }
+         
+         /** A key as endKey is stored: its segments, decimal, one space between (026-05). */
+@@ -1841,9 +1972,12 @@ public class Reclaim implements Db.TransactionListener {
+         public String serializeWith(IterationInfo row, IterationInfo replacement) {
+             StringBuilder b = new StringBuilder();
+             
+-            for (IterationInfo info : rows) {
++            for (int i = 0; i < rows.size(); i++) {
++                IterationInfo info = rows.get(i);
+                 IterationInfo r = info == row ? replacement : info;
+-                b.append(r.serialize() + "----next----\n");
++                // PROTO 028-53: W in the last row.
++                b.append((i == rows.size() - 1 ? r.serialize(appPos) : r.serialize())
++                        + "----next----\n");
+             }
+             
+             return b.toString();
+@@ -3022,12 +3156,17 @@ public class Reclaim implements Db.TransactionListener {
+             long tableTpos = -1;
+             int steps = 0;
+             IterationInfo before = null;
++            Stats stats;
++            synchronized (db.internal().getWriteLock()) {
++                stats = db.internal().reclaim().enableStats();
++            }
+ 
+             for (int i = 0; i < 5000 && steps < 3; i++) {
+                 time += Clock.UNITS_PER_SEC / 20;
+                 clock.setTime(time);
+                 byte[] v = new byte[1 + r.nextInt(30)];
+                 r.nextBytes(v);
++                final long protoStores = stats.protoStores;
+                 db.execute(db.trans().put("/k/" + r.nextInt(3000), v).build());
+                 IterationInfo current = db.internal().reclaim().currentIteration();
+                 if (current == null) {
+@@ -3038,8 +3177,8 @@ public class Reclaim implements Db.TransactionListener {
+                 }
+                 GetData gd = db.newGetData();
+                 db.getOne(Long.MAX_VALUE, Keys.toSegments(TABLE_KEY_NAME), gd);
+-                if (tableTpos == -1) {
+-                    tableTpos = gd.tpos;
++                if (tableTpos == -1 || stats.protoStores > protoStores) {
++                    tableTpos = gd.tpos;    // PROTO 028-53: or stored as sp passed it.
+                 } else {
+                     Assert.assertEquals("the table was stored by a step", tableTpos, gd.tpos);
+                 }

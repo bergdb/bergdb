@@ -20,10 +20,11 @@ released bug (033's rules, Frans 2026-11-24).
 
 Frans: none, unless a fix changes what `maintain()` promises (then
 options in the entry). Since 2026-11-24: a decision between the options
-of section 5 below, recommendation A. No option changes what
-`maintain()` promises; A changes the stream's bytes and what a start
-reads, B makes the rewriting reach more databases, and C keeps a
-released bug open (034-01, no release with a known bug).
+of section 8, recommendation the simplest A (8.6); Frans approves before
+anything of A lands (17:13). No option changes what `maintain()`
+promises; A changes the stream's bytes and what a start reads, B makes
+the rewriting reach more databases, and C keeps a released bug open
+(034-01, no release with a known bug).
 
 Done when: the case reproduced on `main` (028-51's probe or a new one),
 its cause in `Reclaim` named, the Javadoc of `Db.maintain()`,
@@ -82,14 +83,9 @@ cut, and the next begins at once); the stream kept about 10 MB.
 
 The two sets come from the writes: the live values stored before the
 pStart of the last iteration that a commit began, and those stored
-after it (in the run above, the rounds' last writes before and after
-64,952 kB). Puts alone left, in `RowsProbe 100000 5000000 20`, only
-the first iteration, whose pCut is its pStart: after its cut the first
-rule's stretch is empty, and the calls were quiet (nothing in the last
-10 R); so were 028-51's runs after the puts (3,000 to 300,000 keys).
-028-51's rule neither causes the rewriting nor stops it: it counts the
-stream after the table's last store, which is empty in a database not
-written to (028-51, section 3).
+after it. Puts alone leave one set (`RowsProbe 100000 5000000 20`, and
+028-51's runs after the puts): the calls are quiet. 028-51's rule
+neither causes the rewriting nor stops it (028-51, section 3).
 
 ### 3. Found with it: RB-007
 
@@ -114,49 +110,26 @@ second writes 315,008, and no call writes or returns true after call
 ### 4. What maintain() promises
 
 The Javadoc of release 2026.6, as on `main` but for 028-51's "or the
-next one's" (2026.5's `Db.maintain()`: "calls of this method bring it
-back without them", and an emptied database "to about the stream of a
-fresh one"):
+next one's": `Db.maintain()`'s calls "begin iterations and do their
+steps by the clock, without that growth. So they help a database that
+the application no longer writes to"; "Called again and again, with
+time passing, it brings a database that has been emptied to within about
+400 kB of the stream of a fresh one"; "A call when nothing is due writes
+nothing". The Pub's `Database.maintain()` says the same of an emptied
+database, and that "Each call's work is small and bounded".
 
-* `Db.maintain()`: "Calls of this method begin iterations and do their
-  steps by the clock, without that growth. So they help a database that
-  the application no longer writes to, and one that it writes to slowly
-  after deleting much"; "Called again and again, with time passing, it
-  brings a database that has been emptied to within about 400 kB of the
-  stream of a fresh one, as an iteration begins only if its cut would
-  release at least 400 kB"; "A call when nothing is due writes
-  nothing"; its return: "False if nothing is due until time passes (a
-  quarter of the retain duration for the next iteration, the retain
-  duration for a cut) or the application writes".
-* The Pub's `Database.maintain()`: "An application that has deleted much
-  and then writes little or nothing can call this method, now and then,
-  to have the space back without writes of its own. Called again and
-  again, as time passes, it brings a database that has been emptied to
-  within about 400 kB of the size of a fresh one"; "Each call's work is
-  small and bounded".
-* `Db.setRetainDuration()`: "maintain() begins iterations by the clock,
-  without commits (bergdb 026-13, U13-4)"; the Pub's
-  `Database.setRetainDuration()`: "A database that is not written to
-  does none of this by itself; maintain() lets the application ask for
-  it (bergdb 024-32)".
+The rewriting of sections 1 and 2 breaks none of these: each cut
+releases 400 kB or more (the old copies), each call's work is bounded,
+and no sentence says that the calls go quiet in a database with live
+values. It is a cost, writes and wear for no space (about 2.5 MB an R at
+30,000 values of 100 bytes; 010-01, P3 and P4, principles, not
+promises), not a released bug (033's rules leave out performance).
 
-The rewriting of sections 1 and 2 breaks none of these: each iteration's
-cut releases 400 kB or more (the old copies), each call's work is
-bounded, a call writes only when the rule makes an iteration due, and
-no sentence says that the calls go quiet in a database with live values
-that is not written to. It is a cost, writes and wear for no space,
-about 2.5 MB an R at 30,000 values of 100 bytes, against 010-01's P3 and
-P4, which are principles, not promises. Not a released bug: 033's rules
-leave out performance.
-
-RB-007 (section 3) breaks "it brings a database that has been emptied to
-within about 400 kB of the stream of a fresh one" (`Db.maintain()`; the
-Pub's the same) and "So they help a database that the application no
-longer writes to": registered in 033 as RB-007, S4 (disk space only;
-nothing lost or wrong; the commits' rule gives the space back after
-2 sd of writes), in 2026.5 and 2026.6, not fixed. It is RB-006's
-condition with the writes before the cut instead of after it; 028-51's
-fix counts only those after it.
+RB-007 breaks the emptied database's promise and "So they help a
+database that the application no longer writes to": registered in 033,
+S4 (disk space only; the commits' rule gives the space back after 2 sd
+of writes), in 2026.5 and 2026.6. It is RB-006's condition with the
+writes before the cut instead of after it.
 
 ### 5. Why no fix here, and the options
 
@@ -165,103 +138,22 @@ From the stream's positions alone, a rule either counts reclaim's own
 rewrites, and goes on rewriting (the first rule; the rules from the
 last pStart and from pSafe that 028-51 tried and dropped), or misses the
 application's writes (the second rule, for those before the store).
-Two other ways were considered and dropped:
+Two other ways were dropped: an estimate of the live bytes in a stretch
+from the rows' `rewritten`, which counts as live the copies that the
+application then deleted, so an emptied database would keep its stream;
+and a scan of the live values' positions, not bounded in one call, and
+not the same after a restart if spread over calls (INV-RESTART).
 
-* An estimate of the live bytes in a stretch from the rows' `rewritten`
-  (the iteration before the last one's, from the table stored at the
-  last pStart): after the application deletes values that an iteration
-  rewrote, `rewritten` counts the dead copies as live, and the calls
-  would keep an emptied database's stream, the promise that RB-007
-  breaks; and reclaim's own records add about 10 % to an iteration's
-  stretch beyond `rewritten` (388 kB of 3,866 kB above), a margin that
-  passes 400 kB at stretches of about 4 MB.
-* A scan of the live values' positions at M1's decision: a walk of
-  every key in one call (not bounded), or, spread over calls, a decision
-  at other calls after a restart (INV-RESTART, 027-13, section 3).
+The options, A (a mark of the application's writes kept with reclaim's
+table), B (M1's second rule counted from the last pStart, one line) and
+C (no change), are in section 8, with A in full.
 
-**Option A, a mark of the application's writes kept with reclaim's
-table (recommended).**
-
-* W, the stream length after the application's last transaction that
-  wrote a KV: in memory, set in `Reclaim.transactionCompleted`.
-* Kept in the stream: a field `w` in the row's text (027-03, section 15),
-  W at the store, in every row that reclaim stores (the table, the
-  current row). A start takes W from the latest stored row, then moves it
-  to the end of each later record it reads that is not one of BergDB's
-  own (by its keys). So that the start finds them: reclaim stores the
-  table, in a small internal transaction, when the startup pos has
-  passed its last store and the application has written since (at most
-  once a startup distance of the application's writes), and the start
-  reads from the earlier of the startup pos and that store (at most one
-  record's take more than now). This part is the design still to
-  settle and test: a crash between an application's record and that
-  store, and the takes of `maintain()`'s M4, which move the startup pos
-  too.
-* M1, with its conditions as now (no iteration runs, R/4 since the last
-  began, no cut pending):
-  * if W is after fp (the application wrote in the stream kept): the
-    first rule, the second (028-51), or a third, for RB-007: W after the
-    last pStart and the stream from the last pStart at least 400 kB;
-  * otherwise (only BergDB wrote in the stream kept): an iteration
-    begins only if the last one rewrote at most X (100 kB in the
-    prototype: a database emptied, or nearly), and the stream from fp to
-    the last pStart, or from the last pStart, is at least 400 kB. An
-    emptied database so drains its own records and fillers; one with
-    live values is quiet.
-* Effect: a database not written to is quiet from the cut of the second
-  iteration that began after the application's last write; RB-007's
-  writes are given back; a database written to goes on beginning
-  iterations by the clock, as now.
-* Cost: about 15 bytes a row; the extra store; the start's longer read
-  in that case. Every stream with a finite retain duration changes its
-  bytes (StreamDigest's reclaim configurations, 018-01, section 2).
-  027-03, section 15, and 027-13, sections 1.1, 1.2, 1.9 and 1.10; the
-  Javadoc's description of M1 (`Db.maintain()`, `Database.maintain()`,
-  `MAINTAIN_MIN_RELEASE`). What `maintain()` promises stays; it holds
-  again. Tests: sections 1 and 3's cases (both fail on `main`); the same
-  stream over a restart in a database with live values; the present
-  ones. About a day.
-
-**Option B, the second rule counted from the last pStart, no new
-state.** M1's second rule counts the stream from the last pStart, not
-from the table's last store. RB-007's writes are after the last pStart,
-so it is fixed, in a line, and the promises hold. But every database
-with live values not written to then rewrites them under the calls,
-from a few thousand values on. Measured on `48178c65` with that line
-changed (not landed): `HoleProbe 4000 20000` kept 21,616 bytes and
-`HoleProbe 20000 20000` 196,560, as with A; `IdleLiveProbe` wrote, in
-the last 10 R, 3,066 kB at 3,000 keys at sd 5 MB after the puts and
-3,087 kB at 3,000 keys at sd 1 MB after the rounds, where `main` and A
-write nothing (028-51 measured 3.1 MB for the first), and 24,522 kB at
-30,000 keys at sd 1 MB, as `main`.
-
-**Option C, no change for now.** The rewriting stays a cost. RB-007
-stays open, so a release needs Frans's exception (034-01).
-
-Recommendation: A, as its rule is measured (section 6) and makes both
-cases right; the field, the store and the start's reading are the day's
-work. B if a release is due before A is done: it fixes the bug, at the
-cost of more rewriting.
-
-### 6. A prototype of A
+### 6. A first prototype of A
 
 `prototype-a.diff`, on `48178c65`, not landed: W in memory only (a start
-sets 0), X = 100 kB, M1 as in A.
-
-* `IdleLiveProbe`: nothing written in the last 10 R in every run: 30,000
-  keys at sd 1 MB (6,298 kB in the 20 R, the last call returning true
-  3,634, kept 6,112 kB); 15,000 keys (3,278 kB; 3,353); 100,000 keys at
-  sd 1 MB (20,844 kB; 5,592) and at sd 5 MB (25,678 kB; 5,759); 3,000 and
-  8,000 keys at sd 1 MB after the rounds; 3,000 and 5,000 keys at sd
-  5 MB after the puts.
-* `HoleProbe 4000 20000`: kept 21,616 bytes, the twin 315,008, no work
-  after call 3,858. `HoleProbe 20000 20000`: 196,560, the twin 199,384
-  (872,424 on `main`).
-* The unit tests of `Reclaim` and its testers (49) pass,
-  `ReclaimMaintainTester` among them (`testSameStreamOverARestart` with
-  W lost at each start: its database is emptied, where W does not change
-  the calls); `count-gates.sh g5`: COUNT GATES OK, kept 80,600 bytes and
-  the last call true 3,006 of 20,000, as on `main`.
+set it to 0), M1 as in section 8.1. The same quiet runs as section 8.3;
+`HoleProbe 4000 20000` kept 21,616 bytes, `20000 20000` 196,560. Section
+8's prototype, with W kept in the stream, replaces it.
 
 ### 7. What this entry changed
 
@@ -276,10 +168,146 @@ sets 0), X = 100 kB, M1 as in A.
 * No change to `java/`: `java/before-commit.sh` on the clone, `BEFORE
   COMMIT OK (63 s)`.
 
-State, 2026-11-24: in progress. The Done when is met but for the fix,
-which waits for the choice of section 5. With A or B: the change, the
-tests of sections 1 and 3 (failing on `main`), RB-007's fix in 033, the
-notes and next.md, and the gates of the Done when (StreamDigest for A).
+### 8. Option A in full, its cost, and the options
+
+Written 2026-11-24 by an agent of lead-1124, after Frans's direction of
+17:13 (log). The prototype: the branch `028-53-a` of the clone `c53a`,
+on `72326123`, and `prototype-a2.diff` here; not landed.
+
+#### 8.1. The design
+
+* **W**: the position of the newest record of the application's, or -1:
+  a record with a value or delete node and none at a key under
+  `/#i/dreclaim/` (005-42's test, `ConnectionImp.isReclaims`). Reclaim's
+  steps, table stores, settings and fillers all hold such a key; M4's
+  transaction holds no KV. In memory: `Reclaim.recordWritten`.
+* **In the stream**: a name `w` in the last row of the table's text
+  (027-03, section 15), at most 15 bytes, at every store of the table.
+  Canonical: -1 if W is before the first row's pCut, as no rule compares
+  it with such a position. A row without `w` (2026.6, `main`) gives W =
+  the store's position; 2026.6 ignores `w` and drops it at its next
+  store.
+* **The store when the startup pos passes the table**: with q the
+  position of the table's last store, after a user transaction's work, a
+  `maintain()` call or a settings change, if sp > q, the table is stored
+  again. So between calls a start's section holds every record after q.
+* **A start**: W := the last row's `w`, then the newest record of the
+  application's after q in the section, if any; if sp > q (a crash
+  between a record and that store), W := sp, as if the application
+  wrote after q.
+* **M1** (027-13, section 1.10), conditions as now:
+  * W >= fp, the application wrote in the stream kept: 028-51's two
+    rules, or (c) W >= lastPStart and the stream from lastPStart is at
+    least 400 kB (RB-007's writes);
+  * W < fp, only BergDB wrote in it: only if the last iteration rewrote
+    at most X = 100 kB, and the stream from fp to lastPStart, or from
+    lastPStart, is at least 400 kB.
+
+  So a database not written to is quiet from the cut of the second
+  iteration that began after W; an emptied one drains reclaim's own
+  records; one written to begins iterations by the clock, as now.
+
+#### 8.2. Its complexity
+
+* **Code**: about 80 lines in `Reclaim` and `Db`; about 150 lines of
+  tests: `HoleProbe`'s and `IdleLiveProbe 15000 1000000 20 10`'s cases
+  (both fail on `main`), the same W and bytes over restarts
+  (`probes/ProtoA.java`), a row without `w`, a start with sp > q. Texts:
+  027-03, section 15; 027-13, sections 1.1, 1.2, 1.9, 1.10; the Javadoc
+  of `Db.maintain()`, `Database.maintain()`, `MAINTAIN_MIN_RELEASE`.
+* **State**: one number in the table's last row, one more moment when
+  the table is stored (no format version); W and q in memory.
+* **A start**: four cases (no table; a row without `w`; sp <= q;
+  sp > q). Recovery: none new (a torn record is gone before reclaim
+  reads). One new invariant: between calls, sp <= q.
+* **Proofs and checkers**: nothing to learn. The model leaves out the
+  table, when an iteration begins and `maintain()` (027-13, section 5;
+  030-25); the new stores are records of kind `table`, which the trace
+  checker takes as any; steps and rows are as now.
+* **Bytes**: every stream with a finite retain duration; two unit tests
+  that pin a store or a stream call need new numbers (8.3).
+
+#### 8.3. Measured
+
+The prototype, `main` in brackets:
+
+* RB-007: `HoleProbe 4000 20000` keeps 176,736 bytes, the twin 315,024
+  (4,804,384 and 315,008); `20000 20000` 177,344 and 199,376 (5,361,912
+  and 872,424).
+* `IdleLiveProbe`, the last 10 R: nothing in every run: 30,000 values at
+  sd 1 MB after 10 rounds (24,522 kB), 15,000 (14,554 kB), 100,000 at
+  sd 1 and 5 MB (51,595 and 55,421 kB), and where `main` is quiet too,
+  small databases (0 to 2,000 values) among them.
+* `ProtoA SD EVERY`: the same W after every operation and the same
+  bytes, sd 5 kB to 1 MB, a restart every 7 to 101 operations (2,919
+  restarts at 7).
+* StreamDigest quick: l2 as `main`, l3 not (16 of 44 lines); the four
+  modes agree in each.
+* Gates on the branch (with K, 8.4): `BEFORE COMMIT OK (88 s)`; COUNT
+  GATES OK (G5: kept 174,176 bytes, `main` 80,600); the conformance's
+  reclaim and crash sets, CONFORMANCE OK (40 and 15 traces). Without K
+  two unit tests fail: `Reclaim.Tester.testRestartResumesIteration`
+  (adjusted on the branch) and `StorageFaultTester.testStopWhileReading`.
+
+#### 8.4. The simplest A, and what each part buys
+
+* **W kept and found again** (the field, the store, the start's scan):
+  every A needs it. Without the store a start cannot see the writes
+  after the table's last store, and the stream would depend on restarts
+  (P2).
+* **Rule (c)**: counts RB-007's writes.
+* **The rule for W < fp**, about 10 lines: stops the rewriting and
+  drains reclaim's own records. W and (c) alone (`-Dproto53.min=true`)
+  keep 921,504 bytes in `HoleProbe 4000 20000`, over 400 kB more than a
+  fresh database, and rewrite as `main`: it is part of the least A that
+  fixes RB-007.
+* **K**, not in 8.1, about 15 lines (the prototype: 1 MB): the table is
+  stored again only once the stream has also grown by K since q, and a
+  start reads the records from q to sp. It bounds the stores where sd
+  is below K (StreamDigest's l3 streams, sd 500 to 10,000 bytes: -0.6 %
+  to +0.3 % with K, +20 % to +63 % without, a store after most
+  transactions), at the price of a read beyond the section, which the
+  bound on startup (027-11) would have to cover. Without it the table is
+  stored at most once per sd of writes: a table of 30 rows, a few kB,
+  is under 1 % of the writes at sd 1 MB.
+
+#### 8.5. The options weighed
+
+* **The simplest A** (8.1): fixes RB-007 and the rewriting. Writes: `w`
+  at each store of the table and a store per sd. Format: a name in the
+  row. Complexity: 8.2. Risk: a fault in W changes when iterations
+  begin, not what a read returns (steps and cuts as now); ProtoA and
+  StreamDigest check W byte for byte over restarts.
+* **A with K**: the same, fewer stores below sd 1 MB; 15 lines more and
+  a read beyond the section.
+* **B**: fixes RB-007 in one line; no state, no format change, low risk.
+  Writes: every database with live values that is not written to
+  rewrites them under the calls, about once each R/4 to R/2, as long as
+  the calls go on (3,066 kB in 10 R at 3,000 values, where `main` and A
+  write nothing; measured on `48178c65`).
+* **C**: nothing. RB-007 stays a released bug (a release needs Frans's
+  exception, 034-01); the rewriting stays (24.5 MB in 10 R at 30,000
+  values).
+
+#### 8.6. Recommendation
+
+The simplest A. Weighed for simplicity (010-01, P11 and P13): B is the
+simplest fix of the bug, but it makes the rewriting, writes and wear for
+no space (P3, P4), the rule for every quiet database that calls
+`maintain()`, the use `maintain()` is for. A adds one stored number, one
+store rule, one start rule and one branch of M1, which no proof or
+checker has to learn, and its stream over restarts is checked byte for
+byte. K is left out: it saves stores only below sd 1 MB. B if Frans
+judges A too complex for 2026.7: it fixes RB-007, and the rewriting
+stays a known cost.
+
+State, 2026-11-24, 17:30: in progress, for Frans's choice of section 8
+(recommended: the simplest A). The Done when is met but for the fix.
+Nothing of A has landed; its prototype is on the branch `028-53-a` of
+the clone `c53a` (`prototype-a2.diff`). With A or B: the change, the
+tests of section 8.2 (failing on `main`), RB-007's fix in 033, the notes
+and next.md, and the gates of the Done when (for A also StreamDigest and
+the conformance's reclaim and crash sets).
 
 
 Log
@@ -297,3 +325,18 @@ and registered (S4): the writes made before the cut of an iteration
 that began within 400 kB of its cut point, counted by neither rule.
 Options A, B and C for the fix, recommendation A, with a prototype's
 measurements; status in progress for the decision.
+
+2026-11-24, 16:47. Taken again by an agent of lead-1124 (clone c53a,
+branches 028-53 and 028-53-a): option A in full as a design, with a
+prototype that keeps W in the stream.
+
+2026-11-24, 17:13. Frans, through the lead: A is a big change with
+tradeoffs to make; it must not get too complex, and he approves before
+anything of it lands. The design to measure A's complexity, find its
+simplest version and weigh simplicity (010-01, P11 and P13).
+
+2026-11-24. Option A designed in full (section 8), its prototype built
+and measured on the branch 028-53-a (f03744b9): RB-007 and the rewriting
+fixed, the same stream over restarts. Recommendation: the simplest A
+(without K); B if A is judged too complex. Status in progress for
+Frans's decision.
