@@ -105,6 +105,7 @@ Open
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
 | [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
 | [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
+| [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | open |
 
 
 Closed
@@ -353,3 +354,6 @@ studied in 2026.6, so that it is not lost when 026 is done (Frans).
 the sub-array index of a hash mixed by fmix64 spreads them, about 21
 pairs a lookup, with the same answers and the same stream. Moved to
 Closed.
+
+2026-11-24. 028-48 registered by lead-1124, from 028-01's Result:
+modifiedAfter stops at the first bin that begins at or before the read time.
