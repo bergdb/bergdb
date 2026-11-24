@@ -8,9 +8,10 @@
 #     FROM=stage COMMIT=1 sh release.sh A     steps 1, 5 and 6, after the notes are read
 # (the second call with the DATE, R, READMEMD and LOGENTRY of the first: RELEASE WAITS prints
 # the command). It makes NO tag, pushes no tag and makes no GitHub release: it prints last, for
-# Frans, the commands of the tag release-V on A and its push, of the GitHub release with the
-# jar, the Javadoc zip and SHA256SUMS, and of the check of the published files against
-# SHA256SUMS. The steps, each stopping the script when it does not print its OK line:
+# Frans, the commands of the tag release-V on A and its push, of the check of the release's
+# body (body.sh: the notes with absolute links, each answering 200), of the GitHub release with
+# that body and the jar, the Javadoc zip and SHA256SUMS, and of the check of the published
+# files against SHA256SUMS. The steps, each stopping the script when it does not print its OK line:
 #   1. A is in MAIN's history and its BuildInfo says a release V, YYYY.N; the tag does not
 #      exist; README.md for after the release is ready (MAIN's README.md names the latest
 #      release V of DATE, or READMEMD does: stage-b.sh, step 3), so that a missing text stops

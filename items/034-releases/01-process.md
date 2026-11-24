@@ -167,11 +167,13 @@ The release day (Frans, with the lead):
     `releases/V/readme.md` with every relative link made absolute
     (`https://github.com/bergdb/bergdb/blob/main/` and the path the link
     resolves to), since the relative links give 404 on the release's
-    page; 028-49 makes it a script's work, until then by hand. Checked:
-    the three files downloaded from the release, its `SHA256SUMS` the
-    repository's and `shasum -a 256 -c SHA256SUMS` OK; every link of the
-    body answers 200 (`curl -sIL`); the tag's archive builds with
-    `java/build.sh` and `BuildInfo` says V.
+    page: `R/out/body-V.md`, made by `body.sh` (section 6; 028-49).
+    Checked: before the release is made, every link of the body answers
+    200 (`CHECK=1 sh body.sh V`, BODY OK, as printed by `release.sh`,
+    once B and the tag are pushed); the three files downloaded from the
+    release, its `SHA256SUMS` the repository's and `shasum -a 256 -c
+    SHA256SUMS` OK; the tag's archive builds with `java/build.sh` and
+    `BuildInfo` says V.
 13. **After the release**, the same day: the lines of 034-02 that follow
     the tag, each checked; then the release item done.
 
@@ -187,7 +189,11 @@ The release day (Frans, with the lead):
   severity, state and a link to 033) and errata ("Corrected: ... reads
   ...; it should read ..."). The text above it stays as published.
 * **The GitHub release's body** is the notes with that section, made
-  again and set with `gh release edit` when an entry is added (028-49).
+  again and set with `gh release edit` when an entry is added (028-49):
+  once the entry is pushed to `main`, `CHECK=1 sh body.sh V` in
+  `items/034-releases/scripts/` (BODY OK: the body from `main`'s
+  `releases/V/readme.md`, every link answering 200), then the command it
+  prints, `gh release edit release-V --notes-file BODY`.
 * **A released bug found after a release**: its 033 entry; a bullet in
   the latest release's notes; one pointer bullet to 033, with the IDs, in
   an older release's notes that has it (033, Rules). README.md and
@@ -210,6 +216,19 @@ says what it does and how it is called.
   A's next.md, with Files and Identity), `stage-b.sh` (B's files in a new
   clone of `main`) and `commit-b.sh` (the gate, commit B, the push, and
   the commands for Frans of steps 11 and 12).
+* `body.sh V` (steps 12 and 13, section 5; 028-49, 2026-11-24): the
+  GitHub release's body, `R/out/body-V.md`, from `MAIN`'s
+  `releases/V/readme.md`: each relative link, outside code, made
+  `https://github.com/bergdb/bergdb/blob/main/` and the path it resolves
+  to from `releases/V/`, a link text equal to its target made that path;
+  refused if a target leaves the repository or is not in its tree, or if
+  a relative link is left. `CHECK=1` checks that every link answers 200
+  (`curl -sIL`). `commit-b.sh` makes the body from B's notes before its
+  gate (BODY OK, or COMMIT B FAILED) and prints the check and the `gh
+  release create` with it. `sh body.sh test` converts the notes of
+  2026.6 and 2026.5 and checks the result link by link against them:
+  each link the same file in the repository (`os.path.samefile`), no
+  relative link left, the text otherwise the same.
 
 Made release-independent on 2026-11-24 (034):
 
@@ -265,8 +284,31 @@ The smoke run of 2026-11-24, 13:12 to 13:14, on clones of `main` at
 * A `[[` marker in next.md: NOTES NEED EDITS, RELEASE WAITS; the second
   call: STAGE B FAILED on the marker.
 
-Not tested: the push of the tag, `gh release create` and `gh release
-download` (printed only, never run against github.com); a push to
+The smoke run of `body.sh` (028-49), 2026-11-24, 14:21, as above on
+clones of the branch `028-49`, A at `BuildInfo` 2026.7: `sh body.sh
+test`: BODY TEST OK (2026.6 and 2026.5, 10 of 10 links each made
+absolute); the bodies of 2026.6 and 2026.5 the same text as those set
+on their GitHub releases on 2026-11-24 (`gh release view`, but for one
+final empty line), and with `CHECK=1` all
+their links answer 200 (7 and 6). In the second call of `release.sh`,
+with a link to a file not in the tree added to `R/out/readme.md`:
+COMMIT B FAILED ("body.sh: BODY FAILED: the target ... is not in R/B");
+without it, `COMMIT=0` and then `COMMIT=1`: RELEASE OK, the FOR FRANS
+lines with the body's check and `--notes-file R/out/body-2026.7.md`. The
+printed check: BODY FAILED, the release's page
+`.../releases/tag/release-2026.7` answering 404, since no such tag is
+on github.com (a tag without a release answers 200, as
+`proofs-2026-11-17`); the other three links 200. An entry of "After the
+release" added to the notes: the body made again holds it, its link
+absolute. Refused by hand-made notes: a target outside the repository, a
+target not in the tree, a link `]( path)` the script does not parse, a
+`[[` marker; a link with a title, an image, a reference definition, a
+link text over two lines and a link in a code span (kept) converted as
+expected.
+
+Not tested: the push of the tag, `gh release create`, `gh release
+edit` and `gh release download` (printed only, never run against
+github.com); a push to
 github.com; a merge conflict in `to-main.sh`; `before-commit.sh` in
 `commit-b.sh` (skipped by `NOGATE=1`; it ran in 2026.6's commit B).
 
@@ -281,3 +323,8 @@ from 026's "How the release is made", 026-27, 024-38, 033's rules,
 AGENTS.md and 028-49. The rule of no release with a known bug (Frans,
 13:12). The scripts moved here from 026-27's directory, made
 release-independent and smoke-tested (section 6).
+
+2026-11-24. `body.sh` (028-49): the GitHub release's body made by a
+script, with every relative link absolute and checked; `commit-b.sh`
+makes it and prints its check and `--notes-file` of it; steps 12 and
+section 5 say how it is used, section 6 its smoke run.

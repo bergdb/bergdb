@@ -11,7 +11,10 @@
 #      release V, YYYY.N; the tag release-V does not exist; the changes are only B's paths:
 #      releases/V/, releases/next.md, README.md, BuildInfo.java, docs/log.md; releases/V/
 #      holds readme.md and SHA256SUMS and nothing else, and SHA256SUMS checks against R/out's
-#      jar and Javadoc zip, the files for the GitHub release; BuildInfo says NEXT;
+#      jar and Javadoc zip, the files for the GitHub release; BuildInfo says NEXT; the
+#      GitHub release's body, R/out/body-V.md, made from CLONE's releases/V/readme.md by
+#      body.sh (beside this script): every relative link made absolute, each to a path in
+#      CLONE's tree (BODY OK);
 #   2. java/before-commit.sh in CLONE: BEFORE COMMIT OK (about 2 minutes; functional, it may
 #      run beside other work);
 #   3. the commit in CLONE, in Frans's name: "Release V: releases/V/ (the notes and
@@ -22,17 +25,20 @@
 #   5. with COMMIT=1 and PUSH=1 (the default): git push REMOTE main (never a force, no tag),
 #      and git ls-remote shows main at B;
 #   6. prints, for Frans ("FOR FRANS:" lines), in this order: the tag on A and its push; the
-#      GitHub release with the jar, the Javadoc zip and SHA256SUMS as its assets (as 2026.5's
+#      body made again from MAIN's notes with each of its links checked on github.com (BODY
+#      OK, every link answering 200, once B is on the public main); the GitHub release with
+#      the body and with the jar, the Javadoc zip and SHA256SUMS as its assets (as 2026.5's
 #      and 2026.6's); the check of the files downloaded from the release against the
 #      repository's SHA256SUMS:
 #        git -C MAIN tag -a release-V A -m "BergDB V, DATE"
 #        git -C MAIN push REMOTE release-V
+#        CHECK=1 MAIN=MAIN BODY=R/out/body-V.md sh body.sh V
 #        cd MAIN && gh release create release-V --verify-tag --title "BergDB V" \
-#            --notes-file BODY R/out/bergdb-V.jar R/out/bergdb-V-javadoc.zip releases/V/SHA256SUMS
+#            --notes-file R/out/body-V.md R/out/bergdb-V.jar R/out/bergdb-V-javadoc.zip \
+#            releases/V/SHA256SUMS
 #        cd MAIN && ... gh release download release-V -D R/download ... shasum -a 256 -c SHA256SUMS
-#      BODY is releases/V/readme.md with every relative link made absolute, since the relative
-#      links do not resolve on the release's page: made by hand until 028-49 makes it (034-01,
-#      step 12).
+#      The body is the notes with every relative link made absolute, since the relative links
+#      give 404 on the release's page (034-01, step 12; 028-49).
 # Environment: COMMIT (0); PUSH (1); MAIN (/Users/f/fl/repos/bergdb); REMOTE (origin); DATE
 # (today, the tag message's date); R (the release's work directory,
 # /Users/f/fl/bench/DATE/release); NEXT (from V); NOGATE=1 (the smoke test only: no
@@ -43,6 +49,7 @@
 # Created 2026-11-06 by Frans Lundberg; 2026.5's copy 2026-11-12; 2026.6's 2026-11-23; for
 # every release 2026-11-24 (bergdb 034).
 C=${1:?usage: commit-b.sh CLONE A}
+S=$(cd "$(dirname "$0")" && pwd)
 A=${2:?usage: commit-b.sh CLONE A}
 MAIN=${MAIN:-/Users/f/fl/repos/bergdb}
 DATE=${DATE:-$(date +%F)}
@@ -86,6 +93,10 @@ done
 [ "$(wc -l < "$C/releases/$V/SHA256SUMS" | tr -d ' ')" = 2 ] || fail "SHA256SUMS has not two lines"
 (cd "$O" && shasum -a 256 -c -s "$C/releases/$V/SHA256SUMS") || fail "releases/$V/SHA256SUMS does not check against $O's files"
 grep -q '\[\[' "$C/releases/$V/readme.md" && fail "releases/$V/readme.md has a [[ marker"
+BODY=$O/body-$V.md
+bo=$(MAIN="$C" R="$R" BODY="$BODY" sh "$S/body.sh" "$V" 2>&1 | grep '^BODY ' | head -n 1)
+echo "body: $bo" >> "$REC"
+case $bo in "BODY OK"*) ;; *) fail "body.sh: ${bo:-no BODY line}" ;; esac
 git -C "$C" show ":java/src/bergdb/core/BuildInfo.java" | grep -q "RELEASE = Util.identity(\"$NEXT\")" || fail "BuildInfo is not $NEXT"
 if [ "${NOGATE:-0}" = 1 ]; then
     g="gate skipped (NOGATE=1, the smoke test)"
@@ -126,7 +137,9 @@ echo "COMMIT B OK: B $(echo "$B" | cut -c1-8) on main; $g; $pushed; no tag made,
 echo "FOR FRANS: the tag, on A $As (BuildInfo $V), then its push:"
 echo "FOR FRANS:   git -C $MAIN tag -a $TAG $A -m \"BergDB $V, $DATE\""
 echo "FOR FRANS:   git -C $MAIN push $REMOTE $TAG"
-echo "FOR FRANS: then the GitHub release with the jar, the Javadoc zip and SHA256SUMS; its body BODY is releases/$V/readme.md with every relative link made absolute (the relative ones give 404 on the release's page; made by hand until 028-49 is done; 034-01, step 12):"
-echo "FOR FRANS:   cd $MAIN && gh release create $TAG --verify-tag --title \"BergDB $V\" --notes-file BODY $O/bergdb-$V.jar $O/bergdb-$V-javadoc.zip releases/$V/SHA256SUMS"
+echo "FOR FRANS: then the body, releases/$V/readme.md with every relative link made absolute (the relative ones give 404 on the release's page; 034-01, step 12), made again from main's notes and its links checked (BODY OK, each answering 200):"
+echo "FOR FRANS:   CHECK=1 MAIN=$MAIN BODY=$BODY sh $S/body.sh $V"
+echo "FOR FRANS: then the GitHub release with that body and the jar, the Javadoc zip and SHA256SUMS:"
+echo "FOR FRANS:   cd $MAIN && gh release create $TAG --verify-tag --title \"BergDB $V\" --notes-file $BODY $O/bergdb-$V.jar $O/bergdb-$V-javadoc.zip releases/$V/SHA256SUMS"
 echo "FOR FRANS: then the check of the files as published:"
 echo "FOR FRANS:   cd $MAIN && rm -rf $DL && mkdir -p $DL && gh release download $TAG -D $DL && cmp $DL/SHA256SUMS releases/$V/SHA256SUMS && (cd $DL && shasum -a 256 -c SHA256SUMS)"

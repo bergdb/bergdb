@@ -89,8 +89,10 @@ asked (006-34, 11:20). Each such line says "missing in 2026.6".
   `SHA256SUMS`, then `shasum -a 256 -c SHA256SUMS` OK). `SHA256SUMS`
   missing in 2026.6 (added after the review).
 * **The GitHub release's body**: the notes with every relative link made
-  absolute; every link answers 200 (`curl -sIL`). By hand until 028-49
-  is done. Missing in 2026.6 (six links gave 404).
+  absolute; every link answers 200 (`curl -sIL`): `commit-b.sh` (BODY
+  OK, the body made from B's notes) and the printed `CHECK=1 sh body.sh
+  V` (BODY OK, every link 200) before `gh release create`. Missing in
+  2026.6 (six links gave 404).
 * **The tag's archive builds**: by hand, `java/build.sh` in the unpacked
   archive; `BuildInfo` prints release V.
 
@@ -130,8 +132,9 @@ asked (006-34, 11:20). Each such line says "missing in 2026.6".
 
 * **"After the release"** in `releases/V/readme.md`, added with its
   first entry, appended only (034-01, section 5; 033, Rules); the
-  GitHub release's body made again and set with `gh release edit`. By
-  hand, until 028-49 makes the body.
+  GitHub release's body made again and set with `gh release edit`:
+  `CHECK=1 sh body.sh V` once the entry is pushed (BODY OK), then the
+  `gh release edit` it prints, by hand.
 * **A released bug found after the release**: its 033 entry, a bullet in
   the latest release's notes, a pointer bullet in an older release's
   notes that has it (033, Rules). By hand.
@@ -142,3 +145,5 @@ asked (006-34, 11:20). Each such line says "missing in 2026.6".
 2026-11-24. Written (Frans, 13:05), with the lines missing in 2026.6
 from the review of release 2026.6 and 006-34; the line on known bugs
 (Frans, 13:12).
+
+2026-11-24. The body's lines checked by `body.sh` (028-49).

@@ -101,7 +101,6 @@ Open
 |---|---|---|---|---|
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
-| [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 
 
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-49](49-release-body-absolute-links.md) | Fix | The GitHub release's body with absolute links: body.sh | none | done | 2026-11-24 |
 | [028-51](51-maintain-m1-written-db/readme.md) | Fix | maintain()'s M1 stalled in a written database: fixed, RB-006 | none | done | 2026-11-24 |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | A (12:26) | done | 2026-11-24 |
 | [028-50](50-key-transformation-count.md) | Fix | The dirty-node count of a key with a key transformation, after it | A (12:26) | done | 2026-11-24 |
@@ -442,3 +442,9 @@ released bug. Found with it RB-007 (S4), the application's writes made
 before the cut of an iteration that began within 400 kB of its cut
 point, counted by neither rule. Options for the fix in the entry
 (Frans: decision); the entry a directory with its probes.
+
+2026-11-24. 028-49 done by an agent of lead-1124 on the branch `028-49`:
+`items/034-releases/scripts/body.sh` makes the GitHub release's body from
+the notes, every relative link absolute and each checked to answer 200;
+`commit-b.sh` makes it and prints its check and `--notes-file` of it.
+Moved to Closed.

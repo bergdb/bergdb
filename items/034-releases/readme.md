@@ -26,7 +26,8 @@ Files
   are marked, the reason for the list.
 * scripts/. The release scripts: `set-buildinfo.sh`, `to-main.sh`,
   `release.sh` and those it calls (`build-a.sh`, `finish.sh`,
-  `notes.sh`, `stage-b.sh`, `commit-b.sh`). Moved from 026-27's
+  `notes.sh`, `stage-b.sh`, `commit-b.sh`, which calls `body.sh`, the
+  GitHub release's body; 028-49). Moved from 026-27's
   directory on 2026-11-24 and made release-independent (034-01, section
   6).
 
@@ -43,3 +44,7 @@ release-independent: the release from A's `BuildInfo`, the work
 directory from the date, the release item found in `items/`; smoke-tested
 on scratch repositories (034-01, section 6). 028-49, the GitHub
 release's body with absolute links, is to be made in these scripts.
+
+2026-11-24. 028-49 done: `body.sh` makes the GitHub release's body from
+the notes, every relative link absolute and checked (034-01, section
+6).

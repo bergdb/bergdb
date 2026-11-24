@@ -1,7 +1,7 @@
 028-49. Fix: the release scripts make the GitHub release's body with absolute links
 ===================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-24 by Frans Lundberg.
 
 What: the release of 2026.6 was made on GitHub with
@@ -55,3 +55,31 @@ release" and is set again with `gh release edit` when an entry is added
 (034), made release-independent; the fix goes there. Until it is done,
 `commit-b.sh` prints the GitHub release's command with a body file made
 by hand (034-01, step 12).
+
+2026-11-24. In progress: an agent of lead-1124.
+
+2026-11-24. Done (lead-1124). `items/034-releases/scripts/body.sh V`
+makes the body, `R/out/body-V.md`, from `MAIN`'s `releases/V/readme.md`,
+the whole notes with their section "After the release": each relative
+link outside code (inline, image, reference definition) made
+`https://github.com/bergdb/bergdb/blob/main/` and the path it resolves to
+from `releases/V/`, a link text equal to its target made that path; it
+refuses a target outside the repository or not in its tree, and a
+relative link left. With `CHECK=1` every http(s) link must answer 200
+(`curl -sIL`). `commit-b.sh` makes the body from B's notes before its
+gate (COMMIT B FAILED if body.sh refuses), and prints, after the tag's
+push, the check `CHECK=1 sh body.sh V` and `gh release create ...
+--notes-file R/out/body-V.md`. After the release, when an entry is
+added, `CHECK=1 sh body.sh V` makes it again and prints `gh release edit
+release-V --notes-file BODY` (034-01, section 5). The test, `sh body.sh
+test`, converts the notes of 2026.6 and 2026.5 and checks them link by
+link, independently of the conversion: the same file in the repository
+(`os.path.samefile`), the fragment and text kept or the path, the text
+outside the links the same, no relative link left: BODY TEST OK
+(2026.6, 2026.5: 10 of 10 links each). The bodies of 2026.6 and 2026.5
+are the same text as those set on their GitHub releases on 2026-11-24
+(`gh release view`, but for one final empty line), and with `CHECK=1` every link answers 200. Smoke run on scratch
+repositories as 034-01 says (section 6, its record): RELEASE OK with the
+body's lines, COMMIT B FAILED on a link to a file not in the tree. 034-01
+(steps 12, sections 5 and 6), 034-02 and 034's readme updated. No change
+to `java/`; no gate needed beyond the smoke run (034-01, step 6).
