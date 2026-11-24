@@ -53,7 +53,7 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 2 | 4 |
+| 2026.5 | 0 | 2 | 0 | 3 | 5 |
 
 
 Released bugs
@@ -131,6 +131,29 @@ RB-004. Databases created at once around midnight may get a wrong date in create
   `Util.dateAndTime()` format with thread-safe `DateTimeFormatter`s.
 
 
+RB-005. The count of the index nodes a transaction makes dirty is short for a key transformed to a longer key
+------------------------------------------------------------------------------------------------------------
+
+* **What a user sees:** nothing within a transaction's limits. Db's
+  check of the index nodes a transaction can make dirty (005-31), which
+  keeps a transaction's nodes within a record, counts a key with a key
+  transformation by the segments of the key as given; a key transformed
+  to one of more segments can make more nodes dirty than counted (46 for
+  39 in a test at node size 8). Within `execute()`'s limits, L1 to L5, a
+  transaction's nodes stay within a record by a separate bound (TP26,
+  stated in the Lean model, not proved; the least margin 0.7 %, at node
+  size 8), so the short count changes nothing. Were a transaction's nodes
+  to pass a record's room, they would never be taken into a record, and
+  the database's startup would grow without end (bounded startup lost);
+  nothing lost, the database goes on.
+* **Severity:** S4 (possible in theory only: out of reach within the
+  limits, by a stated bound).
+* **Releases:** 2026.5 and 2026.6 (and before); not fixed.
+* **Found:** 2026-11-24, by 028-45's test (`DbTesterDirtyCount`), from
+  030-39's finding F7; not known at the releases.
+* **Fix:** none yet; options A to C in 028-45, for Frans.
+
+
 Log
 ===
 
@@ -158,3 +181,6 @@ was reached only with 026-05's steps and delayed cuts, a cost.
 2026-11-24. RB-004 registered (028-07's date race), S4, after release
 2026.6 (Frans): a fault possible in theory only, never seen, is
 registered too (Rules). 2026.6 fixes RB-001 to RB-004.
+
+2026-11-24. RB-005 registered (028-45), S4: the count of a key with a key
+transformation is short; possible in theory only. Not fixed.

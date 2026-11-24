@@ -188,3 +188,9 @@ Log
 the test found the estimate of a key transformed to a key of more
 segments short (Result, "The fault"); Frans: decision. Gate: BEFORE
 COMMIT OK.
+
+2026-11-24. Registered as RB-005 (033), S4: within L1 to L5 the shortfall
+cannot bring a transaction to the record limit (TP23, TP26, ReleaseFits;
+TP26 stated, not proved; the least margin 0.7 % at node size 8); past it,
+a transaction's nodes would never be taken and startup would grow, with no
+failed database. The same count in 2026.5 and 2026.6.
