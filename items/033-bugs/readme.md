@@ -44,12 +44,22 @@ Decided by Frans, 2026-11-20.
   before its tag (026's release steps), and its notes name the released
   bugs it fixes by ID.
 * **Where they are published** (Frans, 2026-11-24): each release's notes
-  list the released bugs known in it, under its known issues, and the
-  ones it fixes; a bug found after the latest release is added to its
-  notes (the repository's file and the GitHub release's page), marked as
-  found after the release. README.md and bergdb.org list no known
-  issues; they point to the notes and to this register, which lists them
-  all.
+  list the released bugs known in it at the release, under its known
+  issues, and the ones it fixes. A bug found after a release goes into
+  the section "After the release" at the end of its notes (Frans,
+  2026-11-24, 12:58): the text above the section stays as published on
+  the release day; the section's first line is "Added after YYYY-MM-DD;
+  the notes above are as published on that day.", then dated bullets,
+  oldest first, appended only, never edited. A bug's bullet is one or two
+  lines: its ID, severity, state and a link to this register, the
+  authority on the bugs. The latest release's notes get a bullet for each
+  bug found after it (the repository's file and the GitHub release's
+  page, set again when a bullet is added); an older release that has the
+  bug gets one pointer bullet to this register with the IDs. A
+  correction of a fact in the notes is a dated erratum in the same
+  section ("Corrected: ... reads ...; it should read ..."), not an edit
+  of the text above. README.md and bergdb.org list no known issues; they
+  point to the notes and to this register, which lists them all.
 
 
 Counts
@@ -142,7 +152,8 @@ RB-004. Databases created at once around midnight may get a wrong date in create
   held the lock of the class `DatabaseImp`): `Util.today()` formatted
   with a shared `SimpleDateFormat`, which is not thread-safe; the lock
   ordered the Pub API's starts, not the Core's. Not known at the release.
-  Registered 2026-11-24, after release 2026.6 (Frans).
+  Registered 2026-11-24, after release 2026.6 (Frans); named in 2026.6's
+  notes, in the section After the release.
 * **Fix:** 028-07 (`72e8de5d`), 2026-11-16: `Util.today()` and
   `Util.dateAndTime()` format with thread-safe `DateTimeFormatter`s.
 
@@ -165,8 +176,8 @@ RB-005. The count of the index nodes a transaction makes dirty is short for a ke
 * **Severity:** S4 (possible in theory only: out of reach within the
   limits, by a stated bound).
 * **Releases:** 2026.5 and 2026.6 (and before); fixed on `main` for
-  2026.7. Named in 2026.6's notes, under its known issues, as found
-  after the release.
+  2026.7. Named in the section After the release of 2026.6's notes and
+  of 2026.5's.
 * **Found:** 2026-11-24, by 028-45's test (`DbTesterDirtyCount`), from
   030-39's finding F7; not known at the releases.
 * **Fix:** 028-50 (`33193b20`), 2026-11-24, option A of 028-45 (Frans):
@@ -227,3 +238,11 @@ each release (Frans).
 
 2026-11-24. RB-005 fixed on `main` for 2026.7 by 028-50 (`33193b20`),
 Frans's option A of 028-45.
+
+2026-11-24. The notes' section "After the release" (Frans, 12:58): the
+rule of where released bugs are published says how the notes are
+updated after their release. 2026.6's notes are as published on the
+release day above the section, which holds RB-004, RB-005 and the
+review's three corrections as errata; 2026.5's section points here for
+RB-002 to RB-005, found after it (RB-001 was known at its release), so
+the older release's notes are decided too.

@@ -1,7 +1,7 @@
 028-45. Change: a test of Db's dirty-node count with transformations
 ====================================================================
 
-Status: in progress. Kind: Change. Frans: decision.
+Status: done. Kind: Change. Frans: decided (A, 2026-11-24, 12:26).
 Created 2026-11-24 by Frans Lundberg.
 
 What: `Db.checkDirtyNodes` (`java/src/bergdb/core/Db.java`; 027-08,
@@ -197,3 +197,7 @@ failed database. The same count in 2026.5 and 2026.6.
 
 2026-11-24. Frans chose option A (12:26); the fix is 028-50, with the
 known-fault test turned around there.
+
+2026-11-24. Done: the test landed (`ace0a1bb`); the fault it found
+is RB-005 (033), fixed by 028-50 (`33193b20`) on `main` for 2026.7, with
+the known-fault test turned around. Moved to Closed in 028's readme.

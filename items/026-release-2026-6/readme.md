@@ -122,6 +122,19 @@ the changes of the public repository (029; Frans, 2026-11-17, 11:40):
   runs the Android tests (`java/stress/android.sh`, with `ANDROID_SDK`
   set): `java/night.sh`, `java/week.sh` and `java/timing.sh`, disjoint
   sets of tests, all run before the release, on a commit near commit A.
+* **The notes are kept as published; later updates go into "After the
+  release"** (Frans, 2026-11-24, 12:58; 033, Rules, "Where they are
+  published"). After the release day, `releases/V/readme.md` changes only
+  at its end, in a section "After the release" (a setext heading, as the
+  notes' other sections) whose first line is "Added after YYYY-MM-DD; the
+  notes above are as published on that day.", then dated bullets, oldest
+  first, appended only: a released bug found after the release (its ID,
+  severity, state and a link to 033) and errata ("Corrected: ... reads
+  ...; it should read ..."). The notes are released without the section;
+  it is added with its first entry, so a release with no later update
+  has no empty heading (chosen 2026-11-24, as in 2026.5's and 2026.6's
+  notes). The GitHub release's body is the notes with the section, set
+  again with `gh release edit` when an entry is added (028-49).
 
 
 Proposed for 2026.6, not decided
@@ -483,3 +496,8 @@ they are proposed above. The branches that this item names as kept
 `026-22-mt-contract`, `026-24-pe-trial`, `026-25-pe-java`) are local
 branches, not on the public repository; their evidence is in this item's
 directories.
+
+2026-11-24. How the release is made: the notes stay as published, and
+later updates go into a section "After the release", added with its
+first entry (Frans, 12:58; 033's rule); 2026.6's and 2026.5's notes got
+theirs on the same day.

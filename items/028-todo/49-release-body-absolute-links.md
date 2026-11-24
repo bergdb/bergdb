@@ -29,7 +29,11 @@ resolves to from `releases/V/`), print the `gh release create` command
 with `--notes-file` of that file, and check that every link of the body
 answers 200 (`curl -sIL`) once the commit that holds the linked files is
 on the public `main`; a test of the conversion on the notes of 2026.6,
-whose result has no relative link and the same text otherwise.
+whose result has no relative link and the same text otherwise. The body
+is the whole notes, their section "After the release" included (033,
+Rules, "Where they are published"); when an entry is added to that
+section, the body is made again from the notes and set with
+`gh release edit`.
 
 First step: read 026, "How the release is made", and `commit-b.sh` in
 `items/026-release-2026-6/27-release-plan/`; the body made by hand for
@@ -42,3 +46,7 @@ Log
 
 2026-11-24. Registered by an agent of lead-1124, from finding 1 of the
 review of release 2026.6, for the release scripts of 2026.7 (031).
+
+2026-11-24. Done when: the body includes the notes' section "After the
+release" and is set again with `gh release edit` when an entry is added
+(Frans, 2026-11-24, 12:58; 033's rule).

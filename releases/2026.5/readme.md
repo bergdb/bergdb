@@ -896,3 +896,16 @@ is recorded here. No fault yet.
   jobs, its 15 theorems on the standard axioms. It is not in the release
   commit or the source zip. The jar, the zips and `SHA256SUMS` did not
   change.
+
+
+After the release
+-----------------
+
+Added after 2026-11-17; the notes above are as published on that day,
+when the repository and this release became public (bergdb 029).
+
+* 2026-11-24. Released bugs found after this release: **RB-002, S2**,
+  and **RB-003 to RB-005, S4**; RB-002 to RB-004 fixed in 2026.6, RB-005
+  fixed on main for 2026.7 (bergdb 028-50;
+  [bergdb 033](../../items/033-bugs/readme.md)).
+  RB-001 was known at the release (Known issues and limits).

@@ -71,11 +71,11 @@ In short:
   is not covered by them.
 * **Databases of release 2026.5 and earlier are refused: make them
   again** (The stream, below). There is no upgrade tool.
-* **Four released bugs of 2026.5 are fixed**, RB-001 to RB-004
-  (Released bugs fixed, below; RB-004 registered on 2026-11-24, after
-  the release). No bug is known in 2026.6 at its release.
+* **Three released bugs of 2026.5 are fixed**, RB-001 to RB-003
+  (Released bugs fixed, below). No bug is known in 2026.6 at its
+  release.
 * **Speed against 2026.5:** writes with reclaim at work up to 27 %
-  faster; writes without reclaim 6 to 10 % slower; reads up to 5.4 %
+  faster; writes without reclaim 6 to 10 % slower; reads up to 5 %
   slower, and the gets beside writes 12 % slower (Speed against 2026.5,
   below).
 * **Less memory for a small database:** the write buffer grows with use,
@@ -92,7 +92,7 @@ The register of released bugs is
 [bergdb 033](../../items/033-bugs/readme.md): a fault in the code of a
 published release, each with an ID and a severity (S1 data lost or
 wrong, S2 the database fails or will not start, S3 a call fails or
-refuses wrongly, S4 minor). This release fixes the four that 2026.5
+refuses wrongly, S4 minor). This release fixes the three that 2026.5
 has:
 
 * **RB-001, S2. A value transformation that throws or passes 8 MiB fails
@@ -110,14 +110,6 @@ has:
   next start throw `DatabaseNotCreatedException`. The Javadoc now says
   so (Core API, below; bergdb 028-40); the Pub API syncs the creation in
   its start and was not affected. Nothing committed was lost.
-* **RB-004, S4. Databases created at once around midnight could get a
-  wrong date in created.txt.** Threads of one JVM that created databases
-  at the same time, one of them at least with the Core API, shared a
-  date format that is not thread-safe, so that a change of the date
-  while they were created could write a wrong date into `created.txt`,
-  a text for people that BergDB does not read. Possible in theory only,
-  never seen. Now the date is formatted thread-safely (bergdb 028-07).
-  Registered on 2026-11-24, after the release (bergdb 033).
 
 
 ### The stream
@@ -176,16 +168,14 @@ has:
   meta block's version, as above. Speed (bergdb 026-25, section 7): at
   10M keys within a few per cent of 2026.5's writer, the load of
   transactions of 100 or 500 puts 0.90 to 0.97 of its puts a second; a
-  small database in memory 11 to 18 % slower in CORE's set test, timed
-  when the writer landed (CORE as a whole 6 % slower in the release's
-  timing, Speed against 2026.5, below); with reclaim more cuts, less of
-  the stream kept and about 6 % more bytes written; follow-up work is
-  bergdb 028-19. The stream's bytes changed for every configuration of
-  StreamDigest, the l2-* and the l3-* ones; the digests before and after
-  are in bergdb 030-28, section 6. Tests whose expected values changed:
-  a few thresholds of tests that depend on the tree's shape, and
-  `StoredTrans.testRefusesFormat6`, which refuses formats 6 and 7
-  (026-25).
+  small database in memory 11 to 18 % slower in CORE's set; with reclaim
+  more cuts, less of the stream kept and about 6 % more bytes written;
+  follow-up work is bergdb 028-19. The stream's bytes changed for every
+  configuration of StreamDigest, the l2-* and the l3-* ones; the digests
+  before and after are in bergdb 030-28, section 6. Tests whose expected
+  values changed: a few thresholds of tests that depend on the tree's
+  shape, and `StoredTrans.testRefusesFormat6`, which refuses formats 6
+  and 7 (026-25).
 * **Reclaim charges every index node that its steps make dirty** (bergdb
   028-26). With a finite retain duration (`setRetainDuration`), a
   reclaim step's internal transaction counts toward reclaim's allowance,
@@ -389,7 +379,7 @@ with JDK 27.0.1.1:
 * `java/week.sh` on `2bb2b851`, ended 2026-11-21: WEEK OK in 488
   minutes. The user apps with Java's commit-time check switched on (4.3
   million commits checked in the soak rounds, 31,682 in the kill
-  rounds), 3,000 more kills on other seeds, longer fuzzing, the index
+  rounds), 2,000 more kills on other seeds, longer fuzzing, the index
   harnesses' soak, the large conformance set, the user apps' traces, and
   the Android tests on an emulator (1,734 unit tests passed and 4
   skipped, 10 runs of the demos).
@@ -515,16 +505,6 @@ fault:
   for 2026.6 (Frans, 2026-11-22); whether it stays, or a walk of a key's
   versions moves into the Core, is for a later release.
 
-**Found after the release:**
-
-* **RB-005, S4**, registered 2026-11-24 ([bergdb 033](../../items/033-bugs/readme.md);
-  028-45): the count of the index nodes that a transaction can make
-  dirty, which keeps its nodes within one record, is short for a key
-  that a key transformation makes longer (46 nodes made dirty, 39
-  counted, in a test at node size 8). Within a transaction's limits it
-  has no effect: a separate bound keeps every transaction's nodes within
-  a record. To be fixed in 2026.7 (bergdb 028-50).
-
 **Databases of release 2026.5 and earlier are refused** (The stream,
 above): make them again, or read them with the release that wrote them
 and put the data into a new database. The C clone (bergdb 012, 022)
@@ -626,3 +606,25 @@ theorem or a fact tested instead of proved:
   keys under uniform overwrites on 2026-11-23, and fails above 6), with
   reclaim's fraction 1/4 and no setting of the Pub API (bergdb 026-04,
   open). The rest of 2026.5's list stands as it was.
+
+
+After the release
+-----------------
+
+Added after 2026-11-24; the notes above are as published on that day.
+
+* 2026-11-24. **RB-004, S4**, fixed in this release, registered after it
+  (a date in `created.txt`; [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-24. Corrected: Verification, `java/week.sh`, reads "2,000 more
+  kills on other seeds"; it should read "3,000 more kills on other seeds".
+* 2026-11-24. Corrected: Changes, In short, the speed against 2026.5,
+  reads "reads up to 5 % slower"; it should read "reads up to 5.4 %
+  slower".
+* 2026-11-24. Corrected: Changes, The stream, the writer PE, reads "a
+  small database in memory 11 to 18 % slower in CORE's set"; it should
+  read "a small database in memory 11 to 18 % slower in CORE's set test,
+  timed when the writer landed (CORE as a whole 6 % slower in the
+  release's timing, Speed against 2026.5, below)".
+* 2026-11-24. **RB-005, S4**, found after the release, in 2026.6 and
+  2026.5; fixed on main for 2026.7 (bergdb 028-50;
+  [bergdb 033](../../items/033-bugs/readme.md)).
