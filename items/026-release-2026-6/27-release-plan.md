@@ -237,3 +237,16 @@ notes (2026.5's jars reproduce 024-38's digests, 48 of 48). D4: the
 eight jcstress tests OK; the jar's tests on s1, JDK 27 and 17: Unit
 1738, F 89, Night 26, userprog OK on each. Steps 12 to 16 follow with
 Frans.
+
+2026-11-24. Steps 12 to 15 done. Step 12: A merged into `main` as
+`f281431a` (`main` had moved in `items/` only), pushed. The README for
+after the release was edited with Frans before step 13: the values a key
+holds, the deterministic stream, "Try it" before "Status", and the core
+algorithms proved as the list's last point. Step 13: the notes read by
+Frans, with a line on the checks of A itself and one on the platforms
+(2026.6 not tested on Windows) added; commit B `024ccd31`, BEFORE
+COMMIT OK, pushed. Step 14: the tag `release-2026.6` on A, made and
+pushed on Frans's word (09:45). Step 15: the GitHub release with the
+jar and the Javadoc zip; both files downloaded and `shasum -a 256 -c
+SHA256SUMS` OK; the tag's archive builds with `java/build.sh` (BuildInfo
+2026.6). Step 16 follows.

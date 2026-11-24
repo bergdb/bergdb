@@ -432,3 +432,8 @@ agent of coord-1120).
 24 November.
 
 2026-11-24. 026-28 written: the story of the proofs of 2026.6 (Frans).
+
+2026-11-24. Release 2026.6 made: the tag `release-2026.6` on A
+`bbcd802f` (Frans, 09:45, pushed), commit B `024ccd31`,
+`releases/2026.6/`, the GitHub release with the jar and the Javadoc zip
+(026-27, steps 12 to 15).
