@@ -33,6 +33,11 @@ Decided by Frans, 2026-11-20.
   when and how it was found (review, AI-user apps, the C port, a harness,
   a proof, a user); known at the release or not; the fix's commits; the
   item with the details.
+* **Theoretical faults count** (Frans, 2026-11-24): a fault that can be
+  considered a bug is registered even when it is only possible in theory
+  and was never seen; its severity says how little it matters. The kind
+  and number of bugs found say how good a release is and what kinds of
+  bugs the work finds.
 * **Kept current:** the commit that registers a fault of a released
   version (an entry in 028, a release item's subitem) or that fixes one
   adds or updates its entry here. A release's steps check this register
@@ -48,7 +53,7 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 1 | 3 |
+| 2026.5 | 0 | 2 | 0 | 2 | 4 |
 
 
 Released bugs
@@ -104,6 +109,28 @@ RB-003. The Core API's Javadoc does not say that a new database is durable only 
   unchanged (Frans, 2026-11-20).
 
 
+RB-004. Databases created at once around midnight may get a wrong date in created.txt
+-------------------------------------------------------------------------------------
+
+* **What a user sees:** databases created at the same time by threads of
+  one JVM, at least one of them with the Core API, may get a wrong
+  creation date in their `created.txt` if the date changes while they are
+  created. `created.txt` is a text for people; BergDB does not read the
+  date. No data, index or stream byte is affected. Possible in theory
+  only: never seen, and a check with 8 threads of 5,000 calls each gave
+  no wrong date.
+* **Severity:** S4.
+* **Releases:** 2026.5 (and before, since the code of 2017); fixed in
+  2026.6.
+* **Found:** 2026-11-16, by 028-07's review of the code (why a start
+  held the lock of the class `DatabaseImp`): `Util.today()` formatted
+  with a shared `SimpleDateFormat`, which is not thread-safe; the lock
+  ordered the Pub API's starts, not the Core's. Not known at the release.
+  Registered 2026-11-24, after release 2026.6 (Frans).
+* **Fix:** 028-07 (`72e8de5d`), 2026-11-16: `Util.today()` and
+  `Util.dateAndTime()` format with thread-safe `DateTimeFormatter`s.
+
+
 Log
 ===
 
@@ -127,3 +154,7 @@ and 028-12 (the builder's startup distance up to 2^31 - 1: a corner of
 the bound on startup, a cost); 028-17, 028-21 and 028-26 fix faults of
 code that 2026.5 does not have, and 026-05's pending cut (`4b4999aa`)
 was reached only with 026-05's steps and delayed cuts, a cost.
+
+2026-11-24. RB-004 registered (028-07's date race), S4, after release
+2026.6 (Frans): a fault possible in theory only, never seen, is
+registered too (Rules). 2026.6 fixes RB-001 to RB-004.

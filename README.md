@@ -203,8 +203,8 @@ tested, on commits near its release commit:
   [releases/2026.6/readme.md](releases/2026.6/readme.md), section
   "Verification", list each run and its result.
 
-No bug is known in 2026.6; it fixes the three found in 2026.5 (RB-001
-to RB-003, item 033). The API and the stored format will likely change
+No bug is known in 2026.6; it fixes the four found in 2026.5 (RB-001
+to RB-004, item 033). The API and the stored format will likely change
 before a stable release: a database made by one release may not open in
 the next (2026.6 refuses those of 2026.5 and earlier). There is no
 upgrade tool; read the data with the old release and put it with the

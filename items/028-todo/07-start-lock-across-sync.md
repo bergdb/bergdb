@@ -130,3 +130,5 @@ branch 028-07-start-lock.
 2026-11-16. Done: the class lock removed, `Util`'s date formats made
 thread-safe, two tests; BEFORE COMMIT OK, LEVEL 1 OK; by an agent of
 coord-1116 (Claude, Opus 5.5).
+
+2026-11-24. The date race registered as RB-004 (033), S4 (Frans).

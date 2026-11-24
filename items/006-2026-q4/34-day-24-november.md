@@ -29,8 +29,10 @@ Frans, 2026-11-24:
   links in the text's colour.
 * 026 done; its subitems' statuses set by an agent on Opus, xhigh.
 * 006-33, points 2 to 4, as recommended there: F4 and F7 accepted for
-  2026.6; the three 028 entries of 030-39 registered; no RB entry for
-  028-07's date race. Point 6: SUMMARY DUE kept as it is.
+  2026.6; the three 028 entries of 030-39 registered. Point 4 otherwise:
+  028-07's date race is RB-004, S4; every fault that can be considered a
+  bug is registered, also one possible in theory only. Point 6: SUMMARY
+  DUE kept as it is.
 
 
 ## 3. Progress
@@ -45,6 +47,9 @@ Frans, 2026-11-24:
   10:55 its look changed (Frans).
 * 11:05 Two agents, Opus xhigh: 026's subitems and 026 done (step 16);
   the three 028 entries of 030-39.
+* 11:12 028-44 to 028-46 landed (`3bcec8f5`); 026 done, its subitems'
+  statuses set (`e78d82f7`); 026-03 and 026-04 carried to 031.
+* RB-004 registered in 033; README.md: 2026.6 fixes RB-001 to RB-004.
 
 
 ## 4. Outcome

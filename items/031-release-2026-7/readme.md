@@ -18,11 +18,17 @@ takes.
 Work for this release
 =====================
 
-None yet. What 2026.6 does not finish comes here, unless Frans decides
-otherwise.
+What 2026.6 does not finish comes here, unless Frans decides otherwise.
+
+* 026-03, a single maintenance step: not started in 2026.6; carried here
+  on 2026-11-24 (026 done).
+* 026-04, the settings of reclaim's fraction: the values and the default
+  not chosen in 2026.6 (1/4 kept); carried here on 2026-11-24.
 
 
 Log
 ===
 
 2026-11-20. Created (Frans), with 032.
+
+2026-11-24. 026-03 and 026-04 carried here from 2026.6, open (026 done).
