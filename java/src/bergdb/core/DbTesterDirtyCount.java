@@ -426,9 +426,9 @@ public class DbTesterDirtyCount {
     }
     
     /**
-     * The database of 028-45's case at node size 8: under a prefix of 105 bytes, 15 levels of
-     * it, a key of one segment, cut at each of its segments, with 40 keys at each, "v00000" to
-     * "v00039" after the prefix's first 7 lv bytes, so that each of the 15 segment trees is
+     * The database of 028-45's case at node size 8: a prefix of 105 bytes, 15 segments, and
+     * 40 keys after each of its first 0 to 14 segments, "v00000" to "v00039" after the
+     * prefix's first 7 lv bytes, so that each of the 15 segment trees on the prefix's path is
      * three levels high; a stream of 64 kB, 'height' 12. Returns the prefix.
      */
     private static String deepPrefix(Run run) {
