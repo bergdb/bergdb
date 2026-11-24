@@ -1,7 +1,7 @@
 028-19. Measure and change: PE's speed and reclaim's pace with PE
 ==================================================================
 
-Status: open. Kind: Change. Frans: decided (2026-11-19, 09:32).
+Status: in progress. Kind: Change. Frans: decided (2026-11-19, 09:32).
 Created 2026-11-19 by Frans Lundberg.
 
 Frans, 2026-11-19, 09:32, on merging Java's PE (026-25): "Yes, do it. As
@@ -93,3 +93,6 @@ Log
 to remeasure noted above. By an agent of coord-1118.
 
 2026-11-21. timing.sh's figures against 2026.5 added, by coord-1120.
+
+2026-11-24. In progress, by an agent of lead-1124 (from 18:17): reclaim's pace
+remeasured first, then the short way and the plan's allocations.

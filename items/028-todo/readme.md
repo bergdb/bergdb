@@ -99,7 +99,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
+| [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | in progress |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 
