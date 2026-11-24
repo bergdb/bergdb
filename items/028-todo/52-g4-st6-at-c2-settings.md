@@ -1,7 +1,7 @@
 028-52. Investigate: CountGates' G4 fails ST6 at C2's settings
 ===============================================================
 
-Status: open. Kind: Investigate. Frans: none.
+Status: in progress. Kind: Investigate. Frans: none.
 Created 2026-11-24 by Frans Lundberg.
 
 What: G4 of `CountGates` (`java/stress/count-gates.sh g4`) at 026-13's
@@ -41,3 +41,6 @@ Log
 
 2026-11-24, 12:30. Registered by an agent of lead-1124, from 028-47's
 finding F3 (Frans, 2026-11-24, 12:30).
+
+2026-11-24, 12:35. Taken by an agent of lead-1124 (in progress), in a
+clone of `main` at 6d1d7805, on the branch 028-52.

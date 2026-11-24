@@ -104,7 +104,7 @@ Open
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
 | [028-51](51-maintain-m1-written-db.md) | Fix | maintain()'s M1 stalls in a written database | none | open |
-| [028-52](52-g4-st6-at-c2-settings.md) | Investigate | CountGates' G4 fails ST6 at C2's settings | none | open |
+| [028-52](52-g4-st6-at-c2-settings.md) | Investigate | CountGates' G4 fails ST6 at C2's settings | none | in progress |
 
 
 Closed
