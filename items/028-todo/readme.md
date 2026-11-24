@@ -101,10 +101,6 @@ Open
 |---|---|---|---|---|
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
-| [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | in progress |
-| [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
-| [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
-| [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
@@ -115,6 +111,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | done | 2026-11-24 |
 | [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | done | 2026-11-24 |
 | [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | done | 2026-11-24 |
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins: a mixed hash, 74 times fewer pairs scanned | none | done | 2026-11-24 |
@@ -390,3 +387,8 @@ the stream's growth; B2, B with `maintain()`'s take at commits, gives the
 gain but writes 4.3 times the stream at the Pub's default startup
 distance. Recommended: A, no change. The entry is a directory now, with
 its probes; status open.
+
+2026-11-24. 028-44 done by an agent of lead-1124 on the branch `028-44`:
+the contract checker fails a trace with a shape fault (`shapeFaults`, the
+premise `FillOk`), kept out of the comparison with `checkVerdict`; a
+fault of FillOK alone in faults.sh. Moved to Closed.
