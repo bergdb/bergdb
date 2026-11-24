@@ -515,6 +515,16 @@ fault:
   for 2026.6 (Frans, 2026-11-22); whether it stays, or a walk of a key's
   versions moves into the Core, is for a later release.
 
+**Found after the release:**
+
+* **RB-005, S4**, registered 2026-11-24 ([bergdb 033](../../items/033-bugs/readme.md);
+  028-45): the count of the index nodes that a transaction can make
+  dirty, which keeps its nodes within one record, is short for a key
+  that a key transformation makes longer (46 nodes made dirty, 39
+  counted, in a test at node size 8). Within a transaction's limits it
+  has no effect: a separate bound keeps every transaction's nodes within
+  a record. To be fixed in 2026.7 (bergdb 028-50).
+
 **Databases of release 2026.5 and earlier are refused** (The stream,
 above): make them again, or read them with the release that wrote them
 and put the data into a new database. The C clone (bergdb 012, 022)
