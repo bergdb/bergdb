@@ -102,7 +102,6 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
-| [028-51](51-maintain-m1-written-db.md) | Fix | maintain()'s M1 stalls in a written database | none | open |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-51](51-maintain-m1-written-db/readme.md) | Fix | maintain()'s M1 stalled in a written database: fixed, RB-006 | none | done | 2026-11-24 |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | A (12:26) | done | 2026-11-24 |
 | [028-50](50-key-transformation-count.md) | Fix | The dirty-node count of a key with a key transformation, after it | A (12:26) | done | 2026-11-24 |
 | [028-52](52-g4-st6-at-c2-settings.md) | Investigate | G4's ST6 at C2's settings: the gate, given G5's floor | none | done | 2026-11-24 |
@@ -424,3 +424,9 @@ turned around; RB-005 fixed on `main` for 2026.7. Moved to Closed.
 
 2026-11-24. 028-45 done: its test landed, and the fault it found, RB-005,
 is fixed by 028-50. Moved to Closed.
+
+2026-11-24. 028-51 done by an agent of lead-1124 on the branch `028-51`:
+`maintain()`'s M1 begins an iteration also when the next one's cut would
+release 400 kB, the stream written since reclaim last stored its table;
+F1 broke what the Javadoc of `maintain()` promises, registered as RB-006
+(S4). Moved to Closed.

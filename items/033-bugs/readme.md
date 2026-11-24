@@ -215,9 +215,9 @@ RB-006. maintain() stops beginning reclaim iterations after some cuts
   fixed on `main` for 2026.7.
 * **Found:** 2026-11-24, by 028-47's study of commits that reclaim by
   the clock (finding F1, `SlowDriveProbe`); not known at the releases.
-* **Fix:** 028-51, 2026-11-24: `maintain()`'s M1 begins an iteration
-  also when the cut of the next one would release 400 kB: the stream
-  written since reclaim last stored its table.
+* **Fix:** 028-51 (`68386bc6`), 2026-11-24: `maintain()`'s M1 begins
+  an iteration also when the cut of the next one would release 400 kB:
+  the stream written since reclaim last stored its table.
 
 
 Log
