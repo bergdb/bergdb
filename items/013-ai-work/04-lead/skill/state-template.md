@@ -1,41 +1,20 @@
 # Lead state, YYYY-MM-DD
 
-The lead's state, which changes by the minute (bergdb 013-02,
-section 7). The record is the day's plan. Times from `date`.
+Only what is live (bergdb 013-04, section 8); the record is the plan.
 
-* Mode: attended
-  (attended | unattended until YYYY-MM-DD HH:MM | closing | closed)
-* Session: lead-MMDD, ID <session ID>, process ID <pid>
-* Plan: none yet (the quarter's subitem, such as 006-11)
-* Previous lead: <name>, <its STATE_DIR>, <its mode>
-* Next lead: none yet
-* Check-ins: <job ID, cron, next run>
-* Watchdog: none (<pid>, until YYYY-MM-DD HH:MM)
-* Effort: the session xhigh, subagents high (xhigh for a hard task; all
-  high when usage is tight or limit; else Frans's word; section "Effort")
-* Usage: <the last line of usage.sh, with its time> (Frans's word, if he
-  gave one: "tight since HH:MM")
-* Agents at a time: at most N, as Frans allows
-* Quiet block: none (HH:MM to HH:MM, 013-01)
-
+* Session: lead-MMDD, ID <the directory above the scratchpad>, process ID
+  <PID: ~/.claude/sessions/PID.json holds the ID>
+* Plan: <ID and file>
+* Previous lead: <name, its STATE_DIR, closed or told to close at HH:MM>
+* Check-in: job <ID>, `13,43 * * * *`, made YYYY-MM-DD HH:MM
+* Heavy runs on F53: <none, or each with its PID> (at most six; timing alone)
 
 ## Agents
-
-| Name or ID | Task and item | Clone | Effort | Output file | Started | Status |
-|---|---|---|---|---|---|---|
-
+* <ID> (<short name>): <task, item>; clone <path>; <model> <effort>;
+  output <file>; stop HH:MM
 
 ## Background commands
+* <PID or task ID>: <what>; output <file>; started HH:MM
 
-| PID or task ID | What | Output | Started | Status |
-|---|---|---|---|---|
-
-
-## Waiting for Frans
-
-None.
-
-
-## Events
-
-* HH:MM Started.
+## Next
+* <what comes next, with its time if it has one>

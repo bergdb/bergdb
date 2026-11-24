@@ -1,7 +1,9 @@
 # 013-01 The unattended night
 
 Created 2026-10-28 by Claude (Opus 5.5, Claude Code), at Frans's request.
-Status: open.
+Status: done (2026-11-24; 013-04, plan choice 8): kept as the record of the
+first nights and the home of the conductor; the lead (013-04) needs
+nothing from it.
 
 This describes how an AI session works on BergDB without Frans, from about
 noon until 07:00 the next morning. It is written for Frans, for Claude, and

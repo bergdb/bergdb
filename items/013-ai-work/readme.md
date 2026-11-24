@@ -12,7 +12,8 @@ own items.
 Files
 =====
 
-* [01-night.md](01-night.md). 013-01, the unattended night: an AI session
+* [01-night.md](01-night.md). 013-01, the unattended night (done
+  2026-11-24, the record): an AI session
   works from about noon to 07:00 the next morning without Frans. The roles,
   the plan, the ground rules, the day's development with subagents, how
   the work survives a usage limit, the quiet block of timed runs at night,
@@ -33,11 +34,15 @@ Files
   Sonnet and Haiku 5.5: intelligence, estimated task time, time to first
   token, time for a 500-token answer and API-equivalent cost per task;
   the model choices made from it.
-* [04-lead.md](04-lead.md). 013-04, the lead: the daily session Frans
-  works with, 013-02's coordinator under a new name. [04-lead/skill/](04-lead/skill/)
-  is the Claude Code skill `lead`, a copy of 013-02's skill with the names
-  changed, linked from `~/.claude/skills/lead`; [04-lead/plan.md](04-lead/plan.md)
-  is the plan for its cleanup.
+* [04-lead.md](04-lead.md). 013-04, the lead: the session Frans works
+  with, which runs the work through subagents, Codex and detached runs;
+  no modes, decisions in three classes, 07:00 on weekdays as the fixed
+  point, a watchdog for its whole life, a weekly usage limit. A lead needs
+  nothing from 013-01 or 013-02. [04-lead/skill/](04-lead/skill/) is the
+  Claude Code skill `lead`, with `usage.sh`, `status.sh`, `watchdog.sh`
+  and their tests, linked from `~/.claude/skills/lead`;
+  [04-lead/plan.md](04-lead/plan.md) is the plan of its cleanup
+  (2026-11-23), done but for its first night.
 
 
 Log
@@ -113,3 +118,12 @@ notifications (Frans, 2026-11-23). Frans chose the plan's ten
 recommendations the same day. AGENTS.md and the headers of `night.sh` and
 `week.sh` name the lead (013-04); the link `~/.claude/skills/coordinator`
 is removed.
+
+2026-11-24. 013-04's cleanup landed (its plan, section 12, steps 2 to 6
+and 8): `usage.sh` with a weekly limit, the new `status.sh`, the watchdog
+for the lead's whole life, `SKILL.md` in 120 lines, the state template,
+013-04 rewritten, `test/run.sh` (`LEAD TESTS OK`); seven reviews by Codex,
+seventeen of eighteen points fixed, one for Frans (013-04, section 12).
+Written in a clone on 2026-11-23 by Claude (Opus 5.5, Claude Code). Frans
+chose to land it without a separate review and to test it in use, from
+lead-1124 on. 013-01 marked done (plan choice 8).
