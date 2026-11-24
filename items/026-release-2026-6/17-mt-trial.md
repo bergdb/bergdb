@@ -1,8 +1,10 @@
 # 026-17. MT's trial: maintenance transactions in the model
 
 Created 2026-11-16 by Frans Lundberg. Status: done (the trial run
-2026-11-16, 11:17 to 13:36; the result below; Frans decides A1, and MT,
-NW or neither).
+2026-11-16, 11:17 to 13:36; the result below). MT not taken: Frans
+concluded in 026-19's brief (2026-11-17), "Stay with the current
+model."; 2026.6's writer is PE (026-24, 026-25), 006-28's NW (026-23).
+A1 not ruled on.
 
 A trial, in the Lean model only, of MT (006-28, section 7.5): a user
 transaction makes no merge, no upward delete and no root collapse; each
@@ -1067,3 +1069,5 @@ from agent A's text (the harness refused the agent's write). The branch
 The coordinator checked five numbers of the result against
 `runs/30-E.txt`, `30-C.txt`, `30-D.txt` and `30-H.txt`, and that all 17
 runs of T5 and T6 end with MTTEST OK.
+
+2026-11-24. Status set after the release (lead-1124).

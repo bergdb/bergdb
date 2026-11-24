@@ -1,8 +1,8 @@
 # 026-05. Each reclaim step scans at its own time
 
-Created 2026-11-13 by Frans Lundberg. Status: done; on main since
-2026-11-13 (`6816d1ff`); Q1 to Q4 yes (Frans, 09:41). Follow-up: G4's
-lag as a gate (Q4).
+Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-13): on
+`main` since `6816d1ff`; Q1 to Q4 yes (Frans, 09:41). Its follow-up,
+G4's lag as a gate (Q4), done in 026-11.
 
 For release 2026.6: P8 of 023-05 ("each reclaim step scans at its own
 time", the prototype `p8-steptime`), decided for 2026.6 (024-05, OP9;
@@ -381,3 +381,5 @@ every n and f. No expected value of an existing test changed. The lag
 branch `026-05-lag` (worktree /Users/f/fl/bench/2026-11-13/p8/lag) is
 not to land. Open: Frans's Q1 to Q4 (section 8), each decided here by
 its recommendation.
+
+2026-11-24. Status set after the release (lead-1124).

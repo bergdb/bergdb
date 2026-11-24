@@ -1,7 +1,9 @@
 # 026-21. A first study of two writer designs: step times and net change
 
 Created 2026-11-18 by Frans Lundberg. Status: done (the study run
-2026-11-18, 09:00 to 10:55; the result below, for Frans to decide).
+2026-11-18, 09:00 to 10:55; the result below). The recommended (b),
+step times with the delete in pieces, not taken (Frans, 11:23; 006-31);
+the writer became PE (026-24, 026-25).
 
 A first study of both designs of 026-20 (step times, net change), in the
 Lean model only, before Frans decides the direction of 2026.6's writer
@@ -652,3 +654,5 @@ modes; bp on every set; the large set's seeds 11 to 30 in today, b0, b
 and bp). At 10:46 the last part cut to today and b on the 120 traces of
 seeds 11 to 30 (the other two modes would have added half an hour and
 nothing new). All runs ended at 10:55 with no failure.
+
+2026-11-24. Status set after the release (lead-1124).

@@ -1,6 +1,8 @@
 # 026-07. The write buffer grows with use
 
-Created 2026-11-13 by Frans Lundberg. Status: open.
+Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-13): on
+`main` since `ad5b0861`, the merge of `026-07-write-buffer`; Frans's
+answers to Q1 to Q4 in section 8.
 
 For release 2026.6 (Frans, 2026-11-12, 12:10, "As recommended", on
 024-05, ST8, and 024-01, PA7): "a buffer that grows with use (or a
@@ -342,3 +344,5 @@ before-commit, level1 and count-gates OK; the timing comparison
 (section 5.3) was made with the 1 s delay, which does not change a
 flush or a force. Frans answered Q1 to Q4 and kept 10 MB (section 8);
 nothing open. The coordinator lands the branch.
+
+2026-11-24. Status set after the release (lead-1124).

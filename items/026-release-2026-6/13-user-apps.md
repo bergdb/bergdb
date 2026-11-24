@@ -1,7 +1,9 @@
 # 026-13. User apps against 2026.6's changes
 
 Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-13): no bug;
-U13-1 to U13-6, Q1 for Frans, five proposed 028-todo entries.
+U13-1 to U13-6; the five proposed entries registered as 028-03 to
+028-07, all done. Q1 decided (Frans, 13:07): A as 028-06, done; B among
+026's proposals, not studied in 2026.6.
 
 A round of "AI as the user" testing (006-20; the last round 024-26)
 against what `main` changed on 2026-11-13 for release 2026.6: each reclaim
@@ -572,3 +574,5 @@ OK (12:43 to 13:02).
 
 2026-11-21. The apps' maker (Claude Opus 5.5, xhigh) added, at Frans's
 request, by coord-1120.
+
+2026-11-24. Status set after the release (lead-1124).

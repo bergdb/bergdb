@@ -1,7 +1,8 @@
 # 026-02. A public key check: options and a recommendation
 
-Created 2026-11-12 by Frans Lundberg. Status: done; on branch
-`026-02-limits` since 2026-11-13, for the coordinator to land (section 10).
+Created 2026-11-12 by Frans Lundberg. Status: done (2026-11-13): on
+`main` since `6e27cf17`, the merge of `026-02-limits`; QK1 to QK4
+(Frans, 09:11), Q9-1 (09:29) and D3 (09:32) decided.
 
 Frans, 2026-11-12, 09:34: "Add a todo item for public key-checking. There
 are some options. [...] Investigate the options and recommend an
@@ -529,3 +530,5 @@ put's path has the same calls (section 7, step 7).
   branch, run `java/before-commit.sh` again (one slot).
 * The study's state of 2026-11-12 (written 09:40 by "keychk"): the
   study, the recommendation and the plan, no code; done.
+
+2026-11-24. Status set after the release (lead-1124).

@@ -1,7 +1,9 @@
 # 026-20. Two writer designs for 2026.6: step times and net change
 
-Created 2026-11-18 by Frans Lundberg. Status: written down; a first study
-of both proposed (026-21), for Frans to decide.
+Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-18): written
+down and studied in 026-21; neither design taken: net change is today's
+Java already (026-21), step times not taken (Frans, 11:23; 006-31); the
+writer became PE (026-24, 026-25).
 
 From coord-1117's discussion with Frans, 2026-11-18, 06:43 to 08:49, in a closed
 session. For coord-1118. The reasoning is coord-1117's; Frans's words are quoted.
@@ -129,3 +131,7 @@ updates, and a sorted bulk load). Count: take-backs left (net change); steps, ex
 versions, extra stream bytes, node fill, splits (step times); any operation that would
 have to touch its own fresh nodes (step times, risk 2). About a day for one agent each;
 the numbers decide 2026.6's writer. The contract's checkers run on the new traces too.
+
+## Log
+
+2026-11-24. Status set after the release (lead-1124).

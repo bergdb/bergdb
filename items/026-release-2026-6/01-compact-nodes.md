@@ -3,10 +3,12 @@
 Moved from 024-20 on 2026-11-12 (Frans, 07:39): the compact stored form
 is for release 2026.6 (QC1).
 
-Created 2026-11-11 by Frans Lundberg. Status: open. Postponed
-2026-11-11, 11:50 (Frans: the merges at the delete first, the stored
-form after that); resumed 2026-11-12, 01:34, on record format 7 (main
-`a8c3589a`). State says where it is.
+Created 2026-11-11 by Frans Lundberg. Status: moved to release 2026.8
+(032) on 2026-11-20 (Frans), its ID and file kept here; open there. The
+measurements done 2026-11-12 (State); QC2 to QC5 are part of 026-12.
+Postponed 2026-11-11, 11:50 (Frans: the merges at the delete first, the
+stored form after that); resumed 2026-11-12, 01:34, on record format 7
+(main `a8c3589a`).
 
 Should an index node be stored more compactly in the stream, and how? A
 study with measurements: the stored form today, byte for byte; where a
@@ -788,3 +790,5 @@ at 01:34. No run is running, no slot held; the test databases removed
   work starts there from section 4's definition (`Codec`'s class
   comment) and 5.1 to 5.5's list; QC4's constant can be fixed in 2026.5
   on its own.
+
+2026-11-24. Status set after the release (lead-1124).

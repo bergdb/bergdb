@@ -1,6 +1,8 @@
 # 026-03. One maintenance step, for a commit and for maintain()
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: open, carried to release
+2026.7 (031), which takes what 2026.6 does not finish: registered only,
+not started in 2026.6.
 
 For release 2026.6. Registered by the coordinator at Frans's request
 (2026-11-12, 13:52: "For 2026.6, a new item for the single maintenance
@@ -58,3 +60,5 @@ cut when due, eviction. No internal code calls `maintain()`.
 2026-11-12, 13:52: registered only; nothing started. Sources: 024-32
 (the design note, section 2; Q32-1 to Q32-5, accepted as built for
 2026.5), 024-30 (G4, G5).
+
+2026-11-24. Status set after the release (lead-1124).

@@ -1,7 +1,9 @@
 # 026-06. A value transformation that throws or passes 8 MiB refuses the transaction
 
-Created 2026-11-13 by Frans Lundberg. Status: done; on main since
-2026-11-13 (code `8bd6e3a7`, `f28b6832`, `322cafed`; Q1 to Q4 yes).
+Created 2026-11-13 by Frans Lundberg. Status: done (2026-11-13): on
+`main` since then, the code `a5c67ba1`, `11a9ef81` and `b159cd30`
+(`8bd6e3a7`, `f28b6832` and `322cafed` before the history was rewritten,
+029); Q1 to Q4 yes (Frans, 08:45). It fixed RB-001 and RB-002 (033).
 
 For release 2026.6: a value transformation (Core API) that throws, or
 whose result passes 8 MiB, refuses its transaction with a `DbException`
@@ -431,3 +433,5 @@ to the gated `322cafed`; pushed. 010-04's R5 case line says done.
   "to change in 2026.6") can say done since 026-06; not edited here.
 * **To continue** if main moves before landing: merge main, rerun
   before-commit and level1 (`vt/gates.sh` runs all four steps).
+
+2026-11-24. Status set after the release (lead-1124).

@@ -1,7 +1,9 @@
 # 026-18. Main transactions and subtransactions: an idea
 
-Created 2026-11-16 by Frans Lundberg. Status: open (an idea, written
-down to pick up later; nothing decided, nothing started).
+Created 2026-11-16 by Frans Lundberg. Status: done (2026-11-17), an
+idea written down and tried: its proof trial, 026-19, was reduced, not
+proved, and Frans concluded in its brief, "Stay with the current
+model."; 2026.6's writer is PE (026-25).
 
 A main transaction is an atomic sequence of subtransactions: one user
 subtransaction, then zero or more maintenance subtransactions. Readers
@@ -172,3 +174,5 @@ see. Depends on other work." Not decided.
 
 2026-11-16. Written by coord-1116 from Frans's words (12:54 and 13:11)
 and the coordinator's reply to the first; nothing else done.
+
+2026-11-24. Status set after the release (lead-1124).

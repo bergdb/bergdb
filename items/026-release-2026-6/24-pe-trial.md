@@ -1,7 +1,8 @@
 # 026-24. The PE trial: plan, then emit, in the model
 
-Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-18): go, for
-Frans to decide.
+Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-18): go.
+Frans's go for the proof and Java (21:42): PE proved in 030-21, Java's
+writer as PE in 026-25, on `main` since 2026-11-19 (`9bcbeea8`).
 
 The model-first test of PE, "plan, then emit" (026-23, section 1.2), the
 writer design that removes the take-back at its cause: one recursion over
@@ -650,3 +651,5 @@ emit writes (14:04 to 14:16), a kept subtree (14:21). Result written
 (14:20). The large set's seeds 11 to 30 in mode pe (14:10 to 14:18; today's
 bytes from 026-21's RESULT lines), the cut variant on the own and medium
 sets (14:23 to 14:38). Done.
+
+2026-11-24. Status set after the release (lead-1124).

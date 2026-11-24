@@ -1,6 +1,9 @@
 # 026-12. The stable stream format: a draft plan
 
-Created 2026-11-13 by Frans Lundberg. Status: open (a draft for Frans).
+Created 2026-11-13 by Frans Lundberg. Status: moved to release 2026.8
+(032) on 2026-11-20 (Frans), its ID and file kept here; open there, a
+draft for Frans. SF4 open again and SF7 (a) made in 028-15 (2026-11-18);
+SF12 added (2026-11-19).
 
 Every open question that bears on release 2026.6's stable stream
 format, gathered into one plan: what must be decided, in which order,
@@ -826,3 +829,5 @@ were.
 
 2026-11-19. SF12: the release fields wait; encryption and replication
 come first in the format's design (Frans, 10:05).
+
+2026-11-24. Status set after the release (lead-1124).

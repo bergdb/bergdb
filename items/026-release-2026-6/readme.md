@@ -1,7 +1,8 @@
 026-release-2026-6
 ==================
 
-Created 2026-11-11 by Frans Lundberg. Status: open.
+Created 2026-11-11 by Frans Lundberg. Status: done (2026-11-24, Frans):
+release 2026.6 made on 2026-11-24 (026-27).
 
 Release 2026.6 of BergDB, after 2026.5 (024): its plan, its decisions and
 the work towards it. Its theme: **proven algorithms** (Frans,
@@ -161,10 +162,12 @@ Files
 * 03-single-maintenance-step.md. 026-03, one maintenance step for a
   commit and for `maintain()`, and the simple form (ordinary
   transactions with filler) to consider (Frans, 2026-11-12, 13:44 and
-  13:52; from 024-32).
+  13:52; from 024-32). Open, not started; carried to 2026.7 (031).
 * 04-reclaim-fraction-settings.md. 026-04, reclaim's fraction: measured
   at larger databases, three recommended values and one default
-  (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4).
+  (Frans, 2026-11-12, 14:07; 2026.5 keeps 1/4). Measured at 10M keys,
+  the back-to-empty lag explained (cured by 026-05); the values not
+  chosen, 2026.6 keeps 1/4. Open, carried to 2026.7 (031).
 * 05-reclaim-step-time.md. 026-05, each reclaim step scans at its own
   time (P8 of 023-05, with 023-08's fault 13 fixed): the change, the
   cut's argument, the gates, and back to empty's lag after a
@@ -188,8 +191,9 @@ Files
 * 09-keys-only-scan.md. 026-09, reclaim's scan without the values it
   does not rewrite (024-34, Q34-1, option b; Frans, 2026-11-13, 09:38):
   `GetMany.valuesBefore`; the steps' loads 44 to 60 % fewer, the steps
-  14 to 20 % fewer, at 10M keys 1 to 4 % more stream written; on branch
-  `026-09-keys-only-scan`, to land (Q1, recommended) with Q2 to Q4.
+  14 to 20 % fewer, at 10M keys 1 to 4 % more stream written; Q1 to Q4
+  decided yes (Frans, 2026-11-14, 11:35); on main since 2026-11-14
+  (37005f6a).
 * 10-node-id-cache-after-empty.md. 026-10, `NodeCollection.idByPos`
   after back to empty (found by 026-07): a decided cut forgets the node
   ids below it and `KeyModSet`'s key hashes before it (the 2.2 MB of
@@ -210,23 +214,26 @@ Files
   026-08): twelve programs with their own oracles, SIGKILLs of child
   JVMs; no bug in BergDB; U13-1 to U13-6, Javadoc findings and one
   question (Q1: commits pace reclaim by the stream, `maintain()` by the
-  clock); proposed 028-todo entries. The logs in 13-user-apps/; the
+  clock); proposed 028-todo entries, registered as 028-03 to 028-07,
+  done. Q1 decided (Frans, 13:07): A as 028-06; B among the proposals
+  above, not studied in 2026.6. The logs in 13-user-apps/; the
   apps maintained in java/stress/apps/ since 2026-11-19 (028-23).
 
 * 14-model-scope.md. 026-14, the Lean model's scope: the boundary as it
   is, three additions in order of value (reclaim as a whole, the stream
   format as bytes, the commit's conflict check), the assumption list, what
-  stays out; proposed, for Frans to decide (2026-11-13, 12:11).
+  stays out; proposed, for Frans to decide (2026-11-13, 12:11). Not
+  decided by the release; open, on 030's map (D5).
 
 * 15-timing-10m.md. 026-15, the timing pass at 10M keys: what 2026.6's
-  changes to reclaim (026-05, 026-09) cost or save in time; run from
-  2026-11-14, 15:00, to Sunday morning.
+  changes to reclaim (026-05, 026-09) cost or save in time; done, run
+  2026-11-14, 15:58, to 2026-11-15, 03:11 (its section 9).
 
 * 16-simpler-for-proofs.md. 026-16, a study: what could change in
   BergDB's algorithms to make the remaining Lean premises simpler to
   prove, without a significant loss of function or speed (P11, P13);
   only the premises still open, not what is proved (Frans, 2026-11-14,
-  12:53).
+  12:53). Done: F1 accepted (Frans, 13:46), its work is 025-03.
 
 * 17-mt-trial.md. 026-17, MT's trial: maintenance transactions (006-28,
   section 7.5) in the Lean model only, beside today's writer, run and
@@ -237,14 +244,16 @@ Files
   invariants; at node size 30, 0.08 fix steps a deleted key, bytes 1.01
   to 1.03 times today's for mixed work, 1.17 for mass deletes), with one
   rule added (A1, a scan budget in the model) for Frans to rule on; the
-  evidence in 17-mt-trial/, the branch `026-17-mt-trial` kept.
+  evidence in 17-mt-trial/, the branch `026-17-mt-trial` kept. MT not
+  taken (026-19's brief); the writer became PE (026-25).
 
 * 18-main-and-subtransactions.md. 026-18, an idea of Frans's (2026-11-16,
   12:54): a main transaction is an atomic sequence of subtransactions,
   one user subtransaction and zero or more maintenance subtransactions;
   readers see only the states between main transactions. Written down
   to pick up later, with the coordinator's view, the open questions and
-  a proposed short proof trial; nothing decided.
+  a proposed short proof trial. Done: tried in 026-19, whose brief
+  concludes to stay with the current model.
 
 * 19-proof-trial.md. 026-19, the proof trial of 026-18 (Frans,
   2026-11-16, 13:48): one fix step keeps the in-between invariant, and
@@ -258,7 +267,8 @@ Files
   that remove (step times) or reduce (net change) the take-back inside a
   transaction, from coord-1117's discussion with Frans (2026-11-18, 06:43
   to 08:49): the terms, the time klong's layout, the risks, a comparison
-  and a proposed first study; nothing decided.
+  and a proposed first study. Done: studied in 026-21; neither design
+  taken, the writer became PE (026-24, 026-25).
 
 * 21-step-times-study.md. 026-21, a first study of both designs of 026-20
   in the Lean model (Frans, 2026-11-18, 08:49 and 08:56: "simplification is
@@ -269,7 +279,8 @@ Files
   2026-11-18, 10:55: (b), step times with the delete in pieces, is
   recommended; at node size 30 it costs nothing on random work and a few
   per cent on index updates, and up to 1.4 times the bytes on sorted
-  loads in large transactions; Frans decides.
+  loads in large transactions. Not taken (Frans, 11:23); the writer
+  became PE (026-24, 026-25).
 
 * 22-mt-contract-check.md. 026-22, a short check of MT (026-17) against
   the contract of `lean/contract` (coord-1118's brief, 2026-11-18, 11:53;
@@ -288,7 +299,8 @@ Files
   in a node), a recommendation, and a comparison with 026-17 to 026-21:
   PE is 006-28's NW, which 026-20's "net change" is not, and it has had
   no spike; a count on Java's traces in 23-second-opinion/ (writing each
-  node's last list once never adds more klongs than Java does). Done.
+  node's last list once never adds more klongs than Java does). Done;
+  PE taken to a trial (026-24).
 
 * 24-pe-trial.md. 026-24, the PE trial (Frans, 2026-11-18, 12:47: "The PE
   trial. Yes, do it as recommended."): 026-23's PE, plan then emit, in the
@@ -300,15 +312,17 @@ Files
   segment, the plan's keys and order and the whole contract reduced to what
   emit writes; 3,288 lines of its own); a complete proof estimated at 6,500
   to 9,500 lines. The evidence in 24-pe-trial/, the branch
-  `026-24-pe-trial`.
+  `026-24-pe-trial`. Frans's go (21:42): proved in 030-21, made in Java
+  in 026-25.
 
 * 25-pe-java.md. 026-25, Java's writer as PE, "plan, then emit", the writer
   that 030-21 proved (Frans, 2026-11-18, 21:42: "feel free to do the Java
   implementation too"): Java's write half replaced by PeWriter.lean's
   program, the tree checker's oracle made PE, the record format, the old
   writer's code removed; record format 8. Gated d64e5638 on the branch
-  `026-25-pe-java`, not merged; on s1 about 8 % slower than main's
-  writer in CCBench, for Frans.
+  `026-25-pe-java`; on s1 about 8 % slower than the old writer in
+  CCBench. Merged into main on 2026-11-19 (9bcbeea8; Frans, 09:32); its
+  follow-up, 028-19, open.
 
 * 26-pub-app-hunt.md. 026-26, an independent hunt, with apps designed
   apart from the earlier ones (024-26, 026-13): eight Pub API apps with
@@ -325,7 +339,8 @@ Files
   and 033 current, the notes, commit A and its gate, commit B, the tag,
   the release on GitHub), and five decisions for Frans, D1 to D5.
   Its directory `27-release-plan/` holds the release scripts of
-  2026.6 (step 10, its section 4), 024-38's adapted.
+  2026.6 (step 10, its section 4), 024-38's adapted. Done 2026-11-24:
+  steps 1 to 16, the release made.
 
 * 28-proof-story.md. 026-28, how the proofs came to work, the story of
   2026.6 as an overview, for the way of working: the old line close to
@@ -437,3 +452,17 @@ agent of coord-1120).
 `bbcd802f` (Frans, 09:45, pushed), commit B `024ccd31`,
 `releases/2026.6/`, the GitHub release with the jar and the Javadoc zip
 (026-27, steps 12 to 15).
+
+2026-11-24. 026 done (Frans, 11:03), after the release (026-27, step
+16). The subitems' statuses set from their records (lead-1124); those
+already true kept. Done: 026-02, 026-05 to 026-11, 026-13, 026-15 to
+026-28. Moved to 2026.8 (032) on 2026-11-20: 026-01 and 026-12, their
+IDs and files kept here. Open, carried to 2026.7 (031), which takes what
+2026.6 does not finish: 026-03, not started, and 026-04, the three
+values and the default. Open: 026-14, not decided; 030's map lists it
+(D5). Not taken by 2026.6: MT (026-17, 026-18; 026-19's brief) and step
+times (026-20, 026-21); its writer is PE (026-24, 026-25). Not made in
+2026.6: the versioning rule and the corpus (027-03, section 21), decided
+for it on 2026-11-13; the stable format was set aside on 2026-11-18. Not
+studied: 026-13's option B, a proposal above. 028-19 and 028-34 stay
+open for a later release.

@@ -1,6 +1,7 @@
 # 026-27. The release plan for 2026.6
 
-Created 2026-11-22 by Frans Lundberg. Status: open.
+Created 2026-11-22 by Frans Lundberg. Status: done (2026-11-24): steps
+1 to 16; release 2026.6 made.
 
 The work left before the tag `release-2026.6`, in order: what, when, by
 whom and how each step is checked. The release is planned for Tuesday 24
@@ -250,3 +251,9 @@ pushed on Frans's word (09:45). Step 15: the GitHub release with the
 jar and the Javadoc zip; both files downloaded and `shasum -a 256 -c
 SHA256SUMS` OK; the tag's archive builds with `java/build.sh` (BuildInfo
 2026.6). Step 16 follows.
+
+2026-11-24. Step 16 done: 026 done (Frans, 11:03); each subitem's
+status set from its records (026's log); 026's index line in
+`items/readme.md`; this plan done. bergdb.org updated for 2026.6
+(bergdb.github.io `2f03684` and `3cb90ab`). 028-19 and 028-34 stay open
+for a later release.

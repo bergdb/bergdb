@@ -1,7 +1,9 @@
 # 026-23. A simpler writer for a complete proof: a second opinion
 
 Created 2026-11-18 by Frans Lundberg. Status: done (2026-11-18): the
-proposals, the comparison and one count; Frans decides.
+proposals, the comparison and one count. PE, the first proposal, taken
+to a trial (Frans, 12:47; 026-24), proved (030-21) and made in Java
+(026-25).
 
 Frans's question, 2026-11-18: how could BergDB's writer be made simpler,
 so that a complete proof of it becomes feasible, with similar performance
@@ -508,3 +510,5 @@ over dead pointers, reclaim's touch).
 2026-11-18. Created the item; sections 1 and 2 (an agent of coord-1118),
 committed before 026-17 to 026-22 were read. Then section 3, the
 comparison, and section 4, a count on Java's traces. Done.
+
+2026-11-24. Status set after the release (lead-1124).

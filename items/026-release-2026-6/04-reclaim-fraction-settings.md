@@ -1,6 +1,11 @@
 # 026-04. Reclaim's fraction: three recommended values and one default
 
-Created 2026-11-12 by Frans Lundberg. Status: open.
+Created 2026-11-12 by Frans Lundberg. Status: open, carried to release
+2026.7 (031), which takes what 2026.6 does not finish. Done: the runs at
+10M keys (section 3) and the back-to-empty lag explained (section 4),
+cured by 026-05. Not done: the three recommended values and the default
+(section 2, items 2 to 4); 026-15 timed 10M keys at 1/4 only. 2026.6
+keeps 1/4.
 
 For release 2026.6. Frans, 2026-11-12, 14:07: "QF1. My conclusion is
 that 1/4 is good for this release, keep it. But this requires more
@@ -230,3 +235,5 @@ values; P8 is its cure. The instrumentation is on branch `026-04-lag`
 not to land; the raw outputs in /Users/f/fl/bench/2026-11-13/frac/. Next:
 the timing pass at 10M, then the three values and the default (section
 2); workload (d) again after P8.
+
+2026-11-24. Status set after the release (lead-1124).
