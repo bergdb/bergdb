@@ -51,7 +51,9 @@ import bergdb.stream.FileStream;
  *      the fill and the deletes: kept (the most in the last R), the reachable key nodes,
  *      their dead KEY klongs, the resident index objects, the live handles, the cache
  *      tables' slots (ST6; counted since its fix, 024-33) and the heap after a GC, each
- *      at most 2 times the twin's. KeyAccessPath's arrays (ST7) were printed, not
+ *      at most 2 times the twin's, the slots at most the larger of that and the tables'
+ *      floor, as in G5 (since bergdb 028-52: the twin's slots grow with its drive's
+ *      length). KeyAccessPath's arrays (ST7) were printed, not
  *      gated, until record format 8, whose writer has none (bergdb 026-25). Needs --add-opens java.base/java.util (the slots are
  *      HashMap's table lengths). The lag: the first drive transaction from which kept
  *      stays at most twice the twin's M1 (the most in its last R), at most 2 R (bergdb
@@ -602,10 +604,27 @@ public class CountGates {
             Cache3 cache = r.db.internal().cache();
             m.objects = cache.residents().objects();
             m.handles = cache.handles().size();
+            // The maps by the length of their table: maps, entries, empty maps (printed, not
+            // gated; bergdb 028-52).
+            TreeMap<Integer, int[]> byLength = new TreeMap<Integer, int[]>();
             for (Object t : (Object[]) field(cache, "tables")) {
                 Object[] table = (Object[]) field(field(t, "map"), "table");
                 if (table != null) m.slots += table.length;
+                int len = table == null ? 0 : table.length;
+                int size = ((Map<?, ?>) field(t, "map")).size();
+                int[] a = byLength.get(len);
+                if (a == null) byLength.put(len, a = new int[3]);
+                a[0]++;
+                a[1] += size;
+                if (size == 0) a[2]++;
             }
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<Integer, int[]> en : byLength.entrySet()) {
+                int[] a = en.getValue();
+                sb.append(' ').append(en.getKey()).append(": ").append(a[0]).append(" maps, ")
+                        .append(a[1]).append(" entries, ").append(a[2]).append(" empty;");
+            }
+            out("  " + gate + " " + label + " slots by table length:" + sb);
         }
         // The write buffer grows with use and shrinks after 2 s with nothing to write
         // (2026-11-13, bergdb 026-07): the heap is measured after the shrink, so that the
@@ -656,8 +675,29 @@ public class CountGates {
         g4Gate("M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
         g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
         g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
-        g4Gate("ST6 cache table slots", e.slots, t.slots, d("g4slots", 2));
+        slotGate("G4", e, t);
         g4Gate("heap after a GC", e.heap, t.heap, d("g4heap", 2));
+    }
+
+    /**
+     * ST6, G4's and G5's: the cache's table slots at most the larger of g4slots (2) times the
+     * twin's and the tables' floor. Since 024-33 a map's table shrinks to at least
+     * Table.MIN_CAPACITY, and a map once used keeps that table (HashMap keeps its table when
+     * its entries are removed, and a map at the least capacity is not copied); the emptied
+     * database has used most of the 2^MAP_BITS maps, the twin those its drive's node ids
+     * reached. So the floor, 4,096 maps of 16 slots, independent of n, where twice the
+     * twin's is less (024-32, section 4). G4 compared with twice the twin's only until bergdb
+     * 028-52: the twin's slots depend on its drive's length, not on what it holds, 3,740
+     * maps used after 40,000 transactions (G4's settings, R = 1,000) and 1,593 after 8,000
+     * (g4sd=1000000 dt=50000, R = 200), so at those settings the emptied database at the
+     * floor, 3,932 maps of 16 slots, was 2.47 times the twin's.
+     */
+    void slotGate(String gate, G4M e, G4M t) {
+        long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
+        long slotLimit = Math.max((long) (d("g4slots", 2) * t.slots), floor);
+        gate(gate, "ST6 cache table slots over the larger of " + d("g4slots", 2)
+                + " times the twin's and the tables' floor " + floor + " (" + e.slots + " / "
+                + t.slots + ")", (double) e.slots / slotLimit, 1, "%.3f");
     }
 
     // ======== G5 ========
@@ -693,15 +733,8 @@ public class CountGates {
         gateSmall("M5 dead KEY klongs", e.dead, t.dead, 70);
         gateSmall("M11 resident index objects", e.objects, t.objects, 10);
         gateSmall("M11 live handles", e.handles, t.handles, 10);
-        // ST6: since 024-33 a map's table shrinks to at least Table.MIN_CAPACITY, and a map
-        // once used keeps that table; the emptied database has used most of the 2^MAP_BITS
-        // maps, the twin 5. So the floor of the tables, 4,096 maps of 16 slots, independent
-        // of n, where twice the twin's is less (024-32, section 4).
-        long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
-        long slotLimit = Math.max(2 * t.slots, floor);
-        gate("G5", "ST6 cache table slots over the larger of twice the twin's and the tables' "
-                + "floor " + floor + " (" + e.slots + " / " + t.slots + ")",
-                (double) e.slots / slotLimit, 1, "%.3f");
+        // ST6: the twin's maps are few (5), so the tables' floor decides (slotGate).
+        slotGate("G5", e, t);
         gateTwin("G5", "heap after a GC", e.heap, t.heap, d("g4heap", 2));
     }
 
