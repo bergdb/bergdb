@@ -102,7 +102,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
-| [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
+| [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 
 
@@ -368,3 +368,9 @@ with new cases at 30 and 62; BEFORE COMMIT OK. Moved to Closed.
 or before the read time, with the full scan's answers; a lookup of a key
 not recently written reads 1 to 4 bins by its read time, not always 4.
 Moved to Closed.
+
+2026-11-24. 028-45 by an agent of lead-1124: the test of Db's dirty-node
+counts with transformations, at node sizes 8 and 30, passes; it found the
+estimate of a key transformed to a key of more segments short (46 key
+nodes marked, counted 39), kept as a test that asserts the fault. Frans:
+decision among options A to C (recommended A); in progress.

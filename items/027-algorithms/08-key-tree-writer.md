@@ -585,9 +585,11 @@ the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
   transformation counts as a potential delete. `height` =
   2 + floor(log2(max(1, streamLength / 48))), with integer division.
   A transaction at or under the limit by this count is let through;
-* else keys with a key transformation still get the cheap count. Known
-  keys go to `Dag.dirtyNodeBound` at the latest state; a value
-  transformation sends its key both as a put and as a delete;
+* else keys with a key transformation still get the cheap count, with
+  the segments of the key as given, as the check runs before the key
+  transformations. Known keys go to `Dag.dirtyNodeBound` at the latest
+  state; a value transformation sends its key both as a put and as a
+  delete;
 * `Dag.dirtyNodeBound` counts the distinct key nodes on those paths. For
   each it counts k klongs: one a put or a new segment tree below, the
   klongs from its children's overflows, four on a delete's path, and
@@ -635,8 +637,24 @@ transaction, with the Lean copy) and DagTester's
 8, 14, 30 and 62, deletes most keys under several inner nodes and
 asserts at least one join of inner nodes at height two or more in each
 case (PE counts its joins by the children's height,
-`Dag.statJoinsByHeight`; 028-46). Reclaim's internal transactions are
-not checked (027-13, 1.4).
+`Dag.statJoinsByHeight`; 028-46). The ways of `Db.checkDirtyNodes`
+that those do not reach, the cheap estimate where it fits, a key with a
+key transformation and a key with a value transformation, are checked by
+`DbTesterDirtyCount.testCountsCoverMarkedKeyNodes` (028-45): at node
+sizes 8 and 30, for transactions of plain puts and deletes, value
+transformations (to a value; to null, deletes that join nodes and nothing
+on absent keys) and key transformations (to keys of the database, and to
+new keys of up to 16 segments from keys of one), the key nodes Db marks
+are at most the walked count, and at most the estimate where it fits the
+limit; the counts come from `Db.countDirtyNodes`, split from
+`checkDirtyNodes`. The estimate of a key with a key transformation is
+short where the key after it has more segments than the key as given and
+the segment trees under the shared prefix are more than one level high:
+a key of one segment transformed to one of 16 under 15 segment trees
+three levels high marks 46 key nodes, counted 39 (node size 8, a stream
+of 64 kB, `height` 12); a known fault, kept as a test that asserts it
+(`testKnownFaultKeyTransformationDeeperThanCount`; 028-45). Reclaim's
+internal transactions are not checked (027-13, 1.4).
 
 
 ## 5. In the model

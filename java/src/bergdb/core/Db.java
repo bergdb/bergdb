@@ -3264,6 +3264,65 @@ public class Db implements AutoCloseable {
      * @throws DbException
      */
     private void checkDirtyNodes(Trans t) {
+        final DirtyNodeCounts c = countDirtyNodes(t, false);
+        if (c.walked > c.maxNodes) {
+            throw new DbException("The transaction is too large: the index nodes it can make "
+                    + "dirty or create, up to " + c.walked + ", could take " 
+                    + (c.walked * c.nodeBytes + c.topBytes) + " bytes in a record, more than " 
+                    + c.limit + " (bergdb 005-31). A larger update must be split into "
+                    + "transactions.");
+        }
+    }
+    
+    /**
+     * The counts of checkDirtyNodes(), and the figures it compares them with (bergdb 028-45,
+     * for DbTesterDirtyCount).
+     */
+    static final class DirtyNodeCounts {
+        /** StoredTrans.dirtyLimit(), bytes. */
+        long limit;
+        
+        /** The bytes counted for an index node: the largest node and its got-dirty entry. */
+        long nodeBytes;
+        
+        /** The bytes counted for the record's two top nodes. */
+        long topBytes;
+        
+        /** The most index nodes that a record takes: (limit - topBytes) / nodeBytes. */
+        long maxNodes;
+        
+        /** The cheap test's count: every key at most 'height' levels a segment. */
+        long estimate;
+        
+        /**
+         * The count with the walk: the cheap test's count of the keys with a key
+         * transformation, and Dag.dirtyNodeBound() of the others; -1 if not walked.
+         */
+        long walked = -1;
+    }
+    
+    /**
+     * For tests (bergdb 028-45): the counts of checkDirtyNodes() for the transaction t as it
+     * would be executed now, the walk's too, under writeLock.
+     *
+     * @throws DbException  If the walk's read fails (readFailed).
+     */
+    DirtyNodeCounts countDirtyNodes(Trans t) {
+        synchronized (writeLock) {
+            return countDirtyNodes(t, true);
+        }
+    }
+    
+    /**
+     * The counts of checkDirtyNodes() for the transaction t, before its key transformations:
+     * the cheap test's, and the walk's if the cheap test's is over maxNodes or 'walk' is true
+     * (split from checkDirtyNodes by bergdb 028-45, so that a test compares each with the key
+     * nodes a transaction marks). The caller holds writeLock.
+     *
+     * @throws DbException  If the walk's read fails (readFailed).
+     */
+    private DirtyNodeCounts countDirtyNodes(Trans t, boolean walk) {
+        final DirtyNodeCounts c = new DirtyNodeCounts();
         final long limit = StoredTrans.dirtyLimit();
         final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
         // Its two top nodes: 48 + 16 h bytes each (StoredTopNode, bergdb 024-25), h at most 48
@@ -3272,6 +3331,10 @@ public class Db implements AutoCloseable {
         final long topBytes = 2 * (48 + 16L * 48 + 16);
         final long height = 2 + 63 - Long.numberOfLeadingZeros(
                 Math.max(1, nodeStream.getLength() / 48));
+        c.limit = limit;
+        c.nodeBytes = nodeBytes;
+        c.topBytes = topBytes;
+        c.maxNodes = (limit - topBytes) / nodeBytes;
         
         long cheap = 0;
         for (Kv kv : t.kvs) {
@@ -3284,8 +3347,9 @@ public class Db implements AutoCloseable {
             final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
             cheap += (delete ? 20 : 3) * height * kv.getKey().length + 3;
         }
-        if (cheap <= (limit - topBytes) / nodeBytes) {
-            return;
+        c.estimate = cheap;
+        if (cheap <= c.maxNodes && !walk) {
+            return c;
         }
         
         int n = 0;
@@ -3318,12 +3382,8 @@ public class Db implements AutoCloseable {
         } catch (StreamException e) {
             throw readFailed(e, time);
         }
-        if (nodes > (limit - topBytes) / nodeBytes) {
-            throw new DbException("The transaction is too large: the index nodes it can make "
-                    + "dirty or create, up to " + nodes + ", could take " 
-                    + (nodes * nodeBytes + topBytes) + " bytes in a record, more than " + limit
-                    + " (bergdb 005-31). A larger update must be split into transactions.");
-        }
+        c.walked = nodes;
+        return c;
     }
     
     private void store() {

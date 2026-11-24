@@ -272,12 +272,17 @@ section 5, item 14).
 
 The theorems count a transaction's operations as the model has them, each
 key once, as a put or a delete. Java's admission check counts otherwise in
-three cases, whose link to the theorems is argued, not proved, and not
-tested on purpose: where Db's cheap estimate (three nodes a level of a
-put's path, twenty of a delete's) fits, Db does not call the count
-(028-21); a key with a key transformation is counted only by that
-estimate; and a key with a value transformation, which may give a put or
-a delete, is walked as both (023-11, review B, B2).
+three cases, whose link to the theorems is argued, not proved: where Db's
+cheap estimate (three nodes a level of a put's path, twenty of a delete's)
+fits, Db does not call the count (028-21); a key with a key transformation
+is counted only by that estimate, with the segments of the key as given;
+and a key with a value transformation, which may give a put or a delete,
+is walked as both (023-11, review B, B2). Since 2026-11-24 a unit test
+checks the three on purpose (`DbTesterDirtyCount`, 028-45; section 5,
+item 14), and it found the second short: a key transformed to a key of
+more segments, whose segment trees under the shared prefix are more than
+one level high, marks more key nodes than the estimate counts (46 for 39
+at node size 8; 028-45 holds the case and the options for a fix).
 
 
 # 3. The model, and what "proved" means
@@ -588,7 +593,17 @@ checker and `pecmp`; a failing trace is kept with its seed.
     028-46 (2026-11-24), at least one join of inner nodes at height two
     or more (PE counts its joins by the children's height,
     `Dag.statJoinsByHeight`). The cheap estimate and the transformations
-    of 2.7 are argued, not tested.
+    of 2.7: `DbTesterDirtyCount.testCountsCoverMarkedKeyNodes` (a unit
+    test, `before-commit.sh`; 028-45) runs transactions at node sizes 8
+    and 30 of plain puts and deletes, value transformations to a value
+    and to null (deletes that join nodes, and nothing on absent keys) and
+    key transformations (to keys of the database and to new keys of up to
+    16 segments from keys of one), and asserts for each that the key nodes
+    Db marks are at most the walked count, and at most the estimate where
+    the estimate fits the limit, both ways of `Db.checkDirtyNodes`
+    reached at each node size. A known fault of the estimate for a key
+    transformed to a key of more segments is kept as a test that asserts
+    it (`testKnownFaultKeyTransformationDeeperThanCount`; 2.7; 028-45).
 
 
 # 6. How it stays true
