@@ -61,6 +61,15 @@ in the first published release that has it. Updated with each entry.
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
 | 2026.5 | 0 | 2 | 0 | 3 | 5 |
+| 2026.6 | 0 | 0 | 0 | 0 | 0 |
+
+Released bugs in each release, each bug counted in every published
+release that has it (2026.6 has RB-005, first found in 2026.5):
+
+| Release | S1 | S2 | S3 | S4 | All | IDs |
+|---|---|---|---|---|---|---|
+| 2026.5 | 0 | 2 | 0 | 3 | 5 | RB-001 to RB-005 |
+| 2026.6 | 0 | 0 | 0 | 1 | 1 | RB-005 |
 
 
 Released bugs
@@ -208,3 +217,6 @@ gates; the review's stale Javadoc texts: wording); 028-51 decides
 whether `maintain()`'s stall (028-47, F1) is one.
 Whether such a bug is also added to the notes of older releases
 (2026.5's lack RB-002 to RB-005) is for Frans.
+
+2026-11-24. Counts: a row for 2026.6, and a second table of the bugs in
+each release (Frans).
