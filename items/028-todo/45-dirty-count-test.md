@@ -194,3 +194,6 @@ cannot bring a transaction to the record limit (TP23, TP26, ReleaseFits;
 TP26 stated, not proved; the least margin 0.7 % at node size 8); past it,
 a transaction's nodes would never be taken and startup would grow, with no
 failed database. The same count in 2026.5 and 2026.6.
+
+2026-11-24. Frans chose option A (12:26); the fix is 028-50, with the
+known-fault test turned around there.

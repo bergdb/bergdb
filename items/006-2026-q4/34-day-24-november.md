@@ -56,6 +56,8 @@ Frans, 2026-11-24:
 * 11:25 Open 028 entries (Frans: the lead works on them): four agents,
   each in a clone: 028-44 (Opus xhigh), 028-45, 028-46 and 028-01 (Opus
   high); the lead lands them after their gates and the combined gate.
+* 12:26 Frans chose 028-45's option A (RB-005's fix): 028-50 registered,
+  an agent in a clone.
 * 12:30 Frans: 028-47 no change; F1 and F3 registered as 028-51 and 028-52.
 
 

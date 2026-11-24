@@ -103,6 +103,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
+| [028-50](50-key-transformation-count.md) | Fix | The dirty-node count of a key with a key transformation, after it | decided (A, 12:26) | in progress |
 | [028-51](51-maintain-m1-written-db.md) | Fix | maintain()'s M1 stalls in a written database | none | open |
 
 
@@ -410,3 +411,7 @@ grow with its drive's length while the emptied database's sit at the
 tables' floor (4,096 maps of 16); the gate takes G5's limit, the larger
 of twice the twin's and the floor. The database was right. Moved to
 Closed.
+
+2026-11-24. 028-50 registered by an agent of lead-1124 and taken: Frans
+chose 028-45's option A (12:26), the count of a key with a key
+transformation after it (RB-005); branch `028-50`.
