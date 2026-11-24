@@ -104,6 +104,7 @@ Open
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
+| [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
 
 
 Closed
@@ -374,3 +375,7 @@ counts with transformations, at node sizes 8 and 30, passes; it found the
 estimate of a key transformed to a key of more segments short (46 key
 nodes marked, counted 39), kept as a test that asserts the fault. Frans:
 decision among options A to C (recommended A); in progress.
+
+2026-11-24. 028-49 registered by an agent of lead-1124, from finding 1 of
+the review of release 2026.6: the release scripts make the GitHub
+release's body with absolute links; for 2026.7 (031).

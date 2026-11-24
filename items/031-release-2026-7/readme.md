@@ -26,6 +26,9 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
   not chosen in 2026.6 (1/4 kept); carried here on 2026-11-24.
 * 026-14, the Lean model's scope and three additions: not decided in
   2026.6; carried here on 2026-11-24 (Frans).
+* 028-49, the release scripts make the GitHub release's body with
+  absolute links: needed before this release is made (from the review of
+  2026.6, 2026-11-24).
 
 
 Log
@@ -36,3 +39,5 @@ Log
 2026-11-24. 026-03 and 026-04 carried here from 2026.6, open (026 done).
 
 2026-11-24. 026-14 carried here from 2026.6, open (Frans).
+
+2026-11-24. 028-49 taken, for the release scripts (review of 2026.6).
