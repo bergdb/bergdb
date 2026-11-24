@@ -16,3 +16,21 @@ each tag), and `baseline.zip` is not published (bergdb 026, "How the
 release is made"; 029). The notes say so where they list the files.
 
 Emptied at release 2026.6 (2026-11-24), whose notes hold what was there.
+
+
+Released bugs fixed
+-------------------
+
+* **RB-005, S4. The count of the index nodes a transaction makes dirty
+  was short for a key transformed to a longer key** (bergdb 033;
+  028-50, 2026-11-24). The check of the index nodes that a transaction
+  can make dirty (bergdb 005-31) counted a key with a key transformation
+  by a coarse estimate with the key as given, before the transformation. It counts it now after the key transformations, with
+  the key they gave, as it counts other keys. A transaction whose
+  transformed keys could make too many nodes dirty is refused before its
+  go point with a `DbException`, its keys as written given back, and the
+  database goes on; one that the coarse count refused only because of
+  its keys as given, such as 500 KVs of 111-byte keys on a small stream
+  at node size 62 (review rev24, R3), can be taken now. Transactions
+  without key transformations are counted as before; their stream is
+  the same (StreamDigest identical).

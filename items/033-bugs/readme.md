@@ -164,13 +164,17 @@ RB-005. The count of the index nodes a transaction makes dirty is short for a ke
   nothing lost, the database goes on.
 * **Severity:** S4 (possible in theory only: out of reach within the
   limits, by a stated bound).
-* **Releases:** 2026.5 and 2026.6 (and before); not fixed yet. Named in
-  2026.6's notes, under its known issues, as found after the release.
+* **Releases:** 2026.5 and 2026.6 (and before); fixed on `main` for
+  2026.7. Named in 2026.6's notes, under its known issues, as found
+  after the release.
 * **Found:** 2026-11-24, by 028-45's test (`DbTesterDirtyCount`), from
   030-39's finding F7; not known at the releases.
-* **Fix:** Frans chose option A of 028-45 (2026-11-24): a key with a key
-  transformation is counted after the transformation. In progress as
-  028-50, for 2026.7.
+* **Fix:** 028-50 (`33193b20`), 2026-11-24, option A of 028-45 (Frans):
+  a transaction with a key transformation is counted after its key
+  transformations, with the keys they gave, as a transaction without one
+  is; one over the limit is refused before its go point, its keys as
+  written given back, and the database goes on. Fixed on `main` for
+  2026.7.
 
 
 Log
@@ -220,3 +224,6 @@ Whether such a bug is also added to the notes of older releases
 
 2026-11-24. Counts: a row for 2026.6, and a second table of the bugs in
 each release (Frans).
+
+2026-11-24. RB-005 fixed on `main` for 2026.7 by 028-50 (`33193b20`),
+Frans's option A of 028-45.
