@@ -327,6 +327,12 @@ Files
   Its directory `27-release-plan/` holds the release scripts of
   2026.6 (step 10, its section 4), 024-38's adapted.
 
+* 28-proof-story.md. 026-28, how the proofs came to work, the story of
+  2026.6 as an overview, for the way of working: the old line close to
+  being given up, the contract tested after every transaction, the
+  writer changed to fit the proof (PE), the core algorithms proved. The
+  details are in 030-40.
+
 
 Log
 ===
@@ -424,3 +430,5 @@ agent of coord-1120).
 
 2026-11-22. 026-27 written: the release plan, for the release on Tuesday
 24 November.
+
+2026-11-24. 026-28 written: the story of the proofs of 2026.6 (Frans).

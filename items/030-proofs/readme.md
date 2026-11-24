@@ -635,6 +635,13 @@ Files
   and that reads beside reclaim can expire; each corrected in 030-38,
   030-26 or the checks, or accepted with its reason, and 030-38's eight
   differences closed (026-27, step 5). Written 2026-11-23. Status: done.
+* [030-40](40-proofs-2026-5-to-2026-6.md). The proofs from release 2026.5
+  to 2026.6, in the order it happened: the old line that proved the old
+  writer step by step (13 to 16 November), the contract approach (17
+  November), PE proved and made Java's writer (18 and 19 November),
+  reclaim and the aim reached, and the work to release 2026.6; the size
+  of `lean/` day by day, and how the work went. 026-28 tells it as an
+  overview. Written 2026-11-24. Status: done.
 
 
 Log
@@ -644,3 +651,6 @@ Log
 
 2026-11-23. Goal 2 done, by 006-32, section 6: 030-36 and 030-37 on
 `main`; the higher inner joins left tested (026-27, step 6).
+
+2026-11-24. 030-40 written: the proofs from release 2026.5 to 2026.6, a
+review in order (Frans).
