@@ -1,7 +1,7 @@
 028-44. Change: the contract checker fails a trace with a shape fault
 =====================================================================
 
-Status: open. Kind: Change. Frans: none.
+Status: in progress. Kind: Change. Frans: none.
 Created 2026-11-24 by Frans Lundberg.
 
 What: the contract checker, `lean/contract/ContractCheck.lean`, computes
@@ -62,3 +62,5 @@ Log
 
 2026-11-24. Registered by an agent of lead-1124, from 030-39, F6
 (Frans, 2026-11-24, 006-33, point 3).
+
+2026-11-24. Taken by an agent of lead-1124, on the branch `028-44`.

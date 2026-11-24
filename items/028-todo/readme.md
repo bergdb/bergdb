@@ -101,6 +101,9 @@ Open
 |---|---|---|---|---|
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
+| [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | in progress |
+| [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
+| [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
