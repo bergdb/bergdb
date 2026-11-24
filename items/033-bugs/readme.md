@@ -43,6 +43,13 @@ Decided by Frans, 2026-11-20.
   adds or updates its entry here. A release's steps check this register
   before its tag (026's release steps), and its notes name the released
   bugs it fixes by ID.
+* **Where they are published** (Frans, 2026-11-24): each release's notes
+  list the released bugs known in it, under its known issues, and the
+  ones it fixes. A bug found after a release is added to the notes of
+  each published release that has it, the repository's file and the
+  GitHub release's page, marked as found after the release. README.md
+  and bergdb.org list no known issues; they point to the notes and to
+  this register, which lists them all.
 
 
 Counts
@@ -148,10 +155,13 @@ RB-005. The count of the index nodes a transaction makes dirty is short for a ke
   nothing lost, the database goes on.
 * **Severity:** S4 (possible in theory only: out of reach within the
   limits, by a stated bound).
-* **Releases:** 2026.5 and 2026.6 (and before); not fixed.
+* **Releases:** 2026.5 and 2026.6 (and before); not fixed yet. Named in
+  2026.6's notes, under its known issues, as found after the release.
 * **Found:** 2026-11-24, by 028-45's test (`DbTesterDirtyCount`), from
   030-39's finding F7; not known at the releases.
-* **Fix:** none yet; options A to C in 028-45, for Frans.
+* **Fix:** Frans chose option A of 028-45 (2026-11-24): a key with a key
+  transformation is counted after the transformation. In progress as
+  028-50, for 2026.7.
 
 
 Log
@@ -187,3 +197,12 @@ transformation is short; possible in theory only. Not fixed.
 
 2026-11-24. After a review of release 2026.6: RB-001 to RB-003 say
 "fixed in 2026.6", as RB-004 does, now that 2026.6 is released.
+
+2026-11-24. The rule of where released bugs are published (Frans): in
+each release's notes, not in README.md or on bergdb.org. RB-005 named in
+2026.6's notes (repository and GitHub release); its fix chosen (A,
+028-50). RB-004 was named in 2026.6's notes as a fixed bug earlier the
+same day. Checked: no other fault of a released version was registered
+on 2026-11-24 (028-01, 028-48: costs; 028-44, 028-46, 028-52: tests and
+gates; the review's stale Javadoc texts: wording); 028-51 decides
+whether `maintain()`'s stall (028-47, F1) is one.
