@@ -282,10 +282,6 @@ final class PeWriter {
     /** At most this many operations take the short way. */
     private static final int SHORT_OPS = 8;
 
-    /** The live lists of the segment leaves that the short way read (null: none), which the
-     *  plan reads again if the short way is not taken: no node is written before the plan. */
-    private java.util.IdentityHashMap<KeyNode, Live> liveOf;
-
     /**
      * The short way (see above): true if taken, the transaction done; false if not, nothing
      * changed or reported.
@@ -297,7 +293,7 @@ final class PeWriter {
         final java.util.ArrayList<KeyNode> path = new java.util.ArrayList<KeyNode>();
         final int[] pathEnd = new int[n];               // op i's nodes: path[pathEnd[i-1], pathEnd[i])
         final KlongWithPointer kwi = pd.kwi;
-        final Live[] lvOf = new Live[n];
+        final boolean[] liveOp = new boolean[n];        // its compare value live in its leaf
         for (int i = 0; i < n; i++) {
             final long[] key = keys[i];
             KeyNode node = root;
@@ -340,7 +336,7 @@ final class PeWriter {
             }
         }
         for (int l = 0; l < nl; l++) {
-            if (!shortLeaf(leaves[l], leafOf, rootLeaf, lvOf)) {
+            if (!shortLeaf(leaves[l], leafOf, rootLeaf, liveOp)) {
                 return false;
             }
         }
@@ -354,7 +350,7 @@ final class PeWriter {
                 final ValueNode vn = new ValueNode(values[k]);
                 pd.nodeChangeListener.valueNodeCreated(vn, keys[k]);
                 made[k] = new Tgt(vn);
-            } else if (inLive(lvOf[k], keys[k][keys[k].length - 1])) {
+            } else if (liveOp[k]) {
                 pd.nodeChangeListener.valueNodeCreated(ValueNode.createDelete(), keys[k]);
             } else {
                 leafOf[k] = null;                   // a noop
@@ -363,6 +359,21 @@ final class PeWriter {
         // Emit reports a segment tree after the trees below its leaves, then its own nodes
         // in post-order. A node follows the last operation through it and its deeper nodes.
         // Keep only paths that wrote; a missing delete supplies no mark.
+        if (n == 1) {
+            // One operation: the order below is its path from the leaf up (each mark of
+            // segment g and depth q, the q-th node of the path; sorted by segment, then
+            // depth, both decreasing, it is the path reversed), with no list to sort.
+            if (leafOf[0] != null) {
+                final ArrayList<Ent> ch = new ArrayList<Ent>(1);
+                ch.add(new Ent(keys[0][keys[0].length - 1], made[0] != null ? made[0] : REMOVED));
+                appendChanges(leafOf[0], null, ch);
+                Dag.statAppends++;
+                for (int q = pathEnd[0] - 1; q >= 0; q--) {
+                    pd.nodeChangeListener.keyNodeOnPath(path.get(q));
+                }
+            }
+            return true;
+        }
         final ArrayList<ShortMark> order = new ArrayList<ShortMark>();
         for (int k = 0; k < n; k++) {
             if (leafOf[k] == null) continue;
@@ -388,13 +399,16 @@ final class PeWriter {
         });
         for (ShortMark mark : order) {
             final KeyNode x = mark.node;
-            final ArrayList<Ent> ch = new ArrayList<Ent>(2);
+            ArrayList<Ent> ch = null;                   // made for a leaf only
             for (int k = 0; k < n; k++) {
                 if (leafOf[k] == x) {
+                    if (ch == null) {
+                        ch = new ArrayList<Ent>(2);
+                    }
                     ch.add(new Ent(keys[k][keys[k].length - 1], made[k] != null ? made[k] : REMOVED));
                 }
             }
-            if (!ch.isEmpty()) {
+            if (ch != null) {
                 appendChanges(x, null, ch);
                 Dag.statAppends++;
             } else {
@@ -417,28 +431,42 @@ final class PeWriter {
     /**
      * The short way's decision of segment leaf 'leaf', with the operations k whose leafOf[k] is
      * it: appended to (or kept), with a live klong left and, but a root of its tree, at least
-     * m if changed, as decideNode decides by counts; false if not.
+     * m if changed, as decideNode decides by counts; false if not. Sets liveOp[k] for them.
+     *
+     * <p>By counts over the leaf's live list, without the list (bergdb 028-19): a leaf without
+     * room for its puts' klongs and one more is full whatever the counts (the size test below,
+     * extra being at least 1 + added), so it is found before the live klongs are read; else
+     * liveInto's pass gives the counts and the live compare values, in live()'s work arrays.</p>
      */
-    private boolean shortLeaf(KeyNode leaf, KeyNode[] leafOf, boolean[] rootLeaf, Live[] lvOf) {
-        final int i = 0;
+    private boolean shortLeaf(KeyNode leaf, KeyNode[] leafOf, boolean[] rootLeaf, boolean[] liveOp) {
         final int e = leafOf.length;
-        boolean isRoot = false;
-        final Live lv = live(leaf);
-        if (liveOf == null) {
-            liveOf = new java.util.IdentityHashMap<KeyNode, Live>();
+        int puts = 0;
+        for (int k = 0; k < e; k++) {
+            if (leafOf[k] == leaf && values[k] != null) {
+                puts++;
+            }
         }
-        liveOf.put(leaf, lv);               // for the plan, if the short way is not taken
-        int nf = lv.n;
+        final int sz = leaf.size;
+        if (puts > 0 && sz + 1 + puts > maxNodeSize) {
+            return false;
+        }
+        final long[][] work = liveWork(sz);
+        final long[] wcv = work[0];
+        final long nk = liveInto(leaf.klongs, sz, wcv, null);
+        final int n0 = (int) nk;
+        final int keyKlongs = (int) (nk >>> 32);
+        boolean isRoot = false;
+        int nf = n0;
         int removed = 0;
         int added = 0;
         int repointed = 0;
-        for (int k = i; k < e; k++) {
+        for (int k = 0; k < e; k++) {
             if (leafOf[k] != leaf) {
                 continue;
             }
             isRoot = rootLeaf[k];
             final long cv = keys[k][keys[k].length - 1];
-            final boolean in = inLive(lv, cv);
+            final boolean in = java.util.Arrays.binarySearch(wcv, sz - n0, sz, cv) >= 0;
             if (values[k] != null) {
                 added++;
                 if (in) {
@@ -450,14 +478,14 @@ final class PeWriter {
                 removed++;
                 nf--;
             }
-            lvOf[k] = lv;
+            liveOp[k] = in;
         }
         if (added + removed == 0) {
             return true;
         }
         final int extra = (removed > 0 ? 2 : 1) + added;
-        final int dead = (lv.keys - lv.n) + removed + repointed;
-        return !(nf < 1 || (!isRoot && merges && nf < m) || leaf.size + extra > maxNodeSize
+        final int dead = (keyKlongs - n0) + removed + repointed;
+        return !(nf < 1 || (!isRoot && merges && nf < m) || sz + extra > maxNodeSize
                 || (theta != 0 && dead > theta));
     }
 
@@ -603,8 +631,7 @@ final class PeWriter {
                     + ": the pointers make a cycle.");
         }
         if (x.isSegmentLeaf()) {
-            final Live cached = liveOf == null ? null : liveOf.get(x);
-            return new LeafFrame(x, from, cached != null ? cached : live(x), g, lo, hi);
+            return new LeafFrame(x, from, live(x), g, lo, hi);
         }
         return new NodeFrame(x, from, g, lo, hi, depth);
     }
@@ -764,13 +791,13 @@ final class PeWriter {
                 result = v;
                 return null;
             }
-            if (lv == null) {
-                lv = live(x);
-            }
             final VN a = appendedByCounts();
             if (a != null) {
                 result = a;
                 return null;
+            }
+            if (lv == null) {
+                lv = live(x);
             }
             final ArrayList<Ent> es2 = rebalance(g, hk, entries(x, lv, planned));
             result = mkNode(x, lv, from, g, hk + 1, false, es2);
@@ -782,13 +809,15 @@ final class PeWriter {
          * child planned is empty or joined, and the list starts with the empty key, rebalance
          * changes nothing, and the final list is the live list with each child planned that is
          * not kept replaced by its entries (ents: its new nodes); decideNode's counts follow.
-         * Its klongs are written by emit (appendPlanned).
+         * Its klongs are written by emit (appendPlanned). The counts of the live list are those
+         * of liveInto's pass when the list was not made (routeBySearch), without making it: the
+         * node's VN makes it if a join or a settle needs it (VN.lb()), bergdb 028-19.
          */
         private VN appendedByCounts() {
             if (!emptyKeyFirst) {
                 return null;
             }
-            int nf = lv.n;
+            int grown = 0;
             int added = 0;
             int repointed = 0;
             for (Ent e : planned) {
@@ -800,14 +829,29 @@ final class PeWriter {
                     final int k = v.dec >= 2 ? v.dec : 1;
                     added += k;
                     repointed++;
-                    nf += k - 1;
+                    grown += k - 1;
                 }
             }
             final int extra = 1 + added;
-            final int dead = (lv.keys - lv.n) + repointed;
-            if (x.size + extra > maxNodeSize || (theta != 0 && dead > theta)) {
+            final int sz = x.size;
+            if (sz + extra > maxNodeSize) {
                 return null;
             }
+            final int n0;
+            final int keyKlongs;
+            if (lv != null) {
+                n0 = lv.n;
+                keyKlongs = lv.keys;
+            } else {
+                final long nk = liveInto(x.klongs, sz, liveWork(sz)[0], null);
+                n0 = (int) nk;
+                keyKlongs = (int) (nk >>> 32);
+            }
+            final int dead = (keyKlongs - n0) + repointed;
+            if (theta != 0 && dead > theta) {
+                return null;
+            }
+            final int nf = n0 + grown;
             final VN v = new VN(x, lv, from, g, hk + 1, false, planned, null, APPEND);
             v.sparse = true;
             v.nFinal = nf;
@@ -1057,24 +1101,46 @@ final class PeWriter {
     /** live()'s work arrays (a node has at most Dag.MAX_NODE_SIZE klongs, but a damaged one). */
     private static final ThreadLocal<long[][]> LIVE_WORK = new ThreadLocal<long[][]>();
 
-    /**
-     * Contract's live: for each compare value with a key klong that the last bitmap does not
-     * delete, the last such klong; in increasing order of the compare values.
-     */
-    static Live live(KeyNode node) {
-        // One pass from the end: a key klong after the last bitmap is not deleted by it, and
-        // the first klong of a compare value met is its latest. The list is made at the end of
-        // work arrays, [b, sz), in increasing order (met from the end, the klongs of a node
-        // mostly come in decreasing order, each at the front), and copied out at its size.
-        final int sz = node.size;
-        final long[] ks = node.klongs;
+    /** This thread's work arrays for liveInto, of at least sz entries each. */
+    private static long[][] liveWork(int sz) {
         long[][] work = LIVE_WORK.get();
         if (work == null || work[0].length < sz) {
             work = new long[][] {new long[Math.max(sz, 64)], new long[Math.max(sz, 64)]};
             LIVE_WORK.set(work);
         }
+        return work;
+    }
+
+    /**
+     * Contract's live: for each compare value with a key klong that the last bitmap does not
+     * delete, the last such klong; in increasing order of the compare values.
+     */
+    static Live live(KeyNode node) {
+        final int sz = node.size;
+        final long[][] work = liveWork(sz);
         final long[] wcv = work[0];
         final long[] widx = work[1];
+        final long nk = liveInto(node.klongs, sz, wcv, widx);
+        final int n = (int) nk;
+        final long[] cv = java.util.Arrays.copyOfRange(wcv, sz - n, sz);
+        final int[] idx = new int[n];
+        for (int j = 0; j < n; j++) {
+            idx[j] = (int) widx[sz - n + j];
+        }
+        return new Live(cv, idx, n, (int) (nk >>> 32));
+    }
+
+    /**
+     * live()'s pass over klongs ks[0, sz): the live compare values, in increasing order, into
+     * wcv[sz - n, sz), and their klong indexes into widx (if not null) at the same places;
+     * returns n, the number of live compare values, in the low 32 bits and the number of key
+     * klongs in the high 32.
+     */
+    private static long liveInto(long[] ks, int sz, long[] wcv, long[] widx) {
+        // One pass from the end: a key klong after the last bitmap is not deleted by it, and
+        // the first klong of a compare value met is its latest. The list is made at the end of
+        // the work arrays, [b, sz), in increasing order (met from the end, the klongs of a node
+        // mostly come in decreasing order, each at the front).
         int n = 0;
         int keys = 0;
         long del = Klong.DELETE_NONE_BITMAP;
@@ -1106,17 +1172,14 @@ final class PeWriter {
                 continue;                       // an earlier klong of it: shadowed
             }
             System.arraycopy(wcv, b, wcv, b - 1, j - b);
-            System.arraycopy(widx, b, widx, b - 1, j - b);
             wcv[j - 1] = cv;
-            widx[j - 1] = i;
+            if (widx != null) {
+                System.arraycopy(widx, b, widx, b - 1, j - b);
+                widx[j - 1] = i;
+            }
             n++;
         }
-        final long[] cv = java.util.Arrays.copyOfRange(wcv, sz - n, sz);
-        final int[] idx = new int[n];
-        for (int j = 0; j < n; j++) {
-            idx[j] = (int) widx[sz - n + j];
-        }
-        return new Live(cv, idx, n, keys);
+        return ((long) keys << 32) | n;
     }
 
     /** The last bitmap of the klongs, none set if there is none. */
