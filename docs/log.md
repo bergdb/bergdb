@@ -1798,3 +1798,13 @@ databases of 2026.4 are refused. `releases/2026.5/` holds the users' jar,
 the source, the Pub API's Javadoc, the release notes and the outputs of the
 runs. Frans makes the tag `release-2026.5` on A. After it, `BuildInfo` says
 2026.6-dev.
+
+2026-11-24. Release 2026.6, as planned in item 026 (026-27): commit A,
+`bbcd802`, where `BuildInfo` says 2026.6. Proven algorithms: BergDB's core
+algorithms are proved, given tested assumptions (030-26; the guarantees in
+030-38). The release runs `night.sh`, `week.sh` and `timing.sh` passed on
+commits near A, and A's gate in a clone (026-27). Databases of 2026.5 and
+earlier are refused. The users' jar and the Pub API's Javadoc are on GitHub
+Releases, under the tag; `releases/2026.6/` holds the release notes and
+`SHA256SUMS`. Frans makes the tag `release-2026.6` on A. After it,
+`BuildInfo` says 2026.7-dev.

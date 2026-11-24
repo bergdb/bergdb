@@ -16,17 +16,17 @@ public class BuildInfo {
     /**
      * BergDB release int, for example "132".
      */
-    public static final int RELEASE_INT = Util.identity(266);
+    public static final int RELEASE_INT = Util.identity(267);
     
     /**
      * BergDB version ID, for example "2013.2".
      */
-    public static final String RELEASE = Util.identity("2026.6");
+    public static final String RELEASE = Util.identity("2026.7-dev");
     
     /**
      * BergDB build ID, for example "2013.2.130401.1400".
      */
-    public static final String BUILD = Util.identity("2026.6.261123.2312");
+    public static final String BUILD = Util.identity("2026.7-dev");
     
     /**
      * Prints build information to System.out.

@@ -4,14 +4,13 @@ BergDB
 BergDB is an embedded, append-only key-value database for Java. It runs
 inside your Java process, keeps every transaction in one append-only
 stream of files, and lets you read the database as it was at an earlier
-time.
+time. A value can be any byte array, a Java object, or a schemaless
+document.
 
-* **One stream.** The stream is the only durable storage: no write-ahead
-  log and no separate index files. Data, index and history are all
-  records in the stream.
-* **Self-indexed.** Index nodes are written into the stream lazily, as
-  the writes go on. A start reads only the tail of the stream, so the
-  time to open a database does not grow with its size.
+* **One stream.** Data, index and history are all records in the
+  stream: no write-ahead log, no index files. The same transactions in
+  the same order give the same bytes. A start reads only the stream's
+  tail, so the time to open a database does not grow with its size.
 * **History.** A read can be made at any time that is still kept, and
   sees the database as it was then, its indexes included.
 * **Code only.** Java code is all that is needed, for the advanced
@@ -25,62 +24,23 @@ time.
   at the current time.
 * **Small.** One jar with no dependencies beyond the JDK. No server, few
   settings.
+* **Proven algorithms.** BergDB's core algorithms are proved in Lean.
+  Every transaction is applied whole, and every read, at the latest time
+  or an earlier one, sees the database as it was then, also after a
+  crash and while data is evicted from cache memory.
 
-The Core is a key-value store of byte arrays. The Pub API on top of it
-stores strings, byte arrays and objects under path-like keys, with
+The Core is a key-value store of byte arrays; the Pub API on top of it
+adds the Java objects and documents, the path-like keys and the
 secondary indexes.
-
-
-Status
-------
-
-BergDB has been tested thoroughly, release by release. Whether that is
-enough for your use is yours to judge: the code, the tests and each
-release's test results are all in this repository.
-
-How the latest release, 2026.5 (2026-11-13, tag `release-2026.5`), was
-tested on its release commit:
-
-* 1,700 unit tests, 89 functional tests and 26 longer tests, all passed,
-  on macOS with JDK 27 and on Linux with JDK 17 and 27; the unit tests
-  also on an Android emulator.
-* A thousand kills of a process in the middle of its writes, each
-  followed by a restart that checks every transaction for lost or changed
-  data; power-loss tests of the stream's files on Linux.
-* Fuzz tests of the API and of the index, concurrency tests with
-  jcstress, and Java's index checked, transaction by transaction, against
-  an independent model of the algorithm on generated workloads.
-* Programs written against the public API alone, as a user writes them.
-* Most of it in one seven-hour run; the release notes,
-  [releases/2026.5/readme.md](releases/2026.5/readme.md), section
-  "Verification", list each step and its result.
-
-No bug is known in 2026.5. The API and the stored format will likely
-change before a stable release: a database made by one release may not
-open in the next (2026.5 refuses those of 2026.4 and earlier). There is
-no upgrade tool; read the data with the old release and put it with the
-new one. The `main` branch moves ahead of the latest release.
-
-BergDB's core algorithms are proved. The writer, reads at the latest and
-at every earlier time, crash recovery, restarts, eviction and reclaim's
-cuts are proved in Lean, a language whose checker verifies every step of
-a proof, for a model of BergDB's Core layer in `lean/`. The proofs rest
-on assumptions that are tested instead, among them that Java does what
-the model does, which the tests check transaction by transaction; the
-Pub layer, threads and the costs are outside the model. This holds for
-the code on `main` since 2026-11-19, not for release 2026.5, whose writer
-is older. Item 030-26 says what is proved and what is not:
-[items/030-proofs/26-core-algorithms-proved.md](items/030-proofs/26-core-algorithms-proved.md).
-
-Each release's jar and Javadoc are on the repository's GitHub Releases
-page, under the release's tag; `releases/VERSION/` holds its notes and
-checksums. Or build the jar from source, as below.
 
 
 Try it
 ------
 
-You need a JDK 17 or later and a Unix shell (macOS or Linux).
+You need a JDK 17 or later. Each release's jar and Javadoc are on the
+repository's GitHub Releases page, under the release's tag;
+`releases/VERSION/` holds its notes and checksums. Or build the jar from
+source:
 
     java/build.sh               # builds the jar for users, java/build/bergdb-release.jar
     java/before-commit.sh       # unit tests, f-tests and demos (2 minutes; needs python3, perl)
@@ -166,7 +126,7 @@ public class Accounts {
 }
 ```
 
-Compiled and run as `Hello`, it prints:
+Compiled and run like `Hello`, it prints:
 
     Ann 70
     Bob 50
@@ -210,10 +170,66 @@ What a running database needs:
   fails the database, and the process should end.
 
 
+Status
+------
+
+BergDB has been tested thoroughly, release by release. Whether that is
+enough for your use is yours to judge: the code, the tests and each
+release's test results are all in this repository.
+
+How the latest release, 2026.6 (2026-11-24, tag `release-2026.6`), was
+tested, on commits near its release commit:
+
+* 1,738 unit tests, 89 functional tests and 26 longer tests, all passed,
+  on macOS with JDK 27; the unit tests also on an Android emulator.
+* Thousands of kills of a process in the middle of its writes, each
+  followed by a restart that checks every transaction for lost or
+  changed data; crash and power-loss tests of the stream's files.
+* Java's index and reclaim's steps checked, transaction by transaction,
+  against the Lean model, on generated workloads with new seeds each day
+  and on the workloads of the user programs below; Java's own quick,
+  partial check of the writer's contract after every commit of the unit
+  tests and of the user programs' longer runs (4.3 million commits).
+* Programs written against the public API alone, as a user writes them,
+  with their own checks of what they read, also under forced stops:
+  eight new ones for this release.
+* Fuzz tests of the API and of the index, and a run at 10 million keys
+  with reclaim: 100 million transactions.
+* The runs: `java/night.sh` (3 hours) on `main` of 2026-11-23, with
+  every change of the release; `java/night.sh` and `java/week.sh` (8
+  hours) on 2026-11-20 and 21; `java/timing.sh` against 2026.5. The Java
+  code a user runs did not change after them, but for one comment and the
+  version number. The release notes,
+  [releases/2026.6/readme.md](releases/2026.6/readme.md), section
+  "Verification", list each run and its result.
+
+No bug is known in 2026.6; it fixes the three found in 2026.5 (RB-001
+to RB-003, item 033). The API and the stored format will likely change
+before a stable release: a database made by one release may not open in
+the next (2026.6 refuses those of 2026.5 and earlier). There is no
+upgrade tool; read the data with the old release and put it with the
+new one. The `main` branch moves ahead of the latest release.
+
+BergDB's core algorithms are proved. The writer, reads at the latest and
+at every earlier time, crash recovery, restarts, eviction and reclaim's
+cuts are proved in Lean, a language whose checker verifies every step of
+a proof, for a model of BergDB's Core layer in `lean/`. The proofs rest
+on assumptions that are tested instead, among them that Java does what
+the model does, which the tests check transaction by transaction; the
+Pub layer, threads and the costs are outside the model. This holds for
+release 2026.6 and the code on `main` since 2026-11-19, not for release
+2026.5 and earlier, whose writer is older. Item 030-26 says what is
+proved and what is not:
+[items/030-proofs/26-core-algorithms-proved.md](items/030-proofs/26-core-algorithms-proved.md);
+item 030-38 lists what it gives a user, each guarantee proved or tested
+on purpose:
+[items/030-proofs/38-guarantees.md](items/030-proofs/38-guarantees.md).
+
+
 Known issues
 ------------
 
-No bug is known in release 2026.5. Two things to plan for:
+No bug is known in release 2026.6. Two things to plan for:
 
 * **The API may change** between releases.
 * **The stream format may change** between releases (Status, above).
