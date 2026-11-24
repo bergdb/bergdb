@@ -102,6 +102,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
+| [028-53](53-maintain-idle-rewrites.md) | Investigate | maintain() keeps rewriting live data in an idle database | none | open |
 
 
 Closed
@@ -430,3 +431,6 @@ is fixed by 028-50. Moved to Closed.
 release 400 kB, the stream written since reclaim last stored its table;
 F1 broke what the Javadoc of `maintain()` promises, registered as RB-006
 (S4). Moved to Closed.
+
+2026-11-24. 028-53 registered by lead-1124, from 028-51's report: an idle
+database with live data keeps rewriting it under maintain().
