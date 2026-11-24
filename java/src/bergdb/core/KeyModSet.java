@@ -74,18 +74,19 @@ public class KeyModSet implements IKeyModSet {
     }
     
     public boolean modifiedAfter(long time, long hash) {
-        int endBin = -1;
-        
-        for (int i = 0; i < BIN_COUNT; i++) {
-            Bin bin = bins[i];
-            if (bin == null) {
-                break;
-            }
-            
-            if (time >= bins[i].firstTime) {
-                endBin = i;
-            }
-        }
+        return modifiedAfter(time, hash, true);
+    }
+    
+    /**
+     * 'stop' true reads the bins from the newest to the first that begins at or before
+     * 'time', and no further (bergdb 028-48): a bin older than that one holds only times at
+     * or before that one's first time, none after 'time', as the adds come in time order and
+     * a bin begins at or after the last add before it (add, forgetUpTo). 'stop' false reads
+     * every bin down to the oldest that begins at or before 'time', as until 028-48; for the
+     * tests and the probe (main) only, which compare the two. The answers are the same.
+     */
+    boolean modifiedAfter(long time, long hash, boolean stop) {
+        int endBin = endBin(time, stop);
         
         if (endBin == -1) {
             return true;
@@ -109,6 +110,40 @@ public class KeyModSet implements IKeyModSet {
         }
         
         return result;
+    }
+    
+    /**
+     * The last bin that modifiedAfter(time, hash, stop) reads, or -1 if no bin begins at or
+     * before 'time': with 'stop', the first such bin (028-48), else the last.
+     */
+    private int endBin(long time, boolean stop) {
+        int endBin = -1;
+        for (int i = 0; i < BIN_COUNT && bins[i] != null; i++) {
+            if (time >= bins[i].firstTime) {
+                endBin = i;
+                if (stop) {
+                    break;
+                }
+            }
+        }
+        return endBin;
+    }
+    
+    /**
+     * The bins whose sub-array of 'hash' modifiedAfter(time, hash, stop) reads, up to the
+     * one with a time after 'time'. For the tests and the probe (bergdb 028-48): a count,
+     * not a time.
+     */
+    int binsRead(long time, long hash, boolean stop) {
+        int endBin = endBin(time, stop);
+        int count = 0;
+        for (int i = 0; i <= endBin; i++) {
+            count++;
+            if (bins[i].getTime(hash) > time) {
+                break;
+            }
+        }
+        return count;
     }
 
     public final void add(long time, long hash) {
@@ -183,12 +218,7 @@ public class KeyModSet implements IKeyModSet {
      * hash. For the tests and the probe (bergdb 028-01): a count, not a time.
      */
     int pairsScanned(long time, long hash) {
-        int endBin = -1;
-        for (int i = 0; i < BIN_COUNT && bins[i] != null; i++) {
-            if (time >= bins[i].firstTime) {
-                endBin = i;
-            }
-        }
+        int endBin = endBin(time, true);
         int count = 0;
         for (int i = 0; i <= endBin; i++) {
             Bin bin = bins[i];
@@ -566,6 +596,137 @@ public class KeyModSet implements IKeyModSet {
     }
     
     /**
+     * modifiedAfter() stops at the first bin that begins at or before the read time (bergdb
+     * 028-48) and answers as the full scan before it, on the cases of testSpreadSameAnswers:
+     * adds, forgetUpTo() cuts, sizes 8, 400 and 128,000; read before the first time, at each
+     * bin's first time, just before and after it, inside each bin, and at and after the last
+     * add. It never reads more bins, and fewer in all.
+     */
+    @Nano
+    public static void testScanStopSameAnswers() {
+        Random random = new Random(2848);
+        long[] hashes = new long[3000];
+        for (int i = 0; i < hashes.length; i++) {
+            hashes[i] = i % 2 == 0 ? Keys.hash(Keys.toSegments(String.format("/k/%010d", i)))
+                    : random.nextLong() & Long.MAX_VALUE;
+        }
+        
+        long readFull = 0;
+        long readStop = 0;
+        int answersTrue = 0;
+        int answersFalse = 0;
+        for (int size : new int[] {8, 400, 128*1000}) {
+            KeyModSet s = new KeyModSet(size);
+            long time = 0;
+            for (int step = 0; step < 20*1000; step++) {
+                time += 1 + random.nextInt(3);
+                s.add(time, hashes[random.nextInt(hashes.length)]);
+                if (random.nextInt(500) == 0) {
+                    s.forgetUpTo(time - random.nextInt(200));
+                }
+                if (step % 97 == 0) {
+                    for (long t : readTimes(s, random)) {
+                        for (int q = 0; q < 10; q++) {
+                            long h = q % 5 == 0 ? random.nextLong() & Long.MAX_VALUE
+                                    : hashes[random.nextInt(hashes.length)];
+                            String message = "size " + size + ", time " + t + ", hash " + h;
+                            boolean full = s.modifiedAfter(t, h, false);
+                            Assert.assertEquals(message, full, s.modifiedAfter(t, h, true));
+                            Assert.assertEquals(message, full, s.modifiedAfter(t, h));
+                            int f = s.binsRead(t, h, false);
+                            int b = s.binsRead(t, h, true);
+                            Assert.assertTrue(message + ", bins read " + b + " > " + f, b <= f);
+                            readFull += f;
+                            readStop += b;
+                            if (full) {
+                                answersTrue++;
+                            } else {
+                                answersFalse++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Assert.assertTrue("answers true: " + answersTrue, answersTrue > 1000);
+        Assert.assertTrue("answers false: " + answersFalse, answersFalse > 1000);
+        Assert.assertTrue("bins read: " + readStop + ", before 028-48: " + readFull, 
+                readStop < readFull);
+    }
+    
+    /**
+     * Read times for testScanStopSameAnswers: before the set's first time; for each bin, its
+     * first time, one before and one after it, and one inside it; the last add and after it.
+     */
+    private static long[] readTimes(KeyModSet s, Random random) {
+        long[] times = new long[4 * BIN_COUNT + 4];
+        int n = 0;
+        times[n++] = s.getFirstTime() - 1;
+        for (int i = 0; i < BIN_COUNT && s.bins[i] != null; i++) {
+            long first = s.bins[i].firstTime;
+            long end = i == 0 ? s.lastTime + 1 : s.bins[i - 1].firstTime;
+            times[n++] = first - 1;
+            times[n++] = first;
+            times[n++] = first + 1;
+            times[n++] = end > first ? first + random.nextInt((int) (end - first)) : first;
+        }
+        times[n++] = s.lastTime;
+        times[n++] = s.lastTime + 1;
+        times[n++] = s.lastTime + 1000;
+        return Arrays.copyOf(times, n);
+    }
+    
+    /**
+     * The bins read a lookup, before bergdb 028-48 and after it (binsReadProbe), in a full
+     * set of 128,000 sequential keys: for a key not added, every bin before, and the bins
+     * down to the one of the read time after. Counts, not times.
+     */
+    @Nano
+    public static void testScanStopBinsRead() {
+        long[][] r = binsReadProbe(128*1000);
+        Assert.assertEquals(BIN_COUNT, r.length);
+        for (int i = 0; i < BIN_COUNT; i++) {
+            Assert.assertTrue("bin " + i + ", key added: " + r[i][1] + " > " + r[i][0],
+                    r[i][1] <= r[i][0]);
+            Assert.assertEquals("bin " + i + ", key not added, before", BIN_COUNT * 10L, r[i][2]);
+            Assert.assertEquals("bin " + i + ", key not added, after", (i + 1) * 10L, r[i][3]);
+        }
+    }
+    
+    /**
+     * Fills a set of 'n' pairs with the hashes of 'n' sequential keys "/k/%010d", at times 1 to
+     * n, and reads each key and as many keys not added at a time in the middle of each bin.
+     * Returns, for each bin (0 the newest), the mean bins read (binsRead) in tenths: for a key
+     * added, before bergdb 028-48 and after; for a key not added, before and after.
+     */
+    static long[][] binsReadProbe(int n) {
+        KeyModSet s = new KeyModSet(n);
+        long[] hashes = new long[2 * n];    // added: 0 to n - 1, not added: n to 2n - 1
+        for (int i = 0; i < hashes.length; i++) {
+            hashes[i] = Keys.hash(Keys.toSegments(String.format("/k/%010d", i)));
+        }
+        for (int i = 0; i < n; i++) {
+            s.add(i + 1, hashes[i]);
+        }
+        long[][] result = new long[BIN_COUNT][];
+        for (int bin = 0; bin < BIN_COUNT; bin++) {
+            long time = s.bins[bin].firstTime + n / BIN_COUNT / 2;
+            long[] sums = new long[4];
+            for (int i = 0; i < n; i++) {
+                sums[0] += s.binsRead(time, hashes[i], false);
+                sums[1] += s.binsRead(time, hashes[i], true);
+                sums[2] += s.binsRead(time, hashes[n + i], false);
+                sums[3] += s.binsRead(time, hashes[n + i], true);
+            }
+            result[bin] = new long[4];
+            for (int k = 0; k < 4; k++) {
+                result[bin][k] = sums[k] * 10 / n;
+            }
+        }
+        return result;
+    }
+    
+    /**
      * Fills a set of 'n' pairs with the hashes of 'n' keys, of a kind: 0, "/k/%010d" sequential
      * from 0; 1, "/k/%010d" of random numbers; 2, two random 8-byte segments. Returns: the
      * sub-arrays used, the pairs in the fullest, the mean pairs of a used one; the pairs
@@ -604,7 +765,8 @@ public class KeyModSet implements IKeyModSet {
     /**
      * The probe of bergdb 028-01: the sub-arrays and the pairs scanned a lookup (probe()), for
      * 128,000 keys of each kind, with the sub-array index before 028-01 (modulo) and with
-     * today's (mixed). Counts only. Run: java -cp java/build/bergdb.jar bergdb.core.KeyModSet
+     * today's (mixed); and the bins read a lookup before bergdb 028-48 and after it
+     * (binsReadProbe). Counts only. Run: java -cp java/build/bergdb.jar bergdb.core.KeyModSet
      */
     public static void main(String[] args) {
         int n = 128*1000;
@@ -621,6 +783,18 @@ public class KeyModSet implements IKeyModSet {
                         kinds[kind], spread ? "mixed" : "modulo", r[0], r[1], r[2],
                         r[3] / 10 + "." + r[3] % 10, r[4], r[5] / 10 + "." + r[5] % 10, r[6]));
             }
+        }
+        
+        System.out.println();
+        System.out.println("Bins read a lookup (bergdb 028-48): " + n + " sequential keys, a read"
+                + " time in the middle of a bin; mean, before 028-48 and after.");
+        System.out.println("read time in bin   key added: before  after   not added: before  after");
+        long[][] b = binsReadProbe(n);
+        for (int bin = 0; bin < BIN_COUNT; bin++) {
+            System.out.println(String.format("%-16s  %18s  %5s  %18s  %5s",
+                    bin + (bin == 0 ? " (newest)" : bin == BIN_COUNT - 1 ? " (oldest)" : ""),
+                    b[bin][0] / 10 + "." + b[bin][0] % 10, b[bin][1] / 10 + "." + b[bin][1] % 10,
+                    b[bin][2] / 10 + "." + b[bin][2] % 10, b[bin][3] / 10 + "." + b[bin][3] % 10));
         }
     }
 }

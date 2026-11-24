@@ -104,7 +104,6 @@ Open
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
 | [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
-| [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | open |
 
 
 Closed
@@ -112,6 +111,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | done | 2026-11-24 |
 | [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | done | 2026-11-24 |
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins: a mixed hash, 74 times fewer pairs scanned | none | done | 2026-11-24 |
 | [028-43](43-large-reclaim-run.md) | Change | Long large reclaim run | none | done | 2026-11-21 |
@@ -362,3 +362,9 @@ modifiedAfter stops at the first bin that begins at or before the read time.
 the children's height; DagTester's purpose-made deletes run at node sizes
 8, 14, 30 and 62 and assert a join at height two or more in each case,
 with new cases at 30 and 62; BEFORE COMMIT OK. Moved to Closed.
+
+2026-11-24. 028-48 taken and done by an agent of lead-1124 on the branch
+`028-48`: `modifiedAfter` reads the bins down to the first that begins at
+or before the read time, with the full scan's answers; a lookup of a key
+not recently written reads 1 to 4 bins by its read time, not always 4.
+Moved to Closed.
