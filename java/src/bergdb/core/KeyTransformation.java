@@ -30,7 +30,11 @@ public interface KeyTransformation {
      * Db.putKvs puts them in that order (bergdb 023-08, section 7, Q4). If two KVs have the
      * same key then, the transaction is refused with a DbException before its go point, and
      * each transformed KV gets its key as written and its write hash back (bergdb 024-16):
-     * a transaction has one operation a key.
+     * a transaction has one operation a key. The index nodes that the transaction can make
+     * dirty are counted with the keys that its key transformations gave, and a transaction
+     * whose nodes could pass a record's room is refused in the same way (Db, "Limits"; bergdb
+     * 005-31, 028-50; until 028-50 a key with a key transformation was counted with the key
+     * as written).
      * 
      * @param trans The transaction for which to modify the key.
      * @param index The index to the KV pair of the transaction.

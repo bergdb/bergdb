@@ -580,16 +580,24 @@ Before the go point a user transaction is refused if the index nodes it
 can make dirty or create could pass the record's index limit, 15/16 of
 the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
 
+* a transaction with a key transformation is counted after its key
+  transformations, with the keys they gave, in the same way: under the
+  write lock right after `Db.transformKeys`
+  (`Db.checkDirtyNodesAfterKeyTransformations`; 028-50, since
+  2026-11-24). A refusal there gives back the keys as written, their
+  write hashes and the time, as `transformKeys`' refusals do (024-16).
+  Until 028-50 such a key got the cheap count with the segments of the
+  key as given, also in the walk, as the check ran only before the key
+  transformations: short for a key transformed to a key of more
+  segments (RB-005; below);
 * a cheap test first: a put counts 3 nodes a level, a delete 20, of a
   path of `height` levels a segment, plus 3 per key. A value
   transformation counts as a potential delete. `height` =
   2 + floor(log2(max(1, streamLength / 48))), with integer division.
   A transaction at or under the limit by this count is let through;
-* else keys with a key transformation still get the cheap count, with
-  the segments of the key as given, as the check runs before the key
-  transformations. Known keys go to `Dag.dirtyNodeBound` at the latest
-  state; a value transformation sends its key both as a put and as a
-  delete;
+* else the transaction's keys go to `Dag.dirtyNodeBound` at the latest
+  state, in one walk; a value transformation sends its key both as a
+  put and as a delete;
 * `Dag.dirtyNodeBound` counts the distinct key nodes on those paths. For
   each it counts k klongs: one a put or a new segment tree below, the
   klongs from its children's overflows, four on a delete's path, and
@@ -646,15 +654,21 @@ transformations (to a value; to null, deletes that join nodes and nothing
 on absent keys) and key transformations (to keys of the database, and to
 new keys of up to 16 segments from keys of one), the key nodes Db marks
 are at most the walked count, and at most the estimate where it fits the
-limit; the counts come from `Db.countDirtyNodes`, split from
-`checkDirtyNodes`. The estimate of a key with a key transformation is
-short where the key after it has more segments than the key as given and
-the segment trees under the shared prefix are more than one level high:
-a key of one segment transformed to one of 16 under 15 segment trees
-three levels high marks 46 key nodes, counted 39 (node size 8, a stream
-of 64 kB, `height` 12); a known fault, kept as a test that asserts it
-(`testKnownFaultKeyTransformationDeeperThanCount`; 028-45). Reclaim's
-internal transactions are not checked (027-13, 1.4).
+limit; the counts are those of Db's check, from `Db.countDirtyNodes`,
+split from `checkDirtyNodes`, told to the test hooks
+(`Db.TestHooks.dirtyNodesCounted`, with the walk asked for also where
+the estimate fits). Until 028-50 the estimate of a key with a key
+transformation, with the key as given, was short where the key after it
+has more segments than the key as given and the segment trees under the
+shared prefix are more than one level high: a key of one segment
+transformed to one of 16 under 15 segment trees three levels high marks
+46 key nodes, counted 39 (node size 8, a stream of 64 kB, `height` 12;
+028-45, RB-005). Since 028-50 it is counted with the key of 16
+segments, 579 by the estimate and 153 by the walk
+(`testKeyTransformationToDeeperKey`), and with the record limit lowered
+so that a record takes 42 nodes it is refused, its key as written, write
+hash and time given back (`testRefusedAfterKeyTransformations`).
+Reclaim's internal transactions are not checked (027-13, 1.4).
 
 
 ## 5. In the model
@@ -742,7 +756,9 @@ internal transactions are not checked (027-13, 1.4).
   `addDeleteKlong`.
 * `core/Db`: `putKvs` (the batch), `newPutData`'s listeners (ids,
   `markAtEndOfOp`), `endOfOp`, `endOfTrans`, `makeDirtyIfNeeded`,
-  `checkDirtyNodes`; `core/DbStarter.rerunTransaction`; `core/TransCheck`.
+  `checkDirtyNodes`, `checkDirtyNodesAfterKeyTransformations`,
+  `countDirtyNodes`; `core/DbStarter.rerunTransaction`;
+  `core/TransCheck`.
 * The C clone (012) has release 2026.2's writer (splits, no merges), not
   PE.
 
@@ -970,3 +986,6 @@ the writer writes (1.10, 2, 3, 5).
 
 2026-11-20. 030-29: 4.2 and 9, `dirtyNodeBound` proved for transactions
 of puts (Lean, given the fill rules); with deletes argued and tested.
+
+2026-11-24. 028-50: 4.2 and 6, a transaction with a key transformation
+counted after its key transformations (RB-005).

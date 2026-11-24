@@ -278,14 +278,19 @@ key once, as a put or a delete. Java's admission check counts otherwise in
 three cases, whose link to the theorems is argued, not proved: where Db's
 cheap estimate (three nodes a level of a put's path, twenty of a delete's)
 fits, Db does not call the count (028-21); a key with a key transformation
-is counted only by that estimate, with the segments of the key as given;
-and a key with a value transformation, which may give a put or a delete,
-is walked as both (023-11, review B, B2). Since 2026-11-24 a unit test
-checks the three on purpose (`DbTesterDirtyCount`, 028-45; section 5,
-item 14), and it found the second short: a key transformed to a key of
-more segments, whose segment trees under the shared prefix are more than
-one level high, marks more key nodes than the estimate counts (46 for 39
-at node size 8; 028-45 holds the case and the options for a fix).
+is counted after the transformation, with the key it gives, by the
+estimate or, where that does not fit, the count (028-50, since
+2026-11-24); and a key with a value transformation, which may give a put
+or a delete, is walked as both (023-11, review B, B2). Since 2026-11-24 a
+unit test checks the three on purpose (`DbTesterDirtyCount`, 028-45;
+section 5, item 14). It found the second short as it was until 028-50,
+counted before the transformation by the estimate with the segments of
+the key as given: a key transformed to a key of more segments, whose
+segment trees under the shared prefix are more than one level high,
+marked more key nodes than counted (46 for 39 at node size 8; RB-005).
+Since 028-50 that key is counted 579 by the estimate and 153 by the
+count, and a test with the record limit lowered refuses it where a
+record takes fewer nodes than it marks.
 
 
 # 3. The model, and what "proved" means
@@ -605,9 +610,14 @@ checker and `pecmp`; a failing trace is kept with its seed.
     16 segments from keys of one), and asserts for each that the key nodes
     Db marks are at most the walked count, and at most the estimate where
     the estimate fits the limit, both ways of `Db.checkDirtyNodes`
-    reached at each node size. A known fault of the estimate for a key
-    transformed to a key of more segments is kept as a test that asserts
-    it (`testKnownFaultKeyTransformationDeeperThanCount`; 2.7; 028-45).
+    reached at each node size, a transaction with a key transformation
+    counted after its key transformations (028-50). The case of RB-005,
+    a key transformed to a key of more segments, which the estimate of
+    the key as given counted short until 028-50:
+    `testKeyTransformationToDeeperKey` (its 46 key nodes marked within
+    the count) and `testRefusedAfterKeyTransformations` (refused where a
+    record takes fewer nodes than it marks, its key, write hash and time
+    given back; 2.7; 028-50).
 
 
 # 6. How it stays true
@@ -759,3 +769,7 @@ just above the leaves, not only puts).
 
 2026-11-24. Section 2.1: the fill rules checked by both checkers; the
 contract checker fails a trace with a shape fault since 028-44.
+
+2026-11-24. 2.7 and section 5, item 14: since 028-50 a key with a key
+transformation is counted after the transformation (RB-005 fixed on
+`main`); the known-fault test turned around.

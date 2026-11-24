@@ -295,12 +295,15 @@ import bergdb.stream.SalsaStream;
  * can make dirty in the index, so that its record fits the record limit, 2^31 - 9 bytes, at
  * every node size (024-17, section 5; the Lean model's Limits.release). The checks of the
  * record's size and of the index nodes a transaction can make dirty (bergdb 005-17, 005-31)
- * stay, as refusals before the go point. A transaction with key or value transformations
- * can still meet 005-31's: the check counts a transformed KV coarsely, from the stream's
- * length (at node size 62, 500 such KVs of 111-byte keys on a stream of 258 kB; review
- * rev24, R3). A value transformation's result counts for L5, and for 005-17's size,
- * as a value given directly: execute() checks them after the transformations, before the go
- * point (bergdb 026-06; ValueTransformation).</p>
+ * stay, as refusals before the go point. 005-31's check counts a key with a key
+ * transformation with the key that the transformation gives, after the key transformations
+ * (bergdb 028-50), and a key with a value transformation, which may give a delete, as a put
+ * and as a delete. Until 028-50 it counted a key with a key transformation coarsely, from the
+ * stream's length and the key as given: short for a key transformed to a key of more
+ * segments (bergdb RB-005), and over the limit for 500 such KVs of 111-byte keys on a stream
+ * of 258 kB at node size 62 (review rev24, R3). A value transformation's result counts for
+ * L5, and for 005-17's size, as a value given directly: execute() checks them after the
+ * transformations, before the go point (bergdb 026-06; ValueTransformation).</p>
  * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
  * environment: correct storage, a stream that returns the bytes appended to it, and enough
@@ -2818,7 +2821,9 @@ public class Db implements AutoCloseable {
      *             or as a key transformation gave it ("The Core's own keys are refused";
      *             bergdb 024-37); it is too
      *             large for a record (bergdb 005-17), or its dirty index nodes would not fit
-     *             in one record (005-31); its key transformations make two of its keys one
+     *             in one record (005-31), counted with the keys that its key transformations
+     *             give, and its KVs are left as they were (bergdb 028-50); its key
+     *             transformations make two of its keys one
      *             key, and its KVs are left as they were (bergdb 024-16; Trans.Builder); the
      *             clock's time is out of range (005-18), or in the last 1,024 database
      *             times, kept for reclaim (015-55); or the database has used its top node
@@ -2969,6 +2974,15 @@ public class Db implements AutoCloseable {
             // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
             // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
             final Kv[] kvs = transformKeys(t, before);
+            
+            // The index nodes of a user transaction with a key transformation, counted with
+            // the keys that its key transformations gave (bergdb 028-50; checkDirtyNodes()):
+            // before the go point too, and a refusal leaves everything as it was, as those of
+            // transformKeys() do. Until 028-50 only checkDirtyNodes() counted them, with the
+            // keys as given.
+            if (!t.isInternal() && before.keys != null) {
+                checkDirtyNodesAfterKeyTransformations(t, kvs, before);
+            }
             
             // The value transformations of a user transaction, at t.tt, and the refusal of one
             // that throws or whose values pass the limits (bergdb 026-06; 010-04, R5): before
@@ -3257,26 +3271,82 @@ public class Db implements AutoCloseable {
      * <p>A cheap test first: every key at most three nodes a level of a path of at most
      * 'height' levels a segment, and three more; 'height' from the stream's length, as a
      * tree of n nodes with at least two children each is at most log2(n) + 1 high. Only a
-     * transaction that fails it walks the paths of its keys (Dag.dirtyNodeBound()). A key
-     * with a key transformation, known only at the put, counts as the cheap test counts it.
-     * Each node at the largest size, and 16 bytes for its entry in the got-dirty list.</p>
+     * transaction that fails it walks the paths of its keys (Dag.dirtyNodeBound()). Each node
+     * at the largest size, and 16 bytes for its entry in the got-dirty list.</p>
+     * 
+     * <p>A transaction with a key transformation is left to
+     * checkDirtyNodesAfterKeyTransformations(), which counts it in the same way with the keys
+     * that its key transformations give (bergdb 028-50). Until 028-50 this check counted such a
+     * key by the cheap test with the segments of the key as given, also in the walk, short for
+     * a key transformed to a key of more segments (46 key nodes marked, 39 counted, at node
+     * size 8; bergdb 028-45, RB-005).</p>
      *
      * @throws DbException
      */
     private void checkDirtyNodes(Trans t) {
-        final DirtyNodeCounts c = countDirtyNodes(t, false);
-        if (c.walked > c.maxNodes) {
-            throw new DbException("The transaction is too large: the index nodes it can make "
-                    + "dirty or create, up to " + c.walked + ", could take " 
-                    + (c.walked * c.nodeBytes + c.topBytes) + " bytes in a record, more than " 
-                    + c.limit + " (bergdb 005-31). A larger update must be split into "
-                    + "transactions.");
+        for (Kv kv : t.kvs) {
+            if (kv.keyTransformation != null) {
+                return;         // counted after its key transformations (bergdb 028-50)
+            }
+        }
+        final DirtyNodeCounts c = countDirtyNodes(t, t.kvs, false);
+        if (c.refused()) {
+            throw new DbException(tooManyDirtyNodes(c, ""));
         }
     }
     
     /**
-     * The counts of checkDirtyNodes(), and the figures it compares them with (bergdb 028-45,
-     * for DbTesterDirtyCount).
+     * Refuses a user transaction with a key transformation whose index nodes could take more
+     * than StoredTrans.dirtyLimit() bytes, counted as checkDirtyNodes() counts a transaction
+     * without one, with the keys that its key transformations gave (bergdb 028-50; option A of
+     * 028-45, Frans, 2026-11-24): the cheap test, and the walk if the cheap test is over the
+     * limit. Called under writeLock right after transformKeys(), before the go point. A
+     * refusal leaves everything as it was, as those of transformKeys() do: each transformed KV
+     * gets its key as written and its write hash back, and the time is given back
+     * (giveBack()). A key with a value transformation, which runs after this
+     * (transformValues()), counts as a put and as a delete, as in checkDirtyNodes().
+     * 
+     * <p>The whole transaction is counted, its keys without a key transformation too, in one
+     * walk: Dag.dirtyNodeBound() of a transaction is not the sum of those of its parts, as a
+     * node's overflows count the klongs of all the keys below it together. A read of the walk
+     * that fails on the storage, or anything else that the count throws, fails the database,
+     * as a read of transformValues() does.</p>
+     *
+     * @throws DbException  If the transaction is refused.
+     */
+    private void checkDirtyNodesAfterKeyTransformations(Trans t, Kv[] kvs, Before before) {
+        final DirtyNodeCounts c;
+        try {
+            c = countDirtyNodes(t, kvs, true);
+        } catch (Throwable e) {
+            // A read that fails on the storage has failed the database (failOnStorage()),
+            // and anything else is a bug; an Error is recorded under the lock (bergdb 019-40).
+            throw fail(t, e);
+        }
+        if (c.refused()) {
+            final String message = tooManyDirtyNodes(c, " after its key transformations")
+                    + " The transaction is refused; nothing of it is written, and the database "
+                    + "goes on.";
+            giveBack(t, before);
+            throw new DbException(message);
+        }
+    }
+    
+    /**
+     * The message of a refusal by checkDirtyNodes(), or with 'after' by
+     * checkDirtyNodesAfterKeyTransformations().
+     */
+    private static String tooManyDirtyNodes(DirtyNodeCounts c, String after) {
+        return "The transaction is too large" + after + ": the index nodes it can make dirty "
+                + "or create, up to " + c.walked + ", could take "
+                + (c.walked * c.nodeBytes + c.topBytes) + " bytes in a record, more than "
+                + c.limit + " (bergdb 005-31). A larger update must be split into "
+                + "transactions.";
+    }
+    
+    /**
+     * The counts of checkDirtyNodes() and checkDirtyNodesAfterKeyTransformations(), and the
+     * figures they compare them with (bergdb 028-45, for DbTesterDirtyCount).
      */
     static final class DirtyNodeCounts {
         /** StoredTrans.dirtyLimit(), bytes. */
@@ -3294,34 +3364,39 @@ public class Db implements AutoCloseable {
         /** The cheap test's count: every key at most 'height' levels a segment. */
         long estimate;
         
-        /**
-         * The count with the walk: the cheap test's count of the keys with a key
-         * transformation, and Dag.dirtyNodeBound() of the others; -1 if not walked.
-         */
+        /** The count with the walk, Dag.dirtyNodeBound() of the keys; -1 if not walked. */
         long walked = -1;
-    }
-    
-    /**
-     * For tests (bergdb 028-45): the counts of checkDirtyNodes() for the transaction t as it
-     * would be executed now, the walk's too, under writeLock.
-     *
-     * @throws DbException  If the walk's read fails (readFailed).
-     */
-    DirtyNodeCounts countDirtyNodes(Trans t) {
-        synchronized (writeLock) {
-            return countDirtyNodes(t, true);
+        
+        /**
+         * True if counted after the transaction's key transformations, with the keys they
+         * gave (checkDirtyNodesAfterKeyTransformations(); bergdb 028-50).
+         */
+        boolean afterKeyTransformations;
+        
+        /**
+         * Whether the check refuses the transaction: the cheap test's count and the walk's are
+         * over maxNodes. A walk that a test asks for where the cheap test's count is within it
+         * (TestHooks.walkDirtyNodes()) changes nothing.
+         */
+        boolean refused() {
+            return estimate > maxNodes && walked > maxNodes;
         }
     }
     
     /**
-     * The counts of checkDirtyNodes() for the transaction t, before its key transformations:
-     * the cheap test's, and the walk's if the cheap test's is over maxNodes or 'walk' is true
-     * (split from checkDirtyNodes by bergdb 028-45, so that a test compares each with the key
-     * nodes a transaction marks). The caller holds writeLock.
+     * The counts of checkDirtyNodes() for the KVs kvs of the transaction t, keys as they are
+     * put: the cheap test's, and the walk's if the cheap test's is over maxNodes or a test
+     * asks for it (TestHooks.walkDirtyNodes()); told to the test hooks
+     * (TestHooks.dirtyNodesCounted()). No KV of kvs has a key transformation still to run: t.kvs
+     * of a transaction without one, or those that transformKeys() gave
+     * ('afterKeyTransformations'). Split from checkDirtyNodes by bergdb 028-45, so that a test
+     * compares each count with the key nodes a transaction marks. The caller holds writeLock.
      *
      * @throws DbException  If the walk's read fails (readFailed).
      */
-    private DirtyNodeCounts countDirtyNodes(Trans t, boolean walk) {
+    private DirtyNodeCounts countDirtyNodes(Trans t, Kv[] kvs, boolean afterKeyTransformations) {
+        final TestHooks hooks = testHooks;
+        final boolean walk = hooks != null && hooks.walkDirtyNodes();
         final DirtyNodeCounts c = new DirtyNodeCounts();
         final long limit = StoredTrans.dirtyLimit();
         final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
@@ -3335,9 +3410,10 @@ public class Db implements AutoCloseable {
         c.nodeBytes = nodeBytes;
         c.topBytes = topBytes;
         c.maxNodes = (limit - topBytes) / nodeBytes;
+        c.afterKeyTransformations = afterKeyTransformations;
         
         long cheap = 0;
-        for (Kv kv : t.kvs) {
+        for (Kv kv : kvs) {
             // A delete: 20 nodes a level, a put 3. Since record format 8 PE writes a node
             // once, cuts its final list, joins small neighbours and settles roots; the count
             // covers those nodes (Dag.dirtyNodeBound; bergdb 028-21; 027-08, section 4.2).
@@ -3348,21 +3424,11 @@ public class Db implements AutoCloseable {
             cheap += (delete ? 20 : 3) * height * kv.getKey().length + 3;
         }
         c.estimate = cheap;
-        if (cheap <= c.maxNodes && !walk) {
-            return c;
-        }
-        
-        int n = 0;
-        long nodes = 0;
-        final long[][] keys = new long[2 * t.kvs.length][];
-        final boolean[] deletes = new boolean[2 * t.kvs.length];
-        for (Kv kv : t.kvs) {
-            if (kv.keyTransformation != null) {
-                // As the cheap test counts it: a delete too (bergdb 024-21: until then a delete
-                // with a key transformation counted as a put, 3 nodes a level).
-                final boolean delete = kv.getValue() == null || kv.valueTransformation != null;
-                nodes += (delete ? 20 : 3) * height * kv.getKey().length + 3;
-            } else {
+        if (cheap > c.maxNodes || walk) {
+            int n = 0;
+            final long[][] keys = new long[2 * kvs.length][];
+            final boolean[] deletes = new boolean[2 * kvs.length];
+            for (Kv kv : kvs) {
                 keys[n] = kv.getKey();
                 deletes[n] = kv.getValue() == null && kv.valueTransformation == null;
                 n++;
@@ -3374,15 +3440,20 @@ public class Db implements AutoCloseable {
                     n++;
                 }
             }
+            // Until 028-50 a key with a key transformation was counted here by the cheap test,
+            // with the segments of the key as given (bergdb 024-21: a delete too, until then
+            // as a put), as this ran before the key transformations only.
+            final long time = dbClock.lookupTime(Long.MAX_VALUE);
+            try {
+                c.walked = dag.dirtyNodeBound(time, java.util.Arrays.copyOf(keys, n),
+                        java.util.Arrays.copyOf(deletes, n), newGetData());
+            } catch (StreamException e) {
+                throw readFailed(e, time);
+            }
         }
-        final long time = dbClock.lookupTime(Long.MAX_VALUE);
-        try {
-            nodes += dag.dirtyNodeBound(time, java.util.Arrays.copyOf(keys, n), 
-                    java.util.Arrays.copyOf(deletes, n), newGetData());
-        } catch (StreamException e) {
-            throw readFailed(e, time);
+        if (hooks != null) {
+            hooks.dirtyNodesCounted(t, c);
         }
-        c.walked = nodes;
         return c;
     }
     
@@ -4344,6 +4415,26 @@ public class Db implements AutoCloseable {
          * the node is no longer current (bergdb item 001, WP P3).
          */
         public void nodeReplaced(Node node);
+        
+        /**
+         * Db's check of the index nodes that a user transaction can make dirty (bergdb 005-31)
+         * counted t (bergdb 028-45): c, the counts and the figures it compares them with,
+         * before the check refuses t, if it does. A transaction with a key transformation is
+         * counted after its key transformations, with the keys they gave
+         * (c.afterKeyTransformations; bergdb 028-50), one without before them. Under
+         * writeLock.
+         */
+        public default void dirtyNodesCounted(Trans t, DirtyNodeCounts c) {}
+        
+        /**
+         * True to have the check of the index nodes walk the paths of the keys
+         * (Dag.dirtyNodeBound()) also where the cheap test's count fits, so that a test
+         * compares the walk too (bergdb 028-45). The check refuses the same transactions: one
+         * whose cheap count fits is never refused (DirtyNodeCounts.refused()).
+         */
+        public default boolean walkDirtyNodes() {
+            return false;
+        }
     }
 
     /** The test-only hooks, or null. See TestHooks. */
