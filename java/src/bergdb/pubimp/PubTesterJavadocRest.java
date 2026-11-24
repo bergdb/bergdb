@@ -611,8 +611,9 @@ public class PubTesterJavadocRest {
     }
     
     /**
-     * Release 2026.4 has no encryption in its API (bergdb 020-28): DatabaseBuilder has no
-     * cryptoKey(), and neither bergdb.pub.CryptoKey nor bergdb.pub.util.BadCryptoKey exists.
+     * BergDB has no encryption in its API since release 2026.4 (bergdb 020-28): DatabaseBuilder
+     * has no cryptoKey(), and neither bergdb.pub.CryptoKey nor bergdb.pub.util.BadCryptoKey
+     * exists.
      */
     @Nano
     public static void testNoEncryptionInTheApi() {

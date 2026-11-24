@@ -143,7 +143,7 @@ public interface DatabaseBuilder {
      * stream, a sync or the background write of a transaction, fails it
      * (DbFailedException).</p>
      * 
-     * <p>Release 2026.4 has no encryption (bergdb 020-28; the package's
+     * <p>BergDB has no encryption since release 2026.4 (bergdb 020-28; the package's
      * {@linkplain bergdb.pub##encryption Encryption}). A database that an earlier release
      * encrypted, with a crypto key, is refused, and the start has opened, created and written
      * nothing: its created.txt names the key, and start() throws a VersioningStreamException,

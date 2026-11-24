@@ -311,7 +311,8 @@ of the types; object. A field's name has 1 to 255 bytes in UTF-8; an object is n
 <p>Objects written by BergDB 2026.3 and before (format 1) are not read: a get throws
 ObjectCreationException, a byte[] put of one in an indexed directory DataFormatException, and
 a build over one fails; a put over one and a delete of one work. A database whose index
-definitions are of 2026.3 does not start; such a database is made again from its data.</p>
+definitions are of 2026.3 does not start; such a database is made again from its data.
+Since 2026.6 no database of 2026.5 or earlier starts (the release notes of 2026.6).</p>
 
 <p>An object is put only at an object key: a key whose name, its last part, has no suffix,
 or the suffix ".obj". The suffix is what follows the name's last '.': "txt" for
@@ -455,7 +456,7 @@ stores a placeholder.</p>
 
 <h3 id="encryption">Encryption</h3>
 
-<p>Release 2026.4 has no encryption. The releases up to 2026.3 could encrypt a database's
+<p>BergDB has no encryption since release 2026.4. The releases up to 2026.3 could encrypt a database's
 stream with a crypto key (DatabaseBuilder.cryptoKey()), and that encryption is removed: it
 gave every write at one position of the stream the same keystream, in two databases with one
 key, in a copy written on beside the database, and after a crash cut the stream's tail, so one

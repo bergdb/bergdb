@@ -510,7 +510,7 @@ public class Db implements AutoCloseable {
     /**
      * Whether the main stream is encrypted: a SalsaStream, as DatabaseBuilderImp makes for its
      * internal crypto key; for the message of a start refused for the magic bytes (bergdb
-     * 005-33). Release 2026.4 has no encryption in its API (bergdb 020-28).
+     * 005-33). BergDB has no encryption in its API since release 2026.4 (bergdb 020-28).
      */
     private final boolean encrypted;
     
@@ -862,8 +862,8 @@ public class Db implements AutoCloseable {
      * Does a bounded part of the database's maintenance now, and returns whether more is due
      * (bergdb 024-32). Optional: the maintenance goes on in the ordinary operations, at the
      * application's commits, whether this method is called or not. Frans (2026-11-10, bergdb
-     * 023-04, Y10): "maintainance should be performed while doing other operations on the
-     * database, so the user explicitely calling maintain() should be optional, not a
+     * 023-04, Y10): "maintenance should be performed while doing other operations on the
+     * database, so the user explicitly calling maintain() should be optional, not a
      * requirement on the user that she must call maintain." What it adds: a database does
      * no work by itself (010-01, P3), so with a finite retain duration the space of deleted
      * and overwritten data comes back only as the application's commits grow the stream: a

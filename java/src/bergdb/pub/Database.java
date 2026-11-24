@@ -540,8 +540,8 @@ public interface Database extends AutoCloseable {
      * <p>Does a bounded part of the database's maintenance now, and returns whether more is
      * due (bergdb 024-32). Calling it is optional: the maintenance goes on while the
      * application uses the database, at its commits, whether this method is called or not.
-     * In Frans Lundberg's words (2026-11-10): "maintainance should be performed while doing
-     * other operations on the database, so the user explicitely calling maintain() should be
+     * In Frans Lundberg's words (2026-11-10): "maintenance should be performed while doing
+     * other operations on the database, so the user explicitly calling maintain() should be
      * optional, not a requirement on the user that she must call maintain."</p>
      * 
      * <p>What it is for: a database that is not used does no work by itself, so with a
