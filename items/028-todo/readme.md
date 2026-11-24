@@ -103,7 +103,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
-| [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
+| [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
 
 
@@ -379,3 +379,11 @@ decision among options A to C (recommended A); in progress.
 2026-11-24. 028-49 registered by an agent of lead-1124, from finding 1 of
 the review of release 2026.6: the release scripts make the GitHub
 release's body with absolute links; for 2026.7 (031).
+
+2026-11-24. 028-47 studied by an agent of lead-1124, for Frans's decision:
+option B (a commit begins an iteration also on `maintain()`'s rule) gives
+no clear gain, as the cut then waits for the startup pos, which moves with
+the stream's growth; B2, B with `maintain()`'s take at commits, gives the
+gain but writes 4.3 times the stream at the Pub's default startup
+distance. Recommended: A, no change. The entry is a directory now, with
+its probes; status open.
