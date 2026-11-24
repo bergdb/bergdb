@@ -576,3 +576,5 @@ OK (12:43 to 13:02).
 request, by coord-1120.
 
 2026-11-24. Status set after the release (lead-1124).
+
+2026-11-24. Option B registered as 028-47 (Frans).

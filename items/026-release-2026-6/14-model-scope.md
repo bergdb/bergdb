@@ -1,8 +1,9 @@
 # 026-14. The Lean model's scope: three additions
 
-Created 2026-11-13 by Frans Lundberg. Status: open: proposed for 2026.6,
-not decided by its release; 030's map lists the model's scope as open,
-not started (030, D5).
+Created 2026-11-13 by Frans Lundberg. Status: open, carried to 2026.7
+(031) on 2026-11-24 (Frans): proposed for 2026.6, not decided by its
+release; 030's map lists the model's scope as open, not started (030,
+D5).
 
 What the Lean model covers, where its boundary should be, and three
 additions proposed for release 2026.6, in order of value.

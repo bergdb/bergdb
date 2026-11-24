@@ -223,7 +223,8 @@ Files
   is, three additions in order of value (reclaim as a whole, the stream
   format as bytes, the commit's conflict check), the assumption list, what
   stays out; proposed, for Frans to decide (2026-11-13, 12:11). Not
-  decided by the release; open, on 030's map (D5).
+  decided by the release; open, carried to 031 on 2026-11-24, on 030's
+  map (D5).
 
 * 15-timing-10m.md. 026-15, the timing pass at 10M keys: what 2026.6's
   changes to reclaim (026-05, 026-09) cost or save in time; done, run
@@ -459,10 +460,15 @@ already true kept. Done: 026-02, 026-05 to 026-11, 026-13, 026-15 to
 026-28. Moved to 2026.8 (032) on 2026-11-20: 026-01 and 026-12, their
 IDs and files kept here. Open, carried to 2026.7 (031), which takes what
 2026.6 does not finish: 026-03, not started, and 026-04, the three
-values and the default. Open: 026-14, not decided; 030's map lists it
-(D5). Not taken by 2026.6: MT (026-17, 026-18; 026-19's brief) and step
+values and the default; 026-14, not decided, carried there too (Frans,
+2026-11-24); 030's map lists it (D5). Not taken by 2026.6: MT (026-17, 026-18; 026-19's brief) and step
 times (026-20, 026-21); its writer is PE (026-24, 026-25). Not made in
 2026.6: the versioning rule and the corpus (027-03, section 21), decided
-for it on 2026-11-13; the stable format was set aside on 2026-11-18. Not
-studied: 026-13's option B, a proposal above. 028-19 and 028-34 stay
+for it on 2026-11-13; the stable format was set aside on 2026-11-18;
+moved to 2026.8 (032) on 2026-11-24 (Frans). Not studied: 026-13's
+option B, a proposal above; registered as 028-47 on 2026-11-24 (Frans). 028-19 and 028-34 stay
 open for a later release.
+
+2026-11-24. After 026 was done (Frans): 026-14 carried to 031, the
+versioning rule and the corpus (027-03, section 21) moved to 032, and
+026-13's option B registered as 028-47; 026-18 stays done.

@@ -71,8 +71,9 @@ In short:
   is not covered by them.
 * **Databases of release 2026.5 and earlier are refused: make them
   again** (The stream, below). There is no upgrade tool.
-* **Three released bugs of 2026.5 are fixed**, RB-001 to RB-003
-  (Released bugs fixed, below). No bug is known in 2026.6 at its
+* **Four released bugs of 2026.5 are fixed**, RB-001 to RB-004
+  (Released bugs fixed, below; RB-004 registered on 2026-11-24, after
+  the release). No bug is known in 2026.6 at its
   release.
 * **Speed against 2026.5:** writes with reclaim at work up to 27 %
   faster; writes without reclaim 6 to 10 % slower; reads up to 5 %
@@ -92,7 +93,7 @@ The register of released bugs is
 [bergdb 033](../../items/033-bugs/readme.md): a fault in the code of a
 published release, each with an ID and a severity (S1 data lost or
 wrong, S2 the database fails or will not start, S3 a call fails or
-refuses wrongly, S4 minor). This release fixes the three that 2026.5
+refuses wrongly, S4 minor). This release fixes the four that 2026.5
 has:
 
 * **RB-001, S2. A value transformation that throws or passes 8 MiB fails
@@ -110,6 +111,14 @@ has:
   next start throw `DatabaseNotCreatedException`. The Javadoc now says
   so (Core API, below; bergdb 028-40); the Pub API syncs the creation in
   its start and was not affected. Nothing committed was lost.
+* **RB-004, S4. Databases created at once around midnight could get a
+  wrong date in created.txt.** Threads of one JVM that created databases
+  at the same time, one of them at least with the Core API, shared a
+  date format that is not thread-safe, so that a change of the date
+  while they were created could write a wrong date into `created.txt`,
+  a text for people that BergDB does not read. Possible in theory only,
+  never seen. Now the date is formatted thread-safely (bergdb 028-07).
+  Registered on 2026-11-24, after the release (bergdb 033).
 
 
 ### The stream

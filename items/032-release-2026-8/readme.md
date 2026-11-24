@@ -48,6 +48,12 @@ this list is where they belong now.
   a study, and PA9): one of the stable format's open questions of
   2026.5's first theme.
 
+* **The versioning and compatibility rule and the corpus of saved
+  databases** (027-03, section 21, V-A to V-D, and 21.3): decided work
+  for 2026.6 (Frans, 2026-11-13), not made there; moved here on
+  2026-11-24 (Frans), with the stable format it belongs to. 026-08's
+  node-size field, kept as a hook, is a first case.
+
 To register when the work starts: a study of encryption and a study of
 replication, each with what it asks of the stream format.
 
@@ -57,3 +63,6 @@ Log
 
 2026-11-20. Created (Frans), with 031. 026-12, 026-01, QM1 and PA5/PA9
 moved here from 2026.6 (Frans), their IDs kept.
+
+2026-11-24. The versioning rule and the corpus (027-03, section 21)
+moved here from 2026.6 (Frans).

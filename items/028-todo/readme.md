@@ -105,6 +105,7 @@ Open
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
 | [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
+| [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 
 
 Closed
@@ -342,3 +343,6 @@ contract checker fails a trace with a shape fault; a test of
 `Db.checkDirtyNodes`' count with transformations and the cheap estimate;
 DagTester's purpose-made deletes at node size 62 with the joins' heights
 asserted.
+
+2026-11-24. 028-47 registered by lead-1124: 026-13's option B, not
+studied in 2026.6, so that it is not lost when 026 is done (Frans).
