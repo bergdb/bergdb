@@ -992,6 +992,15 @@ public class Dag {
             statCuts, statJoins, statCollapses, statNewRoots, statDropped, statShort;
     
     /**
+     * The joins (statJoins) by the height of the two joined children (PeWriter.joinAt's ht):
+     * element i counts the joins of children at height i, 0 for leaves; the last element
+     * counts those at its height or more. For tests and measurements, as the counts above
+     * (bergdb 028-46): the dirty-node bound is proved for joins at heights 0 and 1
+     * (Contract.PE.NoHigherJoins) and tested above them.
+     */
+    public static final long[] statJoinsByHeight = new long[8];
+    
+    /**
      * <p>Applies a transaction's operations to the graph at the time pd.tt: for each i, a put
      * of keys[i] with values[i], or a delete if values[i] is null. The keys are strictly
      * increasing (Keys.compareArrays): one operation a key, in key order, as Db.putKvs gives

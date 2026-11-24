@@ -584,9 +584,11 @@ checker and `pecmp`; a failing trace is kept with its seed.
     seeds in `night.sh`); `DagTester.testDirtyNodeBoundOfPe` (a unit test,
     `before-commit.sh`; 028-21) on random histories at node sizes 8, 14,
     30 and 62 and on purpose-made deletes under several inner nodes at
-    node sizes 8, 14 and 30, each with at least ten joins; it counts the
-    joins, not the heights at which they happen. The cheap estimate and
-    the transformations of 2.7 are argued, not tested.
+    the same four node sizes, each with at least ten joins and, since
+    028-46 (2026-11-24), at least one join of inner nodes at height two
+    or more (PE counts its joins by the children's height,
+    `Dag.statJoinsByHeight`). The cheap estimate and the transformations
+    of 2.7 are argued, not tested.
 
 
 # 6. How it stays true

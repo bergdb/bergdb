@@ -631,8 +631,12 @@ had a false step (a joined node can end small and be joined again;
 nodes the transaction marks are at most the bound, every traced
 transaction, with the Lean copy) and DagTester's
 `testDirtyNodeBoundOfPe`, `testDirtyNodeBoundOfDeletes`,
-`testDirtyNodeBoundSumsCollapsesOverTrees`. Reclaim's internal
-transactions are not checked (027-13, 1.4).
+`testDirtyNodeBoundSumsCollapsesOverTrees`; the first, at node sizes
+8, 14, 30 and 62, deletes most keys under several inner nodes and
+asserts at least one join of inner nodes at height two or more in each
+case (PE counts its joins by the children's height,
+`Dag.statJoinsByHeight`; 028-46). Reclaim's internal transactions are
+not checked (027-13, 1.4).
 
 
 ## 5. In the model

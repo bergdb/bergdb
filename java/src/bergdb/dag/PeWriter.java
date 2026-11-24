@@ -1407,6 +1407,7 @@ final class PeWriter {
         final ArrayList<Ent> j2 = ht == 0 ? j : rebalance(g, ht - 1, j);
         final VN v = mkNode(null, null, null, g, ht, true, j2);
         Dag.statJoins++;
+        Dag.statJoinsByHeight[Math.min(ht, Dag.statJoinsByHeight.length - 1)]++;
         final ArrayList<Ent> out = new ArrayList<Ent>(es.size() - 1);
         for (int i = 0; i < il; i++) {
             out.add(es.get(i));

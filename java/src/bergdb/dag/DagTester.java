@@ -1089,7 +1089,9 @@ public class DagTester {
      * of 10); (2b) a segment tree's root cut into three parts, and a new root above them
      * (until 028-21, 5 key nodes and a bound of 4); (3) random histories and a transaction of runs of puts, new keys and deletes;
      * (4) deletes of most keys under several inner nodes of trees thinned towards m, so that
-     * joins happen on several levels, one level down too.
+     * joins happen on several levels, one level down too: at each node size and each case at
+     * least ten joins, and a join of inner nodes at height two or more (Dag.statJoinsByHeight),
+     * which the proof's Contract.PE.NoHigherJoins leaves out (bergdb 028-46).
      */
     @Nano
     public static void testDirtyNodeBoundOfPe() {
@@ -1177,25 +1179,42 @@ public class DagTester {
             }
         }
         
-        // (4) Deletes of most keys under several inner nodes.
-        for (int b : new int[] {8, 14, 30}) {
+        // (4) Deletes of most keys under several inner nodes, the joins counted by the
+        // children's height (bergdb 028-46): each case at least ten joins, and one of inner
+        // nodes at height two or more (above Contract.PE.NoHigherJoins). At 8 and 14, 6 B^2
+        // keys thinned to every third key. At 30 and 62, cap^2 * 2 (m + 2) keys (cap = B / 2):
+        // the 2 (m + 2) inner nodes at height one, more than h, are cut into two nodes at height
+        // two of m + 2 children each, under a root at height three; every third key deleted,
+        // the leaves keep about B / 3 >= m keys, so the thinning joins nothing. Until 028-46
+        // 30 too had 6 B^2 keys thinned to every third key: its thinning made 257 joins, and
+        // the checked deletes joined at heights 0 and 1 only, as did 62's in a trial.
+        for (int b : new int[] {8, 14, 30, 62}) {
+            final boolean small = b < 30;
+            final int cap = Dag.cutSize(b);
+            final int nk = small ? 6 * b * b : cap * cap * 2 * (Dag.minFill(b) + 2);
             for (int keep : new int[] {2, 3, b}) {
                 c = new BoundCase(b);
-                List<String> all = new ArrayList<String>();
-                for (int i = 0; i < 6 * b * b; i++) all.add(String.format("k%05d", i));
+                List<String> all = new ArrayList<String>(), left = new ArrayList<String>();
+                for (int i = 0; i < nk; i++) all.add(String.format("k%06d", i));
                 c.run(all, null, false);
                 List<String> ds = new ArrayList<String>();
-                for (int i = 0; i < all.size(); i++) if (i % 3 != 0) ds.add(all.get(i));
+                for (int i = 0; i < nk; i++) {
+                    if (small ? i % 3 != 0 : i % 3 == 2) ds.add(all.get(i));
+                    else left.add(all.get(i));
+                }
                 c.run(new ArrayList<String>(), ds, false);
-                List<String> left = new ArrayList<String>();
-                for (int i = 0; i < all.size(); i += 3) left.add(all.get(i));
                 ds.clear();
                 for (int i = left.size() / 4; i < 3 * left.size() / 4; i++) {
                     if (i % keep != 0) ds.add(left.get(i));
                 }
                 long joins0 = Dag.statJoins;
+                long[] byHeight0 = Dag.statJoinsByHeight.clone();
                 c.run(new ArrayList<String>(), ds, true);
-                Assert.assertTrue("b " + b + ", keep " + keep + ": joins", Dag.statJoins - joins0 >= 10);
+                String at = "b " + b + ", keep " + keep;
+                Assert.assertTrue(at + ": joins", Dag.statJoins - joins0 >= 10);
+                long high = 0;
+                for (int ht = 2; ht < byHeight0.length; ht++) high += Dag.statJoinsByHeight[ht] - byHeight0[ht];
+                Assert.assertTrue(at + ": a join at height two or more", high >= 1);
             }
         }
     }

@@ -103,7 +103,6 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
-| [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
 | [028-47](47-commits-reclaim-by-clock.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 | [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | open |
 
@@ -113,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | done | 2026-11-24 |
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins: a mixed hash, 74 times fewer pairs scanned | none | done | 2026-11-24 |
 | [028-43](43-large-reclaim-run.md) | Change | Long large reclaim run | none | done | 2026-11-21 |
 | [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin reaches its cut: maxops 6M | none | done | 2026-11-21 |
@@ -357,3 +357,8 @@ Closed.
 
 2026-11-24. 028-48 registered by lead-1124, from 028-01's Result:
 modifiedAfter stops at the first bin that begins at or before the read time.
+
+2026-11-24. 028-46 done by an agent of lead-1124: PE counts its joins by
+the children's height; DagTester's purpose-made deletes run at node sizes
+8, 14, 30 and 62 and assert a join at height two or more in each case,
+with new cases at 30 and 62; BEFORE COMMIT OK. Moved to Closed.
