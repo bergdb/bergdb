@@ -1,7 +1,8 @@
 028-47. Investigate: commits give a mass delete's space back by the clock
 ========================================================================
 
-Status: open. Kind: Investigate. Frans: decision.
+Status: done: studied; no change (Frans, 2026-11-24, 12:30). Kind:
+Investigate. Frans: decided A (2026-11-24, 12:30).
 Created 2026-11-24 by Frans Lundberg.
 
 What: 026-13's option B (U13-4, Q1), not studied in 2026.6: a commit
@@ -271,6 +272,15 @@ not proposed now. F1 limits the recommended way itself, `maintain()` in
 a written database, and is worth its own entry.
 
 
+Decision
+--------
+
+Frans, 2026-11-24, 12:30: option A, no change. The code of B and B2 stays
+on the branches `028-47-b` (da71233b) and `028-47-b2` (cbe46106) of the
+study's clone, as a record; they are local and not on the public
+repository. F1 is registered as 028-51 and F3 as 028-52.
+
+
 Log
 ---
 
@@ -288,3 +298,8 @@ Status open, for Frans's decision. Gates: B `BEFORE COMMIT OK (92 s)`;
 B2 `BEFORE COMMIT FAILED: unit tests` (section 4); `CountGates all`
 `COUNT GATES OK` on `main`, B and B2; `conformance.sh reclaim`
 `CONFORMANCE OK` on B and B2.
+
+2026-11-24, 12:30. Frans decided A, no change: studied; no change. The
+branches `028-47-b` and `028-47-b2` stay in the study's clone as a
+record, local, not on the public repository. F1 registered as 028-51,
+F3 as 028-52. Status done, by an agent of lead-1124.

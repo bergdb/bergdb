@@ -102,8 +102,9 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
-| [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits give a mass delete's space back by the clock | decision | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
+| [028-51](51-maintain-m1-written-db.md) | Fix | maintain()'s M1 stalls in a written database | none | open |
+| [028-52](52-g4-st6-at-c2-settings.md) | Investigate | CountGates' G4 fails ST6 at C2's settings | none | open |
 
 
 Closed
@@ -111,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits reclaim by the clock (option B): no change | A (12:30) | done | 2026-11-24 |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | done | 2026-11-24 |
 | [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | done | 2026-11-24 |
 | [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | done | 2026-11-24 |
@@ -392,3 +394,12 @@ its probes; status open.
 the contract checker fails a trace with a shape fault (`shapeFaults`, the
 premise `FillOk`), kept out of the comparison with `checkVerdict`; a
 fault of FillOK alone in faults.sh. Moved to Closed.
+
+2026-11-24. 028-47 done: Frans decided A, no change (12:30); B and B2
+stay on local branches of the study's clone, not on the public
+repository. Moved to Closed, by an agent of lead-1124.
+
+2026-11-24. 028-51 and 028-52 registered by an agent of lead-1124, from
+028-47's findings F1 and F3 (Frans, 12:30): `maintain()`'s M1 stops
+beginning iterations in a written database; CountGates' G4 fails ST6 at
+C2's settings.
