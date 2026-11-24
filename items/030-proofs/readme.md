@@ -654,3 +654,9 @@ Log
 
 2026-11-24. 030-40 written: the proofs from release 2026.5 to 2026.6, a
 review in order (Frans).
+
+2026-11-24. 030-39's three proposed 028 entries registered (Frans,
+006-33, point 3): 028-44, the contract checker fails a trace with a shape
+fault (F6); 028-45, a test of Db's dirty-node count with transformations
+(F7); 028-46, DagTester's deletes at node size 62 with the joins' heights
+asserted (F8).

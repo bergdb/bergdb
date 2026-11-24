@@ -70,9 +70,9 @@ The findings:
   first four by name and BalancedOK's levels as KindsOK, and fails a
   trace that breaks one; the contract checker computes `shapeFaults`
   itself and reports its count apart, without failing on it (0 on every
-  set of `night.sh` of 2026-11-23). Proposed as a 028 entry, not
-  numbered: the contract checker fails a trace with a shape fault
-  (`lean/contract/ContractCheck.lean`, a pinned file).
+  set of `night.sh` of 2026-11-23). Proposed as a 028 entry, 028-44
+  since 2026-11-24: the contract checker fails a trace with a shape
+  fault (`lean/contract/ContractCheck.lean`, a pinned file).
 * **F7, value transformations: corrected** in 030-38 (G9; section 4, item
   6) and 030-26 (2.7), **and accepted** for release 2026.6: the theorems
   count the transaction's operations, each key once as a put or a
@@ -80,16 +80,16 @@ The findings:
   a put and as a delete. That this bounds the count of the operation the
   transformation gives is argued (023-11, review B, B2), as the cheap
   estimate and key transformations are (028-21), not proved and not
-  tested on purpose. Proposed as a 028 entry, not numbered: a test that
-  compares `Db.checkDirtyNodes`' count, with its own arguments, with the
-  key nodes a transaction marks, for value and key transformations and
-  where the cheap estimate fits.
+  tested on purpose. Proposed as a 028 entry, 028-45 since 2026-11-24: a
+  test that compares `Db.checkDirtyNodes`' count, with its own arguments,
+  with the key nodes a transaction marks, for value and key
+  transformations and where the cheap estimate fits.
 * **F8, DagTester's node sizes: corrected** in 030-38 (G10) and 030-26
   (section 5, item 14): random histories at node sizes 8, 14, 30 and 62;
   the purpose-made deletes at 8, 14 and 30; the test counts joins, not
-  their heights. Proposed as a 028 entry, not numbered: the purpose-made
-  deletes at node size 62 too, with an assertion of joins of inner nodes
-  at height two or more (joins counted by height).
+  their heights. Proposed as a 028 entry, 028-46 since 2026-11-24: the
+  purpose-made deletes at node size 62 too, with an assertion of joins of
+  inner nodes at height two or more (joins counted by height).
 * **F9, the stream's size and the premises: corrected** in 030-38 (G6;
   section 4, items 9 and 10) and 030-26 (2.3, 2.5, section 4): no theorem
   says that reclaim makes progress or bounds the stream's size;
@@ -110,7 +110,7 @@ The findings:
    123 files, 144 pinned). 030-38's G9 cites it; 030-26, 2.7.
 6. Db's cheap estimate: accepted for release 2026.6, with the value
    transformations added (F7); 030-38, G9, and 030-26, 2.7, state the
-   gap; a 028 entry proposed (F7).
+   gap; a 028 entry proposed (F7), 028-45 since 2026-11-24.
 7. The tested part of the dirty-node bound: corrected in 030-26, section
    5, item 14.
 8. RestartStress's scripts: corrected in 030-26, section 5, item 5.
@@ -134,7 +134,8 @@ java/stress/level3.sh: LEVEL 3 OK
 ```
 
 Nothing is left for Frans to decide but the three 028 entries proposed
-above (F6, F7, F8), none needed for the release.
+above (F6, F7, F8), none needed for the release. Frans registered them on
+2026-11-24 (006-33, point 3): 028-44 (F6), 028-45 (F7) and 028-46 (F8).
 
 
 ## The report

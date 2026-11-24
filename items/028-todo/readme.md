@@ -102,6 +102,9 @@ Open
 | [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
+| [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
+| [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | none | open |
+| [028-46](46-dagtester-joins-at-62.md) | Change | DagTester's deletes at node size 62, joins by height | none | open |
 
 
 Closed
@@ -332,3 +335,10 @@ Closed.
 
 2026-11-22. 028-34: Frans kept transactionInfo() as it is for 2026.6; open
 for a later release.
+
+2026-11-24. 028-44 to 028-46 registered by an agent of lead-1124, from
+030-39's findings F6, F7 and F8 (Frans, 2026-11-24, 006-33, point 3): the
+contract checker fails a trace with a shape fault; a test of
+`Db.checkDirtyNodes`' count with transformations and the cheap estimate;
+DagTester's purpose-made deletes at node size 62 with the joins' heights
+asserted.
