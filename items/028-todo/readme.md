@@ -104,7 +104,6 @@ Open
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | decision | in progress |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
 | [028-51](51-maintain-m1-written-db.md) | Fix | maintain()'s M1 stalls in a written database | none | open |
-| [028-52](52-g4-st6-at-c2-settings.md) | Investigate | CountGates' G4 fails ST6 at C2's settings | none | in progress |
 
 
 Closed
@@ -112,6 +111,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-52](52-g4-st6-at-c2-settings.md) | Investigate | G4's ST6 at C2's settings: the gate, given G5's floor | none | done | 2026-11-24 |
 | [028-47](47-commits-reclaim-by-clock/readme.md) | Investigate | Commits reclaim by the clock (option B): no change | A (12:30) | done | 2026-11-24 |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | done | 2026-11-24 |
 | [028-48](48-keymodset-scan-stop.md) | Change | KeyModSet's modifiedAfter stops at the bin of the read time | none | done | 2026-11-24 |
@@ -403,3 +403,10 @@ repository. Moved to Closed, by an agent of lead-1124.
 028-47's findings F1 and F3 (Frans, 12:30): `maintain()`'s M1 stops
 beginning iterations in a written database; CountGates' G4 fails ST6 at
 C2's settings.
+
+2026-11-24. 028-52 done by an agent of lead-1124 on the branch `028-52`:
+G4's ST6 failed at C2's settings because the twin's cache table slots
+grow with its drive's length while the emptied database's sit at the
+tables' floor (4,096 maps of 16); the gate takes G5's limit, the larger
+of twice the twin's and the floor. The database was right. Moved to
+Closed.
