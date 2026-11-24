@@ -50,6 +50,12 @@ Frans, 2026-11-24:
 * 11:12 028-44 to 028-46 landed (`3bcec8f5`); 026 done, its subitems'
   statuses set (`e78d82f7`); 026-03 and 026-04 carried to 031.
 * RB-004 registered in 033; README.md: 2026.6 fixes RB-001 to RB-004.
+* 11:20 After 026 (Frans): RB-004 in 2026.6's notes and on the GitHub
+  release; 026-14 to 031; the versioning rule and the corpus to 032;
+  028-47 registered (`e1f42edb`).
+* 11:25 Open 028 entries (Frans: the lead works on them): four agents,
+  each in a clone: 028-44 (Opus xhigh), 028-45, 028-46 and 028-01 (Opus
+  high); the lead lands them after their gates and the combined gate.
 
 
 ## 4. Outcome
