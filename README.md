@@ -204,10 +204,8 @@ tested, on commits near its release commit:
   [releases/2026.6/readme.md](releases/2026.6/readme.md), section
   "Verification", list each run and its result.
 
-One bug is known in 2026.6, RB-005, of the least severity: a count
-that can be short, with no effect within a transaction's limits. 2026.6
-fixes the four found in 2026.5 (RB-001 to RB-004; item 033 lists them
-all). The API and the stored format will likely change
+Each release's notes list the bugs known in it and the bugs it fixes;
+item 033 lists them all. The API and the stored format will likely change
 before a stable release: a database made by one release may not open in
 the next (2026.6 refuses those of 2026.5 and earlier). There is no
 upgrade tool; read the data with the old release and put it with the
@@ -227,18 +225,6 @@ proved and what is not:
 item 030-38 lists what it gives a user, each guarantee proved or tested
 on purpose:
 [items/030-proofs/38-guarantees.md](items/030-proofs/38-guarantees.md).
-
-
-Known issues
-------------
-
-One bug is known in release 2026.6, RB-005 (item 033): a count of the
-index nodes that a transaction makes dirty can be short for a key
-transformed to a longer key, with no effect within a transaction's
-limits. Two things to plan for:
-
-* **The API may change** between releases.
-* **The stream format may change** between releases (Status, above).
 
 
 How it works
