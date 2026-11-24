@@ -33,6 +33,18 @@ Frans, 2026-11-24:
   028-07's date race is RB-004, S4; every fault that can be considered a
   bug is registered, also one possible in theory only. Point 6: SUMMARY
   DUE kept as it is.
+* Bugs: every fault that can be considered a bug is registered in 033,
+  also one possible in theory only; no release is made with a known bug,
+  and fixing bugs is always priority 1 (an exception is Frans's,
+  recorded); each release's notes list the bugs known in it, later
+  ones in an "After the release" section; README.md and bergdb.org list
+  none.
+* Releases in general: item 034, the process, a checklist and the
+  scripts in one place.
+* RB-005: option A (028-50). 028-47: no change; F1 and F3 registered.
+* No theme or scope for 2026.7 now: they settle as the work does.
+* The lead stays interactive: long work, landing included, goes to
+  agents.
 
 
 ## 3. Progress
@@ -60,6 +72,11 @@ Frans, 2026-11-24:
   an agent in a clone.
 * 12:30 Frans: 028-47 no change; F1 and F3 registered as 028-51 and 028-52.
 
+
+* 12:20 to 13:37: 028-44 and the 028-47 study, 028-52, 028-50 (RB-005
+  fixed on `main`), the "After the release" sections, 034, and 028-51
+  (RB-006, S4, `maintain()`'s stall, found and fixed on `main`) landed;
+  033 up to date with counts for 2026.6; 028-53 registered and taken.
 
 ## 4. Outcome
 
