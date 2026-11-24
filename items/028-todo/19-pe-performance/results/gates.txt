@@ -1,0 +1,15 @@
+# bergdb 028-19: tools/gates.sh on c01ac655, each gate in its own clone, at nice 10, at the same time (2026-11-24).
+2026-11-24 19:38:29 gates of c01ac655
+2026-11-24 19:41:01 start level2
+2026-11-24 19:41:01 start kill
+2026-11-24 19:41:01 start level1
+2026-11-24 19:41:01 start level3
+2026-11-24 19:41:01 start level4
+2026-11-24 19:44:52 end level1 rc=0 LEVEL 1 OK
+2026-11-24 19:53:53 end level4 rc=0 LEVEL 4 OK
+2026-11-24 19:57:14 end level3 rc=0 LEVEL 3 OK
+2026-11-24 19:59:49 end level2 rc=0 LEVEL 2 OK
+2026-11-24 20:05:09 end kill rc=0 KILL RESTART OK: 1000 kills and 67 exits in 1427 s, seed 20261124
+2026-11-24 20:05:09 start digest
+2026-11-24 20:05:17 end digest rc=0 DIGESTS IDENTICAL (44 of 44; of the identical, the physical cut differs in 0)
+2026-11-24 20:05:17 GATES END

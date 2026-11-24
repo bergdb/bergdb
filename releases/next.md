@@ -62,3 +62,23 @@ Not fixed on `main`; a release with one needs Frans's exception
   twice the startup distance, though the Javadoc says that they bring
   an emptied database to within about 400 kB of a fresh one's stream.
   028-53 holds the options for the fix.
+
+
+Speed
+-----
+
+* **The writer allocates and reads less** (bergdb 028-19, 2026-11-24).
+  A small transaction's leaves are decided by counts from one pass over
+  their klongs, a full leaf found before it, and the plan routes an inner
+  node's operations and decides one appended to by counts without making
+  its list of live entries. The same trees and the same stream
+  (StreamDigest identical). Against the writer of record format 7 (as in
+  2026.5): the set test of CORE 1.04 times its time, from 1.17; at 10M
+  keys CCBench's median transaction 1.00 and the load 0.98 of its puts a
+  second. `java/timing.sh` on F53, on c01ac655 against release 2026.6
+  (with 028-01's and 028-48's changes of the conflict check also since
+  2026.6, not timed apart): TIMING OK, no alerts; CORE 0.250 against
+  0.250 (its set 0.35 to 0.36 against 0.40 and 0.41); the longest get or
+  commit with ZGC 13.1 against 15.6 ms; commits a second +6.3 %
+  (`w-uni-100-inf`) to +11.5 % (`r-100-fin`'s mixed phase), `w10m-fin`
+  +7.8 %, `w10m-inf` +10.4 %; the reads +0.2 to +9.1 %.

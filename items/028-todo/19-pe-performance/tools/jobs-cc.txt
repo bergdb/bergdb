@@ -1,0 +1,7 @@
+# bergdb 028-19: CCBench at 10M keys (026-25 perf2's cc10m), old writer, main and the change (sw), quiet F53, ABBA
+cc-old-r1a old 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-main-r1b main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-sw-r1c sw 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-sw-r2a sw 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-main-r2b main 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-old-r2c old 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed

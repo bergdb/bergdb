@@ -99,7 +99,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | in progress |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 
@@ -109,6 +108,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-19](19-pe-performance/readme.md) | Change | PE's speed; reclaim's pace explained | decided (09:32) | done | 2026-11-24 |
 | [028-49](49-release-body-absolute-links.md) | Fix | The GitHub release's body with absolute links: body.sh | none | done | 2026-11-24 |
 | [028-51](51-maintain-m1-written-db/readme.md) | Fix | maintain()'s M1 stalled in a written database: fixed, RB-006 | none | done | 2026-11-24 |
 | [028-45](45-dirty-count-test.md) | Change | A test of Db's dirty-node count with transformations | A (12:26) | done | 2026-11-24 |
@@ -448,3 +448,11 @@ point, counted by neither rule. Options for the fix in the entry
 the notes, every relative link absolute and each checked to answer 200;
 `commit-b.sh` makes it and prints its check and `--notes-file` of it.
 Moved to Closed.
+
+2026-11-24. 028-19 done by an agent of lead-1124 on the branch `028-19`:
+reclaim's pace with PE explained (the 6.8 % and the extra cuts came from
+the nodes left out of the charge before 028-26; since, PE writes 0.935
+of the old writer's bytes a put); the short way, the routing and the
+inner nodes appended to by counts without live lists (the set test 1.04
+times the old writer's, CCBench 1.00, the load 0.98), the same trees; gated, timing.sh against
+2026.6 TIMING OK. Moved to Closed.

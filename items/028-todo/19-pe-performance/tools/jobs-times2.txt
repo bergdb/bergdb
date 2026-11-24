@@ -1,0 +1,4 @@
+# bergdb 028-19: times at 10M keys with reclaim, 6M transactions, the short way's change (sw) against main
+t6-sw-r1a sw 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-main-r3b main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-sw-r2c sw 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000

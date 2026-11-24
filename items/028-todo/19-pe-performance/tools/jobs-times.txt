@@ -1,0 +1,7 @@
+# bergdb 028-19: times at 10M keys with reclaim, 6M transactions, quiet F53, ABBA (main, old, pre26)
+t6-main-r1a main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-old-r1b old 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-pre26-r1c pre26 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-pre26-r2a pre26 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-old-r2b old 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+t6-main-r2c main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000

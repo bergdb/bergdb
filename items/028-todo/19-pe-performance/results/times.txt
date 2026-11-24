@@ -1,0 +1,48 @@
+# bergdb 028-19: summ.py and gcsumm.py on the timed runs (out-times/), F53, 18:37 to 18:55 and 19:11 to 19:20, ABBA;
+# the CPU 80 to 84 % idle before each JVM (macOS's mediaanalysisd); sw is 100d0c9b (the short way).
+metric                        t6-main-r1a  t6-main-r2c  t6-main-r3b   t6-old-r1b   t6-old-r2b t6-pre26-r1c t6-pre26-r2a    t6-sw-r1a    t6-sw-r2c
+bytes_appended_per_put             1180.6       1180.6       1180.6       1262.2       1262.2       1347.7       1347.7       1180.6       1180.6
+rec.user_bytes_per_put              463.2        463.2        463.2        501.0        501.0        421.5        421.5        463.2        463.2
+rec.user_index_bytes_per_put        339.8        339.8        339.8        376.2        376.2        298.2        298.2        339.8        339.8
+rec.user_value_bytes_per_put           48           48           48           48           48           48           48           48           48
+rec.step_bytes_per_put              666.9        666.9        666.9        761.2        761.2        926.2        926.2        666.9        666.9
+rec.table_bytes_per_put              50.5         50.5         50.5          0.0          0.0          0.0          0.0         50.5         50.5
+rec.other_bytes_per_put              -0.0         -0.0         -0.0         -0.0         -0.0         -0.0         -0.0         -0.0         -0.0
+index_nodes_per_commit                1.0          1.0          1.0          1.1          1.1          0.9          0.9          1.0          1.0
+reclaim.steps                      246570       246570       246570       259432       259432       432724       432724       246570       246570
+reclaim.iterations_done                 2            2            2            3            3            4            4            2            2
+reclaim.cuts_logical                    1            1            1            1            1            3            3            1            1
+reclaim.cuts_physical                   1            1            1            1            1            3            3            1            1
+kept_mb_max                        9787.6       9833.5       9764.4      10059.2      10051.8       9105.6       9074.0       9792.8       9815.2
+kept_mb_mean                       5906.3       5906.3       5906.3       6219.3       6219.3       5325.5       5325.5       5906.3       5906.3
+stream_appended_mb                 7083.6       7083.6       7083.6       7573.4       7573.4       8086.3       8086.3       7083.6       7083.6
+commits_per_s                     79224.0      79541.9      80030.7      60309.3      59150.0      60057.1      60332.3      82152.5      82252.6
+load.puts_per_s                    194949       192825       194479       205227       206045       194095       194270       194634       191240
+commit.append.max_us               383936       306166       312842       252430       298780       368248       359361       354700       363572
+commit.append.p99_us                251.9        249.9        247.8        358.4        364.5        278.5        276.5        246.8        246.8
+commit.append.p999_us               364.5        362.5        360.4        510.0        522.2        383.0        383.0        358.4        360.4
+gc.mxbean.count                        18           17           16           14           14           19           19           14           12
+gc.mxbean.time_ms                    2660         3053         2981         2545         2529         3298         3133         2805         2532
+heap.after_gc_mb_max               5036.4       5231.4       5262.9       6395.3       6282.1       6261.1       6227.6       5560.7       5223.0
+rss_mb_max                         8699.8       8659.5       8688.3       8102.2       7991.2       8695.0       8685.5       8658.3       8652.4
+
+
+t6-main-r1a: 14 pauses in the phase, 14 young; young ms mean 190, median 216, max 384; freed a young pause 1995 MB; the 5 slowest commits (384, 310, 282, 268, 267 ms): 5 in a pause
+t6-main-r2c: 13 pauses in the phase, 13 young; young ms mean 235, median 239, max 389; freed a young pause 2022 MB; the 5 slowest commits (306, 270, 260, 258, 254 ms): 5 in a pause
+t6-main-r3b: 12 pauses in the phase, 12 young; young ms mean 248, median 283, max 312; freed a young pause 2130 MB; the 5 slowest commits (313, 306, 305, 303, 290 ms): 5 in a pause
+t6-old-r1b: 12 pauses in the phase, 12 young; young ms mean 212, median 217, max 251; freed a young pause 1015 MB; the 5 slowest commits (252, 244, 241, 231, 222 ms): 5 in a pause
+t6-old-r2b: 12 pauses in the phase, 12 young; young ms mean 211, median 215, max 298; freed a young pause 1012 MB; the 5 slowest commits (299, 278, 240, 235, 228 ms): 5 in a pause
+t6-pre26-r1c: 15 pauses in the phase, 15 young; young ms mean 220, median 191, max 367; freed a young pause 1961 MB; the 5 slowest commits (368, 304, 295, 284, 255 ms): 5 in a pause
+t6-pre26-r2a: 15 pauses in the phase, 15 young; young ms mean 209, median 180, max 359; freed a young pause 1911 MB; the 5 slowest commits (359, 320, 276, 266, 214 ms): 5 in a pause
+t6-sw-r1a: 12 pauses in the phase, 12 young; young ms mean 234, median 245, max 353; freed a young pause 1802 MB; the 5 slowest commits (355, 330, 318, 286, 279 ms): 5 in a pause
+t6-sw-r2c: 10 pauses in the phase, 10 young; young ms mean 253, median 288, max 395; freed a young pause 1892 MB; the 5 slowest commits (364, 340, 173, 167, 148 ms): 5 in a pause
+
+2026-11-24 18:37:29 quiet: idle 80.47 %, load 3.11
+2026-11-24 18:40:16 quiet: idle 81.7 %, load 4.02
+2026-11-24 18:43:14 quiet: idle 80.80 %, load 3.22
+2026-11-24 18:46:14 quiet: idle 80.90 %, load 3.30
+2026-11-24 18:49:14 quiet: idle 80.68 %, load 3.68
+2026-11-24 18:52:14 quiet: idle 81.44 %, load 4.15
+2026-11-24 19:11:12 quiet: idle 82.35 %, load 3.21
+2026-11-24 19:13:53 quiet: idle 83.82 %, load 3.82
+2026-11-24 19:16:35 quiet: idle 84.27 %, load 3.20

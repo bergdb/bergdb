@@ -1,0 +1,65 @@
+# bergdb 028-19: CCBench at 10M keys (026-25 perf2's cc10m), F53, ABBA, 19:03 to 19:11 and 19:28 to 19:37;
+# old ef02ec41, main 70807233, sw 100d0c9b, r1 c01ac655. op_mean_us moves with a G1 pause that falls in a
+# phase (the same phase in both runs of a build); tx_med_us, the median transaction, does not.
+µs an operation, the median of 4/2/4/2 runs; each build / old
+- update 1: old 7.02, main 7.02 (0.999), sw 7.81 (1.112), r1 7.57 (1.077)
+- insert 1: old 6.57, main 6.12 (0.931), sw 5.97 (0.909), r1 5.67 (0.863)
+- delete 1: old 6.73, main 6.75 (1.002), sw 6.26 (0.931), r1 6.00 (0.892)
+- mixed 1: old 6.52, main 6.40 (0.982), sw 6.14 (0.943), r1 5.86 (0.900)
+- update 10: old 5.29, main 5.72 (1.082), sw 6.83 (1.291), r1 5.44 (1.030)
+- insert 10: old 6.29, main 6.74 (1.072), sw 6.61 (1.052), r1 6.62 (1.053)
+- delete 10: old 5.71, main 6.03 (1.057), sw 5.87 (1.028), r1 5.84 (1.024)
+- mixed 10: old 5.76, main 6.26 (1.087), sw 6.13 (1.063), r1 6.18 (1.071)
+- update 100: old 5.84, main 6.26 (1.071), sw 6.13 (1.049), r1 6.15 (1.053)
+- insert 100: old 6.22, main 7.06 (1.135), sw 6.79 (1.092), r1 6.75 (1.085)
+- delete 100: old 5.67, main 5.95 (1.050), sw 5.81 (1.025), r1 5.91 (1.042)
+- mixed 100: old 6.28, main 8.88 (1.414), sw 6.44 (1.025), r1 6.71 (1.068)
+- update 500: old 6.65, main 6.66 (1.002), sw 6.95 (1.045), r1 7.01 (1.054)
+- insert 500: old 7.29, main 7.08 (0.971), sw 7.41 (1.017), r1 8.33 (1.142)
+- delete 500: old 6.41, main 5.90 (0.920), sw 6.16 (0.961), r1 5.58 (0.870)
+- mixed 500: old 7.08, main 6.77 (0.956), sw 6.92 (0.978), r1 6.62 (0.935)
+- main/old, geometric mean of 16 cases: 1.040
+- sw/old, geometric mean of 16 cases: 1.029
+- r1/old, geometric mean of 16 cases: 1.006
+- load puts/s old: 193566 (193266-194479); stream MB 6363.0
+- load puts/s main: 187398 (187389-187408), / old 0.968; stream MB 6243.0
+- load puts/s sw: 187911 (186430-188789), / old 0.971; stream MB 6243.0
+- load puts/s r1: 189532 (189238-189825), / old 0.979; stream MB 6243.0
+
+tx_med_us, the median of 4/2/4/2 runs; each build / old
+- update 1: old 3.44, main 4.19 (1.218), sw 4.04 (1.174), r1 3.81 (1.108)
+- insert 1: old 5.89, main 5.54 (0.940), sw 5.36 (0.908), r1 5.06 (0.858)
+- delete 1: old 5.88, main 6.06 (1.032), sw 5.56 (0.946), r1 5.27 (0.897)
+- mixed 1: old 6.00, main 5.98 (0.997), sw 5.71 (0.952), r1 5.42 (0.903)
+- update 10: old 50.09, main 55.52 (1.109), sw 54.05 (1.079), r1 52.61 (1.050)
+- insert 10: old 58.31, main 62.86 (1.078), sw 61.62 (1.057), r1 61.59 (1.056)
+- delete 10: old 56.21, main 60.38 (1.074), sw 58.78 (1.046), r1 58.64 (1.043)
+- mixed 10: old 55.90, main 61.14 (1.094), sw 59.77 (1.069), r1 60.19 (1.077)
+- update 100: old 573.59, main 620.55 (1.082), sw 607.46 (1.059), r1 609.67 (1.063)
+- insert 100: old 590.07, main 660.38 (1.119), sw 635.48 (1.077), r1 630.66 (1.069)
+- delete 100: old 606.38, main 642.73 (1.060), sw 626.71 (1.034), r1 632.69 (1.043)
+- mixed 100: old 621.09, main 640.19 (1.031), sw 635.94 (1.024), r1 659.14 (1.061)
+- update 500: old 3352.92, main 3342.55 (0.997), sw 3478.73 (1.038), r1 3507.71 (1.046)
+- insert 500: old 3446.53, main 3401.82 (0.987), sw 3569.77 (1.036), r1 3441.66 (0.999)
+- delete 500: old 3571.50, main 3425.94 (0.959), sw 3377.43 (0.946), r1 3246.73 (0.909)
+- mixed 500: old 3577.65, main 3343.73 (0.935), sw 3364.06 (0.940), r1 3255.84 (0.910)
+- main/old, geometric mean of 16 cases: 1.042
+- sw/old, geometric mean of 16 cases: 1.022
+- r1/old, geometric mean of 16 cases: 1.003
+- load puts/s old: 193566 (193266-194479); stream MB 6363.0
+- load puts/s main: 187398 (187389-187408), / old 0.968; stream MB 6243.0
+- load puts/s sw: 187911 (186430-188789), / old 0.971; stream MB 6243.0
+- load puts/s r1: 189532 (189238-189825), / old 0.979; stream MB 6243.0
+
+2026-11-24 19:03:45 quiet: idle 83.6 %, load 3.88
+2026-11-24 19:04:58 quiet: idle 83.28 %, load 3.10
+2026-11-24 19:06:13 quiet: idle 83.19 %, load 2.97
+2026-11-24 19:07:29 quiet: idle 82.4 %, load 2.83
+2026-11-24 19:08:44 quiet: idle 84.22 %, load 4.04
+2026-11-24 19:09:59 quiet: idle 81.33 %, load 3.39
+2026-11-24 19:28:17 quiet: idle 97.91 %, load 4.06
+2026-11-24 19:29:31 quiet: idle 97.38 %, load 2.85
+2026-11-24 19:30:46 quiet: idle 97.50 %, load 1.79
+2026-11-24 19:31:59 quiet: idle 97.32 %, load 1.55
+2026-11-24 19:33:12 quiet: idle 91.46 %, load 2.50
+2026-11-24 19:34:27 quiet: idle 97.54 %, load 1.73

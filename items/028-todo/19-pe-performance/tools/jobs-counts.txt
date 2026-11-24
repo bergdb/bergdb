@@ -1,0 +1,5 @@
+# bergdb 028-19: counts at 10M keys with reclaim, 6M transactions (026-25 section 7's w10m-fix6), once a build
+c6-main main 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+c6-pre26 pre26 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+c6-old old 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000
+c6-r265 r265 8g Perf write -Dperf.n=10000000 -Dperf.valsize=8 -Dperf.work=uniform -Dperf.warmup=200000 -Dperf.retain=0.1 -Dperf.ops=6000000

@@ -401,7 +401,12 @@ pending, M1's condition holds, or the dead hand has more.
   pStart, by the allowance at commits (a step may pass it by its dirty
   bytes and one KV; `maintain()`'s steps have none), unless paced by
   MAX_STEP, R div 4 or 2 sd (024-29, section 4.2): argued; 26 to 38
-  percent of all stream bytes at f = 1/4: measured (011-04, W4).
+  percent of all stream bytes at f = 1/4: measured (011-04, W4). The
+  charge (the values put again and the index nodes made dirty) is 0.250
+  of an iteration's stream at f = 1/4, with PE since 028-26 as with the
+  old writer; before 028-26 PE's new nodes were left out of it, and its
+  iterations ended after 24 % less stream than their work: measured at
+  10M keys (028-19).
 * **An iteration's length**: at most about (the counted bytes of the KVs
   live at tStart) / W steps, W from MIN_STEP to MAX_STEP, whatever the
   user puts ahead of the scan, plus steps that the value limit or the
@@ -636,3 +641,7 @@ REWRITES, section 9.
 iteration leads to, its own or the next one's (the stream since the
 table was last stored), releases MIN_RELEASE; sections 6, 7 and 10. By
 an agent of lead-1124, on the branch `028-51`.
+
+2026-11-24. 4: the charge over an iteration's stream measured, 0.250,
+and what leaving out PE's new nodes did before 028-26 (028-19). By an
+agent of lead-1124, on the branch `028-19`.

@@ -419,15 +419,22 @@ rest by their lists (`PeWriter`'s class comment and 026-25, section 2):
   got-dirty order with clean ancestors, siblings and nested segment trees.
   A leaf with no changes gets no time klong; if a tree below it wrote,
   it is reported on the path, otherwise it gets no report.
+  A leaf is decided without its live list (028-19): a leaf with puts
+  whose klongs plus 1 plus its puts are more than B is refused before its
+  klongs are read; else one pass of live's (`liveInto`, into work arrays) gives the
+  counts, n' and the dead klongs, and whether each operation's cv is
+  live. One operation's reports are its path from the leaf up.
 * **In the plan**: a segment leaf kept or appended to is decided by
   counts over its changes (`LeafFrame.leafNode`); an inner node whose
   planned children are all kept, none empty or to be joined, with the
   empty key first, is same without its list (sparse); one whose planned
   children are kept or decided parts, none empty or joined, is appended
   to by counts (`appendedByCounts`: no bitmap, as no cv leaves; a key
-  klong for each part, in cv order); an inner node with at most 16
-  operations finds their children by one scan of its klongs
-  (`routeBySearch`), not by its live list.
+  klong for each part, in cv order), its counts from `liveInto`'s pass
+  when its list was not made; an inner node with at most 4 operations
+  (16 until 028-19) finds their children by one scan of its klongs
+  (`routeBySearch`), one with more by `route` over the live cvs of
+  `liveInto`'s pass (`routeByLive`); neither makes its live list.
 
 **One order of the marks for both ways** (028-25, option B,
 2026-11-19): the super root and space root come first in both (1.9),
@@ -560,7 +567,10 @@ of 1.9; values are not in that set.
   transaction, 100,000 keys in memory) 11 to 18 % slower than format 7's
   writer, mostly the short way's live list of the leaf; at 10M keys
   CCBench within a few per cent (1.03), the load (transactions of 100 or
-  500 puts) 0.90 to 0.97 of format 7's puts a second. Open: 028-19.
+  500 puts) 0.90 to 0.97 of format 7's puts a second. After 028-19
+  (2026-11-24): the set test 1.04 times format 7's writer's, CCBench's
+  median transaction 1.00, the load of transactions of 500 puts 0.98; a
+  load still allocates about 3.3 times format 7's writer's (028-19).
 * **Bytes**: the model's historical stand-ins with cap = h (026-24,
   sections 2.1 and 2.3), over 288 traces: B-new 0.962, B-all 0.992 of
   format 7's writer. Both count records, values, delete nodes and top
@@ -743,11 +753,11 @@ Reclaim's internal transactions are not checked (027-13, 1.4).
 
 * `dag/PeWriter`: `run` (1.3), `shortWay`, `shortLeaf`, `innerChild`
   (1.10), `TreeFrame` (planTree), `NodeFrame` (plan of an inner node,
-  `routeBySearch`, `routeByList`, `appendedByCounts`), `LeafFrame`
+  `routeBySearch`, `routeByLive`, `appendedByCounts`), `LeafFrame`
   (applyGroups, `leafNode`), `mkNode`, `ents`, `decide`, `cutParts`,
   `nParts`, `partSizes`, `rebalance`, `joinAt`, `findSmall`, `cntOf`,
   `openEs`, `settleRoot`, `emit`, `append`, `appendPlanned`,
-  `appendChanges`, `emitBits`, `live`; its class comment.
+  `appendChanges`, `emitBits`, `live`, `liveInto`; its class comment.
 * `dag/Dag`: `putKvs`, `putKv` (a transaction of one operation, for
   tests); the thresholds (`splitAbove`, `minFill`, `mergeCap`, `theta`,
   `cutSize`, `deadCount`); `dirtyNodeBound`; `stat*`. `dag/TopDs`:
@@ -989,3 +999,8 @@ of puts (Lean, given the fill rules); with deletes argued and tested.
 
 2026-11-24. 028-50: 4.2 and 6, a transaction with a key transformation
 counted after its key transformations (RB-005).
+
+2026-11-24. 028-19: 1.10, 4.1 and 6, the short way decides a leaf and an
+inner node appended to by counts from one pass into work arrays, and
+more than 4 operations are routed by the live cvs of that pass: no live
+list made for them; the same decisions and reports.

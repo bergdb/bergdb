@@ -1,0 +1,75 @@
+# bergdb 028-19: summ.py on the count runs (out-counts/, nice 10 beside other work), 2026-11-24 18:22 to 19:38;
+# c6r-main is main again with the records' dump (REC lines), c6-r1 the night's change (c01ac655).
+metric                            c6-main     c6-pre26       c6-old      c6-r265        c6-r1
+bytes_appended_per_put             1180.6       1347.7       1262.2       1267.2       1180.6
+rec.user_bytes_per_put              463.2        421.5        501.0        507.1        463.2
+rec.user_index_bytes_per_put        339.8        298.2        376.2        382.2        339.8
+rec.user_value_bytes_per_put           48           48           48           48           48
+rec.step_bytes_per_put              666.9        926.2        761.2        760.1        666.9
+rec.table_bytes_per_put              50.5          0.0          0.0          0.0         50.5
+rec.other_bytes_per_put              -0.0         -0.0         -0.0         -0.0         -0.0
+index_nodes_per_commit                1.0          0.9          1.1          1.1          1.0
+reclaim.steps                      246570       432724       259432       300445       246570
+reclaim.iterations_done                 2            4            3            3            2
+reclaim.cuts_logical                    1            3            1            1            1
+reclaim.cuts_physical                   1            3            1            1            1
+kept_mb_max                        9824.0       9118.4      10001.9      10021.2       9770.5
+kept_mb_mean                       5906.3       5325.5       6219.3       6234.3       5906.3
+stream_appended_mb                 7083.6       8086.3       7573.4       7603.3       7083.6
+commits_per_s                     78337.5      58137.8      57719.0      52836.8      82229.1
+load.puts_per_s                    194067       189499       206327       198841       198536
+commit.append.max_us               337055       360199       300121       239976       338873
+commit.append.p99_us                252.9        288.8        378.9        376.8        245.8
+commit.append.p999_us               366.6        403.5        548.9        516.1        356.4
+gc.mxbean.count                        16           19           14           16           14
+gc.mxbean.time_ms                    3244         3399         2503         2780         2796
+heap.after_gc_mb_max               5525.0       6200.3       6051.4       6139.5       5539.7
+rss_mb_max                         8526.2       8616.3       7891.9       8163.0       8680.0
+
+c6-main: iterations (p in MB, t in transactions of the clock, bytes in MB)
+  pStart   tStart    pEnd     tEnd  len_MB   steps     kvs  values valMB recMB tabMB dirtMB afterRowMB rows charge/len
+     5122   301001    8730  3309462    3608   94548 10000003  8632313   138  2066    23    488        225 94547  0.250
+     8731  3309463    8833  3376466     103   66892 10000004        0     0    71    16      1          1  9556  0.007
+     8922  3559463     nan       -1     nan   85130  8962601  7635794   122  1864    21    454        200 85130    nan
+  CUT pos 5122 MB, tEnd 3309462, decided at 9849 MB, t 4309463
+
+c6-pre26: iterations (p in MB, t in transactions of the clock, bytes in MB)
+  pStart   tStart    pEnd     tEnd  len_MB   steps     kvs  values valMB recMB tabMB dirtMB afterRowMB rows charge/len
+     5122   301001    7893  2292164    2771   98866 10000003  9072202   145  1947    24    483          0     0  0.250
+     7893  2292165    7985  2359140      92   66893 10000004        0     0    71    16      1          0     0  0.000
+     8074  2542165   10838  4557793    2764   98007 10000004  8825718   141  1917    24    492          0     0  0.250
+    10838  4557794   11118  4735051     280   94361 10000004   200503     3   197    23     62          0     0  0.250
+    11154  4807794     nan       -1     nan   74597  7357621  6529986   104  1425    18    366          0     0    nan
+  CUT pos 5122 MB, tEnd 2292164, decided at 9123 MB, t 3292165
+  CUT pos 7893 MB, tEnd 4557793, decided at 12202 MB, t 5557794
+  CUT pos 8074 MB, tEnd 4735051, decided at 12444 MB, t 5735052
+
+c6-old: iterations (p in MB, t in transactions of the clock, bytes in MB)
+  pStart   tStart    pEnd     tEnd  len_MB   steps     kvs  values valMB recMB tabMB dirtMB afterRowMB rows charge/len
+     5211   301001    8873  3178501    3663   94485 10000003  8674679   139  2232    23    500          0     0  0.250
+     8873  3178502    8975  3245517     102   66891 10000004        0     0    79    16      1          0     0  0.000
+     9075  3428502   12768  6290382    3692   93578 10000004  8466847   135  2245    23    518          0     0  0.250
+    12768  6290383     nan       -1     nan    4478   511984     9454     0    11     1      4          0     0    nan
+  CUT pos 5211 MB, tEnd 3178501, decided at 10074 MB, t 4178502
+
+c6-r265: iterations (p in MB, t in transactions of the clock, bytes in MB)
+  pStart   tStart    pEnd     tEnd  len_MB   steps     kvs  values valMB recMB tabMB dirtMB afterRowMB rows charge/len
+     5210   301001    8877  3174995    3668  109475 10000001  8672059   139  2231    17    502          0     0  0.250
+     8877  3174996    8977  3247544     100   72468 10000003        0     0    71    11      1          0     0  0.000
+     9082  3424996   12781  6276892    3699  108679 10000003  8466993   135  2239    17    519          0     0  0.250
+    12781  6276893     nan       -1     nan    9823   993407    18398     0    19     2      7          0     0    nan
+  CUT pos 5210 MB, tEnd 3174995, decided at 10077 MB, t 4174996
+
+c6-r1: iterations (p in MB, t in transactions of the clock, bytes in MB)
+  pStart   tStart    pEnd     tEnd  len_MB   steps     kvs  values valMB recMB tabMB dirtMB afterRowMB rows charge/len
+     5122   301001    8730  3309462    3608   94548 10000003  8632313   138  2066    23    488        225 94547  0.250
+     8731  3309463    8833  3376466     103   66892 10000004        0     0    71    16      1          1  9556  0.007
+     8922  3559463     nan       -1     nan   85130  8962601  7635794   122  1864    21    454        200 85130    nan
+  CUT pos 5122 MB, tEnd 3309462, decided at 9849 MB, t 4309463
+
+c6-r1.txt:REC user records=6000000 bytes=2779188160 valueBytes=288000000 indexBytes=2038864240 indexNodes=6147636
+c6-r1.txt:REC step records=246570 bytes=4001348080 valueBytes=856730376 indexBytes=3039538128 indexNodes=9231234
+c6-r1.txt:REC table records=189242 bytes=303047688 valueBytes=58240356 indexBytes=233096944 indexNodes=709104
+c6r-main.txt:REC user records=6000000 bytes=2779188160 valueBytes=288000000 indexBytes=2038864240 indexNodes=6147636
+c6r-main.txt:REC step records=246570 bytes=4001348080 valueBytes=856730376 indexBytes=3039538128 indexNodes=9231234
+c6r-main.txt:REC table records=189242 bytes=303047688 valueBytes=58240356 indexBytes=233096944 indexNodes=709104

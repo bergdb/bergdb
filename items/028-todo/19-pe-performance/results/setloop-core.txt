@@ -1,0 +1,35 @@
+# bergdb 028-19: SetLoop (026-25 perf2/setloop, the set test of CORE, 30 runs a JVM) and CORE, F53, ABBA;
+# old ef02ec41, main 70807233, sw3/sw 100d0c9b (the short way)
+2026-11-24 18:36:16 restarted with MINIDLE=78: mediaanalysisd (macOS photo analysis) holds 0.7 to 0.8 of a core throughout
+2026-11-24 18:36:19 quiet: idle 80.32 %, load 3.62
+2026-11-24 18:36:34 main-a SET median 2.058 us, min 1.975, max 2.719 (30 runs)
+2026-11-24 18:36:37 quiet: idle 83.33 %, load 3.58
+2026-11-24 18:36:51 sw3-b SET median 1.804 us, min 1.770, max 2.227 (30 runs)
+2026-11-24 18:36:54 quiet: idle 84.38 %, load 3.45
+2026-11-24 18:37:07 sw3-c SET median 1.821 us, min 1.764, max 2.256 (30 runs)
+2026-11-24 18:37:10 quiet: idle 83.47 %, load 3.28
+2026-11-24 18:37:26 main-d SET median 2.011 us, min 1.983, max 3.002 (30 runs)
+2026-11-24 18:58:36 quiet: idle 82.59 %, load 4.28
+2026-11-24 18:58:49 old-a SET median 1.745 us, min 1.721, max 2.114 (30 runs)
+2026-11-24 18:58:52 quiet: idle 83.39 %, load 3.99
+2026-11-24 18:59:07 main-b SET median 2.016 us, min 1.963, max 2.672 (30 runs)
+2026-11-24 18:59:10 quiet: idle 83.12 %, load 3.49
+2026-11-24 18:59:24 sw-c SET median 1.813 us, min 1.780, max 2.219 (30 runs)
+2026-11-24 18:59:27 quiet: idle 83.17 %, load 3.22
+2026-11-24 18:59:41 sw-d SET median 1.803 us, min 1.757, max 2.198 (30 runs)
+2026-11-24 18:59:44 quiet: idle 83.10 %, load 3.33
+2026-11-24 18:59:59 main-e SET median 2.050 us, min 1.975, max 3.206 (30 runs)
+2026-11-24 19:00:02 quiet: idle 79.51 %, load 3.03
+2026-11-24 19:00:15 old-f SET median 1.743 us, min 1.715, max 2.127 (30 runs)
+2026-11-24 19:00:18 quiet: idle 84.23 %, load 3.02
+2026-11-24 19:00:50 old-a CORE:0.24 (0.24, 0.16, 0.25, 0.34)
+2026-11-24 19:00:53 quiet: idle 83.31 %, load 3.00
+2026-11-24 19:01:25 main-b CORE:0.25 (0.23, 0.16, 0.25, 0.40)
+2026-11-24 19:01:27 quiet: idle 84.20 %, load 3.06
+2026-11-24 19:01:59 sw-c CORE:0.24 (0.24, 0.16, 0.25, 0.36)
+2026-11-24 19:02:02 quiet: idle 82.11 %, load 3.03
+2026-11-24 19:02:33 sw-d CORE:0.25 (0.24, 0.17, 0.25, 0.36)
+2026-11-24 19:02:36 quiet: idle 82.48 %, load 3.40
+2026-11-24 19:03:07 main-e CORE:0.26 (0.24, 0.18, 0.25, 0.41)
+2026-11-24 19:03:10 quiet: idle 82.98 %, load 3.27
+2026-11-24 19:03:42 old-f CORE:0.24 (0.23, 0.18, 0.25, 0.34)

@@ -1,0 +1,7 @@
+# bergdb 028-19: CCBench at 10M keys, the routing change (r1) against sw and old, quiet F53, ABBA
+cc-r1-r1a r1 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-sw-r3b sw 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-old-r3c old 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-old-r4a old 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-sw-r4b sw 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
+cc-r1-r2c r1 8g CCBench -Dcc.n=10000000 -Dcc.valsize=8 -Dcc.ops=100000 -Dcc.warm=20000 -Dcc.tsizes=1,10,100,500 -Dcc.kinds=update,insert,delete,mixed
