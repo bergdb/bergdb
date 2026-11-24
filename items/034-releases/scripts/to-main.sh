@@ -1,13 +1,15 @@
 #!/bin/sh
-# Brings release 2026.6's commit A into main and pushes main (bergdb 026-27, step 12; 024-38's
-# to-main.sh, adapted 2026-11-23), after A's gate and its checks of the night passed (026-27,
-# step 11 and D4; this script does not read them: the lead or Frans says the night was clean).
+# Brings a release's commit A into main and pushes main (bergdb 034-01, step 9; 024-38's
+# to-main.sh, adapted for 2026.6 on 2026-11-23 and for every release on 2026-11-24), after A's
+# gate and its extra checks passed (034-01, steps 7 and 8; this script does not read them: the
+# lead or Frans says they were clean).
 # Run by the lead or Frans, from any directory:
 #     sh to-main.sh SRC A              says what it would do (COMMIT=0)
 #     COMMIT=1 sh to-main.sh SRC A     does it
-# SRC is a repository that holds A (the clone of step 11), A is A's hash. It pushes main only,
-# never a tag: Frans makes the tag release-2026.6 himself (release.sh prints the commands).
-#   1. A's BuildInfo says 2026.6, and the tag release-2026.6 does not exist in MAIN;
+# SRC is a repository that holds A (the clone of step 7), A is A's hash. The release V is what
+# A's BuildInfo says (such as 2026.7; a -dev version stops it). It pushes main only, never a
+# tag: Frans makes the tag release-V himself (release.sh prints the commands).
+#   1. A's BuildInfo says a release V, YYYY.N, and the tag release-V does not exist in MAIN;
 #   2. MAIN (the main tree) is on branch main; A is fetched from SRC into MAIN (by its hash);
 #   3. if main's HEAD H is an ancestor of A: a fast-forward of main to A (git merge --ff-only in
 #      MAIN, which touches only A's changed files: other sessions' uncommitted files stay, and
@@ -22,16 +24,16 @@
 #      "git push REMOTE main" in MAIN (never a force) and checks that REMOTE's main is main's
 #      HEAD (git ls-remote).
 # Without COMMIT=1 it stops after step 3's decision and prints what it would do.
-# Environment: COMMIT (0), PUSH (1), MAIN (/Users/f/fl/repos/bergdb), REMOTE (origin),
-# R (the release's work directory, /Users/f/fl/bench/2026-11-24/release).
+# Environment: COMMIT (0), PUSH (1), MAIN (/Users/f/fl/repos/bergdb), REMOTE (origin), DATE
+# (today, the release's date), R (the release's work directory, /Users/f/fl/bench/DATE/release).
 # Prints "TO MAIN OK: ..." (exit 0), "TO MAIN READY (COMMIT=0): ..." (exit 0) or
 # "TO MAIN FAILED: ..." (exit 1). The record: R/out/to-main.txt.
-# Created 2026-11-10 by Frans Lundberg; 2026.5's copy 2026-11-12; 2026.6's 2026-11-23.
+# Created 2026-11-10 by Frans Lundberg; 2026.5's copy 2026-11-12; 2026.6's 2026-11-23; for
+# every release 2026-11-24 (bergdb 034).
 SRC=${1:?usage: sh to-main.sh SRC A}
 A=${2:?usage: sh to-main.sh SRC A}
-V=2026.6
-TAG=release-$V
-R=${R:-/Users/f/fl/bench/2026-11-24/release}
+DATE=${DATE:-$(date +%F)}
+R=${R:-/Users/f/fl/bench/$DATE/release}
 MAIN=${MAIN:-/Users/f/fl/repos/bergdb}
 REMOTE=${REMOTE:-origin}
 COMMIT=${COMMIT:-0}
@@ -44,9 +46,12 @@ echo "to-main.sh $SRC $A, $(date '+%F %T'), MAIN $MAIN, COMMIT=$COMMIT PUSH=$PUS
 A=$(git -C "$SRC" rev-parse --verify "$A^{commit}" 2>/dev/null) || fail "no commit $2 in $SRC"
 A8=$(echo "$A" | cut -c1-8)
 
-# 1. A is 2026.6's; no tag yet.
-git -C "$SRC" show "$A:java/src/bergdb/core/BuildInfo.java" | grep -q "RELEASE = Util.identity(\"$V\")" \
-    || fail "A's BuildInfo does not say $V"
+# 1. A's release V, from its BuildInfo; no tag yet.
+V=$(git -C "$SRC" show "$A:java/src/bergdb/core/BuildInfo.java" | sed -n 's/.*String RELEASE = Util\.identity("\([^"]*\)");.*/\1/p')
+echo "$V" | grep -Eqx '[0-9]{4}\.[0-9]+' || fail "A's BuildInfo says '$V', not a release YYYY.N"
+TAG=release-$V
+echo "release: $V" >> "$REC"
+ITEM=$(cd "$MAIN/items" 2>/dev/null && ls -d [0-9][0-9][0-9]-release-"$(echo "$V" | tr . -)" 2>/dev/null | head -n 1 | cut -c1-3)
 git -C "$MAIN" rev-parse -q --verify "refs/tags/$TAG" > /dev/null && fail "the tag $TAG exists in $MAIN"
 
 # 2. main and A.
@@ -84,8 +89,8 @@ else
     git -C "$T" checkout -q main && [ "$(git -C "$T" rev-parse HEAD)" = "$H" ] || fail "the merge clone is not at H"
     git -C "$T" fetch -q "$SRC" "$A" || fail "git fetch in the merge clone"
     git -C "$T" -c user.name='Frans Lundberg' -c user.email=frans.lundberg@gmail.com merge -q --no-ff "$A" \
-        -m "Release $V: merge the release's commit ($A8) into main (026-27)" \
-        -m "The release's commit A is $(echo "$base" | cut -c1-8) with BuildInfo $V and releases/next.md completed, gated in a clone (026-27, step 11) and checked in its night (026-27, D4). Main had moved in items/ only since A's base." \
+        -m "Release $V: merge the release's commit ($A8) into main (${ITEM:+$ITEM; }034-01, step 9)" \
+        -m "The release's commit A ($A8) is $(echo "$base" | cut -c1-8) with BuildInfo $V and releases/next.md completed, gated in a clone and checked (034-01, steps 7 and 8). Main had moved in items/ only since A's base." \
         || { git -C "$T" merge --abort 2>/dev/null; fail "the merge of A in $T: a conflict"; }
     MC=$(git -C "$T" rev-parse HEAD)
     [ "$(git -C "$MAIN" rev-parse HEAD)" = "$H" ] || fail "main's HEAD moved during the merge: run to-main.sh again"

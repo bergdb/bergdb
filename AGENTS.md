@@ -46,6 +46,9 @@ a snapshot of the former `docs/` of 2026-11-12.
   "Let's keep log.md for now").
 - Cite a document by its ID and section (`001-08, section 5.5`; in code
   comments `bergdb 001-08, section 5.5`), not by its path.
+- Releases are made as 034 says (the process 034-01, the checklist
+  034-02, the scripts in `items/034-releases/scripts/`); a release item
+  holds its plan, scope and decisions, not the process.
 
 ## Code
 

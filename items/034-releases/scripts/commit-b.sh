@@ -1,51 +1,55 @@
 #!/bin/sh
-# Commit B and the push of main (bergdb 026-27, step 13; 024-38's commit-b.sh, adapted
-# 2026-11-23 for 2026.6: no binaries in the repository, the GitHub release's command printed;
-# 026, "How the release is made"), after to-main.sh (A in main) and stage-b.sh in CLONE, a
+# Commit B and the push of main (bergdb 034-01, step 10; 024-38's commit-b.sh, adapted for
+# 2026.6 on 2026-11-23: no binaries in the repository, the GitHub release's command printed;
+# for every release on 2026-11-24), after to-main.sh (A in main) and stage-b.sh in CLONE, a
 # clone of main made after A. Called by release.sh, or:
 #     COMMIT=1 sh commit-b.sh CLONE A
-# It makes NO tag, pushes no tag and makes no GitHub release: Frans does (026-27, steps 14 and
-# 15); it prints his commands last.
-#   1. CLONE's base is MAIN's HEAD (on main) and A is in its history; A's BuildInfo says 2026.6;
-#      the tag release-2026.6 does not exist; the changes are only B's paths: releases/2026.6/,
-#      releases/next.md, README.md, BuildInfo.java, docs/log.md; releases/2026.6/ holds
-#      readme.md and SHA256SUMS and nothing else, and SHA256SUMS checks against R/out's jar
-#      and Javadoc zip, the files for the GitHub release; BuildInfo says 2026.7-dev;
+# The release V is what A's BuildInfo says; NEXT as stage-b.sh makes it (YYYY.(N+1)-dev, or
+# NEXT). It makes NO tag, pushes no tag and makes no GitHub release: Frans does (034-01, steps
+# 11 and 12); it prints his commands last.
+#   1. CLONE's base is MAIN's HEAD (on main) and A is in its history; A's BuildInfo says a
+#      release V, YYYY.N; the tag release-V does not exist; the changes are only B's paths:
+#      releases/V/, releases/next.md, README.md, BuildInfo.java, docs/log.md; releases/V/
+#      holds readme.md and SHA256SUMS and nothing else, and SHA256SUMS checks against R/out's
+#      jar and Javadoc zip, the files for the GitHub release; BuildInfo says NEXT;
 #   2. java/before-commit.sh in CLONE: BEFORE COMMIT OK (about 2 minutes; functional, it may
 #      run beside other work);
-#   3. the commit in CLONE, in Frans's name: "Release 2026.6: releases/2026.6/ (the notes and
-#      SHA256SUMS); BuildInfo says 2026.7-dev";
+#   3. the commit in CLONE, in Frans's name: "Release V: releases/V/ (the notes and
+#      SHA256SUMS); BuildInfo says NEXT";
 #   4. with COMMIT=1 only: MAIN's HEAD is still the base; git fetch and git merge --ff-only in
 #      MAIN (other sessions' uncommitted files stay; the merge refuses if one of B's files has
 #      an uncommitted change in MAIN);
 #   5. with COMMIT=1 and PUSH=1 (the default): git push REMOTE main (never a force, no tag),
 #      and git ls-remote shows main at B;
 #   6. prints, for Frans ("FOR FRANS:" lines), in this order: the tag on A and its push; the
-#      GitHub release with the two files (026, "How the release is made"); the check of the
-#      files downloaded from the release against SHA256SUMS:
-#        git -C MAIN tag -a release-2026.6 A -m "BergDB 2026.6, DATE"
-#        git -C MAIN push REMOTE release-2026.6
-#        cd MAIN && gh release create release-2026.6 --verify-tag --title "BergDB 2026.6" \
-#            --notes-file releases/2026.6/readme.md R/out/bergdb-2026.6.jar R/out/bergdb-2026.6-javadoc.zip
-#        cd MAIN && ... gh release download release-2026.6 -D R/download ... shasum -a 256 -c SHA256SUMS
-# Environment: COMMIT (0); PUSH (1); MAIN (/Users/f/fl/repos/bergdb); REMOTE (origin); R (the
-# release's work directory, /Users/f/fl/bench/2026-11-24/release); DATE (today, the tag
-# message's date); NOGATE=1 (the smoke test only: no before-commit.sh).
+#      GitHub release with the jar, the Javadoc zip and SHA256SUMS as its assets (as 2026.5's
+#      and 2026.6's); the check of the files downloaded from the release against the
+#      repository's SHA256SUMS:
+#        git -C MAIN tag -a release-V A -m "BergDB V, DATE"
+#        git -C MAIN push REMOTE release-V
+#        cd MAIN && gh release create release-V --verify-tag --title "BergDB V" \
+#            --notes-file BODY R/out/bergdb-V.jar R/out/bergdb-V-javadoc.zip releases/V/SHA256SUMS
+#        cd MAIN && ... gh release download release-V -D R/download ... shasum -a 256 -c SHA256SUMS
+#      BODY is releases/V/readme.md with every relative link made absolute, since the relative
+#      links do not resolve on the release's page: made by hand until 028-49 makes it (034-01,
+#      step 12).
+# Environment: COMMIT (0); PUSH (1); MAIN (/Users/f/fl/repos/bergdb); REMOTE (origin); DATE
+# (today, the tag message's date); R (the release's work directory,
+# /Users/f/fl/bench/DATE/release); NEXT (from V); NOGATE=1 (the smoke test only: no
+# before-commit.sh).
 # Prints "COMMIT B OK: ..." (exit 0), "COMMIT B READY (not committed, COMMIT=0): ..." or
 # "COMMIT B FAILED: ..." (exit 1), then (OK only) the "FOR FRANS:" lines. The record:
 # R/out/commit-b.txt, the gate's output R/out/commit-b-gate.txt.
-# Created 2026-11-06 by Frans Lundberg; 2026.5's copy 2026-11-12; 2026.6's 2026-11-23.
+# Created 2026-11-06 by Frans Lundberg; 2026.5's copy 2026-11-12; 2026.6's 2026-11-23; for
+# every release 2026-11-24 (bergdb 034).
 C=${1:?usage: commit-b.sh CLONE A}
 A=${2:?usage: commit-b.sh CLONE A}
 MAIN=${MAIN:-/Users/f/fl/repos/bergdb}
-R=${R:-/Users/f/fl/bench/2026-11-24/release}
+DATE=${DATE:-$(date +%F)}
+R=${R:-/Users/f/fl/bench/$DATE/release}
 COMMIT=${COMMIT:-0}
 PUSH=${PUSH:-1}
 REMOTE=${REMOTE:-origin}
-DATE=${DATE:-$(date +%F)}
-V=2026.6
-NEXT=2026.7-dev
-TAG=release-$V
 O=$R/out
 REC=$O/commit-b.txt
 export JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk}
@@ -56,7 +60,12 @@ echo "commit-b.sh $C $A, $(date '+%F %T'), MAIN $MAIN, COMMIT=$COMMIT PUSH=$PUSH
 br=$(git -C "$MAIN" symbolic-ref --short HEAD 2>/dev/null)
 [ "$br" = main ] || fail "$MAIN is on '$br', not main"
 A=$(git -C "$MAIN" rev-parse --verify "$A^{commit}") || fail "no commit $A in $MAIN"
-git -C "$MAIN" show "$A:java/src/bergdb/core/BuildInfo.java" | grep -q "RELEASE = Util.identity(\"$V\")" || fail "A's BuildInfo does not say $V"
+V=$(git -C "$MAIN" show "$A:java/src/bergdb/core/BuildInfo.java" | sed -n 's/.*String RELEASE = Util\.identity("\([^"]*\)");.*/\1/p')
+echo "$V" | grep -Eqx '[0-9]{4}\.[0-9]+' || fail "A's BuildInfo says '$V', not a release YYYY.N"
+NEXT=${NEXT:-${V%%.*}.$((${V#*.} + 1))-dev}
+TAG=release-$V
+ITEM=$(cd "$MAIN/items" 2>/dev/null && ls -d [0-9][0-9][0-9]-release-"$(echo "$V" | tr . -)" 2>/dev/null | head -n 1 | cut -c1-3)
+echo "release: $V, next: $NEXT" >> "$REC"
 git -C "$MAIN" rev-parse -q --verify "refs/tags/$TAG" > /dev/null && fail "the tag $TAG exists"
 H=$(git -C "$MAIN" rev-parse HEAD)
 base=$(git -C "$C" rev-parse HEAD)
@@ -90,7 +99,7 @@ echo "$(date '+%T') gate: $g" >> "$REC"
 As=$(echo "$A" | cut -c1-8)
 git -C "$C" -c user.name='Frans Lundberg' -c user.email=frans.lundberg@gmail.com commit -q \
     -m "Release $V: releases/$V/ (the notes and SHA256SUMS); BuildInfo says $NEXT" \
-    -m "Commit B of the release (026-27, step 13). releases/$V/ holds the release notes and SHA256SUMS of the two files of the GitHub release, bergdb-$V.jar (the users' jar) and bergdb-$V-javadoc.zip, built from commit A ($As); no binaries in the repository (026, How the release is made). next.md emptied into the notes; README.md's latest release; docs/log.md's entry. BuildInfo: $NEXT. The tag $TAG, made by Frans, names A.
+    -m "Commit B of the release (${ITEM:+$ITEM; }034-01, step 10). releases/$V/ holds the release notes and SHA256SUMS of the two files of the GitHub release, bergdb-$V.jar (the users' jar) and bergdb-$V-javadoc.zip, built from commit A ($As); no binaries in the repository (034-01). next.md emptied into the notes; README.md's latest release; docs/log.md's entry. BuildInfo: $NEXT. The tag $TAG, made by Frans, names A.
 Gate in a clone: $g." || fail "commit in CLONE"
 B=$(git -C "$C" rev-parse HEAD)
 echo "B (in CLONE): $B" >> "$REC"
@@ -117,7 +126,7 @@ echo "COMMIT B OK: B $(echo "$B" | cut -c1-8) on main; $g; $pushed; no tag made,
 echo "FOR FRANS: the tag, on A $As (BuildInfo $V), then its push:"
 echo "FOR FRANS:   git -C $MAIN tag -a $TAG $A -m \"BergDB $V, $DATE\""
 echo "FOR FRANS:   git -C $MAIN push $REMOTE $TAG"
-echo "FOR FRANS: then the GitHub release with the two files:"
-echo "FOR FRANS:   cd $MAIN && gh release create $TAG --verify-tag --title \"BergDB $V\" --notes-file releases/$V/readme.md $O/bergdb-$V.jar $O/bergdb-$V-javadoc.zip"
+echo "FOR FRANS: then the GitHub release with the jar, the Javadoc zip and SHA256SUMS; its body BODY is releases/$V/readme.md with every relative link made absolute (the relative ones give 404 on the release's page; made by hand until 028-49 is done; 034-01, step 12):"
+echo "FOR FRANS:   cd $MAIN && gh release create $TAG --verify-tag --title \"BergDB $V\" --notes-file BODY $O/bergdb-$V.jar $O/bergdb-$V-javadoc.zip releases/$V/SHA256SUMS"
 echo "FOR FRANS: then the check of the files as published:"
-echo "FOR FRANS:   cd $MAIN && rm -rf $DL && mkdir -p $DL && gh release download $TAG -D $DL && cp releases/$V/SHA256SUMS $DL/ && (cd $DL && shasum -a 256 -c SHA256SUMS)"
+echo "FOR FRANS:   cd $MAIN && rm -rf $DL && mkdir -p $DL && gh release download $TAG -D $DL && cmp $DL/SHA256SUMS releases/$V/SHA256SUMS && (cd $DL && shasum -a 256 -c SHA256SUMS)"

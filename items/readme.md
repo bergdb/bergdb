@@ -82,6 +82,9 @@ Todos and release items
   2026-11-13: "I don't want the big release items hidden among 80 simple
   tasks."; "The release item itself will decided the scope of the
   release."
+* How a release is made is 034, for every release (Frans, 2026-11-24):
+  the process, the checklist and the scripts. A release item from 031 on
+  follows it and says only where it departs from it.
 
 
 Items and the current state
@@ -226,3 +229,7 @@ Index
 * **033-bugs** (open). The register of released bugs, RB-001 and on,
   from release 2026.5: what a user sees, severity S1 to S4, found and
   fixed where; counts by release, for judging stability.
+* **034-releases** (open). How every release is made, maintained: the
+  process from the plan to after the release (034-01), the checklist of
+  what to update and how it is checked (034-02), and the release
+  scripts.

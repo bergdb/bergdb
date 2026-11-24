@@ -156,9 +156,11 @@ Tuesday 24 November (Frans, with the day's coordinator):
 
 ## 4. The release scripts (step 10)
 
-024-38's morning scripts, adapted for 2026.6 on 2026-11-23, are in this
+024-38's morning scripts, adapted for 2026.6 on 2026-11-23, were in this
 plan's directory, `27-release-plan/`; each header says what it does and
-how it is called. Their work directory is `R`, by default
+how it is called. Moved to `items/034-releases/scripts/` on 2026-11-24
+(034) and made release-independent there; this section is the record of
+them as 2026.6 used them. Their work directory is `R`, by default
 `/Users/f/fl/bench/2026-11-24/release` (outside the repository).
 
 * `to-main.sh SRC A` (step 12): A from the clone SRC into `main`, a
@@ -257,3 +259,7 @@ status set from its records (026's log); 026's index line in
 `items/readme.md`; this plan done. bergdb.org updated for 2026.6
 (bergdb.github.io `2f03684` and `3cb90ab`). 028-19 and 028-34 stay open
 for a later release.
+
+2026-11-24. The release scripts moved from `27-release-plan/` to
+`items/034-releases/scripts/` (034, the process for every release;
+Frans).

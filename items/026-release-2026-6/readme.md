@@ -75,6 +75,9 @@ Work moved here from 2026.5:
 How the release is made
 =======================
 
+Since 2026-11-24 the process for every release is 034 (Frans); this
+section is the record of 2026.6's.
+
 As 2026.5's (024-38: commit A, the night, the morning's scripts), with
 the changes of the public repository (029; Frans, 2026-11-17, 11:40):
 
@@ -354,8 +357,9 @@ Files
   checked (the guarantee list 030-38 and its independent review, 030-26
   and 033 current, the notes, commit A and its gate, commit B, the tag,
   the release on GitHub), and five decisions for Frans, D1 to D5.
-  Its directory `27-release-plan/` holds the release scripts of
-  2026.6 (step 10, its section 4), 024-38's adapted. Done 2026-11-24:
+  Its directory `27-release-plan/` held the release scripts of
+  2026.6 (step 10, its section 4), 024-38's adapted; moved to
+  `items/034-releases/scripts/` on 2026-11-24 (034). Done 2026-11-24:
   steps 1 to 16, the release made.
 
 * 28-proof-story.md. 026-28, how the proofs came to work, the story of
@@ -501,3 +505,7 @@ directories.
 later updates go into a section "After the release", added with its
 first entry (Frans, 12:58; 033's rule); 2026.6's and 2026.5's notes got
 theirs on the same day.
+
+2026-11-24. The release process for every release is 034 (Frans),
+gathered from this item's "How the release is made" and 026-27; 026-27's
+scripts moved there.

@@ -1,12 +1,15 @@
 #!/bin/sh
-# Sets BuildInfo's version in a clone (bergdb 018-09, steps R2 and R9; as 016-09's), nothing else:
-#   commit A: sh set-buildinfo.sh CLONE 2026.6 266        RELEASE "2026.6", BUILD "2026.6.YYMMDD.HHMM"
-#             (the date and time from date now, for example 2026.6.261123.2310);
-#   commit B: sh set-buildinfo.sh CLONE 2026.7-dev 267    RELEASE and BUILD "2026.7-dev"
-#             (stage-b.sh calls it so).
-# RELEASE_INT is set to INT. A version ending in -dev gets BUILD equal to it.
-# Created 2026-11-03 by Frans Lundberg (016-09); 2026.3's copy 2026-11-06; 2026.6's 2026-11-23
-# (bergdb 026-27; the examples only).
+# Sets BuildInfo's version in a clone (bergdb 034-01, steps 7 and 10; 018-09, steps R2 and R9;
+# as 016-09's), nothing else:
+#   commit A: sh set-buildinfo.sh CLONE V INT          RELEASE "V", BUILD "V.YYMMDD.HHMM"
+#             (the date and time from date now; for 2026.7: sh set-buildinfo.sh CLONE 2026.7
+#             267 gives the build 2026.7.YYMMDD.HHMM);
+#   commit B: sh set-buildinfo.sh CLONE NEXT NEXTINT   RELEASE and BUILD "NEXT", such as
+#             2026.8-dev 268 (stage-b.sh calls it so).
+# RELEASE_INT is set to INT, (YYYY - 2000) * 10 + N for YYYY.N, such as 267 for 2026.7. A
+# version ending in -dev gets BUILD equal to it.
+# Created 2026-11-03 by Frans Lundberg (016-09); 2026.3's copy 2026-11-06; 2026.6's 2026-11-23;
+# for every release 2026-11-24 (bergdb 034; the examples only).
 # Prints the three lines changed and "BUILDINFO SET ..." or "BUILDINFO FAILED: ..." (exit 1);
 # then git diff in CLONE shows one file.
 C=${1:?usage: set-buildinfo.sh CLONE VERSION INT}

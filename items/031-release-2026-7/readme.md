@@ -14,6 +14,11 @@ has a place before its release is planned. Work may move between 2026.6,
 release owns stay in 028; a release item says which 028 entries it
 takes.
 
+The release is made as 034 says, the process for every release (Frans,
+2026-11-24): its steps (034-01), its checklist (034-02) and its scripts
+(`items/034-releases/scripts/`). This item holds the release's plan,
+scope and decisions, and says where it departs from 034.
+
 
 Work for this release
 =====================
@@ -28,7 +33,7 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
   2026.6; carried here on 2026-11-24 (Frans).
 * 028-49, the release scripts make the GitHub release's body with
   absolute links: needed before this release is made (from the review of
-  2026.6, 2026-11-24).
+  2026.6, 2026-11-24); in 034's scripts since 2026-11-24.
 
 
 Log
@@ -41,3 +46,6 @@ Log
 2026-11-24. 026-14 carried here from 2026.6, open (Frans).
 
 2026-11-24. 028-49 taken, for the release scripts (review of 2026.6).
+
+2026-11-24. The release is made as 034 says, the process for every
+release (Frans); 034 created.

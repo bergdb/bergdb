@@ -1,23 +1,28 @@
 #!/bin/sh
-# The release's checksums (bergdb 026-27, step 13; 024-38's finish.sh, adapted 2026-11-23 for
-# 2026.6: 026, "How the release is made"), after build-a.sh. Called by release.sh, or by hand:
+# The release's checksums (bergdb 034-01, step 10; 024-38's finish.sh, adapted for 2026.6 on
+# 2026-11-23 and for every release on 2026-11-24), after build-a.sh. Called by release.sh, or
+# by hand:
 #     sh finish.sh
-#   1. R/out/SHA256SUMS of the two files that go to the GitHub release, bergdb-2026.6.jar and
-#      bergdb-2026.6-javadoc.zip, as uploaded (shasum -a 256, file names without a directory),
+# The release V is the one build-a.sh built ("release: V" in R/out/build-a.txt).
+#   1. R/out/SHA256SUMS of the two files that go to the GitHub release, bergdb-V.jar and
+#      bergdb-V-javadoc.zip, as uploaded (shasum -a 256, file names without a directory),
 #      checked with shasum -a 256 -c: a user checks the downloads with the same command;
 #   2. R/out/baseline.zip from R/out/baseline/ if that directory exists (the outputs of A's
 #      gate and its night, put there by the lead; without the GC logs, *.gc.log, if it would
 #      pass 10 MB). It is not published and not in SHA256SUMS: it stays with the night's
 #      outputs, outside the repository. Without R/out/baseline/ there is no zip, and the
 #      result line says so.
-# Environment: VERSION (2026.6); R (the release's work directory,
-# /Users/f/fl/bench/2026-11-24/release).
+# Environment: VERSION (build-a.txt's); DATE (today); R (the release's work directory,
+# /Users/f/fl/bench/DATE/release).
 # Prints "FINISH OK: ..." with the sizes (exit 0) or "FINISH FAILED: ..." (exit 1).
-# Created 2026-11-03 by Frans Lundberg (016-09); 2026.5's copy 2026-11-12; 2026.6's 2026-11-23.
-V=${VERSION:-2026.6}
-R=${R:-/Users/f/fl/bench/2026-11-24/release}
+# Created 2026-11-03 by Frans Lundberg (016-09); 2026.5's copy 2026-11-12; 2026.6's 2026-11-23;
+# for every release 2026-11-24 (bergdb 034).
+DATE=${DATE:-$(date +%F)}
+R=${R:-/Users/f/fl/bench/$DATE/release}
 O=$R/out
 fail() { echo "FINISH FAILED: $*"; exit 1; }
+V=${VERSION:-$(sed -n 's/^release: //p' "$O/build-a.txt" 2>/dev/null | head -n 1)}
+[ -n "$V" ] || fail "no release in $O/build-a.txt (build-a.sh)"
 for f in "bergdb-$V.jar" "bergdb-$V-javadoc.zip"; do [ -f "$O/$f" ] || fail "no $O/$f (build-a.sh)"; done
 cd "$O" || fail "cd $O"
 shasum -a 256 "bergdb-$V.jar" "bergdb-$V-javadoc.zip" > SHA256SUMS || fail "shasum"

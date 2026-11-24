@@ -35,10 +35,10 @@ Rules, "Where they are published"); when an entry is added to that
 section, the body is made again from the notes and set with
 `gh release edit`.
 
-First step: read 026, "How the release is made", and `commit-b.sh` in
-`items/026-release-2026-6/27-release-plan/`; the body made by hand for
-2026.6 (the page of `release-2026.6`) is the expected result of the
-conversion.
+First step: read 034-01 (steps 10 and 12, section 6) and `commit-b.sh`
+in `items/034-releases/scripts/` (026-27's scripts, moved there on
+2026-11-24); the body made by hand for 2026.6 (the page of
+`release-2026.6`) is the expected result of the conversion.
 
 
 Log
@@ -50,3 +50,8 @@ review of release 2026.6, for the release scripts of 2026.7 (031).
 2026-11-24. Done when: the body includes the notes' section "After the
 release" and is set again with `gh release edit` when an entry is added
 (Frans, 2026-11-24, 12:58; 033's rule).
+
+2026-11-24. The release scripts moved to `items/034-releases/scripts/`
+(034), made release-independent; the fix goes there. Until it is done,
+`commit-b.sh` prints the GitHub release's command with a body file made
+by hand (034-01, step 12).

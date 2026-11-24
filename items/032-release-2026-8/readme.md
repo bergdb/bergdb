@@ -15,6 +15,9 @@ scope settles (Frans, 2026-11-20).
 The stream format's draft specification is 027-03, kept up to date with
 the code.
 
+The release is made as 034 says, the process for every release (Frans,
+2026-11-24).
+
 
 Work for this release
 =====================
@@ -66,3 +69,5 @@ moved here from 2026.6 (Frans), their IDs kept.
 
 2026-11-24. The versioning rule and the corpus (027-03, section 21)
 moved here from 2026.6 (Frans).
+
+2026-11-24. The release is made as 034 says (Frans); 034 created.

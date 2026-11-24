@@ -1,37 +1,46 @@
 #!/bin/sh
-# The release notes of 2026.6 (bergdb 026-27, step 13; in place of 024-38's notes.sh and
-# notes.py, which filled a template from the release night's outputs: 2026.6's notes are
-# releases/next.md, completed in 026-27's step 9). Called by release.sh after build-a.sh and
-# finish.sh, or by hand:
+# A release's notes (bergdb 034-01, step 10; written for 2026.6 on 2026-11-23, in place of
+# 024-38's notes.sh and notes.py, which filled a template from the release night's outputs:
+# the notes are releases/next.md, completed in 034-01's step 5; for every release on
+# 2026-11-24). Called by release.sh after build-a.sh and finish.sh, or by hand:
 #     sh notes.sh
-# Writes R/out/readme.md: the title "BergDB 2026.6", the release's line (DATE, Frans Lundberg,
-# item 026), "Files" (the two files on the GitHub release of the tag release-2026.6, each with
-# its SHA-256; releases/2026.6/ holds the notes and SHA256SUMS; the source is the tag's
-# archive), "Identity" (the tag, commit A and its date, BuildInfo's three lines, the JDK of the
-# build), then "Changes": A's releases/next.md after its introduction, its ### sections as
-# they are, relative links moved one directory down (next.md is in releases/, the notes in
-# releases/2026.6/). A, BuildInfo, the JDK and the hashes come from build-a.sh's clone (R/a)
-# and record (R/out/build-a.txt). A [[ marker that next.md still has is kept and counted:
-# stage-b.sh refuses a marker. Frans reads the notes before commit B is pushed (026-27, step
-# 13): release.sh stops after this script, and he may edit R/out/readme.md.
-# Environment: R (the release's work directory, /Users/f/fl/bench/2026-11-24/release); DATE
-# (today: the release's date); VERSION (2026.6).
+# The release V is the one build-a.sh built ("release: V" in R/out/build-a.txt); its item is
+# A's items/NNN-release-YYYY-N/ (ITEM, such as 031-release-2026-7, if A has none or several).
+# Writes R/out/readme.md: the title "BergDB V", the release's line (DATE, Frans Lundberg, the
+# release item), "Files" (the two files on the GitHub release of the tag release-V, each with
+# its SHA-256; releases/V/ holds the notes and SHA256SUMS; the source is the tag's archive),
+# "Identity" (the tag, commit A and its date, BuildInfo's three lines, the JDK of the build),
+# then "Changes": A's releases/next.md after its introduction, its ### sections as they are,
+# relative links moved one directory down (next.md is in releases/, the notes in
+# releases/V/). A, BuildInfo, the JDK and the hashes come from build-a.sh's clone (R/a) and
+# record (R/out/build-a.txt). A [[ marker that next.md still has is kept and counted:
+# stage-b.sh refuses a marker. Frans reads the notes before commit B is pushed (034-01, step
+# 10): release.sh stops after this script, and he may edit R/out/readme.md.
+# Environment: DATE (today: the release's date); R (the release's work directory,
+# /Users/f/fl/bench/DATE/release); VERSION (build-a.txt's); ITEM (found in A's items/).
 # Prints "NOTES OK: ..." (exit 0), "NOTES NEED EDITS: N markers: ..." (exit 3) or
 # "NOTES FAILED: ..." (exit 1). R/out/readme-generated.md keeps the script's own output.
-# Created 2026-11-06 by Frans Lundberg; 2026.6's notes.sh 2026-11-23.
-R=${R:-/Users/f/fl/bench/2026-11-24/release}
+# Created 2026-11-06 by Frans Lundberg; 2026.6's notes.sh 2026-11-23; for every release
+# 2026-11-24 (bergdb 034).
 DATE=${DATE:-$(date +%F)}
-V=${VERSION:-2026.6}
+R=${R:-/Users/f/fl/bench/$DATE/release}
 T=$R/a
 O=$R/out
+V=${VERSION:-$(sed -n 's/^release: //p' "$O/build-a.txt" 2>/dev/null | head -n 1)}
+[ -n "$V" ] || { echo "NOTES FAILED: no release in $O/build-a.txt (build-a.sh)"; exit 1; }
+if [ -z "${ITEM:-}" ]; then
+    ITEM=$(cd "$T/items" 2>/dev/null && ls -d [0-9][0-9][0-9]-release-"$(echo "$V" | tr . -)" 2>/dev/null)
+    [ "$(echo "$ITEM" | grep -c .)" = 1 ] || { echo "NOTES FAILED: not one release item for $V in $T/items ('$(echo $ITEM)'): set ITEM"; exit 1; }
+fi
+[ -f "$T/items/$ITEM/readme.md" ] || { echo "NOTES FAILED: no $T/items/$ITEM/readme.md"; exit 1; }
 [ -d "$T/.git" ] || { echo "NOTES FAILED: no clone of A in $T (build-a.sh)"; exit 1; }
 [ -f "$O/build-a.txt" ] && grep -q '^BUILD A OK' "$O/build-a.txt" || { echo "NOTES FAILED: no BUILD A OK in $O/build-a.txt"; exit 1; }
 [ -f "$O/SHA256SUMS" ] || { echo "NOTES FAILED: no $O/SHA256SUMS (finish.sh)"; exit 1; }
 C=$(git -C "$T" rev-parse HEAD)
 CD=$(git -C "$T" log -1 --format=%cd --date=format:'%F %H:%M')
-python3 -I - "$T/releases/next.md" "$O/build-a.txt" "$O/SHA256SUMS" "$V" "$DATE" "$C" "$CD" > "$O/readme.md" 2> "$O/notes.err" <<'EOF' || { echo "NOTES FAILED: $(tail -n 3 "$O/notes.err" | tr '\n' ' ')"; exit 1; }
+python3 -I - "$T/releases/next.md" "$O/build-a.txt" "$O/SHA256SUMS" "$V" "$DATE" "$C" "$CD" "$ITEM" > "$O/readme.md" 2> "$O/notes.err" <<'EOF' || { echo "NOTES FAILED: $(tail -n 3 "$O/notes.err" | tr '\n' ' ')"; exit 1; }
 import re, sys, textwrap
-nextmd, rec, sums, v, date, commit, cdate = sys.argv[1:]
+nextmd, rec, sums, v, date, commit, cdate, item = sys.argv[1:]
 def fill(t, indent=""):
     """Wraps at 72 columns without breaking a code span or a link."""
     t = re.sub(r"`[^`]*`|<[^>]*>", lambda m: m.group(0).replace(" ", "\x00"), " ".join(t.split()))
@@ -58,8 +67,8 @@ body = parts[1].strip("\n")
 # Relative links: next.md is in releases/, the notes in releases/VERSION/.
 body = re.sub(r"\]\((?!https?:|#|/|mailto:)([^)]+)\)", r"](../\1)", body)
 title = "BergDB %s\n%s" % (v, "=" * len("BergDB " + v))
-released = fill("Released %s by Frans Lundberg, as planned in bergdb item 026 "
-                "([../../items/026-release-2026-6/readme.md](../../items/026-release-2026-6/readme.md))." % date)
+released = fill("Released %s by Frans Lundberg, as planned in bergdb item %s "
+                "([../../items/%s/readme.md](../../items/%s/readme.md))." % (date, item[:3], item, item))
 where = fill("The files are on the GitHub release of the tag `%s`, "
              "<https://github.com/bergdb/bergdb/releases/tag/%s>:" % (tag, tag))
 f1 = fill("`%s`: the users' jar, `java/build/bergdb-release.jar` made by `java/build.sh` "
