@@ -45,11 +45,11 @@ Decided by Frans, 2026-11-20.
   bugs it fixes by ID.
 * **Where they are published** (Frans, 2026-11-24): each release's notes
   list the released bugs known in it, under its known issues, and the
-  ones it fixes. A bug found after a release is added to the notes of
-  each published release that has it, the repository's file and the
-  GitHub release's page, marked as found after the release. README.md
-  and bergdb.org list no known issues; they point to the notes and to
-  this register, which lists them all.
+  ones it fixes; a bug found after the latest release is added to its
+  notes (the repository's file and the GitHub release's page), marked as
+  found after the release. README.md and bergdb.org list no known
+  issues; they point to the notes and to this register, which lists them
+  all.
 
 
 Counts
@@ -206,3 +206,5 @@ same day. Checked: no other fault of a released version was registered
 on 2026-11-24 (028-01, 028-48: costs; 028-44, 028-46, 028-52: tests and
 gates; the review's stale Javadoc texts: wording); 028-51 decides
 whether `maintain()`'s stall (028-47, F1) is one.
+Whether such a bug is also added to the notes of older releases
+(2026.5's lack RB-002 to RB-005) is for Frans.
