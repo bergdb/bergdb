@@ -115,11 +115,14 @@ admits at most 500 operations a user transaction. The fill rules
 (`FillOk`: an inner root has two live entries, every other node at least
 m, an inner node's smallest live entry is the empty key's, a node has at
 most theta dead entries, and a node is a segment leaf exactly at height 0,
-with each child one level below its parent) are checked by the tree
-checker (C-T6) on Java's tree after every traced transaction; that PE
-keeps them is not proved. Java's PE itself refuses nothing; its one guard,
-a descent of more than 1,000 nodes in one segment tree, cannot be reached
-on an undamaged stream (the same section).
+with each child one level below its parent) are checked on Java's tree
+after every traced transaction by both checkers: the tree checker (C-T6,
+with its own walk) and the contract checker, which computes them as
+`FillOk` states them (`shapeFaults`) and since 2026-11-24 fails a trace
+with a fault (028-44); that PE keeps them is not proved. Java's PE
+itself refuses nothing; its one guard, a descent of more than 1,000 nodes
+in one segment tree, cannot be reached on an undamaged stream (the same
+section).
 
 ## 2.2 Reads
 
@@ -753,3 +756,6 @@ overtakes, C-STEP's row, the stream's size (section 4); section 5, items
 named as made (section 1), and section 4's exception for the dirty-node
 bound as wide as 2.7 proves it (deletes with joins up to the inner nodes
 just above the leaves, not only puts).
+
+2026-11-24. Section 2.1: the fill rules checked by both checkers; the
+contract checker fails a trace with a shape fault since 028-44.

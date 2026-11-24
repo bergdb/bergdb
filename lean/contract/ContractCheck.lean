@@ -14,8 +14,13 @@ traced transaction alone, on Java's tree before and after it:
   `checkTx_sound`, Contract/Check.lean)
 * R1, the reads: each GET line is `get`, each SCAN line is `scan`, on the tree
   after it at the line's time;
-* S, the writer's own rules (`shapeFaults`), reported apart: they are not in
-  the contract;
+* S, the writer's own rules (`shapeFaults`, Contract/Shape.lean: RootsOK,
+  FillOK, LeftmostOK, DeadOK and BalancedOK) on the tree after it: no clause
+  of the contract and not in the verdict (`checkVerdict`), but the premise
+  `FillOk` of the theorems of the writer's acceptance and of the dirty-node
+  bound (bergdb 030-38, G8 and G9). Since bergdb 028-44 a shape fault fails
+  the trace: its line names the rules, and the transaction when the fault is
+  the trace's first failure (`first: TX i: S, ...`);
 * C4, TREE (bergdb 030-08): no node reached twice from the space root of the
   tree after it, at its time (`treeOkB`; with C1 to C3 `checkShapeTx`, which
   is the contract with TREE: `checkShapeTx_sound`, Contract/CheckShape.lean).
@@ -49,7 +54,9 @@ lines is true (Contract/Verdict.lean): whole, readable, `startTopOk` and
 GET and SCAN line the package's. `contractVerdict_sound` proves that such a
 trace is a history that meets the contract with TREE and the top
 (`MeetsTop`). The loop's counts say which clause failed where; a trace also
-fails if a count is not zero, or if the loop and the verdict disagree.
+fails if a count is not zero (S's too, bergdb 028-44), or if the loop and the
+verdict disagree: the counts of the contract's clauses, without S, which the
+verdict does not have.
 
 KIND, K-LEVEL (bergdb 030-17, as the bridge checker since 030-14): every key
 node of the start, and of D after each transaction, has the kind that its
@@ -149,10 +156,11 @@ def checkTrace (tr : Trace) : Counts := Id.run do
       c := { c with lives := c.lives + 1 }
       if !liveOk h' topRoot x t ys then
         c := { c.fail s!"TX {i}: L1, a LIVE line of {x} at {t}" with l1 := c.l1 + 1 }
+    -- S fails the trace (bergdb 028-44), but is no clause of the contract.
     let sf := shapeFaults tr.shape s'
     if !sf.isEmpty then
-      c := { c with shape := c.shape + sf.length,
-                    shapeNames := (c.shapeNames ++ sf).eraseDups }
+      c := { c.fail s!"TX {i}: S, the writer's rules {sf.eraseDups}" with
+               shape := c.shape + sf.length, shapeNames := (c.shapeNames ++ sf).eraseDups }
     h := h'
     tp := tp'
     dirtyBefore := tx.dirty
@@ -178,7 +186,9 @@ def main (args : List String) : IO UInt32 := do
       let c := checkTrace tr
       let bad := c.c1 + c.c2 + c.c3 + c.r1 + c.l1 + c.c4 + c.c5 + c.l2 + c.kd
       IO.println s!"{path}: M={tr.M} {c.txs} transactions, {c.ops} operations, {c.gets} GET, {c.scans} SCAN, {c.lives} LIVE; failures: C1 {c.c1}, C2 {c.c2}, C3 {c.c3}, R1 {c.r1}, L1 {c.l1}, C4 {c.c4}, C5 {c.c5} ({c.skipts} SKIPT), L2 {c.l2} ({c.lives0} LIVE 0), KIND {c.kd}; shape faults {c.shape} {c.shapeNames}{match c.first with | some m => "; first: " ++ m | none => ""}"
-      if bad != 0 || c.txs == 0 then pass := false
+      -- A shape fault fails the trace (bergdb 028-44) but stays out of `bad`: the
+      -- verdict has no S, so only the contract's clauses are compared with it.
+      if bad != 0 || c.shape != 0 || c.txs == 0 then pass := false
       if (bad == 0) != verdict && (completeFault lines).isNone then
         IO.println s!"{path}: the verdict (checkVerdict) is {verdict}, the loop's counts say the other"
       total := { total with txs := total.txs + c.txs, ops := total.ops + c.ops,

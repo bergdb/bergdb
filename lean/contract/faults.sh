@@ -14,13 +14,17 @@
 # trace test/small.trace (a bare OP or GET line, a SCAN in the direction BANANA,
 # an OP line in TX 0, a GET with a wrong answer), and a number with an underscore,
 # two spaces between tokens, lines out of their order, a TX without its BASE line.
-# Since bergdb 030-17, K-LEVEL: the TREE line's h set to 0 (KIND alone fails).
+# Since bergdb 030-17, K-LEVEL: the TREE line's h set to 0 (of the contract's clauses
+# KIND alone fails; S's BalancedOK too, from the same levels).
 # Since bergdb 030-19, the three points of an independent review (Codex, review 3):
 # a delete bitmap wider than Java's 62 bits (2^64 added to a bitmap of a KN line,
 # which was read as the bitmap itself, and the review's B 2^64 with an empty delete
 # entry, read as an empty bitmap; and 2^62 added, which C1 caught), a PROBE line that
 # fails (a PROBE line that is ok passes), and reads left out: every GET and SCAN line,
 # the GET lines or the SCAN line of one transaction, one GET line of one.
+# Since bergdb 028-44, S, the writer's own rules (`shapeFaults`), which fail a trace
+# though they are no clause of the contract: the TREE line's mb, the writer's m,
+# raised by one (FillOK alone fails, and the verdict and the contract's counts agree).
 #
 # Usage: lean/contract/faults.sh
 # Needs: the checker (cd lean/contractcheck && lake build contractcheck) and java/build
@@ -109,12 +113,26 @@ awk '/^TX 30$/{t=1} t && /^BASE / && !d{d=1; next} {print}' $G > $DIR/nobase.tra
 expect nobase FAIL $DIR/nobase.trace
 # bergdb 030-17: K-LEVEL, the kind of each key node from its level with the TREE
 # line's h: h set to 0 makes every key node a segment leaf by its level, so every
-# inner node fails KIND, and nothing else.
+# inner node fails KIND, and no other clause of the contract (S fails too, BalancedOK,
+# which reads the kinds from the same h).
 awk '/^TREE / && !d{$4=0; d=1} {print}' $G > $DIR/kindh0.trace
 expect kindh0 FAIL $DIR/kindh0.trace
 grep -q 'KIND [1-9]' $DIR/kindh0.out || { echo "   kindh0: WRONG, not KIND"; FAILED=$((FAILED + 1)); }
 grep -q 'C1 0, C2 0, C3 0, R1 0, L1 0, C4 0, C5 0' $DIR/kindh0.out \
     || { echo "   kindh0: WRONG, a clause other than KIND"; FAILED=$((FAILED + 1)); }
+# bergdb 028-44: S, the writer's own rules. The TREE line's mb, the writer's m, raised
+# by one: a key node that is not a root and has m live klongs, as the writer keeps it,
+# breaks FillOK, and nothing else does: no clause of the contract fails, and the
+# verdict, which has no S, agrees with the loop's counts of the contract's clauses.
+# The checker before 028-44 passed this trace and only reported the count.
+awk '/^TREE / && !d{$6=$6+1; d=1} {print}' $G > $DIR/fillmb.trace
+expect fillmb FAIL $DIR/fillmb.trace
+grep -q 'shape faults [1-9][0-9]* \[FillOK\]' $DIR/fillmb.out \
+    || { echo "   fillmb: WRONG, not FillOK alone"; FAILED=$((FAILED + 1)); }
+grep -q 'C1 0, C2 0, C3 0, R1 0, L1 0, C4 0, C5 0 ([0-9]* SKIPT), L2 0 ([0-9]* LIVE 0), KIND 0;' \
+    $DIR/fillmb.out || { echo "   fillmb: WRONG, a clause of the contract"; FAILED=$((FAILED + 1)); }
+grep -q 'the verdict' $DIR/fillmb.out \
+    && { echo "   fillmb: WRONG, the verdict and the counts disagree"; FAILED=$((FAILED + 1)); }
 # bergdb 030-19: a delete bitmap is a number below 2^62 (Java's has 62 bits, 027-02,
 # section 4). The first B klong of a KN line from TX 30 on gets 2^64 added: the same
 # bits 0 to 63, so the checker read it as the bitmap itself until 030-19 and passed
