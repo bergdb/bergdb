@@ -99,7 +99,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins and sequential keys | none | open |
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-44](44-contract-check-shape-faults.md) | Change | The contract checker fails on a shape fault | none | open |
@@ -113,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-01](01-keymodset-bin-spread.md) | Measure | KeyModSet's bins: a mixed hash, 74 times fewer pairs scanned | none | done | 2026-11-24 |
 | [028-43](43-large-reclaim-run.md) | Change | Long large reclaim run | none | done | 2026-11-21 |
 | [028-42](42-w10m-fin-no-cut.md) | Fix | timing.sh's scenario w10m-fin reaches its cut: maxops 6M | none | done | 2026-11-21 |
 | [028-41](41-jdeps-check-jvm-banner.md) | Fix | build.sh's jdeps check and the JVM's "Picked up" line | none | done | 2026-11-20 |
@@ -346,3 +346,10 @@ asserted.
 
 2026-11-24. 028-47 registered by lead-1124: 026-13's option B, not
 studied in 2026.6, so that it is not lost when 026 is done (Frans).
+
+2026-11-24. 028-01 taken and done by an agent of lead-1124 on the branch
+`028-01`: keys such as `/k/%010d`, sequential or random, fell in 500 of
+`KeyModSet`'s 32,000 sub-arrays, and a lookup scanned about 1,500 pairs;
+the sub-array index of a hash mixed by fmix64 spreads them, about 21
+pairs a lookup, with the same answers and the same stream. Moved to
+Closed.

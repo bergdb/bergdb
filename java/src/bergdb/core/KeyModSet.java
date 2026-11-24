@@ -1,7 +1,9 @@
 package bergdb.core;
 
 import java.util.Arrays;
+import java.util.Random;
 
+import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -15,6 +17,7 @@ public class KeyModSet implements IKeyModSet {
     private final Bin[] bins;
     private static final int INITIAL_SIZE_OF_LONG_ARRAY = 4;
     private final int totalSize;
+    private final boolean spread;   // The sub-array index of a mixed hash (subIndex), or not.
     private long lastTime = -1;     // The time of the newest add, or -1.
     
     public KeyModSet() {
@@ -22,7 +25,16 @@ public class KeyModSet implements IKeyModSet {
     }
     
     private KeyModSet(int totalSize) {
+        this(totalSize, true);
+    }
+    
+    /**
+     * 'spread' false gives the sub-array index used until bergdb 028-01, the hash modulo the
+     * number of sub-arrays; for the tests and the probe (main) only, which compare the two.
+     */
+    KeyModSet(int totalSize, boolean spread) {
         assert totalSize > 0;
+        this.spread = spread;
         if (totalSize % BIN_COUNT != 0) {
             throw new IllegalArgumentException("size was " + totalSize + ", must be dividable by " 
                     + BIN_COUNT + ".");
@@ -137,6 +149,95 @@ public class KeyModSet implements IKeyModSet {
     }
     
     /**
+     * The index of the sub-array of a bin that holds 'hash', 0 to subSize - 1. Since bergdb
+     * 028-01 it is the hash mixed by MurmurHash3's 64-bit finalizer (fmix64), modulo subSize.
+     * Keys.hash mixes a key's 8-byte segments by "* 37 +" only, and modulo subSize (8,000)
+     * the hashes of keys such as "/k/%010d", sequential or random, fell in few sub-arrays:
+     * 128,000 keys in 500 of the 32,000, 256 pairs each, and a lookup of a key not added
+     * scanned about 1,500 pairs; mixed, 21 (the probe, main). Only the index changed: a bin
+     * finds a pair by its whole hash, so the answers of modifiedAfter() do not depend on the
+     * index (testSpreadSameAnswers); Keys.hash is as before.
+     */
+    final int subIndex(long hash, int subSize) {
+        if (!spread) {
+            return (int) ((hash & Long.MAX_VALUE) % subSize);  // never negative (005-21)
+        }
+        return (int) ((mix(hash) >>> 1) % subSize);
+    }
+    
+    /**
+     * MurmurHash3's 64-bit finalizer, fmix64: each bit of the result depends on each bit of h.
+     */
+    static long mix(long h) {
+        h ^= h >>> 33;
+        h *= 0xff51afd7ed558ccdL;
+        h ^= h >>> 33;
+        h *= 0xc4ceb9fe1a85ec53L;
+        h ^= h >>> 33;
+        return h;
+    }
+    
+    /**
+     * The pairs that modifiedAfter(time, hash) scans, counted as getTime() scans them: each
+     * slot of the sub-array of 'hash' in each bin it reads, up to the slot that holds the
+     * hash. For the tests and the probe (bergdb 028-01): a count, not a time.
+     */
+    int pairsScanned(long time, long hash) {
+        int endBin = -1;
+        for (int i = 0; i < BIN_COUNT && bins[i] != null; i++) {
+            if (time >= bins[i].firstTime) {
+                endBin = i;
+            }
+        }
+        int count = 0;
+        for (int i = 0; i <= endBin; i++) {
+            Bin bin = bins[i];
+            long[] array = (long[]) bin.subBins[subIndex(hash, bin.subSize)];
+            if (array == null) {
+                continue;
+            }
+            for (int j = 0; j < array.length; j += 2) {
+                count++;
+                if (array[j + 1] == hash && array[j] != -1) {
+                    if (array[j] > time) {
+                        return count;
+                    }
+                    break;
+                }
+            }
+        }
+        return count;
+    }
+    
+    /**
+     * The sub-arrays' fill: the sub-arrays used, of all the bins' sub-arrays, the pairs in the
+     * fullest, and the mean pairs of a used one. For the tests and the probe (bergdb 028-01).
+     */
+    long[] subArrayFill() {
+        long used = 0;
+        long largest = 0;
+        long pairs = 0;
+        for (int i = 0; i < BIN_COUNT && bins[i] != null; i++) {
+            for (Object sub : bins[i].subBins) {
+                if (sub == null) {
+                    continue;
+                }
+                long[] array = (long[]) sub;
+                int n = 0;
+                for (int j = 0; j < array.length; j += 2) {
+                    if (array[j] != -1) {
+                        n++;
+                    }
+                }
+                used++;
+                pairs += n;
+                largest = Math.max(largest, n);
+            }
+        }
+        return new long[] {used, largest, used == 0 ? 0 : pairs / used};
+    }
+    
+    /**
      * Yes, I need it :-).
      */
     private final int zero() {
@@ -181,7 +282,7 @@ public class KeyModSet implements IKeyModSet {
             }
             size++;
             
-            int index = (int) ((hash & Long.MAX_VALUE) % subSize);  // never negative (005-21)
+            int index = subIndex(hash, subSize);
             
             Object sub = subBins[index];
             long[] array;
@@ -225,7 +326,7 @@ public class KeyModSet implements IKeyModSet {
          */
         final long getTime(long hash) {
             assert hash >= 0;
-            int index = (int) ((hash & Long.MAX_VALUE) % subSize);  // never negative (005-21)
+            int index = subIndex(hash, subSize);
             
             Object sub = subBins[index];
             long[] array;
@@ -404,7 +505,122 @@ public class KeyModSet implements IKeyModSet {
         Assert.assertTrue(s.getFirstTime() < 150);
     }
     
+    /**
+     * The sub-arrays of 128,000 sequential keys are even since bergdb 028-01: a lookup scans
+     * a few pairs a bin, not about 250. Counts, not times.
+     */
+    @Nano
+    public static void testSpreadSequentialKeys() {
+        long[] before = probe(false, 0, 128*1000);
+        long[] after = probe(true, 0, 128*1000);
+        Assert.assertTrue("before 028-01, few sub-arrays: " + before[0], before[0] < 1000);
+        Assert.assertTrue("before 028-01, a large sub-array: " + before[1], before[1] > 200);
+        Assert.assertTrue("before 028-01, pairs scanned: " + before[5], before[5] > 10*1000);
+        Assert.assertTrue("sub-arrays used: " + after[0], after[0] > 30*1000);
+        Assert.assertTrue("the largest sub-array: " + after[1], after[1] <= 20);
+        Assert.assertTrue("mean pairs scanned for a key not added: " + after[5], after[5] <= 400);
+        Assert.assertTrue("most pairs scanned for a key not added: " + after[6], after[6] <= 100);
+        Assert.assertTrue("mean pairs scanned for a key added: " + after[3], after[3] <= 400);
+    }
+    
+    /**
+     * The conflict check's answers do not depend on the sub-array index (bergdb 028-01): a
+     * set with the index of 028-01 and one with the index before it, given the same adds and
+     * cuts, give the same modifiedAfter() and getFirstTime() for sequential and random hashes.
+     */
+    @Nano
+    public static void testSpreadSameAnswers() {
+        Random random = new Random(2801);
+        long[] hashes = new long[3000];
+        for (int i = 0; i < hashes.length; i++) {
+            hashes[i] = i % 2 == 0 ? Keys.hash(Keys.toSegments(String.format("/k/%010d", i)))
+                    : random.nextLong() & Long.MAX_VALUE;
+        }
+        
+        for (int size : new int[] {8, 400, 128*1000}) {
+            KeyModSet a = new KeyModSet(size, true);
+            KeyModSet b = new KeyModSet(size, false);
+            long time = 0;
+            for (int step = 0; step < 20*1000; step++) {
+                time += 1 + random.nextInt(3);
+                long hash = hashes[random.nextInt(hashes.length)];
+                a.add(time, hash);
+                b.add(time, hash);
+                if (random.nextInt(500) == 0) {
+                    long cut = time - random.nextInt(200);
+                    a.forgetUpTo(cut);
+                    b.forgetUpTo(cut);
+                }
+                if (step % 97 == 0) {
+                    Assert.assertEquals(b.getFirstTime(), a.getFirstTime());
+                    for (int q = 0; q < 50; q++) {
+                        long t = time - random.nextInt(size + 100);
+                        long h = q % 10 == 0 ? random.nextLong() & Long.MAX_VALUE
+                                : hashes[random.nextInt(hashes.length)];
+                        Assert.assertEquals("size " + size + ", time " + t + ", hash " + h,
+                                b.modifiedAfter(t, h), a.modifiedAfter(t, h));
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Fills a set of 'n' pairs with the hashes of 'n' keys, of a kind: 0, "/k/%010d" sequential
+     * from 0; 1, "/k/%010d" of random numbers; 2, two random 8-byte segments. Returns: the
+     * sub-arrays used, the pairs in the fullest, the mean pairs of a used one; the pairs
+     * scanned (pairsScanned) at the set's first time, when every bin is read, for a key added:
+     * the mean in tenths and the most; and for a key not added: the mean in tenths and the
+     * most. Integers only, as the Core's code (bergdb 005-79).
+     */
+    static long[] probe(boolean spread, int kind, int n) {
+        KeyModSet s = new KeyModSet(n, spread);
+        Random random = new Random(2801);
+        long[] hashes = new long[2 * n];    // added: 0 to n - 1, not added: n to 2n - 1
+        for (int i = 0; i < hashes.length; i++) {
+            long[] key = kind == 2 ? new long[] {random.nextLong(), random.nextLong()}
+                    : Keys.toSegments(String.format("/k/%010d",
+                            kind == 0 ? i : (random.nextLong() >>> 1) % 10_000_000_000L));
+            hashes[i] = Keys.hash(key);
+        }
+        for (int i = 0; i < n; i++) {
+            s.add(i + 1, hashes[i]);
+        }
+        long[] fill = s.subArrayFill();
+        long time = s.getFirstTime();
+        long sumAdded = 0, maxAdded = 0, sumOther = 0, maxOther = 0;
+        for (int i = 0; i < n; i++) {
+            int c = s.pairsScanned(time, hashes[i]);
+            sumAdded += c;
+            maxAdded = Math.max(maxAdded, c);
+            c = s.pairsScanned(time, hashes[n + i]);
+            sumOther += c;
+            maxOther = Math.max(maxOther, c);
+        }
+        return new long[] {fill[0], fill[1], fill[2], 
+                sumAdded * 10 / n, maxAdded, sumOther * 10 / n, maxOther};
+    }
+    
+    /**
+     * The probe of bergdb 028-01: the sub-arrays and the pairs scanned a lookup (probe()), for
+     * 128,000 keys of each kind, with the sub-array index before 028-01 (modulo) and with
+     * today's (mixed). Counts only. Run: java -cp java/build/bergdb.jar bergdb.core.KeyModSet
+     */
     public static void main(String[] args) {
-        testResize();
+        int n = 128*1000;
+        System.out.println("KeyModSet probe (bergdb 028-01): " + n + " keys of each kind, "
+                + BIN_COUNT + " bins of " + (n / BIN_COUNT / 4) + " sub-arrays; pairs scanned"
+                + " at the first time, all bins read.");
+        System.out.println("keys          index   sub-arrays  largest  mean"
+                + "   scanned, added: mean  most   not added: mean  most");
+        String[] kinds = {"sequential", "random /k/", "random bytes"};
+        for (int kind = 0; kind < kinds.length; kind++) {
+            for (boolean spread : new boolean[] {false, true}) {
+                long[] r = probe(spread, kind, n);
+                System.out.println(String.format("%-13s %-7s %10d  %7d  %4d  %21s  %4d  %16s  %4d",
+                        kinds[kind], spread ? "mixed" : "modulo", r[0], r[1], r[2],
+                        r[3] / 10 + "." + r[3] % 10, r[4], r[5] / 10 + "." + r[5] % 10, r[6]));
+            }
+        }
     }
 }
