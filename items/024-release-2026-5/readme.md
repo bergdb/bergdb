@@ -1,7 +1,8 @@
 024-release-2026-5
 ==================
 
-Created 2026-11-10 by Frans Lundberg. Status: open.
+Created 2026-11-10 by Frans Lundberg. Status: done (2026-11-24, Frans):
+release 2026.5 made on 2026-11-13.
 
 Release 2026.5 of BergDB, after 2026.4 (020): its plan, its decisions and
 the work towards it. Frans, 2026-11-10, 17:52: "Time to create the
@@ -443,3 +444,7 @@ current there (Frans, 08:50: "Yes", to 027's question "Move it into 027
 when 2026.5 is done?"); a stub left at 024-02, its sections and their
 numbers unchanged in 027-03. Of the three open subitems, 024-12 and
 024-22 remain.
+
+2026-11-24. 024 done (Frans), after a review of release 2026.6 found it
+still open. Its two subitems still marked open, 024-12 and 024-22, keep
+their texts as records; the proof work went on in 030.

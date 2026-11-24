@@ -1,13 +1,14 @@
 # 030-38. The guarantees of release 2026.6
 
-Created 2026-11-23 by Frans Lundberg. Status: open.
+Created 2026-11-23 by Frans Lundberg. Status: done (2026-11-24, Frans):
+the guarantees of release 2026.6, a record of that release.
 
 030-26's "What it means for a user" made a closed, numbered list, G1 to
 G14 (006-32, section 6; 026-27, step 2). Each guarantee is marked
 **proved**, with its theorem and the statement's assumptions, or
 **tested on purpose**, with its assumption in 030-26, section 5, its check
 and the script that runs it. The list describes `main` of 2026-11-23
-(004382f9), the code planned for release 2026.6. An independent review
+(004382f9), the code of release 2026.6. An independent review
 against the pinned statements (030-39; 026-27, step 3) found nine places
 where it said more than is proved or checked; each is corrected here, in
 the checks or in 030-26, or accepted with its reason (030-39, "Actions";
@@ -486,3 +487,6 @@ this day), G10 (the node sizes of the purpose-made deletes, the joins'
 heights not checked), G12 (hard sync, the default, and forcing off), G14
 (reads that reclaim overtakes); section 4's items 5 to 7, and items 9 to
 14 added.
+
+2026-11-24. Done (Frans): release 2026.6 is made; the list stays as its
+record. Later releases get their own list.

@@ -627,7 +627,8 @@ Files
   statement's assumptions) or tested on purpose (its item of 030-26,
   section 5, its check and script), and eight places where 030-26 says
   more than a statement or a check gives. Written 2026-11-23; reviewed in
-  026-27, step 3. Status: open.
+  026-27, step 3. Status: done (2026-11-24), the record of release
+  2026.6.
 * [030-39](39-guarantees-review.md). An independent review of 030-38
   (Codex, 2026-11-23; 026-27, step 3): nine findings, among them that
   C-STEP took reclaim's row key from the trace (it checks the model's key
