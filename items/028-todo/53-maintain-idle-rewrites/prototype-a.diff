@@ -1,0 +1,57 @@
+diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
+index 28bfc607..3086c143 100644
+--- a/java/src/bergdb/core/Reclaim.java
++++ b/java/src/bergdb/core/Reclaim.java
+@@ -483,6 +483,7 @@ public class Reclaim implements Db.TransactionListener {
+         }
+         
+         final long streamSize = t.nextPos;
++        userEnd = streamSize;     // PROTO 028-53: the end of the application's last transaction.
+             // This is correct since meta blocks are written eagerly by RecoverableStream.
+         IterationInfo current = currentIteration();
+         
+@@ -683,6 +684,15 @@ public class Reclaim implements Db.TransactionListener {
+         cutIfDurable();
+     }
+     
++    /**
++     * PROTO 028-53 (option A, not landed): W, the stream length after the application's last
++     * transaction, in memory only (a start sets 0); and X, the most that the last iteration
++     * may have rewritten for M1 to drain a database whose kept stream holds no write of the
++     * application's.
++     */
++    long userEnd = 0;
++    static final long PROTO_X = Long.getLong("proto53.x", 100_000L);
++    
+     /** maintain()'s M1 condition; see maintain() and MAINTAIN_MIN_RELEASE. */
+     private boolean maintainBeginDue(long now) {
+         if (retainDuration == Long.MAX_VALUE || currentIteration() != null
+@@ -695,14 +705,24 @@ public class Reclaim implements Db.TransactionListener {
+             }
+         }
+         final long length = db.getStreamLength();
++        if (userEnd <= firstAvailablePos) {
++            // PROTO 028-53: the application wrote nothing in the kept stream: only an
++            // iteration that rewrote little (an emptied database) may lead to another.
++            IterationInfo lastRow = table.rows.isEmpty() ? null : table.rows.get(table.rows.size() - 1);
++            if (lastRow == null || lastRow.rewritten > PROTO_X) {
++                return false;
++            }
++            return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
++                    || length - lastPStart() >= MAINTAIN_MIN_RELEASE;
++        }
+         if (table.rows.isEmpty()) {
+             return length - firstAvailablePos >= MAINTAIN_MIN_RELEASE;
+         }
+-        // The new iteration's cut releases the stream from firstAvailablePos to the last
+-        // pStart; the next one's at least the stream written since the table was last
+-        // stored, after every record of reclaim's (bergdb 028-51).
++        // PROTO 028-53: the application wrote in the kept stream: 028-51's two rules, and
++        // the next one's cut when the application wrote after the last pStart (RB-007).
+         return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
+-                || length - tablePos() >= MAINTAIN_MIN_RELEASE;
++                || length - tablePos() >= MAINTAIN_MIN_RELEASE
++                || (userEnd > lastPStart() && length - lastPStart() >= MAINTAIN_MIN_RELEASE);
+     }
+     
+     /**

@@ -102,7 +102,7 @@ Open
 | [028-19](19-pe-performance.md) | Change | PE's speed and reclaim's pace with PE | decided (09:32) | open |
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-49](49-release-body-absolute-links.md) | Fix | The release scripts make the GitHub release's body with absolute links | none | open |
-| [028-53](53-maintain-idle-rewrites.md) | Investigate | maintain() keeps rewriting live data in an idle database | none | open |
+| [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 
 
 Closed
@@ -434,3 +434,11 @@ F1 broke what the Javadoc of `maintain()` promises, registered as RB-006
 
 2026-11-24. 028-53 registered by lead-1124, from 028-51's report: an idle
 database with live data keeps rewriting it under maintain().
+
+2026-11-24. 028-53 in progress, by an agent of lead-1124 on the branch
+`028-53`: the rewriting is M1's first rule, which rewrites the live
+values of a database not written to in two sets in turn; a cost, not a
+released bug. Found with it RB-007 (S4), the application's writes made
+before the cut of an iteration that began within 400 kB of its cut
+point, counted by neither rule. Options for the fix in the entry
+(Frans: decision); the entry a directory with its probes.

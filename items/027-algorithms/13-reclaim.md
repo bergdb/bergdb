@@ -260,8 +260,8 @@ the call's time, in internal transactions, at most once each, in order:
   at that time. No condition on the stream's growth. With no iteration
   running and no cut pending, reclaim's last record is a store of the
   table (the last iteration's end, markSafe or cut), so L - tp is what
-  others wrote since: nothing in a database not written to, where the
-  calls stop as before. Counted from lastPStart instead, it would hold
+  others wrote since: nothing in a database not written to, where this
+  rule begins none. Counted from lastPStart instead, it would hold
   the last iteration's own rewrites, every live value after a first
   iteration, and the calls would rewrite them again and again in a
   database not written to (028-51 measured it). Until 028-51 only the
@@ -271,7 +271,20 @@ the call's time, in internal transactions, at most once each, in order:
   written by less than MIN_RELEASE in R/4), no iteration began until
   1.2's rule of growth began one, and a database emptied after such a
   cut and not written to kept the stream of what it had deleted, below
-  2 sd, for good (028-47, F1; 028-51).
+  2 sd, for good (028-47, F1; 028-51). The first rule still begins
+  iterations in a database with live values that is not written to:
+  after a cut, the stretch from fp to lastPStart holds the rewrites of
+  the iteration before the last, which the new one rewrites again, so
+  the live values fall into two sets that the iterations rewrite in
+  turn, each cut releasing the old copies of one, while both sets'
+  iterations write MIN_RELEASE or more (028-53: 24.5 MB in 10 R at
+  30,000 values of 100 bytes and sd 1 MB, where the overwrites had
+  left the values in two such sets; a cost, no promise broken). And
+  the others' writes between lastPStart and tp, made while the last
+  iteration ran or waited for its cut, are counted by neither rule
+  until another iteration begins: after an iteration that began within
+  MIN_RELEASE of its pCut, none begins, and a database emptied then
+  keeps that stream, below 2 sd (RB-007; 028-53).
 * **M2**: step(it, MAX_STEP) if an iteration runs, without the allowance.
 * **M3**: markSafe().
 * **M4**: of the rows waiting for their cut whose wait position (pEnd
@@ -538,6 +551,13 @@ pending, M1's condition holds, or the dead hand has more.
   transaction keep an iteration going; not seen. Ahead of an ascending
   mass delete, up to 12 percent more stream written (026-05, section 6;
   accepted, its Q3).
+* `maintain()`'s M1 (1.10) knows from the stream's positions only, not
+  where the application wrote: it rewrites the live values of a
+  database not written to in two sets in turn, while both sets'
+  iterations write MIN_RELEASE or more, and misses the others' writes
+  between lastPStart and tp after an iteration that began within
+  MIN_RELEASE of its pCut (RB-007). 028-53 holds the options (A: a mark
+  of the application's writes kept with the table).
 * Open: f's recommended values and default (026-04); the stream kept and
   the lag (BD8, BD10) are gated, not derived (017-04); protected
   long-lived reads that a cut would wait for (D1 = B) are not built.

@@ -912,3 +912,6 @@ when the repository and this release became public (bergdb 029).
 * 2026-11-24. **RB-006, S4**, found after this release, in 2026.5 and
   2026.6; fixed on main for 2026.7 (bergdb 028-51;
   [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-24. **RB-007, S4**, found after this release, in 2026.5 and
+  2026.6; not yet fixed (bergdb 028-53;
+  [bergdb 033](../../items/033-bugs/readme.md)).

@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 4 | 6 |
+| 2026.5 | 0 | 2 | 0 | 5 | 7 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 and RB-006, first found in
+release that has it (2026.6 has RB-005 to RB-007, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 4 | 6 | RB-001 to RB-006 |
-| 2026.6 | 0 | 0 | 0 | 2 | 2 | RB-005, RB-006 |
+| 2026.5 | 0 | 2 | 0 | 5 | 7 | RB-001 to RB-007 |
+| 2026.6 | 0 | 0 | 0 | 3 | 3 | RB-005 to RB-007 |
 
 
 Released bugs
@@ -220,6 +220,36 @@ RB-006. maintain() stops beginning reclaim iterations after some cuts
   the stream written since reclaim last stored its table.
 
 
+RB-007. maintain() keeps the stream written while an iteration waited for its cut
+---------------------------------------------------------------------------------
+
+* **What a user sees:** with a finite retain duration, a database that
+  the application writes to and deletes from while a reclaim iteration
+  runs or waits for its cut, and then no longer writes to, keeps the
+  stream of those writes for good under calls of `maintain()` (the
+  Pub's `Database.maintain()`, the Core's `Db.maintain()`), up to about
+  twice the startup distance: the calls begin no iteration, though the
+  Javadoc says that they bring a database that has been emptied to
+  within about 400 kB of a fresh one's stream. It comes when that
+  iteration began within 400 kB of its cut point, as RB-006 does (the
+  first iteration, or one that began a quarter of the retain duration
+  after an iteration with nothing to cut); RB-006's fix counts the
+  writes made after the cut only. Disk space only: no value lost or
+  wrong, the database goes on, and the commits' own rule gives the
+  space back after about twice the startup distance of writes.
+* **Severity:** S4.
+* **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
+  not fixed on `main`.
+* **Found:** 2026-11-24, by 028-53 while it read `maintain()`'s rules
+  against a database not written to (`HoleProbe`: 4,000 keys put and
+  deleted, the first iteration done, 20,000 keys put and deleted before
+  its cut, then 10 R of calls: 4.8 MB kept against 0.3 MB without the
+  second writes, on 2026.5, 2026.6 and `main`); not known at the
+  releases.
+* **Fix:** none yet; 028-53's options (A, a mark of the application's
+  writes kept with reclaim's table, recommended).
+
+
 Log
 ===
 
@@ -285,3 +315,13 @@ iteration that began within 400 kB of its cut point (028-47, F1); 028-51
 found that it breaks what the Javadoc of `maintain()` promises. Named in
 the section "After the release" of 2026.6's and 2026.5's notes and in
 `releases/next.md`; counts updated.
+
+2026-11-24. RB-007 registered (028-53), S4: `maintain()`'s M1 counts
+neither the application's writes made after the last iteration began
+and before reclaim last stored its table, so a database emptied while
+an iteration that began within 400 kB of its cut point waited for its
+cut keeps that stream. Not fixed; 028-53 holds the options. Named in
+the section "After the release" of 2026.6's and 2026.5's notes and in
+`releases/next.md`; counts updated. The rewriting of live values that
+028-53 was registered for breaks no promise (a cost) and is not
+registered.

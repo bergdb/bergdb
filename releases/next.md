@@ -44,5 +44,21 @@ Released bugs fixed
   data's stream. A call now also begins an iteration when the stream
   written since reclaim last stored its table is 400 kB, so the calls
   begin iterations by the clock in a database written to, as the Javadoc
-  says, and stay quiet in one that is not. Streams written without
-  `maintain()` are the same (StreamDigest identical).
+  says, and this rule begins none in one that is not. Streams written
+  without `maintain()` are the same (StreamDigest identical).
+
+
+Known released bugs
+-------------------
+
+Not fixed on `main`; a release with one needs Frans's exception
+(bergdb 034-01).
+
+* **RB-007, S4. `maintain()` keeps the stream written while a reclaim
+  iteration waited for its cut** (bergdb 033; 028-53, 2026-11-24). A
+  database written to and deleted from while an iteration that began
+  within 400 kB of its cut point ran or waited for its cut, and then no
+  longer written to, keeps that stream under the calls, up to about
+  twice the startup distance, though the Javadoc says that they bring
+  an emptied database to within about 400 kB of a fresh one's stream.
+  028-53 holds the options for the fix.
