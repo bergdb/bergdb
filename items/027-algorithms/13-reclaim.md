@@ -250,11 +250,28 @@ ordinals used, no user time left), and then nothing is written. With now
 the call's time, in internal transactions, at most once each, in order:
 
 * **M1**: if R is finite, no iteration runs, now - lastTStart >= R div 4,
-  no done row waits for its cut (not cut, pCut > fp), and the new
-  iteration's pCut (lastPStart; the stream length for the first) is at
-  least MIN_RELEASE after fp: begin(pStart = the stream length, tStart =
-  the time of the last transaction), with E at that time. No condition
-  on the stream's growth.
+  no done row waits for its cut (not cut, pCut > fp), and a cut that the
+  new iteration leads to releases at least MIN_RELEASE: its own, the
+  stream from fp to its pCut (lastPStart; the stream length L for the
+  first), or the next one's, at least L - tp, tp the position of the
+  table's value at the latest state (where the table was last stored,
+  read from the index, so that a start gives the same):
+  begin(pStart = L, tStart = the time of the last transaction), with E
+  at that time. No condition on the stream's growth. With no iteration
+  running and no cut pending, reclaim's last record is a store of the
+  table (the last iteration's end, markSafe or cut), so L - tp is what
+  others wrote since: nothing in a database not written to, where the
+  calls stop as before. Counted from lastPStart instead, it would hold
+  the last iteration's own rewrites, every live value after a first
+  iteration, and the calls would rewrite them again and again in a
+  database not written to (028-51 measured it). Until 028-51 only the
+  first counted: once the cut iteration had its pStart within
+  MIN_RELEASE of its pCut (the first, whose pCut is its pStart, or one
+  begun R/4 after an iteration with nothing to cut, in a database
+  written by less than MIN_RELEASE in R/4), no iteration began until
+  1.2's rule of growth began one, and a database emptied after such a
+  cut and not written to kept the stream of what it had deleted, below
+  2 sd, for good (028-47, F1; 028-51).
 * **M2**: step(it, MAX_STEP) if an iteration runs, without the allowance.
 * **M3**: markSafe().
 * **M4**: of the rows waiting for their cut whose wait position (pEnd
@@ -447,8 +464,8 @@ pending, M1's condition holds, or the dead hand has more.
 * `core/Reclaim`: `transactionCompleted` (1.2), `lastKeyAt` (E), `step`
   and `storeCurrent` (1.4), `markSafePositions` (1.5), `pretruncateIfPossible` (1.6),
   `cutIfDurable` (1.7), `initFromDb` (1.9), `maintain` and its
-  conditions (1.10), `setSettings`, `fractionOf`, `IterationInfo`,
-  `IterationTable`; the class comment.
+  conditions (1.10; `maintainBeginDue`, `tablePos`), `setSettings`,
+  `fractionOf`, `IterationInfo`, `IterationTable`; the class comment.
 * `core/Db`: `executeInner`, `putKvs`, `touchPaths`, `makeDirtyIfNeeded`
   (`Trans.dirtiedBytes`), `cutDecided`, `maintain`, `store` (M4,
   `TransSeq.takeTo`), `expiredIfReadBelowCut`, the setters; `KeyModSet`
@@ -471,7 +488,9 @@ pending, M1's condition holds, or the dead hand has more.
   `testStepReserveSplitsSteps`, `testQueueBeforeAKeyEnds`,
   `testCutKeepsMetaBlockTransaction`, `testRestartResumesIteration`;
   ReclaimRetentionTester (7),
-  ReclaimReaderTester (8), ReclaimMaintainTester (4); two of
+  ReclaimReaderTester (8), ReclaimMaintainTester (7; 028-51's
+  `testSlowlyWritten`, `testEmptiedAgainAfterACut` and
+  `testLiveDatabaseQuiet`); two of
   DbTesterRestart's (`testReclaimSettingsKeptOverRestarts`,
   `testMalformedSettingsRefusedAtStart`).
 * **In the night**: `level3.sh` (ReclaimStress, RestartInvariance,
@@ -541,7 +560,7 @@ T-COVER, T-LATEST, B1 to B4); 024-29, 026-04 (the fraction, the lag's
 mechanism); 024-30, 026-11 (the count gates, G4's lag); 024-32
 (`maintain()`); 024-34 (OP8); 026-05 (each step at its own time, E, the
 count, the pending cut); 026-10 (the forget at a decided cut); 028-26
-(the row again, 1.4's 4b).
+(the row again, 1.4's 4b); 028-47, 028-51 (M1's second cut).
 
 
 Log
@@ -592,3 +611,8 @@ history; section 9's reader without E refuses the stream first. By tx of coord-1
 2026-11-20. C-STEP checks the values a step writes back and that it
 writes nothing else than its rewrites and its row (030-34): section 3's
 REWRITES, section 9.
+
+2026-11-24. 1.10's M1 as the code is since 028-51: a cut that the new
+iteration leads to, its own or the next one's (the stream since the
+table was last stored), releases MIN_RELEASE; sections 6, 7 and 10. By
+an agent of lead-1124, on the branch `028-51`.

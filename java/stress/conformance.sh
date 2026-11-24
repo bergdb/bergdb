@@ -135,6 +135,11 @@ reclaim() {
     # maintain() after every user transaction (bergdb 024-32): its steps, its empty records
     # with a take beyond the share, its fillers and its cuts.
     echo "r-maint -Dn=300 -Dkeys=30 -Dmaxnode=8 -Dsd=200 -Dops=4 -Ddel=25 -Dretain=1 -Dprobe=10 -Dmaint=1"
+    # maintain() after every user transaction, with a startup distance of 400 kB and less
+    # than 400 kB written in a quarter of R (bergdb 028-51): M1 begins iterations for the
+    # next one's cut too, before the commits' rule of growth; 8 cuts a trace against 6
+    # before 028-51 (seeds 1 to 3).
+    echo "r-maint-sd -Dn=800 -Dkeys=20 -Dmaxnode=8 -Dsd=400000 -Dops=4 -Dvalsize=4000 -Dretain=4 -Dprobe=10 -Dmaint=1"
 }
 
 crash() {

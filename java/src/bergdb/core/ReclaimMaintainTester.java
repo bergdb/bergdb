@@ -15,8 +15,10 @@ import bergdb.stream.CutStream;
 /**
  * Tests of Db.maintain() (bergdb 024-32): a call's work is bounded, a call when nothing is
  * due writes nothing and returns false, an emptied database that is not written to comes
- * back to about a fresh one's stream by maintain() calls alone, reads are right during and
- * after, and the stream follows the calls, also over a restart (010-01, P2).
+ * back to about a fresh one's stream by maintain() calls alone, also when emptied again
+ * after a cut, one written slowly keeps little, and one with live values that is not
+ * written to is quiet (028-51), reads are right during and after, and the stream follows
+ * the calls, also over a restart (010-01, P2).
  */
 public class ReclaimMaintainTester {
     private static final long SEC = Clock.UNITS_PER_SEC;
@@ -29,12 +31,18 @@ public class ReclaimMaintainTester {
     private static final class Run {
         CutStream stream = new CutStream();
         final CoreTestClock clock = new CoreTestClock();
+        final int startupDistance;
         long time = SEC;
         Db db;
         Reclaim.Stats stats;
         long liveTime;      // The time of the live keys' put, after it "/a.txt" and they hold.
 
         Run(long retain) {
+            this(retain, 100000);
+        }
+
+        Run(long retain, int startupDistance) {
+            this.startupDistance = startupDistance;
             clock.setTime(time);
             start();
             if (retain != Long.MAX_VALUE) {
@@ -45,15 +53,24 @@ public class ReclaimMaintainTester {
 
         void start() {
             db = Db.builder().testSetup(stream).clock(clock).start();
-            db.setStartupDistance(100000);
+            db.setStartupDistance(startupDistance);
             synchronized (db.internal().getWriteLock()) {
                 stats = db.internal().reclaim().enableStats();
             }
         }
 
         void tick() {
-            time += MS;
+            advance(MS);
+        }
+
+        void advance(long dt) {
+            time += dt;
             clock.setTime(time);
+        }
+
+        /** Calls maintain() until it returns false, at most 100 times. */
+        void maintainUntilFalse() {
+            for (int k = 0; k < 100 && db.maintain(); k++) { }
         }
 
         void exec(Trans.Builder b) {
@@ -227,6 +244,124 @@ public class ReclaimMaintainTester {
         } finally {
             r.db.close();
             twin.db.close();
+        }
+    }
+
+    /**
+     * An emptied database that maintain() has brought back, then filled and emptied again,
+     * is brought back again by maintain() calls alone (bergdb 028-51). Its first cut is that
+     * of the first iteration, which cuts at its own pStart, so the cut of the next
+     * iteration releases nothing: until 028-51, M1 began an iteration only if its own cut
+     * released 400 kB, and with a startup distance above half the second filling's stream,
+     * so that no commit began one, that stream stayed for good.
+     */
+    @Nano
+    public static void testEmptiedAgainAfterACut() {
+        final int n = 20000, sd = 5000000;
+        Run twin = new Run(SEC, sd);
+        Run r = new Run(SEC, sd);
+        try {
+            for (Run x : new Run[] {r, twin}) {
+                x.fill(4000, 0);
+                x.deleteAll(4000);
+                for (int i = 0; i < 3000 && x.db.getFirstAvailablePos() == 0; i++) {
+                    x.tick();
+                    x.maintainUntilFalse();
+                }
+                Assert.assertTrue("the first cut", x.db.getFirstAvailablePos() > 0);
+            }
+            r.fill(n, 0);
+            r.deleteAll(n);
+            final long keptBefore = r.kept();
+
+            long lastWork = -1;
+            final int calls = 10000;      // 10 R
+            for (int i = 0; i < calls; i++) {
+                r.tick();
+                twin.tick();
+                final long length = r.db.getStreamLength();
+                final boolean more = r.db.maintain();
+                twin.db.maintain();
+                if (more || r.db.getStreamLength() != length) {
+                    lastWork = i;
+                }
+            }
+            final long allowance = Reclaim.MAINTAIN_MIN_RELEASE
+                    + RecoverableStream.META_BLOCK_DISTANCE;
+            Assert.assertTrue("kept before " + keptBefore, keptBefore > 4 * allowance);
+            Assert.assertTrue("kept " + r.kept() + " (before " + keptBefore + "), the twin's "
+                    + twin.kept(), r.kept() <= 2 * twin.kept() + allowance);
+            Assert.assertTrue("last call with work " + lastWork, lastWork < calls - 3000);
+            Assert.assertFalse(r.db.maintain());
+        } finally {
+            r.db.close();
+            twin.db.close();
+        }
+    }
+
+    /**
+     * A database written slowly, with maintain() until false after each commit, keeps about
+     * the stream of a few retain durations, not twice its startup distance (bergdb 028-51;
+     * 028-47, finding F1): a value of 10 kB every 10 ms, 1 MB a retain duration R, so that
+     * R/4 writes less than the 400 kB that M1 asks a cut to release, and a startup distance
+     * of 5 MB, so that no commit begins an iteration before 10 MB of growth. Until 028-51,
+     * once the first iteration (or one that began R/4 after an iteration with nothing to
+     * cut) was cut, M1 began no iteration, and the stream kept grew to about 10 MB.
+     */
+    @Nano
+    public static void testSlowlyWritten() {
+        final int sd = 5000000, perR = 100, rs = 30;
+        Run r = new Run(SEC, sd);
+        try {
+            final byte[] v = new byte[10000];
+            long maxKept = 0;
+            for (int i = 1; i <= rs * perR; i++) {
+                v[0] = (byte) i;
+                v[1] = (byte) (i >> 8);
+                r.advance(SEC / perR - MS);
+                r.exec(r.db.trans().put("/w", v));
+                r.maintainUntilFalse();
+                if (r.db.getFirstAvailablePos() > 0) {
+                    maxKept = Math.max(maxKept, r.kept());
+                }
+            }
+            Assert.assertTrue("a cut", r.db.getFirstAvailablePos() > 0);
+            // At most the writes of 4 R and the allowance of testEmptiedDatabaseConverges:
+            // 3.5 MB measured (028-51), 12.1 MB before 028-51.
+            Assert.assertTrue("kept " + maxKept, maxKept < 4 * perR * v.length
+                    + Reclaim.MAINTAIN_MIN_RELEASE + RecoverableStream.META_BLOCK_DISTANCE);
+        } finally {
+            r.db.close();
+        }
+    }
+
+    /**
+     * A database with live values, not written to, is quiet after the first iteration's
+     * cut (bergdb 028-51): the stream since that iteration began holds its rewrites of every
+     * live value, and a rule that counted it would begin iterations that rewrite them
+     * again and again, about an R apart, to release only their own copies. M1 counts the
+     * stream written since the table was last stored.
+     */
+    @Nano
+    public static void testLiveDatabaseQuiet() {
+        Run r = new Run(SEC, 5000000);
+        try {
+            r.fill(5000, 0);                // 5,000 live values, about 700 kB of stream
+            final int calls = 10000;        // 10 R
+            long lengthAtHalf = -1;
+            for (int i = 0; i < calls; i++) {
+                r.tick();
+                r.maintainUntilFalse();
+                if (i == calls / 2) {
+                    lengthAtHalf = r.db.getStreamLength();
+                }
+            }
+            Assert.assertTrue("the first cut", r.db.getFirstAvailablePos() > 0);
+            Assert.assertEquals("written in the last 5 R", lengthAtHalf,
+                    r.db.getStreamLength());
+            Assert.assertFalse(r.db.maintain());
+        } finally {
+            r.db.close();
         }
     }
 

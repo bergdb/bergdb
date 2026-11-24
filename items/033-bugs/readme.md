@@ -70,16 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 3 | 5 |
+| 2026.5 | 0 | 2 | 0 | 4 | 6 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005, first found in 2026.5):
+release that has it (2026.6 has RB-005 and RB-006, first found in
+2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 3 | 5 | RB-001 to RB-005 |
-| 2026.6 | 0 | 0 | 0 | 1 | 1 | RB-005 |
+| 2026.5 | 0 | 2 | 0 | 4 | 6 | RB-001 to RB-006 |
+| 2026.6 | 0 | 0 | 0 | 2 | 2 | RB-005, RB-006 |
 
 
 Released bugs
@@ -188,6 +189,37 @@ RB-005. The count of the index nodes a transaction makes dirty is short for a ke
   2026.7.
 
 
+RB-006. maintain() stops beginning reclaim iterations after some cuts
+---------------------------------------------------------------------
+
+* **What a user sees:** with a finite retain duration, calls of
+  `maintain()` (the Pub's `Database.maintain()`, the Core's
+  `Db.maintain()`) begin no reclaim iteration, after some cuts, until
+  the application has written about twice the startup distance since
+  the last one began, though the Javadoc says they begin iterations by
+  the clock, without that growth. So a database written slowly keeps up
+  to about twice the startup distance of stream (about 100 MB at the
+  Pub's default of 50 MB), not the stream of a few retain durations; and
+  a database emptied after such a cut, then not written to, keeps the
+  deleted data's stream (up to about twice the startup distance) for
+  good, though the Javadoc says the calls bring it to within about
+  400 kB of a fresh one's. It comes after the
+  cut of an iteration that began within 400 kB of its cut point: the
+  first iteration, or one that began a quarter of the retain duration
+  after an iteration with nothing to cut, in a database that writes
+  less than 400 kB in that time. Disk space only: no value lost or
+  wrong, the database goes on, and the commits' own rule gives the
+  space back after that growth.
+* **Severity:** S4.
+* **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
+  fixed on `main` for 2026.7.
+* **Found:** 2026-11-24, by 028-47's study of commits that reclaim by
+  the clock (finding F1, `SlowDriveProbe`); not known at the releases.
+* **Fix:** 028-51, 2026-11-24: `maintain()`'s M1 begins an iteration
+  also when the cut of the next one would release 400 kB: the stream
+  written since reclaim last stored its table.
+
+
 Log
 ===
 
@@ -246,3 +278,10 @@ release day above the section, which holds RB-004, RB-005 and the
 review's three corrections as errata; 2026.5's section points here for
 RB-002 to RB-005, found after it (RB-001 was known at its release), so
 the older release's notes are decided too.
+
+2026-11-24. RB-006 registered and fixed on `main` (028-51), S4:
+`maintain()`'s M1 stopped beginning iterations after a cut of an
+iteration that began within 400 kB of its cut point (028-47, F1); 028-51
+found that it breaks what the Javadoc of `maintain()` promises. Named in
+the section "After the release" of 2026.6's and 2026.5's notes and in
+`releases/next.md`; counts updated.

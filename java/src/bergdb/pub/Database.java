@@ -550,7 +550,8 @@ public interface Database extends AutoCloseable {
      * has deleted much and then writes little or nothing can call this method, now and then,
      * to have the space back without writes of its own. Called again and again, as time
      * passes, it brings a database that has been emptied to within about 400 kB of the size
-     * of a fresh one: a call begins an iteration only if its cut would release 400 kB.
+     * of a fresh one: a call begins an iteration only if its cut, or the next one's, would
+     * release 400 kB (bergdb 028-51).
      * With the retain duration forever (the default) there is nothing to do, and it returns
      * false.</p>
      * 

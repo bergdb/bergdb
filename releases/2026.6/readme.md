@@ -628,3 +628,7 @@ Added after 2026-11-24; the notes above are as published on that day.
 * 2026-11-24. **RB-005, S4**, found after the release, in 2026.6 and
   2026.5; fixed on main for 2026.7 (bergdb 028-50;
   [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-24. **RB-006, S4**, found after the release, in 2026.6 and
+  2026.5: `maintain()` could stop beginning reclaim iterations after
+  some cuts; fixed on main for 2026.7 (bergdb 028-51;
+  [bergdb 033](../../items/033-bugs/readme.md)).

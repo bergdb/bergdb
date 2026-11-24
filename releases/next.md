@@ -34,3 +34,15 @@ Released bugs fixed
   at node size 62 (review rev24, R3), can be taken now. Transactions
   without key transformations are counted as before; their stream is
   the same (StreamDigest identical).
+* **RB-006, S4. `maintain()` could stop beginning reclaim iterations
+  after some cuts** (bergdb 033; 028-51, 2026-11-24). After the cut of
+  an iteration that began within 400 kB of its cut point, such as the
+  first, calls of `maintain()` began no iteration until the application
+  had written about twice the startup distance: a database written
+  slowly kept up to about twice the startup distance of stream, and one
+  emptied after such a cut and then not written to kept the deleted
+  data's stream. A call now also begins an iteration when the stream
+  written since reclaim last stored its table is 400 kB, so the calls
+  begin iterations by the clock in a database written to, as the Javadoc
+  says, and stay quiet in one that is not. Streams written without
+  `maintain()` are the same (StreamDigest identical).

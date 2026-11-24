@@ -909,3 +909,6 @@ when the repository and this release became public (bergdb 029).
   fixed on main for 2026.7 (bergdb 028-50;
   [bergdb 033](../../items/033-bugs/readme.md)).
   RB-001 was known at the release (Known issues and limits).
+* 2026-11-24. **RB-006, S4**, found after this release, in 2026.5 and
+  2026.6; fixed on main for 2026.7 (bergdb 028-51;
+  [bergdb 033](../../items/033-bugs/readme.md)).

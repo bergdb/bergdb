@@ -879,17 +879,20 @@ public class Db implements AutoCloseable {
      * 1 s), commits alone still kept 6.4 MB of stream at 10 R, and with calls until false
      * after each commit 1.2 MB were kept at 2 R (026-13, U13-4). Called again and again,
      * with time passing, it brings a database that has been emptied to within about 400 kB
-     * of the stream of a fresh one, as an iteration begins only if its cut would release at
-     * least 400 kB (below; bergdb 023-02, F7; java/stress/CountGates.java, G5; 026-13,
-     * U13-5; 027-13, section 1.10).
+     * of the stream of a fresh one, as an iteration begins only if its cut, or the next
+     * one's, would release at least 400 kB (below; bergdb 023-02, F7;
+     * java/stress/CountGates.java, G5; 026-13, U13-5; 027-13, section 1.10; 028-51).
      * 
      * <p>One call does, in the database's own internal transactions, at most: the start of
      * a reclaim iteration, if a quarter of the retain duration has passed since the last
      * one began, no done iteration waits for its cut (not cut, its pCut after the first
-     * available position; Reclaim.cutPending) and the new one's cut would release at least
-     * 400 kB; one reclaim step (about 16 kB of KVs scanned); one write of index nodes of the startup
-     * section that an iteration waits for (at most 256 kB beyond one transaction's); one
-     * filler of at most 200 kB, put and deleted, so that a meta block follows the cut point;
+     * available position; Reclaim.cutPending) and its cut or the next one's would release at
+     * least 400 kB: the stream from the first available position to where the last one
+     * began, or the stream written since reclaim last stored its table (bergdb 028-51;
+     * until then only the first counted); one reclaim step (about 16 kB of KVs scanned);
+     * one write of index nodes of the startup section that an iteration waits for (at most
+     * 256 kB beyond one transaction's); one filler of at most 200 kB, put and deleted, so
+     * that a meta block follows the cut point;
      * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
      * the eviction's dead hand, which drops the objects of versions that a cut has ended
      * (Eviction; as after a transaction, with a cache budget). Each part is

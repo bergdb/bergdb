@@ -533,13 +533,26 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * The least that the cut of an iteration that maintain() begins must release, in stream
-     * bytes (bergdb 024-32, section 2.2, M1): two meta block distances. With no cut
-     * pending, what a new one releases is the stretch between the last two pStarts;
-     * once a database has converged, that holds an iteration's records and at most one
-     * filler (MAINTAIN_FILL_KEY_NAME, below one meta block distance), so no iteration
-     * begins and the calls return false. And a filler is at most half of what its cut
-     * releases.
+     * The least that one of the cuts that a new iteration leads to must release, for
+     * maintain() to begin it, in stream bytes (bergdb 024-32, section 2.2, M1; 028-51): two
+     * meta block distances. With no cut pending, the new iteration's own cut releases the
+     * stream from the first available position to the last pStart, and the cut of the
+     * iteration after it at least the stream written since the table was last stored
+     * (tablePos): with no iteration running and no cut pending, reclaim's last record is a
+     * store of the table (the last iteration's end, safe position or cut), so what follows
+     * it is the application's. Once an emptied database that is not written to has
+     * converged, the first holds an iteration's few records and at most one filler
+     * (MAINTAIN_FILL_KEY_NAME, below one meta block distance) and the second nothing, so no
+     * iteration begins and the calls return false; the application's writes grow the
+     * second, so in a database written to the calls go on beginning iterations by the
+     * clock. The second is not counted from the last pStart: that would count the last
+     * iteration's own rewrites, every live value after a first iteration, and in a
+     * database not written to the calls would rewrite them again and again. Until 028-51
+     * only the first counted: once the last iteration, cut, had its pStart within this
+     * distance of its pCut (the first, whose pCut is its pStart, or one begun R/4 after an
+     * iteration with nothing to cut), no iteration began until a commit's rule of growth
+     * began one. A filler is at most half of what its cut releases: an iteration begun for
+     * the second has a meta block after its pCut already, and needs none.
      */
     static final long MAINTAIN_MIN_RELEASE = 2L * RecoverableStream.META_BLOCK_DISTANCE;
     
@@ -567,11 +580,12 @@ public class Reclaim implements Db.TransactionListener {
      * <ol>
      * <li>M1: if no iteration runs, the retain duration is finite, a quarter of it has
      * passed since the last iteration began, no done iteration waits for its cut
-     * (cutPending),
-     * and the cut that a new iteration leads to releases at least MAINTAIN_MIN_RELEASE, an
-     * iteration begins, as at a commit, with tStart = lastTransTime, the time of the state
-     * at pStart, and endKey the last key live then (lastKeyAt; bergdb 026-05). The commit's
-     * condition on the stream's growth is not asked.</li>
+     * (cutPending), and a cut that a new iteration leads to releases at least
+     * MAINTAIN_MIN_RELEASE: its own, the stream from the first available position to the
+     * last pStart, or the next one's, the stream written since the table was last stored
+     * (bergdb 028-51), an iteration begins, as at a commit, with tStart = lastTransTime,
+     * the time of the state at pStart, and endKey the last key live then (lastKeyAt; bergdb
+     * 026-05). The commit's condition on the stream's growth is not asked.</li>
      * <li>M2: a step of the iteration that runs, of MAX_STEP_SIZE, without the commit's
      * allowance (the internal fraction of the growth).</li>
      * <li>M3: the safe positions (markSafePositions).</li>
@@ -669,7 +683,7 @@ public class Reclaim implements Db.TransactionListener {
         cutIfDurable();
     }
     
-    /** maintain()'s M1 condition; see maintain(). */
+    /** maintain()'s M1 condition; see maintain() and MAINTAIN_MIN_RELEASE. */
     private boolean maintainBeginDue(long now) {
         if (retainDuration == Long.MAX_VALUE || currentIteration() != null
                 || now - lastTStart() < retainDuration / ITERATION_DIVISOR) {
@@ -680,8 +694,39 @@ public class Reclaim implements Db.TransactionListener {
                 return false;
             }
         }
-        final long cutAt = table.rows.isEmpty() ? db.getStreamLength() : lastPStart();
-        return cutAt - firstAvailablePos >= MAINTAIN_MIN_RELEASE;
+        final long length = db.getStreamLength();
+        if (table.rows.isEmpty()) {
+            return length - firstAvailablePos >= MAINTAIN_MIN_RELEASE;
+        }
+        // The new iteration's cut releases the stream from firstAvailablePos to the last
+        // pStart; the next one's at least the stream written since the table was last
+        // stored, after every record of reclaim's (bergdb 028-51).
+        return lastPStart() - firstAvailablePos >= MAINTAIN_MIN_RELEASE
+                || length - tablePos() >= MAINTAIN_MIN_RELEASE;
+    }
+    
+    /**
+     * The position of the table's value node at the latest state: where the table was last
+     * stored (bergdb 028-51). From the index, so that a start gives the same; the value is
+     * not loaded. The table must be stored.
+     */
+    private long tablePos() {
+        GetMany g = db.newGetMany();
+        g.gd.pointerFollower = db.internal().nodeCollection().maintenance();
+        g.startKey = tableKey;
+        g.inclusive = true;
+        g.endKey = tableKey;
+        g.lookupTime = Long.MAX_VALUE;
+        g.valuesBefore = 1;                 // Its position only.
+        g.stopCondition = new GetMany.GetN(1);
+        db.getMany(g);
+        if (g.result.isEmpty() || !Arrays.equals(g.result.get(0).key, tableKey)) {
+            throw new Bug("No table at " + TABLE_KEY_NAME + " with " + table.rows.size()
+                    + " rows.");
+        }
+        final long pos = g.result.get(0).spos;
+        assert Spos.isValid(pos) && !Spos.isVpos(pos) : pos;
+        return pos;
     }
     
     /**
