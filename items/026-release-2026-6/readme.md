@@ -60,7 +60,7 @@ Work moved here from 2026.5:
 * **2026.5's databases refused, the stable format set aside** (026-12,
   SF4): Frans chose SF4 (a) at 10:50 on 2026-11-18, and at 11:51: "Let's
   forget about stable format for the stream. I decide to not focus on
-  this for this release. The focus for the release are the algorithsm,
+  this for this release. The focus for the release are the algorithms,
   simplifying them, proving them. If possible." So SF4 is open again,
   not this release's focus; what stands is 028-15's option A, older
   databases refused (above).
@@ -68,7 +68,8 @@ Work moved here from 2026.5:
   databases** (027-03, section 21, V-A to V-D, and 21.3; Frans,
   2026-11-13, 09:23: "Yes, decided work."): a stable format needs its
   rule; 026-08's node-size field, kept as a hook for a later release,
-  is a first case.
+  is a first case. Not made in 2026.6; moved to 2026.8 (032) on
+  2026-11-24 (Frans).
 
 
 How the release is made
@@ -139,7 +140,8 @@ there, or implied by this release's theme.
   (a quarter of R, a cut that releases 400 kB), so that `maintain()` is
   optional in effect for a slowly written database. A study first: G4 at
   026-13 C2's settings and at its own, before and after; taken only for a
-  clear gain. The Javadoc of today's behaviour is 028-06.
+  clear gain. The Javadoc of today's behaviour is 028-06. Not studied in
+  2026.6; registered as 028-47 on 2026-11-24 (Frans).
 
 
 Files
@@ -461,14 +463,23 @@ already true kept. Done: 026-02, 026-05 to 026-11, 026-13, 026-15 to
 IDs and files kept here. Open, carried to 2026.7 (031), which takes what
 2026.6 does not finish: 026-03, not started, and 026-04, the three
 values and the default; 026-14, not decided, carried there too (Frans,
-2026-11-24); 030's map lists it (D5). Not taken by 2026.6: MT (026-17, 026-18; 026-19's brief) and step
-times (026-20, 026-21); its writer is PE (026-24, 026-25). Not made in
-2026.6: the versioning rule and the corpus (027-03, section 21), decided
-for it on 2026-11-13; the stable format was set aside on 2026-11-18;
-moved to 2026.8 (032) on 2026-11-24 (Frans). Not studied: 026-13's
-option B, a proposal above; registered as 028-47 on 2026-11-24 (Frans). 028-19 and 028-34 stay
-open for a later release.
+2026-11-24); 030's map lists it (D5). Not taken by 2026.6: MT (026-17,
+026-18; 026-19's brief) and step times (026-20, 026-21); its writer is
+PE (026-24, 026-25). Not made in 2026.6: the versioning rule and the
+corpus (027-03, section 21), decided for it on 2026-11-13; the stable
+format was set aside on 2026-11-18; moved to 2026.8 (032) on 2026-11-24
+(Frans). Not studied: 026-13's option B, a proposal above; registered as
+028-47 on 2026-11-24 (Frans). 028-19 and 028-34 stay open for a later
+release.
 
 2026-11-24. After 026 was done (Frans): 026-14 carried to 031, the
 versioning rule and the corpus (027-03, section 21) moved to 032, and
 026-13's option B registered as 028-47; 026-18 stays done.
+
+2026-11-24. After a review of release 2026.6: the versioning rule and the
+corpus marked as moved to 032, and 026-13's option B as 028-47, where
+they are proposed above. The branches that this item names as kept
+(`026-17-mt-trial`, `026-19-proof-trial`, `026-21-study`,
+`026-22-mt-contract`, `026-24-pe-trial`, `026-25-pe-java`) are local
+branches, not on the public repository; their evidence is in this item's
+directories.

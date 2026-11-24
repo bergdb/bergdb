@@ -25,8 +25,8 @@ section 3.5. Two parts are left for it: the writer meets the contract
 (030-04's assumption 1; the direction is chosen after the PE trial,
 026-24), and reclaim chooses only safe cuts (assumption 11, T-SCHEME).
 Frans: ""the core algorithms are proved". Yes, this is the result to aim
-for. This is how far we would wish to go. If maintenable at a reasonable
-cost, this would be great. That is a valuable garantee." Beyond it, and
+for. This is how far we would wish to go. If maintainable at a reasonable
+cost, this would be great. That is a valuable guarantee." Beyond it, and
 not aimed for: Java against the model (tested by design), the platform's
 assumptions (tested), the cost and bounded-startup statements, and what
 the model leaves out (threads, the Pub layer, the cache's budget).

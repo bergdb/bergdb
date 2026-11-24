@@ -36,7 +36,7 @@ To decide (Frans): what a start does with an older stream, one whose sd
 is in its meta block. **Decided: A** (Frans, 2026-11-18, 10:50: "SF4 (a),
 028-15 A"). At 11:51 Frans set the stable format aside for 2026.6 ("Let's
 forget about stable format for the stream. I decide to not focus on this
-for this release. The focus for the release are the algorithsm,
+for this release. The focus for the release are the algorithms,
 simplifying them, proving them. If possible."): 026-12's SF4 is open
 again, and 2026.6's format is not called stable; option A stands, as
 made below.

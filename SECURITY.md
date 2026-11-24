@@ -11,9 +11,9 @@ Say which release or commit, which JDK and which operating system, what
 an attacker can do, and how to reproduce it. A short program helps most.
 
 BergDB is maintained by one person. You get an answer as soon as Frans
-can give one, normally within a week. Please
-give him time to fix the vulnerability before you publish it; he will
-say when a fix is out and, if you wish, name you in the release notes.
+can give one, normally within a week. Please give him time to fix the
+vulnerability before you publish it; he will say when a fix is out and,
+if you wish, name you in the release notes.
 
 
 Supported versions

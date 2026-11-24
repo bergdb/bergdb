@@ -73,10 +73,9 @@ In short:
   again** (The stream, below). There is no upgrade tool.
 * **Four released bugs of 2026.5 are fixed**, RB-001 to RB-004
   (Released bugs fixed, below; RB-004 registered on 2026-11-24, after
-  the release). No bug is known in 2026.6 at its
-  release.
+  the release). No bug is known in 2026.6 at its release.
 * **Speed against 2026.5:** writes with reclaim at work up to 27 %
-  faster; writes without reclaim 6 to 10 % slower; reads up to 5 %
+  faster; writes without reclaim 6 to 10 % slower; reads up to 5.4 %
   slower, and the gets beside writes 12 % slower (Speed against 2026.5,
   below).
 * **Less memory for a small database:** the write buffer grows with use,
@@ -126,8 +125,8 @@ has:
 * **Databases of release 2026.5 and earlier are refused: make them again**
   (bergdb 028-15, option A; Frans, 2026-11-18, 10:50). The startup
   distance moved out of the meta blocks into a key-value pair of BergDB's
-  own, `/#i/-sd`, and the meta block's version is 155 (154
-  until now). A start of an older database throws a
+  own, `/#i/-sd`, and the meta block's version is 155 (154 until now). A
+  start of an older database throws a
   `VersioningStreamException` whose message names release 2026.5, and
   writes nothing. To keep the data, read it with the release that wrote
   it and put it into a new database with this release, for example with
@@ -138,10 +137,10 @@ has:
   wrote it (bergdb 028-30). Releases 2026.5 and 2026.4 refuse a database
   of this release by its meta block's version, with the message "Cannot
   read meta block with version 155. Version supported: 154", and write
-  nothing. A change of the startup
-  distance (`Database.setStartupDistanceInMb`, `Db.setStartupDistance`)
-  now writes a small transaction, not one of 200 kB, and a crash inside
-  it starts with the old setting. The Core API: every database has that
+  nothing. A change of the startup distance
+  (`Database.setStartupDistanceInMb`, `Db.setStartupDistance`) now writes
+  a small transaction, not one of 200 kB, and a crash inside it starts
+  with the old setting. The Core API: every database has that
   key-value pair from its creation on, and a scan of the whole key space
   returns it (Db, "Keys and the layers above"); the creation writes two
   records, so a new database's first transaction has a time one unit
@@ -157,34 +156,36 @@ has:
   start again (`DatabaseNotCreatedException`'s Javadoc). So a database is
   created whole or not at all. With the Pub API, `created.txt` is written
   after both records are synced, before `start()` returns.
-
 * **The writer is PE, the writer that is proved to meet the writer's
   contract; record format 8** (bergdb 026-25, 030-21; Frans, 2026-11-19,
-  09:32). A transaction's keys and values reach the key tree as one batch:
-  the writer plans the whole transaction over the tree, decides each index
-  node once, and then writes each decided node once ("plan, then emit"),
-  where the writer of 2026.5 changed the tree key by key, with splits in
-  place, merges at a delete and nodes made and taken back within a
-  transaction. It is the writer that bergdb 030-21 proves: every history
-  it writes meets the writer's contract, from which the reads, recovery,
-  restarts, eviction and reclaim's cuts are proved (bergdb 030, the
-  release's theme); the level scripts compare Java, node by node, with a
-  copy of it at every traced transaction, and the copy with it (030-28). What a program reads is unchanged; the
-  trees have other shapes. Each record has the record format 8 (7 until
-  now), as the same record makes another tree with this writer: a
-  database written with format 7 by a development build of this release
-  is refused with a message, and one of release 2026.5 is refused by the
+  09:32). A transaction's keys and values reach the key tree as one
+  batch: the writer plans the whole transaction over the tree, decides
+  each index node once, and then writes each decided node once ("plan,
+  then emit"), where the writer of 2026.5 changed the tree key by key,
+  with splits in place, merges at a delete and nodes made and taken back
+  within a transaction. It is the writer that bergdb 030-21 proves:
+  every history it writes meets the writer's contract, from which the
+  reads, recovery, restarts, eviction and reclaim's cuts are proved
+  (bergdb 030, the release's theme); the level scripts compare Java,
+  node by node, with a copy of it at every traced transaction, and the
+  copy with it (030-28). What a program reads is unchanged; the trees
+  have other shapes. Each record has the record format 8 (7 until now),
+  as the same record makes another tree with this writer: a database
+  written with format 7 by a development build of this release is
+  refused with a message, and one of release 2026.5 is refused by the
   meta block's version, as above. Speed (bergdb 026-25, section 7): at
   10M keys within a few per cent of 2026.5's writer, the load of
   transactions of 100 or 500 puts 0.90 to 0.97 of its puts a second; a
-  small database in memory 11 to 18 % slower in CORE's set; with reclaim
-  more cuts, less of the stream kept and about 6 % more bytes written;
-  follow-up work is bergdb 028-19. The stream's bytes changed for
-  every configuration of StreamDigest, the l2-* and the l3-* ones; the
-  digests before and after are in bergdb 030-28, section 6. Tests whose
-  expected values changed: a few thresholds of tests that depend on the
-  tree's shape, and `StoredTrans.testRefusesFormat6`, which refuses
-  formats 6 and 7 (026-25).
+  small database in memory 11 to 18 % slower in CORE's set test, timed
+  when the writer landed (CORE as a whole 6 % slower in the release's
+  timing, Speed against 2026.5, below); with reclaim more cuts, less of
+  the stream kept and about 6 % more bytes written; follow-up work is
+  bergdb 028-19. The stream's bytes changed for every configuration of
+  StreamDigest, the l2-* and the l3-* ones; the digests before and after
+  are in bergdb 030-28, section 6. Tests whose expected values changed:
+  a few thresholds of tests that depend on the tree's shape, and
+  `StoredTrans.testRefusesFormat6`, which refuses formats 6 and 7
+  (026-25).
 * **Reclaim charges every index node that its steps make dirty** (bergdb
   028-26). With a finite retain duration (`setRetainDuration`), a
   reclaim step's internal transaction counts toward reclaim's allowance,
@@ -241,7 +242,6 @@ has:
   builder's Javadoc (start time, heap, the write buffer) are now the
   setter's. On a new database the call writes a small transaction of the
   database's own after the creation.
-
 * **`bergdb.pub.Limits`: the limits as constants, and a check of a key
   before a call, a new class** (bergdb 026-02, option A; Frans,
   2026-11-13, 09:11, QK1 to QK4). `Limits.MAX_KEY_BYTES` and the other
@@ -260,7 +260,6 @@ has:
   count them (QK3). The Core API gets no method: a key fits if its
   bytes are at most `Db.MAX_KEY_BYTES`, as Db's Javadoc now says
   (option E). No stream change; no test's expected value changed.
-
 * **Starts no longer wait for each other** (bergdb 028-07). A start held
   a lock of the whole JVM through its first sync, so one start that
   waited, on a slow disk or after an `OutOfMemoryError`, held up every
@@ -282,7 +281,6 @@ has:
   `getStartupDistance()` gives too (it returned nothing until now). A
   value below 1 is refused with `IllegalArgumentException` (0 was clamped
   until now). The builder took 10 to 10^9 and refused values outside.
-
 * **A value transformation that throws or passes 8 MiB refuses its
   transaction; the database goes on** (bergdb 026-06; 010-04, R5; Frans,
   2026-11-12, 14:42). A user transaction's value transformations now
@@ -309,14 +307,13 @@ has:
   `maxNodeSize62()` are no longer public: a database made by the Core
   API has the node size 30, as one made by the Pub API always had, and
   the stream format promises that size only (027-03, section 6). A
-  program that called
-  `maxNodeSize30()` drops the call; one that made a database at 8, 14 or
-  62 cannot start it with this release, which refuses it, as before,
-  with a `StreamFormatException` that writes nothing (the meta block's
-  node-size field is kept and checked, a hook for a later release that
-  allows other sizes). The other sizes stay for BergDB's own tests
-  (`bergdb.core.TestNodeSize`, not API). No stream change; no test's
-  expected value changed.
+  program that called `maxNodeSize30()` drops the call; one that made a
+  database at 8, 14 or 62 cannot start it with this release, which
+  refuses it, as before, with a `StreamFormatException` that writes
+  nothing (the meta block's node-size field is kept and checked, a hook
+  for a later release that allows other sizes). The other sizes stay for
+  BergDB's own tests (`bergdb.core.TestNodeSize`, not API). No stream
+  change; no test's expected value changed.
 * **`Db.start(StartParams)`, `Db.StartParams` and the start listeners
   removed** (bergdb 028-10, option A; Frans, 2026-11-14, 12:10).
   `Db.start()` is the only start: it takes the startup position and the
@@ -392,7 +389,7 @@ with JDK 27.0.1.1:
 * `java/week.sh` on `2bb2b851`, ended 2026-11-21: WEEK OK in 488
   minutes. The user apps with Java's commit-time check switched on (4.3
   million commits checked in the soak rounds, 31,682 in the kill
-  rounds), 2,000 more kills on other seeds, longer fuzzing, the index
+  rounds), 3,000 more kills on other seeds, longer fuzzing, the index
   harnesses' soak, the large conformance set, the user apps' traces, and
   the Android tests on an emulator (1,734 unit tests passed and 4
   skipped, 10 runs of the demos).
@@ -614,7 +611,7 @@ theorem or a fact tested instead of proved:
   of about 256 kB; a single put's record of about 0.25 MB now and then; a
   put's stream bytes grow with the keys at a fixed startup distance (the
   default stays 50 MB, which suits up to about 10M keys; beyond that 200
-  to 1000 MB); the stream kept under reclaim, about 4.5 to 6 times the
+  to 1,000 MB); the stream kept under reclaim, about 4.5 to 6 times the
   live data beyond the history (the count gate G3 measured 4.73 at 1M
   keys under uniform overwrites on 2026-11-23, and fails above 6), with
   reclaim's fraction 1/4 and no setting of the Pub API (bergdb 026-04,

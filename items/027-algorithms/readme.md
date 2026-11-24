@@ -29,7 +29,7 @@ implementation is also about done. [...] However, I think we are missing
 coherent documentation of the algorithms. Or? There are documents in
 docs/, but I would like to have this as proper, maintained item."
 
-Frans, 2026-11-12, 14:27: "Yes, create the item as a skelleton only.
+Frans, 2026-11-12, 14:27: "Yes, create the item as a skeleton only.
 Contents for later. About existing stuff in docs/. This was there before
 we started with items/. We could create an item for the old-era. Nice to
 keep those; what's in sources/. It can be a subitem of the new item for

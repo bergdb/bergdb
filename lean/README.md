@@ -46,18 +46,19 @@ trace format, 027-02.
 What is here
 ============
 
-The files and their lines (2026-11-18; the old line had 747 files and
-279,136 lines in this package, at the tag `proofs-2026-11-17`):
+The files and their lines (2026-11-24, counted with `wc -l`; the old line
+had 747 files and 279,136 lines in this package, at the tag
+`proofs-2026-11-17`):
 
-* SIS/Tree/: 11 files, 3,507 lines (210,119 before).
-* SIS/ but SIS/Tree/ and SIS/Proof/: 25 files, 6,950 lines.
+* SIS/Tree/: 12 files, 4,165 lines (210,119 before).
+* SIS/ but SIS/Tree/ and SIS/Proof/: 25 files, 6,893 lines.
 * SIS/Proof/: 95 files, 46,058 lines.
-* Check/: 8 files, 2,413 lines.
+* Check/: 8 files, 2,824 lines.
 * BergDB/: 11 files, 5,220 lines.
 * The roots in this directory (SIS.lean, Check.lean, BergDB.lean and the
-  six programs' main files): 9 files, 1,704 lines.
-* In all: 159 files, 65,852 lines; the contract package, contract/, has 80
-  files and 18,704 lines more.
+  six programs' main files): 9 files, 1,772 lines.
+* In all: 160 files, 66,932 lines; the contract package, contract/, has
+  209 files and 67,644 lines more.
 
 * **The executable model of the key tree**, SIS/Tree/ (12 files): Val.lean
   (the entry values of the BergDB instance and `blive`), Node.lean (a key

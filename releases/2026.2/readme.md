@@ -57,7 +57,7 @@ What it is
 An in-process, append-only database for Java: a multiversion ordered map
 from (key, time) to value, kept in one append-only stream, with a Lean
 model of its algorithm ([README.md](../../README.md)). The levels, as
-[docs/levels.md](../../docs/levels.md), section 1 has them at the release
+[docs/levels.md](../../items/027-algorithms/01-docs-2026-11-12/levels.md), section 1 has them at the release
 commit:
 
 | Level | Features | Status |

@@ -196,10 +196,11 @@ tested, on commits near its release commit:
 * Fuzz tests of the API and of the index, and a run at 10 million keys
   with reclaim: 100 million transactions.
 * The runs: `java/night.sh` (3 hours) on `main` of 2026-11-23, with
-  every change of the release; `java/night.sh` and `java/week.sh` (8
-  hours) on 2026-11-20 and 21; `java/timing.sh` against 2026.5. The Java
-  code a user runs did not change after them, but for one comment and the
-  version number. The release notes,
+  every change of the release's Java code (a change of the trace
+  checker's C-STEP, in Lean, landed after it, through its gate);
+  `java/night.sh` and `java/week.sh` (8 hours) on 2026-11-20 and 21;
+  `java/timing.sh` against 2026.5. The Java code a user runs did not
+  change after them, but for one comment and the version number. The release notes,
   [releases/2026.6/readme.md](releases/2026.6/readme.md), section
   "Verification", list each run and its result.
 
@@ -272,7 +273,7 @@ Repository
 BergDB was first developed from 2012 to 2017, with releases from 2013 to
 2015. The work went on in October 2026 from the 2017 source: it fixed the
 bugs that had stopped it and added reclaim and eviction. The 2026 code,
-tests and documentation was written by Frans Lundberg together with AI
+tests and documentation were written by Frans Lundberg together with AI
 assistants.
 
 

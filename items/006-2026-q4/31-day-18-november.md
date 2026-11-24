@@ -137,7 +137,7 @@ The decisions, as recorded here:
   real gain would be to actually get a complete proof."
 * 11:51 Frans: "Let's forget about stable format for the stream. I
   decide to not focus on this for this release. The focus for the
-  release are the algorithsm, simplifying them, proving them. If
+  release are the algorithms, simplifying them, proving them. If
   possible." SF4 open again; 028-15 and its option A stand. Agents mt
   (026-22) and fb (026-23) started 11:53, due 13:20.
 * 12:11 026-23 done (agent fb, 18 minutes): four proposals, PE (plan
@@ -175,9 +175,9 @@ The decisions, as recorded here:
 * 13:12 The aim of the proofs, after a discussion of what is not proved
   (the writer, reclaim's cut, and what stays tested or out of the
   model). Frans: ""the core algorithms are proved". Yes, this is the
-  result to aim for. This is how far we would wish to go. If maintenable
+  result to aim for. This is how far we would wish to go. If maintainable
   at a reasonable cost, this would be great. That is a valuable
-  garantee." Written into 030's aim.
+  guarantee." Written into 030's aim.
 * 13:12 The key `/#i/-sd` and CoreDemo's fix done (agent sd): BEFORE
   COMMIT OK, CORE BUILD OK, LEVEL 1 and 2 OK; LANDED 026c322a. The key
   takes two klongs (four before).

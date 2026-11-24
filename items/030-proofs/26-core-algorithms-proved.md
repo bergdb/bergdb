@@ -29,7 +29,7 @@ layer, threads and costs are outside the model (section 4).
 
 The claim is for the code on `main` since 2026-11-19 (record format 8).
 Release 2026.5 and earlier have an older writer, which these proofs do not
-cover. The coming release, 2026.6, has the theme "proven algorithms"
+cover. Release 2026.6, of 2026-11-24, has the theme "proven algorithms"
 (026).
 
 What it means for a user. If Java does what the model does, which the
@@ -478,9 +478,10 @@ proved (`contractVerdict_sound`). The Java code itself is not proved.
   configurations the traces do not reach (30 to 200 keys, node sizes 8
   and 14; the apps' traces reach few steps).
 - **No cost, time or memory statement is proved,** but the bound on a
-  transaction of puts' index nodes (2.7): not the work of a start
-  (bounded startup, [007](../007-bounds/readme.md), is measured and
-  tested), not the size of the stream (`java/stress/large.sh` checks a
+  transaction's index nodes (2.7; proved for puts and for deletes whose
+  joins reach at most the inner nodes just above the leaves): not the
+  work of a start (bounded startup, [007](../007-bounds/readme.md), is
+  measured and tested), not the size of the stream (`java/stress/large.sh` checks a
   bound on the kept bytes, in `week.sh`), not the heap, not pauses. The
   tree's shape rules that only costs depend on (how full the
   nodes are, balance, dead entries) are not in the contract. These are
@@ -747,3 +748,8 @@ Java's admission count with its cheap estimate and the transformations
 overtakes, C-STEP's row, the stream's size (section 4); section 5, items
 2, 4, 5 and 11, and item 14 added; the history (section 7). The note
 "Under correction" moved into the log (the entry above).
+
+2026-11-24. After a review of release 2026.6 (2026-11-24): the release
+named as made (section 1), and section 4's exception for the dirty-node
+bound as wide as 2.7 proves it (deletes with joins up to the inner nodes
+just above the leaves, not only puts).

@@ -344,7 +344,7 @@ refuses a 2026.6 database before it writes.
 
 **Frans, 2026-11-18.** At 10:50: "SF4 (a), 028-15 A". At 11:51: "Let's
 forget about stable format for the stream. I decide to not focus on this
-for this release. The focus for the release are the algorithsm,
+for this release. The focus for the release are the algorithms,
 simplifying them, proving them. If possible." So SF4 is open again, and
 not 2026.6's focus: no format is called the first stable one. What
 stands is 028-15's option A: 2026.6 refuses 2026.5's databases and

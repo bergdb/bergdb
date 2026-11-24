@@ -67,7 +67,7 @@ RB-001. A value transformation that throws or passes 8 MiB fails the database
   transaction. A restart has the state before that transaction; nothing
   committed is lost.
 * **Severity:** S2.
-* **Releases:** 2026.5 (and 2026.4 and before); fixed on `main` for 2026.6.
+* **Releases:** 2026.5 (and 2026.4 and before); fixed in 2026.6.
 * **Found:** before release 2026.5 (024-24, QL6; 015-51); known at the
   release, named in 2026.5's Known issues. Counted a bug by Frans,
   2026-11-20.
@@ -82,7 +82,7 @@ RB-002. A key transformation that throws fails the database
   `RuntimeException` fails the database instead of refusing the
   transaction. A restart has the state before that transaction.
 * **Severity:** S2.
-* **Releases:** 2026.5; fixed on `main` for 2026.6.
+* **Releases:** 2026.5; fixed in 2026.6.
 * **Found:** 2026-11-13, by the review of the code while fixing RB-001
   (026-06, Q2); not known at the release.
 * **Fix:** 026-06 (`b159cd30`), 2026-11-13: refused with a
@@ -102,7 +102,7 @@ RB-003. The Core API's Javadoc does not say that a new database is durable only 
   affected. Nothing committed is lost: the database holds no data.
 * **Severity:** S4 (unclear documentation of the Core API; Frans,
   2026-11-20).
-* **Releases:** 2026.5 (and before); fixed on `main` for 2026.6.
+* **Releases:** 2026.5 (and before); fixed in 2026.6.
 * **Found:** 2026-11-20, by 028-35 (the user app KillEmpty under kills);
   not known at the release.
 * **Fix:** 028-40, 2026-11-20: the Javadoc only; the behaviour is
@@ -184,3 +184,6 @@ registered too (Rules). 2026.6 fixes RB-001 to RB-004.
 
 2026-11-24. RB-005 registered (028-45), S4: the count of a key with a key
 transformation is short; possible in theory only. Not fixed.
+
+2026-11-24. After a review of release 2026.6: RB-001 to RB-003 say
+"fixed in 2026.6", as RB-004 does, now that 2026.6 is released.
