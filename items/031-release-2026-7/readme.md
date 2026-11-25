@@ -43,6 +43,8 @@ Files
 * [031-01](01-one-maintenance-path/readme.md): one maintenance path for a commit
   and `maintain()`, back to empty and quiet when done; the design of
   026-03 with 028-53's fix (RB-007).
+* [031-02](02-app-hunt.md): an app hunt on `main` before 2026.7, with
+  new user applications and their oracles.
 
 
 Log
@@ -67,3 +69,5 @@ commits, to `4ce8f942`): no new bug; RB-007 reproduced independently;
 STM (028-01, 028-48), 028-50's refusal, PE's writes (028-19, the same
 bytes as 2026.6's writer) and 028-51 found sound by probes that ran
 (006-35).
+
+2026-11-25. 031-02 created: an app hunt on `main` (lead-1125).
