@@ -1,0 +1,6 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.ProtoW 5000 7
+idle 1: wrote 1337656
+idle 2: wrote 2268760
+idle 3: wrote 0
+emptied: kept 280384
+SAME STREAM: ops 20435, restarts 2919, length 12258784, fp 11978400, w 11978400

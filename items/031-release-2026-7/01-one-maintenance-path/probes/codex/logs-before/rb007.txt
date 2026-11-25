@@ -1,0 +1,4 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.HoleProbe 4000 20000
+before the second writes: fp 0, length 1183688, rows 1
+after them: fp 0, length 5636600
+after 10 R of calls: kept 188256, the twin's 315024; last call with work 3858 of 10000; fp 6612632

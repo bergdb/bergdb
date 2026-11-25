@@ -1,0 +1,2 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.IdleLiveProbe 15000 1000000 20 10
+live 15000 (31333 kB stream) sd 1000000: wrote 3290 kB in 20 R, 0 kB in the last 10 R; last true call 3344; kept 3057 kB; fp 31566 kB

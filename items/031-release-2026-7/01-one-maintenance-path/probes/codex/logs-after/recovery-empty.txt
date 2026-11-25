@@ -1,0 +1,11 @@
+Command: java -ea -cp OUT:031-01-proto build bergdb.core.ReviewProbe recovery empty (031-01-proto after the repair)
+quiet base: length=24071880 fp=21058648 w=19548520 stored=19548520 last=22565536 rewritten=1500432 done=true cut=true
+uninterrupted delete: length=24072344 fp=21058648 w=22565536 stored=22565536 last=22565536 rewritten=1500432 done=true cut=true
+first recovery: length=24072344 fp=21058648 w=22565536 stored=22565536 last=22565536 rewritten=1500432 done=true cut=true
+after empty transaction: length=24072392 fp=21058648 w=22565536 stored=22565536 last=22565536 rewritten=1500432 done=true cut=true
+second recovery: length=24072392 fp=21058648 w=22565536 stored=22565536 last=22565536 rewritten=1500432 done=true cut=true
+w lost=false
+empty after 100 seconds: length=24200880 fp=24072392 w=22565536 stored=22565536 last=24077824 rewritten=224 done=true cut=true
+same recovered prefix, no extra restart: length=24200880 fp=24072344 w=22565536 stored=22565536 last=24077776 rewritten=224 done=true cut=true
+written after second recovery=128488
+uninterrupted empty: length=24200880 fp=24072344 w=22565536 stored=22565536 last=24077776 rewritten=224 done=true cut=true

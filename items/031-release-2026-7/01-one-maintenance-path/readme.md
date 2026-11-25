@@ -46,6 +46,14 @@ Written 2026-11-25 by an agent of lead-1125, from the sources above,
 prototype (section 10; `prototype.diff`, the branch `031-01-proto` of
 the clone c311). Nothing of it is on `main`.
 
+Revised the same day after Codex's review (section 13): the store of w
+and its recovery at a start did not hold, and are repaired (section
+4.3); the repair needs a store of its own and a start that writes after
+a crash or a stop, so by the criterion of section 13.4 the
+recommendation for 2026.7 is now 028-53's B for RB-007, with the
+rewriting of a database not written to kept as a known cost, and w the
+option for quiet when done (section 12).
+
 * **One maintenance step.** `Reclaim.transactionCompleted` and
   `Reclaim.maintain` become one method, run after each user transaction
   and by each `maintain()` call: the same parts, in one order (section
@@ -55,9 +63,10 @@ the clone c311). Nothing of it is on `main`.
 * **w, where the application wrote.** One number in reclaim's table:
   the pStart of the last iteration after whose start the application
   wrote, or -1 (section 4). The table is stored once more when w
-  changes, at most once an iteration, by the step of the commit that
-  changed it; a start reads w from the table, and from the stream's last
-  record after a crash. No read beyond the startup section.
+  changes, at most once an iteration, as the record after the one that
+  changed it; a start reads w from the table, and if the stream's last
+  record changed it (a crash or a stop came before its store), stores
+  it before any other record. No read beyond the startup section.
 * **M1 with w.** `maintain()` begins an iteration when a cut that it
   leads to releases at least MIN_RELEASE of stream in which the
   application wrote; where the application wrote nothing in the stream
@@ -92,11 +101,11 @@ lock, as both paths do today:
 Each part at most once, in this order; each says what it does, when,
 what paces it for each kind, and how it is checked:
 
-1. **The begin, or w's store.** If no iteration runs and the begin is
-   due (part 2), an iteration begins, and its store of the table carries
-   w. Otherwise, if w differs from the stored w, the table is stored. So
-   the record after an application record that changed w is a store of
-   the table (section 4.3). Checked: `ProtoW`, `CrashW` (section 10).
+1. **The begin.** If no iteration runs and the begin is due (part 2),
+   an iteration begins. Before the step, for every record and outside
+   it, w's store (section 4.3): the record after an application record
+   that changed w is a store of the table. Checked: `ProtoW`, `CrashW`,
+   Codex's `ReviewProbe` (section 10).
 2. **When the begin is due.** For both: R finite, no iteration runs,
    and R div 4 has passed since the last iteration began.
    * commit: L > lastPStart + 2 sd (027-13, section 1.2), as today;
@@ -129,8 +138,10 @@ records of reclaim's step too. Eviction writes nothing and stays where it
 is: after every record, a call's records included.
 
 `maintain()` returns `maintainDue()` as today. The bound of 027-13,
-section 4 holds: at most six internal transactions after a user
-transaction (the store of w is the alternative of the begin's store).
+section 4 becomes seven internal transactions after a user transaction
+(w's store, then the begin, a step, the row again, the end, the safe
+positions, the cut), within the margin of 1,024 times and top node
+ordinals.
 
 ### 3.2. What the one step changes, and what it does not
 
@@ -217,30 +228,59 @@ to, M1 is all there is.
 
 ### 4.3. The store, and why the stream stays deterministic
 
-* **The store.** The step stores the table when w differs from the
-  stored w (section 3.1, part 1). Since only an application record
-  changes w, and the step that follows it stores it, the stored w is w
-  between calls. In a database written to that is one store an
-  iteration, at its first commit of the application's after its start;
-  in one not written to, none.
-* **A start.** w := the last row's `w`. A row without it (written by
-  2026.6 or `main`) gives w := lastPStart, as if the application wrote
-  after the last iteration began: at most one or two iterations more
-  under calls, then quiet. Then, if the stream's last record is the
-  application's and at or after lastPStart, w := lastPStart: a crash came
-  between that record and the store after it. The stored w stays as
-  read, so the next step stores w if the start changed it.
-* **P2.** Between calls the stored w is w, so a restart between any two
-  calls gives the same w and the same bytes after it. Checked by
-  `ProtoW` (the same stream, w and stored w after every operation, a
-  restart every 7 to 101 operations, sd 5 kB to 1 MB) and StreamDigest's
-  modes, which agree in every configuration (section 10).
-* **A crash.** Only the last record can be an application record that
-  changed w without its store, as the store is the first record after
-  it; a start always reads the last record (its startup pos is before
-  its own position, 027-11, section 1.4). Checked by `CrashW`: 109
-  starts from streams that end with such a record, each with the running
-  database's w.
+As repaired after Codex's review (section 13). Until then the step
+after a user transaction stored a changed w, and a start that found w
+changed by the stream's last record kept it in memory until a later
+step: a setter's record, an empty transaction or a stop came first, and
+the next start lost it for good (finding 1); and the store came after
+the next call's record instead of before it (finding 2).
+
+* **The store.** w's store is the record after the one that changed w,
+  whatever kind that is. `Db.executeInner` calls
+  `Reclaim.transactionCompleted` after every record, a user's, a
+  setter's or reclaim's own; it now first stores the table if w differs
+  from the stored w (`storeWIfChanged`), before the record's own
+  maintenance (the begin, a step) and before any later call. Only an
+  application record changes w; reclaim's records never do, and the
+  stored w is set before the store executes, so the store's own
+  `transactionCompleted` stores nothing. In a database written to that
+  is one store an iteration, at its first application record after its
+  start; in one not written to, none.
+* **A start.** w := the last row's `w`. A row without it (2026.6,
+  `main`) reads as w = lastPStart, stored so: a start of such a stream
+  writes nothing, and the first store of the table writes `w`. If the
+  stream's last record is the application's, at or after lastPStart,
+  and w is below lastPStart, a crash or a stop came between that record
+  and w's store: w := lastPStart, and the start stores the table as its
+  last act (`Reclaim.storeRecoveredW`, from `Db.start` under the write
+  lock), before any other record, as the creating start writes its
+  second record. Its time is an internal transaction's, the larger of
+  the clock and the last record's time plus one: with the same clock,
+  the time the uninterrupted run's store had.
+* **The invariant**, between any two records: w and the stored w differ
+  only right after an application record that changed w, and that
+  record is then the stream's last. So a start sees every change of w
+  not yet stored, in a record it reads anyway (the last record's startup
+  pos is before its own position, 027-11, section 1.4).
+* **P2.** A restart between calls: the stored w is w (`ProtoW`: the same
+  stream, w and stored w after every operation, a restart every 7 to 101
+  operations, sd 5 kB to 1 MB; StreamDigest's modes agree). A crash, a
+  stop or a restart between an application record and w's store: the
+  start writes the store that the uninterrupted run wrote, byte for byte
+  (`CrashW`: 111 starts at sd 5 kB to 1 MB, each start's record compared
+  with the run's; Codex's `bytes` case, the same bytes). Between other
+  records inside a call's maintenance (a commit's begin or step, a
+  call's take), a crash or a stop changes the stream on `main` too:
+  reclaim's interrupted work goes on at the next commit (027-13, section
+  1.2), at other positions (`MidCallProbe`: a crash between a user
+  record and the begin of its iteration gives other bytes from that
+  record on, on `main` and on the prototype alike). P2 is checked at
+  calls (INV-RESTART, StreamDigest, RestartInvariance); w adds no point
+  where an interruption changes the stream.
+* **What it adds**, counted for section 13.4: one state that must
+  survive a stop, a crash or a restart (w, in the row); one store of its
+  own; two recovery cases (a row without `w`; a last record that changed
+  w, which makes the start write); one invariant (above).
 * **What a fault of w could do.** Decide when `maintain()` begins an
   iteration, and so the stream's size and the bytes written; never what
   a read returns: no step, wait or cut reads w, and the proofs take the
@@ -327,7 +367,7 @@ What it does in each case:
   deletes few large values that an iteration has just rewritten would
   keep their copies, against back to empty, which w's position rule
   keeps. Not part of this design; a cost, no promise broken (028-53,
-  section 4's reading of the Javadoc); F7 in section 12.
+  section 4's reading of the Javadoc); F6 in section 12.
 
 
 ## 6. The cost
@@ -343,7 +383,10 @@ rule counted from lastPStart, one line).
   lines more than `main`: w about 55 (the fields, the two record tests,
   the row's text, the start), M1 about 15 fewer (`tablePos()`'s 18 lines
   go, the rule grows by a few), the one step 3 fewer than the two
-  methods. Tests: about 150 lines (section 8), as A.
+  methods. Tests: about 150 lines (section 8), as A. The repair of
+  section 4.3 adds about 20 (the store after any record, the start's
+  store): about 55 more than `main` in all (the prototype at `543c3be6`:
+  136 added, 54 removed, with the switches).
 * A: about 80 lines in `Reclaim` and `Db`, 15 more with K; `tablePos()`
   kept. B: one line.
 
@@ -389,7 +432,10 @@ decide (018-01's rule): F2 in section 12.
 
 The start reads one more field of the row and tests the last record's
 keys, a record it has read already: no read beyond the startup section,
-so bounded startup (027-11; T3) is as on `main`. A reads the section's
+so bounded startup (027-11; T3) is as on `main`. After a crash or a stop
+between an application record and w's store, the start writes that
+store (section 4.3): one record of the table's size; otherwise it
+writes nothing. A reads the section's
 records for W, and with K up to K before the section, which the bound of
 027-11 would have to cover.
 
@@ -398,11 +444,11 @@ records for W, and with K up to K before the section, which the bound of
 After every record, a comparison (w < lastPStart); while it holds, a test
 of the record's keys against reclaim's prefix, until the first
 application record after an iteration's start. Once an iteration, one
-store of the table in that commit's step, in place of none: a record as
-large as the begin's own store. Within 027-13, section 4's six internal
-transactions after a user transaction. Not timed: timing.sh needs a
-quiet machine; a gate of the build (section 8.3). `maintain()` reads the
-index no more for M1.
+store of the table after that record, in place of none: a record as
+large as the begin's own store; with the begin's, seven internal
+transactions after a user transaction at most (section 3.1). Not
+timed: timing.sh needs a quiet machine; a gate of the build (section
+8.3). `maintain()` reads the index no more for M1.
 
 
 ## 7. The Lean proofs
@@ -414,9 +460,11 @@ From lean/ and the 030 items at `4ce8f942`, read for this design.
 * **lean/SIS** (027-13, section 5): its reclaim theorems are about the
   cut and what follows it: T13' (`T13_markTouch`), T-COVER (`T_cover`),
   T-LATEST (`T_latest`), T8 (`T8_recoverCut`), T9 (`T9_handles`), T12
-  (`T12_restartCut`, `T12_handles`), `Rule4PosCut_handles`. None
-  mentions an iteration's begin, the table, maintain() or whose a record
-  is; the table appears only in a comment of `Algo.faPolicy`. Unchanged.
+  (`T12_restartCut`, `T12_handles`). None mentions an iteration's begin,
+  the table, maintain() or whose a record is; the table appears only in
+  a comment of `Algo.faPolicy`. Unchanged. (`Rule4PosCut_handles`, which
+  the first version listed here, is not in the current tree: it is at
+  the tag `proofs-2026-11-17`, 027-13, section 5; Codex's finding 3.)
 * **T3** (bounded startup; `T3_take` in SIS/BoundTheorems.lean, "T3
   holds for every pace"): the take is not changed; M4's take beyond the
   share is a pace, as since 024-32. The start reads no more than its
@@ -454,7 +502,12 @@ proved again.
   meet RC1 and RC4 (`pe_reclaim_reads_steps`): the design changes when
   iterations begin under calls, which the theorems do not fix.
 * **Tested, not proved**: that w is the same over restarts (`ProtoW`,
-  StreamDigest's modes, RestartInvariance) and after a crash (`CrashW`);
+  StreamDigest's modes, RestartInvariance), after a crash or a stop and
+  the records that follow (`CrashW`, Codex's `ReviewProbe`), and that a
+  start's store of w is the uninterrupted run's (`CrashW`); T2 takes the
+  whole sequence of records, internal ones included, as given, and does
+  not say that Java's maintenance makes that sequence after an
+  interruption;
   RB-007's fix (`HoleProbe`); quiet when done (`IdleLiveProbe`); back to
   empty (G4, G5); that Java's internal transactions are the kinds
   `MaintenanceOK` allows ("tested links", 030-35). No theorem says that
@@ -495,8 +548,13 @@ about a second or less in the build, sized so that `main` fails it:
   `main` writes 14,554 kB in the last 10 R, the design none.
 * w over restarts: `ProtoW` (this item's probe), and a row without `w`
   (a stream of 2026.6).
-* w after a crash between an application record and its step's store:
-  `CrashW` (this item's probe).
+* w after a crash between an application record and its store:
+  `CrashW` (this item's probe), with each start's record compared with
+  the uninterrupted run's.
+* w through a setter's record, an empty transaction or a stop after a
+  recovery, and the bytes after a crash: Codex's `ReviewProbe`
+  (`recovery`, `recovery empty`, `recovery stop`, `bytes`; section 13),
+  failing on the first prototype `54c768c8`, passing on `543c3be6`.
 
 ### 8.2. Passing on both, kept
 
@@ -509,7 +567,7 @@ about a second or less in the build, sized so that `main` fails it:
   on the prototype, the emptied database's count 10 to 35 and 13 to 27.
   The build gives it G5's allowance (the larger of twice the twin's and
   the twin's plus a constant, 023-03's C4) or takes its most over the
-  last R; F6 in section 12.
+  last R; F5 in section 12.
 * `ReclaimMaintainTester` (7 tests), `Reclaim`'s 39, the restart tests:
   pass on the prototype, with two changed:
   * `Reclaim.Tester.testRestartResumesIteration`, which asserts that no
@@ -526,7 +584,7 @@ about a second or less in the build, sized so that `main` fails it:
 ### 8.3. Gates of the build
 
 * `java/before-commit.sh` (on the prototype `BEFORE COMMIT OK (63 s)`).
-* `count-gates.sh all`, with G4's M5 as F6 decides.
+* `count-gates.sh all`, with G4's M5 as F5 decides.
 * The conformance's reclaim, crash, drain and evict sets (`level3.sh`,
   `level4.sh`), r-maint and e-r-maint among them; and one configuration
   more that reaches M1's rules: `TraceExport` with N calls of
@@ -569,8 +627,10 @@ build takes that change.
 
 ## 10. Measurements
 
-On the branch `031-01-proto` (head `54c768c8`, on `main` at `4ce8f942`;
-`prototype.diff`), MemoryStream or CutStream, test clocks, counts and
+On the branch `031-01-proto` (head `54c768c8`, on `main` at `4ce8f942`,
+before the repair; `543c3be6` after it, `prototype.diff`, with the
+repair's own results at the end of this section), MemoryStream or
+CutStream, test clocks, counts and
 sizes only. `main` is the same commit's build. The probe `HoleProbe` is
 028-53's, `IdleLiveProbe` 028-51's, `ProtoW`, `CrashW` and
 `TrickleProbe` this item's (`probes/`).
@@ -616,6 +676,37 @@ sizes only. `main` is the same commit's build. The probe `HoleProbe` is
   10 R on both.
 * **Gates**: `BEFORE COMMIT OK (63 s)` on `54c768c8`.
 
+After the repair of section 4.3, on `543c3be6`:
+
+* **Codex's cases** (`probes/codex/ReviewProbe.java`, its logs before
+  the repair in `logs-before/`, after it in `logs-after/`): `recovery`
+  (the setter), `recovery empty` and `recovery stop`: w kept by the
+  second start (before: lost), and the calls bring the stream kept to
+  128,376 and 128,488 bytes, the same as the control without the extra
+  restart (before: 3,013,704 and 3,013,592 kept for good); `bytes`: the
+  same bytes (before: different from byte 52,256).
+* **`CrashW`**, now with each start's record compared with the
+  uninterrupted run's: sd 5,000, 20,000, 100,000 and 1,000,000: 42, 34,
+  29 and 6 starts, each with w stored by the start, none different. On
+  `54c768c8` the same probe finds w not stored in all 34 at sd 20,000.
+* **`ProtoW`**: SAME STREAM in the same twelve runs.
+* **StreamDigest quick**: the same 44 digests as `54c768c8`; with w off
+  (`-Dproto311.now=true`) the same as `main`, 44 of 44.
+* **RB-007 and the rewriting**: `HoleProbe` and `IdleLiveProbe` as
+  before the repair; G5 kept 50,288 bytes; G4's M5 as in section 8.2.
+* **A call's interruption on `main`**: `MidCallProbe` (a crash between a
+  user record and the begin of its iteration): other bytes from that
+  record on, on `main` and on the prototype alike.
+* **B** (`-Dproto311.now=true -Dproto311.b=true`, M1's second rule from
+  lastPStart): `HoleProbe 4000 20000` and `20000 20000` keep 188,256 and
+  143,624 bytes, as w; G5 80,600, as `main`; `IdleLiveProbe`, written
+  in the last 10 R: 30,000 values at sd 1 MB after 10 rounds 24,522 kB
+  (as `main`), 15,000, 14,554 kB (as `main`), 100,000, 51,595 kB (as
+  `main`), 30,000 at sd 5 MB 24,255 kB (`main` 0), 3,000 after 10 rounds
+  3,087 kB (`main` 0), 3,000 without rounds 3,089 kB (`main` 0), 1,200
+  at sd 100 kB 0.
+* **Gates**: `BEFORE COMMIT OK (73 s)` on `543c3be6`.
+
 
 ## 11. Options
 
@@ -649,9 +740,10 @@ and w's store has one place to live in it (part 1).
   format change (027-03, section 8) for one of reclaim's rules; not
   measured, not proposed.
 
-Recommended: **W-b**: A's answers at about A-with-K's bytes, without K's
-read beyond the section. W-c if Frans judges any stored mark too much
-for 2026.7: it fixes the bug, and the rewriting stays a known cost.
+Recommended before Codex's review: **W-b**. Since the review: **W-c**
+for 2026.7, by the criterion of section 13.4 (W-b, repaired, needs a
+store of its own and a recovery case in which a start writes); W-b
+stays the option for quiet when done.
 
 ### 11.3. Where w is stored
 
@@ -675,35 +767,151 @@ Javadoc gains what the design adds (F3).
 
 ## 12. What Frans decides
 
-* **F1.** The one step (P-a), or two paths with the same rules (P-c).
-* **F2.** The stream's format: `w` in the table's last row and one more
-  store of the table an iteration (W-b, in the row), or A (W-a), or B
-  (W-c), or a KV of its own (11.3).
-* **F3.** The promises of `Db.maintain()` and `Database.maintain()`:
-  whether their Javadoc says that, in a database the application no
-  longer writes to, the calls stop writing once a cut would release no
-  stream that it wrote, but for an emptied database's own records.
-* **F4.** RB-007 fixed by this design in 2026.7 (033), or B first as a
-  stopgap if the design waits.
-* **F5.** X = MIN_RELEASE / 4 (100,000 bytes), as 028-53 measured it.
-* **F6.** G4's M5 gate: G5's additive allowance, or its most over the
-  last R (section 8.2).
-* **F7.** The slowly written database under calls (section 5, the last
-  case): as on `main` and kept, or registered as a 028 entry to study a
-  rule in proportion to the application's writes that keeps back to
-  empty.
+Revised after Codex's review (section 13).
+
+* **F1.** The one step (P-a), or two paths (P-c). Independent of the
+  rest: byte-neutral by itself, a gain in reading; with B it is not
+  needed for the fix.
+* **F2.** RB-007's fix in 2026.7: **B** (recommended: one line, no
+  state, no store, no recovery case; the rewriting of a database with
+  live values that is not written to, under calls, stays a known cost,
+  as on `main` for some databases and with B for all), or w repaired
+  (W-b, section 4.3: quiet when done, at one state, one store of its
+  own, two recovery cases, one of them a start that writes; a change of
+  the stream's format, 018-01's rule), or A (not reviewed against
+  Codex's cases).
+* **F3.** With w only: whether the Javadoc of `Db.maintain()` and
+  `Database.maintain()` promises that the calls stop writing in a
+  database the application no longer writes to, given enough calls and
+  time (Codex: only after the recovery is tested through later calls and
+  repeated stops and crashes, as now in section 10).
+* **F4.** With w only: X = MIN_RELEASE / 4 (100,000 bytes), a heuristic
+  of the rewrite charge, as 028-53 measured it.
+* **F5.** G4's M5 gate: G5's additive allowance, bounded from the
+  counts of internal nodes and their dead entries (Codex), or its most
+  over the last R (section 8.2).
+* **F6.** The slowly written database under calls (section 5, the last
+  case): kept as now, or a 028 entry to study a rule in proportion to
+  the application's writes that credits small deletes making large
+  values obsolete, so that back to empty holds.
+* **F7.** P2 inside a call's maintenance (section 4.3, `MidCallProbe`):
+  on `main`, a crash or a stop between a user record and reclaim's
+  records after it changes the stream; whether P2's "between any two
+  transactions" covers reclaim's internal records, and if so a 028
+  entry for it.
 
 
-## 13. State
+## 13. Codex's review and the repair
+
+### 13.1. The review
+
+Codex reviewed the design and its prototype independently on
+2026-11-25 (main at `d83a4320`, the prototype at `54c768c8`), with a
+probe of its own (`probes/codex/ReviewProbe.java`, its logs in
+`probes/codex/logs-before/`). Its findings:
+
+1. **Blocking: a w recovered at a start was not stored before a later
+   record hid it.** The start raised w from the last application
+   record but left the stored w as it was, and a setter's record
+   (`setRetainDuration`), an empty user transaction followed by a crash,
+   or a stop right after the delete (which `Db.executeInner` lets
+   interrupt reclaim's work) came before any step stored it; the next
+   start read the table's old w, below fp. Two values of 1.5 MB
+   overwritten six times, then both deleted: 3,013,704 bytes kept for
+   good, 100,000 calls over 50 R writing nothing, where the same
+   recovered prefix without the extra restart keeps 129,728. Also a
+   failure of P2 across a restart between completed calls.
+2. **Blocking for restarts anywhere: the same w did not give the same
+   bytes.** A crash right after a user record and before its store of
+   w, then one more put: the order `/b`, `/c`, table, where the run
+   without the crash wrote `/b`, table, `/c`; with w off the bytes were
+   the same.
+3. **Minor**: section 7.1 cited `Rule4PosCut_handles`, which is not in
+   the current proof tree.
+
+Found sound: the boundary w and M1's comparisons; no other
+counterexample in its runs; the Lean section otherwise (it built
+`lean/` and `lean/contractcheck/`, all 144 statement pins matching, and
+seed 1 of r-maint, c-maint and e-r-maint passed the unchanged trace
+checker). Its view of F1: P-a slightly preferred, P-c as good; of the
+rest, recorded in section 12.
+
+### 13.2. What changed
+
+* The store of w: after any record that changed it, as the next record
+  (section 4.3), where it was in the step after a user transaction only.
+* A start that finds w changed by the last record stores it before any
+  other record; a row without `w` reads as stored.
+* Section 7.1 without `Rule4PosCut_handles`; section 7.2 on what is
+  tested of the recovery.
+* The prototype `543c3be6`; `CrashW` compares each start's record with
+  the uninterrupted run's; `MidCallProbe` for `main`'s behaviour inside
+  a call; a switch for B, measured (section 10).
+
+### 13.3. The repair against Codex's cases
+
+All four pass on `543c3be6` (section 10; `probes/codex/logs-after/`):
+w kept, 128,376 bytes kept where the control keeps the same, and the
+same bytes in the crash case. `CrashW` fails on `54c768c8` and passes on
+`543c3be6`.
+
+### 13.4. The candidates, by what must survive an interruption
+
+The criterion (Frans, 2026-11-25, through lead-1125): weigh each repair
+by the state it adds that must survive a stop, a crash or a restart and
+by the recovery cases that state brings; prefer new information that
+rides on stores that already happen; if every exact repair adds
+recovery machinery, recommend B.
+
+* **B**: one line changed (`tablePos()`, 18 lines, can go); 0 new
+  states, 0 new stores, 0 recovery cases. Fixes RB-007 (`HoleProbe` as
+  w). Rewrites the live values of every database with live values that
+  is not written to, under calls, for as long as they go on (3 MB in 10
+  R at 3,000 values and 24 MB at 30,000, sd 5 MB, where `main` writes
+  none; 24.5 MB at 30,000 and sd 1 MB, as `main`).
+* **w, repaired** (section 4.3): about 55 lines more than `main`; 1 new
+  state (w in the row), 1 new store (at most one an iteration), 2
+  recovery cases (a row without `w`; a last record that changed w, in
+  which a start writes a record), 1 invariant. Fixes RB-007 and the
+  rewriting; passes Codex's cases.
+* **A** (028-53, section 8): about 80 lines, 15 more with K; 2 states
+  (W, q), a store about once per sd, 4 cases at a start (no table; a row
+  without `w`; the startup pos at or before q, the section read; past
+  q, taken as a write; 028-53, section 8.2) and an invariant (the
+  startup pos at or before q between calls); not reviewed against
+  Codex's cases.
+* **On stores that already happen** (the begin's, the end's, markSafe's,
+  the cut's, the steps' rows): no exact form found. The fact to keep,
+  whether the application wrote after the last pStart, arises at an
+  application record, and records that store nothing of reclaim's (an
+  empty user transaction, a setter's, `maintain()`'s take, the filler)
+  move the startup pos past that record, so that no start can read it
+  again; so the fact needs a store at a moment the application's write
+  chooses, and a crash or a stop before that store needs a recovery
+  case. The inexact forms (the stretches' sizes against the rows'
+  `rewritten`) take the copies the application then deleted for live
+  values (028-53, section 5).
+
+So every exact repair found adds recovery machinery: **B** is
+recommended for RB-007 in 2026.7, the rewriting kept as a known cost (a
+028 entry, with F6's study), and w, repaired, stays the measured option
+if Frans wants quiet when done.
+
+
+## 14. State
 
 2026-11-25, by an agent of lead-1125: the design written (sections 2
 to 12), with a prototype on the branch `031-01-proto` of the clone c311
-(`54c768c8`, `prototype.diff`) and its measurements; for Frans's
-decisions F1 to F7. Recommended: P-a, W-b in the table's row, X as
-028-53, G4's M5 with an allowance. Nothing on `main`. Not settled: a
-database written slowly under calls rewrites its live values as on
-`main` (section 5, F7); the conformance sets were not run on the
-prototype (no Lean checker built in its clone).
+and its measurements. Reviewed by Codex the same day (section 13): w's
+store and recovery repaired on `543c3be6` (`prototype.diff`), Codex's
+four cases passing, `BEFORE COMMIT OK`. For Frans's decisions F1 to F7
+(section 12). Recommended: B for RB-007 in 2026.7, the rewriting of a
+database not written to kept as a known cost; w, repaired, the option
+for quiet when done. Nothing on `main`. Not settled: a database written
+slowly under calls rewrites its live values as on `main` (F6); P2
+inside a call's maintenance (F7); the conformance sets were not run on
+the repaired prototype (Codex ran r-maint, c-maint and e-r-maint seed 1
+on the first one).
 
 
 Log
@@ -719,3 +927,12 @@ Frans. A prototype on the branch `031-01-proto`, `BEFORE COMMIT OK`;
 testStopWhileReading's failure without K traced to its fixed call
 numbers. The subitem a directory with the prototype's diff and two
 probes.
+
+2026-11-25. Codex's review (section 13): w's store and recovery did
+not hold (findings 1 and 2), a theorem cited that is not in the tree
+(3). Repaired by an agent of lead-1125 on `031-01-proto` (`543c3be6`):
+w stored by the record after the one that changed it, whatever its
+kind, and by a start whose last record changed it; Codex's cases pass.
+Recommendation changed to B for RB-007 (section 13.4); F1 to F7
+revised; Codex's probe and logs, `MidCallProbe` and the new `CrashW` in
+`probes/`.

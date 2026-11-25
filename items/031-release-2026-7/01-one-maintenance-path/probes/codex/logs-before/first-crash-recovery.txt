@@ -1,0 +1,2 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.CrashW 20000
+sd 20000: 34 crashes after a record that changed w, 0 starts with another w, 0 skipped; iterations 33

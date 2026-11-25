@@ -1,0 +1,6 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.ReviewProbe bytes
+before snapshot: length=51624 fp=0 w=-1 stored=-1 last=51272 rewritten=0 done=false cut=false
+crash reopened: length=52256 fp=0 w=51272 stored=-1 last=51272 rewritten=0 done=false cut=false
+uninterrupted result: length=52800 fp=0 w=51272 stored=51272 last=51272 rewritten=0 done=false cut=false
+crashed result: length=52800 fp=0 w=51272 stored=51272 last=51272 rewritten=0 done=false cut=false
+same bytes=false first difference=52256 captured user record=51624 tt=10020000

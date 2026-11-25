@@ -1,0 +1,11 @@
+Command: java -ea -cp out:proto/java/build/bergdb.jar bergdb.core.ReviewProbe recovery empty
+quiet base: length=24070856 fp=21057448 w=19547416 stored=19547416 last=22564272 rewritten=1500432 done=true cut=true
+uninterrupted delete: length=24071320 fp=21057448 w=22564272 stored=22564272 last=22564272 rewritten=1500432 done=true cut=true
+first recovery: length=24070992 fp=21057448 w=22564272 stored=19547416 last=22564272 rewritten=1500432 done=true cut=true
+after empty transaction: length=24071368 fp=21057448 w=22564272 stored=22564272 last=22564272 rewritten=1500432 done=true cut=true
+second recovery: length=24071040 fp=21057448 w=19547416 stored=19547416 last=22564272 rewritten=1500432 done=true cut=true
+w lost=true
+empty after 100 seconds: length=24071040 fp=21057448 w=19547416 stored=19547416 last=22564272 rewritten=1500432 done=true cut=true
+same recovered prefix, no extra restart: length=24200880 fp=24070992 w=22564272 stored=22564272 last=24076520 rewritten=224 done=true cut=true
+written after second recovery=0
+uninterrupted empty: length=24200880 fp=24071320 w=22564272 stored=22564272 last=24076912 rewritten=224 done=true cut=true
