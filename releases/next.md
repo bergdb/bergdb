@@ -68,6 +68,15 @@ Released bugs fixed
   starts again when a cut removes what it reads while the position is
   kept; a position before the cut always expires, as
   `getFirstAvailablePos()` says. The Pub API was not affected.
+* **RB-012, S2, in part. After a kill on macOS, a zeroed tail over a
+  meta block stopped the start** (bergdb 033; 028-60, 2026-11-25). A
+  kill during a large append can leave the last stream file ending in
+  zeros within its length; where they covered a meta block, the start
+  threw "Invalid magic bytes". A meta block of zero bytes is now not
+  valid: zeros that begin inside the last record are recovered as a cut
+  tail, and zeros past a record's end get the documented refusal with
+  the position P to cut at, which then starts. Whether the start cuts
+  such a tail itself is open (028-60).
 
 
 Known released bugs

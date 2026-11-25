@@ -653,3 +653,8 @@ Added after 2026-11-24; the notes above are as published on that day.
   `maintain()`, up to a quarter of the stream kept when that file was
   made; not yet fixed (bergdb 028-61, 028-62;
   [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-25. **RB-012, S2**, found after the release, in 2026.6 and
+  2026.5: after a kill on macOS, a zeroed tail of the last stream file
+  over a meta block stops the start ("Invalid magic bytes"); fixed in
+  part on main for 2026.7 (bergdb 028-60;
+  [bergdb 033](../../items/033-bugs/readme.md)).

@@ -121,6 +121,13 @@ Frans, 2026-11-25:
   (the stream itself is cut below 400 kB): RB-011, S4, in 2026.5 and
   2026.6, not ended by 031-03; 028-62 holds the options for Frans (the
   Javadoc, or a file boundary in the storage).
+* 18:52 028-60, part 1 (agent, Opus xhigh): a meta block of zero bytes
+  is not valid, so a zeroed tail inside the last record is recovered;
+  zeros past a record's end get the documented refusal with P, which
+  now works. Codex's review (after its own limit, 18:26 to 18:37): the
+  code holds, two texts corrected. BEFORE COMMIT OK; landed. RB-012, S2,
+  fixed in part; part 2 (B1 to B3) for Frans, B2 recommended by the
+  agent and by Codex.
 
 
 ## 4. Outcome

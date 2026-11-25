@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 7 | 11 |
+| 2026.5 | 0 | 3 | 2 | 7 | 12 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-011, first found in
+release that has it (2026.6 has RB-005 to RB-012, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 7 | 11 | RB-001 to RB-011 |
-| 2026.6 | 0 | 0 | 2 | 5 | 7 | RB-005 to RB-011 |
+| 2026.5 | 0 | 3 | 2 | 7 | 12 | RB-001 to RB-012 |
+| 2026.6 | 0 | 1 | 2 | 5 | 8 | RB-005 to RB-012 |
 
 
 Released bugs
@@ -344,6 +344,35 @@ RB-011. An emptied file database keeps its last stream file under maintain()
 * **Fix:** none yet; 028-62 holds the options for Frans.
 
 
+RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
+-----------------------------------------------------------------------------
+
+* **What a user sees:** after the writing process is killed during a
+  large append on macOS (APFS), the last stream file can end in zeros,
+  whole pages, within its length; where they cover a meta block's
+  position, the next start throws `StreamFormatException` "Invalid
+  magic bytes in stream: the stream is not a BergDB stream, or it is
+  damaged; or an earlier release ... encrypted it", and the database
+  does not start until a person cuts its last file. Where the zeros
+  also run past a record's end, the file cut at the position that
+  `Database`'s Javadoc names did not start either. The data that a sync
+  returned for are there. The system makes the zeros (031-02's
+  `ZeroTailProbe`, 1 in 150 kills with plain appends and forces);
+  BergDB's part is the start's answer.
+* **Severity:** S2.
+* **Releases:** 2026.5 and 2026.6 (run on 2026.6; the same check of the
+  meta block's magic since 2026.1, by the sources); fixed in part on
+  `main` for 2026.7.
+* **Found:** 2026-11-25, by 031-02's app hunt (KillWriter: 3 in about
+  9,500 kills); not known at the releases.
+* **Fix:** in part, 028-60, 2026-11-25: a meta block of zero bytes is
+  not valid, so zeros that begin inside the last record are recovered
+  as a cut tail; zeros past a record's end get the documented refusal,
+  "Bad transaction size in db stream, 0, spos P", and the file cut at P
+  starts. Whether the start cuts such a tail itself is for Frans
+  (028-60, options B1 to B3).
+
+
 Log
 ===
 
@@ -438,3 +467,7 @@ RB-006's fix on `main` noted as partial (028-58).
 2026-11-25. RB-011 registered (028-61), S4: an emptied file database
 keeps its last stream file under `maintain()`, in 2026.5 and 2026.6;
 not fixed (028-62).
+
+2026-11-25. RB-012 registered (028-60), S2: after a kill on macOS, a
+zeroed tail over a meta block stops the start, in 2026.5 and 2026.6;
+fixed in part on `main`; the rest for Frans (028-60, B1 to B3).

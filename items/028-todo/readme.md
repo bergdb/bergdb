@@ -102,7 +102,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
-| [028-60](60-zero-tail-over-meta-block.md) | Fix | After a kill, a zeroed tail over a meta block stops the start | none | in progress |
+| [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-62](62-emptied-file-db-last-file.md) | Decide | RB-011: an emptied file database keeps its last file | decision | open |
 
 
@@ -518,3 +518,8 @@ Moved to Closed.
 
 2026-11-25. 028-62 registered by lead-1125, from 028-61: the fix of
 RB-011, the Javadoc or the storage, for Frans.
+
+2026-11-25. 028-60, part 1 done and landed: a meta block of zero bytes is
+not valid, so a zeroed tail inside the last record is recovered; RB-012
+(S2) fixed in part; part 2, zeros past a record's end, B1 to B3 for
+Frans.
