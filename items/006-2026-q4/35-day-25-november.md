@@ -68,6 +68,12 @@ Frans, 2026-11-25:
   crash before w's store changes the records' order. The rest found
   sound. 14:15 the design agent resumed to repair w's persistence; F1
   to F7 wait for the repair and a check by Codex.
+* 14:26 031-01 repaired (agent, 14 minutes; text landed `cb0ecfa9`):
+  Codex's four cases pass, but the only exact repair adds a store and a
+  start that writes (1 state, 1 store, 2 recovery cases); by the
+  criterion of 14:17 the design now recommends B for RB-007 (F2). A
+  finding on `main`: a stop or a crash inside a commit's maintenance
+  changes the stream; 028-54 registered (Frans: whether P2 covers it).
 
 
 ## 4. Outcome

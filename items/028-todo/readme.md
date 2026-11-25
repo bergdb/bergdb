@@ -101,6 +101,7 @@ Open
 |---|---|---|---|---|
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
+| [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 
 
 Closed
@@ -456,3 +457,8 @@ of the old writer's bytes a put); the short way, the routing and the
 inner nodes appended to by counts without live lists (the set test 1.04
 times the old writer's, CCBench 1.00, the load 0.98), the same trees; gated, timing.sh against
 2026.6 TIMING OK. Moved to Closed.
+
+2026-11-25. 028-54 registered by lead-1125, from 031-01's revision: a
+stop or a crash between a user record and reclaim's records after it
+changes the stream on `main` (`MidCallProbe`); Frans: whether P2 covers
+it.
