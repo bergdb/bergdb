@@ -128,6 +128,8 @@ Frans, 2026-11-25:
   code holds, two texts corrected. BEFORE COMMIT OK; landed. RB-012, S2,
   fixed in part; part 2 (B1 to B3) for Frans, B2 recommended by the
   agent and by Codex.
+* 18:51 to 22:00 `night.sh` on `6bc85bfd`, all of the day's Java: NIGHT
+  OK (189 minutes).
 
 
 ## 4. Outcome
