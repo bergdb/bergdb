@@ -32,7 +32,8 @@ Frans, 2026-11-25:
   Codex's findings).
 * RB-007's fix: neither 028-53's A nor B. A search for an elegant
   `maintain()` by an agent on Fable, high (031-03), from what 028-53 and
-  031-01 found (14:54). The app hunt (031-02) waits for the fix.
+  031-01 found (14:54). The app hunt (031-02) runs now, on `main` as it
+  is; its apps run again after the fix (15:02).
 * The run data of 13 to 20 November and of the coordinator (`coord`) in
   the bench directory deleted, to free disk for `week.sh` (13:51).
 
@@ -77,6 +78,8 @@ Frans, 2026-11-25:
   criterion of 14:17 the design now recommends B for RB-007 (F2). A
   finding on `main`: a stop or a crash inside a commit's maintenance
   changes the stream; 028-54 registered (Frans: whether P2 covers it).
+* 14:57 031-03 taken by an agent on Fable, high, until 22:00. 15:03
+  031-02's app hunt taken by an agent on Opus, high, until 19:00.
 
 
 ## 4. Outcome
