@@ -30,6 +30,9 @@ Frans, 2026-11-25:
   stop, a crash or a restart, and its recovery cases; B (one line, no
   state) if every exact repair adds recovery machinery (14:17, after
   Codex's findings).
+* RB-007's fix: neither 028-53's A nor B. A search for an elegant
+  `maintain()` by an agent on Fable, high (031-03), from what 028-53 and
+  031-01 found (14:54). The app hunt (031-02) waits for the fix.
 * The run data of 13 to 20 November and of the coordinator (`coord`) in
   the bench directory deleted, to free disk for `week.sh` (13:51).
 

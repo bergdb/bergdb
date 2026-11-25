@@ -45,6 +45,9 @@ Files
   026-03 with 028-53's fix (RB-007).
 * [031-02](02-app-hunt.md): an app hunt on `main` before 2026.7, with
   new user applications and their oracles.
+* [031-03](03-elegant-maintain.md): an elegant `maintain()`: back to
+  empty, quiet when done, through crashes and restarts without recovery
+  machinery of its own.
 
 
 Log
@@ -71,3 +74,6 @@ bytes as 2026.6's writer) and 028-51 found sound by probes that ran
 (006-35).
 
 2026-11-25. 031-02 created: an app hunt on `main` (lead-1125).
+
+2026-11-25. 031-03 created: a search for an elegant `maintain()`; neither
+028-53's A nor B (Frans).
