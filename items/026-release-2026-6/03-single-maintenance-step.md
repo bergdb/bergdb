@@ -62,3 +62,6 @@ cut when due, eviction. No internal code calls `maintain()`.
 2026.5), 024-30 (G4, G5).
 
 2026-11-24. Status set after the release (lead-1124).
+
+2026-11-25. Designed together with 028-53's fix (RB-007, the idle
+rewriting) in 031-01 (Frans, 13:03).

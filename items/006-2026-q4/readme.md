@@ -48,6 +48,7 @@ The list
 | [006-32](32-day-20-november.md) | 2026-11-20 | Day work of 20 November (a Friday), with the coordinator coord-1120: the plan, the progress and the outcome |
 | [006-33](33-day-23-november.md) | 2026-11-23 | Day work of 23 November (a Monday) and its night, with the lead lead-1123: the plan, the progress and the outcome |
 | [006-34](34-day-24-november.md) | 2026-11-24 | Day work of 24 November (a Tuesday) and its night, with the lead lead-1124: the release 2026.6, the plan, the progress and the outcome |
+| [006-35](35-day-25-november.md) | 2026-11-25 | Day work of 25 November (a Wednesday) and its night, with the lead lead-1125: the plan, the progress and the outcome |
 
 
 Files

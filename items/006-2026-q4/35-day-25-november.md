@@ -1,0 +1,42 @@
+# 006-35 Day work, 25 November 2026
+
+Created 2026-11-25 by Frans Lundberg. Status: open. The plan for the
+lead's day of 2026-11-25 (lead-1125), a Wednesday, and its night to
+Thursday 07:00: the progress and the outcome. The way of working is
+013-04's (the lead).
+
+
+## 1. The request
+
+* 028-53 / RB-007, open from 006-34: the choice between its options.
+* After it: what the combined design of 031-01 brings to Frans.
+
+
+## 2. Decisions
+
+Frans, 2026-11-25:
+
+* 028-53: no choice between A, B and C on their own. The fix of RB-007
+  and of the idle rewriting is designed together with 026-03 (one
+  maintenance step for a commit and for `maintain()`), in 031-01, as a
+  design with no landing (13:03). Reasons: `maintain()` in the public
+  API is not an absolute requirement, the database's return to empty is
+  wanted, and one way into the maintenance work would be the simpler
+  design; A's mark of the application's writes is the first candidate
+  for how a quiet database knows that it is done.
+* RB-007 stays open while the design is made (S4, no release near).
+* The design says if and how it affects the Lean proofs (13:04).
+
+
+## 3. Progress
+
+* 08:56 lead-1125 started; 09:19 lead-1124 closed (006-34 closed,
+  `f4e5e8b1`). Nothing ran.
+* 12:35 to 13:03 028-53's options gone through with Frans: how often A
+  writes W and its cost, A against P2, and the relation to 026-03.
+* 13:05 031-01 registered; one design agent (Opus, xhigh) in a clone.
+
+
+## 4. Outcome
+
+Not written yet.

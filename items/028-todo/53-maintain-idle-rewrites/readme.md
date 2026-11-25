@@ -340,3 +340,8 @@ and measured on the branch 028-53-a (f03744b9): RB-007 and the rewriting
 fixed, the same stream over restarts. Recommendation: the simplest A
 (without K); B if A is judged too complex. Status in progress for
 Frans's decision.
+
+2026-11-25, 13:03. Frans: no choice between A, B and C on their own;
+the fix is designed together with 026-03, one maintenance step for a
+commit and for `maintain()`, in 031-01. A's prototype (the branch
+`028-53-a`) is kept as its input. RB-007 stays open meanwhile.

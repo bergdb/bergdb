@@ -26,7 +26,8 @@ Work for this release
 What 2026.6 does not finish comes here, unless Frans decides otherwise.
 
 * 026-03, a single maintenance step: not started in 2026.6; carried here
-  on 2026-11-24 (026 done).
+  on 2026-11-24 (026 done). Designed together with 028-53's
+  fix in 031-01 (Frans, 2026-11-25).
 * 026-04, the settings of reclaim's fraction: the values and the default
   not chosen in 2026.6 (1/4 kept); carried here on 2026-11-24.
 * 026-14, the Lean model's scope and three additions: not decided in
@@ -34,6 +35,14 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
 * 028-49, the release scripts make the GitHub release's body with
   absolute links: needed before this release is made (from the review of
   2026.6, 2026-11-24); in 034's scripts since 2026-11-24.
+
+
+Files
+=====
+
+* [031-01](01-one-maintenance-path.md): one maintenance path for a commit
+  and `maintain()`, back to empty and quiet when done; the design of
+  026-03 with 028-53's fix (RB-007).
 
 
 Log
@@ -49,3 +58,6 @@ Log
 
 2026-11-24. The release is made as 034 says, the process for every
 release (Frans); 034 created.
+
+2026-11-25. 031-01 created: 026-03 and 028-53's fix designed together
+(Frans).
