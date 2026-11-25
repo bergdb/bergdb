@@ -102,6 +102,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
+| [028-55](55-gettrans-split-file-stream.md) | Investigate | getTrans fails in week.sh's Churn soak (seed 2078207, node 30) | none | in progress |
 
 
 Closed
@@ -462,3 +463,7 @@ times the old writer's, CCBench 1.00, the load 0.98), the same trees; gated, tim
 stop or a crash between a user record and reclaim's records after it
 changes the stream on `main` (`MidCallProbe`); Frans: whether P2 covers
 it.
+
+2026-11-25. 028-55 registered by lead-1125, from `week.sh`: Churn's
+`getTrans` refused a committed transaction's position; taken by an agent
+of lead-1125.
