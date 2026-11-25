@@ -2,6 +2,7 @@ package bergdb.core;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.function.LongSupplier;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -426,11 +427,12 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * to the stream's length, and their array, up to 2 GB, could fail the database with an
      * OutOfMemoryError (010-04, R5). Smaller sizes, nearly all records, are read as before,
      * with no walk; a record above the limit at its start, such as one of reclaim's or the
-     * take's, costs the walk once.
+     * take's, costs the walk once. 'cut' gives the position of reclaim's last cut, for the
+     * walk (recordHolding(); bergdb 028-55).
      */
-    TransIterator createTransIteratorAtCallersPos(long startPos) {
+    TransIterator createTransIteratorAtCallersPos(long startPos, LongSupplier cut) {
         TransIterator ti = new TransIterator(startPos, true);
-        ti.callersPos = true;
+        ti.callersCut = cut;
         return ti;
     }
     
@@ -438,7 +440,8 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * Whether a record starts at 'tpos' (2026-11-12, bergdb 021-27, Q27-1). Returns -1 if one
      * does, or else the start of the record that holds 'tpos' inside it. It walks the records
      * forward by their sizes, as the TransIterator does, from a record's start before 'tpos'
-     * (RecoverableStream.getRecordStartBefore()), reading each record's header
+     * (RecoverableStream.getRecordStartBefore(): one that a meta block names, or else
+     * reclaim's cut, which 'cut' gives; bergdb 028-55), reading each record's header
      * (readRecordHeader(): its size, its last byte, and its format byte if committed) until
      * it reaches or passes 'tpos'; getSpos() skips the meta blocks, also those inside a
      * record. Uncommitted records are walked over as committed ones. 'tpos' must not be in a
@@ -448,10 +451,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamFormatException  if the walk meets a bad header (a size out of range or
      *      beyond the stream, a last byte other than 0 and LAST_BYTE, another format), or a
      *      malformed meta block, or would start after 'tpos'
-     * @throws StreamIoException  as the reads throw it, a read below a cut too
+     * @throws StreamIoException  as the reads throw it, a read below a cut too, and if 'tpos'
+     *      is before reclaim's cut with no record's start named before it
      */
-    long recordHolding(long tpos) {
-        long pos = rstream.getRecordStartBefore(tpos);
+    long recordHolding(long tpos, LongSupplier cut) {
+        long pos = rstream.getRecordStartBefore(tpos, cut);
         if (pos > tpos) {
             throw new StreamFormatException("No record's start before stream pos " + tpos
                     + " to walk from: the walk would start at " + pos + ".");
@@ -481,7 +485,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         long transTime;
         boolean exactStartPos;
         boolean started; // a transaction has been read, committed or not
-        boolean callersPos; // createTransIteratorAtCallersPos()
+        LongSupplier callersCut; // createTransIteratorAtCallersPos()'s 'cut', else null
 
         private TransIterator(long startPos, boolean exactStartPos) {
             this.startPos = startPos;
@@ -518,10 +522,10 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                 // The header first (bergdb 024-17, QL7): a size over the record limit is
                 // corrupt, another format refused, before the record is read.
                 int size = readRecordHeader(tpos, 16, true, exactStartPos && tpos == startPos);
-                if (callersPos && tpos == startPos && size > CALLERS_SIZE_LIMIT) {
+                if (callersCut != null && tpos == startPos && size > CALLERS_SIZE_LIMIT) {
                     // A large size at a caller's position, believed only at a record's start
                     // (bergdb 021-27, Q27-1).
-                    long holding = recordHolding(tpos);
+                    long holding = recordHolding(tpos, callersCut);
                     if (holding != -1) {
                         throw new StreamFormatException("A size of " + size + " bytes at "
                                 + "stream pos " + tpos + ", which is inside the record at "

@@ -1,6 +1,7 @@
 package bergdb.storage;
 
 import java.io.IOException;
+import java.util.function.LongSupplier;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -10,6 +11,7 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadBelowFirstPosException;
 import bergdb.stream.SalsaStream;
 
 /**
@@ -728,29 +730,47 @@ public class RecoverableStream {
      * A record's start at or before 'spos', to walk the records forward from by their sizes
      * (2026-11-12, bergdb 021-27, Q27-1; NodeStream.recordHolding()): the transaction that
      * the last valid meta block at or before 'spos' names, if there is one at or after the
-     * first position; otherwise the first record after the first position. That is a
-     * record's start: the first record, after meta block 0, in a stream not cut; reclaim
-     * cuts at a record's start (Reclaim: pCut is a transaction's nextPos). Unlike
+     * first position; otherwise the first record at or after both the first position and
+     * 'cut', the position of reclaim's last cut (Db.getFirstAvailablePos(), 0 before the
+     * first). The cut is a record's start (Reclaim: pCut is a transaction's nextPos), and so
+     * is the first record, after meta block 0, of a stream not cut. The first position is a
+     * record's start only in a stream cut exactly there (CutStream, a test's cut):
+     * FileStream cuts whole files and MemoryStream whole arrays of 1 MB, so a record can
+     * begin before the first position and end after it. Until 2026-11-25 (bergdb 028-55)
+     * the walk began at the first position in such a stream too, inside that record, and
+     * Db.getTrans() refused the position of a committed transaction over 1 MiB after the
+     * cut, where the meta blocks name that record. 'cut' is read after the
+     * first position: reclaim sets it before it cuts the stream, so a cut between the two
+     * reads does not leave it below the first position. Unlike
      * getPosOfTransCompletedBefore(), it does not search after 'spos' in a cut stream. A walk
-     * from it reads the headers of the records between that meta block and 'spos' and of the
-     * one that reaches over the block; more only if meta blocks are not valid. 'spos' must
-     * not be in a meta block. Any thread may call it.
+     * from it reads the headers of the records between that meta block, or the cut, and
+     * 'spos' and of the one that reaches over the block; more only if meta blocks are not
+     * valid. 'spos' must not be in a meta block. Any thread may call it.
      *
-     * @throws StreamIoException
+     * @throws StreamIoException  as the reads throw it; and if 'spos' is before reclaim's
+     *      cut, after the first position, and no meta block names a record's start at or
+     *      before it, with a ReadBelowFirstPosException as the cause: reclaim has cut the
+     *      record at 'spos', and Db.getTrans() expires, as for a read below the first position
      * @throws StreamFormatException  if a meta block is malformed
      */
-    public long getRecordStartBefore(long spos) {
+    public long getRecordStartBefore(long spos, LongSupplier cut) {
         final long firstPos = aos.getFirstPos();
-        final long inBlock = firstPos % META_BLOCK_DISTANCE;
-        long result = inBlock < META_BLOCK_SIZE ? firstPos - inBlock + META_BLOCK_SIZE : firstPos;
+        final long cutPos = cut.getAsLong();
         MetaBlock meta = readAValidMetaBlock(aos, spos);
         if (meta != null) {
             long named = meta.getLastTransSpos();
             if (named != Constants.SposNULL && named >= firstPos) {
-                result = named;
+                return named;
             }
         }
-        return result;
+        if (cutPos > firstPos && spos < cutPos) {
+            throw new StreamIoException(new ReadBelowFirstPosException("No record's start to "
+                    + "walk from at or before stream pos " + spos + ", which is before "
+                    + "reclaim's cut, " + cutPos + "; the first position is " + firstPos + "."));
+        }
+        final long first = Math.max(firstPos, cutPos);
+        final long inBlock = first % META_BLOCK_DISTANCE;
+        return inBlock < META_BLOCK_SIZE ? first - inBlock + META_BLOCK_SIZE : first;
     }
     
     /**
@@ -1770,6 +1790,45 @@ public class RecoverableStream {
                     // Expected.
                 }
             }
+        }
+        
+        /**
+         * bergdb 028-55: getRecordStartBefore() in a stream cut at one of its 1 MB arrays, its
+         * first position inside the record that reaches over it, with reclaim's cut after it.
+         * Up to the first meta block after the cut, the meta blocks name a record before the
+         * first position: the start is the cut, a record's start, where it was the first
+         * position, after its meta block. A position after the first position and before the
+         * cut expires; with no cut (0, a stream cut exactly at its first position, as
+         * CutStream), the start is the first position, after its meta block, as before.
+         */
+        @Nano
+        public static void testRecordStartBeforeAfterCut() {
+            MemoryStream mstream = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(mstream, new MetaBlock());
+            long[] starts = appendNamedTransactions(r, 1300);
+            final long first = 5 * META_BLOCK_DISTANCE;
+            mstream.pretruncate(first + 3000);      // At one of its 1 MB arrays.
+            Assert.assertEquals(first, mstream.getFirstPos());
+            int i = 0;
+            long named = -1;        // the record that the meta block at 1,200,000 names
+            for (int k = 0; k < starts.length; k++) {
+                Assert.assertTrue("no record at the first position", starts[k] != first + 128);
+                i = starts[k] < first + 3000 ? k + 1 : i;
+                named = getSpos(starts[k], 1000) < 6 * META_BLOCK_DISTANCE ? starts[k] : named;
+            }
+            final long cut = starts[i];
+            for (long spos : new long[] {cut, starts[i + 1], 6 * META_BLOCK_DISTANCE - 8}) {
+                Assert.assertEquals("spos " + spos, cut, r.getRecordStartBefore(spos, () -> cut));
+            }
+            Assert.assertEquals(named, r.getRecordStartBefore(named + 8000, () -> cut));
+            try {
+                r.getRecordStartBefore(first + 1000, () -> cut);
+                throw new AssertionError("taken, before the cut");
+            } catch (StreamIoException e) {
+                Assert.assertTrue("" + e.getCause(),
+                        e.getCause() instanceof ReadBelowFirstPosException);
+            }
+            Assert.assertEquals(first + META_BLOCK_SIZE, r.getRecordStartBefore(cut, () -> 0));
         }
         
         /**

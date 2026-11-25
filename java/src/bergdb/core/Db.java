@@ -2323,9 +2323,10 @@ public class Db implements AutoCloseable {
      *             committed record (a value can hold such bytes) gives a StoredTrans of
      *             them, of no real transaction. The position is the caller's responsibility.
      *             A size over 1 MiB in the header at 'tpos' is believed only after the
-     *             records' sizes, walked from the meta block at or before 'tpos', reach
-     *             'tpos', before the record is read (bergdb 021-27, Q27-1): inside a record
-     *             it is refused so, with no array made of that size.
+     *             records' sizes, walked from the record that the meta block at or before
+     *             'tpos' names, or else from reclaim's cut (bergdb 028-55), reach 'tpos',
+     *             before the record is read (bergdb 021-27, Q27-1): inside a record it is
+     *             refused so, with no array made of that size.
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage
      *             (an I/O error, the environment's; bergdb 010-01, P7); the cause is the
@@ -2380,10 +2381,11 @@ public class Db implements AutoCloseable {
         assertDbStateIsActive("getTrans");
 
         // A caller's position: a large size there is believed only at a record's start
-        // (bergdb 021-27, Q27-1).
+        // (bergdb 021-27, Q27-1), walked to from a meta block's record or from reclaim's cut
+        // (bergdb 028-55).
         NodeStream.TransIterator ti = own
                 ? nodeStream.createTransIteratorFromExactStartupPos(tpos)
-                : nodeStream.createTransIteratorAtCallersPos(tpos);
+                : nodeStream.createTransIteratorAtCallersPos(tpos, reclaim::getFirstAvailablePos);
         StoredTrans stored = null;
         try {
             // The parse within the try since 2026-11-03 (bergdb 005-82): it came after it, and

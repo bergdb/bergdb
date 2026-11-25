@@ -23,6 +23,7 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.Platform;
+import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
@@ -1123,6 +1124,56 @@ public class DbTesterFailure {
         db.execute(db.trans().put("/c", "c0").build());
         Assert.assertEquals("c0", DbUtil.getString(db, "/c"));
         db.close();
+    }
+
+    /**
+     * Regression test for bergdb 028-55: Db.getTrans of a committed record over 1 MiB, at its
+     * position, after reclaim has cut a MemoryStream, which drops whole arrays of 1 MB as
+     * FileStream drops whole files: the stream's first position is an array's start, below
+     * the cut, inside the record that reaches over it. The walk to a large record (bergdb
+     * 021-27, Q27-1) began at that first position when the meta block before the record
+     * named one below it, read a size inside a record there, and refused the position. Here
+     * every record holds a value of 1.1 MB, so each one reaches over an array's start, and
+     * every record from the cut on is read at its position, by Db.getTrans and by
+     * Internal.getTrans (Connection.transactionInfo()'s read, which has no walk).
+     */
+    @Nano
+    public static void testGetTransAfterACutInsideARecord() {
+        final CoreTestClock clock = new CoreTestClock();
+        final MemoryStream stream = new MemoryStream();
+        final Db db = Db.builder().testSetup(stream).clock(clock).start();
+        try {
+            db.setStartupDistance(100 * 1000);
+            db.setRetainDuration(Clock.UNITS_PER_SEC);
+            final byte[] value = new byte[1100 * 1000];
+            int after = 0;
+            for (int i = 1; i <= 60 && after < 3; i++) {
+                clock.setTime(i * Clock.UNITS_PER_SEC);
+                db.execute(db.trans().put("/k", value).build());
+                db.sync(SyncLevel.ORDINARY);    // A cut waits until its table is durable.
+                after += stream.getFirstPos() > 0 ? 1 : 0;
+            }
+            final long cut = db.getFirstAvailablePos();
+            Assert.assertTrue("cut inside an array, after its start: " + stream.getFirstPos()
+                    + " < " + cut, after == 3 && stream.getFirstPos() < cut);
+            int large = 0;
+            synchronized (db.internal().getWriteLock()) {
+                final NodeStream.TransIterator ti =
+                        db.internal().nodeStream().createTransIteratorFromExactStartupPos(cut);
+                while (ti.next()) {
+                    final long tt = ti.getStoredTrans().tt;
+                    large += ti.transBuffer.length > NodeStream.CALLERS_SIZE_LIMIT ? 1 : 0;
+                    Assert.assertEquals("Db.getTrans at " + ti.tpos + ", the cut " + cut
+                            + ", the first position " + stream.getFirstPos(), tt,
+                            db.getTrans(ti.tpos).tt);
+                    Assert.assertEquals("Internal.getTrans at " + ti.tpos, tt,
+                            db.internal().getTrans(ti.tpos).tt);
+                }
+            }
+            Assert.assertTrue("records over 1 MiB after the cut: " + large, large >= 3);
+        } finally {
+            db.close();
+        }
     }
 
     /**
