@@ -26,6 +26,8 @@ Frans, 2026-11-25:
   for how a quiet database knows that it is done.
 * RB-007 stays open while the design is made (S4, no release near).
 * The design says if and how it affects the Lean proofs (13:04).
+* The run data of 13 to 20 November and of the coordinator (`coord`) in
+  the bench directory deleted, to free disk for `week.sh` (13:51).
 
 
 ## 3. Progress
@@ -52,6 +54,9 @@ Frans, 2026-11-25:
   same bytes as the released writer, with restarts too), and 028-51's
   rule. BEFORE COMMIT OK. 13:49 Codex's second opinion on 031-01
   started.
+* 14:09 The old bench data deleted: disk 52 to 387 GB free. `week.sh`
+  started on `09bf9efb` (the Java of `4ac71aee`, 028-19's PE change
+  included; the last week run was on 20 November), detached, nice 10.
 
 
 ## 4. Outcome
