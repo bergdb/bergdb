@@ -104,7 +104,43 @@ public class UpgradeProbe {
         File f = new File(a[1]);
         rnd = new Random(Long.parseLong(a[2]));
         int n = Integer.parseInt(a[3]);
-        if (a[0].equals("write")) {
+        if (a[0].equals("writefill")) {
+            // main's mode: R = 1 s, sd 10, some puts, then calls; stopped right after the first
+            // filler put, so that -fill.txt stays live.
+            time = SEC;
+            clock.setTime(time);
+            stream = new CutStream();
+            db = Db.builder().testSetup(stream).clock(clock).start();
+            db.setStartupDistance(Integer.parseInt(a[4]));
+            db.setRetainDuration(SEC);
+            final long[] fillKey = bergdb.dag.Keys.toSegments("/#i/dreclaim/-fill.txt");
+            Db.testHooks = new Db.TestHooks() {
+                public void transExecuted(Db.ExecuteData x) {
+                    for (int i = 0; i < x.transNodes.valueCount; i++) {
+                        if (java.util.Arrays.equals(fillKey, x.transNodes.keys[i])
+                                && x.transNodes.valueNodes[i].getValue() != null
+                                && x.transNodes.valueNodes[i].getValue().length > 0) {
+                            System.out.println("stop after the filler put at " + x.trans.tpos);
+                            db.stop();
+                        }
+                    }
+                }
+                public void valueNodeCreated(ValueNode n, long[] k) {}
+                public void nodeTouched(Node n) {}
+                public void nodeReplaced(Node n) {}
+            };
+            try {
+                for (int i = 0; i < n; i++) { tick(MS); db.execute(db.trans().put("/k/" + i, new byte[200]).build()); }
+                for (int i = 0; i < 5000; i++) { tick(MS); db.maintain(); }
+            } catch (RuntimeException e) {
+                System.out.println("stopped: " + e.getClass().getSimpleName());
+            }
+            Db.testHooks = null;
+            db.close();
+            a[0] = "dump";
+        }
+        if (a[0].equals("dump") || a[0].equals("write")) {
+          if (a[0].equals("write")) {
             time = SEC;
             clock.setTime(time);
             stream = new CutStream();
@@ -113,6 +149,7 @@ public class UpgradeProbe {
             db.setRetainDuration(SEC);
             for (int i = 0; i < n; i++) op(false);
             db.close();
+          }
             long first = stream.getFirstPos(), len = stream.getLength();
             byte[] b = new byte[(int) (len - first)];
             stream.read(first, b, 0, b.length);
@@ -139,6 +176,8 @@ public class UpgradeProbe {
         stream.append(b, 0, b.length);
         if (first > 0) stream.pretruncate(first);
         db = Db.builder().testSetup(stream).clock(clock).start();
+        final long[] fk = bergdb.dag.Keys.toSegments("/#i/dreclaim/-fill.txt");
+        System.out.println("fill live at the open: " + (db.getOne(Long.MAX_VALUE, fk, db.newGetData()) != null));
         System.out.println("opened (mode " + Reclaim.PROTO_M1 + "): w " + db.internal().reclaim().appW
                 + ", length " + db.getStreamLength() + ", fp " + db.getFirstAvailablePos());
         for (int i = 0; i < n; i++) op(true);
@@ -153,6 +192,7 @@ public class UpgradeProbe {
             check(true);
         }
         idle("emptied", 8000);
+        System.out.println("fill live at the end: " + (db.getOne(Long.MAX_VALUE, fk, db.newGetData()) != null));
         System.out.println("starts " + starts + ", wrong w " + wrong + ", skipped " + skipped);
         db.close();
     }

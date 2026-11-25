@@ -300,12 +300,12 @@ Next to 028-53's A and B and 031-01's repaired w (031-01, section
     database evaluates; it writes nothing. One reading rule for a
     stream of 2026.6 (a row without w);
   * invariants: 1 (R3), checked at every record by the probes;
-  * lines: the prototype adds 95 lines of code and removes 17 in
+  * lines: the prototype adds 100 lines of code and removes 17 in
     `Reclaim` and `Db`, with switches for `main`'s M1, B, the
-    stretch-by-stretch form, 031-01's rule and `main`'s filler. Landed
-    without them, about 55 added and 30 removed (`tablePos()`, the
-    take's empty transaction, the filler's two transactions and its
-    key go): about 25 more than `main`;
+    stretch-by-stretch form, 031-01's rule, O-7 and `main`'s filler.
+    Landed without them, about 55 added and 30 removed (`tablePos()`,
+    the take's empty transaction, the filler's two transactions and
+    its key go): about 25 more than `main`;
   * tests changed: 1 line (a test that compares a stored row's text).
 * **w, repaired** (031-01): about 55 lines more than `main`; 1 state,
   1 store of its own (once an iteration), 2 recovery cases, in one of
@@ -316,7 +316,8 @@ Next to 028-53's A and B and 031-01's repaired w (031-01, section
 
 ## 7. Measurements
 
-On the branch `031-03-proto` (head `47103353`), built in the clone;
+On the branch `031-03-proto` at `47103353` (its head `eae8d1da` adds
+the switch of O-7 only), built in the clone;
 `main` is `e04663b5`, whose `java/` is that of `4ce8f942`. MemoryStream
 or CutStream, test clocks, R = 1 s, a call a millisecond; counts and
 sizes only. The prototype with `-Dproto313.m1=main` writes `main`'s
@@ -440,7 +441,7 @@ bytes (StreamDigest quick, 44 of 44 identical), so the build's own
 
 An agent with the prototype's jar, its diff and the probes, and no
 part in the design, was asked for counterexamples (2026-11-25, about
-16 minutes). Its findings:
+16 minutes). Its findings on the first prototype:
 
 * An emptied database kept at 790 kB by the stretch-by-stretch M1
   (section 9.1): M1 changed to one threshold (R4).
@@ -451,9 +452,29 @@ part in the design, was asked for counterexamples (2026-11-25, about
   `UpgradeProbe`; run again on `47103353`, section 7.3); quiet when
   done in 24 configurations; no defect read in the diff.
 
-The one threshold and the filler as a table came after the review and
-were not reviewed again; the probes of sections 7.1 to 7.3 ran on
-them.
+A second round on `47103353`, with the one threshold and the filler
+as a table (about 14 minutes):
+
+* **No drain that goes on**: 1,608 databases not written to (300 to
+  3,000 keys of 1 to 8 segments, values of 0 to 40 bytes, sd 10 bytes
+  to 5 MB, 2 and 3 rounds, node sizes 8 and 14 among them), nothing
+  written in the last 20 R in any. The margin is thin: 59 of them
+  ended with w before fp, the last iteration's rewrites at or below X
+  and 397 to 399 kB kept.
+* **The padded table**: 899 configurations with the stream's length
+  in every phase of the meta block distance; 286 had a filler, the
+  smallest of 8 spaces; in each the cut came in the same call, one
+  filler an iteration. 446 stops at and right after a filler: the
+  same w, and the same stream kept as the run without the stop. After
+  a stop right after it, the next commit, empty transaction or call
+  cuts and stores the table without the padding (`PadStopProbe`);
+  with the retain duration set to forever the padded table stays the
+  table's value until it is finite again.
+* **A stream of `main`'s mode with a filler left live**, opened by the
+  design: 859 starts, 0 with another w; nothing broken but the 196 kB
+  staying live (section 9.2).
+* **w**: 4,411 more starts after a record, 0 with another w.
+* One finding, on `main` too: section 9.3.
 
 Not reviewed by Codex.
 
@@ -525,6 +546,20 @@ design, unless the landing deletes a live filler once (a read at a
 start).
 
 
+### 9.3. A database not written to, kept at several times its live values
+
+A database written only while its stream is below 2 sd, then left to
+the calls, keeps the stretch of its one iteration for good: the
+values rewritten, and the index nodes that the calls' takes wrote
+there, most of them replaced since. `IdleShapeProbe 3000 2 100
+50000000 20` (the review's: 3,000 values of 100 bytes overwritten 20
+times, sd 50 MB, 40 R of calls): 3,256 kB kept, 7.0 times the stream
+of the same values put once, on `main` 3,245 kB. With w before fp and
+505 kB rewritten, more than X, no iteration begins. B brings it to
+885 kB and never stops (7 MB written in the last 20 R). A space cost,
+no promise broken; O-7 measures a rule for it.
+
+
 ## 10. Options, and what Frans decides
 
 ### 10.1. The options
@@ -547,6 +582,20 @@ start).
   records of its last two iterations, 921,504 bytes in 028-53's
   measurement of `HoleProbe 4000 20000`.
 
+* **O-7. The drain by proportion** (`-Dproto313.m1=wr`): R4's last
+  line as "the last row's rewritten is at most a quarter of the
+  stream kept", in place of X. 9.3's case ends at 791 kB kept (1.7
+  times the values put once), a second one at 1,871 kB where the
+  design keeps 4,219. The other probes as with X: `HoleProbe` 189,240
+  and 124,392, `TwoStretchProbe` 19,480, `IdleLiveProbe`'s runs
+  quiet; 1,720 small databases not written to (the review's 840 and
+  720, section 7.2's 160), none writing in the last half of the
+  calls. But the row's `rewritten` does not count what the takes
+  write, so the rule also begins passes that give little: with 3,000
+  keys of 4 segments and empty values at sd 5 MB, 1,564 kB written
+  where the design writes 853, for 711 kB kept in place of 853. Not
+  reviewed.
+
 Recommended: **O-1**.
 
 ### 10.2. What Frans decides
@@ -566,14 +615,15 @@ Recommended: **O-1**.
   Core transaction whatever it holds).
 * **F4.** X for the drain: MIN_RELEASE / 4 as measured (031-01's
   F4), or MIN_RELEASE / 8, with a wider margin against a drain that
-  does not end (section 3.4) and the same result for an emptied
-  database, whose iterations rewrite under 1 kB.
+  does not end (sections 3.4 and 7.6) and the same result for an
+  emptied database, whose iterations rewrite under 1 kB; or O-7's
+  proportion, if 9.3's space is to come back.
 * **F5.** The Javadoc of `Db.maintain()` and `Database.maintain()`:
   whether it promises that the calls stop writing in a database the
   application no longer writes to; and its "within about 400 kB",
   which R4 keeps by the rule itself.
 * **F6.** 9.1 and 9.2 on `main`: whether they are released bugs
-  (033's rules), and their entries.
+  (033's rules), and their entries; 9.3 as a cost, or a 028 entry.
 * **F7.** With this design or without: 031-01's F1 (one maintenance
   step), F5 (G4's M5 gate), F6 (the slowly written database) and F7
   (P2 inside a call, 028-54) stand as they are.
@@ -593,6 +643,8 @@ Recommended: **O-1**.
   first application record after a begin, a test of the record's
   keys). No unit test of the design is written; section 11 lists
   them.
+* **9.3**: a database not written to can keep several times its live
+  values, as on `main`.
 * **Not reviewed by Codex.**
 
 
@@ -623,14 +675,16 @@ the Javadoc of `Db.maintain()`, `Database.maintain()` and
 
 ## 12. Files
 
-* `prototype.diff`: the branch `031-03-proto` (`47103353`) against
-  `main` at `e04663b5`. Switches, for the measurements only:
-  `-Dproto313.m1=` `w` (the design, default), `w2` (M1 stretch by
-  stretch), `w311` (031-01's M1), `main` (`main`'s bytes), `b`
-  (028-53's B); `-Dproto313.fill=key` (`main`'s filler).
+* `prototype.diff`: the branch `031-03-proto` (`eae8d1da`: `47103353`,
+  on which section 7 was measured, and the switch `wr`) against `main`
+  at `e04663b5`. Switches, for the measurements only:
+  `-Dproto313.m1=` `w` (the design, default), `wr` (O-7), `w2` (M1
+  stretch by stretch), `w311` (031-01's M1), `main` (`main`'s bytes),
+  `b` (028-53's B); `-Dproto313.fill=key` (`main`'s filler).
 * `probes/`: `WitnessProbe` (this item's); `Witness2Probe`,
   `StopAtProbe`, `UpgradeProbe`, `TwoStretchProbe`,
-  `TwoStretchM1Probe`, `IdleShapeProbe` (the review's);
+  `TwoStretchM1Probe`, `IdleShapeProbe`, `PadProbe`, `PadStopProbe`
+  (the review's);
   `codex/ReviewProbe.java` (Codex's of 031-01, printing w only) and
   its logs. `HoleProbe` is 028-53's, `IdleLiveProbe` 028-51's,
   `TrickleProbe` and `MidCallProbe` 031-01's. All in package
@@ -642,8 +696,9 @@ the Javadoc of `Db.maintain()`, `Database.maintain()` and
 
 2026-11-25, by an agent of lead-1125: the design (sections 2 to 4),
 its prototype on the branch `031-03-proto` of the clone c313
-(`47103353`, `BEFORE COMMIT OK`) and its measurements (section 7),
-after an independent review (section 7.6). For Frans's decisions F1
+(`eae8d1da`; `BEFORE COMMIT OK` on `47103353`, to which it adds a
+switch) and its measurements (section 7), after an independent review
+in two rounds (section 7.6). For Frans's decisions F1
 to F7 (section 10.2); recommended O-1. Nothing on `main`.
 
 
@@ -662,5 +717,8 @@ stream kept; the take and the filler as stores of the table. A
 prototype on the branch `031-03-proto`, `BEFORE COMMIT OK`. An
 independent review found an emptied database kept at 790 kB by M1's
 two stretches, on `main` too, and the filler left live by a stop
-between its two records, on `main` too (section 9). The subitem a
-directory with the prototype's diff and the probes.
+between its two records, on `main` too (section 9); its second round,
+on the one threshold and the filler as a table, found no drain that
+goes on and a database not written to kept at 7 times its live
+values, on `main` too (9.3). The subitem a directory with the
+prototype's diff and the probes.
