@@ -104,6 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-62](62-emptied-file-db-last-file.md) | Decide | RB-011: an emptied file database keeps its last file | decision | open |
+| [028-63](63-large-fill-envelope.md) | Investigate | week.sh's large run: the fresh fill is 3.4 times 028-43's | none | in progress |
 
 
 Closed
@@ -523,3 +524,7 @@ RB-011, the Javadoc or the storage, for Frans.
 not valid, so a zeroed tail inside the last record is recovered; RB-012
 (S2) fixed in part; part 2, zeros past a record's end, B1 to B3 for
 Frans.
+
+2026-11-25. 028-63 registered by lead-1125, from `week.sh`: the large
+reclaim run's fresh fill at 10 million keys is 7.24 GB, 3.4 times
+028-43's; taken by an agent of lead-1125.
