@@ -43,7 +43,7 @@ Files
 * [031-01](01-one-maintenance-path/readme.md): one maintenance path for a commit
   and `maintain()`, back to empty and quiet when done; the design of
   026-03 with 028-53's fix (RB-007).
-* [031-02](02-app-hunt.md): an app hunt on `main` before 2026.7, with
+* [031-02](02-app-hunt/readme.md): an app hunt on `main` before 2026.7, with
   new user applications and their oracles.
 * [031-03](03-elegant-maintain/readme.md): an elegant `maintain()`: back to
   empty, quiet when done, through crashes and restarts without recovery
