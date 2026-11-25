@@ -97,6 +97,13 @@ Frans, 2026-11-25:
   interleavings, 18 stream cases, BEFORE COMMIT OK). Landed.
 * 16:55 028-57 (Codex): the test's timing, not a fault of the database;
   the test fixed, BEFORE COMMIT OK on `main`, landed (`044c82a7`).
+* 16:59 031-03 designed by its agent (Fable, high, 2 hours): w read off
+  the stream at every record, no store and no recovery case of its own,
+  M1 one formula; RB-007 and the idle rewriting ended in its prototype,
+  Codex's four cases of 031-01 pass; landed as text. Two faults on
+  `main` found on the way registered: 028-58 (an emptied database kept
+  at 790 kB) and 028-59 (the filler left live after a stop); an agent
+  checks the releases. 17:03 Codex reviews 031-03 for Frans's morning.
 
 
 ## 4. Outcome
