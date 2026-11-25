@@ -130,6 +130,12 @@ Frans, 2026-11-25:
   agent and by Codex.
 * 18:51 to 22:00 `night.sh` on `6bc85bfd`, all of the day's Java: NIGHT
   OK (189 minutes).
+* 14:09 to 23:48 `week.sh` on `09bf9efb`: WEEK FAILED (579 minutes).
+  Twelve steps OK; apps-soak-cc failed on RB-008 (fixed since, 028-55);
+  large-reclaim failed its space envelope: the fresh fill at 10 million
+  keys was 7.24 GB, 3.4 times 028-43's of 2026-11-21. 028-63 registered
+  and taken by an agent on Opus, high: the seed or the code, by
+  bisection of the fill.
 
 
 ## 4. Outcome
