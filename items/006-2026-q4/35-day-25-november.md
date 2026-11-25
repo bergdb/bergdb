@@ -95,6 +95,8 @@ Frans, 2026-11-25:
   starts again when a cut removes what it reads; RB-009, S3, Core API
   only, in 2026.5 and 2026.6. 16:49 Codex's review: no finding (2,689
   interleavings, 18 stream cases, BEFORE COMMIT OK). Landed.
+* 16:55 028-57 (Codex): the test's timing, not a fault of the database;
+  the test fixed, BEFORE COMMIT OK on `main`, landed (`044c82a7`).
 
 
 ## 4. Outcome
