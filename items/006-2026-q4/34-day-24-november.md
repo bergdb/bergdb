@@ -1,6 +1,6 @@
 # 006-34 Day work, 24 November 2026
 
-Created 2026-11-24 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-24 by Frans Lundberg. Status: done (2026-11-25). The plan for the
 lead's day of 2026-11-24 (lead-1124), a Tuesday, and its night to
 Wednesday 07:00: the progress and the outcome. The way of working is
 013-04's (the lead), on its new skill since 07:45 (`77d7ec1d`).
@@ -126,3 +126,5 @@ waits for RB-007's fix or Frans's exception.
 priority 1); then what 2026.7's work brings, with no theme set yet
 (031).
 
+Closed 2026-11-25, 08:58: lead-1125 took over, with 028-53 / RB-007
+open for Frans.
