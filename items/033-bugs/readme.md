@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 6 | 10 |
+| 2026.5 | 0 | 2 | 2 | 7 | 11 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-010, first found in
+release that has it (2026.6 has RB-005 to RB-011, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 6 | 10 | RB-001 to RB-010 |
-| 2026.6 | 0 | 0 | 2 | 4 | 6 | RB-005 to RB-010 |
+| 2026.5 | 0 | 2 | 2 | 7 | 11 | RB-001 to RB-011 |
+| 2026.6 | 0 | 0 | 2 | 5 | 7 | RB-005 to RB-011 |
 
 
 Released bugs
@@ -321,6 +321,29 @@ RB-010. A stop or a crash during maintain() can leave its 200 kB filler live
   padded with spaces, one record with nothing to delete.
 
 
+RB-011. An emptied file database keeps its last stream file under maintain()
+----------------------------------------------------------------------------
+
+* **What a user sees:** with a finite retain duration, a file database
+  that held much stream and is then emptied keeps, under `maintain()`
+  calls, the stream file that the first available position is in. That
+  file's size was chosen as up to a quarter of the stream kept when it
+  was made: 5 MB after 20 MB kept, 20 MB after 80 MB, up to 500 MB
+  after 2 GB. The Javadoc of the Pub's `Database.maintain()` promises
+  within about 400 kB of the size of a fresh database. Reclaim cuts the
+  stream below 400 kB; `FileStream` drops only whole files and keeps
+  its last one, which nothing fills. Disk space only: no value lost or
+  wrong, and writes give the space back once they fill the file.
+* **Severity:** S4.
+* **Releases:** 2026.5 and 2026.6 (run on 2026.6; 2026.5 has the same
+  rules of `FileStream`); not fixed on `main`; 031-03 does not change
+  it.
+* **Found:** 2026-11-25, by 031-02's app hunt (F2: 10,400 kB kept
+  where a fresh database keeps 904 bytes); its cause by 028-61; not
+  known at the releases.
+* **Fix:** none yet; 028-62 holds the options for Frans.
+
+
 Log
 ===
 
@@ -411,3 +434,7 @@ during `Db.getTrans`'s walk could expire a kept large transaction, in
 2026-11-25. RB-010 registered (028-59), S4: a stop or a crash during
 `maintain()` can leave its filler live, in 2026.5 and 2026.6; not fixed.
 RB-006's fix on `main` noted as partial (028-58).
+
+2026-11-25. RB-011 registered (028-61), S4: an emptied file database
+keeps its last stream file under `maintain()`, in 2026.5 and 2026.6;
+not fixed (028-62).

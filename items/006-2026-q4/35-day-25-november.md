@@ -117,6 +117,10 @@ Frans, 2026-11-25:
   with a reduced step reserve (a test setting, quiet at the default); a
   writable downgrade to 2026.6 and back can lose w; an old filler stays
   after an upgrade. For Frans's decisions in the morning.
+* 17:27 028-61: an emptied file database keeps its last stream file
+  (the stream itself is cut below 400 kB): RB-011, S4, in 2026.5 and
+  2026.6, not ended by 031-03; 028-62 holds the options for Frans (the
+  Javadoc, or a file boundary in the storage).
 
 
 ## 4. Outcome

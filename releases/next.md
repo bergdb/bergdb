@@ -91,6 +91,11 @@ Not fixed on `main`; a release with one needs Frans's exception
   `/#i/dreclaim/-fill.txt` live until a later call needs another
   filler, though the Javadoc says it is deleted at once. 031-03's
   design has no filler to delete.
+* **RB-011, S4. An emptied file database keeps its last stream file
+  under `maintain()`** (bergdb 033; 028-61, 2026-11-25). Reclaim cuts
+  the stream below 400 kB, but `FileStream` drops only whole files and
+  keeps the last one, sized when the stream was large; 028-62 holds the
+  options for the fix.
 
 
 Speed

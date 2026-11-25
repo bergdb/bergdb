@@ -648,3 +648,8 @@ Added after 2026-11-24; the notes above are as published on that day.
   2026.5: a stop or a crash during `maintain()` can leave its filler,
   up to 200 kB, live; not yet fixed (bergdb 028-59;
   [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-25. **RB-011, S4**, found after the release, in 2026.6 and
+  2026.5: an emptied file database keeps its last stream file under
+  `maintain()`, up to a quarter of the stream kept when that file was
+  made; not yet fixed (bergdb 028-61, 028-62;
+  [bergdb 033](../../items/033-bugs/readme.md)).
