@@ -1215,8 +1215,10 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   `maintain()`'s filler (027-13, section 1.10, M5), a value of max(1,
   `META_BLOCK_DISTANCE` - L mod `META_BLOCK_DISTANCE`) zero bytes, L the
   stream length, put and deleted in the next transaction, so that a meta
-  block names a transaction at or after a cut position; never live after
-  the call, never read.
+  block names a transaction at or after a cut position; never read. The
+  call that puts it deletes it, but a stop or a crash between the two
+  records leaves it live until the next filler (RB-010; 028-59,
+  2026-11-25).
 * **A row** (`Reclaim.IterationInfo.serialize`; every step puts its
   row at `-current.txt`, by a value transformation that adds the bytes
   of the index nodes the step made dirty, 027-13, section 1.4): a

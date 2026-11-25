@@ -311,9 +311,12 @@ pending, M1's condition holds, or the dead hand has more.
 
 * **In memory**: R and f; the table's rows; fa and fp, which readers read
   without the write lock; the pending cut and its mark; RESERVE.
-* **In the stream**: the three KVs of 1.1, and the filler of 1.10, never
-  live after a call (027-03, section 15: the texts; the row is read
-  leniently, the settings strictly). Reclaim's transactions are ordinary
+* **In the stream**: the three KVs of 1.1, and the filler of 1.10,
+  deleted by the call that put it; a stop or a crash between its put and
+  its delete, two records, leaves it live, rewritten by the iterations as
+  any live value, until the next filler's put and delete (028-59,
+  2026-11-25). 027-03, section 15: the texts; the row is read
+  leniently, the settings strictly. Reclaim's transactions are ordinary
   records (027-03, section 8): a step's holds its puts, its row and the
   got-dirty ids of its touch and puts; the row stored again (1.4, 4b) is
   a record of its own. Nothing of a scan is stored.
@@ -645,3 +648,8 @@ an agent of lead-1124, on the branch `028-51`.
 2026-11-24. 4: the charge over an iteration's stream measured, 0.250,
 and what leaving out PE's new nodes did before 028-26 (028-19). By an
 agent of lead-1124, on the branch `028-19`.
+
+2026-11-25. 2: the filler stays live after a stop or a crash between its
+put and its delete (028-59); until then the section said that it is
+never live after a call. By an agent of lead-1125, on the branch
+`028-58`.

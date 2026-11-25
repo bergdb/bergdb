@@ -102,8 +102,6 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
-| [028-58](58-maintain-two-stretches.md) | Investigate | maintain() leaves an emptied database at 790 kB (two stretches) | none | open |
-| [028-59](59-maintain-filler-left-live.md) | Investigate | A stop between the filler's put and delete leaves it live | none | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | After a kill, a zeroed tail over a meta block stops the start | none | in progress |
 | [028-61](61-maintain-emptied-several-sd.md) | Investigate | An emptied database keeps 2 to 3 sd under maintain() | none | in progress |
 
@@ -113,6 +111,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-59](59-maintain-filler-left-live/readme.md) | Investigate | A stop between the filler's put and delete leaves it live: released, S4 | none | done | 2026-11-25 |
+| [028-58](58-maintain-two-stretches/readme.md) | Investigate | An emptied database at 790 kB: RB-006 and RB-007; RB-006 fixed in part | none | done | 2026-11-25 |
 | [028-57](57-pubtester-force-failure.md) | Investigate | PubTester.testNoCreatedTxtWithoutForce: the test's timing; fixed | none | done | 2026-11-25 |
 | [028-56](56-gettrans-walk-concurrent-cut.md) | Fix | getTrans's walk expired a kept transaction during a cut: RB-009, fixed | none | done | 2026-11-25 |
 | [028-55](55-gettrans-split-file-stream.md) | Investigate | getTrans refused a large transaction after a cut: RB-008, fixed | none | done | 2026-11-25 |
@@ -498,3 +498,13 @@ filler's put and delete leaves it live.
 findings F1 (S2: after a kill, a zeroed tail over a meta block stops the
 start) and F2 (an emptied database keeps 2 to 3 sd under `maintain()`);
 both taken by agents of lead-1125.
+
+2026-11-25. 028-58 done: on 2026.5 and 2026.6 the 790 kB are RB-006's and
+RB-007's, no new released bug; on `main` RB-007's, and a rest of RB-006
+that 028-51 leaves (two stretches each below 400 kB, 783 kB kept);
+moved to Closed.
+
+2026-11-25. 028-59 done: the filler left live by a stop or a crash is a
+released bug of 2026.5 and 2026.6, S4 (the Javadoc says that it is
+deleted at once), for the lead to register; 027-13, section 2,
+corrected; moved to Closed.
