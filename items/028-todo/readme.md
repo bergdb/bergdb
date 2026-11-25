@@ -104,6 +104,8 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-58](58-maintain-two-stretches.md) | Investigate | maintain() leaves an emptied database at 790 kB (two stretches) | none | open |
 | [028-59](59-maintain-filler-left-live.md) | Investigate | A stop between the filler's put and delete leaves it live | none | open |
+| [028-60](60-zero-tail-over-meta-block.md) | Fix | After a kill, a zeroed tail over a meta block stops the start | none | in progress |
+| [028-61](61-maintain-emptied-several-sd.md) | Investigate | An emptied database keeps 2 to 3 sd under maintain() | none | in progress |
 
 
 Closed
@@ -491,3 +493,8 @@ takes either exception the start may throw; moved to Closed.
 sections 9.1 and 9.2: `maintain()` leaves an emptied database at 790 kB
 when its two stretches each stay below 400 kB; a stop between the
 filler's put and delete leaves it live.
+
+2026-11-25. 028-60 and 028-61 registered by lead-1125, from 031-02's
+findings F1 (S2: after a kill, a zeroed tail over a meta block stops the
+start) and F2 (an emptied database keeps 2 to 3 sd under `maintain()`);
+both taken by agents of lead-1125.
