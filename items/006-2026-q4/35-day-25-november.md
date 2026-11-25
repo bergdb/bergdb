@@ -80,6 +80,11 @@ Frans, 2026-11-25:
   changes the stream; 028-54 registered (Frans: whether P2 covers it).
 * 14:57 031-03 taken by an agent on Fable, high, until 22:00. 15:03
   031-02's app hunt taken by an agent on Opus, high, until 19:00.
+* 15:19 `week.sh`'s soak of the user apps failed: Churn (seed 2078207,
+  node size 30), `getTrans` refused the position of a committed
+  transaction (a bad record header where its walk began, at the start of
+  a stream file). 028-55 registered and taken by an agent on Opus, xhigh;
+  `week.sh` goes on with its other steps.
 
 
 ## 4. Outcome
