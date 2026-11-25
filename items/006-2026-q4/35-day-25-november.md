@@ -136,6 +136,13 @@ Frans, 2026-11-25:
   keys was 7.24 GB, 3.4 times 028-43's of 2026-11-21. 028-63 registered
   and taken by an agent on Opus, high: the seed or the code, by
   bisection of the fill.
+* 00:18 028-63 done (agent, 28 minutes): the seed's order of the keys,
+  not the code; the same lengths on `40cb9ae9` and `main` for each seed
+  (2.11 GB for seed 20778, whose order is unusually local, 7.24 GB for
+  20782; a random order 6.06 GB). The harness's envelope is now 8 L0 +
+  3 GB with a free-disk check after the fill, landed (`9fbed243`).
+  00:21 `large.sh full 20782` started, to check it and time a full run
+  of such an order.
 
 
 ## 4. Outcome
