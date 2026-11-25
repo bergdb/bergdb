@@ -26,6 +26,10 @@ Frans, 2026-11-25:
   for how a quiet database knows that it is done.
 * RB-007 stays open while the design is made (S4, no release near).
 * The design says if and how it affects the Lean proofs (13:04).
+* 031-01's repair is weighed by the state it adds that must survive a
+  stop, a crash or a restart, and its recovery cases; B (one line, no
+  state) if every exact repair adds recovery machinery (14:17, after
+  Codex's findings).
 * The run data of 13 to 20 November and of the coordinator (`coord`) in
   the bench directory deleted, to free disk for `week.sh` (13:51).
 
