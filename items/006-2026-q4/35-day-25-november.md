@@ -35,6 +35,14 @@ Frans, 2026-11-25:
 * 12:35 to 13:03 028-53's options gone through with Frans: how often A
   writes W and its cost, A against P2, and the relation to 026-03.
 * 13:05 031-01 registered; one design agent (Opus, xhigh) in a clone.
+* 13:27 No known bug open but RB-007 (in 031-01). A review by Codex of
+  the Java changed since 2026.6 (11 commits: 028-01, 028-48, 028-50,
+  028-51, 028-19), in a clone, for findings before 2026.7.
+* 13:44 031-01 designed (agent, Opus xhigh, 38 minutes): one step for a
+  commit and `maintain()`, w in reclaim's table, M1 with it; RB-007 and
+  the idle rewriting fixed in its prototype (branch `031-01-proto`,
+  BEFORE COMMIT OK); no Lean statement, premise or checker changes.
+  Landed as text; F1 to F7 for Frans (031-01, section 12).
 
 
 ## 4. Outcome
