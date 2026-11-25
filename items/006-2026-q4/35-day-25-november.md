@@ -57,6 +57,13 @@ Frans, 2026-11-25:
 * 14:09 The old bench data deleted: disk 52 to 387 GB free. `week.sh`
   started on `09bf9efb` (the Java of `4ac71aee`, 028-19's PE change
   included; the last week run was on 20 November), detached, nice 10.
+* 13:59 Codex's second opinion on 031-01: the design fails as written.
+  A w recovered at a start is not stored before a later record (a
+  setting, an empty transaction, a stop) hides it: a database keeps 3 MB
+  of deleted data for good, and a restart changes the stream (P2); a
+  crash before w's store changes the records' order. The rest found
+  sound. 14:15 the design agent resumed to repair w's persistence; F1
+  to F7 wait for the repair and a check by Codex.
 
 
 ## 4. Outcome
