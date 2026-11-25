@@ -102,7 +102,6 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
-| [028-57](57-pubtester-force-failure.md) | Investigate | PubTester.testNoCreatedTxtWithoutForce in Codex's sandbox | none | open |
 
 
 Closed
@@ -110,6 +109,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-57](57-pubtester-force-failure.md) | Investigate | PubTester.testNoCreatedTxtWithoutForce: the test's timing; fixed | none | done | 2026-11-25 |
 | [028-56](56-gettrans-walk-concurrent-cut.md) | Fix | getTrans's walk expired a kept transaction during a cut: RB-009, fixed | none | done | 2026-11-25 |
 | [028-55](55-gettrans-split-file-stream.md) | Investigate | getTrans refused a large transaction after a cut: RB-008, fixed | none | done | 2026-11-25 |
 | [028-19](19-pe-performance/readme.md) | Change | PE's speed; reclaim's pace explained | decided (09:32) | done | 2026-11-24 |
@@ -481,3 +481,6 @@ transaction (since 2026.5); a test that failed in Codex's sandbox.
 2026-11-25. 028-56 done: a cut during `Db.getTrans`'s walk could expire a
 kept large transaction; RB-009 (S3, 2026.5 and 2026.6) registered and
 fixed on `main`; moved to Closed.
+
+2026-11-25. 028-57 done: the test's timing, not the database; the test
+takes either exception the start may throw; moved to Closed.

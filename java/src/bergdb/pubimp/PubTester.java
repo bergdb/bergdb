@@ -3665,10 +3665,11 @@ public class PubTester {
         File dir = env.createTempDir();
         final java.util.concurrent.atomic.AtomicBoolean fail =
                 new java.util.concurrent.atomic.AtomicBoolean(false);
+        final String forceFailure = "PubTester: a force that fails, as set (015-01)";
         FileStreamIo io = new FileStreamIo() {
             protected void forceFile(File file, RandomAccessFile handle) throws IOException {
                 if (fail.get()) {
-                    throw new IOException("PubTester: a force that fails, as set (015-01)");
+                    throw new IOException(forceFailure);
                 }
                 super.forceFile(file, handle);
             }
@@ -3679,7 +3680,14 @@ public class PubTester {
         boolean failed = false;
         try {
             db = Db.builder().testSetup(fs).createdTxt(dir).start();
-        } catch (StreamIoException e) {
+        } catch (StreamIoException | DbFailedException e) {
+            // A flush before startup's reads or transaction fails the Db (2026-11-25; bergdb 028-57).
+            Throwable cause = e;
+            while (cause.getCause() != null) {
+                cause = cause.getCause();
+            }
+            Assert.assertTrue("the injected force failure: " + e,
+                    cause.getMessage() != null && cause.getMessage().contains(forceFailure));
             failed = true;
         } finally {
             if (db != null) {
