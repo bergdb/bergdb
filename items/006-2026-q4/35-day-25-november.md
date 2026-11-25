@@ -112,6 +112,11 @@ Frans, 2026-11-25:
 * 17:14 028-58: no new released bug (RB-006's and RB-007's; RB-006 fixed
   in part on `main`); 028-59: RB-010, S4, the filler left live after a
   stop or a crash, in 2026.5 and 2026.6, not fixed (with 031-03).
+* 17:17 Codex's review of 031-03 (031-03, section 14): the witness
+  holds in every case tried, upgrades included; the drain can repeat
+  with a reduced step reserve (a test setting, quiet at the default); a
+  writable downgrade to 2026.6 and back can lose w; an old filler stays
+  after an upgrade. For Frans's decisions in the morning.
 
 
 ## 4. Outcome

@@ -702,6 +702,57 @@ in two rounds (section 7.6). For Frans's decisions F1
 to F7 (section 10.2); recommended O-1. Nothing on `main`.
 
 
+## 14. Codex's review
+
+Codex (GPT-6.1 Sol, reasoning effort max) reviewed the design and its
+prototype (`eae8d1da`) on 2026-11-25, 17:03 to 17:17, at lead-1125's
+request, with probes of its own; its report is outside the repository.
+
+* **Held.** R1 to R3, the witness: every record of reclaim's carries w
+  before it can hide a user record, and setters and empty transactions
+  witness the application's writing themselves; no window like 031-01's
+  unstored w. 031-01's four cases (Codex's own probe) keep w; 5,878
+  restarts between calls give the same stream; 3,401 record boundaries
+  and 27 stops inside calls give no wrong w; eight streams of `main` and
+  2026.6, upgraded, 1,919 boundaries, no wrong w. HoleProbe 189,240 and
+  124,392 bytes; TwoStretchProbe 19,480; IdleLiveProbe quiet. Section
+  8's Lean claims check out; the unchanged trace and contract checkers
+  pass (reclaim, crash, drain, e-r-maint; 3,838 transactions in a
+  maintain-driven contract trace).
+* **Finding 1, the drain.** With a reduced reclaim step reserve
+  (`DbBuilder.reclaimStepReserve` = 1, a test setting) and 150 keys of
+  111 bytes at node size 8, R4 lets a live database's drain repeat: a
+  million calls, 866 iterations, 236 MB written, 118 MB in the last
+  500 R; X = 50,000 gives the same. With the default reserve (4 MiB) the
+  same case goes quiet, keeping 291,280 bytes. R4's threshold is a
+  stopping condition, not a proof that the drain ends; the quiet promise
+  holds at production settings in every run, not in general.
+* **Finding 2, P2 inside a call.** A crash after a user record and
+  before its iteration's begin changes the stream, as on `main` and
+  2026.6 (028-54); the design does not make it better or worse.
+* **Finding 3, a writable downgrade.** A stream of the design opened
+  and written by 2026.6, then by the design again, can lose w: 2026.6
+  stores a row without `w`, and the start reads the old default. A
+  one-way upgrade is safe; a round trip needs a rule (refuse it, or
+  read mixed rows).
+* **Finding 4, an old filler.** A filler left live by 2026.6 or `main`
+  (RB-010) stays live after an upgrade unless the landing deletes it.
+* **Costs.** The stream's internal format changes: `w`, the take's
+  contents, the padded table, and the order of the row's thirteen names
+  (a HashMap); the framing and versions do not. The prototype adds 166
+  lines and removes 17, with comments and switches.
+* **Its view on F1 to F6.** F1: the witness (O-1) over A, B or a
+  stored w, with its scope stated (production settings, or a bounded
+  drain) and the P2 and downgrade limits written. F2: a compatible
+  change of the internal format, with a rule for writable downgrades
+  and a cleanup of old fillers, and a pinned order of the row's names
+  if portability is promised. F3: as recommended. F4: a smaller X is a
+  margin, not a bound; O-7 needs a review of its own. F5: keep "about
+  400 kB" for an emptied database; promise quiet only at production
+  settings until the drain is bounded. F6: 9.1 and 9.2 S4 (as 028-58
+  and RB-010 now record), 9.3 a cost.
+
+
 Log
 ===
 
@@ -722,3 +773,7 @@ on the one threshold and the filler as a table, found no drain that
 goes on and a database not written to kept at 7 times its live
 values, on `main` too (9.3). The subitem a directory with the
 prototype's diff and the probes.
+
+2026-11-25. Codex's review (section 14): the witness holds; the drain
+can repeat with a reduced step reserve (a test setting); a writable
+downgrade can lose w; an old filler stays after an upgrade.
