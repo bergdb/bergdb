@@ -46,6 +46,10 @@ Released bugs fixed
   begin iterations by the clock in a database written to, as the Javadoc
   says, and this rule begins none in one that is not. Streams written
   without `maintain()` are the same (StreamDigest identical).
+  In part (028-58, 2026-11-25): when less than 400 kB is written after
+  the cut and the stretch before it is just below 400 kB, an emptied
+  database still keeps up to about 800 kB; the rest goes with RB-007's
+  fix.
 * **RB-008, S3. `Db.getTrans` could refuse a large transaction's
   position just after a cut** (bergdb 033; 028-55, 2026-11-25). With the
   Core API, `getTrans` of a committed transaction of over 1 MiB, just
@@ -81,6 +85,12 @@ Not fixed on `main`; a release with one needs Frans's exception
   an emptied database to within about 400 kB of a fresh one's stream.
   028-53's options A and B were not taken (Frans, 2026-11-25); 031-03
   looks for the fix.
+* **RB-010, S4. A stop or a crash during `maintain()` can leave its
+  200 kB filler live** (bergdb 033; 028-59, 2026-11-25). A stop or a
+  crash between the filler's put and its delete leaves
+  `/#i/dreclaim/-fill.txt` live until a later call needs another
+  filler, though the Javadoc says it is deleted at once. 031-03's
+  design has no filler to delete.
 
 
 Speed

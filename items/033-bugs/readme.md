@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 5 | 9 |
+| 2026.5 | 0 | 2 | 2 | 6 | 10 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-009, first found in
+release that has it (2026.6 has RB-005 to RB-010, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 2 | 5 | 9 | RB-001 to RB-009 |
-| 2026.6 | 0 | 0 | 2 | 3 | 5 | RB-005 to RB-009 |
+| 2026.5 | 0 | 2 | 2 | 6 | 10 | RB-001 to RB-010 |
+| 2026.6 | 0 | 0 | 2 | 4 | 6 | RB-005 to RB-010 |
 
 
 Released bugs
@@ -217,7 +217,11 @@ RB-006. maintain() stops beginning reclaim iterations after some cuts
   the clock (finding F1, `SlowDriveProbe`); not known at the releases.
 * **Fix:** 028-51 (`68386bc6`), 2026-11-24: `maintain()`'s M1 begins
   an iteration also when the cut of the next one would release 400 kB:
-  the stream written since reclaim last stored its table.
+  the stream written since reclaim last stored its table. In part
+  (028-58, 2026-11-25): when less than 400 kB is written after the cut
+  and the stretch before it is just below 400 kB, an emptied database
+  on `main` keeps up to about 800 kB (783,472 bytes in 028-58's probe);
+  the rest goes with RB-007's fix (031-03).
 
 
 RB-007. maintain() keeps the stream written while an iteration waited for its cut
@@ -292,6 +296,29 @@ RB-009. Db.getTrans can expire a kept large transaction while reclaim cuts the s
 * **Fix:** 028-56, 2026-11-25: the walk takes no record's start that a
   meta block names before reclaim's cut, and starts again when a cut
   removes what it reads while the position is kept.
+
+
+RB-010. A stop or a crash during maintain() can leave its 200 kB filler live
+----------------------------------------------------------------------------
+
+* **What a user sees:** a stop or a crash between the two transactions
+  of `maintain()`'s filler (M5) leaves `/#i/dreclaim/-fill.txt`, up to
+  200 kB of zeros, live, though the Javadoc of `Database.maintain()`
+  and of `Db` says that it is deleted at once. It stays live until a
+  later call needs another filler, for good in a database not written
+  to: each reclaim iteration rewrites it, and the Core's `getMany()`
+  returns it and `getKvCount()` counts it. No value lost or wrong;
+  alone it keeps the stream within 400 kB of a fresh one's (199,672
+  bytes); with RB-007 an emptied database can keep more (856,176
+  bytes against 284,416 without the stop).
+* **Severity:** S4.
+* **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
+  not fixed on `main`.
+* **Found:** 2026-11-25, by the review in 031-03 (section 9.2);
+  confirmed by 028-59 with a stop, a copy of the stream and a killed
+  JVM, on 2026.5, 2026.6 and `main`; not known at the releases.
+* **Fix:** none yet; 031-03's design stores the filler as the table
+  padded with spaces, one record with nothing to delete.
 
 
 Log
@@ -380,3 +407,7 @@ in 2026.5 and 2026.6. Found by `week.sh`.
 2026-11-25. RB-009 registered and fixed on `main` (028-56), S3: a cut
 during `Db.getTrans`'s walk could expire a kept large transaction, in
 2026.5 and 2026.6. Found by Codex's review of 028-55.
+
+2026-11-25. RB-010 registered (028-59), S4: a stop or a crash during
+`maintain()` can leave its filler live, in 2026.5 and 2026.6; not fixed.
+RB-006's fix on `main` noted as partial (028-58).

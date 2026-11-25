@@ -104,6 +104,14 @@ Frans, 2026-11-25:
   `main` found on the way registered: 028-58 (an emptied database kept
   at 790 kB) and 028-59 (the filler left live after a stop); an agent
   checks the releases. 17:03 Codex reviews 031-03 for Frans's morning.
+* 17:12 031-02's app hunt done (11 apps, 81 runs, about 9,500 kills):
+  F1, S2, after a kill macOS can leave the last file's tail in zeros,
+  and over a meta block the start refuses (028-60, an agent fixing it);
+  F2, an emptied database kept at 2 to 3 sd under `maintain()` (028-61,
+  an agent investigating, with 031-03's prototype). The rest sound.
+* 17:14 028-58: no new released bug (RB-006's and RB-007's; RB-006 fixed
+  in part on `main`); 028-59: RB-010, S4, the filler left live after a
+  stop or a crash, in 2026.5 and 2026.6, not fixed (with 031-03).
 
 
 ## 4. Outcome

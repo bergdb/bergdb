@@ -644,3 +644,7 @@ Added after 2026-11-24; the notes above are as published on that day.
   2026.5: the Core API's `Db.getTrans` could expire a kept transaction
   of over 1 MiB while reclaim cut the stream; fixed on main for 2026.7
   (bergdb 028-56; [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-25. **RB-010, S4**, found after the release, in 2026.6 and
+  2026.5: a stop or a crash during `maintain()` can leave its filler,
+  up to 200 kB, live; not yet fixed (bergdb 028-59;
+  [bergdb 033](../../items/033-bugs/readme.md)).
