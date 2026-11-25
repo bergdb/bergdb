@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 1 | 5 | 8 |
+| 2026.5 | 0 | 2 | 2 | 5 | 9 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-008, first found in
+release that has it (2026.6 has RB-005 to RB-009, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 1 | 5 | 8 | RB-001 to RB-008 |
-| 2026.6 | 0 | 0 | 1 | 3 | 4 | RB-005 to RB-008 |
+| 2026.5 | 0 | 2 | 2 | 5 | 9 | RB-001 to RB-009 |
+| 2026.6 | 0 | 0 | 2 | 3 | 5 | RB-005 to RB-009 |
 
 
 Released bugs
@@ -272,6 +272,28 @@ RB-008. Db.getTrans refuses a large transaction's position just after a cut
   block names a record's start.
 
 
+RB-009. Db.getTrans can expire a kept large transaction while reclaim cuts the stream
+-------------------------------------------------------------------------------------
+
+* **What a user sees:** with the Core API, `Db.getTrans(tpos)` of a
+  committed transaction of over 1 MiB, at a position that a get gave,
+  can throw `LookupTimeNotAvailableException` though the transaction is
+  kept, when reclaim cuts the stream during the call; a retry reads it
+  (in 2026.5 and 2026.6 the retry may meet RB-008). Nothing is lost or
+  changed, and the database goes on. The Pub API's
+  `Connection.transactionInfo()` reads without that walk and is not
+  affected.
+* **Severity:** S3.
+* **Releases:** 2026.5 (since `2858ed36`, 021-27, Q27-1) and 2026.6;
+  fixed on `main` for 2026.7.
+* **Found:** 2026-11-25, by Codex's review of 028-55, with a probe that
+  holds the cut with latches; never seen in a run; not known at the
+  releases.
+* **Fix:** 028-56, 2026-11-25: the walk takes no record's start that a
+  meta block names before reclaim's cut, and starts again when a cut
+  removes what it reads while the position is kept.
+
+
 Log
 ===
 
@@ -354,3 +376,7 @@ registered.
 2026-11-25. RB-008 registered and fixed on `main` (028-55), S3:
 `Db.getTrans` refused a large transaction's position just after a cut,
 in 2026.5 and 2026.6. Found by `week.sh`.
+
+2026-11-25. RB-009 registered and fixed on `main` (028-56), S3: a cut
+during `Db.getTrans`'s walk could expire a kept large transaction, in
+2026.5 and 2026.6. Found by Codex's review of 028-55.

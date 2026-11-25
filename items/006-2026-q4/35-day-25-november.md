@@ -90,6 +90,11 @@ Frans, 2026-11-25:
   S3, Core API only, in 2026.5 and 2026.6. 16:03 Codex's review: the fix
   holds; a race in the same walk since 2026.5 (028-56) and a test that
   failed in its sandbox (028-57) registered. Landed (Frans, 15:59).
+* 16:07 Frans off for the day. 16:41 028-56 fixed by its agent (36
+  minutes): the walk takes no named start before reclaim's cut and
+  starts again when a cut removes what it reads; RB-009, S3, Core API
+  only, in 2026.5 and 2026.6. 16:49 Codex's review: no finding (2,689
+  interleavings, 18 stream cases, BEFORE COMMIT OK). Landed.
 
 
 ## 4. Outcome

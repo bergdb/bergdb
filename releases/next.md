@@ -55,6 +55,15 @@ Released bugs fixed
   inside that transaction. It begins at reclaim's cut now; a position
   before the cut with no record's start named before it expires
   (`LookupTimeNotAvailableException`). The Pub API was not affected.
+* **RB-009, S3. `Db.getTrans` could expire a kept large transaction
+  while reclaim cut the stream** (bergdb 033; 028-56, 2026-11-25). The
+  walk to the record's start of a transaction of over 1 MiB could begin
+  at, or reach, a record that a cut during the call removed, and the
+  call threw `LookupTimeNotAvailableException` for a kept transaction.
+  The walk now takes no record's start named before reclaim's cut and
+  starts again when a cut removes what it reads while the position is
+  kept; a position before the cut always expires, as
+  `getFirstAvailablePos()` says. The Pub API was not affected.
 
 
 Known released bugs
