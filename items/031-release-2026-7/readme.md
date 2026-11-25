@@ -61,3 +61,9 @@ release (Frans); 034 created.
 
 2026-11-25. 031-01 created: 026-03 and 028-53's fix designed together
 (Frans).
+
+2026-11-25. A review by Codex of the Java changed since 2026.6 (11
+commits, to `4ce8f942`): no new bug; RB-007 reproduced independently;
+STM (028-01, 028-48), 028-50's refusal, PE's writes (028-19, the same
+bytes as 2026.6's writer) and 028-51 found sound by probes that ran
+(006-35).

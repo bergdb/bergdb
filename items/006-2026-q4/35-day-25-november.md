@@ -43,6 +43,15 @@ Frans, 2026-11-25:
   the idle rewriting fixed in its prototype (branch `031-01-proto`,
   BEFORE COMMIT OK); no Lean statement, premise or checker changes.
   Landed as text; F1 to F7 for Frans (031-01, section 12).
+* 13:37 Codex's review of the Java since 2026.6 (11 commits, `4ce8f942`):
+  no new bug. RB-007 reproduced independently, on `main` and 2026.6.
+  Found sound with probes that ran: STM's hashing and bins (028-01,
+  028-48; 1.28M adds against a reference map), the refusal after key
+  transformations (028-50; the retry's bytes equal a twin's), six
+  concurrent writers, PE's short way and routing (028-19; 8 cases, the
+  same bytes as the released writer, with restarts too), and 028-51's
+  rule. BEFORE COMMIT OK. 13:49 Codex's second opinion on 031-01
+  started.
 
 
 ## 4. Outcome
