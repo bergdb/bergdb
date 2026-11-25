@@ -65,3 +65,8 @@ cut when due, eviction. No internal code calls `maintain()`.
 
 2026-11-25. Designed together with 028-53's fix (RB-007, the idle
 rewriting) in 031-01 (Frans, 13:03).
+
+2026-11-25. 031-01's design: one step for both kinds, the commit's
+paces unchanged (byte for byte in its prototype); the simple form not
+proposed, its filler growing with sd and the live data (031-01, section
+3.3). For Frans's decisions in 031-01, section 12.

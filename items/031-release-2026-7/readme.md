@@ -40,7 +40,7 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
 Files
 =====
 
-* [031-01](01-one-maintenance-path.md): one maintenance path for a commit
+* [031-01](01-one-maintenance-path/readme.md): one maintenance path for a commit
   and `maintain()`, back to empty and quiet when done; the design of
   026-03 with 028-53's fix (RB-007).
 

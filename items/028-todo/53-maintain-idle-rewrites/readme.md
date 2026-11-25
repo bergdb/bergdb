@@ -345,3 +345,10 @@ Frans's decision.
 the fix is designed together with 026-03, one maintenance step for a
 commit and for `maintain()`, in 031-01. A's prototype (the branch
 `028-53-a`) is kept as its input. RB-007 stays open meanwhile.
+
+2026-11-25. 031-01's design (an agent of lead-1125): one step with w,
+the pStart after which the application last wrote, stored once an
+iteration in the table's row, in place of A's W; M1 with it fixes
+RB-007 and the rewriting in its prototype. testStopWhileReading's
+failure without K traced to the test's fixed call numbers (031-01,
+section 9). For Frans's decisions in 031-01, section 12.
