@@ -636,3 +636,7 @@ Added after 2026-11-24; the notes above are as published on that day.
   2026.5: `maintain()` keeps the stream written while a reclaim
   iteration waited for its cut, after some cuts; not yet fixed (bergdb
   028-53; [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-25. **RB-008, S3**, found after the release, in 2026.6 and
+  2026.5: the Core API's `Db.getTrans` could refuse the position of a
+  transaction of over 1 MiB just after a reclaim cut; fixed on main for
+  2026.7 (bergdb 028-55; [bergdb 033](../../items/033-bugs/readme.md)).

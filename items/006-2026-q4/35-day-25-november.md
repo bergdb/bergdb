@@ -85,6 +85,11 @@ Frans, 2026-11-25:
   transaction (a bad record header where its walk began, at the start of
   a stream file). 028-55 registered and taken by an agent on Opus, xhigh;
   `week.sh` goes on with its other steps.
+* 15:50 028-55 fixed by its agent (38 minutes): `Db.getTrans` walked
+  from the stream's first position, inside a record, after a cut; RB-008,
+  S3, Core API only, in 2026.5 and 2026.6. 16:03 Codex's review: the fix
+  holds; a race in the same walk since 2026.5 (028-56) and a test that
+  failed in its sandbox (028-57) registered. Landed (Frans, 15:59).
 
 
 ## 4. Outcome

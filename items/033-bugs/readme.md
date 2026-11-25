@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 5 | 7 |
+| 2026.5 | 0 | 2 | 1 | 5 | 8 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-007, first found in
+release that has it (2026.6 has RB-005 to RB-008, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 2 | 0 | 5 | 7 | RB-001 to RB-007 |
-| 2026.6 | 0 | 0 | 0 | 3 | 3 | RB-005 to RB-007 |
+| 2026.5 | 0 | 2 | 1 | 5 | 8 | RB-001 to RB-008 |
+| 2026.6 | 0 | 0 | 1 | 3 | 4 | RB-005 to RB-008 |
 
 
 Released bugs
@@ -246,8 +246,30 @@ RB-007. maintain() keeps the stream written while an iteration waited for its cu
   its cut, then 10 R of calls: 4.8 MB kept against 0.3 MB without the
   second writes, on 2026.5, 2026.6 and `main`); not known at the
   releases.
-* **Fix:** none yet; 028-53's options (A, a mark of the application's
-  writes kept with reclaim's table, recommended).
+* **Fix:** none yet; 028-53's options A and B were not taken (Frans,
+  2026-11-25); 031-03 looks for the fix.
+
+
+RB-008. Db.getTrans refuses a large transaction's position just after a cut
+---------------------------------------------------------------------------
+
+* **What a user sees:** with the Core API, `Db.getTrans(tpos)` of a
+  committed transaction of over 1 MiB, at a position that a get gave,
+  throws `IllegalArgumentException` ("Not a position of a
+  transaction"), for the transactions just after a reclaim cut when a
+  transaction runs over the start of the first kept file (a file
+  database) or 1 MB array (`MemoryStream`). Nothing is lost or changed,
+  and the database goes on. The Pub API's
+  `Connection.transactionInfo()` reads without that walk and is not
+  affected.
+* **Severity:** S3.
+* **Releases:** 2026.5 (since `2858ed36`, 021-27, Q27-1) and 2026.6;
+  fixed on `main` for 2026.7.
+* **Found:** 2026-11-25, by `week.sh`'s soak of the user apps (Churn,
+  a2, 024-26; seed 2078207, node size 30); not known at the releases.
+* **Fix:** 028-55, 2026-11-25: the walk to a record's start begins at
+  reclaim's cut, not at the stream's first position, when no meta
+  block names a record's start.
 
 
 Log
@@ -325,3 +347,10 @@ the section "After the release" of 2026.6's and 2026.5's notes and in
 `releases/next.md`; counts updated. The rewriting of live values that
 028-53 was registered for breaks no promise (a cost) and is not
 registered.
+
+2026-11-25. RB-007's fix: 028-53's options A and B not taken (Frans);
+031-03 looks for it.
+
+2026-11-25. RB-008 registered and fixed on `main` (028-55), S3:
+`Db.getTrans` refused a large transaction's position just after a cut,
+in 2026.5 and 2026.6. Found by `week.sh`.

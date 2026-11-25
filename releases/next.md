@@ -46,6 +46,15 @@ Released bugs fixed
   begin iterations by the clock in a database written to, as the Javadoc
   says, and this rule begins none in one that is not. Streams written
   without `maintain()` are the same (StreamDigest identical).
+* **RB-008, S3. `Db.getTrans` could refuse a large transaction's
+  position just after a cut** (bergdb 033; 028-55, 2026-11-25). With the
+  Core API, `getTrans` of a committed transaction of over 1 MiB, just
+  after a reclaim cut, threw `IllegalArgumentException` when a
+  transaction ran over the start of the first kept file or 1 MB array:
+  the walk to the record's start began at the stream's first position,
+  inside that transaction. It begins at reclaim's cut now; a position
+  before the cut with no record's start named before it expires
+  (`LookupTimeNotAvailableException`). The Pub API was not affected.
 
 
 Known released bugs
@@ -61,7 +70,8 @@ Not fixed on `main`; a release with one needs Frans's exception
   longer written to, keeps that stream under the calls, up to about
   twice the startup distance, though the Javadoc says that they bring
   an emptied database to within about 400 kB of a fresh one's stream.
-  028-53 holds the options for the fix.
+  028-53's options A and B were not taken (Frans, 2026-11-25); 031-03
+  looks for the fix.
 
 
 Speed
