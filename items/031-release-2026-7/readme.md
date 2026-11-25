@@ -45,7 +45,7 @@ Files
   026-03 with 028-53's fix (RB-007).
 * [031-02](02-app-hunt.md): an app hunt on `main` before 2026.7, with
   new user applications and their oracles.
-* [031-03](03-elegant-maintain.md): an elegant `maintain()`: back to
+* [031-03](03-elegant-maintain/readme.md): an elegant `maintain()`: back to
   empty, quiet when done, through crashes and restarts without recovery
   machinery of its own.
 

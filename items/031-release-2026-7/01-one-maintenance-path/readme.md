@@ -936,3 +936,9 @@ kind, and by a start whose last record changed it; Codex's cases pass.
 Recommendation changed to B for RB-007 (section 13.4); F1 to F7
 revised; Codex's probe and logs, `MidCallProbe` and the new `CrashW` in
 `probes/`.
+
+2026-11-25. 031-03 (an agent of lead-1125) keeps w without the store
+and the start's write of section 4.3: every record of reclaim's holds
+a row with w, and a last record that is not reclaim's shows it, the
+form on stores that already happen that section 13.4 did not find;
+its M1 has one threshold. For Frans's decisions in 031-03, section 10.

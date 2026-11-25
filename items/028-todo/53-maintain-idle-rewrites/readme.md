@@ -352,3 +352,10 @@ iteration in the table's row, in place of A's W; M1 with it fixes
 RB-007 and the rewriting in its prototype. testStopWhileReading's
 failure without K traced to the test's fixed call numbers (031-01,
 section 9). For Frans's decisions in 031-01, section 12.
+
+2026-11-25. 031-03's design (an agent of lead-1125): w read off the
+stream at every record, with no store and no recovery case of its own,
+and M1 with one threshold on the stream kept; its prototype fixes
+RB-007 and the rewriting. An emptied database kept at 790 kB by M1's
+two stretches, on `main` too (031-03, section 9.1). For Frans's
+decisions in 031-03, section 10.
