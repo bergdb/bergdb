@@ -115,7 +115,9 @@ public class KillWriter {
     // ---- The child ----
 
     static void child(String dir, long seed) throws Exception {
-        PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true);
+        // Each line a write of its own to a file, which a kill does not lose: the pipe of
+        // stdout does, as Process.destroyForcibly() closes the parent's end (031-02).
+        PrintStream out = new PrintStream(new FileOutputStream(dir + ".out", true), true);
         Database db = Factory.database().create(dir).start();
         Connection c = db.connection();
         String m = c.get("/meta/seq.txt", String.class);
@@ -166,6 +168,9 @@ public class KillWriter {
             if (j % 2000 == 0 && exists(db, "by-j")) db.deleteIndex("by-j");
             // The startup distance changed now and then, up and down (kept in the stream).
             if (j % 700 == 350 && !Boolean.getBoolean("noSd")) db.setStartupDistanceInMb(5 + r.nextInt(r.nextBoolean() ? 10 : 80));
+            // With -Didle=true, pauses of over 2 s now and then, so that the write buffer
+            // shrinks to its smallest and grows again at the next burst (Database.stop()).
+            if (Boolean.getBoolean("idle") && r.nextInt(400) == 0) Thread.sleep(2100 + r.nextInt(1000));
             int x = r.nextInt(100);
             if (x < 8) { c.sync(); out.println("S " + j); }
             else if (x < 12) { while (db.maintain()) { } out.println("M " + j); }
@@ -212,7 +217,40 @@ public class KillWriter {
         }
     }
 
-    static long nByJ;
+    static long nByJ, nBeyond, nZeroTails;
+
+    static String parentLastName = "";
+    static long parentLastLength = 0;
+
+    static File lastFile(File dir) {
+        File[] fs = dir.listFiles((d, n) -> n.endsWith(".bergdb"));
+        if (fs == null || fs.length == 0) return null;
+        Arrays.sort(fs);
+        return fs[fs.length - 1];
+    }
+
+    static long trailingZeros(File dir) throws IOException {
+        File[] fs = dir.listFiles((d, n) -> n.endsWith(".bergdb"));
+        if (fs == null || fs.length == 0) return 0;
+        Arrays.sort(fs);
+        File last = fs[fs.length - 1];
+        try (RandomAccessFile f = new RandomAccessFile(last, "r")) {
+            long n = f.length();
+            long z = 0;
+            byte[] b = new byte[65536];
+            while (n > 0) {
+                int len = (int) Math.min(b.length, n);
+                f.seek(n - len);
+                f.readFully(b, 0, len);
+                for (int i = len - 1; i >= 0; i--) {
+                    if (b[i] != 0) return z;
+                    z++;
+                }
+                n -= len;
+            }
+            return z;
+        }
+    }
     static final List<String> tail = new ArrayList<>();
 
     static void deleteTree(File f) {
@@ -241,18 +279,32 @@ public class KillWriter {
         long checksOld = 0, notAvail = 0;
         for (int kill = 0; kill < kills; kill++) {
             ProcessBuilder pb = new ProcessBuilder(java, "-ea", "-Xmx1g", "-XX:+UseZGC",
-                    "-DnoSd=" + Boolean.getBoolean("noSd"),
+                    "-DnoSd=" + Boolean.getBoolean("noSd"), "-Didle=" + Boolean.getBoolean("idle"),
                     "-XX:+ExitOnOutOfMemoryError", "-cp", cp, "KillWriter", "child", dir, Long.toString(seed));
             pb.redirectErrorStream(true);
+            new File(dir + ".out").delete();
             Process p = pb.start();
             final long[] lastC = {-1}, lastS = {-1}, start = {-1};
             final List<String> bad = Collections.synchronizedList(new ArrayList<>());
             tail.clear();
-            Thread rd = new Thread(() -> {
+            // The pipe carries what the JVM prints itself (an exception's trace); the lines of
+            // the protocol are in the file.
+            final List<String> pipe = Collections.synchronizedList(new ArrayList<>());
+            Thread pr = new Thread(() -> {
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                     String line;
+                    while ((line = br.readLine()) != null) pipe.add(line);
+                } catch (IOException e) { }
+            });
+            pr.start();
+            Thread rd = new Thread(() -> {
+                try { p.waitFor(); } catch (InterruptedException e) { }
+                try (BufferedReader br = new BufferedReader(new FileReader(dir + ".out"))) {
+                    String line;
                     while ((line = br.readLine()) != null) {
+                        if (line.isEmpty()) continue;
                         String[] f = line.split(" ");
+                        if (f[0].equals("C") && f.length < 3) continue;   // a line the kill cut
                         if (f[0].equals("C")) {
                             long jj = Long.parseLong(f[1]);
                             synchronized (times) { times.put(jj, Long.parseLong(f[2])); }
@@ -265,14 +317,17 @@ public class KillWriter {
                     }
                 } catch (IOException e) { }
             });
-            rd.start();
             long wait = 300 + r.nextInt(r.nextInt(4) == 0 ? 8000 : 2500);
+            if (Boolean.getBoolean("idle")) wait += r.nextInt(6000);
             // With -DearlyKill=true, half the kills come while the child starts.
             if (Boolean.getBoolean("earlyKill") && r.nextBoolean()) wait = 50 + r.nextInt(700);
             Thread.sleep(wait);
             p.destroyForcibly();
             p.waitFor();
+            rd.start();
             rd.join();
+            pr.join(10_000);
+            for (String line : pipe) bad.add("(stdout) " + line);
             if (!bad.isEmpty()) fail("kill " + kill + ": the child printed " + bad.subList(0, Math.min(5, bad.size())));
             if (start[0] >= 0 && start[0] != lastK) fail("kill " + kill + ": the child started at " + start[0]
                     + ", the parent recovered " + lastK);
@@ -281,6 +336,16 @@ public class KillWriter {
             if (Boolean.getBoolean("snap")) {
                 deleteTree(snap);
                 copyTree(new File(dir), snap);
+            }
+            // Zeros at the end of the last stream file, as the kill left it (031-02, F1).
+            long zeros = trailingZeros(new File(dir));
+            if (zeros >= 4096) {
+                File lf = lastFile(new File(dir));
+                long from = lf.length() - zeros;
+                boolean before = lf.getName().equals(parentLastName) && from < parentLastLength;
+                if (!before) nZeroTails++;
+                System.out.println("NOTE kill " + kill + ": " + lf.getName() + " ends in " + zeros + " zero bytes, from "
+                        + from + (before ? ", there before the child ran (a start's fill)" : ", written while the child ran"));
             }
             Database db;
             try {
@@ -306,8 +371,25 @@ public class KillWriter {
             long k = m == null ? 0 : Long.parseLong(m);
             if (k < lastS[0]) fail("kill " + kill + ": recovered " + k + ", but " + lastS[0] + " was synced");
             if (k < lastK) fail("kill " + kill + ": recovered " + k + " < " + lastK + " recovered before");
-            if (lastC[0] >= 0 && k > lastC[0] + 1) fail("kill " + kill + ": recovered " + k + ", last committed "
-                    + lastC[0]);
+            if (lastC[0] >= 0) {
+                // The next transaction that commits after the last printed one: a refused one
+                // (X) takes a number and prints nothing.
+                long next = lastC[0] + 1;
+                while (type(seed, next) == 'X') next++;
+                if (k > next) {
+                    if (!Boolean.getBoolean("noteBeyond")) fail("kill " + kill + ": recovered " + k + ", but the last commit "
+                            + "that returned is " + lastC[0] + "; the child's last lines: " + tail);
+                    // Checked further: the state must still be the oracle's at k.
+                    c.get("/meta/seq.txt", String.class);
+                    long seqTime = c.transactionInfo().time().units();
+                    Long lastTime;
+                    synchronized (times) { lastTime = times.get(lastC[0]); }
+                    System.out.println("NOTE kill " + kill + ": recovered " + k + " (its time " + seqTime + "), last committed printed "
+                            + lastC[0] + " (at " + lastTime + "), started at " + start[0] + ", the previous recovery " + lastK
+                            + "; the child's last lines: " + tail);
+                    nBeyond++;
+                }
+            }
             // Advance the model, keeping two snapshots for older reads.
             List<Model> snaps = new ArrayList<>();
             Set<Long> pick = new HashSet<>();
@@ -343,6 +425,9 @@ public class KillWriter {
                 }
             }
             db.close();
+            File lf0 = lastFile(new File(dir));
+            parentLastName = lf0 == null ? "" : lf0.getName();
+            parentLastLength = lf0 == null ? 0 : lf0.length();
             // The times printed for transactions that the kill lost are no one's: a later
             // child makes those numbers again, at other times.
             synchronized (times) { times.keySet().removeIf(jj -> jj > k); }
@@ -351,7 +436,8 @@ public class KillWriter {
                     + ", older states checked " + checksOld + " (" + notAvail + " cut), by-j checked " + nByJ);
             lastK = k;
         }
-        System.out.println("kills " + kills + ", transactions " + lastK + ", older states " + checksOld);
+        System.out.println("kills " + kills + ", transactions " + lastK + ", older states " + checksOld
+                + ", recoveries beyond the last printed commit " + nBeyond + ", zeroed tails " + nZeroTails);
         System.out.println("KILLWRITER OK");
     }
 

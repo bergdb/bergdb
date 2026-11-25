@@ -20,7 +20,7 @@ import java.util.*;
  *
  * With -DretainChanges=true the retain duration changes now and then between rounds; with
  * -Dprobe=true an emptied round goes on after its maintain() calls: more calls, a restart
- * and small writes, with the size of the stream kept printed (031-02, F1).
+ * and small writes, with the size of the stream kept printed (031-02, F2).
  *
  * Usage: java RetainChurn DIR SEED ROUNDS
  */
@@ -48,6 +48,9 @@ public class RetainChurn {
     static long lastFirstAvailable = 0;
     static long nTx, nChecks, nOldChecks, nRefusedOld, nMaintain;
     static Random r;
+    // The checks' own random numbers, so that the workload does not depend on what the
+    // database does (when reclaim cuts, how long maintain() runs).
+    static Random rc;
 
     static String dirOf(String key) { return key.substring(0, key.lastIndexOf('/') + 1); }
     static String nameOf(String key) { return key.substring(key.lastIndexOf('/') + 1); }
@@ -143,6 +146,7 @@ public class RetainChurn {
         long seed = Long.parseLong(args[1]);
         int rounds = Integer.parseInt(args[2]);
         r = new Random(seed);
+        rc = new Random(seed + 1_000_000);
         System.out.println("RetainChurn seed " + seed + " rounds " + rounds);
         now = Time.utc("2026-01-01 00:00:00").units();
         clock = new TestClock();
@@ -238,7 +242,7 @@ public class RetainChurn {
                     }
                     nMaintain++;
                     checkFirstAvailableOnly();
-                    now += retainUnits / 4 + r.nextInt((int) Math.min(Integer.MAX_VALUE, retainUnits / 4));
+                    now += retainUnits / 4 + rc.nextInt((int) Math.min(Integer.MAX_VALUE, retainUnits / 4));
                     clock.setTime(Time.units(now));
                     if (step % 20 == 19) checkOld("maintain step " + step);
                     long sz = dirSize();
@@ -251,7 +255,8 @@ public class RetainChurn {
                 long size = dirSize();
                 System.out.println("  round " + round + ": emptied and maintained, stream files "
                         + size / 1000 + " kB (fresh " + freshSize / 1000 + " kB), first available "
-                        + (db.getFirstAvailableLookupTime().units() > 0 ? "moved" : "0"));
+                        + db.getFirstAvailableLookupTime() + ", clock " + Time.units(now) + ", retain "
+                        + retainUnits / Clock.UNITS_PER_SEC + " s, last commit " + c.currentTime());
                 check("round " + round + " maintained");
             }
             // The retain duration changed now and then.
@@ -357,7 +362,7 @@ public class RetainChurn {
         List<String> ks = new ArrayList<>(latest.keySet());
         long fa = db.getFirstAvailableLookupTime().units();
         for (int i = 0; i < Math.min(30, ks.size()); i++) {
-            String k = ks.get(r.nextInt(ks.size()));
+            String k = ks.get(rc.nextInt(ks.size()));
             byte[] v = c.get(k, byte[].class);
             long vt = versions.get(k).lastKey();
             if (vt >= fa) {
@@ -383,8 +388,8 @@ public class RetainChurn {
             compareList(exp, got, t, what + ": " + d + " forward");
             if (exp.isEmpty()) continue;
             // Backward from a name, inclusive or not.
-            String startKey = exp.get(r.nextInt(exp.size()));
-            boolean incl = r.nextBoolean();
+            String startKey = exp.get(rc.nextInt(exp.size()));
+            boolean incl = rc.nextBoolean();
             List<String> expB = new ArrayList<>();
             for (String k : exp) {
                 int cmp = BYTES.compare(nameOf(k), nameOf(startKey));
@@ -424,7 +429,7 @@ public class RetainChurn {
         long last = c.currentTime().units();
         if (last <= fa) return;
         Connection o = db.newConnection();
-        long t = fa + (long) (r.nextDouble() * (last - fa));
+        long t = fa + (long) (rc.nextDouble() * (last - fa));
         o.setLookupTime(Time.units(t));
         try {
             listAll(o, t, what + " (old)");
@@ -433,7 +438,7 @@ public class RetainChurn {
         }
         nOldChecks++;
         if (fa > 0) {
-            o.setLookupTime(Time.units(fa - 1 - r.nextInt(1000)));
+            o.setLookupTime(Time.units(fa - 1 - rc.nextInt(1000)));
             String k = versions.keySet().iterator().next();
             try {
                 o.get(k, byte[].class);
