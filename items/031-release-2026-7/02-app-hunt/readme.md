@@ -13,7 +13,7 @@ short way and routing (028-19). Findings are named by severity as in
 026-26: S1 data lost or wrong, S2 a database that fails or cannot
 start, S3 a call refused wrongly, S4 minor or documentation.
 
-Made by an agent of lead-1125 (Claude Opus) on 2026-11-25, from 15:02,
+Made by an agent of lead-1125 on 2026-11-25, from 15:02 to 17:15,
 on the branch `031-02` of a clone of `main` at `64d9d1c6`. Nothing in
 `java/` was changed. The comparisons ran on the release jar built from
 the tag `release-2026.6`.
@@ -25,16 +25,18 @@ the tag `release-2026.6`.
   cover a meta block's position, the next start refuses the database
   with a message about encryption and foreign streams, though every
   synced transaction is there and a cut of the file at the torn record
-  recovers them. Twice in @@KILLS@@ kills; 2026.6 refuses the same
-  files (section 5).
+  recovers them. Three times in about 9,500 kills; the system makes the
+  zeros, BergDB's start refuses them; 2026.6 refuses the same files
+  (section 5).
 * **One S4 finding, F2:** an emptied database keeps 0.4 to 15.2 MB of
   stream under `maintain()` at a startup distance of 5 MB, where the
   Javadoc says within about 400 kB of a fresh one; the same in 2026.6;
   like RB-007, but beyond its stated bound and not given back by
   028-53's prototype A2 (section 5).
-* **No wrong value, no lost transaction:** every check of eleven apps'
-  oracles passed in @@NRUNS@@ runs on `main`, among them @@KILLS@@ kills
-  with a check of the whole recovered state after each; what changed
+* **No wrong value, no lost transaction:** in 81 runs of eleven apps on
+  `main`, with about 9,500 kills and a check of the whole recovered
+  state after each, every check of the oracles passed but F1's three
+  refused starts; what changed
   since 2026.6 (STM's record of recent writes, key transformations near
   the limits, `maintain()`, PE) was found sound (section 6).
 * The apps are in [apps/](apps/), with `run.sh`; adding them to
@@ -166,6 +168,9 @@ for four of them the Javadoc of the Core API (`bergdb.core.Db`,
   that returned it, and the counter readable at that time and one unit
   before it with the right values.
 
+Beside them, `ZeroTailProbe`, which does not use BergDB: F1's check of
+what a kill leaves in an appended file (section 5).
+
 
 ## 3. How to run them
 
@@ -187,11 +192,12 @@ source's header and in `run.sh`).
 ## 4. The runs
 
 On the release jar of the clone at `64d9d1c6`, macOS, JDK 27, with
-`-ea` and ZGC, from 15:05 to @@END@@ on 2026-11-25, beside `week.sh` and
+`-ea` and ZGC, from 15:05 to 17:15 on 2026-11-25, beside `week.sh` and
 other sessions' runs (load averages of 40 to 110); each run at most about
 30 minutes, its databases deleted after it. Counted are the runs of the
 final sources and those of earlier versions whose oracle was right; a run
-stopped by its time guard is named so, with what it had checked.
+stopped by its time guard is named so, with what it had checked. Last,
+`run.sh quick` on the final sources: all eleven OK.
 
 * e1 StmBank, 4 runs: in memory, 20 s, 17,103 transactions; a file
   database, 600 s, 8 threads, 3,000 accounts: 119,971 transactions
@@ -215,7 +221,18 @@ stopped by its time guard is named so, with what it had checked.
   run; 20 emptied rounds, each followed by `maintain()` until the stream
   stopped shrinking (F2). Also on 2026.6 (seeds 1 and 5) and on 028-53's
   prototype A2 (seed 5), for F2.
-* e4 KillWriter, @@E4@@
+* e4 KillWriter, 38 runs, about 9,500 kills: the parent kills the
+  child 0.3 to 14 s after its spawn; in some runs half the kills 50 to
+  750 ms after it, while the child starts (some during the database's
+  creation, which the start then reports as documented, and the files
+  are removed); in some, pauses in the child for the write buffer; in
+  some, no change of the startup distance. Up to 690 kills, 250,432
+  transactions and 1,339 older states read back a run; the third index
+  joined and scanned after 413 recoveries in one run. 8 runs went to the
+  end, 6 were ended by their guard and 10 by hand to change the
+  app, all with every check passed; 11 ended on an error of the app or
+  its oracle of the time (section 8), each after the checks of every
+  kill before it had passed; 3 ended on F1.
 * e5 ReplaceLimits, 3 runs to the end (600 and 1,500 transactions in
   memory, 1,200 on a file database) and one stopped at 1,500 of 3,000
   transactions (its oracle's sorting too slow for the guard): up to 884
@@ -253,13 +270,14 @@ Android, other systems; the apps ran on one machine, with one JDK.
 
 ### F1 (S2). After a kill, a zeroed tail over a meta block stops the start
 
-* **What:** twice in @@KILLS@@ kills of KillWriter's child
+* **What:** three times in about 9,500 kills of KillWriter's child
   (`destroyForcibly`, SIGKILL, on macOS with APFS), the last stream file
   ended in zeros within the length the file system reports: the kill
   came during an append, and the bytes of that write from a page boundary
   on read as zeros, in the second case 458,752 bytes (28 pages of 16 KiB)
   from offset 3,915,776 of a file of 4,374,528, which covered the meta
-  block positions 4,000,000 and 4,200,000. The next start throws
+  block positions 4,000,000 and 4,200,000; in the third 114,688 bytes (7
+  pages) over the meta block at 14,800,000. The next start throws
   `StreamFormatException: Invalid magic bytes in stream: the stream is
   not a BergDB stream, or it is damaged; or an earlier release ...
   encrypted it` (cause `BadMagicBytes ... got: 00000000`, from
@@ -270,7 +288,10 @@ Android, other systems; the apps ran on one machine, with one JDK.
   up to the last that a sync returned for (56,280, of the child's
   56,284 commits). A zeroed tail that ends before the next meta block
   is recovered by the start as a cut tail (tried on copies of the files,
-  cut 10 and 10,000 bytes short of the block: both start, at 56,280).
+  cut 10 and 10,000 bytes short of the block: both start, at 56,280);
+  in the last two runs, which looked at the files before each start,
+  the start took 9 zeroed tails that began after a meta block's first
+  bytes, and refused the one that covered a meta block's magic.
 * **What the Javadoc says:** `Database`, "What a crash keeps": a crash
   or a power loss cuts the stream's tail and the start recovers it; only
   a power loss is said to leave "a tail of zeros", which is refused with
@@ -279,16 +300,22 @@ Android, other systems; the apps ran on one machine, with one JDK.
   the process". Here a process kill, with no power loss and no crash of
   the system, left the zeros, and the message names neither the zeros
   nor P, but encryption and a foreign stream.
+* **The system, not BergDB, makes the zeros:** `ZeroTailProbe` (in
+  [apps/](apps/)), a Java process that appends chunks of 64 kB to 2 MB
+  with `RandomAccessFile.write()` and forces each, as `FileStream` does,
+  killed after 0.3 to 0.9 s: in 1 of 150 trials the file ended in
+  442,368 zero bytes (27 pages) within its length. BergDB's part is the
+  start's answer to such a tail.
 * **Reproduction:** `java -DnoSd=true KillWriter parent DIR 63 500`
-  (seed 63 failed at kill 392, about 25 minutes under load); the first
-  case was at kill 21 to 29 of seed 5 (an earlier version of the app,
-  its directory deleted by the run's script). Rare, timing-dependent:
-  none in the other runs of section 4.
+  (seed 63 failed at kill 392, about 25 minutes under load; seed 91, the
+  same options, at kill 555); the first case was at kill 21 to 29 of
+  seed 5 (an earlier version of the app, its directory deleted by the
+  run's script). Timing-dependent: none in the other runs.
 * **Release 2026.6:** the same refusal on a copy of the same files
   (its start reads the same meta block first; `java/src/bergdb/stream`
   and `storage` have not changed since the tag).
-* **Kept:** the files as the kill left them, 42 MB, in the session's
-  scratch directory (not in the repository); the lead can ask for them.
+* **Kept:** the files as the kills left them (seeds 63 and 91, 42 and
+  63 MB), outside the repository; the lead can ask for them.
 
 ### F2 (S4). An emptied database keeps 2 to 3 times the startup distance under maintain()
 
@@ -324,7 +351,6 @@ Android, other systems; the apps ran on one machine, with one JDK.
   bound or a case of its own; not registered here.
 
 
-
 ## 6. Found sound
 
 No wrong value, no lost transaction and no refused start or call that
@@ -346,11 +372,16 @@ since 2026.6:
   again; key replace in e5 and e11 the same at the Pub API.
 * `maintain()` (028-51): values, older states and the first available
   time right through every `maintain()` loop of e3, e4, e7 and e1's
-  maintain thread, and across restarts; only F1's space.
+  maintain thread, and across restarts; only F2's space.
 * The index writer (028-19): e7's reshaping patterns, e6's indexes and
   e4's three indexes and recoveries read back right at every check, with
   a cache budget of 4 MB in e7 and some of e6's restarts.
-* Recovery after kills: @@KILLSOUND@@
+* Recovery after kills: every recovery that started held every
+  transaction that a sync had returned for, never fewer than the
+  recovery before, a whole prefix, and the oracle's state at that prefix,
+  its older states and indexes too; an index build cut by kills was
+  taken again by the next start and joined. The two refused starts are
+  F1.
 * Also: older lookup times, scans both ways, inclusive and exclusive
   starts, end keys, prefixes of strings and bytes, code point order of
   names outside the BMP, -0.0 and NaN in indexes, the 56 KiB and L6
@@ -373,7 +404,6 @@ since 2026.6:
   corrected and the run repeated; those runs are not counted.
 
 
-
 ## 8. Notes for the apps
 
 * `Process.destroyForcibly()` closes the parent's end of the child's
@@ -387,9 +417,27 @@ since 2026.6:
   for transactions the kill lost belong to no one, as the next child
   makes those numbers again at other times. Both are in the parent's
   checks.
+* An object put in a directory with k indexes counts up to 1 + 2k
+  operations (the package page, "Limits"): KillWriter's first version
+  put 99 objects with three indexes, over 500. A kill during the
+  database's creation makes the next start throw
+  `DatabaseNotCreatedException`, as `DatabaseBuilder.start()` says; the
+  app removes the files then.
 * An `rw()` action that sleeps longer than the retain duration has its
   read time cut, and its next read throws
   `LookupTimeNotAvailableException` out of `rw()`, as
   `RwEnvironment.get()` says; StmBank's slow transfers retry it (1,020
   times in the run with a retain duration of 3 s).
 
+
+Log
+===
+
+2026-11-25. Created by lead-1125 (006-35): fixing bugs comes first, and
+no bug is known on `main` but RB-007; an app hunt is the method that
+found most of 2026.4's bugs.
+
+2026-11-25. Eleven apps written and run by an agent of lead-1125, 15:02
+to 17:15: F1 (S2) and F2 (S4), both also in 2026.6; nothing else
+found (sections 1 and 5). Status stays open for the lead's decisions on
+F1 and F2.

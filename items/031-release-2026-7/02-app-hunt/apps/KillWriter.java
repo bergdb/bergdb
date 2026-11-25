@@ -21,6 +21,15 @@ import java.util.concurrent.*;
  * available, equal the oracle's at those transactions. Then it closes the database and
  * starts the next child, which goes on from k + 1.
  *
+ * The child writes its lines to DIR.out, one write each: the pipe of its stdout loses the
+ * last ones, as Process.destroyForcibly() closes the parent's end (031-02, section 8). Before
+ * each start the parent notes a zeroed tail of the last stream file (031-02, F1).
+ *
+ * Options (system properties of the parent, passed to the child): -DearlyKill=true, half
+ * the kills 50 to 750 ms after the spawn, while the child starts; -Didle=true, pauses of over
+ * 2 s in the child, so that its write buffer shrinks; -DnoSd=true, no change of the startup
+ * distance; -Dsnap=true, a copy of the files as each kill left them in DIR.snap.
+ *
  * Usage: java KillWriter parent DIR SEED KILLS
  *        java KillWriter child DIR SEED
  */
