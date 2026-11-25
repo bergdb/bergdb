@@ -2324,9 +2324,11 @@ public class Db implements AutoCloseable {
      *             them, of no real transaction. The position is the caller's responsibility.
      *             A size over 1 MiB in the header at 'tpos' is believed only after the
      *             records' sizes, walked from the record that the meta block at or before
-     *             'tpos' names, or else from reclaim's cut (bergdb 028-55), reach 'tpos',
-     *             before the record is read (bergdb 021-27, Q27-1): inside a record it is
-     *             refused so, with no array made of that size.
+     *             'tpos' names, if it is at or after reclaim's cut, or else from the cut
+     *             (bergdb 028-55, 028-56), reach 'tpos', before the record is read (bergdb
+     *             021-27, Q27-1): inside a record it is refused so, with no array made of
+     *             that size. A cut during the walk that removes a record it reads, but not
+     *             'tpos', starts the walk again (bergdb 028-56).
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage
      *             (an I/O error, the environment's; bergdb 010-01, P7); the cause is the
@@ -2624,7 +2626,7 @@ public class Db implements AutoCloseable {
     }
 
     /** True if 'e' comes from a read of bytes before the first position of the stream. */
-    private static boolean isReadBelowCut(Throwable e) {
+    static boolean isReadBelowCut(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof ReadBelowFirstPosException) {
                 return true;

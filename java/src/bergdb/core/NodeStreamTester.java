@@ -18,8 +18,10 @@ import bergdb.pub.util.SyncLevel;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * Class with nanotests for NodeStream.
@@ -200,6 +202,108 @@ public class NodeStreamTester {
             NodeStream ns = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
                     new Object());
             Assert.assertArrayEquals(expected, ns.readTransBytes(pos));
+        }
+    }
+
+    /**
+     * bergdb 028-56: recordHolding() while the stream is cut and reclaim's cut, 'cut', moves
+     * on. The walk reads the cut, 0 here, then the meta block before 'tpos', which names the
+     * record at 128; at that read the cut moves (CutAtReadStream), and the stream is cut to
+     * the start of its 1 MB array, 1,000,000, which removes the named record, and the walk's
+     * read there is below the first position. With the cut moved to a record at or before
+     * 'tpos' (case 0), the walk starts again, from the new cut, and finds a record's start
+     * at 'tpos'; before, the read was thrown, and Db.getTrans() expired a transaction that
+     * is kept. With the cut moved past 'tpos' (case 1), or not moved (case 2), the read is
+     * thrown as before, with ReadBelowFirstPosException as the cause: Db.getTrans() expires.
+     */
+    @Nano
+    private static void testRecordHoldingCutDuringTheWalk() {
+        for (int c = 0; c < 3; c++) {
+            final CutAtReadStream stream = new CutAtReadStream();
+            final RecoverableStream r = new RecoverableStream(stream, new MetaBlock());
+            final NodeStream ns = new NodeStream(r, new Object());
+            final long named = appendRecord(r, 1000);
+            appendRecord(r, 1100 * 1000);       // over the array at 1,000,000
+            final long newCut = appendRecord(r, 1000);
+            final long tpos = appendRecord(r, 1000);
+            final long pastTpos = appendRecord(r, 1000);
+            final long array = 1000 * 1000;
+            Assert.assertTrue("named " + named + ", the cut " + newCut + ", tpos " + tpos,
+                    named < array && array < newCut && pastTpos < 2 * array);
+            final long[] cut = {0};
+            final long movedTo = c == 0 ? newCut : c == 1 ? pastTpos : 0;
+            stream.blockPos = tpos / RecoverableStream.META_BLOCK_DISTANCE
+                    * RecoverableStream.META_BLOCK_DISTANCE;
+            stream.atRead = new Runnable() {
+                public void run() {
+                    cut[0] = movedTo;
+                    stream.inner.pretruncate(newCut);
+                }
+            };
+            try {
+                Assert.assertEquals("case " + c, -1L, ns.recordHolding(tpos, () -> cut[0]));
+                Assert.assertTrue("case " + c + ": walked", c == 0);
+            } catch (StreamIoException e) {
+                Assert.assertTrue("case " + c + ": " + e, c != 0
+                        && e.getCause() instanceof ReadBelowFirstPosException);
+            }
+            Assert.assertEquals("case " + c + ": cut", array, stream.getFirstPos());
+            Assert.assertTrue("case " + c + ": the meta block read", stream.atRead == null);
+        }
+    }
+
+    /**
+     * Appends a committed record of 'size' bytes, named by the meta blocks after it, as
+     * NodeStream.appendNodes() does; returns its position.
+     */
+    private static long appendRecord(RecoverableStream r, int size) {
+        final byte[] bytes = new byte[size];
+        Bytes.intToBytesLE(size, bytes, 0);
+        bytes[4] = StoredTrans.RECORD_FORMAT;
+        bytes[size - 1] = RecoverableStream.LAST_BYTE;
+        final long result = r.getNextSpos();
+        r.append(bytes, 0, size, true, -1);
+        r.getMetaBlock().setLastTransSpos(result);
+        return result;
+    }
+
+    /**
+     * A MemoryStream for testRecordHoldingCutDuringTheWalk (bergdb 028-56): 'atRead' runs
+     * once, at the read of a meta block's first 8 bytes at 'blockPos', before the read.
+     */
+    private static final class CutAtReadStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        long blockPos = -1;
+        Runnable atRead;
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            final Runnable run = atRead;
+            if (run != null && position == blockPos && length == 8) {
+                atRead = null;
+                run.run();
+            }
+            inner.read(position, dest, destOffset, length);
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) {
+            inner.pretruncate(position);
+        }
+
+        public void close() {
+            inner.close();
         }
     }
     

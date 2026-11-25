@@ -12,6 +12,7 @@ import bergdb.dag.Spos;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
 import bergdb.storage.VersioningStreamException;
 
 /**
@@ -440,32 +441,53 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * Whether a record starts at 'tpos' (2026-11-12, bergdb 021-27, Q27-1). Returns -1 if one
      * does, or else the start of the record that holds 'tpos' inside it. It walks the records
      * forward by their sizes, as the TransIterator does, from a record's start before 'tpos'
-     * (RecoverableStream.getRecordStartBefore(): one that a meta block names, or else
-     * reclaim's cut, which 'cut' gives; bergdb 028-55), reading each record's header
-     * (readRecordHeader(): its size, its last byte, and its format byte if committed) until
-     * it reaches or passes 'tpos'; getSpos() skips the meta blocks, also those inside a
-     * record. Uncommitted records are walked over as committed ones. 'tpos' must not be in a
-     * meta block, and the records before it must be in the stream in whole (Db.getTrans()
-     * waits for the writer if it is at or after getAppendedEnd()).
+     * (RecoverableStream.getRecordStartBefore(): one that a meta block names at or after
+     * reclaim's cut, which 'cut' gives, or else the cut; bergdb 028-55, 028-56), reading each
+     * record's header (readRecordHeader(): its size, its last byte, and its format byte if
+     * committed) until it reaches or passes 'tpos'; getSpos() skips the meta blocks, also
+     * those inside a record. Uncommitted records are walked over as committed ones. 'tpos'
+     * must not be in a meta block, and the records before it must be in the stream in whole
+     * (Db.getTrans() waits for the writer if it is at or after getAppendedEnd()).
+     *
+     * <p>Another thread can cut the stream during the walk, as reclaim's cut allows, and
+     * remove a record that it reads (2026-11-25, bergdb 028-56). If such a read is below the
+     * first position, and the cut has moved since the walk began, but not past 'tpos', the
+     * walk starts again, from the new cut or a record after it that a meta block names;
+     * before, the read was thrown, and Db.getTrans() expired a transaction that is kept.
+     * Every read of the walk is at or after the cut that it began with
+     * (getRecordStartBefore()), and the stream is cut only before reclaim's cut, so such a
+     * read follows a move of the cut. Each walk reads as before, and there is at most one
+     * more walk than moves of the cut during the call, each to a record's start at or before
+     * 'tpos'.</p>
      *
      * @throws StreamFormatException  if the walk meets a bad header (a size out of range or
      *      beyond the stream, a last byte other than 0 and LAST_BYTE, another format), or a
      *      malformed meta block, or would start after 'tpos'
-     * @throws StreamIoException  as the reads throw it, a read below a cut too, and if 'tpos'
-     *      is before reclaim's cut with no record's start named before it
+     * @throws StreamIoException  as the reads throw it, a read below a cut too, unless the
+     *      walk starts again as above; and if 'tpos' is before reclaim's cut
      */
     long recordHolding(long tpos, LongSupplier cut) {
-        long pos = rstream.getRecordStartBefore(tpos, cut);
-        if (pos > tpos) {
-            throw new StreamFormatException("No record's start before stream pos " + tpos
-                    + " to walk from: the walk would start at " + pos + ".");
+        while (true) {
+            final long cutBefore = cut.getAsLong();
+            try {
+                long pos = rstream.getRecordStartBefore(tpos, cut);
+                if (pos > tpos) {
+                    throw new StreamFormatException("No record's start before stream pos "
+                            + tpos + " to walk from: the walk would start at " + pos + ".");
+                }
+                long start = -1;
+                while (pos < tpos) {
+                    start = pos;
+                    pos = RecoverableStream.getSpos(pos, readRecordHeader(pos, 16, true, false));
+                }
+                return pos == tpos ? -1 : start;
+            } catch (StreamIoException e) {
+                final long cutNow = cut.getAsLong();
+                if (!Db.isReadBelowCut(e) || cutNow <= cutBefore || tpos < cutNow) {
+                    throw e;
+                }
+            }
         }
-        long start = -1;
-        while (pos < tpos) {
-            start = pos;
-            pos = RecoverableStream.getSpos(pos, readRecordHeader(pos, 16, true, false));
-        }
-        return pos == tpos ? -1 : start;
     }
 
     /**

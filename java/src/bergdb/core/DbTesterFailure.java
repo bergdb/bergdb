@@ -1177,6 +1177,138 @@ public class DbTesterFailure {
     }
 
     /**
+     * Regression test for bergdb 028-56: Db.getTrans of a committed record over 1 MiB, at the
+     * position that a get gave, at or after reclaim's cut, while the stream is cut. The walk
+     * to a large record (bergdb 021-27, Q27-1; 028-55) read the stream's first position, then
+     * the meta block before the record, which named a record below the cut and at or after
+     * that first position; a cut between the two reads removed the named record, the walk
+     * read below the first position, and the call expired a transaction that is kept. A
+     * retry read it. Here the stream holds its cuts back (CutHeldStream) while reclaim's cut
+     * moves on; the reader stops at the walk's first read, which was of that meta block, the
+     * stream is cut at reclaim's cut, to the start of the array that holds it, and the
+     * reader goes on. Found by a review of 028-55 (2026-11-25), with a probe that this test
+     * follows.
+     */
+    @Nano
+    public static void testGetTransCutDuringTheWalk() throws Exception {
+        final CoreTestClock clock = new CoreTestClock();
+        final CutHeldStream stream = new CutHeldStream();
+        final Db db = Db.builder().testSetup(stream).clock(clock).start();
+        final StoredTrans[] read = new StoredTrans[1];
+        final Throwable[] thrown = new Throwable[1];
+        Thread reader = null;
+        try {
+            db.setStartupDistance(100 * 1000);
+            db.setRetainDuration(Clock.UNITS_PER_SEC);
+            final byte[] value = new byte[1100 * 1000];
+            clock.setTime(Clock.UNITS_PER_SEC);
+            db.execute(db.trans().put("/a", value).build());
+            db.sync(SyncLevel.ORDINARY);
+            clock.setTime(2 * Clock.UNITS_PER_SEC);
+            db.execute(db.trans().put("/target", value).build());
+            db.sync(SyncLevel.ORDINARY);
+            final GetData gd = db.newGetData();
+            db.getOne(Long.MAX_VALUE, Keys.toSegments("/target"), gd);
+            final long tpos = gd.tpos;
+            final long tt = db.internal().getTrans(tpos).tt;
+            for (int i = 3; i <= 100 && db.getFirstAvailablePos() == 0; i++) {
+                clock.setTime(i * Clock.UNITS_PER_SEC);
+                db.execute(db.trans().put("/b", value).build());
+                db.sync(SyncLevel.ORDINARY);
+            }
+            final long cut = db.getFirstAvailablePos();
+            Assert.assertTrue("reclaim's cut at or before the record, the stream not cut: cut "
+                    + cut + ", tpos " + tpos + ", the first position " + stream.getFirstPos(),
+                    cut > 0 && cut <= tpos && stream.getFirstPos() == 0);
+            Assert.assertEquals("before the stream is cut", tt, db.getTrans(tpos).tt);
+
+            stream.below = tpos;
+            reader = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        read[0] = db.getTrans(tpos);
+                    } catch (Throwable e) {
+                        thrown[0] = e;
+                    }
+                }
+            });
+            reader.setDaemon(true);
+            stream.reader = reader;
+            reader.start();
+            Assert.assertTrue("the reader walks", stream.inRead.await(10, TimeUnit.SECONDS));
+            synchronized (db.internal().getWriteLock()) {
+                stream.cutHeld = false;
+                db.internal().getMainStream().pretruncate(cut);
+            }
+            final long first = stream.getFirstPos();
+            Assert.assertTrue("cut to an array's start before the cut: " + first,
+                    first > 0 && first < cut);
+            stream.cutMade.countDown();
+            reader.join(10 * 1000);
+            Assert.assertTrue("the reader still runs after 10 s", !reader.isAlive());
+            if (thrown[0] != null) {
+                throw new AssertionError("Db.getTrans at " + tpos + ", the cut " + cut
+                        + ", the first position " + first, thrown[0]);
+            }
+            Assert.assertEquals("Db.getTrans, the stream cut during the walk", tt, read[0].tt);
+            Assert.assertEquals("after it", tt, db.getTrans(tpos).tt);
+        } finally {
+            stream.cutMade.countDown();
+            if (reader != null) {
+                reader.join(10 * 1000);
+            }
+            db.close();
+        }
+    }
+
+    /**
+     * A MemoryStream for testGetTransCutDuringTheWalk (bergdb 028-56): it makes no cut while
+     * 'cutHeld', which AppendOnlyStream.pretruncate() allows; and the first read by thread
+     * 'reader' before 'below' waits until 'cutMade'. Db.getTrans() reads before its position
+     * only in the walk to it, after it has read the first position and reclaim's cut.
+     */
+    static final class CutHeldStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        volatile boolean cutHeld = true;
+        volatile Thread reader;
+        volatile long below = -1;
+        final CountDownLatch inRead = new CountDownLatch(1);
+        final CountDownLatch cutMade = new CountDownLatch(1);
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            if (Thread.currentThread() == reader && position < below
+                    && inRead.getCount() > 0) {
+                inRead.countDown();
+                CloseRaceStream.await(cutMade);
+            }
+            inner.read(position, dest, destOffset, length);
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) {
+            if (!cutHeld) {
+                inner.pretruncate(position);
+            }
+        }
+
+        public void close() {
+            inner.close();
+        }
+    }
+
+    /**
      * Db.getTrans of a record that next() reads whole, its size and last byte right, but whose
      * parse fails (bergdb 005-82): here a byte of a value node's value is flipped, and the
      * node's checksum fails. The read fails the database with the StreamChecksumException as
