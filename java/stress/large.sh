@@ -6,7 +6,9 @@
 #
 # Usage: sh java/stress/large.sh [full|quick] [SEED]
 #   full (default): 10 million keys, 40 epochs of four-key transactions, about 60 to
-#     90 minutes on a Mac with 32 GB; quick: 1 million keys, 16 epochs, a few minutes.
+#     90 minutes on a Mac with 32 GB with seed 20778's order (028-43); most seeds' orders
+#     write about 3.8 times its bytes (028-63), not timed in full; quick: 1 million keys,
+#     16 epochs, a few minutes.
 #   SEED defaults to the date (YYYYMMDD); week.sh passes its day's seed explicitly.
 #   On macOS, caffeinate -i sh java/stress/large.sh full SEED keeps the machine awake.
 #
@@ -19,13 +21,17 @@
 # normal commits, with its default fraction, without a maintenance drive. File sizes are
 # capped at 2 GB, so physical rounding adds at most 2 GB to the logical bound (028-43).
 # The capacity controller stays on, with a 3 GB resident cache (quick: 300 MB).
-# Kept bytes have a fixed bound: 8 L0 + 2 GB, with L0 the fresh filled stream.
+# Kept bytes have a bound: 8 L0 + 2 GB, with L0 the fresh filled stream, which the seed's
+# key order sets: about 2 to 7.3 GB in full mode (028-63); a fill of more than 1,000 bytes
+# a key fails.
 #
 # Builds and copies the jar and stress classes into build/large/MODE-SEED-TIME/bin/, so
 # another build does not change a running test. Logs (out.txt, child.txt, journal.txt),
 # source.txt and fresh.txt stay there. Successful data is deleted unless KEEPDATA=1;
 # a failure ALWAYS keeps its data and seed. No directory is replaced. Full requires
-# 45 GB free before building; the harness checks free disk and enforces a 40 GB data cap.
+# 85 GB free before building (quick 13 GB): the data cap 8 L0 + 3 GB of the largest fill
+# allowed and a 2 GB reserve. The harness caps the data at 8 L0 + 3 GB, and after the fill
+# requires free disk for the rest of it.
 #
 # Environment: JAVA_HOME or JAVA, HEAP (default 10g, quick 3g), CHILD_HEAP (same default),
 # EPOCHS (>=12, fixed work override for reproductions), KEEPDATA=1. OUT may name a NEW
@@ -38,8 +44,8 @@ main() {
     mode=${1:-full}
     seed=${2:-$(date +%Y%m%d)}
     case $mode in
-        full) keys=10000000; epochs=${EPOCHS:-40}; heap=${HEAP:-10g}; disk=45000000 ;;
-        quick) keys=1000000; epochs=${EPOCHS:-16}; heap=${HEAP:-3g}; disk=4000000 ;;
+        full) keys=10000000; epochs=${EPOCHS:-40}; heap=${HEAP:-10g}; disk=85000000 ;;
+        quick) keys=1000000; epochs=${EPOCHS:-16}; heap=${HEAP:-3g}; disk=13000000 ;;
         *) echo "Usage: sh java/stress/large.sh [full|quick] [SEED]"; return 2 ;;
     esac
     [ $# -le 2 ] || { echo "large.sh: at most MODE and SEED"; return 2; }

@@ -37,11 +37,19 @@ import bergdb.stream.FileStream;
  * user transactions. A second check caps H_R at 2 L0, so the absolute envelope is
  * 8 L0 + 2 GB. It is measured with a bounded ring, not estimated from throughput.
  * This is a workload acceptance envelope, not a proof of BergDB's general space bound.
+ *
+ * L0 depends on the seed's key order: at 10 million keys a fill in a random order writes
+ * about 6 GB, while an order that puts neighbouring keys within a few dozen transactions
+ * of each other writes about 2 GB (bergdb 028-63). So the data cap scales with the fill:
+ * 8 L0 + 3 GB, one GB above the absolute envelope, so that the envelope's checks fail
+ * first; after the fill the free disk must hold the rest of it. A fill of more than 1,000
+ * bytes a key fails: at 10 million keys the orders measured wrote 211 to 724 bytes a key.
  */
 public final class LargeReclaimRun {
     static final long DT = 10_000;
     static final long GB = 1_000_000_000L;
-    static final long DISK_CAP = 40 * GB;
+    /** The most bytes a key that the fresh fill may write (bergdb 028-63). */
+    static final long FILL_BYTES_PER_KEY = 1_000;
     static final int BATCH = 4, VALUE_BYTES = 64, BLOCK = 16_384;
     static final byte[] MARKER = "/large-run/prefix".getBytes(StandardCharsets.US_ASCII);
     static final long[] MARKER_KEY = Keys.toSegments(MARKER);
@@ -215,13 +223,18 @@ public final class LargeReclaimRun {
         db.setRetainDuration(retainTx * DT);
         db.sync(SyncLevel.ORDINARY);
         fresh = db.getStreamLength();
-        require(8 * fresh + 2 * GB < DISK_CAP, "fresh database is too large for the fixed space envelope");
+        require(fresh <= FILL_BYTES_PER_KEY * n, "fresh fill wrote " + fresh + " bytes, more than "
+                + FILL_BYTES_PER_KEY + " a key");
+        long need = diskCap() - fresh + 2 * GB, usable = Files.getFileStore(data).getUsableSpace();
+        require(usable >= need, "free disk " + usable + " is below the " + need
+                + " bytes that this fill's data cap 8 L0 + 3 GB and a 2 GB reserve need");
         originalLength = fresh;
         Arrays.fill(lengths, fresh);
         lastPhysical = stream.getFirstPos();
         Files.writeString(out.resolve("fresh.txt"), Long.toString(fresh) + "\n");
         log("FILL keys=" + n + " fresh=" + fresh + " retentionTransactions=" + retainTx
-                + " retentionUnits=" + retainTx * DT + " oracleBytes=" + lengths.length * 8L);
+                + " retentionUnits=" + retainTx * DT + " oracleBytes=" + lengths.length * 8L
+                + " dataCap=" + diskCap());
         fullScan("filled", 0);
         diskCheck();
     }
@@ -263,7 +276,8 @@ public final class LargeReclaimRun {
             if (logical > 8 * fresh || physical > 8 * fresh + 2 * GB)
                 throw new AssertionError("fixed space envelope exceeded at prefix=" + seq);
         }
-        if (physical >= DISK_CAP - 16_000_000) throw new AssertionError("data near 40 GB cap at prefix=" + seq);
+        if (physical >= diskCap() - 16_000_000)
+            throw new AssertionError("data near the cap 8 L0 + 3 GB at prefix=" + seq);
         long p = stream.getFirstPos();
         require(p >= lastPhysical, "physical first position moved backwards");
         if (p > lastPhysical) {
@@ -399,12 +413,15 @@ public final class LargeReclaimRun {
         diskCheck();
     }
 
+    /** The data cap, 8 L0 + 3 GB: above the absolute envelope 8 L0 + 2 GB (bergdb 028-63). */
+    long diskCap() { return 8 * fresh + 3 * GB; }
+
     void diskCheck() throws IOException {
         long bytes = 0;
         try (DirectoryStream<Path> files = Files.newDirectoryStream(data)) {
             for (Path f : files) if (Files.isRegularFile(f)) bytes += Files.size(f);
         }
-        require(bytes < DISK_CAP, "actual data files exceeded 40 GB: " + bytes);
+        require(bytes < diskCap(), "actual data files exceeded the cap 8 L0 + 3 GB: " + bytes);
         require(Files.getFileStore(data).getUsableSpace() >= 2 * GB, "less than 2 GB free disk");
     }
 
@@ -668,6 +685,7 @@ public final class LargeReclaimRun {
             if (args[0].equals("child")) { run.child(Long.parseLong(args[5])); return; }
             if (args[0].equals("verify")) {
                 run.seq = Long.parseLong(args[5]);
+                run.fresh = Long.parseLong(Files.readString(run.out.resolve("fresh.txt")).trim());
                 run.open(run.seq, false);
                 run.fullScan("existing-recovery", run.seq);
                 run.checkpoint();

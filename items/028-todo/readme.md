@@ -104,7 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-62](62-emptied-file-db-last-file.md) | Decide | RB-011: an emptied file database keeps its last file | decision | open |
-| [028-63](63-large-fill-envelope.md) | Investigate | week.sh's large run: the fresh fill is 3.4 times 028-43's | none | in progress |
+| [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
 
 
 Closed
@@ -528,3 +528,8 @@ Frans.
 2026-11-25. 028-63 registered by lead-1125, from `week.sh`: the large
 reclaim run's fresh fill at 10 million keys is 7.24 GB, 3.4 times
 028-43's; taken by an agent of lead-1125.
+
+2026-11-26. 028-63 done: the large reclaim run's fill depends on the
+seed's key order, the same bytes at `40cb9ae9` and `main`; 028-43's seed
+was one of the few local orders. The harness's data cap now scales with
+the fill (8 L0 + 3 GB).
