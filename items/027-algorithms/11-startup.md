@@ -76,8 +76,9 @@ refusal has written nothing:
    the magic and the version 155 (154 until 028-15, whose streams, of
    2026.5 and before, are refused with a message that names 2026.5): else
    a `StreamFormatException` (SFE) that names the causes (020-28), or a
-   `VersioningStreamException` (005-40). B's time must not be negative.
-   None valid: an SFE.
+   `VersioningStreamException` (005-40); but a block of 128 zero bytes
+   is read as not valid, as a zeroed tail leaves it (028-60). B's time
+   must not be negative. None valid: an SFE.
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
@@ -90,7 +91,8 @@ With L the stream's length and n(p, z) the position after a record of z
 bytes at p, meta blocks skipped:
 
     if L > 0 and L mod MD < M: append the rest of the block, zero but
-        the magic and the version: an invalid block          (005-27)
+        the magic and the version: an invalid block          (005-27);
+        all zero if its bytes are zero so far                (028-60)
     the meta block in memory := B, whole, its reserved bytes too
     p := B.lastTrans, or 128 if −1
     loop:
@@ -104,6 +106,15 @@ A torn last record becomes an aborted one, which every walk skips. That
 is 014-01's contract (section 7; Frans, 2026-11-05): the storage keeps a
 prefix of what was appended, a start recovers only a truncated tail, and
 other damage is refused as far as the checks see it.
+
+A tail of zeros within the stream's length, which a kill of the process
+during an append left on macOS (031-02, F1), is recovered as a cut where
+its zeros begin inside the last record: z, read before them, reaches to
+or past the end, and the zeros are not read; blocks of zeros among them
+are not valid (1.2, step 3). Zeros that reach a record's start, where
+they begin or past the end of the record they begin in, give z = 0
+there: an SFE, "Bad transaction size in db stream, 0, spos P", nothing
+written (028-60).
 
 ### 1.4. The startup pos and the section
 
@@ -602,3 +613,8 @@ rebalance reads a sibling for M1), section 9's `DropStep` against PE;
 record alone refused as a creation that did not complete (1.2); the
 creating start writes the second record and, with `created.txt`, syncs
 both before `created.txt` (1.2, 1.9).
+
+2026-11-25. 028-60: a meta block of zero bytes is not valid (1.2, step
+3); a cut block whose bytes are zero so far is completed with zeros
+(1.3); what recovery does with a tail of zeros (1.3). By an agent of
+lead-1125, on the branch `028-60`.

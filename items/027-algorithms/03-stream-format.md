@@ -360,7 +360,11 @@ recovery copies the last valid block whole, reserved bytes included
   the release that wrote it (2026.5 opens a database of 2026.5, not one of
   2026.4 or earlier) and put it with this release (028-30); a larger
   number as a newer BergDB's. It writes nothing before these checks
-  (005-40).
+  (005-40). A block of 128 zero bytes is read as not valid, without
+  them (028-60): a tail of zeros within the stream's length, which a
+  kill of the process during an append left on macOS (031-02, F1), can
+  cover a block's position; until 2026-11-25 it was a `BadMagicBytes`,
+  and the start refused the stream.
 * `MetaBlock.checkFormat` (:116), for a valid block: lastTrans below 0 and
   not −1, and a time below 0, are SFEs.
 * `RecoverableStream.checkLastTransSpos` (:170, 019-34): lastTrans must
@@ -434,7 +438,8 @@ for a failed one, made only by recovery's fill.
   skipped, whatever its content.
 * Recovery (`RecoverableStream.recover`, :127): the last valid meta block
   (`readLastValidMetaBlock`, :580); lastTrans checked (`checkLastTransSpos`,
-  :170); a cut meta block completed from `FILL_OUT_TEMPLATE`
+  :170); a cut meta block completed from `FILL_OUT_TEMPLATE`, or with
+  zeros if its bytes are zero as far as they go (028-60)
   (`fixMetaBlockIfNeeded`, :425); a cut record completed
   (`fixLastTransactionIfNeeded`, :256; `transHeaderFixBytes`, :296, with
   `TORN_HEADER_FILLER` 4, :81) and filled with zeros, its last byte 0.
@@ -1803,3 +1808,8 @@ coord-1120, on the branch `028-30-31-texts`.
 
 2026-11-20. 030-29: 8.3, `dirtyNodeBound` proved for PE's transactions of
 puts (Lean, given the fill rules).
+
+2026-11-25. 028-60: a meta block of 128 zero bytes is read as not valid
+(section 6), and a cut block whose bytes are zero so far is completed
+with zeros (section 7). By an agent of lead-1125, on the branch
+`028-60`.

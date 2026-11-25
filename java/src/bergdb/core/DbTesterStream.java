@@ -16,6 +16,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
@@ -560,6 +561,134 @@ public class DbTesterStream {
         }
     }
     
+    /**
+     * Bergdb 028-60: after a kill of the process during an append, the last stream file can
+     * end in zeros within its length, from a page boundary on (macOS, APFS; bergdb 031-02,
+     * F1), and the zeros can cover a meta block's position. Made here on a stopped database's
+     * last file, of 1 MB from stream position 4,000,000 (FileStream's files are of 200 kB
+     * before): its last record, a value of 400 kB over the meta blocks at 4,400,000 and
+     * 4,600,000, zero from the first 16 KiB page of the file after the record's header to the
+     * file's end, with the file's length as it is and cut inside the record, as the kill of
+     * 031-02's seed 91 left it. The start takes it as a cut tail: the records before it,
+     * synced, are there and the zeroed one is not; the database writes and starts again.
+     * Zeros that reach past a record's end, here from inside the record of 230 kB before it,
+     * as the kill of seed 63 left them, are refused as Database's Javadoc says ("What a crash
+     * keeps"): "Bad transaction size in db stream, 0, spos P", nothing written, and the file
+     * cut at P less its first position starts. Until 2026-11-25 the start refused all three,
+     * "Invalid magic bytes in stream", from the zero meta block (Db.refuseOtherNodeSize).
+     */
+    @Nano("f")
+    private static void testZeroedTailOverMetaBlock(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        final File dir = env.createTempDir();
+        final CoreTestClock clock = new CoreTestClock();
+        final byte[] a = new byte[230 * 1000];
+        final byte[] c = new byte[400 * 1000];
+        new Random(2860).nextBytes(a);
+        new Random(2861).nextBytes(c);
+        final long fileStart = 4 * 1000 * 1000;
+        final long recordC;
+        // Not forced: no kill comes before the files are zeroed by hand.
+        try (Db db = Db.builder().testSetup(new FileStream(dir, false)).clock(clock).start()) {
+            for (int i = 0; db.getStreamLength() < fileStart; i++) {
+                clock.setTime(10 + i);
+                db.execute(db.trans().put("f" + i, new byte[400 * 1000]));
+            }
+            clock.setTime(100);
+            db.execute(db.trans().put("z", "z-value"));
+            clock.setTime(200);
+            db.execute(db.trans().put("a", a));
+            clock.setTime(300);
+            db.execute(db.trans().put("b", "b-value"));
+            db.sync(SyncLevel.ORDINARY);
+            recordC = db.getStreamLength();
+            clock.setTime(400);
+            db.execute(db.trans().put("c", c));
+        }
+        final String lastName = "00000000000040.bergdb";
+        final long fileLength = new File(dir, lastName).length();
+        Assert.assertTrue("files " + java.util.Arrays.toString(dir.list()),
+                fileLength > 0 && !new File(dir, "00000000000050.bergdb").exists());
+        final long page = 16 * 1024;
+        final long zerosInC = fileStart + ((recordC - fileStart) / page + 1) * page;
+        Assert.assertTrue("c from " + recordC + ", zeros from " + zerosInC + ", end "
+                + (fileStart + fileLength), recordC > fileStart + 2 * page
+                && zerosInC > recordC + 8 && zerosInC < fileStart + 400 * 1000
+                && fileStart + fileLength > fileStart + 600 * 1000 + 1000);
+
+        long time = 500;
+        for (long length : new long[] {fileStart + fileLength, fileStart + 600 * 1000 + 1000}) {
+            final String what = "length " + length;
+            final File copy = copyStreamFiles(dir, env.createTempDir());
+            zeroFileTail(new File(copy, lastName), zerosInC - fileStart, length - fileStart);
+            try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+                Assert.assertArrayEquals(what, StringUtil.toBytes("z-value"),
+                        DbUtil.get(db, Long.MAX_VALUE, "z"));
+                Assert.assertArrayEquals(what, a, DbUtil.get(db, Long.MAX_VALUE, "a"));
+                Assert.assertArrayEquals(what, StringUtil.toBytes("b-value"),
+                        DbUtil.get(db, Long.MAX_VALUE, "b"));
+                Assert.assertTrue(what, DbUtil.get(db, Long.MAX_VALUE, "c") == null);
+                clock.setTime(time += 100);
+                db.execute(db.trans().put("d", "d-value"));
+            }
+            try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+                Assert.assertArrayEquals(what, a, DbUtil.get(db, Long.MAX_VALUE, "a"));
+                Assert.assertTrue(what, DbUtil.get(db, Long.MAX_VALUE, "c") == null);
+                Assert.assertArrayEquals(what, StringUtil.toBytes("d-value"),
+                        DbUtil.get(db, Long.MAX_VALUE, "d"));
+            }
+        }
+
+        // Zeros from inside a's record, over b's and c's: refused, then cut by hand at P.
+        final File copy = copyStreamFiles(dir, env.createTempDir());
+        final File last = new File(copy, lastName);
+        zeroFileTail(last, page, fileLength);
+        final long p;
+        try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+            throw new AssertionError("started with zeros past a record's end");
+        } catch (StreamFormatException e) {
+            final String prefix = "Bad transaction size in db stream, 0, spos ";
+            final String message = e.getMessage();
+            Assert.assertTrue(message, message.startsWith(prefix)
+                    && message.contains(". Stream length: "));
+            p = Long.parseLong(message.substring(prefix.length(),
+                    message.indexOf(". Stream length: ")));
+        }
+        Assert.assertEquals("nothing written", fileLength, last.length());
+        Assert.assertTrue("P " + p + ", b's record before " + recordC,
+                p > fileStart + page && p < recordC);
+        try (RandomAccessFile f = new RandomAccessFile(last, "rw")) {
+            f.setLength(p - fileStart);
+        }
+        try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+            Assert.assertArrayEquals(StringUtil.toBytes("z-value"),
+                    DbUtil.get(db, Long.MAX_VALUE, "z"));
+            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "a") == null);
+            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "b") == null);
+        }
+    }
+
+    /** Copies the stream files of 'from' to 'to', and returns 'to'. */
+    private static File copyStreamFiles(File from, File to) throws IOException {
+        for (File f : from.listFiles()) {
+            if (f.getName().endsWith(".bergdb")) {
+                java.nio.file.Files.copy(f.toPath(), new File(to, f.getName()).toPath());
+            }
+        }
+        return to;
+    }
+
+    /** Sets the file's length to 'length' and writes zeros from 'from' to its end. */
+    private static void zeroFileTail(File file, long from, long length) throws IOException {
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.setLength(length);
+            f.seek(from);
+            f.write(new byte[(int) (length - from)]);
+        }
+    }
+
     @Nano
     private static void testCreatedTxt(TestEnvironment env) throws IOException {
         if (Util.runsAndroid()) {

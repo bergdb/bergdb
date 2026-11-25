@@ -123,6 +123,14 @@ public class RecoverableStream {
      * <p>It reads before it writes (2026-10-25, bergdb 005-40): a stream whose meta blocks
      * it cannot read, as their magic bytes or their version are not this code's (a wrong
      * crypto key, or a stream of another version of BergDB), is refused as it is.</p>
+     *
+     * <p>A tail of zeros within the stream's length, as a kill of the process during an
+     * append can leave (bergdb 028-60; 031-02, F1), is a cut tail where its zeros begin
+     * inside the last record: that record's size, read before them, says how far it reaches,
+     * and the record is completed as an aborted one, its zeros not read; blocks of zeros among
+     * them are not valid (readMetaBlock()). Zeros that reach a record's start, where they
+     * begin or past the end of the record they begin in, give the size 0 there, refused:
+     * "Bad transaction size in db stream, 0, spos P" (Database's Javadoc says how to start).</p>
      * 
      * @throws StreamIoException
      * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,
@@ -498,9 +506,22 @@ public class RecoverableStream {
             // database did not start. The block filled out is invalid, as a partly written one
             // is; recovery takes the valid one before it.
             
+            // 2026-11-25 (bergdb 028-60): a block whose bytes are zero as far as they go, as a
+            // zeroed tail leaves it, is completed with zeros: it is then zero throughout, a
+            // block that readMetaBlock() reads as not valid. With the template's magic bytes
+            // and version after 1 to 7 zero bytes, it was neither, and a later read of it, as
+            // the next start's when no valid block follows it, refused the stream.
             int byteCount = RecoverableStream.META_BLOCK_SIZE - blockPos;
+            byte[] fill = MetaBlock.FILL_OUT_TEMPLATE;
+            if (blockPos > 0) {
+                byte[] written = new byte[blockPos];
+                readRaw(size - blockPos, written);
+                if (isZeros(written)) {
+                    fill = new byte[RecoverableStream.META_BLOCK_SIZE];
+                }
+            }
             try {
-                aos.append(MetaBlock.FILL_OUT_TEMPLATE, blockPos, byteCount);
+                aos.append(fill, blockPos, byteCount);
             } catch (IOException e) {
                 throw new StreamIoException(e);
             }
@@ -633,7 +654,8 @@ public class RecoverableStream {
     }
     
     /**
-     * Returns the last valid meta block, or null if no such block exists.
+     * Returns the last valid meta block, or null if no such block exists. A block of zero
+     * bytes is not valid (bergdb 028-60; readMetaBlock()).
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
@@ -822,7 +844,8 @@ public class RecoverableStream {
     
     /**
      * Returns the MetaBlock at the given stream position.
-     * The block may be invalid, caller should check it.
+     * The block may be invalid, caller should check it. A block of 128 zero bytes is
+     * returned as one that is not valid (2026-11-25, bergdb 028-60).
      * 
      * @throws StreamFormatException
      * @thrown StreamIoException
@@ -841,6 +864,25 @@ public class RecoverableStream {
         byte[] actualMagic = Util.subarray(header, 0, 4);
         
         if (!Util.areEqual(expectedMagic, actualMagic)) {
+            // 2026-11-25 (bergdb 028-60): a block of zero bytes is not valid, as a block that
+            // a crash cut is not, and the readers go on to the valid one before it. A kill of
+            // the process during an append can leave the stream's last bytes zero within its
+            // length, from a page boundary on (macOS, APFS; bergdb 031-02, F1), and meta
+            // blocks' positions among them. Until then such a block threw BadMagicBytes, and
+            // the start refused the database as a stream that is not BergDB's, before its
+            // recovery, which takes zeros inside the last record as a cut tail (recover()).
+            // Any other bytes than the magic ones are refused as before.
+            if (isZeros(header)) {
+                byte[] block = new byte[RecoverableStream.META_BLOCK_SIZE];
+                try {
+                    aos.read(blockPos, block, 0, block.length);
+                } catch (IOException e) {
+                    throw new StreamIoException(e);
+                }
+                if (isZeros(block)) {
+                    return new MetaBlock(block, blockPos);      // Not valid: its last byte is 0.
+                }
+            }
             throw new BadMagicBytes("Expected magic bytes: " 
                     + StringUtil.toHex(expectedMagic) + ", got: " + StringUtil.toHex(actualMagic));
         }
@@ -860,6 +902,16 @@ public class RecoverableStream {
         }
         
         return new MetaBlock(metaBytes, blockPos);
+    }
+    
+    /** Whether every byte of 'bytes' is 0 (bergdb 028-60). */
+    private static boolean isZeros(byte[] bytes) {
+        for (byte b : bytes) {
+            if (b != 0) {
+                return false;
+            }
+        }
+        return true;
     }
     
     /**
@@ -1271,6 +1323,135 @@ public class RecoverableStream {
             Assert.assertEquals(false, iter.next());
         }
         
+        /**
+         * Bergdb 028-60: a zeroed tail over meta blocks. A kill of the process during an
+         * append can leave the stream's last bytes zero within its length, from a page
+         * boundary on (macOS, APFS; bergdb 031-02, F1), and the zeros can cover a meta
+         * block's position. Here the last record spans the blocks at 200,000 and 400,000, and
+         * its bytes from 4,096 bytes after its start to the stream's end are zero, with the
+         * end at the record's end and inside it. Recovery passes over the zero blocks to the
+         * valid one before them, as over a block that a crash cut, and the record, cut or
+         * whole, is aborted: the records before it are kept, a read that starts at a zero
+         * block finds them, and a later append and recovery work. Zeros that reach past a
+         * record's end are refused with the size 0 at the next record, "Bad transaction size
+         * in db stream, 0, spos P", and the stream cut at P recovers. Until 2026-11-25,
+         * readMetaBlock() threw BadMagicBytes for a zero block, and the start refused each of
+         * them as a stream that is not BergDB's.
+         */
+        @Nano
+        public static void testZeroedTailOverMetaBlocks() throws IOException {
+            MemoryStream m = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(m, new MetaBlock());
+            final long[] starts = appendNamedTransactions(r, 150);
+            final long last = r.getNextSpos();
+            byte[] large = new byte[300 * 1000];
+            Bytes.intToBytesLE(large.length, large, 0);
+            large[large.length - 1] = LAST_BYTE;
+            r.append(large, 0, large.length, true, -1);
+            r.getMetaBlock().setLastTransSpos(last);
+            final long end = m.getLength();
+            Assert.assertTrue(last + " to " + end, last + 4096 < META_BLOCK_DISTANCE
+                    && end > 2 * META_BLOCK_DISTANCE + META_BLOCK_SIZE);
+
+            for (long length : new long[] {end, 2 * META_BLOCK_DISTANCE + 1000}) {
+                final String what = "length " + length;
+                MemoryStream z = m.copy();
+                z.truncate(length);
+                final long zerosFrom = last + 4096;
+                MemoryStream.TestAccess.write(z, new byte[(int) (length - zerosFrom)], zerosFrom);
+
+                RecoverableStream r2 = new RecoverableStream(z, new MetaBlock());
+                r2.recover();
+                Assert.assertEquals(what, end, z.getLength());
+                Assert.assertEquals(what, 0, r2.readLastValidMetaBlock().getPos());
+                Assert.assertEquals(what, starts.length, count(new Iterator(r2, 0)));
+                Assert.assertEquals(what, starts.length,
+                        count(new Iterator(r2, 2 * META_BLOCK_DISTANCE + 500)));
+
+                byte[] small = new byte[20];
+                Bytes.intToBytesLE(small.length, small, 0);
+                small[small.length - 1] = LAST_BYTE;
+                r2.append(small, 0, small.length, true, -1);
+                RecoverableStream r3 = new RecoverableStream(z, new MetaBlock());
+                r3.recover();
+                Assert.assertEquals(what, end + small.length, z.getLength());
+                Assert.assertEquals(what, starts.length + 1, count(new Iterator(r3, 0)));
+            }
+
+            // Zeros from inside the last small record: past its end, refused at the large one.
+            MemoryStream z = m.copy();
+            final long zerosFrom = starts[starts.length - 1] + 500;
+            MemoryStream.TestAccess.write(z, new byte[(int) (end - zerosFrom)], zerosFrom);
+            try {
+                new RecoverableStream(z, new MetaBlock()).recover();
+                throw new AssertionError("recovered zeros past a record's end");
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().startsWith(
+                        "Bad transaction size in db stream, 0, spos " + last + ". "));
+            }
+            Assert.assertEquals(end, z.getLength());
+            z.truncate(last);
+            RecoverableStream r4 = new RecoverableStream(z, new MetaBlock());
+            r4.recover();
+            Assert.assertEquals(last, z.getLength());
+            Assert.assertEquals(starts.length - 1, count(new Iterator(r4, 0)));
+        }
+
+        /**
+         * Bergdb 028-60: a zeroed tail that ends 1 to 127 bytes into a meta block's position.
+         * Recovery completes a block that a crash cut; one whose bytes are zero as far as they
+         * go it completes with zeros, so that it is zero throughout and not valid, as
+         * readMetaBlock() reads it. With FILL_OUT_TEMPLATE's magic bytes and version after
+         * zeros, a block ending 1 to 7 bytes in was neither a block nor zeros, and the next
+         * recovery, which reads it as the last block, refused the stream (BadMagicBytes). A
+         * stream that ends at the block's position gets the template, as since 005-27.
+         */
+        @Nano
+        public static void testZeroedTailEndingInMetaBlock() throws IOException {
+            MemoryStream m = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(m, new MetaBlock());
+            final long[] starts = appendNamedTransactions(r, 150);
+            final long last = r.getNextSpos();
+            byte[] large = new byte[100 * 1000];
+            Bytes.intToBytesLE(large.length, large, 0);
+            large[large.length - 1] = LAST_BYTE;
+            r.append(large, 0, large.length, true, -1);
+            r.getMetaBlock().setLastTransSpos(last);
+            final long end = m.getLength();
+            Assert.assertTrue(last + " to " + end, last + 4096 < META_BLOCK_DISTANCE
+                    && end > META_BLOCK_DISTANCE + META_BLOCK_SIZE);
+
+            for (int x : new int[] {0, 1, 3, 7, 8, 64, 127}) {
+                final String what = "the stream ends " + x + " bytes into the block";
+                final long length = META_BLOCK_DISTANCE + x;
+                MemoryStream z = m.copy();
+                z.truncate(length);
+                final long zerosFrom = last + 4096;
+                MemoryStream.TestAccess.write(z, new byte[(int) (length - zerosFrom)], zerosFrom);
+
+                new RecoverableStream(z, new MetaBlock()).recover();
+                Assert.assertEquals(what, end, z.getLength());
+                byte[] block = new byte[META_BLOCK_SIZE];
+                z.read(META_BLOCK_DISTANCE, block, 0, block.length);
+                Assert.assertArrayEquals(what, x == 0 ? MetaBlock.FILL_OUT_TEMPLATE
+                        : new byte[META_BLOCK_SIZE], block);
+
+                RecoverableStream r2 = new RecoverableStream(z, new MetaBlock());
+                r2.recover();
+                Assert.assertEquals(what, end, z.getLength());
+                Assert.assertEquals(what, 0, r2.readLastValidMetaBlock().getPos());
+                Assert.assertEquals(what, starts.length, count(new Iterator(r2, end - 1)));
+            }
+        }
+
+        private static int count(Iterator iter) {
+            int n = 0;
+            while (iter.next()) {
+                n++;
+            }
+            return n;
+        }
+
         /**
          * Regression test for bergdb 005-40: a recovery that cannot read the meta blocks, with
          * a wrong crypto key, with none on an encrypted stream, or with one on a stream that is
