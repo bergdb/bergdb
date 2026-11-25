@@ -102,6 +102,8 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
+| [028-58](58-maintain-two-stretches.md) | Investigate | maintain() leaves an emptied database at 790 kB (two stretches) | none | open |
+| [028-59](59-maintain-filler-left-live.md) | Investigate | A stop between the filler's put and delete leaves it live | none | open |
 
 
 Closed
@@ -484,3 +486,8 @@ fixed on `main`; moved to Closed.
 
 2026-11-25. 028-57 done: the test's timing, not the database; the test
 takes either exception the start may throw; moved to Closed.
+
+2026-11-25. 028-58 and 028-59 registered by lead-1125, from 031-03,
+sections 9.1 and 9.2: `maintain()` leaves an emptied database at 790 kB
+when its two stretches each stay below 400 kB; a stop between the
+filler's put and delete leaves it live.
