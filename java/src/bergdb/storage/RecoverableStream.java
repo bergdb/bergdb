@@ -128,9 +128,13 @@ public class RecoverableStream {
      * append can leave (bergdb 028-60; 031-02, F1), is a cut tail where its zeros begin
      * inside the last record: that record's size, read before them, says how far it reaches,
      * and the record is completed as an aborted one, its zeros not read; blocks of zeros among
-     * them are not valid (readMetaBlock()). Zeros that reach a record's start, where they
-     * begin or past the end of the record they begin in, give the size 0 there, refused:
-     * "Bad transaction size in db stream, 0, spos P" (Database's Javadoc says how to start).</p>
+     * them are not valid (readMetaBlock()). Zeros that cover a whole size field at a
+     * record's start, where they begin or past the end of the record they begin in, give the
+     * size 0 there, refused: "Bad transaction size in db stream, 0, spos P" (Database's
+     * Javadoc says how to start). A meta block that the end of the stream cuts is completed
+     * before the sizes are read, so the refusal may append its missing bytes. A size field
+     * that the end cuts (1 to 3 zero bytes) is completed as a torn record's is, and that
+     * record recovered as an aborted one.</p>
      * 
      * @throws StreamIoException
      * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,

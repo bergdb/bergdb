@@ -196,7 +196,8 @@ The options:
 
 * **B1. Refuse, as documented (the state after part 1).** The start
   refuses with "Bad transaction size in db stream, 0, spos P. Stream
-  length: L." and writes nothing; a person keeps a copy, cuts the file
+  length: L." and writes nothing but the missing bytes of a meta block
+  that the end cut, if any; a person keeps a copy, cuts the file
   that holds P to P less its first position and removes later files
   (`Database`'s Javadoc); the database then starts with every
   transaction a sync returned for. To do: `Database`'s "What a crash
@@ -281,3 +282,11 @@ zeros is completed with zeros (section 3); seed 91's files start, seed
 63's are refused as documented and start when cut at P. Part 2, zeros
 past a record's end, written as options B1 to B3 for Frans (section 4;
 recommended: B2).
+
+2026-11-25. Codex's review of part 1 (lead-1125): the fix holds for the
+fault; two texts corrected: the refusal may append a cut meta block's
+missing bytes (recover() completes it before it reads the sizes), and a
+size field cut by the end (1 to 3 zero bytes) is recovered as a torn
+record's; Codex favours B2 for part 2, with every byte from P to the
+end checked to be zero, the cut forced, and repeated crashes during the
+repair tested; B1 acceptable for a release meanwhile.

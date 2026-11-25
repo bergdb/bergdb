@@ -111,10 +111,15 @@ A tail of zeros within the stream's length, which a kill of the process
 during an append left on macOS (031-02, F1), is recovered as a cut where
 its zeros begin inside the last record: z, read before them, reaches to
 or past the end, and the zeros are not read; blocks of zeros among them
-are not valid (1.2, step 3). Zeros that reach a record's start, where
-they begin or past the end of the record they begin in, give z = 0
-there: an SFE, "Bad transaction size in db stream, 0, spos P", nothing
-written (028-60).
+are not valid (1.2, step 3). Zeros that cover a whole size field at a
+record's start, where they begin or past the end of the record they
+begin in, give z = 0 there: an SFE, "Bad transaction size in db stream,
+0, spos P" (028-60). Before it reads the sizes, the recovery completes a
+meta block that the end of the stream cut, so the refusal may append
+that block's missing bytes; it writes nothing else. A size field that
+the end of the stream cuts, 1 to 3 zero bytes, is completed as any torn
+record's and recovered as an aborted record (Codex's review of 028-60,
+2026-11-25).
 
 ### 1.4. The startup pos and the section
 
