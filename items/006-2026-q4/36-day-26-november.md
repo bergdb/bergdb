@@ -23,6 +23,9 @@ Frans, 2026-11-26:
 * 035 created, the environments BergDB runs in, examined with programs
   that use no BergDB code; 035-01 first, the zeros after a kill (031-02,
   F1); Windows not now. 028-60's part 2 waits for 035-01 (10:20).
+* The lead answers within seconds; writing and chores (item texts,
+  commits, the plan) go to a background helper of the lead, which may
+  write to `main` while the lead does not (10:30).
 * `week.sh`: an aim of 10 hours, at most 12 (06:35); no whole-run hang
   guard (07:58); 028-64 landed and a full `week.sh` started (07:58).
 
