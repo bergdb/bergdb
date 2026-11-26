@@ -104,7 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
-| [028-66](66-cut-deletes-lag.md) | Investigate | The cut's deletes lag behind a fast writer, more with a tenth | none | open |
+| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
 
 
@@ -566,3 +566,10 @@ APFS a write cut by a kill can leave a deleted file's bytes within the
 last stream file's length; a start refuses most such tails with unclear
 messages and may first append up to 2 GB of zeros; options C1 to C4 for
 Frans (C1 recommended now, C3 with the next stream-format change).
+
+2026-11-26. 028-66 measured (branch `028-66`): a directory force per
+deleted file keeps 1.3 to 1.6 times the stream on disk at 100 MB/s and
+more, and slows a writer with no limit by about 40 % against the
+quarter; a batch delete with one force keeps 1.03 to 1.05 and the
+writer's speed, but breaks 011-07's order of deletes under the
+power-loss model. Not landed; options A to C for Frans.

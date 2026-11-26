@@ -60,6 +60,9 @@ import bergdb.stream.FileStream;
  *               CutStream in memory. Deleted at the end.
  *   touchstats=0  Do not count the touch (the counting costs time in the writer).
  *   window=N    Print WE over every N transactions of phase 3 (default 0: no).
+ *   rate=X      Phase 3 appends at most X MB of stream a second (default 0: no limit;
+ *               2026-11-26, bergdb 028-66): the writer sleeps when it is ahead. Time is
+ *               simulated, so the stream and its cuts are the same at every rate.
  */
 public class ReclaimCost {
     final int valsize = Math.max(8, Integer.getInteger("valsize", 1000));
@@ -76,6 +79,7 @@ public class ReclaimCost {
     final boolean disk = "1".equals(System.getProperty("disk"));
     final boolean touchStats = !"0".equals(System.getProperty("touchstats"));
     final int window = Integer.getInteger("window", 0);
+    final double rate = Double.parseDouble(System.getProperty("rate", "0"));
     final File dir = new File(System.getProperty("dir", "build/reclaimcost-" + System.nanoTime()));
 
     /** Transactions in R, and the time between transactions; R is at least 1 s. */
@@ -232,7 +236,7 @@ public class ReclaimCost {
         System.out.println("ReclaimCost work=" + work + " valsize=" + valsize + " n=" + n
                 + " live=" + live + " k=" + kProp + " sd=" + sd + " f="
                 + (fProp == null ? "default" : fProp) + " cuts=" + cutsWanted
-                + " disk=" + disk + " touchstats=" + touchStats);
+                + " disk=" + disk + " touchstats=" + touchStats + " rate=" + rate);
         db = start(true);
         db.start();
         db.setStartupDistance(sd);      // kept in the stream (bergdb 028-13)
@@ -285,10 +289,22 @@ public class ReclaimCost {
         long prevCutPos = -1;
         long winLen = db.getStreamLength(), winPuts = putCount;
         String stop = null;
+        final long paceLen0 = db.getStreamLength(), paceNanos0 = System.nanoTime();
 
         while (stop == null) {
             long l = update();
             long done = records - startTrans;
+            if (rate > 0 && done % 100 == 0) {
+                long ahead = (long) ((db.getStreamLength() - paceLen0) / rate * 1e3)
+                        - (System.nanoTime() - paceNanos0);
+                if (ahead > 1000000) {
+                    try {
+                        Thread.sleep(ahead / 1000000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
             if (firstLen >= 0) {
                 if (latCount == lat.length) lat = Arrays.copyOf(lat, latCount * 2);
                 lat[latCount++] = l;

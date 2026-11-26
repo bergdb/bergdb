@@ -1,0 +1,199 @@
+diff --git a/java/src/bergdb/stream/FileStream.java b/java/src/bergdb/stream/FileStream.java
+index a988fe50..b3f6c096 100644
+--- a/java/src/bergdb/stream/FileStream.java
++++ b/java/src/bergdb/stream/FileStream.java
+@@ -51,7 +51,8 @@ import bergdb.pub.util.BadFormatException;
+  * last one. So the files hold the stream from the start of the file that the cut's position
+  * lies in: the disk can hold up to about one file more than the stream, about a tenth of the
+  * stream when that file was made, and, for a while after a cut, the files that the cut's
+- * thread has not yet deleted. This holds also after the stream has shrunk: a database
++ * thread has not yet deleted (since 2026-11-26 a batch at a time, the directory forced once
++ * after it: runCuts, bergdb 028-66). This holds also after the stream has shrunk: a database
+  * emptied after a large stream keeps the file that its first position lies in until appends
+  * fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed 5, 10,400 kB of a 20 MB
+  * file on disk for 61 kB of stream with the quarter, 400 kB with the tenth). A start accepts
+@@ -60,7 +61,8 @@ import bergdb.pub.util.BadFormatException;
+  * the last is a multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).
+  * 
+  * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
+- * only by appends at its end, and removes files only whole, by deletes, the oldest first;
++ * only by appends at its end, and removes files only whole, by deletes, the oldest first
++ * (also within the batch that the cut's thread deletes before one force of the directory);
+  * it never writes a byte of a file twice, truncates or renames one (recovery after a crash
+  * appends too, RecoverableStream). So the stream's files (*.bergdb), copied in the order of
+  * their names, are a backup; bergdb.lock is not needed:
+@@ -121,7 +123,8 @@ import bergdb.pub.util.BadFormatException;
+  * with positional reads on a channel of the file's own, and finds its file in a list
+  * that the writer replaces, never changes. The writer, its append and force, a new file
+  * with its forces, and a cut, holds no lock that a read takes; a cut only takes its files
+- * off the list, and a thread of its own deletes them, in the same order as before. Before,
++ * off the list, and a thread of its own deletes them, in the same order as before (a batch
++ * at a time, the directory forced once after it, since 2026-11-26, bergdb 028-66). Before,
+  * a read of the last file waited for the writer's append and force, and every read for a
+  * new file's forces and a cut's deletes; on a slow disk for seconds.
+  * 
+@@ -647,27 +650,43 @@ public class FileStream implements AppendOnlyStream {
+     }
+     
+     /**
+-     * The cut's thread: deletes the files that cuts took off, oldest first, and forces the
+-     * directory after each, as pretruncate() did (bergdb 005-46). Each removal of a prefix
+-     * is persisted before the next one: a crash must not retain an older file while losing
+-     * a newer one, which would leave a hole before recovery can read the cut table. A crash
+-     * before a file is deleted leaves it, and the next start cuts again (Reclaim). It ends
+-     * when nothing is left to delete, or at a failure, which it keeps as the stream's.
++     * The cut's thread: deletes the files that cuts took off, oldest first (bergdb 005-46). A
++     * batch at a time (2026-11-26, bergdb 028-66): the files that the cuts so far took off,
++     * deleted oldest first, then one force of the directory; files that a cut takes off
++     * meanwhile are the next batch. Until 2026-11-26 it forced the directory after each
++     * file, as pretruncate() did before 005-46: a directory force is a device flush (about
++     * 6 ms on F53 alone, more beside a writer's forces), and a database written at about
++     * 120 MB/s, whose new files are a tenth of the stream kept (bergdb 028-62), cut faster
++     * than the thread deleted, the disk 1.5 times the stream kept (bergdb 028-66 has the
++     * figures).
+      * 
+-     * Before a delete, it has the stream forced up to its length at the cut (2026-11-04,
+-     * bergdb 005-47), a no-op with per-append forcing on. Reclaim cuts when the durable length
+-     * has passed its decision (Reclaim, pendingCutDurableAt); with forcing off that length
+-     * means written, and a power loss after the delete would keep the cut and lose the
+-     * decision.
++     * Each batch's removal is persisted before the next batch's: a crash must not retain an
++     * older file while losing a newer one, which would leave a hole before recovery can
++     * read the cut table; a start refuses a hole (BadDirStateException). Within a batch the
++     * order of the deletes matters for the same reason, and only the file system keeps it:
++     * POSIX does not order directory changes without a force between them. A file system
++     * that commits metadata changes as transactions in the order made (APFS; ext4 and XFS
++     * with their journals) leaves a prefix of the batch deleted at a crash, which the
++     * deletes oldest first rely on; one that did not could leave a hole, which a start
++     * refuses: the files before the hole all end before the cut and can be deleted by hand.
++     * A crash before the force leaves files of the batch, and the next start cuts again
++     * (Reclaim). It ends when nothing is left to delete, or at a failure, which it keeps as
++     * the stream's.
++     * 
++     * Before a batch, it has the stream forced up to its length at the latest cut
++     * (2026-11-04, bergdb 005-47), a no-op with per-append forcing on; every file of the
++     * batch ends before that length. Reclaim cuts when the durable length has passed its
++     * decision (Reclaim, pendingCutDurableAt); with forcing off that length means written,
++     * and a power loss after the delete would keep the cut and lose the decision.
+      */
+     private void runCuts() {
+         try {
+             while (true) {
+-                DbFile k;
++                int batch;
+                 long forceTo;
+                 synchronized (this) {
+-                    k = cutFiles.peekFirst();
+-                    if (k == null || ioException != null) {
++                    batch = cutFiles.size();
++                    if (batch == 0 || ioException != null) {
+                         cutThread = null;
+                         notifyAll();
+                         return;
+@@ -677,7 +696,19 @@ public class FileStream implements AppendOnlyStream {
+                 
+                 try {
+                     forceTo(forceTo);
+-                    k.delete();
++                    // Cuts add files at the end only, so the batch is the first 'batch' files.
++                    // A file leaves the queue once deleted: close() needs only those that are
++                    // not, to close them after a failure.
++                    for (int i = 0; i < batch; i++) {
++                        DbFile k;
++                        synchronized (this) {
++                            k = cutFiles.peekFirst();
++                        }
++                        k.delete();
++                        synchronized (this) {
++                            cutFiles.removeFirst();
++                        }
++                    }
+                     forceDirectory(dir);
+                 } catch (IOException e) {
+                     ioException = e;
+@@ -688,12 +719,6 @@ public class FileStream implements AppendOnlyStream {
+                     cutFailure.initCause(e);
+                     ioException = cutFailure;
+                 }
+-                
+-                synchronized (this) {
+-                    if (ioException == null) {
+-                        cutFiles.removeFirst();
+-                    }
+-                }
+             }
+         } finally {
+             // Also when the thread dies (2026-11-06, bergdb 019-39): close() waits for it.
+@@ -2992,6 +3017,72 @@ public class FileStream implements AppendOnlyStream {
+         }
+     }
+     
++    /**
++     * bergdb 028-66: the cut's thread deletes the files that the cuts so far took off as one
++     * batch, oldest first, and forces the directory once after it, not after each file;
++     * files that a cut takes off while it deletes are the next batch, with a force of their
++     * own. The stream reads the same, and a restart opens it.
++     */
++    @Nano
++    static void testCutDeletesABatchWithOneDirectoryForce(TestEnvironment c) throws Exception {
++        final List<String> log = Collections.synchronizedList(new ArrayList<String>());
++        HeldIo io = new HeldIo() {
++            protected void forceDirectory(File directory) throws IOException {
++                super.forceDirectory(directory);
++                log.add("force");
++            }
++            
++            protected boolean delete(File file) throws IOException {
++                boolean ok = super.delete(file);
++                log.add("delete " + file.getName());
++                return ok;
++            }
++        };
++        File dir = c.createTempDir();
++        FileStream f = new FileStream(dir, io);
++        byte[] bytes = new byte[1400 * 1000 + 100];
++        new Random(28066).nextBytes(bytes);
++        try {
++            f.append(bytes, 0, 1400 * 1000);        // Seven files of 200,000 bytes.
++            f.append(bytes, 1400 * 1000, 100);      // An eighth, at 1,400,000.
++            log.clear();
++            
++            // The thread holds in its first delete while a second cut takes off three files.
++            io.holdDelete = new java.util.concurrent.CountDownLatch(1);
++            f.pretruncate(400 * 1000);
++            Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
++            f.pretruncate(1000 * 1000);
++            io.holdDelete.countDown();
++            f.awaitDeletes();
++            
++            Assert.assertEquals(Arrays.asList(
++                    "delete " + fileName(0), "delete " + fileName(200 * 1000), "force",
++                    "delete " + fileName(400 * 1000), "delete " + fileName(600 * 1000),
++                    "delete " + fileName(800 * 1000), "force"), log);
++            Assert.assertEquals(1000 * 1000, f.getFirstPos());
++            readAndCheck(f, 1000 * 1000, 400 * 1000 + 100, bytes);
++            
++            // A cut that takes every file but the last: one batch of two, one force.
++            log.clear();
++            f.pretruncate(1400 * 1000 + 50);
++            f.awaitDeletes();
++            Assert.assertEquals(Arrays.asList(
++                    "delete " + fileName(1000 * 1000), "delete " + fileName(1200 * 1000),
++                    "force"), log);
++        } finally {
++            f.close();
++        }
++        Assert.assertEquals(Arrays.asList(fileName(1400 * 1000)),
++                Arrays.asList(dir.list((d, name) -> name.endsWith(SUFFIX))));
++        FileStream again = new FileStream(dir);
++        try {
++            Assert.assertEquals(1400 * 1000, again.getFirstPos());
++            readAndCheck(again, 1400 * 1000, 100, bytes);
++        } finally {
++            again.close();
++        }
++    }
++    
+     /**
+      * bergdb 005-46: a read by a thread whose interrupt flag is set reads, and leaves the
+      * flag set; a FileChannel would have closed itself. And a read that finds the channel
