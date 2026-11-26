@@ -18,6 +18,8 @@ Friday 07:00: the progress and the outcome. The way of working is
 
 Frans, 2026-11-26:
 
+* 031-03, F6: 9.1 (RB-006's remaining part) and 9.2 (RB-010) confirmed
+  as released bugs, S4; 9.3 a space cost, registered as 028-65 (09:46).
 * `week.sh`: an aim of 10 hours, at most 12 (06:35); no whole-run hang
   guard (07:58); 028-64 landed and a full `week.sh` started (07:58).
 
@@ -57,8 +59,7 @@ The lead, 2026-11-26:
 
 ## 4. Waiting for Frans
 
-* 031-03, F1 to F5: wait for 031-04's study; F6 (9.1 and 9.2 as
-  released bugs) stands on its own.
+* 031-03, F1 to F5: wait for 031-04's study.
 * 028-60, part 2: B1, B2 or B3 (B2 recommended).
 * 028-62, RB-011: J or S (S recommended, if its design stays small).
 * 028-54: whether P2 covers a restart inside a commit's maintenance.

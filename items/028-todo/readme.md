@@ -104,7 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-62](62-emptied-file-db-last-file.md) | Decide | RB-011: an emptied file database keeps its last file | decision | open |
-| [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
+| [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 
 
 Closed
@@ -112,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
 | [028-64](64-week-run-ten-hours.md) | Change | week.sh in three lanes, about 6 hours, no coverage cut | none | done | 2026-11-26 |
 | [028-59](59-maintain-filler-left-live/readme.md) | Investigate | A stop between the filler's put and delete leaves it live: released, S4 | none | done | 2026-11-25 |
 | [028-58](58-maintain-two-stretches/readme.md) | Investigate | An emptied database at 790 kB: RB-006 and RB-007; RB-006 fixed in part | none | done | 2026-11-25 |
@@ -541,3 +542,8 @@ the aim that Frans set for `week.sh` (about 10 hours on F53, at most
 run beside the other steps, each in a clone of its own, with the same
 steps, seeds and sizes; about 6 hours estimated; no whole-run hang
 guard (Frans). Moved to Closed.
+
+2026-11-26. 028-65 registered by lead-1126, from 031-03, section 9.3: a
+database not written to keeps several times its live values under
+`maintain()`; a space cost, not a released bug (Frans). 028-63's row
+moved to Closed.

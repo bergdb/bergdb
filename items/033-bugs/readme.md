@@ -471,3 +471,8 @@ not fixed (028-62).
 2026-11-25. RB-012 registered (028-60), S2: after a kill on macOS, a
 zeroed tail over a meta block stops the start, in 2026.5 and 2026.6;
 fixed in part on `main`; the rest for Frans (028-60, B1 to B3).
+
+2026-11-26. Frans confirmed RB-006's remaining part (031-03, section 9.1;
+028-58) and RB-010 (031-03, section 9.2; 028-59) as released bugs, S4.
+031-03's section 9.3 (a database not written to keeps several times its
+live values) is a space cost, not a released bug: 028-65.

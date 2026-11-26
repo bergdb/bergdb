@@ -777,3 +777,7 @@ prototype's diff and the probes.
 2026-11-25. Codex's review (section 14): the witness holds; the drain
 can repeat with a reduced step reserve (a test setting); a writable
 downgrade can lose w; an old filler stays after an upgrade.
+
+2026-11-26. F6 answered (Frans): 9.1 and 9.2 released bugs, S4, as
+RB-006's remaining part and RB-010 record; 9.3 a space cost, 028-65.
+F1 to F5 wait for 031-04's study of `maintain(int budget)`.
