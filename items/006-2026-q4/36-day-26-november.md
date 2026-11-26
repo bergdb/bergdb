@@ -153,6 +153,11 @@ The lead, 2026-11-26:
   not landed: a batch breaks 011-07's rule that every prefix delete is
   forced before the next (two power-loss tests); options A to C for
   Frans (028-66). Figures indicative (week.sh's large run beside).
+* 17:41 `week.sh` on `2a321805`, the first run in three lanes (028-64):
+  WEEK OK in 565 minutes, 9.4 hours, under the day's heavy load from
+  agents beside it (the large reclaim run 9.4 hours, 5.5 alone; the large
+  conformance set 6.3 hours). 17:44 `night.sh` started on `8ad6599b`.
+
 
 ## 4. Waiting for Frans
 
