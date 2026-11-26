@@ -1,6 +1,6 @@
 # 006-35 Day work, 25 November 2026
 
-Created 2026-11-25 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-25 by Frans Lundberg. Status: done (2026-11-26). The plan for the
 lead's day of 2026-11-25 (lead-1125), a Wednesday, and its night to
 Thursday 07:00: the progress and the outcome. The way of working is
 013-04's (the lead).
@@ -143,8 +143,68 @@ Frans, 2026-11-25:
   3 GB with a free-disk check after the fill, landed (`9fbed243`).
   00:21 `large.sh full 20782` started, to check it and time a full run
   of such an order.
+* 00:19 to 05:51 `large.sh full 20782` on `9fbed243`: LARGE RECLAIM OK,
+  100,082,137 transactions, 216 cuts, two clean restarts and one kill,
+  stream kept at most 14.7 GB (the bound 61 GB); 19,922 s, 5.5 hours, so
+  `week.sh` now takes about 15 hours, not 10.
 
 
 ## 4. Outcome
 
-Not written yet.
+Written 2026-11-26, 06:25.
+
+**Done.** Five released bugs found and registered, three of them fixed
+on `main`, each with a test that fails before the fix and a review by
+Codex before it landed:
+
+* RB-008, S3 (028-55, found by `week.sh`): `Db.getTrans` refused a
+  large transaction just after a cut; fixed.
+* RB-009, S3 (028-56, found by Codex's review of 028-55): a cut during
+  that walk could expire a kept transaction; fixed.
+* RB-012, S2 (028-60, found by 031-02's app hunt): after a kill on
+  macOS, a zeroed tail over a meta block stopped the start; fixed in
+  part.
+* RB-010, S4 (028-59): a stop during `maintain()` can leave its filler
+  live; not fixed.
+* RB-011, S4 (028-61): an emptied file database keeps its last stream
+  file; not fixed.
+
+Also: RB-006's fix on `main` noted as partial (028-58); 028-57 (a test's
+timing) fixed; 028-63 (the large run's envelope, the seed's order, not
+the code) fixed in the harness. Codex reviewed the Java changed since
+2026.6 and found no new bug. 031-02, an app hunt of 11 new apps and
+about 9,500 kills, found RB-011 and RB-012 and found the rest sound.
+For RB-007: 031-01's design and its repair (B recommended after Codex's
+review), then, at Frans's request, 031-03 by an agent on Fable: w read
+off the stream, with no store or recovery case of its own; Codex's
+review found the witness sound, with limits (section 14). The notes of
+2026.5 and 2026.6, `next.md` and both GitHub release pages name RB-008
+to RB-012. `night.sh` OK on `6bc85bfd`, all of the day's Java; `week.sh`
+on `09bf9efb` FAILED on two steps, both since explained (RB-008 fixed;
+028-63's envelope); the full large run OK on the new envelope. The run
+data of 13 to 20 November deleted (Frans): 387 GB free.
+
+**By default.** Nothing went ahead by default.
+
+**Waiting for Frans.**
+
+* 031-03, F1 to F6: the witness design for `maintain()` (O-1
+  recommended, by its agent and by Codex, with its limits stated: the
+  drain can repeat with a reduced step reserve, a test setting; a
+  writable downgrade to 2026.6 needs a rule; old fillers need a
+  cleanup; the internal format changes). It fixes RB-007, RB-010 and
+  the rest of RB-006.
+* 028-60, part 2: a zeroed tail past a record's end: B1 refuse as
+  documented, B2 cut it at the start (recommended by its agent and by
+  Codex), B3 B2 on request.
+* 028-62, RB-011: J the Javadoc, or S a file boundary in `FileStream`
+  (recommended: S, if its design stays small).
+* 028-54: whether P2 covers a restart between a user transaction and
+  reclaim's internal transactions after it.
+
+**Proposed next.** With Frans's choices: 031-03 built by an agent (Opus,
+xhigh) with section 11's tests, reviewed by Codex, `timing.sh` for its
+cost at a commit; 028-60's part 2 and 028-62 as chosen; then `week.sh`
+again on the day's `main` (now about 15 hours) and `night.sh`, before
+2026.7 is planned. 2026.7 waits for RB-007, RB-010, RB-011 and RB-012's
+rest (034-01: no release with a known bug).
