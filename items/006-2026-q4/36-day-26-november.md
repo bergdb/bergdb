@@ -135,6 +135,16 @@ The lead, 2026-11-26:
   prototype: 195 of 1,857 boundaries differ); D2 recommended; a Lean
   theorem T16_crash sketched; Q1 to Q9 for Frans. Landed as text; the
   review by Fable started (14:09).
+* 14:36 to 14:45 028-60's part 2 after Codex's review: the zero tail
+  left out of the stream at open and cut at the first append; a keyless
+  or refused start changes no byte; Codex's second round: two smaller
+  findings being fixed; encryption for Frans.
+* 14:47 031-05's review by Fable (agent, Fable high, 38 minutes): take
+  the direction as D2; the prototype held at every record boundary,
+  under concurrency and upgrades; nine findings (031-05, section 12),
+  among them a crash inside a record (the goal holds at record
+  boundaries), the clock held after some crashes, fixed by a start that
+  writes what is due (Q2 (c)), and two f-tests that D2 fails.
 
 
 ## 4. Waiting for Frans

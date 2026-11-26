@@ -762,6 +762,37 @@ readme, 030-26 and the model; nothing built.
   the landing with 031-04's.
 
 
+## 12. The independent review (Fable)
+
+By an agent on Fable, high, at Frans's request (2026-11-26, 14:09 to
+14:47); its report is [review-fable.md](review-fable.md).
+
+* **Verdict:** take the direction, as D2. At record boundaries the
+  reviewer could not break the prototype: 11,430 continuations with
+  readers, refused calls and clock jumps; 10 concurrent runs, each
+  replayed by one thread; 427 streams each of `main` and 2026.6
+  upgraded.
+* **F1.** D2 fails two f-tests: a setter of the retain duration now
+  decides a cut in its own call; D1 passes.
+* **F2.** A crash inside a record leaves the aborted record, not a
+  prefix: the goal holds at record boundaries; sections 4.1 and 4.4
+  overclaim.
+* **F3.** `T16_crash`'s equality is false at a schedule's end; the
+  sketch is sound only with changes, and mostly a corollary of
+  `T2_restart` and `T12`.
+* **F4.** "A smaller budget" and "two calls with the same time" are not
+  literal: the part as `maintain()`'s unit.
+* **F5, F6.** In D2 about 10 % of crash points leave the clock held
+  until the next write. Q2 (c), a start that writes what is due, fixed
+  it in a 4-line variant, would let 80 to 100 of the 231 lines go, and
+  makes Q8 disappear: recommended, a start that writes being Frans's
+  decision.
+* **F7.** `catchUp()` runs outside the code that fails the database at
+  five sites.
+* **F8.** The dropped after-row charge re-opens 028-26.
+* **F9.** G4's M5 at 1.933 of 2.0, unexplained.
+
+
 ## Log
 
 2026-11-26. Created by lead-1126 from Frans's decision of the same day:
@@ -778,3 +809,7 @@ stream (031-04's prototype: 195 of 1,857 differ); the conformance's
 reclaim and crash sets OK in D2; the costs of D1; a Lean sketch; nine
 questions for Frans. Sections 4 to 11, `prototype.diff`,
 `probes/`, `p2crash-runs.txt`.
+
+2026-11-26. The independent review by an agent on Fable, high, at
+Frans's request: take the direction as D2; nine findings (section 12,
+review-fable.md).
