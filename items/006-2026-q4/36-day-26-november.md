@@ -18,7 +18,8 @@ Friday 07:00: the progress and the outcome. The way of working is
 
 Frans, 2026-11-26:
 
-* `week.sh`: an aim of 10 hours, at most 12 (06:35).
+* `week.sh`: an aim of 10 hours, at most 12 (06:35); no whole-run hang
+  guard (07:58); 028-64 landed and a full `week.sh` started (07:58).
 
 The lead, 2026-11-26:
 
@@ -35,6 +36,16 @@ The lead, 2026-11-26:
   579 minutes without the large reclaim run, which takes 5.5 hours on a
   typical seed since 028-63 (60 to 90 minutes on 028-43's local seed).
   028-64 registered; an agent started.
+* 07:46 028-64 done (agent, Opus xhigh, 69 minutes): the large reclaim
+  run and the large conformance set beside the other steps, each in a
+  clone of its own; the same steps, seeds and sizes; about 6 hours
+  estimated (5.5 to 6.7). 08:01 the whole-run hang guard removed (Frans);
+  `week.sh short` WEEK OK (13 minutes). Landed, with `AGENTS.md`'s and
+  013-04's times of `week.sh`; a full `week.sh` started on `main`.
+* 06:47 to 08:10 031-03 gone through with Frans: the witness and the
+  drain; MIN_RELEASE and the step reserve; `maintain()` as the
+  application's idle-time hook with a budget per call; the stream kept,
+  the live bytes and the space amplification, kept / live.
 
 
 ## 4. Waiting for Frans

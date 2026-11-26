@@ -432,8 +432,8 @@ reworded; it goes on the plan's list for Frans.
 
 * **Heavy runs**: up to six at once on F53 (Frans, 2026-11-13); a timing
   run alone. The lead counts them in `state.md`; other sessions ask it.
-* **`night.sh`** (about 2.5 hours) and **`week.sh`** (about 10 hours, with
-  `ANDROID_SDK` set) are functional: they may run beside other work, at a
+* **`night.sh`** (about 2.5 hours) and **`week.sh`** (about 6 hours since
+  028-64, at most 12, with `ANDROID_SDK` set) are functional: they may run beside other work, at a
   low priority if need be. The lead starts them from the main tree as
   steps of its plan, with the commands in their headers; they clone the
   committed code themselves. `night.sh` runs once a day while code lands;

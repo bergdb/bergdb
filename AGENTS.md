@@ -71,12 +71,14 @@ a snapshot of the former `docs/` of 2026-11-12.
   timing, where the number is the result. Functional testing is in three
   scripts: `java/before-commit.sh` (each commit), `java/night.sh` (about
   once a day while there is development, about 2.5 hours) and
-  `java/week.sh` (on demand, about 10 hours: the large conformance set, the
+  `java/week.sh` (on demand, about 6 hours in three lanes, an aim of 10 and
+  at most 12 (028-64): the large conformance set, the
   user apps of `java/stress/apps.sh`, more kills and fuzzing, the Android
   tests of `java/stress/android.sh`, which need the Android SDK in
   `ANDROID_SDK`, and the long large reclaim run of `java/stress/large.sh`).
   They may run while someone works on the machine, night.sh
-  and week.sh also at a low priority (`nice`, `taskpolicy -b`). Timing is in
+  also at a low priority (`nice`, `taskpolicy -b`), week.sh with `nice`
+  only (its header). Timing is in
   `java/timing.sh` (CORE, the pause probe, `performance.sh ab` against the
   last release at 1M and 10M keys), the only one of the four that needs a
   quiet machine: it checks the load itself and refuses a busy one. Keep
