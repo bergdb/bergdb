@@ -157,6 +157,7 @@ The lead, 2026-11-26:
   WEEK OK in 565 minutes, 9.4 hours, under the day's heavy load from
   agents beside it (the large reclaim run 9.4 hours, 5.5 alone; the large
   conformance set 6.3 hours). 17:44 `night.sh` started on `8ad6599b`.
+* 20:43 `night.sh` on `8ad6599b`: NIGHT OK in 180 minutes.
 
 
 ## 4. Waiting for Frans
