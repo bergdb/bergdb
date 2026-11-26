@@ -88,6 +88,13 @@ The lead, 2026-11-26:
   (agent, Opus high, 40 minutes): with ZGC the longest commit during
   calls 36 to 66 ms at a budget of 100,000 (before: up to 1.1 s); the
   upgrade restart case now the same stream; BEFORE COMMIT OK.
+* 11:35 035-01 done (agent, Opus xhigh, 70 minutes): 29,600 kills on
+  F53 and s1; zeros within a file's length only on APFS, in pieces of 1
+  to 4 MiB aligned to the write's first page (as XNU's
+  `cluster_write_copy` drops a failed piece); none on HFS+ or s1's
+  ext4; on APFS images and RAM disks 7 cut writes held a deleted file's
+  bytes. 028-60's part 2: B2 with four conditions recommended; the
+  stale-bytes risk is new.
 
 
 ## 4. Waiting for Frans

@@ -293,3 +293,10 @@ repair tested; B1 acceptable for a release meanwhile.
 
 2026-11-26. Part 2 waits for 035-01's first results (Frans): the cause
 of the zeros on macOS, and whether other systems leave them.
+
+2026-11-26. 035-01's results (sections 4 to 11): zeros after a kill on
+APFS only (s1's ext4 left clean prefixes); B2 with four conditions
+recommended (zeros from the 4 KiB boundary at or before P, the last
+file's length a multiple of 4,096, P in the last file, a run of at most
+8 MB); a new risk: on APFS disk images and RAM disks a cut write held a
+deleted file's bytes, not zeros, which no option covers (035-01).
