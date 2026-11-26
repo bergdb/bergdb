@@ -41,6 +41,7 @@ Frans, 2026-11-26:
   deleted whole, so a copy in order is a backup; the copy-and-swap at a
   cut not made: complexity on the file system, and the backup property
   (11:18).
+* The usage limit 70 % (13:05).
 
 The lead, 2026-11-26:
 
@@ -101,6 +102,16 @@ The lead, 2026-11-26:
   states the slack and the backup by a copy in name order; BEFORE COMMIT
   OK, KILL RESTART OK. The cut's deletes lag more behind a fast writer
   with more files (028-66).
+* 13:12 028-60's part 2: B2 inside `FileStream` only proposed (a zero
+  tail of the last file truncated at open, the contract's prefix
+  restored; nothing above `FileStream` changes); default start 14:30.
+* 13:14 035-02 done (agent, Opus xhigh, 93 minutes): on F53's internal
+  SSD no deleted file's bytes in 63 cut first writes of new files (59
+  zeros, 4 prefixes); on APFS RAM disks and images in most; a failed
+  write (EFAULT) cuts as a kill does, without one; ext4 clean prefixes.
+  A start refuses most stale tails with unclear messages and may first
+  fill up to 2 GB of zeros: 028-67 (C1 recommended now, C3 with the
+  next format change).
 
 
 ## 4. Waiting for Frans

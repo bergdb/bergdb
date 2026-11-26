@@ -63,9 +63,15 @@ Files
 * [035-01](01-zero-tail-after-kill/readme.md): zeros within a file's
   length after a kill of a writing process (macOS, APFS; 031-02, F1):
   the cause, and whether other systems do it.
+* [035-02](02-stale-bytes-after-kill/readme.md): a deleted file's bytes
+  within a file's length after a kill (APFS; 035-01, section 7): on
+  F53's internal SSD too or not, and what a start of BergDB does with
+  an older stream file's records inside the last file.
 
 
 Log
 ===
 
 2026-11-26. Created (Frans), with 035-01.
+
+2026-11-26. 035-02 created (Frans).

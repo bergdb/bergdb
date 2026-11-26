@@ -105,6 +105,7 @@ Open
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag.md) | Investigate | The cut's deletes lag behind a fast writer, more with a tenth | none | open |
+| [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
 
 
 Closed
@@ -559,3 +560,9 @@ backup by a copy of the files. RB-011 fixed for 2026.7. Moved to Closed.
 the cut's deletes, one file at a time with a force of the directory
 after each, lag further behind a fast writer with about three times as
 many files.
+
+2026-11-26. 028-67 registered by lead-1126, from 035-02, section 11: on
+APFS a write cut by a kill can leave a deleted file's bytes within the
+last stream file's length; a start refuses most such tails with unclear
+messages and may first append up to 2 GB of zeros; options C1 to C4 for
+Frans (C1 recommended now, C3 with the next stream-format change).
