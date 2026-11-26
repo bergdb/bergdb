@@ -117,8 +117,11 @@ The lead, 2026-11-26:
 ## 4. Waiting for Frans
 
 * 031-03, F1 to F5: wait for 031-04's study.
-* 028-60, part 2: B1, B2 or B3 (B2 recommended), after 035-01's
-  first results.
+* 028-60, part 2: B2 inside `FileStream` only (proposed 13:12; by
+  default started 14:30).
+* 028-67: stale bytes in a start's tail: C1 now, C3 with the next
+  format change (recommended).
+* 031-04: Q1 to Q8 and the direction, with 031-05's result.
 * 028-54: whether P2 covers a restart inside a commit's maintenance.
 
 
