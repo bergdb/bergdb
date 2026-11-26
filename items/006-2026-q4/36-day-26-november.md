@@ -33,6 +33,7 @@ Frans, 2026-11-26:
   budget)`, a call with a cost budget and passes that end by
   construction (031-04); a study of the direction, not a decision to
   build it (09:17).
+* 031-04, Q9: (b), the handoff, for the direction studied (10:42).
 
 The lead, 2026-11-26:
 
@@ -69,6 +70,8 @@ The lead, 2026-11-26:
   (Q9: a commit waits behind a call's parts at large budgets). Landed as
   text; Codex's review started (10:22).
 * 10:25 035 and 035-01 created; an agent on 035-01 (F53, s1).
+* 10:43 Q9 (b) to the prototype by an agent (Opus, high), with ZGC and
+  the commit thread of PassProbe; results in 031-04's q9-handoff.md.
 
 
 ## 4. Waiting for Frans

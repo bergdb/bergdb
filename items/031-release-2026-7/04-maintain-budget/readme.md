@@ -853,6 +853,11 @@ of section 3, part 6. Q6 to Q9 came up during the study.
     timing (P2).
   * Recommended: **(b)**, measured with `PassProbe`'s commit thread and
     `timing.sh`'s pause probe.
+  * Frans chose (b), the handoff, on 2026-11-26: commits count
+    themselves while they wait for the write lock, and a call's loop,
+    after a part, waits while the count is above 0; for this direction,
+    if Frans takes it. Being added to the prototype and measured
+    (q9-handoff.md).
 
 Not settled here, and the same as for 031-03:
 
@@ -901,3 +906,7 @@ calls go quiet by construction, with no drain and no MIN_RELEASE. RB-007's
 case keeps 117 kB (`main` 4.8 MB); 031-03's 9.1, 9.2 and 9.3 fixed;
 Codex's case of a step reserve of 1 ends; 73,517 starts with the run's a.
 Sections 4 to 10, `prototype.diff` and `probes/`.
+
+2026-11-26. Q9: Frans chose (b), the handoff between a call's parts, for
+this direction if he takes it; being added to the prototype and measured
+(q9-handoff.md).
