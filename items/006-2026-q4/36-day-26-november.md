@@ -145,7 +145,14 @@ The lead, 2026-11-26:
   among them a crash inside a record (the goal holds at record
   boundaries), the clock held after some crashes, fixed by a start that
   writes what is due (Q2 (c)), and two f-tests that D2 fails.
-
+* 16:04 028-66 (agent, Opus high, 20 minutes): a batch of the cut's
+  deletes with one directory force keeps the disk at 1.03 to 1.15 of the
+  stream kept at every writing rate (main 1.09 to 1.58), and with no
+  limit the hard-sync writer at about 105,000 transactions a second
+  (main since 028-62's tenth about 64,000: a force per deleted file);
+  not landed: a batch breaks 011-07's rule that every prefix delete is
+  forced before the next (two power-loss tests); options A to C for
+  Frans (028-66). Figures indicative (week.sh's large run beside).
 
 ## 4. Waiting for Frans
 
@@ -156,7 +163,10 @@ The lead, 2026-11-26:
   format change (recommended).
 * 031-04: Q1 to Q8 and the direction, with 031-05's result.
 * 028-54: whether P2 covers a restart inside a commit's maintenance.
-
+* 028-66: the cut's deletes: A as is, B a batch with 011-07's rule
+  changed, C a forced record (not designed); since 028-62 a hard-sync
+  writer at full speed is about 40 % slower by the forces of its
+  deletes.
 
 ## 5. Outcome
 
