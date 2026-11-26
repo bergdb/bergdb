@@ -21,6 +21,11 @@ Frans, 2026-11-26:
 * `week.sh`: an aim of 10 hours, at most 12 (06:35); no whole-run hang
   guard (07:58); 028-64 landed and a full `week.sh` started (07:58).
 
+* 031-03: no choice of F1 to F5 yet. A study first of `maintain(int
+  budget)`, a call with a cost budget and passes that end by
+  construction (031-04); a study of the direction, not a decision to
+  build it (09:17).
+
 The lead, 2026-11-26:
 
 * 028-64 by one agent (Opus, xhigh) in a clone: coverage kept where the
@@ -46,11 +51,14 @@ The lead, 2026-11-26:
   drain; MIN_RELEASE and the step reserve; `maintain()` as the
   application's idle-time hook with a budget per call; the stream kept,
   the live bytes and the space amplification, kept / live.
+* 09:20 031-04 registered (the study); one agent (Opus, xhigh) in a
+  clone, stop 13:30; Codex's review after it.
 
 
 ## 4. Waiting for Frans
 
-* 031-03, F1 to F6: the design of `maintain()` (O-1 recommended).
+* 031-03, F1 to F5: wait for 031-04's study; F6 (9.1 and 9.2 as
+  released bugs) stands on its own.
 * 028-60, part 2: B1, B2 or B3 (B2 recommended).
 * 028-62, RB-011: J or S (S recommended, if its design stays small).
 * 028-54: whether P2 covers a restart inside a commit's maintenance.

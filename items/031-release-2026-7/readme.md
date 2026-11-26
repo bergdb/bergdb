@@ -48,6 +48,9 @@ Files
 * [031-03](03-elegant-maintain/readme.md): an elegant `maintain()`: back to
   empty, quiet when done, through crashes and restarts without recovery
   machinery of its own.
+* [031-04](04-maintain-budget/readme.md): `maintain(budget)`, a study: a
+  call with a cost budget and passes that end by construction; a study
+  before any decision (Frans, 2026-11-26).
 
 
 Log
@@ -77,3 +80,6 @@ bytes as 2026.6's writer) and 028-51 found sound by probes that ran
 
 2026-11-25. 031-03 created: a search for an elegant `maintain()`; neither
 028-53's A nor B (Frans).
+
+2026-11-26. 031-04 created: a study of `maintain(int budget)`, from the
+discussion of 031-03 with Frans; 031-03's F1 to F5 wait for it.
