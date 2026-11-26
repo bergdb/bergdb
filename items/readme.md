@@ -233,3 +233,8 @@ Index
   process from the plan to after the release (034-01), the checklist of
   what to update and how it is checked (034-02), and the release
   scripts.
+* **035-environments** (open). The environments that BergDB runs in,
+  examined on their own, with programs that use no BergDB code: the
+  operating system, file system, disk and JVM, for correctness and
+  performance; F53 and s1 first. 035-01: zeros within a file's length
+  after a kill (macOS).

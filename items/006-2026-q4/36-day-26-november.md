@@ -20,6 +20,9 @@ Frans, 2026-11-26:
 
 * 031-03, F6: 9.1 (RB-006's remaining part) and 9.2 (RB-010) confirmed
   as released bugs, S4; 9.3 a space cost, registered as 028-65 (09:46).
+* 035 created, the environments BergDB runs in, examined with programs
+  that use no BergDB code; 035-01 first, the zeros after a kill (031-02,
+  F1); Windows not now. 028-60's part 2 waits for 035-01 (10:20).
 * `week.sh`: an aim of 10 hours, at most 12 (06:35); no whole-run hang
   guard (07:58); 028-64 landed and a full `week.sh` started (07:58).
 
@@ -55,12 +58,21 @@ The lead, 2026-11-26:
   the live bytes and the space amplification, kept / live.
 * 09:20 031-04 registered (the study); one agent (Opus, xhigh) in a
   clone, stop 13:30; Codex's review after it.
+* 10:19 031-04's study done (agent, 62 minutes): `void maintain(int
+  budget)`, passes begun by calls cut at their own start, a pass begins
+  when a >= fp (a: the application's last record's position, read off
+  the stream); no drain, no MIN_RELEASE; Lean unchanged; RB-007's case
+  117 kB kept, quiet when done, Codex's drain case ends; a P1 finding
+  (Q9: a commit waits behind a call's parts at large budgets). Landed as
+  text; Codex's review started (10:22).
+* 10:25 035 and 035-01 created; an agent on 035-01 (F53, s1).
 
 
 ## 4. Waiting for Frans
 
 * 031-03, F1 to F5: wait for 031-04's study.
-* 028-60, part 2: B1, B2 or B3 (B2 recommended).
+* 028-60, part 2: B1, B2 or B3 (B2 recommended), after 035-01's
+  first results.
 * 028-62, RB-011: J or S (S recommended, if its design stays small).
 * 028-54: whether P2 covers a restart inside a commit's maintenance.
 

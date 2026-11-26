@@ -290,3 +290,6 @@ size field cut by the end (1 to 3 zero bytes) is recovered as a torn
 record's; Codex favours B2 for part 2, with every byte from P to the
 end checked to be zero, the cut forced, and repeated crashes during the
 repair tested; B1 acceptable for a release meanwhile.
+
+2026-11-26. Part 2 waits for 035-01's first results (Frans): the cause
+of the zeros on macOS, and whether other systems leave them.
