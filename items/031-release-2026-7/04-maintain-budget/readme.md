@@ -858,6 +858,12 @@ of section 3, part 6. Q6 to Q9 came up during the study.
     after a part, waits while the count is above 0; for this direction,
     if Frans takes it. Being added to the prototype and measured
     (q9-handoff.md).
+  * Added to the prototype on 2026-11-26 (q9-handoff.md): with ZGC the
+    longest commit during calls fell from 893 to 1,112 ms to 36 to 66 ms
+    at a budget of 100,000 (from 382 to 584 to 29 to 49 at 10,000), ZGC's
+    pauses under 0.3 ms, so the long waits were the lock's; with G1 the
+    longest commit stays at or below its run's longest GC pause.
+    Indicative: F53 loaded by week.sh.
 
 Not settled here, and the same as for 031-03:
 
@@ -925,6 +931,10 @@ outside the repository.
   with the same length and other bytes; 21 wrong prefixes in 452 starts.
   A throwaway change that takes a current row's `a` whatever the table
   holds made 30 comparisons equal. Being repaired in the prototype.
+  Repaired in the prototype on 2026-11-26 (q9-handoff.md): Codex's
+  restart case gives the same stream over 30 calls, for streams of
+  `main` and of 2026.6; 0 starts with a wrong `a` in 452 each (before:
+  21).
 * **Finding 2, mixed rows.** Q8 (b)'s rule does not make a writable
   downgrade safe: a modern table with a current row of an old writer
   keeps a stale `a` though the old writer accepted later application
@@ -994,3 +1004,8 @@ this direction if he takes it; being added to the prototype and measured
 2026-11-26. Codex's review (section 11): the direction simpler and
 sounder than O-1; an upgrade recovery defect that breaks P2 between
 completed calls, to repair before adoption; six more findings.
+
+2026-11-26. Q9's handoff and Codex's finding 1 added to the prototype
+and measured (q9-handoff.md): with ZGC the longest commit during calls
+36 to 66 ms at a budget of 100,000; the upgrade restart case the same
+stream; `BEFORE COMMIT OK`.

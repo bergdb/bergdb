@@ -20,6 +20,12 @@ import bergdb.stream.CutStream;
  *   java -Xmx..g -cp out:bergdb.jar bergdb.core.PassProbe N VAL B [SD [LAT [CALLS]]]
  */
 public class PassProbe {
+    /** -Dnocalls=true: a sleep of 1 ms in place of each call, for the commits' own latency. */
+    static final boolean NO_CALLS = Boolean.getBoolean("nocalls");
+    
+    /** The number of the call that runs (from 0), for the committer's thread. */
+    static volatile long callNo;
+    
     static byte[] key(int b, int k) {
         return new byte[] {(byte) b, (byte) (k >> 16), (byte) (k >> 8), (byte) k};
     }
@@ -71,9 +77,9 @@ public class PassProbe {
         final long kept0 = d.getStreamLength() - d.getFirstAvailablePos();
         final long fp0 = d.getFirstAvailablePos();
         System.out.println(String.format(" budget %d: stream kept %d bytes; kept / budget %.1f "
-                + "calls", b, kept0, kept0 / (b * 1000.0)));
+                + "calls; JVM uptime %.3f s", b, kept0, kept0 / (b * 1000.0), jvmUptime()));
         final Reclaim rc = d.internal().reclaim();
-        final long[] maxCommit = new long[1];
+        final long[] maxCommit = new long[2];     // the longest commit, and the call it came in
         final boolean[] stop = new boolean[1];
         Thread committer = null;
         if (lat > 0) {
@@ -81,7 +87,11 @@ public class PassProbe {
                 for (int i = 0; !stop[0]; i++) {
                     long t0 = System.nanoTime();
                     d.execute(d.trans().put(key(0x20, i % 1000), new byte[10]).build());
-                    maxCommit[0] = Math.max(maxCommit[0], System.nanoTime() - t0);
+                    final long dt = System.nanoTime() - t0;
+                    if (dt > maxCommit[0]) {
+                        maxCommit[0] = dt;
+                        maxCommit[1] = callNo;
+                    }
                     try {
                         Thread.sleep(lat);
                     } catch (InterruptedException e) {
@@ -97,7 +107,12 @@ public class PassProbe {
         while (calls < maxCalls) {
             time.addAndGet(ms);
             final long l = d.getStreamLength(), t0 = System.nanoTime();
-            M.call(d, b);
+            if (NO_CALLS) {
+                Thread.sleep(1);
+            } else {
+                M.call(d, b);
+            }
+            callNo = calls + 1;
             final long dt = System.nanoTime() - t0;
             maxCall = Math.max(maxCall, dt);
             sumCall += dt;
@@ -129,6 +144,14 @@ public class PassProbe {
                 d.getStreamLength() - d.getFirstAvailablePos()));
         System.out.println(String.format("  calls: the longest %.1f ms, the mean %.3f ms%s",
                 maxCall / 1e6, sumCall / 1e6 / calls,
-                lat > 0 ? String.format("; the longest commit %.1f ms", maxCommit[0] / 1e6) : ""));
+                lat > 0 ? String.format("; the longest commit %.1f ms, in call %d", maxCommit[0] / 1e6,
+                        maxCommit[1]) : ""));
+        System.out.println(String.format("  calls ended at JVM uptime %.3f s; uptime: %s",
+                jvmUptime(), uptime()));
+    }
+    
+    /** The JVM's uptime in seconds, as -Xlog's uptime decoration, to find the GC pauses of the calls. */
+    static double jvmUptime() {
+        return java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime() / 1000.0;
     }
 }

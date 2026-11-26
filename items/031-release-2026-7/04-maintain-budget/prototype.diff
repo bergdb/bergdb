@@ -1,5 +1,5 @@
 diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
-index 6269c249..a3dd4a1f 100644
+index 6269c249..f20d6e68 100644
 --- a/java/src/bergdb/core/Db.java
 +++ b/java/src/bergdb/core/Db.java
 @@ -247,8 +247,8 @@ import bergdb.stream.SalsaStream;
@@ -13,7 +13,40 @@ index 6269c249..a3dd4a1f 100644
   * as any other, getTrans() lists them, getTransactionCount() counts their transactions and
   * getKvCount() their KVs. So in every database, used by the Pub API or not, a key whose bytes
   * start with 01 25, the bkey of "/#", is BergDB's: do not write it, and to read only the other
-@@ -862,112 +862,118 @@ public class Db implements AutoCloseable {
+@@ -421,7 +421,11 @@ public class Db implements AutoCloseable {
+     /**
+      * Writers waiting for writeLock in executeInner (bergdb item 009, step 3d): the eviction
+      * thread gives way to them (Eviction.EvictorRun), as a monitor is not fair and a busy
+-     * eviction thread would keep the writer out.
++     * eviction thread would keep the writer out. maintain(budget) gives way to them between
++     * its parts (bergdb 031-04, Q9). Counted by every commit that a user's call makes:
++     * executeInner, and the setters of the startup distance and of reclaim's settings,
++     * which commit under their own lock. A writer adds 1 before it takes the lock and takes 1 away as the first
++     * thing under it, so the count is the writers blocked on the lock, or about to be.
+      */
+     private final java.util.concurrent.atomic.AtomicInteger writersWaiting =
+             new java.util.concurrent.atomic.AtomicInteger();
+@@ -714,7 +718,9 @@ public class Db implements AutoCloseable {
+         
+         newDistance = Math.max(MIN_STARTUP_DISTANCE, Math.min(MAX_STARTUP_DISTANCE, newDistance));
+         
++        writersWaiting.incrementAndGet();
+         synchronized (writeLock) {
++            writersWaiting.decrementAndGet();
+             // The state first, so that a refused call changes nothing (bergdb 005-53).
+             assertDbStateIsActive("setStartupDistance");
+             int old = this.startupDistance;
+@@ -854,7 +860,9 @@ public class Db implements AutoCloseable {
+      */
+     public void setRetainDuration(long duration) {
+         Reclaim.checkRetainDuration(duration);
++        writersWaiting.incrementAndGet();
+         synchronized (writeLock) {
++            writersWaiting.decrementAndGet();
+             // The state first, so that a refused call changes nothing (bergdb 015-87, F6).
+             assertDbStateIsActive("setRetainDuration");
+             reclaim.setSettings(duration, reclaim.getInternalFractionUnits());
+@@ -862,109 +870,150 @@ public class Db implements AutoCloseable {
      }
      
      /**
@@ -80,8 +113,11 @@ index 6269c249..a3dd4a1f 100644
 -     * nothing is due writes nothing.</p>
 +     * <p>It works in parts, each under the write lock, as a commit's maintenance is: a part
 +     * waits for a running commit, and a commit waits for the part that runs; reads go on.
-+     * The lock is a monitor, which is not fair, so a commit may wait for more than one part
-+     * (bergdb 031-04, section 9, Q9). A cut whose table is not durable is synced outside the
++     * The lock is a monitor, which is not fair, so the call hands it over (bergdb 031-04,
++     * Q9): before each part, and again under the lock, it gives way while a commit waits for
++     * the lock, and goes on when none does. A commit that comes during a part then waits
++     * for that part only, of the call's work; under commits without a pause the call waits
++     * as long as they come. A cut whose table is not durable is synced outside the
 +     * lock, then made. A call when nothing is due writes nothing.</p>
       * 
 -     * @return True if more is due now: another call would do more. False if nothing is due
@@ -126,12 +162,21 @@ index 6269c249..a3dd4a1f 100644
 +    public void maintain(int budget) {
 +        final long limit = Math.max(Reclaim.MAINTAIN_MIN_BUDGET,
 +                Math.min(Reclaim.MAINTAIN_MAX_BUDGET, budget)) * Reclaim.MAINTAIN_UNIT;
++        // A caller that holds the write lock already (none in BergDB) would wait for writers
++        // that cannot get it: it does not give way.
++        final boolean giveWay = !Thread.holdsLock(writeLock);
 +        long spent = 0;
 +        boolean reclaimDone = false;
 +        while (spent < limit) {
 +            long cost = 0, durableAt = -1;
++            if (giveWay) giveWayToWriters();
 +            synchronized (writeLock) {
 +                assertDbStateIsActive("maintain");
++                if (giveWay && writersWaiting.get() > 0) {
++                    // A commit came between the wait and the lock (bergdb 031-04, Q9): it
++                    // goes first.
++                    continue;
++                }
 +                if (reclaimDone) {
 +                    // The dead hand alone, after reclaim's parts: it writes nothing, so it is
 +                    // charged by its time, at MAINTAIN_NANOS a unit.
@@ -193,13 +238,20 @@ index 6269c249..a3dd4a1f 100644
 +                // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a
 +                // sync outside the lock, then the cut.
 +                sync(durableAt - 1, SyncLevel.ORDINARY);
-+                synchronized (writeLock) {
-+                    assertDbStateIsActive("maintain");
-+                    reclaim.cutIfDurableNow();
-+                    maintainEviction();
++                while (true) {
++                    if (giveWay) giveWayToWriters();
++                    synchronized (writeLock) {
++                        assertDbStateIsActive("maintain");
++                        if (giveWay && writersWaiting.get() > 0) continue;
++                        reclaim.cutIfDurableNow();
++                        maintainEviction();
++                        break;
++                    }
 +                }
              }
--        }
++            reclaimDone = cost == 0;
++            spent += cost;
+         }
 -        
 -        // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a sync
 -        // outside the lock, then the cut.
@@ -209,21 +261,43 @@ index 6269c249..a3dd4a1f 100644
 -            reclaim.cutIfDurableNow();
 -            final boolean dead = maintainEviction();
 -            return reclaim.maintainDue(dbClock.currentTime()) || dead;
-+            reclaimDone = cost == 0;
-+            spent += cost;
-         }
-     }
-     
++    }
++    
 +    /**
 +     * The time of the eviction's dead hand that maintain(budget) charges as a unit of its
 +     * budget, in nanoseconds: about the time of writing 1 kB to the stream.
 +     */
 +    static final long MAINTAIN_NANOS = 5000;
 +    
-     /** maintain()'s step of the eviction's dead hand; under the write lock. */
-     private boolean maintainEviction() {
-         try {
-@@ -1267,7 +1273,9 @@ public class Db implements AutoCloseable {
++    /**
++     * maintain(budget)'s handover of the write lock (bergdb 031-04, Q9): waits, without the
++     * lock, while a commit waits for it (writersWaiting); a few spins, then parks of 20 us.
++     * The count falls as each waiting writer gets the lock, which this thread does not hold,
++     * so the wait ends when they have it; a part then waits for the commit that runs, as
++     * any part does. An interrupt is left as it is: parkNanos then returns at once, and the
++     * wait spins until the writers have the lock.
++     */
++    private void giveWayToWriters() {
++        for (int spins = 0; writersWaiting.get() > 0; spins++) {
++            if (spins < 100) {
++                Thread.onSpinWait();
++            } else {
++                java.util.concurrent.locks.LockSupport.parkNanos(20 * 1000);
++            }
+         }
+     }
+     
+@@ -1005,7 +1054,9 @@ public class Db implements AutoCloseable {
+             throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
+         }
+         int units = (int) Math.round(internalFraction * Reclaim.FRACTION_ONE);
++        writersWaiting.incrementAndGet();
+         synchronized (writeLock) {
++            writersWaiting.decrementAndGet();
+             assertDbStateIsActive("setReclaimInternalFraction");
+             reclaim.setSettings(reclaim.getRetainDuration(), units);
+         }
+@@ -1267,7 +1318,9 @@ public class Db implements AutoCloseable {
          
          this.state = DbState.ACTIVE;
          readStartupDistanceKv(creating);
@@ -235,7 +309,7 @@ index 6269c249..a3dd4a1f 100644
              // The admission of the large values that the start made resident, as after a
              // record that this database writes (Eviction.recordWritten): their records are in
 diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
-index 28bfc607..fac7dbdf 100644
+index 28bfc607..f5f1462d 100644
 --- a/java/src/bergdb/core/Reclaim.java
 +++ b/java/src/bergdb/core/Reclaim.java
 @@ -533,85 +533,79 @@ public class Reclaim implements Db.TransactionListener {
@@ -587,17 +661,20 @@ index 28bfc607..fac7dbdf 100644
              
              // The progress of the iteration in progress, stored by its last step (and again
              // after it, with the bytes of the nodes its batch made dirty; bergdb 028-26).
-@@ -1139,6 +1136,9 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1139,6 +1136,12 @@ public class Reclaim implements Db.TransactionListener {
              if (current != null) {
                  IterationInfo c = new IterationInfo();
                  c.deserialize(StringUtil.toString(current));
-+                if (storedA != Long.MIN_VALUE) {
-+                    storedA = Math.max(storedA, c.a);       // a never decreases
++                if (c.a != Long.MIN_VALUE) {
++                    // a never decreases. The current row's a counts also when the table has
++                    // none: a table of main or 2026.6, with this design's row of the
++                    // iteration in progress after it (bergdb 031-04, Codex's finding 1).
++                    storedA = Math.max(storedA, c.a);
 +                }
                  for (IterationInfo row : table.rows) {
                      if (row.pStart == c.pStart && !row.done && !c.done) {
                          row.set(c);
-@@ -1173,6 +1173,8 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1173,6 +1176,8 @@ public class Reclaim implements Db.TransactionListener {
              this.firstAvailableLookupTime = firstTime;
              this.firstAvailablePos = firstPos;
          }
@@ -606,7 +683,7 @@ index 28bfc607..fac7dbdf 100644
      }
      
      /**
-@@ -1272,7 +1274,7 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1272,7 +1277,7 @@ public class Reclaim implements Db.TransactionListener {
       * step's row was made (step(); bergdb 028-26).
       */
      private void storeCurrent(IterationInfo it) {
@@ -615,7 +692,7 @@ index 28bfc607..fac7dbdf 100644
          if (stats != null) {
              stats.tableBytes += rowBytes.length;
          }
-@@ -1285,13 +1287,32 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1285,13 +1290,32 @@ public class Reclaim implements Db.TransactionListener {
          }
      }
  
@@ -648,7 +725,7 @@ index 28bfc607..fac7dbdf 100644
          t.isInternal = true;
          try {
              db.execute(t);
-@@ -1305,6 +1326,9 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1305,6 +1329,9 @@ public class Reclaim implements Db.TransactionListener {
       * after it has written the record of 't'.
       */
      void recordWritten(Trans t, TransNodes n) {
@@ -658,7 +735,7 @@ index 28bfc607..fac7dbdf 100644
          final Stats st = this.stats;
          if (st == null) {
              return;
-@@ -1539,6 +1563,7 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1539,6 +1566,7 @@ public class Reclaim implements Db.TransactionListener {
          long rewritten;     // Approximate bytes rewritten so far (2026-10-13).
          long pEnd = -1;     // Position of the last step, when done (2026-10-13).
          long pSafe = -1;    // See the class comment; -1 until known (2026-10-13).
@@ -666,7 +743,7 @@ index 28bfc607..fac7dbdf 100644
          
          /**
           * The cut point (2026-10-13, bergdb 011-04, "Level 3 cost"): values
-@@ -1573,9 +1598,15 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1573,9 +1601,15 @@ public class Reclaim implements Db.TransactionListener {
           * Serializes data to a string.
           */
          public String serialize() {
@@ -682,7 +759,7 @@ index 28bfc607..fac7dbdf 100644
              m.put("pStart", "" + pStart);
              m.put("pCut", "" + pCut);
              m.put("tStart", "" + tStart);
-@@ -1682,6 +1713,7 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1682,6 +1716,7 @@ public class Reclaim implements Db.TransactionListener {
              pEnd = m.hasLong("pEnd") ? m.getLong("pEnd") : pStart;
              pSafe = m.hasLong("pSafe") ? m.getLong("pSafe") : -1;
              pCut = m.hasLong("pCut") ? m.getLong("pCut") : pStart;     // Since 2026-10-13.
@@ -690,7 +767,7 @@ index 28bfc607..fac7dbdf 100644
          }
          
          /** A key as endKey is stored: its segments, decimal, one space between (026-05). */
-@@ -1829,6 +1861,9 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1829,6 +1864,9 @@ public class Reclaim implements Db.TransactionListener {
      final class IterationTable {
          List<IterationInfo> rows;
          
@@ -700,7 +777,7 @@ index 28bfc607..fac7dbdf 100644
          public IterationTable() {
              rows = new ArrayList<IterationInfo>();
          }
-@@ -1840,10 +1875,18 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1840,10 +1878,18 @@ public class Reclaim implements Db.TransactionListener {
          /** Serializes the table with row 'replacement' instead of row 'row'. */
          public String serializeWith(IterationInfo row, IterationInfo replacement) {
              StringBuilder b = new StringBuilder();
@@ -721,7 +798,7 @@ index 28bfc607..fac7dbdf 100644
              }
              
              return b.toString();
-@@ -1857,6 +1900,15 @@ public class Reclaim implements Db.TransactionListener {
+@@ -1857,6 +1903,15 @@ public class Reclaim implements Db.TransactionListener {
              for (String part : parts) {
                  part = part.trim();
                  
@@ -737,7 +814,7 @@ index 28bfc607..fac7dbdf 100644
                  if (part.length() > 0) {
                      IterationInfo info = new IterationInfo();
                      info.deserialize(part);
-@@ -2230,7 +2282,10 @@ public class Reclaim implements Db.TransactionListener {
+@@ -2230,7 +2285,10 @@ public class Reclaim implements Db.TransactionListener {
                      && reclaim.lastDoneRow() == null);
              time += 2 * Clock.UNITS_PER_SEC;
              clock.setTime(time);
@@ -749,7 +826,7 @@ index 28bfc607..fac7dbdf 100644
              IterationInfo it = reclaim.currentIteration();
              Assert.assertTrue("an iteration began", it != null);
              Assert.assertArrayEquals(Keys.toSegments("/k/13999"), it.endKey);
-@@ -2852,8 +2907,13 @@ public class Reclaim implements Db.TransactionListener {
+@@ -2852,8 +2910,13 @@ public class Reclaim implements Db.TransactionListener {
                                  st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes,
                                  cur.rewritten);
                          byte[] stored = db.getOne(Long.MAX_VALUE, currentKey, db.newGetData());
@@ -765,7 +842,7 @@ index 28bfc607..fac7dbdf 100644
                      
                      Assert.assertTrue("no iteration done", reclaim.getIterationCount() > 0);
 diff --git a/java/src/bergdb/core/ReclaimMaintainTester.java b/java/src/bergdb/core/ReclaimMaintainTester.java
-index 8d2705d9..d76d979e 100644
+index 8d2705d9..701c5b93 100644
 --- a/java/src/bergdb/core/ReclaimMaintainTester.java
 +++ b/java/src/bergdb/core/ReclaimMaintainTester.java
 @@ -13,17 +13,26 @@ import bergdb.storage.RecoverableStream;
@@ -991,16 +1068,88 @@ index 8d2705d9..d76d979e 100644
       */
      @Nano
      public static void testLiveDatabaseQuiet() {
-@@ -359,7 +380,7 @@ public class ReclaimMaintainTester {
+@@ -359,7 +380,79 @@ public class ReclaimMaintainTester {
              Assert.assertTrue("the first cut", r.db.getFirstAvailablePos() > 0);
              Assert.assertEquals("written in the last 5 R", lengthAtHalf,
                      r.db.getStreamLength());
 -            Assert.assertFalse(r.db.maintain());
 +            Assert.assertFalse(r.maintain());
++        } finally {
++            r.db.close();
++        }
++    }
++
++    /**
++     * The handover of the write lock (bergdb 031-04, Q9): a commit that waits for the lock
++     * goes before the next part of maintain() calls that wait with it, here two calls at
++     * once. The test holds the lock, starts the commit, waits until it counts as waiting
++     * (writersWaiting), starts the calls, waits until both are parked in the handover, and
++     * lets the lock go: the first record after that is the commit's, and the calls then
++     * write their parts. writersWaiting is 0 at the end.
++     */
++    @Nano
++    public static void testCommitGoesBeforeTheNextPart() throws Exception {
++        Run r = new Run(SEC);
++        try {
++            r.fill(5000, 0);
++            r.advance(2 * SEC);         // past R: a call begins a pass, and writes
++            final Db db = r.db;
++            final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
++            final Thread w = new Thread(() -> {
++                try {
++                    db.execute(db.trans().put("/w", "w").build());
++                } catch (Throwable e) {
++                    failure.set(e);
++                }
++            });
++            final Thread[] m = new Thread[2];
++            for (int i = 0; i < m.length; i++) {
++                m[i] = new Thread(() -> {
++                    try {
++                        db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
++                    } catch (Throwable e) {
++                        failure.set(e);
++                    }
++                });
++            }
++            final long released;
++            synchronized (db.internal().getWriteLock()) {
++                w.start();
++                final long end = System.nanoTime() + 10_000_000_000L;
++                while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
++                    Thread.sleep(1);
++                }
++                Assert.assertEquals("the commit waits", 1, db.internal().writersWaiting());
++                for (Thread t : m) t.start();
++                for (Thread t : m) {
++                    while (t.getState() != Thread.State.TIMED_WAITING
++                            && System.nanoTime() < end) {
++                        Thread.sleep(1);
++                    }
++                    Assert.assertEquals("the call gives way", Thread.State.TIMED_WAITING,
++                            t.getState());
++                }
++                released = db.getStreamLength();
++            }
++            w.join(10_000);
++            for (Thread t : m) t.join(60_000);
++            if (failure.get() != null) throw new AssertionError("failed", failure.get());
++            Assert.assertFalse("the threads ended", w.isAlive() || m[0].isAlive()
++                    || m[1].isAlive());
++            Assert.assertTrue("the calls wrote", db.getStreamLength() > released);
++            Assert.assertEquals("no writer waits", 0, db.internal().writersWaiting());
++            synchronized (db.internal().getWriteLock()) {
++                NodeStream.TransIterator ti =
++                        db.internal().nodeStream().createTransIteratorFromExactStartupPos(released);
++                Assert.assertTrue(ti.next());
++                Assert.assertTrue("the first record is the commit's",
++                        r.get(ti.transTime, "/w") != null);
++                Assert.assertNull(r.get(ti.transTime - 1, "/w"));
++            }
          } finally {
              r.db.close();
          }
-@@ -402,7 +423,10 @@ public class ReclaimMaintainTester {
+@@ -402,7 +495,10 @@ public class ReclaimMaintainTester {
                  }
                  a.tick();
                  b.tick();

@@ -84,6 +84,10 @@ The lead, 2026-11-26:
   six more findings (031-04, section 11). The Q9 agent also repairs
   finding 1 in the prototype.
 * 11:19 028-62 by an agent (Opus, high) in a clone, stop 14:30.
+* 11:24 031-04: Q9's handoff and Codex's finding 1 in the prototype
+  (agent, Opus high, 40 minutes): with ZGC the longest commit during
+  calls 36 to 66 ms at a budget of 100,000 (before: up to 1.1 s); the
+  upgrade restart case now the same stream; BEFORE COMMIT OK.
 
 
 ## 4. Waiting for Frans
