@@ -104,6 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
+| [028-66](66-cut-deletes-lag.md) | Investigate | The cut's deletes lag behind a fast writer, more with a tenth | none | open |
 
 
 Closed
@@ -553,3 +554,8 @@ agent of lead-1126: `FileStream` gives a new file a tenth of the stream,
 not a quarter; `Database.maintain()`'s Javadoc promises the 400 kB of
 the stream; `FileStream`'s Javadoc states the disk's bound and the
 backup by a copy of the files. RB-011 fixed for 2026.7. Moved to Closed.
+
+2026-11-26. 028-66 registered by lead-1126, from 028-62's measurement:
+the cut's deletes, one file at a time with a force of the directory
+after each, lag further behind a fast writer with about three times as
+many files.

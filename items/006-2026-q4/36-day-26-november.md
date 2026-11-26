@@ -95,6 +95,12 @@ The lead, 2026-11-26:
   ext4; on APFS images and RAM disks 7 cut writes held a deleted file's
   bytes. 028-60's part 2: B2 with four conditions recommended; the
   stale-bytes risk is new.
+* 11:48 028-62 done (agent, Opus high, 30 minutes) and landed: a tenth;
+  RetainChurn seed 5 from 10,400 to 400 kB on disk (61 kB of stream);
+  the Pub's maintain() speaks of the stream only; FileStream's Javadoc
+  states the slack and the backup by a copy in name order; BEFORE COMMIT
+  OK, KILL RESTART OK. The cut's deletes lag more behind a fast writer
+  with more files (028-66).
 
 
 ## 4. Waiting for Frans
