@@ -112,6 +112,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-64](64-week-run-ten-hours.md) | Change | week.sh in three lanes, about 6 hours; a 12-hour hang guard | none | done | 2026-11-26 |
 | [028-59](59-maintain-filler-left-live/readme.md) | Investigate | A stop between the filler's put and delete leaves it live: released, S4 | none | done | 2026-11-25 |
 | [028-58](58-maintain-two-stretches/readme.md) | Investigate | An emptied database at 790 kB: RB-006 and RB-007; RB-006 fixed in part | none | done | 2026-11-25 |
 | [028-61](61-maintain-emptied-several-sd/readme.md) | Investigate | An emptied file database keeps its last file: its own, not RB-007 | none | done | 2026-11-25 |
@@ -533,3 +534,10 @@ reclaim run's fresh fill at 10 million keys is 7.24 GB, 3.4 times
 seed's key order, the same bytes at `40cb9ae9` and `main`; 028-43's seed
 was one of the few local orders. The harness's data cap now scales with
 the fill (8 L0 + 3 GB).
+
+2026-11-26. 028-64 registered and taken by an agent of lead-1126, from
+the aim that Frans set for `week.sh` (about 10 hours on F53, at most
+12). Done: the large reclaim run and the large conformance set
+run beside the other steps, each in a clone of its own, with the same
+steps, seeds and sizes; a whole-run hang guard of 12 hours; about 6
+hours estimated. Moved to Closed.

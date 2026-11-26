@@ -5,10 +5,11 @@
 # No quiet-machine check.
 #
 # Usage: sh java/stress/large.sh [full|quick] [SEED]
-#   full (default): 10 million keys, 40 epochs of four-key transactions, about 60 to
-#     90 minutes on a Mac with 32 GB with seed 20778's order (028-43); most seeds' orders
-#     write about 3.8 times its bytes (028-63), not timed in full; quick: 1 million keys,
-#     16 epochs, a few minutes.
+#   full (default): 10 million keys, 40 epochs of four-key transactions; on a Mac with
+#     32 GB (F53), 79 minutes with seed 20778's local order (028-43), 5.5 hours with seed
+#     20782's (2026-11-26, alone on the machine), an order that, as most seeds' orders,
+#     writes about 3.8 times 20778's bytes (028-63); quick: 1 million keys, 16 epochs,
+#     about 3 minutes (seed 20782).
 #   SEED defaults to the date (YYYYMMDD); week.sh passes its day's seed explicitly.
 #   On macOS, caffeinate -i sh java/stress/large.sh full SEED keeps the machine awake.
 #

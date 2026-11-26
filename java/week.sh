@@ -7,9 +7,11 @@
 #     ANDROID_SDK=/path/to/android/sdk nohup caffeinate -i sh java/week.sh >/dev/null 2>&1 &
 #
 # Kind: functional, as night.sh: no step's result depends on the machine's speed or load;
-# the time limits inside are hang guards. It may run while someone works on the machine,
-# and at a low priority (nice -n 10, or taskpolicy -b on macOS; night.sh's header says
-# more). Timing is timing.sh's, which also runs before every release.
+# the time limits inside are hang guards, and so is the whole run's (GUARD_S below). It may
+# run while someone works on the machine, and at a low priority with nice -n 10; not with
+# taskpolicy -b on macOS, which throttles CPU and disk hard (night.sh's header: several
+# times longer) and so would take the large reclaim run past its 12-hour hang guard.
+# Timing is timing.sh's, which also runs before every release.
 #
 # A distinct set of tests (Frans decided, 2026-11-19; bergdb 028-27): this script does not
 # run night.sh, and night.sh, week.sh and timing.sh are disjoint sets of tests: no step of
@@ -18,59 +20,88 @@
 # harness-soak), this script runs it with other seeds, sizes or durations; 028-27 lists
 # each pair and what differs.
 #
-# Usage: java/week.sh          the week run, about 10 to 10.5 hours on F53 (an estimate of
-#                              2026-11-21 from the steps' times below)
-#        java/week.sh short    a trial of the script: its steps small (about 16 minutes;
-#                              13 before the large quick step, 2026-11-19)
+# Usage: java/week.sh          the week run, about 6 hours on F53 (5.5 to 6.7, an
+#                              estimate of 2026-11-26, bergdb 028-64): its longest lane,
+#                              the large reclaim run, up to 5.5 hours alone
+#        java/week.sh short    a trial of the script: its steps small (13 minutes on
+#                              2026-11-26)
 #        DRY=1 java/week.sh [short]
 #                              prints the steps in order with their commands, runs
 #                              nothing (no clone, no report)
+#        GUARD_S=N java/week.sh [short]
+#                              the whole run's hang guard after N seconds (default
+#                              43200, 12 hours; short: 7200)
 #
 # It clones HEAD of this repository into build/week/RUN/repo (RUN is the date and time;
-# lean/.lake and lean/contractcheck/.lake are copied in) and runs there, one after another,
-# going on after a failure except the first's (the clone, the steps' runner, the report and
-# the news entry are stress/runlib.sh's, which night.sh shares):
+# lean/.lake and lean/contractcheck/.lake are copied in) and runs there before-commit, then
+# three lanes at once (bergdb 028-64): large-reclaim and conformance-large, each in a
+# clone of its own (build/week/RUN/repo-NAME, so that no build of one deletes the jar or
+# classes under another's JVMs), beside the other steps, which run one after another in
+# RUN/repo. Each step goes on after a failure except the first's (the clones, the steps'
+# runner, the report, the hang guard and the news entry are stress/runlib.sh's, which
+# night.sh shares). The lanes' times: large-reclaim 5.5 to 6.6 hours with seed 20782's
+# order, which wrote the most bytes of those 028-63 measured; the two others 4 to 5 hours
+# each (028-64 has the figures, what was measured and what estimated).
 #   1. before-commit: before-commit.sh, the unit and f-tests and the demos (about 2
 #      minutes). If it fails, the run stops: the rest would test broken code.
-#   2. apps-quick, apps-soak-cc, apps-kill-cc: stress/apps.sh, the user applications of
-#      024-26, 026-13 and 026-26 (its header), built against the clone's own release jar:
-#      quick (about 6 minutes), soak and kill rounds with the day's number as N, new seeds
-#      each day (about 40 and 30 minutes). Soak and kill with CC (below).
-#   3. kill-restart-week, kill-restart-cc: stress/kill-restart.sh, its self-check and 1,000
-#      kills on each of three seeds (the day's number times 10, plus 1 to 3; night.sh's
-#      seed is the date, YYYYMMDD), the third with CC; about 80 minutes. Stops at the
-#      first failure, which keeps its database until the next seed starts.
-#   4. fuzz-week: stress/fuzz.sh for 60 minutes, seeds from the day's number times 1000
-#      plus 100 (night's 12 turns take those from plus 0).
-#   5. unlinkfuzz-week: stress/unlinkfuzz.sh with only the day's block of seeds, from the
-#      day's number times 1000 plus 500 (night.sh runs the fixed block and the day's from
-#      plus 0); about 2.5 minutes.
-#   6. harness-soak-week, harness-soak-cc: stress/harness-soak.sh, ten rounds (night.sh:
-#      two), seeds from the day's number times 1000 plus 100 (night.sh's from the date
-#      times 1000): rounds 0 to 6, then rounds 7 to 9 with CC (-f 7 -r 3); about 20
-#      minutes.
-#   7. conformance-large: the Lean checker built (lake build in lean/), then
+#   Then the two steps beside the others, in their own clones:
+#   2. large-reclaim: stress/large.sh full, 10 million keys and a long history with
+#      reclaim, old reads, bounded kept bytes, clean restarts and a child JVM killed
+#      during writes; the day's seed (028-43). Its time depends on the seed's key order
+#      (028-63): 79 minutes with seed 20778's local order (028-43), 5.5 hours with seed
+#      20782's (2026-11-26, alone on F53), whose order wrote the most bytes of those that
+#      028-63 measured; few seeds give an order as local as 20778's. This workload is
+#      only here, disjoint from night.sh's smaller reclaim tests and timing.sh. A failing
+#      run's data and build stay in RUN/large-reclaim-failure/ when this script removes
+#      its temporary clone; of a run that the hang guard kills, only the logs stay.
+#   3. conformance-large: the Lean checker built (lake build in lean/), then
 #      stress/conformance.sh large, 12 traces of 1,000 to 5,000 transactions at node sizes
 #      8 to 62, on the day's seeds: 2 a configuration, from the day's number times 1000
 #      plus 700 (Frans, 2026-11-20; night.sh runs the medium set, and its day steps the
 #      other sets from times 1000). Each trace's seed is in its name and its log line; a
 #      failing trace has a FAILED line with the command that makes it again from its seed,
-#      and is kept with its outputs in build/week/RUN/traces/; about 5 hours.
-#   8. apptraces-week: stress/apptraces.sh week, the user apps' workloads against the
+#      and is kept with its outputs in build/week/RUN/traces/; 4 to 4.7 hours (2026-11-20
+#      and 25), most of it its longest trace (a check of 3.9 hours on 2026-11-25).
+#   And one after another, in RUN/repo:
+#   4. apps-quick, apps-soak-cc, apps-kill-cc: stress/apps.sh, the user applications of
+#      024-26, 026-13 and 026-26 (its header), built against the clone's own release jar:
+#      quick (about 6 minutes), soak and kill rounds with the day's number as N, new seeds
+#      each day (about 40 and 30 minutes). Soak and kill with CC (below).
+#   5. kill-restart-week, kill-restart-cc: stress/kill-restart.sh, its self-check and 1,000
+#      kills on each of three seeds (the day's number times 10, plus 1 to 3; night.sh's
+#      seed is the date, YYYYMMDD), the third with CC; about 80 minutes. Stops at the
+#      first failure, which keeps its database until the next seed starts.
+#   6. fuzz-week: stress/fuzz.sh for 60 minutes, seeds from the day's number times 1000
+#      plus 100 (night's 12 turns take those from plus 0).
+#   7. unlinkfuzz-week: stress/unlinkfuzz.sh with only the day's block of seeds, from the
+#      day's number times 1000 plus 500 (night.sh runs the fixed block and the day's from
+#      plus 0); about 2.5 minutes.
+#   8. harness-soak-week, harness-soak-cc: stress/harness-soak.sh, ten rounds (night.sh:
+#      two), seeds from the day's number times 1000 plus 100 (night.sh's from the date
+#      times 1000): rounds 0 to 6, then rounds 7 to 9 with CC (-f 7 -r 3); about 20
+#      minutes.
+#   9. apptraces-week: stress/apptraces.sh week, the user apps' workloads against the
 #      model (bergdb 030-31): the apps larger than night.sh's apptraces step, DeleteHeavy
 #      at node sizes 8 to 62 and WorstCase too, with seeds from the day's number (night.sh:
 #      fixed seeds, small); about 15 minutes.
-#   9. android: stress/android.sh, the unit tests and the demos on an Android emulator;
+#  10. android: stress/android.sh, the unit tests and the demos on an Android emulator;
 #      about 3 minutes.
-#  10. large-reclaim: stress/large.sh full, 10 million keys and a long history with
-#      reclaim, old reads, bounded kept bytes, clean restarts and a child JVM killed
-#      during writes; the day's seed (028-43). About 60 to 90 minutes. This workload
-#      is only here, disjoint from night.sh's smaller reclaim tests and timing.sh.
-#      A failing run's data and build stay in RUN/large-reclaim-failure/ when this
-#      script removes its temporary clone.
-# With "short": before-commit, apps quick with CC (so that the trial takes the apps' path
-# of CC), kill-restart 10 kills on two seeds, the second with CC, fuzz 1 minute, unlinkfuzz the day's block, harness-soak rounds 0 and 1,
-# round 1 with CC, conformance small with 1 seed in place of large, android, large-reclaim quick.
+# The steps' times are those of 2026-11-19 to 25, when all ran one after another; since
+# 2026-11-26 (bergdb 028-64) the steps are the same, with the same seeds and sizes, and
+# the lanes slow each other somewhat.
+# With "short": before-commit; beside the others, large-reclaim quick and conformance small
+# with 1 seed in place of large; apps quick with CC (so that the trial takes the apps' path
+# of CC), kill-restart 10 kills on two seeds, the second with CC, fuzz 1 minute, unlinkfuzz
+# the day's block, harness-soak rounds 0 and 1, round 1 with CC, android.
+#
+# The hang guard (bergdb 028-64; runlib.sh's run_guard): if the run has not ended GUARD_S
+# seconds after its start (default 43200, 12 hours, about twice the full run's time;
+# short: 7200), it kills the processes of the steps then running, which fail with a HANG
+# line; the steps not yet started are not run, and the report ends "WEEK FAILED: ...
+# hang-guard". It catches a hang in a step without a guard of its own (the Lean checker of
+# a conformance trace, lake); a run that meets it on F53 has hung, or the machine was
+# about twice as slow as F53 alone. An interrupt (INT, TERM) of this script kills the
+# steps' processes too (runlib.sh's run_stop); the run's directory stays.
 #
 # CC (bergdb 030-30): the steps whose names end in -cc run with Java's commit-time check
 # of the writer's contract on (TransCheck; bergdb 030-09, section 3; 030-20) at every
@@ -85,9 +116,11 @@
 # (a JVM killed with SIGKILL writes no summary).
 #
 # It writes build/week/RUN/report.txt (the commit, the JDK, whether the Android SDK is set,
-# each step's last line, result and time, and WEEK OK or WEEK FAILED), each step's output
-# in STEP.txt, and the scripts' *.txt logs in logs/; then deletes the clone and its
-# databases, and adds a tools/news.sh entry. Exits with status 1 if a step failed.
+# the lanes and the guard, each step's last line, result and time, the two steps of the
+# other lanes last, and WEEK OK or WEEK FAILED with the run's minutes, less than the sum of
+# the steps'), each step's output in STEP.txt, and the scripts' *.txt logs in logs/; then
+# deletes the clones and their databases, and adds a tools/news.sh entry. Exits with
+# status 1 if a step failed.
 #
 # Android: the android step needs the Android SDK (bergdb 006-18-03, section 3, says how to
 # install it) through the environment, which this script passes on to stress/android.sh:
@@ -100,7 +133,8 @@
 
 cd "$(dirname "$0")" || exit 1
 echo "Kind: functional"
-# JAVA, DAY, run_start, step and run_finish (bergdb 028-27).
+# JAVA, DAY, run_start, step, step_bg, step_wait, run_guard, run_stop and run_finish
+# (bergdb 028-27, 028-64).
 . ./stress/runlib.sh
 
 SHORT=0
@@ -119,11 +153,19 @@ else
         "(the header says how to start it)"
 fi
 
+if [ $SHORT = 1 ]; then GUARD_S=${GUARD_S:-7200}; else GUARD_S=${GUARD_S:-43200}; fi
+case $GUARD_S in ''|*[!0-9]*) echo "week.sh: GUARD_S must be a number of seconds"; exit 2 ;; esac
 if [ $SHORT = 1 ]; then
-    run_start week "Week run" ", short" "$SDKLINE"
+    run_start week "Week run" ", short" "$SDKLINE
+Lanes: large-reclaim-quick and conformance-small beside the other steps, each in its own clone; hang guard $GUARD_S s"
 else
-    run_start week "Week run" "" "$SDKLINE"
+    run_start week "Week run" "" "$SDKLINE
+Lanes: large-reclaim and conformance-large beside the other steps, each in its own clone; hang guard $GUARD_S s"
 fi
+# The whole run's hang guard, and an interrupt that kills the steps' processes too, the
+# background steps' with the others (runlib.sh's run_guard and run_stop; bergdb 028-64).
+run_guard $GUARD_S
+[ "$DRY" = 1 ] || trap run_stop INT TERM
 
 # kill_seeds KILLS SEED...: kill-restart.sh with each seed in turn, KILLS kills each; stops
 # at the first failure, whose database stays in build/kill-restart/ (the next run would
@@ -166,7 +208,7 @@ with_cc() {
 }
 
 # conformance SET [SEEDS [FIRST]]: the jar and the Lean checker built first, as the level scripts
-# do for theirs (no step before it builds the checker), then stress/conformance.sh.
+# do for theirs (in its own clone, no other step builds them there), then stress/conformance.sh.
 conformance() {
     ./build.sh > /dev/null || { echo "CONFORMANCE FAILED: build"; return 1; }
     (cd ../lean && lake build) > build/lake-week.txt 2>&1 \
@@ -198,8 +240,11 @@ if ! step before-commit sh before-commit.sh; then
     run_finish
     exit 1
 fi
-# The steps whose names end in -cc run with CC on (with_cc; bergdb 030-30).
+# The two longest steps beside the others, each in a clone of its own (runlib.sh's step_bg;
+# bergdb 028-64); the steps whose names end in -cc run with CC on (with_cc; bergdb 030-30).
 if [ $SHORT = 0 ]; then
+    step_bg large-reclaim large_reclaim full $DAY
+    step_bg conformance-large conformance large 2 $((DAY * 1000 + 700))
     step apps-quick sh stress/apps.sh quick
     step apps-soak-cc with_cc apps-soak sh stress/apps.sh soak $DAY
     step apps-kill-cc with_cc apps-kill sh stress/apps.sh kill $DAY
@@ -211,9 +256,10 @@ if [ $SHORT = 0 ]; then
         -o build/harness-soak-week
     step harness-soak-cc with_cc harness-soak sh stress/harness-soak.sh -f 7 -r 3 \
         -b $((DAY * 1000 + 100)) -o build/harness-soak-cc
-    step conformance-large conformance large 2 $((DAY * 1000 + 700))
     step apptraces-week sh stress/apptraces.sh week
 else
+    step_bg large-reclaim-quick large_reclaim quick $DAY
+    step_bg conformance-small conformance small 1
     step apps-quick-cc with_cc apps-quick sh stress/apps.sh quick
     step kill-restart-week kill_seeds 10 $((DAY * 10 + 1))
     step kill-restart-cc with_cc kill-restart kill_seeds 10 $((DAY * 10 + 2))
@@ -223,13 +269,9 @@ else
         -o build/harness-soak-week
     step harness-soak-cc with_cc harness-soak sh stress/harness-soak.sh -f 1 -r 1 \
         -b $((DAY * 1000 + 100)) -o build/harness-soak-cc
-    step conformance-small conformance small 1
 fi
 step android sh stress/android.sh
-if [ $SHORT = 0 ]; then
-    step large-reclaim large_reclaim full $DAY
-else
-    step large-reclaim-quick large_reclaim quick $DAY
-fi
+# The lanes' lines last, in the order in which they started.
+step_wait
 
 run_finish
