@@ -1,0 +1,181 @@
+031-05: P2CrashProbe runs of 2026-11-26 (probes/P2CrashProbe.java), the summary lines.
+Prototype: branch 031-05 of c315 (java/ as prototype.diff). D1 is the default (deferred);
+D2 is -Dproto315.eager=true. Other properties as named before each run.
+
+== The prototype, D1, seeds 1 to 3 (keys 200; seed 1: maxv 3000; 2, 3: -Dmaxv=6000)
+P2CrashProbe 1 150 10000 both
+seed 1, actions 152 (7 calls of 100), sd 10000, deferred (D1): records 177 (25 parts of calls, 10 other maintenance), length 630200, cut 16312, digest 90f168579b5f3552
+crash: 177 the same, 0 different, 0 skipped; 177 ended at the record
+stop: 177 the same, 0 different, 0 skipped; 177 ended at the record
+-Dproto315.eager=true P2CrashProbe 1 150 10000 both
+seed 1, actions 152 (7 calls of 100), sd 10000, eager (D2): records 177 (25 parts of calls, 10 other maintenance), length 630200, cut 16312, digest 90f168579b5f3552
+crash: 177 the same, 0 different, 0 skipped; 177 ended at the record
+stop: 177 the same, 0 different, 0 skipped; 177 ended at the record
+-Dmaxv=6000 P2CrashProbe 2 400 2000 both
+seed 2, actions 402 (31 calls of 100), sd 2000, deferred (D1): records 522 (112 parts of calls, 41 other maintenance), length 3621768, cut 1412096, digest daa74f2ba600f61f
+crash: 522 the same, 0 different, 0 skipped; 522 ended at the record
+stop: 522 the same, 0 different, 0 skipped; 522 ended at the record
+-Dmaxv=6000 P2CrashProbe 3 400 2000 both
+seed 3, actions 403 (32 calls of 100), sd 2000, deferred (D1): records 531 (111 parts of calls, 49 other maintenance), length 3619112, cut 2329480, digest 97e69eb1564e2bd2
+crash: 531 the same, 0 different, 0 skipped; 531 ended at the record
+stop: 531 the same, 0 different, 0 skipped; 531 ended at the record
+
+(Seeds 1 to 3 ran with the probe before its last empty transaction and its comparison of the
+decided cut, which then gave 2 different at seed 3, records 526 and 527: the stream ended in
+the last call's parts with nothing after it to write the maintenance due, and the physical cut
+waited for durability. Run again with both, as above.)
+
+== sweep 1 (sweep1.sh): D1 then D2; configs SEED ACTIONS SD MAXV BUDGET: 11 400 2000 6000 100; 12 400 10000 3000 100; 13 300 50000 20000 1000; 14 600 1000 2000 100; 15 400 5000 6000 10000; 16 500 2000 400 100 (D2 seed 16 stop: the probe did not yet count a StreamIoException of maintain()'s sync at a stop as the call interrupted; run again in sweep 2)
+seed 11, actions 403 (33 calls of 100), sd 2000, deferred (D1): records 538 (118 parts of calls, 51 other maintenance), length 3592240, cut 2345008, digest 63711d460bf899cd
+crash: 538 the same, 0 different, 0 skipped; 538 ended at the record
+stop: 538 the same, 0 different, 0 skipped; 538 ended at the record
+seed 12, actions 403 (36 calls of 100), sd 10000, deferred (D1): records 585 (159 parts of calls, 60 other maintenance), length 3314696, cut 2311856, digest 3bbb3c2f529b4fef
+crash: 585 the same, 0 different, 0 skipped; 585 ended at the record
+stop: 585 the same, 0 different, 0 skipped; 585 ended at the record
+seed 13, actions 303 (18 calls of 1000), sd 50000, deferred (D1): records 677 (290 parts of calls, 102 other maintenance), length 12233368, cut 8757480, digest c2c6fd1123c6f439
+crash: 677 the same, 0 different, 0 skipped; 677 ended at the record
+stop: 677 the same, 0 different, 0 skipped; 677 ended at the record
+seed 14, actions 603 (57 calls of 100), sd 1000, deferred (D1): records 825 (186 parts of calls, 94 other maintenance), length 3420544, cut 2594200, digest da611abadc1a146b
+crash: 825 the same, 0 different, 0 skipped; 825 ended at the record
+stop: 825 the same, 0 different, 0 skipped; 825 ended at the record
+seed 15, actions 403 (36 calls of 10000), sd 5000, deferred (D1): records 595 (166 parts of calls, 64 other maintenance), length 4867944, cut 3007456, digest fff106b50ce3226e
+crash: 595 the same, 0 different, 0 skipped; 595 ended at the record
+stop: 595 the same, 0 different, 0 skipped; 595 ended at the record
+seed 16, actions 503 (39 calls of 100), sd 2000, deferred (D1): records 582 (70 parts of calls, 49 other maintenance), length 998312, cut 611832, digest f9e11c539035fc02
+crash: 582 the same, 0 different, 0 skipped; 582 ended at the record
+stop: 582 the same, 0 different, 0 skipped; 582 ended at the record
+seed 11, actions 403 (33 calls of 100), sd 2000, eager (D2): records 538 (118 parts of calls, 51 other maintenance), length 3592240, cut 2345008, digest 63711d460bf899cd
+crash: 538 the same, 0 different, 0 skipped; 538 ended at the record
+stop: 538 the same, 0 different, 0 skipped; 538 ended at the record
+seed 12, actions 403 (36 calls of 100), sd 10000, eager (D2): records 585 (159 parts of calls, 60 other maintenance), length 3314696, cut 2311856, digest 3bbb3c2f529b4fef
+crash: 585 the same, 0 different, 0 skipped; 585 ended at the record
+stop: 585 the same, 0 different, 0 skipped; 585 ended at the record
+seed 13, actions 303 (18 calls of 1000), sd 50000, eager (D2): records 677 (290 parts of calls, 102 other maintenance), length 12233368, cut 8757480, digest c2c6fd1123c6f439
+crash: 677 the same, 0 different, 0 skipped; 677 ended at the record
+stop: 677 the same, 0 different, 0 skipped; 677 ended at the record
+seed 14, actions 603 (57 calls of 100), sd 1000, eager (D2): records 825 (186 parts of calls, 94 other maintenance), length 3420544, cut 2594200, digest da611abadc1a146b
+crash: 825 the same, 0 different, 0 skipped; 825 ended at the record
+stop: 825 the same, 0 different, 0 skipped; 825 ended at the record
+seed 15, actions 403 (36 calls of 10000), sd 5000, eager (D2): records 595 (166 parts of calls, 64 other maintenance), length 4867944, cut 3007456, digest fff106b50ce3226e
+crash: 595 the same, 0 different, 0 skipped; 595 ended at the record
+stop: 595 the same, 0 different, 0 skipped; 595 ended at the record
+seed 16, actions 503 (39 calls of 100), sd 2000, eager (D2): records 582 (70 parts of calls, 49 other maintenance), length 998312, cut 611832, digest f9e11c539035fc02
+crash: 582 the same, 0 different, 0 skipped; 582 ended at the record
+
+== sweep 2: the stop of D2 seed 16 again; then D1 and D2 with -Dmaint=15, configs SEED ACTIONS SD MAXV BUDGET NODE KEYS: 21 400 2000 3000 100 8 1000; 22 400 5000 1000 100 30 300; 23 300 20000 8000 1000 8 50; 24 500 1000 100 100 8 2000
+seed 16, actions 503 (39 calls of 100), sd 2000, eager (D2): records 582 (70 parts of calls, 49 other maintenance), length 998312, cut 611832, digest f9e11c539035fc02
+stop: 582 the same, 0 different, 0 skipped; 582 ended at the record
+seed 21, actions 403 (49 calls of 100), sd 2000, deferred (D1): records 605 (190 parts of calls, 61 other maintenance), length 4234632, cut 2601000, digest db2bbebae20f0842
+crash: 605 the same, 0 different, 0 skipped; 605 ended at the record
+stop: 605 the same, 0 different, 0 skipped; 605 ended at the record
+seed 22, actions 403 (77 calls of 100), sd 5000, deferred (D1): records 451 (84 parts of calls, 42 other maintenance), length 1192328, cut 553144, digest af0f526b267f098e
+crash: 451 the same, 0 different, 0 skipped; 451 ended at the record
+stop: 451 the same, 0 different, 0 skipped; 451 ended at the record
+seed 23, actions 303 (56 calls of 1000), sd 20000, deferred (D1): records 405 (108 parts of calls, 51 other maintenance), length 2912056, cut 1649760, digest 51f47dd854b81e77
+crash: 405 the same, 0 different, 0 skipped; 405 ended at the record
+stop: 405 the same, 0 different, 0 skipped; 405 ended at the record
+seed 24, actions 503 (69 calls of 100), sd 1000, deferred (D1): records 655 (136 parts of calls, 87 other maintenance), length 1838392, cut 1506608, digest a3e0aed4e98613a5
+crash: 655 the same, 0 different, 0 skipped; 655 ended at the record
+stop: 655 the same, 0 different, 0 skipped; 655 ended at the record
+seed 21, actions 403 (49 calls of 100), sd 2000, eager (D2): records 605 (190 parts of calls, 61 other maintenance), length 4234632, cut 2601000, digest db2bbebae20f0842
+crash: 605 the same, 0 different, 0 skipped; 605 ended at the record
+stop: 605 the same, 0 different, 0 skipped; 605 ended at the record
+seed 22, actions 403 (77 calls of 100), sd 5000, eager (D2): records 451 (84 parts of calls, 42 other maintenance), length 1192328, cut 553144, digest af0f526b267f098e
+crash: 451 the same, 0 different, 0 skipped; 451 ended at the record
+stop: 451 the same, 0 different, 0 skipped; 451 ended at the record
+seed 23, actions 303 (56 calls of 1000), sd 20000, eager (D2): records 405 (108 parts of calls, 51 other maintenance), length 2912056, cut 1649760, digest 51f47dd854b81e77
+crash: 405 the same, 0 different, 0 skipped; 405 ended at the record
+stop: 405 the same, 0 different, 0 skipped; 405 ended at the record
+seed 24, actions 503 (69 calls of 100), sd 1000, eager (D2): records 655 (136 parts of calls, 87 other maintenance), length 1838392, cut 1506608, digest a3e0aed4e98613a5
+crash: 655 the same, 0 different, 0 skipped; 655 ended at the record
+stop: 655 the same, 0 different, 0 skipped; 655 ended at the record
+
+== sweep 3: D1 -Dmaxv=6000 -Dstride=5 P2CrashProbe 31 2000 5000; D2 -Dmaxv=6000 -Dbudget=100000 -Dmaint=3 -Dstride=3 P2CrashProbe 32 1500 3000
+seed 31, actions 2003 (165 calls of 100), sd 5000, deferred (D1): records 2698 (687 parts of calls, 186 other maintenance), length 22489280, cut 20681472, digest 9ac53e73c8a463c3
+crash: 540 the same, 0 different, 0 skipped; 540 ended at the record
+stop: 540 the same, 0 different, 0 skipped; 540 ended at the record
+seed 32, actions 1503 (41 calls of 100000), sd 3000, eager (D2): records 2244 (525 parts of calls, 267 other maintenance), length 18933040, cut 16660968, digest bf3528e5b6c9b07d
+crash: 748 the same, 0 different, 0 skipped; 748 ended at the record
+stop: 748 the same, 0 different, 0 skipped; 748 ended at the record
+seed 33, actions 1003 (71 calls of 1000), sd 2000, deferred (D1): records 2685 (1619 parts of calls, 138 other maintenance), length 59314760, cut 42033208, digest f75c442c2f630784
+
+== D1 -Xmx6g -Dmaxv=20000 -Dbudget=1000 -Dnode=8 -Dkeys=3000 -Dstride=9 P2CrashProbe 33 1000 2000 both
+seed 33, actions 1003 (71 calls of 1000), sd 2000, deferred (D1): records 2685 (1619 parts of calls, 138 other maintenance), length 59314760, cut 42033208, digest f75c442c2f630784
+crash: 299 the same, 0 different, 0 skipped; 299 ended at the record
+stop: 299 the same, 0 different, 0 skipped; 299 ended at the record
+
+== D2 again, after the prototype's change of 14:00 (D2: a maintain() call and the setters of
+reclaim's settings write at their end what they leave due), on its jar; the D2 configurations
+above, the probe with its last empty transaction, and seed 41 (-Dmaxv=100 -Dkeys=30 -Dnode=8
+-Dmaint=50 P2CrashProbe 41 300 200, like the conformance's r-maint)
+seed 1, actions 153 (7 calls of 100), sd 10000, eager (D2): records 178 (25 parts of calls, 10 other maintenance), length 632312, cut 16312, digest 25aced5ebbd48a41
+crash: 178 the same, 0 different, 0 skipped; 178 ended at the record
+stop: 178 the same, 0 different, 0 skipped; 178 ended at the record
+seed 11, actions 403 (33 calls of 100), sd 2000, eager (D2): records 538 (118 parts of calls, 51 other maintenance), length 3592240, cut 2345008, digest 63711d460bf899cd
+crash: 538 the same, 0 different, 0 skipped; 538 ended at the record
+stop: 538 the same, 0 different, 0 skipped; 538 ended at the record
+seed 12, actions 403 (36 calls of 100), sd 10000, eager (D2): records 585 (159 parts of calls, 60 other maintenance), length 3314696, cut 2311856, digest 3bbb3c2f529b4fef
+crash: 585 the same, 0 different, 0 skipped; 585 ended at the record
+stop: 585 the same, 0 different, 0 skipped; 585 ended at the record
+seed 13, actions 303 (18 calls of 1000), sd 50000, eager (D2): records 677 (290 parts of calls, 102 other maintenance), length 12233368, cut 8757480, digest c2c6fd1123c6f439
+crash: 677 the same, 0 different, 0 skipped; 677 ended at the record
+stop: 677 the same, 0 different, 0 skipped; 677 ended at the record
+seed 14, actions 603 (57 calls of 100), sd 1000, eager (D2): records 825 (186 parts of calls, 94 other maintenance), length 3420544, cut 2594200, digest da611abadc1a146b
+crash: 825 the same, 0 different, 0 skipped; 825 ended at the record
+stop: 825 the same, 0 different, 0 skipped; 825 ended at the record
+seed 15, actions 403 (36 calls of 10000), sd 5000, eager (D2): records 595 (166 parts of calls, 64 other maintenance), length 4867944, cut 3007456, digest fff106b50ce3226e
+crash: 595 the same, 0 different, 0 skipped; 595 ended at the record
+stop: 595 the same, 0 different, 0 skipped; 595 ended at the record
+seed 16, actions 503 (39 calls of 100), sd 2000, eager (D2): records 582 (70 parts of calls, 49 other maintenance), length 998312, cut 611832, digest f9e11c539035fc02
+crash: 582 the same, 0 different, 0 skipped; 582 ended at the record
+stop: 582 the same, 0 different, 0 skipped; 582 ended at the record
+seed 21, actions 403 (49 calls of 100), sd 2000, eager (D2): records 605 (190 parts of calls, 61 other maintenance), length 4234632, cut 2601000, digest db2bbebae20f0842
+crash: 605 the same, 0 different, 0 skipped; 605 ended at the record
+stop: 605 the same, 0 different, 0 skipped; 605 ended at the record
+seed 22, actions 403 (77 calls of 100), sd 5000, eager (D2): records 451 (84 parts of calls, 42 other maintenance), length 1192328, cut 553144, digest af0f526b267f098e
+crash: 451 the same, 0 different, 0 skipped; 451 ended at the record
+stop: 451 the same, 0 different, 0 skipped; 451 ended at the record
+seed 23, actions 303 (56 calls of 1000), sd 20000, eager (D2): records 405 (108 parts of calls, 51 other maintenance), length 2912056, cut 1649760, digest 51f47dd854b81e77
+crash: 405 the same, 0 different, 0 skipped; 405 ended at the record
+stop: 405 the same, 0 different, 0 skipped; 405 ended at the record
+seed 24, actions 503 (69 calls of 100), sd 1000, eager (D2): records 655 (136 parts of calls, 87 other maintenance), length 1838392, cut 1506608, digest a3e0aed4e98613a5
+crash: 655 the same, 0 different, 0 skipped; 655 ended at the record
+stop: 655 the same, 0 different, 0 skipped; 655 ended at the record
+seed 32, actions 1503 (41 calls of 100000), sd 3000, eager (D2): records 2244 (525 parts of calls, 267 other maintenance), length 18933040, cut 16660968, digest bf3528e5b6c9b07d
+crash: 748 the same, 0 different, 0 skipped; 748 ended at the record
+stop: 748 the same, 0 different, 0 skipped; 748 ended at the record
+seed 41, actions 303 (150 calls of 100), sd 200, eager (D2): records 308 (91 parts of calls, 64 other maintenance), length 884152, cut 692600, digest 2e5ac670be5611dc
+crash: 308 the same, 0 different, 0 skipped; 308 ended at the record
+stop: 308 the same, 0 different, 0 skipped; 308 ended at the record
+
+== D1 on the same jar: seed 41 as above, and seed 1 with the probe's last empty transaction
+seed 41, actions 303 (150 calls of 100), sd 200, deferred (D1): records 308 (91 parts of calls, 64 other maintenance), length 884152, cut 692600, digest 2e5ac670be5611dc
+crash: 308 the same, 0 different, 0 skipped; 308 ended at the record
+stop: 308 the same, 0 different, 0 skipped; 308 ended at the record
+seed 1, actions 153 (7 calls of 100), sd 10000, deferred (D1): records 178 (25 parts of calls, 10 other maintenance), length 632312, cut 16312, digest 25aced5ebbd48a41
+crash: 178 the same, 0 different, 0 skipped; 178 ended at the record
+stop: 178 the same, 0 different, 0 skipped; 178 ended at the record
+
+== 031-04's prototype (c314, cfb195f3; its commits maintain as main does), the probe compiled
+against its jar; boundaries inside maintain() calls skipped (no maintain(int, int)); the
+"deferred (D1)" in its header is the probe's label only
+-Dmaxv=6000 P2CrashProbe 3 400 2000 both
+seed 3, actions 403 (32 calls of 100), sd 2000: records 583 (0 parts of calls, 212 other maintenance), length 3687000, cut 2365040, digest 19b2b1e429739203
+crash: 374 the same, 44 different, 165 skipped; 418 ended at the record
+stop: 374 the same, 44 different, 165 skipped; 418 ended at the record
+-Dmaxv=6000 P2CrashProbe 11 400 2000 both
+seed 11, actions 403 (33 calls of 100), sd 2000: records 581 (0 parts of calls, 212 other maintenance), length 3625720, cut 2365784, digest 537d6f503fcadcf8
+crash: 371 the same, 40 different, 170 skipped; 411 ended at the record
+stop: 371 the same, 40 different, 170 skipped; 411 ended at the record
+-Dmaxv=3000 P2CrashProbe 12 400 10000 both
+seed 12, actions 403 (36 calls of 100), sd 10000: records 655 (0 parts of calls, 289 other maintenance), length 3297120, cut 2359632, digest 2027cce5556b9c16
+crash: 366 the same, 49 different, 240 skipped; 415 ended at the record
+stop: 366 the same, 49 different, 240 skipped; 415 ended at the record
+-Dmaxv=2000 P2CrashProbe 14 600 1000 both
+seed 14, actions 603 (57 calls of 100), sd 1000: records 918 (0 parts of calls, 373 other maintenance), length 3501232, cut 2663256, digest 2a7db797bbdc6bd9
+crash: 551 the same, 62 different, 305 skipped; 613 ended at the record
+stop: 551 the same, 62 different, 305 skipped; 613 ended at the record
+First differences at seed 3: records 3 (a put, its own record), 16, 17 (a put's maintenance),
+26, 39, 40, 41, 43, ...: a user record whose maintenance follows it, and boundaries between
+its maintenance records.
+

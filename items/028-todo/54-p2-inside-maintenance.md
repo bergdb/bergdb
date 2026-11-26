@@ -42,3 +42,7 @@ Log
 ---
 
 2026-11-25. Registered by lead-1125, from 031-01's revision.
+
+2026-11-26. Answered by 031-05's direction (Frans, 2026-11-26): every
+write to the stream a function of the stream and the user actions, a
+restart, a stop or a crash inside a commit's maintenance included.

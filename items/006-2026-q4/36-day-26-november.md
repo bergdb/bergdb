@@ -42,6 +42,16 @@ Frans, 2026-11-26:
   cut not made: complexity on the file system, and the backup property
   (11:18).
 * The usage limit 70 % (13:05).
+* 028-54 and the stream: every write to the stream a function of the
+  stream itself and the user actions (accepted calls of `Db.execute()`
+  and `Db.maintain()`, with their times); worded precisely and, when
+  possible, proved; it extends P2 to maintenance and to anything that
+  writes; studied in 031-05; a review by an agent on Fable, high, when
+  the study is done (12:59, 13:03).
+* 028-60's part 2: the zero tail removed by `FileStream` at open, the
+  same rule on every system, at most 8 MB, nothing above `FileStream`
+  (13:26).
+* Frans off for the day at 13:39.
 
 The lead, 2026-11-26:
 
@@ -112,6 +122,19 @@ The lead, 2026-11-26:
   A start refuses most stale tails with unclear messages and may first
   fill up to 2 GB of zeros: 028-67 (C1 recommended now, C3 with the
   next format change).
+* 13:56 028-60's part 2 done (agent, Opus high, 28 minutes) on a
+  branch: seed 63 starts at its last synced transaction; BEFORE COMMIT
+  OK, KILL RESTART OK, KillWriter OK; not landed: for encrypted streams
+  it adds a switch in the Pub layer's builder, against the constraint;
+  Codex's review started, with the alternative of a run of at least
+  4,096 bytes.
+* 14:10 031-05's study done (agent, Opus xhigh, 69 minutes): the
+  wording of the invariant; the inputs outside the stream found and
+  handled (N1 to N10); 15,625 crashes and 15,625 stops at every record
+  boundary give the stream of the uninterrupted run (031-04's
+  prototype: 195 of 1,857 boundaries differ); D2 recommended; a Lean
+  theorem T16_crash sketched; Q1 to Q9 for Frans. Landed as text; the
+  review by Fable started (14:09).
 
 
 ## 4. Waiting for Frans

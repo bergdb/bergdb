@@ -1,0 +1,883 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index f20d6e68..4db93322 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -725,6 +725,9 @@ public class Db implements AutoCloseable {
+             assertDbStateIsActive("setStartupDistance");
+             int old = this.startupDistance;
+             if (newDistance == old) return newDistance;
++            // bergdb 031-05: what is due after the last record first, at the setting in force.
++            dbClock.hold(true);
++            reclaim.catchUp();
+             // The new setting paces this transaction's own take already, as the meta block's
+             // did until bergdb 028-15.
+             this.startupDistance = newDistance;
+@@ -865,7 +868,13 @@ public class Db implements AutoCloseable {
+             writersWaiting.decrementAndGet();
+             // The state first, so that a refused call changes nothing (bergdb 015-87, F6).
+             assertDbStateIsActive("setRetainDuration");
+-            reclaim.setSettings(duration, reclaim.getInternalFractionUnits());
++            dbClock.hold(true);     // bergdb 031-05; setSettings catches up first
++            try {
++                reclaim.setSettings(duration, reclaim.getInternalFractionUnits());
++                if (Reclaim.eager) reclaim.catchUp();       // D2: a cut the setting made due
++            } finally {
++                holdIfDue();
++            }
+         }
+     }
+     
+@@ -909,6 +918,35 @@ public class Db implements AutoCloseable {
+      * @throws StreamIoException  If the sync is interrupted, or the database is stopping.
+      */
+     public void maintain(int budget) {
++        maintain(budget, Integer.MAX_VALUE);
++    }
++    
++    /**
++     * maintain(budget), ended after at most maxParts parts that wrote (bergdb 031-05): the
++     * call with a smaller budget that a crash or a stop inside a call leaves, for probes.
++     */
++    void maintain(int budget, int maxParts) {
++        maintainCalls.incrementAndGet();    // without the lock: the call gives way first (Q9)
++        try {
++            maintainInner(budget, maxParts);
++            if (Reclaim.eager) {
++                // bergdb 031-05, D2: what the call's last parts left due (the safe positions,
++                // the cut's decision at its last record's time) is written in the call, so
++                // that nothing is due between calls.
++                synchronized (writeLock) {
++                    assertDbStateIsActive("maintain");
++                    reclaim.catchUp();
++                }
++            }
++        } finally {
++            maintainCalls.decrementAndGet();
++            synchronized (writeLock) {
++                holdIfDue();
++            }
++        }
++    }
++    
++    private void maintainInner(int budget, int maxParts) {
+         final long limit = Math.max(Reclaim.MAINTAIN_MIN_BUDGET,
+                 Math.min(Reclaim.MAINTAIN_MAX_BUDGET, budget)) * Reclaim.MAINTAIN_UNIT;
+         // A caller that holds the write lock already (none in BergDB) would wait for writers
+@@ -916,6 +954,8 @@ public class Db implements AutoCloseable {
+         final boolean giveWay = !Thread.holdsLock(writeLock);
+         long spent = 0;
+         boolean reclaimDone = false;
++        long callTime = -1;     // bergdb 031-05: the call's time, taken at its first part
++        int parts = 0;
+         while (spent < limit) {
+             long cost = 0, durableAt = -1;
+             if (giveWay) giveWayToWriters();
+@@ -944,9 +984,22 @@ public class Db implements AutoCloseable {
+                             + "reclaim's internal transactions after a user transaction. "
+                             + "Nothing more is written.");
+                 }
+-                final long now = dbClock.currentTime();
++                // bergdb 031-05: what the stream says is due after its last record first (a
++                // commit's maintenance, which may have come between two parts), then the part,
++                // at the call's time, taken once (the action's time), its records' times from
++                // it (DbClock.maintenanceBegin); the clock is held during the call.
++                dbClock.hold(true);
++                reclaim.catchUp();
++                if (callTime == -1) {
++                    callTime = dbClock.actionTime();
++                }
++                if (parts >= maxParts) {
++                    return;
++                }
++                dbClock.setMaintenanceFloor(callTime);
+                 try {
+-                    cost = reclaim.maintainPart(now, dbClock.lookupTime(Long.MAX_VALUE));
++                    cost = reclaim.maintainPart(callTime, dbClock.lookupTime(Long.MAX_VALUE));
++                    if (cost > 0) parts++;
+                 } catch (DbStoppingException | DbFailedException e) {
+                     // stop() or close() came during the call (bergdb 015-53): what is committed
+                     // stays, and the rest goes on after the next start. Or one of its internal
+@@ -963,6 +1016,8 @@ public class Db implements AutoCloseable {
+                     throw new DbFailedException("maintain() failed after it began (the cause); "
+                             + "the database takes no more transactions or reads and must be "
+                             + "restarted: the restart rebuilds it from the stream.", e);
++                } finally {
++                    dbClock.setMaintenanceFloor(0);
+                 }
+                 durableAt = reclaim.pendingCutDurableAt();
+                 if (durableAt == -1 || getDurableLength() >= durableAt) {
+@@ -1058,7 +1113,13 @@ public class Db implements AutoCloseable {
+         synchronized (writeLock) {
+             writersWaiting.decrementAndGet();
+             assertDbStateIsActive("setReclaimInternalFraction");
+-            reclaim.setSettings(reclaim.getRetainDuration(), units);
++            dbClock.hold(true);     // bergdb 031-05; setSettings catches up first
++            try {
++                reclaim.setSettings(reclaim.getRetainDuration(), units);
++                if (Reclaim.eager) reclaim.catchUp();       // D2, as setRetainDuration
++            } finally {
++                holdIfDue();
++            }
+         }
+     }
+     
+@@ -1322,6 +1383,7 @@ public class Db implements AutoCloseable {
+         // record's startup pos is before its own position).
+         reclaim.initFromDb(transactions.get(transactions.size() - 1));
+         synchronized (writeLock) {
++            holdIfDue();        // bergdb 031-05: a crash or a stop may have left maintenance due
+             // The admission of the large values that the start made resident, as after a
+             // record that this database writes (Eviction.recordWritten): their records are in
+             // the stream, and their pointers become stream pointers; the list is empty after
+@@ -2995,10 +3057,32 @@ public class Db implements AutoCloseable {
+         writersWaiting.incrementAndGet();
+         synchronized (writeLock) {
+             writersWaiting.decrementAndGet();
++            try {
++                executeLocked(t, before);
++            } finally {
++                if (!t.isInternal()) {
++                    holdIfDue();        // bergdb 031-05
++                }
++            }
++        }
++    }
++    
++    /** executeInner() under the write lock (bergdb 031-05: split off for the hold). */
++    private void executeLocked(Trans t, final Before before) {
++        {
+             try {
+                 // Again under the lock (bergdb 005-01): a writer that waited for the lock while
+                 // another one failed must not run on what the failed one left in memory.
+                 assertDbStateIsActive("execute");
++                if (!t.isInternal()) {
++                    // bergdb 031-05: the maintenance that the stream says is due after its last
++                    // record first, as a function of the stream (Reclaim.catchUp); then this
++                    // transaction's checks and record. The clock is held from here
++                    // (DbClock.hold) until no maintenance is due.
++                    dbClock.hold(true);
++                    reclaim.catchUp();
++                    assertDbStateIsActive("execute");   // a stop during it refuses this one
++                }
+             
+                 // The end of the top node ordinals (bergdb item 005-02, register M46): checked
+                 // before the transaction changes anything. A transaction makes at most one top
+@@ -3022,7 +3106,8 @@ public class Db implements AutoCloseable {
+                 // transaction in the times kept for reclaim's internal transactions after it
+                 // (bergdb 015-55); before the try, so that nothing has begun or changed when it
+                 // throws.
+-                t.tt = dbClock.transactionBegin(!t.isInternal());
++                t.tt = t.maintenance ? dbClock.maintenanceBegin()     // bergdb 031-05
++                        : dbClock.transactionBegin(!t.isInternal());
+             } catch (Error e) {
+                 // Recorded before the lock is released, as fail() does after the go point
+                 // (bergdb 019-40): a writer that waits for the lock then finds the database
+@@ -3113,6 +3198,26 @@ public class Db implements AutoCloseable {
+         }
+     }
+     
++    /**
++     * bergdb 031-05: holds the clock (DbClock.hold) while maintenance is due after the
++     * stream's last record (Reclaim.catchUpDue) or a maintain() call runs, and lets it go
++     * otherwise. Called under the write lock at the end of every call that writes, and at
++     * the end of a start.
++     */
++    private void holdIfDue() {
++        boolean due;
++        try {
++            due = maintainCalls.get() > 0 || (state == DbState.ACTIVE && reclaim.catchUpDue());
++        } catch (RuntimeException e) {
++            due = true;
++        }
++        dbClock.hold(due);
++    }
++    
++    /** The maintain() calls that run (bergdb 031-05). */
++    private final java.util.concurrent.atomic.AtomicInteger maintainCalls =
++            new java.util.concurrent.atomic.AtomicInteger();
++    
+     /**
+      * Fails the database (bergdb 005-01, register M49) with what a transaction threw after
+      * its go point; called under writeLock. Nothing is undone, as the database is never used
+diff --git a/java/src/bergdb/core/DbClock.java b/java/src/bergdb/core/DbClock.java
+index 08af7d98..70c95359 100644
+--- a/java/src/bergdb/core/DbClock.java
++++ b/java/src/bergdb/core/DbClock.java
+@@ -43,6 +43,24 @@ public class DbClock {
+     /** True iff a transaction is currently executing. */
+     private boolean transactionRunning;
+     
++    /**
++     * bergdb 031-05: while true, currentTime() does not read the clock: it returns the last
++     * transaction's time (or the last time returned), so that the records of maintenance that
++     * the stream says are due, whose times follow the last record's (maintenanceBegin), are
++     * later than every time handed out. Db holds it during every call that writes, and
++     * between calls while maintenance is due (Reclaim.catchUpDue).
++     */
++    private boolean held;
++    
++    /**
++     * bergdb 031-05: the records of maintenance whose time had to follow a time handed out
++     * to a reader, as the hold did not cover it; 0 if 'held' works. For probes.
++     */
++    static long holdFailures;
++    
++    /** bergdb 031-05: the least time of a maintain() call's records, 0 outside a call. */
++    private long maintenanceFloor;
++    
+     /**
+      * Creates a new instance based on the given Clock.
+      * The clock's getTime() may return equal or decreasing time values: the times of this
+@@ -122,6 +140,10 @@ public class DbClock {
+             // (transactionCancel()), the next one still takes a later time than this.
+             time = transactionTime - 1;
+             lastReadTime = time > lastReadTime ? time : lastReadTime;
++        } else if (held) {
++            // bergdb 031-05: no time after the last transaction's while maintenance is due.
++            time = lastTransactionTime > lastReadTime ? lastTransactionTime : lastReadTime;
++            lastReadTime = time;
+         } else {
+             time = clock.getTime();
+             time = time > LAST_USER_TIME ? lastTransactionTime : time;
+@@ -205,6 +227,50 @@ public class DbClock {
+         return time <= LAST_USER_TIME;
+     }
+     
++    /** bergdb 031-05: see 'held'. */
++    final synchronized void hold(boolean h) {
++        held = h;
++    }
++    
++    /** bergdb 031-05: see 'maintenanceFloor'. */
++    final synchronized void setMaintenanceFloor(long t) {
++        maintenanceFloor = t;
++    }
++    
++    /**
++     * bergdb 031-05: the time of a maintain() call, the time that a transaction that began
++     * now would get (transactionBegin), not taken: the action's time.
++     */
++    final synchronized long actionTime() {
++        long time = clock.getTime();
++        time = time > lastTransactionTime ? time : lastTransactionTime + 1;
++        time = time > lastReadTime ? time : lastReadTime + 1;
++        return time;
++    }
++    
++    /**
++     * bergdb 031-05: begins a record of reclaim's maintenance (Trans.maintenance): its time is
++     * the last transaction's plus one, or the call's (maintenanceFloor) if later; the clock is
++     * not read. A time handed out to a reader is later only if 'held' failed; then the time
++     * after it is taken, as always.
++     */
++    public final synchronized long maintenanceBegin() {
++        assert !transactionRunning;
++        long time = lastTransactionTime + 1;
++        time = time > maintenanceFloor ? time : maintenanceFloor;
++        if (time <= lastReadTime) {
++            time = lastReadTime + 1;
++            holdFailures++;
++        }
++        if (time > Klong.MAX_TIME) {
++            throw new DbException("No database time is left after " + (time - 1) 
++                    + "; the largest is " + Klong.MAX_TIME + ". No transaction is executed.");
++        }
++        transactionTime = time;
++        transactionRunning = true;
++        return time;
++    }
++    
+     /**
+      * Must always be called when a write transaction has completed.
+      */
+diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
+index f5f1462d..2b84d36e 100644
+--- a/java/src/bergdb/core/Reclaim.java
++++ b/java/src/bergdb/core/Reclaim.java
+@@ -292,6 +292,7 @@ public class Reclaim implements Db.TransactionListener {
+             return;     // In force: nothing is written.
+         }
+         db.refuseIfTopOrdinalsUsed();   // As a user transaction is refused.
++        catchUp();      // bergdb 031-05: what is due after the last record, before this one
+         
+         Trans t = db.trans()
+                 .putCore(settingsKey, serializeSettings(retainDuration, internalFraction)).build();
+@@ -481,34 +482,138 @@ public class Reclaim implements Db.TransactionListener {
+         if (t.isInternal()) {
+             return;
+         }
+-        
+-        final long streamSize = t.nextPos;
+-            // This is correct since meta blocks are written eagerly by RecoverableStream.
++        if (eager) {
++            catchUp();          // bergdb 031-05: what the stream says is due, in this call
++        } else {
++            cutIfDurable();     // The storage's cut only: the records wait for the next call.
++        }
++    }
++    
++    /**
++     * bergdb 031-05, a switch of the prototype: true, a commit's maintenance is written in
++     * its own call, after its record, as on main (eager, D2); false, the default, at the
++     * start of the next call that writes (deferred, D1). The bytes are the same in both:
++     * catchUp() reads the stream only, whichever call runs it.
++     */
++    static boolean eager = Boolean.getBoolean("proto315.eager");
++    
++    /**
++     * What a commit's maintenance reads of the stream's last record (bergdb 031-05): whether
++     * it is a trigger (isTrigger), and its end and time. Set as the stream is written
++     * (recordWritten) and read off the stream by a start (initFromDb).
++     */
++    private boolean lastIsTrigger;
++    private long lastEnd, lastTime;
++    
++    /**
++     * bergdb 031-05: whether a record is a trigger of a commit's maintenance, one after which
++     * main's transactionCompleted ran: neither reclaim's own (isOwnRecord) nor a setting of
++     * reclaim's (SETTINGS_KEY_NAME). A user transaction's record is one, and the creation's
++     * record of the startup distance, after which nothing is due (the retain duration is
++     * infinite until a setting).
++     */
++    static boolean isTrigger(TransNodes n) {
++        if (isOwnRecord(n)) return false;
++        for (int i = 0; i < n.valueCount; i++) {
++            if (Arrays.equals(SETTINGS_SKEY, n.keys[i])) return false;
++        }
++        return true;
++    }
++    
++    /** As isTrigger(TransNodes), for a record that a start read. */
++    static boolean isTrigger(StoredTrans st) {
++        if (isOwnRecord(st)) return false;
++        for (StoredNode node : st.nodes) {
++            if (node instanceof StoredValueNode
++                    && Arrays.equals(SETTINGS_SKEY, ((StoredValueNode) node).getKey())) {
++                return false;
++            }
++        }
++        return true;
++    }
++    
++    /**
++     * Writes the maintenance that the stream says is due, a record at a time, until none
++     * is (bergdb 031-05): what main's transactionCompleted wrote after a user transaction,
++     * decided from the stream only, so that the call that writes it, the commit's own or a
++     * later one, makes no difference, and the next call after a crash or a stop completes
++     * what was left, at the same positions, with the same bytes. Each record is the first
++     * that is due of these, evaluated again after every record:
++     * 
++     * <ol>
++     * <li>B or S, while the stream's last record is a trigger (lastIsTrigger): the begin of
++     * an iteration, or a step of the one in progress, as main decided them after a user
++     * transaction, from the stream's length after it (lastEnd) and its time (lastTime);</li>
++     * <li>P: the safe positions (markSafePositions);</li>
++     * <li>C: the cut's decision (pretruncateIfPossible), at the time of the stream's last
++     * record.</li>
++     * </ol>
++     * 
++     * <p>The records are reclaim's own, so B or S is written at most once after a trigger,
++     * and P and C each once when due. Their times follow the stream's last record's
++     * (Trans.maintenance; DbClock.maintenanceBegin), never the clock. The caller holds the
++     * write lock and has checked that the database is active: every call that writes, before
++     * its own records (Db.executeInner for a user transaction, Db.maintain, the setters).</p>
++     */
++    void catchUp() {
++        assert Thread.holdsLock(this.writeLock);
++        while (catchUpRecord()) {
++            // One record a turn.
++        }
++        cutIfDurable();
++    }
++    
++    /** One record of catchUp(); true if it wrote one. */
++    private boolean catchUpRecord() {
++        final long length0 = db.getStreamLength();
++        if (lastIsTrigger && commitWork(true)) {
++            // B or S.
++        } else if (markSafePositions()) {
++            // P.
++        } else {
++            pretruncateIfPossible(db.lookupTime(Long.MAX_VALUE));      // C
++        }
++        return db.getStreamLength() != length0;
++    }
++    
++    /** Whether catchUp() would write a record now (bergdb 031-05; DbClock.hold). */
++    boolean catchUpDue() {
++        return (lastIsTrigger && commitWork(false)) || safeDue()
++                || cutDue(db.lookupTime(Long.MAX_VALUE));
++    }
++    
++    /**
++     * B or S after a trigger (catchUp): main's transactionCompleted, with the stream's length
++     * after the trigger (lastEnd) and its time (lastTime). Writes it if 'write'; true if one
++     * is due.
++     */
++    private boolean commitWork(boolean write) {
+         IterationInfo current = currentIteration();
+-        
+         if (current == null && retainDuration != Long.MAX_VALUE
+-                && streamSize > lastPStart() + 2L * db.getStartupDistance()
+-                && t.tt - lastTStart() >= retainDuration / ITERATION_DIVISOR) {
+-            current = new IterationInfo();
+-            current.pStart = streamSize;
+-            current.tStart = t.tt;
+-            current.pCut = table.rows.isEmpty() ? streamSize : lastPStart();
+-            current.endKey = lastKeyAt(t.tt);
+-            table.rows.add(current);
+-            storeTable();
++                && lastEnd > lastPStart() + 2L * db.getStartupDistance()
++                && lastTime - lastTStart() >= retainDuration / ITERATION_DIVISOR) {
++            if (write) {
++                current = new IterationInfo();
++                current.pStart = lastEnd;
++                current.tStart = lastTime;
++                current.pCut = table.rows.isEmpty() ? lastEnd : lastPStart();
++                current.endKey = lastKeyAt(lastTime);
++                table.rows.add(current);
++                storeTable();
++            }
++            return true;
+         }
+-        
+         if (current != null) {
+-            long allowed = fractionOf(streamSize - current.pStart, internalFraction) 
++            long allowed = fractionOf(lastEnd - current.pStart, internalFraction) 
+                     - current.rewritten;
+             if (allowed > MIN_STEP_SIZE) {
+-                step(current, Math.min(allowed, MAX_STEP_SIZE));
++                if (write) {
++                    step(current, Math.min(allowed, MAX_STEP_SIZE));
++                }
++                return true;
+             }
+         }
+-        
+-        markSafePositions();    // The length after the records above (bergdb 015-54).
+-        pretruncateIfPossible(t.tt);
+-        cutIfDurable();
++        return false;
+     }
+     
+     /**
+@@ -599,44 +704,45 @@ public class Reclaim implements Db.TransactionListener {
+         assert Thread.holdsLock(this.writeLock);
+         final long length0 = db.getStreamLength();
+         stepReadBytes = 0;
+-        
+-        if (passDue() && db.internal().getStartupPosForEvict() >= appA) {   // M1
+-            final long streamSize = db.getStreamLength();
+-            IterationInfo it = new IterationInfo();
+-            it.pStart = streamSize;
+-            it.tStart = lastTransTime;
+-            it.pCut = streamSize;
+-            it.endKey = lastKeyAt(lastTransTime);
+-            table.rows.add(it);
+-            storeTable();
+-        }
+-        
+-        IterationInfo current = currentIteration();                 // M2
+-        if (current != null) {
+-            step(current, MAX_STEP_SIZE);
+-        }
+-        
+-        markSafePositions();                                        // M3
+-        
+-        final long target = maintainTakeTarget();                   // M4
+-        if (target != -1) {
+-            storeTable(target, 0);
+-            markSafePositions();
+-        }
+-        
+-        if (cutWaitsForMetaBlock(now)) {                            // M5
+-            final long length = db.getStreamLength();
+-            final int distance = RecoverableStream.META_BLOCK_DISTANCE;
+-            storeTable(-1, Math.max(1, (int) (distance - length % distance)));
++        inPart = true;
++        try {
++            // bergdb 031-05: one record a part, the first that is due of M1 to M6, so that a
++            // crash or a stop between two records of a call leaves the stream of the same
++            // call with fewer parts, and nothing of a part half done.
++            if (passDue() && db.internal().getStartupPosForEvict() >= appA) {      // M1
++                final long streamSize = db.getStreamLength();
++                IterationInfo it = new IterationInfo();
++                it.pStart = streamSize;
++                it.tStart = lastTransTime;
++                it.pCut = streamSize;
++                it.endKey = lastKeyAt(lastTransTime);
++                table.rows.add(it);
++                storeTable();
++            } else if (currentIteration() != null) {                               // M2
++                step(currentIteration(), MAX_STEP_SIZE);
++            } else if (markSafePositions()) {                                      // M3
++                // The table stored.
++            } else if (maintainTakeTarget() != -1) {                               // M4
++                storeTable(maintainTakeTarget(), 0);
++            } else if (cutWaitsForMetaBlock(now)) {                                // M5
++                final long length = db.getStreamLength();
++                final int distance = RecoverableStream.META_BLOCK_DISTANCE;
++                storeTable(-1, Math.max(1, (int) (distance - length % distance)));
++            } else {
++                pretruncateIfPossible(now);                                        // M6
++            }
++            cutIfDurable();
++        } finally {
++            inPart = false;
+         }
+-        
+-        pretruncateIfPossible(now);                                 // M6
+-        cutIfDurable();
+     
+         final long written = db.getStreamLength() - length0;
+         return written == 0 ? 0 : written + stepReadBytes / 4;
+     }
+     
++    /** True while maintainPart() runs; for probes (bergdb 031-05). */
++    boolean inPart;
++    
+     /**
+      * The stream length that must be durable before the pending cut is made, or -1 if no
+      * cut is pending; see cutIfDurable().
+@@ -963,6 +1069,10 @@ public class Reclaim implements Db.TransactionListener {
+         }
+         
+         final IterationInfo next = it.copy();
++        // bergdb 031-05: the step's position, the stream's length before its record (no
++        // other record comes between), the last step's pEnd if the scan ends here; a record
++        // position from it on is one from the step's record on.
++        final long stepPos = db.getStreamLength();
+         next.lastKey = lastKeyOfStep[0];
+         next.kvCount += kvs[0];
+         next.rewritten += rewritten;
+@@ -983,6 +1093,13 @@ public class Reclaim implements Db.TransactionListener {
+             public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
+                 dirtiedStored[0] = stepTrans[0].dirtiedBytes;
+                 next.rewritten += dirtiedStored[0];
++                if (eod[0]) {
++                    // bergdb 031-05: the last step stores its row done, with its own time
++                    // and position, in its own record: no record follows it to do so.
++                    next.done = true;
++                    next.tEnd = transTime;
++                    next.pEnd = stepPos;
++                }
+                 tableBytes[0] = StringUtil.toBytes(next.serialize(rowA()));
+                 return tableBytes[0];
+             }
+@@ -995,6 +1112,7 @@ public class Reclaim implements Db.TransactionListener {
+             t.readTime = g.actualLookupTime;    // The scan's time, as each value's read.
+         }
+         t.isInternal = true;
++        t.maintenance = true;
+         
+         // The touch (Trans.touch): the index nodes on the paths of the step's puts get dirty
+         // before the puts, so that the row stores what the step made dirty. From 2026-10-13
+@@ -1042,35 +1160,19 @@ public class Reclaim implements Db.TransactionListener {
+             }
+         }
+         
+-        // bergdb 028-26 (Codex's review of the writer PE, 2026-11-19, finding 1): the index
+-        // nodes that the step's batch made dirty after its row was made, PE's new nodes
+-        // (replacements, cuts, joins, a new top node), are charged too, as the row could not
+-        // store them: their bytes are added to rewritten, and the row is stored again, in an
+-        // internal transaction of its own, or, after the last step, with the table below.
+-        // So the row in the stream is the row in memory after every call, and a restart
+-        // resumes with the same charge (INV-RESTART). Until 028-26 they were charged
+-        // nowhere.
+-        final long afterRow = t.dirtiedBytes - dirtiedStored[0];
+-        next.rewritten += afterRow;
++        // bergdb 028-26 (Codex's review of the writer PE, 2026-11-19, finding 1) charged the
++        // index nodes that the step's batch made dirty after its row was made, PE's new
++        // nodes, in a record of its own after the step's, the row stored again. That charge
++        // is known in memory only, and a crash or a stop between the two records lost it,
++        // and with it the stream's bytes from there on (bergdb 031-05). The prototype of
++        // 031-05 drops it, as before 028-26: the step's row charges what the touch made
++        // dirty; the stats keep the rest (dirtiedAfterRow).
+         it.set(next);
+-        if (afterRow > 0 && !eod[0]) {
+-            storeCurrent(it);
+-            if (st != null) st.rowRecords++;
+-        }
+         
+         if (eod[0]) {
+-            // 2026-10-13: eod() set done at once, so when the rewrite got a
+-            // RerunException, the iteration ended without rewriting the last step. And 
+-            // tEnd was the time of the external transaction, before the last rewrite.
+-            // The row is stored as done together with tEnd and pEnd; before, the step
+-            // stored done, and a crash before the next transaction left a done row with
+-            // tEnd 0 (Reclaim.Tester.testCrashBeforeIterationEnd). After such a crash, 
+-            // the iteration resumes and its next step finds the end at once.
+-            it.done = true;
+-            it.tEnd = t.tt;
+-            it.pEnd = t.tpos;
++            // bergdb 031-05: done, tEnd and pEnd are in the step's row (above); main stored
++            // the table here, in a record of its own, which a crash or a stop could lose.
+             iterationCount++;
+-            storeTable();
+         }
+     }
+     
+@@ -1079,7 +1181,7 @@ public class Reclaim implements Db.TransactionListener {
+      * length now, after the internal records that the call of transactionCompleted appended
+      * before it (bergdb 015-54). See the class comment.
+      */
+-    private void markSafePositions() {
++    private boolean markSafePositions() {
+         final long startupPos = db.internal().getStartupPosForEvict();
+         final long streamLength = db.getStreamLength();     // The write lock is held.
+         boolean changed = false;
+@@ -1094,6 +1196,18 @@ public class Reclaim implements Db.TransactionListener {
+         if (changed) {
+             storeTable();
+         }
++        return changed;
++    }
++    
++    /** Whether markSafePositions() would store the table (bergdb 031-05). */
++    private boolean safeDue() {
++        final long startupPos = db.internal().getStartupPosForEvict();
++        for (IterationInfo row : table.rows) {
++            if (row.done && row.pSafe == -1 && startupPos >= row.pEnd) {
++                return true;
++            }
++        }
++        return false;
+     }
+ 
+     /**
+@@ -1143,7 +1257,7 @@ public class Reclaim implements Db.TransactionListener {
+                     storedA = Math.max(storedA, c.a);
+                 }
+                 for (IterationInfo row : table.rows) {
+-                    if (row.pStart == c.pStart && !row.done && !c.done) {
++                    if (row.pStart == c.pStart && !row.done) {   // c done: bergdb 031-05
+                         row.set(c);
+                     }
+                 }
+@@ -1178,6 +1292,13 @@ public class Reclaim implements Db.TransactionListener {
+         }
+         
+         appA = storedA == Long.MIN_VALUE || !isOwnRecord(last) ? last.tpos : storedA;
++        
++        // bergdb 031-05: the commit's maintenance after the stream's last record, if it is a
++        // trigger, is due from its end (the stream's length: meta blocks are written eagerly)
++        // and its time, as the running database had them.
++        lastIsTrigger = isTrigger(last);
++        lastEnd = db.getStreamLength();
++        lastTime = last.tt;
+     }
+     
+     /**
+@@ -1192,7 +1313,23 @@ public class Reclaim implements Db.TransactionListener {
+      */
+     private void pretruncateIfPossible(long timeNow) {
+         assert Thread.holdsLock(this.writeLock);
++        final long tRetain = db.getRetainDuration();
++        final IterationInfo cutRow = cutRow(timeNow);
+         
++        if (cutRow == null || cutRow.cut) {
++            return;     // Nothing to cut, or already cut there.
++        }
++        pretruncateAt(cutRow, timeNow, tRetain);
++    }
++    
++    /** Whether pretruncateIfPossible(timeNow) would decide a cut (bergdb 031-05). */
++    private boolean cutDue(long timeNow) {
++        final IterationInfo cutRow = cutRow(timeNow);
++        return cutRow != null && !cutRow.cut;
++    }
++    
++    /** The row that pretruncateIfPossible(timeNow) would cut at, or null. */
++    private IterationInfo cutRow(long timeNow) {
+         final long tRetain = db.getRetainDuration();
+         final long metaTransPos = db.getLastTransPosOfLastValidMetaBlock();
+         final long startupPos = db.internal().getStartupPosForEvict();
+@@ -1214,11 +1351,11 @@ public class Reclaim implements Db.TransactionListener {
+                 cutRow = row;
+             }
+         }
+-        
+-        if (cutRow == null || cutRow.cut) {
+-            return;     // Nothing to cut, or already cut there.
+-        }
+-        
++        return cutRow;
++    }
++    
++    /** Marks the cut at cutRow and stores the table (pretruncateIfPossible). */
++    private void pretruncateAt(IterationInfo cutRow, long timeNow, long tRetain) {
+         // Removes rows no longer needed, marks the cut and stores the table.
+         
+         for (int i = 0; i < table.rows.size(); i++) {
+@@ -1283,6 +1420,7 @@ public class Reclaim implements Db.TransactionListener {
+         }
+         Trans t = db.trans().putCore(currentKey, rowBytes).build();
+         t.isInternal = true;
++        t.maintenance = true;
+         try {
+             db.execute(t);
+         } catch (RerunException e) {
+@@ -1317,6 +1455,7 @@ public class Reclaim implements Db.TransactionListener {
+         Trans t = db.trans().putCore(tableKey, tableBytes).build();
+         t.maintainTakeTo = takeTo;
+         t.isInternal = true;
++        t.maintenance = true;
+         try {
+             db.execute(t);
+         } catch (RerunException e) {
+@@ -1332,6 +1471,9 @@ public class Reclaim implements Db.TransactionListener {
+         if (!t.isInternal || !isOwnRecord(n)) {
+             appA = t.tpos;          // bergdb 031-04, R3: this record tells, until a row holds it
+         }
++        lastIsTrigger = isTrigger(n);       // bergdb 031-05
++        lastEnd = t.nextPos;
++        lastTime = t.tt;
+         final Stats st = this.stats;
+         if (st == null) {
+             return;
+@@ -2104,6 +2246,10 @@ public class Reclaim implements Db.TransactionListener {
+          */
+         @Nano
+         public static void testUserTransactionLeavesTimesForReclaim() {
++            eagerly(Tester::inCallUserTransactionLeavesTimesForReclaim);
++        }
++        
++        private static void inCallUserTransactionLeavesTimesForReclaim() {
+             final long[] now = {Clock.UNITS_PER_SEC};
+             Clock clock = new Clock() {         // Can go back, as CoreTestClock cannot.
+                 public long getTime() {
+@@ -2168,6 +2314,10 @@ public class Reclaim implements Db.TransactionListener {
+          */
+         @Nano
+         public static void testStepScansAtItsOwnTime() {
++            eagerly(Tester::inCallStepScansAtItsOwnTime);
++        }
++        
++        private static void inCallStepScansAtItsOwnTime() {
+             CoreTestClock clock = new CoreTestClock();
+             long time = Clock.UNITS_PER_SEC;
+             clock.setTime(time);
+@@ -2224,6 +2374,10 @@ public class Reclaim implements Db.TransactionListener {
+          */
+         @Nano
+         public static void testEndKeyBoundsTheScan() {
++            eagerly(Tester::inCallEndKeyBoundsTheScan);
++        }
++        
++        private static void inCallEndKeyBoundsTheScan() {
+             CoreTestClock clock = new CoreTestClock();
+             long time = Clock.UNITS_PER_SEC;
+             clock.setTime(time);
+@@ -2716,6 +2870,10 @@ public class Reclaim implements Db.TransactionListener {
+          */
+         @Nano
+         public static void testCrashBeforeIterationEnd() {
++            eagerly(Tester::inCallCrashBeforeIterationEnd);
++        }
++        
++        private static void inCallCrashBeforeIterationEnd() {
+             CoreTestClock clock = new CoreTestClock();
+             long time = Clock.UNITS_PER_SEC;
+             clock.setTime(time);
+@@ -2746,8 +2904,10 @@ public class Reclaim implements Db.TransactionListener {
+                     NodeStream.TransIterator iter = 
+                             db.internal().nodeStream().createTransIteratorFromExactStartupPos(t.nextPos);
+                     Assert.assertTrue(iter.next());
+-                    Assert.assertTrue(iter.next());
+-                    long crashPos = iter.getStoredTrans().tpos;
++                    // bergdb 031-05: the last step's row holds done, tEnd and pEnd, and no
++                    // table follows it; the crash comes after the step.
++                    long crashPos = iter.next() ? iter.getStoredTrans().tpos
++                            : db.getStreamLength();
+                     db.sync(SyncLevel.ORDINARY);
+                     db.stop();
+                     stream = stream.copy();
+@@ -2787,6 +2947,22 @@ public class Reclaim implements Db.TransactionListener {
+             db.stop();
+         }
+         
++        /**
++         * Runs 'test' with a commit's maintenance written in its own call (Reclaim.eager,
++         * bergdb 031-05): for the tests of what that call writes after its record. The
++         * deferred design writes the same records at the start of the next call (031-05,
++         * P2CrashProbe).
++         */
++        private static void eagerly(Runnable test) {
++            final boolean e0 = eager;
++            eager = true;
++            try {
++                test.run();
++            } finally {
++                eager = e0;
++            }
++        }
++        
+         /**
+          * As startForCutTest, with a buffer time of 60 s, so that the main stream's buffer
+          * is flushed only by a sync (or when full), not by the clock (bergdb 015-09).
+@@ -2848,8 +3024,9 @@ public class Reclaim implements Db.TransactionListener {
+             Assert.assertEquals(row.pStart, st.pStart);
+             Assert.assertTrue("steps " + st.steps, st.steps >= 2);
+             Assert.assertTrue("index bytes " + st.dirtiedStored, st.dirtiedStored > 0);
+-            Assert.assertEquals(st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedStored,
+-                    row.rewritten);
++            // bergdb 031-05's prototype: the bytes made dirty after the row are not charged.
++            Assert.assertEquals(st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedStored
++                    - st.dirtiedAfterRow, row.rewritten);
+             db.stop();
+         }
+         
+@@ -2906,9 +3083,11 @@ public class Reclaim implements Db.TransactionListener {
+                             continue;       // no step yet
+                         }
+                         Stats.Iteration st = stats.iterations.get(0);
++                        // bergdb 031-05's prototype: the bytes made dirty after the row are
++                        // not charged (Reclaim.step).
+                         Assert.assertEquals("M=" + nodeSize + ", charged in memory",
+-                                st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes,
+-                                cur.rewritten);
++                                st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes
++                                - st.dirtiedAfterRow, cur.rewritten);
+                         byte[] stored = db.getOne(Long.MAX_VALUE, currentKey, db.newGetData());
+                         // a as the row was stored, at its step: a commit without a step
+                         // moves a on (bergdb 031-04).
+@@ -2926,8 +3105,8 @@ public class Reclaim implements Db.TransactionListener {
+                     Assert.assertTrue("M=" + nodeSize + ", no node made after a row",
+                             st.dirtiedAfterRow > 0);
+                     Assert.assertEquals("M=" + nodeSize + ", the row stored done",
+-                            st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes,
+-                            row.rewritten);
++                            st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes
++                            - st.dirtiedAfterRow, row.rewritten);
+                 } finally {
+                     db.stop();
+                 }
+@@ -3383,6 +3562,10 @@ public class Reclaim implements Db.TransactionListener {
+          */
+         @Nano
+         public static void testSafePosAfterTheCallsRecords() {
++            eagerly(Tester::inCallSafePosAfterTheCallsRecords);
++        }
++        
++        private static void inCallSafePosAfterTheCallsRecords() {
+             CoreTestClock clock = new CoreTestClock();
+             long time = Clock.UNITS_PER_SEC;
+             clock.setTime(time);
+diff --git a/java/src/bergdb/core/Trans.java b/java/src/bergdb/core/Trans.java
+index 69b6dd4d..218ff253 100644
+--- a/java/src/bergdb/core/Trans.java
++++ b/java/src/bergdb/core/Trans.java
+@@ -124,6 +124,13 @@ public class Trans {
+      * position or the taken nodes reach Reclaim.MAINTAIN_TAKE_BYTES (TransSeq.takeTo).
+      */
+     long maintainTakeTo = -1;
++    
++    /**
++     * bergdb 031-05: a record of reclaim's maintenance, whose time follows the stream's last
++     * record's (DbClock.maintenanceBegin), not the clock's: so it is a function of the stream
++     * and of the call's time, whichever call writes it.
++     */
++    boolean maintenance;
+ 
+     /** startupPos stored in stream with transaction. */
+     public long startupPos = Spos.NULL;

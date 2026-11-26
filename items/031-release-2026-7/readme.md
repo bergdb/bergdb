@@ -51,6 +51,9 @@ Files
 * [031-04](04-maintain-budget/readme.md): `maintain(budget)`, a study: a
   call with a cost budget and passes that end by construction; a study
   before any decision (Frans, 2026-11-26).
+* [031-05](05-writes-from-the-stream/readme.md): every write a function of
+  the stream and the user actions, a study: P2 extended to maintenance and
+  to anything that writes (Frans, 2026-11-26); answers 028-54.
 
 
 Log
@@ -83,3 +86,7 @@ bytes as 2026.6's writer) and 028-51 found sound by probes that ran
 
 2026-11-26. 031-04 created: a study of `maintain(int budget)`, from the
 discussion of 031-03 with Frans; 031-03's F1 to F5 wait for it.
+
+2026-11-26. 031-05 created: every write to the stream a function of the
+stream and the user actions (Frans); a study on 031-04's prototype, which
+answers 028-54.
