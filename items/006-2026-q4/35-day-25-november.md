@@ -208,3 +208,6 @@ cost at a commit; 028-60's part 2 and 028-62 as chosen; then `week.sh`
 again on the day's `main` (now about 15 hours) and `night.sh`, before
 2026.7 is planned. 2026.7 waits for RB-007, RB-010, RB-011 and RB-012's
 rest (034-01: no release with a known bug).
+
+Closed 2026-11-26, 06:31: lead-1126 took over, with 031-03, 028-60's
+part 2, 028-62 and 028-54 open for Frans.
