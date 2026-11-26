@@ -278,6 +278,7 @@ public class ReclaimCost {
         long firstLen = -1, firstPuts = 0, firstNanos = 0, firstTrans = 0, firstIdx = 0;
         double sumSe = 0, sumSeOff = 0, sumKept = 0, minSe = Double.MAX_VALUE;
         double sumDiskRatio = 0, maxDiskRatio = 0;
+        double sumPart = 0, maxPart = 0, sumLag = 0, maxLag = 0, sumQueued = 0, sumFiles = 0;
         long maxKept = 0, samples = 0;
         double sumG = 0;
         int gCount = 0;
@@ -357,10 +358,32 @@ public class ReclaimCost {
                 if (disk) {
                     // FileStream deletes whole files (bergdb 011-04, W5d): the disk
                     // holds the kept stream plus the part of the first file before the cut.
-                    long onDisk = 0;
-                    for (File f : dir.listFiles()) onDisk += f.length();
+                    // Split since 2026-11-26 (bergdb 028-62): the part before fp of the file
+                    // that fp lies in, and the files that end at or before fp, not yet
+                    // deleted (the lag), of them those that FileStream's cut has taken off
+                    // and its thread not yet deleted. The files are named by their first
+                    // position / 100,000 (FileStream).
+                    long onDisk = 0, part = 0, lag = 0, queued = 0;
+                    long fp = db.getFirstAvailablePos();
+                    long storageFirst = ((FileStream) stream).getFirstPos();
+                    for (File f : dir.listFiles()) {
+                        long fileLength = f.length();
+                        onDisk += fileLength;
+                        String name = f.getName();
+                        if (!name.endsWith(".bergdb")) continue;
+                        sumFiles++;
+                        long spos = Long.parseLong(name.substring(0, 14)) * 100000L;
+                        if (spos + fileLength <= storageFirst) queued += fileLength;
+                        if (spos + fileLength <= fp) lag += fileLength;
+                        else if (spos < fp) part += fp - spos;
+                    }
                     sumDiskRatio += (double) onDisk / kept;
                     maxDiskRatio = Math.max(maxDiskRatio, (double) onDisk / kept);
+                    sumPart += (double) part / kept;
+                    maxPart = Math.max(maxPart, (double) part / kept);
+                    sumLag += (double) lag / kept;
+                    maxLag = Math.max(maxLag, (double) lag / kept);
+                    sumQueued += (double) queued / kept;
                 }
             }
         }
@@ -399,6 +422,11 @@ public class ReclaimCost {
             if (disk) {
                 System.out.printf("DISK: bytes on disk / stream kept: mean %.3f, max %.3f%n",
                         sumDiskRatio / samples, maxDiskRatio);
+                System.out.printf("DISK PARTS / stream kept: the part before fp of the file fp "
+                        + "lies in, mean %.3f, max %.3f; files that end at or before fp, not "
+                        + "yet deleted, mean %.3f, max %.3f, of them taken off by the storage's "
+                        + "cut, mean %.3f; files, mean %.1f%n", sumPart / samples, maxPart,
+                        sumLag / samples, maxLag, sumQueued / samples, sumFiles / samples);
             }
         }
 

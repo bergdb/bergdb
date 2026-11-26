@@ -565,9 +565,10 @@ public class DbTesterStream {
      * Bergdb 028-60: after a kill of the process during an append, the last stream file can
      * end in zeros within its length, from a page boundary on (macOS, APFS; bergdb 031-02,
      * F1), and the zeros can cover a meta block's position. Made here on a stopped database's
-     * last file, of 1 MB from stream position 4,000,000 (FileStream's files are of 200 kB
-     * before): its last record, a value of 400 kB over the meta blocks at 4,400,000 and
-     * 4,600,000, zero from the first 16 KiB page of the file after the record's header to the
+     * last file, of 1 MB from stream position 10,000,000 (FileStream's files are of 200 kB
+     * before; from 4,000,000 until 2026-11-26, when a new file took a quarter of the stream,
+     * bergdb 028-62): its last record, a value of 400 kB over the meta blocks at 10,400,000
+     * and 10,600,000, zero from the first 16 KiB page of the file after the record's header to the
      * file's end, with the file's length as it is and cut inside the record, as the kill of
      * 031-02's seed 91 left it. The start takes it as a cut tail: the records before it,
      * synced, are there and the zeroed one is not; the database writes and starts again.
@@ -588,7 +589,7 @@ public class DbTesterStream {
         final byte[] c = new byte[400 * 1000];
         new Random(2860).nextBytes(a);
         new Random(2861).nextBytes(c);
-        final long fileStart = 4 * 1000 * 1000;
+        final long fileStart = 10 * 1000 * 1000;
         final long recordC;
         // Not forced: no kill comes before the files are zeroed by hand.
         try (Db db = Db.builder().testSetup(new FileStream(dir, false)).clock(clock).start()) {
@@ -607,10 +608,10 @@ public class DbTesterStream {
             clock.setTime(400);
             db.execute(db.trans().put("c", c));
         }
-        final String lastName = "00000000000040.bergdb";
+        final String lastName = "00000000000100.bergdb";
         final long fileLength = new File(dir, lastName).length();
         Assert.assertTrue("files " + java.util.Arrays.toString(dir.list()),
-                fileLength > 0 && !new File(dir, "00000000000050.bergdb").exists());
+                fileLength > 0 && !new File(dir, "00000000000110.bergdb").exists());
         final long page = 16 * 1024;
         final long zerosInC = fileStart + ((recordC - fileStart) / page + 1) * page;
         Assert.assertTrue("c from " + recordC + ", zeros from " + zerosInC + ", end "

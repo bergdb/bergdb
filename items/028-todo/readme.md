@@ -103,7 +103,6 @@ Open
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
-| [028-62](62-emptied-file-db-last-file.md) | Decide | RB-011: an emptied file database keeps its last file | decision | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 
 
@@ -112,6 +111,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-62](62-emptied-file-db-last-file/readme.md) | Decide | RB-011: new files a tenth of the stream; the Javadoc of the stream | neither J nor S | done | 2026-11-26 |
 | [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
 | [028-64](64-week-run-ten-hours.md) | Change | week.sh in three lanes, about 6 hours, no coverage cut | none | done | 2026-11-26 |
 | [028-59](59-maintain-filler-left-live/readme.md) | Investigate | A stop between the filler's put and delete leaves it live: released, S4 | none | done | 2026-11-25 |
@@ -547,3 +547,9 @@ guard (Frans). Moved to Closed.
 database not written to keeps several times its live values under
 `maintain()`; a space cost, not a released bug (Frans). 028-63's row
 moved to Closed.
+
+2026-11-26. 028-62 decided by Frans (neither J nor S) and done by an
+agent of lead-1126: `FileStream` gives a new file a tenth of the stream,
+not a quarter; `Database.maintain()`'s Javadoc promises the 400 kB of
+the stream; `FileStream`'s Javadoc states the disk's bound and the
+backup by a copy of the files. RB-011 fixed for 2026.7. Moved to Closed.

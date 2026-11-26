@@ -68,6 +68,21 @@ Released bugs fixed
   starts again when a cut removes what it reads while the position is
   kept; a position before the cut always expires, as
   `getFirstAvailablePos()` says. The Pub API was not affected.
+* **RB-011, S4. An emptied file database kept its last stream file
+  under `maintain()`** (bergdb 033; 028-62, 2026-11-26). A file
+  database emptied after a large stream kept, under the calls, the
+  stream file that its first position lay in, up to a quarter of the
+  stream kept when that file was made (031-02's RetainChurn: 10,400 kB
+  on disk for 61 kB of stream), though the Javadoc of
+  `Database.maintain()` said within about 400 kB of a fresh database's
+  size. The Javadoc now says the 400 kB of the stream, as `Db.maintain()`
+  does, and nothing of files. `FileStream` gives a new file about a
+  tenth of the stream that its files hold, not a quarter (RetainChurn's
+  case: 400 kB on disk); its Javadoc states that the disk can hold up to
+  about one file more than the stream, and that the files, copied in
+  the order of their names, are a backup. Files made by the quarter open
+  beside new ones. The stream's bytes are the same; a stream has about
+  three times as many files.
 * **RB-012, S2, in part. After a kill on macOS, a zeroed tail over a
   meta block stopped the start** (bergdb 033; 028-60, 2026-11-25). A
   kill during a large append can leave the last stream file ending in
@@ -100,11 +115,6 @@ Not fixed on `main`; a release with one needs Frans's exception
   `/#i/dreclaim/-fill.txt` live until a later call needs another
   filler, though the Javadoc says it is deleted at once. 031-03's
   design has no filler to delete.
-* **RB-011, S4. An emptied file database keeps its last stream file
-  under `maintain()`** (bergdb 033; 028-61, 2026-11-25). Reclaim cuts
-  the stream below 400 kB, but `FileStream` drops only whole files and
-  keeps the last one, sized when the stream was large; 028-62 holds the
-  options for the fix.
 
 
 Speed

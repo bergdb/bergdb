@@ -427,8 +427,29 @@ pending, M1's condition holds, or the dead hand has more.
   most META bytes; argued; gated (ReclaimMaintainTester).
 * **Pauses** (P1): the physical cut waits for the storage's append in
   progress, 19.85 ms at the longest on s1 (015-80, 019-36); 1.6's forget
-  0.3 to 6 ms (026-10): measured. **The disk**: whole files, 6 to 9
-  percent more than the stream kept: measured (011-04, W5d).
+  0.3 to 6 ms (026-10): measured.
+* **The disk** (028-62): a file storage deletes whole files and keeps
+  the part before fp of the file that fp lies in, up to about a tenth of
+  the stream when that file was made (a quarter until 2026-11-26), also
+  after the stream has shrunk (RB-011): argued (`FileStream`'s Javadoc).
+  With `ReclaimCost` on disk (K = 1, uniform, 20 MB live, no cache
+  budget; stream kept 99.6 MB on average) that part is 2.1 percent of
+  the stream kept on average, 5.5 at most (6.3 and 23.5 with the
+  quarter): measured. 011-04, W5d, measured 6 to 9 percent of the whole
+  disk on 2026-10-13, when a cut deleted its files on the committing
+  thread; since 005-46 a thread of the storage's own deletes them, one
+  at a time with the directory forced after each. So a fast writer is
+  ahead of the deletes: in `ReclaimCost` (about 120 MB of stream a
+  second, F53 loaded) the files that end before fp and are not yet
+  deleted, most of them taken off by the storage's cut and waiting for
+  its thread, the rest for the cut, which waits for durability, are 24
+  to 44 percent of the stream kept with the quarter, 50 to 55 with the
+  tenth, which makes about three times as many files (16 to 23 against
+  56 to 60 on average); the disk 1.28 to 1.48 times the stream kept with
+  the quarter, 1.49 to 1.56 with the tenth: measured. An emptied
+  database (031-02's RetainChurn): 400 kB on disk for 61 kB of stream in
+  seed 5 (10,400 kB with the quarter); 200, 600 and 800 kB in seed 1's
+  rounds 1 to 3 (200, 2,600 and 3,800): measured.
 
 
 ## 5. In the model
@@ -653,3 +674,8 @@ agent of lead-1124, on the branch `028-19`.
 put and its delete (028-59); until then the section said that it is
 never live after a call. By an agent of lead-1125, on the branch
 `028-58`.
+
+2026-11-26. 4: the disk (028-62): `FileStream` gives a new file a
+tenth of the stream, not a quarter; the part before fp of the file that
+fp lies in, and the files that the storage's thread has not yet deleted,
+measured apart; 6 to 9 percent was of 2026-10-13, before 005-46.

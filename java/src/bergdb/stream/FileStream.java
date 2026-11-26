@@ -39,6 +39,47 @@ import bergdb.pub.util.BadFormatException;
  * Multiple files are used to be able pretruncate (cut) the stream and reclaim disk space.
  * Files of sizes 200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
  * are automatically chosen to store the stream. Decimal factors, M = 1,000,000 bytes.
+ * 
+ * The files and the disk (2026-11-26, bergdb 028-62). A new file gets the largest of these
+ * sizes that is at most a tenth of the stream that the files hold when it is made, from the
+ * first file's start to the length: 200 kB below 10 MB, 1 MB from 10 MB, 5 MB from 50 MB;
+ * a quarter until 2026-11-26. A larger size than the last file's begins only at a length
+ * that is a multiple of the next larger size, a smaller one at once (determineFileSizeIndex).
+ * The stream moves to a new file only when the last one has reached its size; a start gives
+ * the last file the smallest size not below the lengths of the last two files. A cut
+ * (pretruncate) deletes whole files only, those that end before its position, and never the
+ * last one. So the files hold the stream from the start of the file that the cut's position
+ * lies in: the disk can hold up to about one file more than the stream, about a tenth of the
+ * stream when that file was made, and, for a while after a cut, the files that the cut's
+ * thread has not yet deleted. This holds also after the stream has shrunk: a database
+ * emptied after a large stream keeps the file that its first position lies in until appends
+ * fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed 5, 10,400 kB of a 20 MB
+ * file on disk for 61 kB of stream with the quarter, 400 kB with the tenth). A start accepts
+ * files of any of the sizes beside each other, those of the quarter beside those of the
+ * tenth: it checks that each file begins where the one before ends and that every file but
+ * the last is a multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).
+ * 
+ * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
+ * only by appends at its end, and removes files only whole, by deletes, the oldest first;
+ * it never writes a byte of a file twice, truncates or renames one (recovery after a crash
+ * appends too, RecoverableStream). So the stream's files (*.bergdb), copied in the order of
+ * their names, are a backup; bergdb.lock is not needed:
+ * - Of a closed stream (a stopped database), the copy is the stream.
+ * - Of an open one, a copy that lists the files and then copies them in that order, the
+ *   last one last, holds the stream as a kill of the process would leave it at the moment
+ *   the copy read the last file's end: every file before the last whole, as they never
+ *   change, and the last one up to some point of the appends, its end possibly torn (on
+ *   macOS possibly zeros within its length, as after a kill: bergdb 033, RB-012). A start
+ *   on the copy recovers it as after a kill. A file made after the listing is not in the
+ *   copy, which then ends as at a kill before that file.
+ * - A file that a cut deletes while the copy reads it stays readable to the copy on macOS
+ *   and Linux; the copy then holds files that the stream no longer has, as after a crash
+ *   before a cut's deletes, and a start on it cuts again (Reclaim). A listed file that a cut
+ *   deleted before the copy opened it is missing: take the copy again. A copy with such a
+ *   gap after files copied before it is refused at its start (BadDirStateException); one
+ *   that misses only its first files can lack the record of the cut that deleted them.
+ * - Not run on Windows, where a delete of a file that a copy program holds open can fail,
+ *   which fails the stream.
  * Each file is named &lt;14-digit index&gt;.bergdb. The index is the file's first stream 
  * position divided by 100,000, padded with zeros (indexToString).
  * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb. A new stream has
@@ -1293,9 +1334,18 @@ public class FileStream implements AppendOnlyStream {
         this.fileSizeIndex = determineFileSizeIndex(this.fileSizeIndex, streamLength, streamSize);
     }
     
+    /**
+     * The size of the next file (2026-11-26, bergdb 028-62): the largest of FILE_SIZES that
+     * is at most a tenth of 'streamSize', the stream that the files hold, from the first
+     * file's start to the length; FILE_SIZES[0] if none is. A larger size than the current
+     * one begins only at a length that is a multiple of the next larger size; a smaller one
+     * at once. Until 2026-11-26 the rule took a quarter: an emptied database kept the file
+     * that its first available position was in, up to a quarter of the stream when the file
+     * was made (bergdb 033, RB-011).
+     */
     private int determineFileSizeIndex(int currentFileSizeIndex, long streamLength, long streamSize) {
         long currentSize = FILE_SIZES[this.fileSizeIndex];
-        long size = streamSize / 4;
+        long size = streamSize / 10;    // a quarter until 2026-11-26 (bergdb 028-62)
         long foundSize = FILE_SIZES[0];
         int foundIndex = 0;
         int result = currentFileSizeIndex;
@@ -1903,13 +1953,36 @@ public class FileStream implements AppendOnlyStream {
         assert dir != null : "dir is null";
         FileStream f = new FileStream(dir);
         
-        size = 5 * 1000000L;
+        // A tenth of the stream (2026-11-26, bergdb 028-62; a quarter before: 5 MB gave 1 MB).
+        size = 10 * 1000000L;
         newIndex = f.determineFileSizeIndex(0, size, size);
         Assert.assertEquals(1, newIndex);
         
-        size = 3 * 1000000L;
+        size = 9 * 1000000L;
         newIndex = f.determineFileSizeIndex(0, size, size);
         Assert.assertEquals(0, newIndex);
+        
+        size = 5 * 1000000L;
+        newIndex = f.determineFileSizeIndex(0, size, size);
+        Assert.assertEquals(0, newIndex);
+        
+        // The rule reads the current size from the field, as applyFileSizeChangeRules passes it.
+        size = 50 * 1000000L;
+        f.fileSizeIndex = 1;
+        newIndex = f.determineFileSizeIndex(1, size, size);
+        Assert.assertEquals(2, newIndex);
+        
+        size = 200 * 1000000L;
+        f.fileSizeIndex = 2;
+        newIndex = f.determineFileSizeIndex(2, size, size);
+        Assert.assertEquals(3, newIndex);
+        
+        // Smaller at once: 20 MB of stream kept after 20 MB files, at any length.
+        size = 20 * 1000000L;
+        f.fileSizeIndex = 3;
+        newIndex = f.determineFileSizeIndex(3, 310 * 1000000L, size);
+        Assert.assertEquals(1, newIndex);
+        f.fileSizeIndex = 0;
         
         f.close();
     }
@@ -1925,7 +1998,7 @@ public class FileStream implements AppendOnlyStream {
         assert dir != null : "dir is null";
         FileStream f = new FileStream(dir);
         
-        size = 50*G;
+        size = 100*G;       // a tenth is 10 G (bergdb 028-62; 50 G with the quarter)
         
         f.setMax2G(false);
         newIndex = f.determineFileSizeIndex(INDEX_2G, size, size);
@@ -1936,6 +2009,112 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(INDEX_2G, newIndex);
         
         f.close();
+    }
+    
+    /**
+     * A start accepts files of the quarter rule (until 2026-11-26) beside files of the tenth
+     * (bergdb 028-62): 200 kB files, then 1 MB files from 4 MB on, as the quarter made them
+     * (the tenth makes 1 MB files from 10 MB on), the last half full. The stream is opened,
+     * cut, written on into files of the tenth, and opened again, twice; every byte is read
+     * back each time. Without forces, for the test's time: the forces of a new file are
+     * most of it on macOS.
+     */
+    @Nano
+    static void testMixedFileSizes(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        long pos = 0;
+        for (int i = 0; i < 20; i++) {              // 200 kB files to 4 MB
+            writePatternFile(dir, pos, SMALLEST_FILE_SIZE);
+            pos += SMALLEST_FILE_SIZE;
+        }
+        for (int i = 0; i < 6; i++) {               // 1 MB files to 10 MB, the quarter's
+            writePatternFile(dir, pos, M);
+            pos += M;
+        }
+        writePatternFile(dir, pos, M / 2);          // the last, half full
+        pos += M / 2;
+        
+        FileStream f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(0L, f.getFirstPos());
+        Assert.assertEquals(pos, f.getLength());
+        checkPattern(f, 0, pos);
+        f.pretruncate(9500 * 1000L);                // the files before 9 MB go
+        f.awaitDeletes();
+        Assert.assertEquals(9 * M, f.getFirstPos());
+        appendPattern(f, 1500 * 1000);              // fills the last 1 MB file; then 200 kB
+        Assert.assertEquals(12 * M, f.getLength());
+        checkPattern(f, 9 * M, 12 * M);
+        f.close();
+        
+        long[] layout = {9 * M, M, 10 * M, M, 11 * M, 200 * 1000, 11200 * 1000, 200 * 1000,
+                11400 * 1000, 200 * 1000, 11600 * 1000, 200 * 1000, 11800 * 1000, 200 * 1000};
+        checkLayout(dir, layout);
+        
+        f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(9 * M, f.getFirstPos());
+        Assert.assertEquals(12 * M, f.getLength());
+        checkPattern(f, 9 * M, 12 * M);
+        appendPattern(f, 300 * 1000);               // a 200 kB file and part of the next
+        f.close();
+        
+        f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(12300 * 1000L, f.getLength());
+        checkPattern(f, 9 * M, 12300 * 1000L);
+        f.close();
+        long[] tail = {12 * M, 200 * 1000, 12200 * 1000, 100 * 1000};
+        long[] all = Arrays.copyOf(layout, layout.length + tail.length);
+        System.arraycopy(tail, 0, all, layout.length, tail.length);
+        checkLayout(dir, all);
+    }
+    
+    private static byte patternByte(long pos) {
+        return (byte) (pos * 131 + (pos >>> 13));
+    }
+    
+    /** A stream file of the bytes of 'pattern' from 'spos', as a stream would have made it. */
+    private static void writePatternFile(File dir, long spos, long length) throws IOException {
+        byte[] bytes = new byte[(int) length];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = patternByte(spos + i);
+        }
+        File file = new File(dir, indexToString(spos / BYTES_PER_INDEX_UNIT) + SUFFIX);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(bytes);
+        }
+    }
+    
+    private static void appendPattern(FileStream f, int length) throws IOException {
+        long spos = f.getLength();
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = patternByte(spos + i);
+        }
+        f.append(bytes, 0, bytes.length);
+    }
+    
+    private static void checkPattern(FileStream f, long from, long to) throws IOException {
+        byte[] b = new byte[64 * 1000];
+        for (long p = from; p < to; p += b.length) {
+            int n = (int) Math.min(b.length, to - p);
+            f.read(p, b, 0, n);
+            for (int i = 0; i < n; i++) {
+                if (b[i] != patternByte(p + i)) {
+                    Assert.assertTrue("byte at " + (p + i) + ": " + b[i], false);
+                }
+            }
+        }
+    }
+    
+    /** The directory's stream files, by name: their first positions and lengths, in pairs. */
+    private static void checkLayout(File dir, long[] layout) {
+        File[] files = dir.listFiles((d, name) -> name.endsWith(SUFFIX));
+        Arrays.sort(files, Comparator.comparing(File::getName));
+        Assert.assertEquals(layout.length / 2, files.length);
+        for (int i = 0; i < files.length; i++) {
+            Assert.assertEquals(indexToString(layout[2 * i] / BYTES_PER_INDEX_UNIT) + SUFFIX,
+                    files[i].getName());
+            Assert.assertEquals(layout[2 * i + 1], files[i].length());
+        }
     }
     
     @Nano
@@ -2280,11 +2459,13 @@ public class FileStream implements AppendOnlyStream {
         byte[] bytes = new byte[100*1000];
         FileStream f = new FileStream(dir);
         
-        for (int i = 0; i < 50; i++) {
+        // 11 MB: 200 kB files to 10 MB, then a 1 MB file, a tenth (2026-11-26, bergdb 028-62;
+        // with a quarter, 5 MB gave 200 kB files to 4 MB and a 1 MB file).
+        for (int i = 0; i < 110; i++) {
             f.append(bytes, 0, bytes.length);
         }
         
-        Assert.assertEquals(21, f.dbFiles.length);
+        Assert.assertEquals(51, f.dbFiles.length);
         Assert.assertEquals(200*1000, f.dbFiles[0].fileLength);
         Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         

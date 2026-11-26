@@ -336,12 +336,19 @@ RB-011. An emptied file database keeps its last stream file under maintain()
   wrong, and writes give the space back once they fill the file.
 * **Severity:** S4.
 * **Releases:** 2026.5 and 2026.6 (run on 2026.6; 2026.5 has the same
-  rules of `FileStream`); not fixed on `main`; 031-03 does not change
-  it.
+  rules of `FileStream`); fixed on `main` for 2026.7; 031-03 does not
+  change it.
 * **Found:** 2026-11-25, by 031-02's app hunt (F2: 10,400 kB kept
   where a fresh database keeps 904 bytes); its cause by 028-61; not
   known at the releases.
-* **Fix:** none yet; 028-62 holds the options for Frans.
+* **Fix:** 028-62, 2026-11-26, neither of its options J and S (Frans):
+  the Javadoc of the Pub's `Database.maintain()` says that the calls
+  bring the stream of an emptied database to within about 400 kB of a
+  fresh one's stream, as the Core's `Db.maintain()` does, and nothing
+  of files; `FileStream` gives a new file about a tenth of the stream
+  that its files hold, not a quarter, and its Javadoc states that the
+  disk can hold up to about one file more than the stream. RetainChurn's
+  case: 400 kB on disk for 61 kB of stream, from 10,400 kB.
 
 
 RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
@@ -476,3 +483,7 @@ fixed in part on `main`; the rest for Frans (028-60, B1 to B3).
 028-58) and RB-010 (031-03, section 9.2; 028-59) as released bugs, S4.
 031-03's section 9.3 (a database not written to keeps several times its
 live values) is a space cost, not a released bug: 028-65.
+
+2026-11-26. RB-011 fixed on `main` for 2026.7 (028-62): the Pub's
+`Database.maintain()` promises the 400 kB of the stream, and
+`FileStream` gives a new file a tenth of the stream, not a quarter.
