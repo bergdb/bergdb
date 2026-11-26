@@ -22,15 +22,9 @@
 #   step_wait
 #       Waits for the steps that step_bg started, adds their lines to the report in the
 #       order in which they started, and notes their failures in FAILED.
-#   run_guard SECONDS
-#       The whole run's hang guard (bergdb 028-64): if the run has not ended SECONDS after
-#       run_start, writes RUN/hang.txt and kills the processes of the steps then running
-#       (TERM, then KILL to those left), which fail with a line that says HANG; the steps
-#       not yet started are not run, and the report ends "NAME FAILED: ... hang-guard". A
-#       hang guard, not a time limit: SECONDS is far above the run's time.
 #   run_stop
 #       For a trap of INT and TERM (week.sh): kills every step's processes, the background
-#       steps' too, which ignore SIGINT, and the guard, and exits with status 130.
+#       steps' too, which ignore SIGINT, and exits with status 130.
 #   run_finish
 #       Copies the clones' *.txt logs (without the databases and traces) to RUN/logs/,
 #       deletes the clones, ends the report with "NAME OK (N minutes)" or "NAME FAILED:
@@ -99,20 +93,12 @@ step() {
         printf '%-18s %s\n' $name "$*"
         return 0
     fi
-    if [ -f $RUN/hang.txt ]; then
-        printf '%-18s %-6s %7s   %s\n' $name "-" "" "not run: the hang guard ended the run" >> $REPORT
-        return 1
-    fi
     s=$(date +%s)
     (cd $SRC/java && "$@") > $RUN/$name.txt 2>&1
     status=$?
     t=$(( $(date +%s) - s ))
     if [ $status = 0 ]; then result=ok; else result=FAILED; FAILED="$FAILED $name"; fi
-    last=$(tail -1 $RUN/$name.txt)
-    if [ $status != 0 ] && [ -f $RUN/hang.txt ]; then
-        last="HANG: killed by the hang guard ($(cat $RUN/hang.txt)); its last line: $last"
-    fi
-    printf '%-18s %-6s %5d s   %s\n' $name $result $t "$last" >> $REPORT
+    printf '%-18s %-6s %5d s   %s\n' $name $result $t "$(tail -1 $RUN/$name.txt)" >> $REPORT
     return $status
 }
 
@@ -123,21 +109,16 @@ step_bg() {
         printf '%-18s %s   (beside the next steps, in its own clone)\n' $name "$*"
         return 0
     fi
-    lane=$SRC
-    if [ ! -f $RUN/hang.txt ]; then
-        lane=$RUN/repo-$name
-        if ! clone_commit $SRC $lane; then
-            printf '%-18s %-6s %7s   %s\n' $name FAILED "" "the clone $lane failed" >> $REPORT
-            FAILED="$FAILED $name"
-            return 1
-        fi
-        LANES="$LANES $lane"
+    lane=$RUN/repo-$name
+    if ! clone_commit $SRC $lane; then
+        printf '%-18s %-6s %7s   %s\n' $name FAILED "" "the clone $lane failed" >> $REPORT
+        FAILED="$FAILED $name"
+        return 1
     fi
+    LANES="$LANES $lane"
     # The step's line goes to a file of its own, added to the report by step_wait.
     (SRC=$lane; REPORT=$RUN/.line-$name; step "$@") &
     BG="$BG $name:$!"
-    # The background step's own shell, which the hang guard spares, so that it writes its line.
-    echo $! >> $RUN/.keep
 }
 
 step_wait() {
@@ -158,73 +139,40 @@ step_wait() {
     BG=
 }
 
-# desc ROOTS SPARE KEEP: from ps, ROOTS that are alive and their descendants, but not the
-# processes SPARE and theirs, nor the processes KEEP (their descendants yes).
+# desc ROOTS: from ps, ROOTS that are alive and their descendants.
 desc() {
-    # On one line each: awk -v takes no newline.
-    set -- "$(echo $1)" "$(echo $2)" "$(echo $3)"
-    ps -A -o pid= -o ppid= | awk -v roots="$1" -v spare="$2" -v keep="$3" '
+    # On one line: awk -v takes no newline.
+    ps -A -o pid= -o ppid= | awk -v roots="$(echo $1)" '
         { kids[$2] = kids[$2] " " $1; alive[$1] = 1 }
         END {
-            split(spare, a, " "); for (i in a) no[a[i]] = 1
-            split(keep, b, " "); for (i in b) kp[b[i]] = 1
             n = split(roots, q, " ")
-            for (h = 1; h <= n; h++) if (q[h] in alive && !(q[h] in kp) && !(q[h] in no)) print q[h]
+            for (h = 1; h <= n; h++) if (q[h] in alive) print q[h]
             for (h = 1; h <= n; h++) {
                 m = split(kids[q[h]], c, " ")
-                for (j = 1; j <= m; j++) {
-                    if (c[j] in no) continue
-                    q[++n] = c[j]
-                    if (!(c[j] in kp)) print c[j]
-                }
+                for (j = 1; j <= m; j++) { q[++n] = c[j]; print c[j] }
             }
         }'
 }
 
-# kill_steps [all]: kills the processes of the steps that run, the descendants of this shell
-# at the time of the call: TERM, and after 10 s KILL to those left and their children. Spares
-# the hang guard and its children, and, without "all", the background steps' own shells
-# (RUN/.keep), so that they write their lines. A process that this shell starts after the
-# call, such as run_finish's, is not touched.
+# kill_steps: kills the processes of the steps that run, the descendants of this shell at the
+# time of the call: TERM, and after 10 s KILL to those left and their children.
 kill_steps() {
-    spare=$(cat $RUN/.guard 2> /dev/null)
-    keep=
-    [ "${1:-}" = all ] || keep=$(cat $RUN/.keep 2> /dev/null)
-    pids=$(desc $$ "$spare" "$keep" | grep -v "^$$\$")
+    pids=$(desc $$ | grep -v "^$$\$")
     [ -n "$pids" ] || return 0
     kill -TERM $pids 2> /dev/null
     for i in 1 2 3 4; do
         sleep 10
-        left=$(desc "$pids" "$spare" "$keep")
+        left=$(desc "$pids")
         [ -n "$left" ] || return 0
         kill -KILL $left 2> /dev/null
     done
 }
 
 # run_stop: for a trap of INT and TERM in a script with background steps (week.sh): kills
-# every step's processes and the hang guard, and exits with status 130; the run's directory
-# and clones stay.
+# every step's processes, and exits with status 130; the run's directory and clones stay.
 run_stop() {
-    kill_steps all
-    if [ -n "${GUARD_PID:-}" ]; then kill $GUARD_PID 2> /dev/null; fi
+    kill_steps
     exit 130
-}
-
-run_guard() {
-    [ "$DRY" = 1 ] && return 0
-    (
-        end=$((START + $1))
-        while [ $(date +%s) -lt $end ]; do
-            sleep 60
-            # The run's shell gone (killed, or interrupted): the guard ends too.
-            [ "$(ps -o ppid= -p "$(cat $RUN/.guard 2> /dev/null)" 2> /dev/null | tr -d ' ')" = $$ ] \
-                || exit 0
-        done
-        echo "the run had not ended $1 s after its start, at $(date '+%Y-%m-%d %H:%M')" > $RUN/hang.txt
-        kill_steps
-    ) > /dev/null 2>&1 &
-    GUARD_PID=$!
-    echo $GUARD_PID > $RUN/.guard
 }
 
 keep_traces() {
@@ -242,8 +190,6 @@ keep_traces() {
 
 run_finish() {
     [ "$DRY" = 1 ] && return 0
-    if [ -n "${GUARD_PID:-}" ]; then kill $GUARD_PID 2> /dev/null; fi
-    rm -f $RUN/.guard $RUN/.keep
     # The logs, without the databases and traces; then the clones.
     for d in $SRC $LANES; do
         (cd $d/java/build 2> /dev/null && find . -name '*.txt' -size -20000k | while read f; do
@@ -253,10 +199,6 @@ run_finish() {
         rm -rf $d
     done
 
-    if [ -f $RUN/hang.txt ]; then
-        echo "(the hang guard ended the run: $(cat $RUN/hang.txt))" >> $REPORT
-        FAILED="$FAILED hang-guard"
-    fi
     echo >> $REPORT
     if [ -z "$FAILED" ]; then
         echo "$NAME OK ($(( ($(date +%s) - START) / 60 )) minutes)" >> $REPORT

@@ -7,10 +7,10 @@
 #     ANDROID_SDK=/path/to/android/sdk nohup caffeinate -i sh java/week.sh >/dev/null 2>&1 &
 #
 # Kind: functional, as night.sh: no step's result depends on the machine's speed or load;
-# the time limits inside are hang guards, and so is the whole run's (GUARD_S below). It may
-# run while someone works on the machine, and at a low priority with nice -n 10; not with
-# taskpolicy -b on macOS, which throttles CPU and disk hard (night.sh's header: several
-# times longer) and so would take the large reclaim run past its 12-hour hang guard.
+# the time limits inside are hang guards. It may run while someone works on the machine,
+# and at a low priority with nice -n 10; not with taskpolicy -b on macOS, which throttles
+# CPU and disk hard (night.sh's header: several times longer) and so would take the large
+# reclaim run past large.sh's 12-hour JVM limit.
 # Timing is timing.sh's, which also runs before every release.
 #
 # A distinct set of tests (Frans decided, 2026-11-19; bergdb 028-27): this script does not
@@ -28,9 +28,6 @@
 #        DRY=1 java/week.sh [short]
 #                              prints the steps in order with their commands, runs
 #                              nothing (no clone, no report)
-#        GUARD_S=N java/week.sh [short]
-#                              the whole run's hang guard after N seconds (default
-#                              43200, 12 hours; short: 7200)
 #
 # It clones HEAD of this repository into build/week/RUN/repo (RUN is the date and time;
 # lean/.lake and lean/contractcheck/.lake are copied in) and runs there before-commit, then
@@ -38,7 +35,7 @@
 # clone of its own (build/week/RUN/repo-NAME, so that no build of one deletes the jar or
 # classes under another's JVMs), beside the other steps, which run one after another in
 # RUN/repo. Each step goes on after a failure except the first's (the clones, the steps'
-# runner, the report, the hang guard and the news entry are stress/runlib.sh's, which
+# runner, the report, the interrupt and the news entry are stress/runlib.sh's, which
 # night.sh shares). The lanes' times: large-reclaim 5.5 to 6.6 hours with seed 20782's
 # order, which wrote the most bytes of those 028-63 measured; the two others 4 to 5 hours
 # each (028-64 has the figures, what was measured and what estimated).
@@ -53,7 +50,7 @@
 #      028-63 measured; few seeds give an order as local as 20778's. This workload is
 #      only here, disjoint from night.sh's smaller reclaim tests and timing.sh. A failing
 #      run's data and build stay in RUN/large-reclaim-failure/ when this script removes
-#      its temporary clone; of a run that the hang guard kills, only the logs stay.
+#      its temporary clone.
 #   3. conformance-large: the Lean checker built (lake build in lean/), then
 #      stress/conformance.sh large, 12 traces of 1,000 to 5,000 transactions at node sizes
 #      8 to 62, on the day's seeds: 2 a configuration, from the day's number times 1000
@@ -94,14 +91,11 @@
 # of CC), kill-restart 10 kills on two seeds, the second with CC, fuzz 1 minute, unlinkfuzz
 # the day's block, harness-soak rounds 0 and 1, round 1 with CC, android.
 #
-# The hang guard (bergdb 028-64; runlib.sh's run_guard): if the run has not ended GUARD_S
-# seconds after its start (default 43200, 12 hours, about twice the full run's time;
-# short: 7200), it kills the processes of the steps then running, which fail with a HANG
-# line; the steps not yet started are not run, and the report ends "WEEK FAILED: ...
-# hang-guard". It catches a hang in a step without a guard of its own (the Lean checker of
-# a conformance trace, lake); a run that meets it on F53 has hung, or the machine was
-# about twice as slow as F53 alone. An interrupt (INT, TERM) of this script kills the
-# steps' processes too (runlib.sh's run_stop); the run's directory stays.
+# The aim for the whole run is about 10 hours on F53, at most 12 (Frans, 2026-11-26); no
+# guard of the whole run enforces it (Frans decided, 2026-11-26): a step without a guard of
+# its own that hangs holds the run without a report, as before 028-64. An interrupt (INT,
+# TERM) of this script kills the steps' processes too, the background steps' with the
+# others (runlib.sh's run_stop); the run's directory stays.
 #
 # CC (bergdb 030-30): the steps whose names end in -cc run with Java's commit-time check
 # of the writer's contract on (TransCheck; bergdb 030-09, section 3; 030-20) at every
@@ -116,7 +110,7 @@
 # (a JVM killed with SIGKILL writes no summary).
 #
 # It writes build/week/RUN/report.txt (the commit, the JDK, whether the Android SDK is set,
-# the lanes and the guard, each step's last line, result and time, the two steps of the
+# the lanes, each step's last line, result and time, the two steps of the
 # other lanes last, and WEEK OK or WEEK FAILED with the run's minutes, less than the sum of
 # the steps'), each step's output in STEP.txt, and the scripts' *.txt logs in logs/; then
 # deletes the clones and their databases, and adds a tools/news.sh entry. Exits with
@@ -133,7 +127,7 @@
 
 cd "$(dirname "$0")" || exit 1
 echo "Kind: functional"
-# JAVA, DAY, run_start, step, step_bg, step_wait, run_guard, run_stop and run_finish
+# JAVA, DAY, run_start, step, step_bg, step_wait, run_stop and run_finish
 # (bergdb 028-27, 028-64).
 . ./stress/runlib.sh
 
@@ -153,18 +147,15 @@ else
         "(the header says how to start it)"
 fi
 
-if [ $SHORT = 1 ]; then GUARD_S=${GUARD_S:-7200}; else GUARD_S=${GUARD_S:-43200}; fi
-case $GUARD_S in ''|*[!0-9]*) echo "week.sh: GUARD_S must be a number of seconds"; exit 2 ;; esac
 if [ $SHORT = 1 ]; then
     run_start week "Week run" ", short" "$SDKLINE
-Lanes: large-reclaim-quick and conformance-small beside the other steps, each in its own clone; hang guard $GUARD_S s"
+Lanes: large-reclaim-quick and conformance-small beside the other steps, each in its own clone"
 else
     run_start week "Week run" "" "$SDKLINE
-Lanes: large-reclaim and conformance-large beside the other steps, each in its own clone; hang guard $GUARD_S s"
+Lanes: large-reclaim and conformance-large beside the other steps, each in its own clone"
 fi
-# The whole run's hang guard, and an interrupt that kills the steps' processes too, the
-# background steps' with the others (runlib.sh's run_guard and run_stop; bergdb 028-64).
-run_guard $GUARD_S
+# An interrupt kills the steps' processes too, the background steps' with the others
+# (runlib.sh's run_stop; bergdb 028-64).
 [ "$DRY" = 1 ] || trap run_stop INT TERM
 
 # kill_seeds KILLS SEED...: kill-restart.sh with each seed in turn, KILLS kills each; stops

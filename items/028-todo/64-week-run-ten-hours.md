@@ -1,8 +1,8 @@
 028-64. Change: week.sh in about 10 hours, at most 12
 =====================================================
 
-Status: done: three lanes at once, about 6 hours, no coverage cut; a
-whole-run hang guard of 12 hours. Kind: Change. Frans: none.
+Status: done: three lanes at once, about 6 hours, no coverage cut; no
+whole-run hang guard (Frans). Kind: Change. Frans: none.
 Created 2026-11-26 by Frans Lundberg.
 
 What: `java/week.sh` ran its steps one after another. Its last run
@@ -45,7 +45,7 @@ them, as before:
 The steps, their seeds, sizes and durations are those of before: the
 same tests, so no coverage is lost. The report keeps one line per step
 with its time; the lanes' two lines come last, and a line after the JDK
-names the lanes and the guard. The run's minutes on the last line are the
+names the lanes. The run's minutes on the last line are the
 wall time, less than the sum of the steps'.
 
 Why a clone each. `build.sh` deletes `build/classes`, `build/stress` and
@@ -72,40 +72,26 @@ which is the longer one either way. PAR stays 4, which also keeps lane
 C at 4 cores, and its memory at 4 exports of up to 1.7 GB each at a
 batch's start.
 
-The hang guard: added (2026-11-26). If the run has not ended `GUARD_S`
-seconds after its start (default 43,200, 12 hours; `short` 7,200),
-`stress/runlib.sh`'s `run_guard` writes `RUN/hang.txt` and kills the
-processes of the steps then running (TERM, then KILL after 10 s to those
-left); each such step fails with a line that starts with HANG, the steps
-not yet started are not run, and the report ends `WEEK FAILED: ...
-hang-guard`; `run_finish` then copies the logs, removes the clones and
-adds the news entry as always. Reasons:
+The hang guard: none (Frans decided, 2026-11-26, 07:58). The branch
+first had one: if the run had not ended 12 hours after its start, it
+killed the steps then running and failed the run as a hang, since with
+three lanes a hang in a step without a guard of its own (a conformance
+trace's Lean checker, `lake build`, the fuzzers' JVMs) holds the whole
+run with no report. Without it, such a hang holds the run as it did
+before this change; the aim of about 10 hours, at most 12, stays in
+week.sh's header as an aim.
 
-* With three lanes, a hang in any of them holds the whole run at its
-  end: no report and no news entry, and the machine held.
-* Some steps have no guard of their own: a conformance trace's Lean
-  checker (one check takes about 3.9 hours, so a per-trace limit would
-  be close to its time), `lake build`, the fuzzers' JVMs, and
-  `harness-soak.sh` where `timeout` is missing (it is on F53, from
-  Homebrew). The others' waits are hang guards already (`apps.sh`,
-  `kill-restart.sh`, `android.sh`'s boot, `LargeReclaimRun`'s 12-hour
-  guard and its waits).
-* 12 hours is the most that Frans set for the run, and about twice the
-  estimate below: only a hang, or a machine about twice as slow as F53
-  alone, reaches it; `GUARD_S` raises it for such a machine. That keeps it
-  a hang guard of a functional script (028-23), not a limit of speed.
-
-The guard spares itself and the background steps' own shells (so that
-they write their lines), and kills only the processes that exist when it
-fires and their children, so not `run_finish`'s. An interrupt of
-`week.sh` (INT, TERM) kills every step's processes the same way
-(`run_stop`): the background lanes ignore SIGINT, as every asynchronous
+An interrupt of
+`week.sh` (INT, TERM) kills every step's processes, TERM and after 10 s
+KILL (`run_stop`): the background lanes ignore SIGINT, as every asynchronous
 command of a non-interactive `sh` does, so without it a Ctrl-C would
 leave them running. Checked with fake steps in a scratch repository
 (2026-11-26): the normal path, the guard (two steps killed with their
 children, one not run, the report and its last line as above), a TERM to
 the process group and an INT as from a terminal; and on the real steps
-in the trial of the full run below.
+in the trial of the full run below. After the guard was removed, a TERM
+to a script with two background steps and their children killed them
+all, in 11 s (lead-1126, 2026-11-26).
 
 
 Times: measured and estimated
@@ -130,8 +116,8 @@ gates), and the large run alone:
 * before-commit 63 to 83 s, before the lanes start.
 
 Measured, the lanes at once: a trial of the full run (2026-11-26 06:57
-to 07:25), `week.sh` on the branch with `GUARD_S=1680`, so that its
-guard ended it after 28 minutes, in the heaviest part of a run: lane
+to 07:25), `week.sh` on the branch with its first version's guard (removed
+since, above) at `GUARD_S=1680`, so that it ended the run after 28 minutes, in the heaviest part of a run: lane
 C's first four checks, lane S's apps-quick and apps-soak-cc, lane L's
 fill and first epochs.
 
@@ -190,23 +176,24 @@ choice for Frans, not made here.
 Files
 -----
 
-* `java/week.sh`: the lanes (`step_bg`, `step_wait`), the guard
-  (`GUARD_S`, `run_guard`), the trap of INT and TERM (`run_stop`), the
-  header's times and steps in the new order.
+* `java/week.sh`: the lanes (`step_bg`, `step_wait`), the trap of INT
+  and TERM (`run_stop`), the header's times and steps in the new order,
+  and the aim of about 10 hours, at most 12, with no guard.
 * `java/stress/runlib.sh`: `clone_commit`, `step_bg`, `step_wait`,
-  `run_guard`, `run_stop`, the guard's checks in `step` and
-  `run_finish`, and `run_finish` over every clone.
+  `run_stop`, and `run_finish` over every clone.
 * `java/stress/large.sh`: the header's times (5.5 hours with seed
   20782's order; quick about 3 minutes).
 * `java/readme.txt`: the times of `week.sh` and `large.sh`.
 
-Not changed, for the lead: `AGENTS.md` ("about 10 hours" for
-`week.sh`) and 013-04 ("about 10 hours"), which state the old time.
+`AGENTS.md` and 013-04 give `week.sh`'s new time (lead-1126, at the
+landing).
 
 Gates: `java/week.sh short` WEEK OK (13 minutes, 2026-11-26 07:39);
 the trial of the full run as above (its guard at 28 minutes, as
 meant); `DRY=1` of `week.sh`, `week.sh short` and `night.sh`;
 `java/before-commit.sh` BEFORE COMMIT OK (61 s; no Java changed).
+Without the guard: `DRY=1` of `week.sh`, the interrupt's check above,
+and `java/week.sh short` again before the landing.
 
 
 Log
@@ -216,3 +203,6 @@ Log
 that Frans set for `week.sh` on 2026-11-26 (about 10 hours on F53, at
 most 12). Done the same day: lanes, guard, trials and texts on the
 branch `028-64`.
+
+2026-11-26. The whole run's hang guard removed (Frans, 07:58); landed by
+lead-1126, and a full `week.sh` started on `main` to measure its time.
