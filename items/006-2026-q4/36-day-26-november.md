@@ -34,6 +34,13 @@ Frans, 2026-11-26:
   construction (031-04); a study of the direction, not a decision to
   build it (09:17).
 * 031-04, Q9: (b), the handoff, for the direction studied (10:42).
+* 028-62 (RB-011): a new stream file gets about a tenth of the stream
+  kept, not a quarter; no promise of disk size in the Pub API (the
+  Javadoc of `Database.maintain()` speaks of the stream); `FileStream`'s
+  Javadoc states the slack and that files are only appended to and
+  deleted whole, so a copy in order is a backup; the copy-and-swap at a
+  cut not made: complexity on the file system, and the backup property
+  (11:18).
 
 The lead, 2026-11-26:
 
@@ -76,6 +83,7 @@ The lead, 2026-11-26:
   than O-1; an upgrade recovery defect (P2) to repair before adoption;
   six more findings (031-04, section 11). The Q9 agent also repairs
   finding 1 in the prototype.
+* 11:19 028-62 by an agent (Opus, high) in a clone, stop 14:30.
 
 
 ## 4. Waiting for Frans
@@ -83,7 +91,6 @@ The lead, 2026-11-26:
 * 031-03, F1 to F5: wait for 031-04's study.
 * 028-60, part 2: B1, B2 or B3 (B2 recommended), after 035-01's
   first results.
-* 028-62, RB-011: J or S (S recommended, if its design stays small).
 * 028-54: whether P2 covers a restart inside a commit's maintenance.
 
 
