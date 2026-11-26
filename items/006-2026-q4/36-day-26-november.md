@@ -72,6 +72,10 @@ The lead, 2026-11-26:
 * 10:25 035 and 035-01 created; an agent on 035-01 (F53, s1).
 * 10:43 Q9 (b) to the prototype by an agent (Opus, high), with ZGC and
   the commit thread of PassProbe; results in 031-04's q9-handoff.md.
+* 10:36 Codex's review of 031-04: the direction simpler and sounder
+  than O-1; an upgrade recovery defect (P2) to repair before adoption;
+  six more findings (031-04, section 11). The Q9 agent also repairs
+  finding 1 in the prototype.
 
 
 ## 4. Waiting for Frans

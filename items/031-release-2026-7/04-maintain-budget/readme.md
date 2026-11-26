@@ -892,6 +892,86 @@ Not settled here, and the same as for 031-03:
 * **Not done:** no independent review. Nothing is on `main`.
 
 
+## 11. Codex's review
+
+Codex (GPT-6.1 Sol, reasoning effort high) reviewed the study and its
+prototype (`e2e1c19f`, `java/` at `cc02ccff`) on 2026-11-26, 10:22 to
+10:36, at lead-1126's request, with probes of its own; its report is
+outside the repository.
+
+* **Held.** The direction is simpler and sounder than 031-03's O-1: the
+  stopping condition is a position, and the repeating drain is gone. For
+  a finite workload, valid settings and continued calls, every pass ends
+  and the calls go quiet: the old drain case (step reserve 1) wrote
+  299,624 bytes over a million calls, the last at call 2,006, 174,776
+  bytes kept; a sweep of 144 configurations (node sizes 8 to 62,
+  reserves 1 to 4 MiB, sd 10 bytes to 1 GB, values of 0 to 10,000 bytes)
+  went quiet live and emptied, at most 202,560 bytes kept when empty. No
+  latest value lost and no state inside the retained window refused.
+  Section 7 holds: `ReclaimSteps.lean` permits c <= t0 + 1, so pCut =
+  pStart is its equality; no reclaim theorem needs the previous
+  iteration's start; the unchanged checkers built and passed (r-maint,
+  c-maint, e-r-maint, and a maintain-driven contract trace of 919
+  transactions); the full Mathlib gate was not run. Evidence of the same
+  version: 7,684 starts from crash prefixes and 67 stops with the right
+  a, 2,380 more prefixes and 12,022,880 point reads of retained states,
+  StreamDigest quick in all four modes of 11 configurations,
+  RestartInvariance passed, RB-007's case 116,880 bytes.
+* **Finding 1, an upgrade breaks R3 and P2 between completed calls; an
+  adoption blocker.** At a start, when the table has no `a` (a stream of
+  `main` or 2026.6), the current row's `a` is ignored and the last
+  record's position taken, also when that record is reclaim's. Two
+  copies of an upgraded stream, one restarted between two calls, end
+  with the same length and other bytes; 21 wrong prefixes in 452 starts.
+  A throwaway change that takes a current row's `a` whatever the table
+  holds made 30 comparisons equal. Being repaired in the prototype.
+* **Finding 2, mixed rows.** Q8 (b)'s rule does not make a writable
+  downgrade safe: a modern table with a current row of an old writer
+  keeps a stale `a` though the old writer accepted later application
+  transactions (a = 1,632,688 read for 4,482,408; quiet at 4,803,888
+  bytes kept). Old writers are to be refused explicitly, or recovery
+  designed around the newest record's provenance.
+* **Finding 3, the calls-per-pass estimate is not general.** 10,000
+  values of 1 byte at node size 8, budget 100: 2.81 times kept / budget
+  at the default reserve, 30.56 times at reserve 1. Rows, repeated index
+  visits and the take before a pass are not bounded by the kept bytes
+  with a fixed factor; a measured typical range, qualified, in place of
+  the claim.
+* **Finding 4, P1 is not secured by releasing the monitor between
+  parts.** At 1 million keys and budget 100,000: a call of 1,632 ms, a
+  commit of 408 ms, GC at most 114 ms (loaded machine, whole-call
+  figures). Q9's mechanism is right; neither the timings nor the yield
+  experiment establish a bound.
+* **Finding 5, `AppRecord` omits maintenance.** Its `fromMaintain` looks
+  for `Reclaim.maintain` on the stack, now `maintainPart`: a recording
+  holds no MAINTAIN line. To repair before application-derived traces
+  count as evidence for this API.
+* **Finding 6, the format needs a compatibility decision.** A call
+  stopped after the take before a pass leaves a table of only
+  `a=1632688`, which `main` refuses at its start (InternalDataException,
+  missing pStart); and a filler left live by `main` stays through an
+  upgrade and 8 R of calls: a cleanup is needed.
+* **Finding 7, P2 at any point of interruption.** A crash after a user
+  record and before its iteration's begin changes the stream from that
+  record on (`MidCallProbe`), as on `main` (028-54); a limit to state
+  apart from finding 1.
+* **Its view on Q1 to Q9.**
+  * Q1: `getStreamSize`, with its concurrency and the files' slack
+    documented.
+  * Q2: (a); `rewritten` is work done, not a snapshot of the live bytes.
+  * Q3: (a); eviction more widely, apart.
+  * Q4: (b), tested on its own, with restarts and digests checked.
+  * Q5: explicit budgets and the range, no overload; a budget is not a
+    latency limit.
+  * Q6: keep the take before a pass, with its format cost.
+  * Q7: keep the deterministic read charge; replace the factor's claim.
+  * Q8: a one-way policy that refuses old writers, with (c)'s cleanup;
+    (b) as made is not enough.
+  * Q9: (b), with the races (reentrant execute, exceptions, stops,
+    several callers) handled and tested, and measured with the pause
+    probe; a yield alone is not enough.
+
+
 ## Log
 
 2026-11-26. Created by lead-1126 at Frans's request, from the
@@ -910,3 +990,7 @@ Sections 4 to 10, `prototype.diff` and `probes/`.
 2026-11-26. Q9: Frans chose (b), the handoff between a call's parts, for
 this direction if he takes it; being added to the prototype and measured
 (q9-handoff.md).
+
+2026-11-26. Codex's review (section 11): the direction simpler and
+sounder than O-1; an upgrade recovery defect that breaks P2 between
+completed calls, to repair before adoption; six more findings.
