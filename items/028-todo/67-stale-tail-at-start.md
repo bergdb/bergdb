@@ -344,6 +344,14 @@ step 4. C1 and C3 as decided; C2 not built, C4 not taken.
     so the cut at 369 is in the creation's second record, refused as a
     creation that did not complete (028-18), and the cut at 466 in the
     record of "a"; not T1.)
+  * **Gates** (in the branch's clone, F53, beside other sessions' runs):
+    `java/before-commit.sh`: `BEFORE COMMIT OK (81 s)`;
+    `java/stress/level2.sh`: `LEVEL 2 OK`; `java/stress/level3.sh`:
+    `LEVEL 3 OK` (C-STEP 0 of 23,127, C-CUT 0 of 869); 031-06's
+    `probes/sweep.sh`: 0 different in all 63 result lines, `SWEEP DONE`;
+    `probes/faults.sh`: bad 0 in all 42 lines, `FAULTS DONE`;
+    `java/stress/kill-restart.sh 1000`: `KILL RESTART OK: 1000 kills and
+    50 exits`; the review's four probes as above.
 
 
 Log

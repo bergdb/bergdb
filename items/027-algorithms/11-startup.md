@@ -178,15 +178,16 @@ part 2, 2026-11-26); the recovery above sees a cut tail. A longer run, or one on
 as a cut where its zeros begin inside the last record: z, read before
 them, reaches to or past the end, and the zeros are read only if they
 begin in its header (h does not hold its check), to see that they are
-zeros; blocks of zeros among them are not valid (1.2, step 3). Zeros that cover a whole
-size field at a record's start, where they begin or past the end of the
-record they begin in, give z = 0 there: refused, "Bad transaction size
-in db stream, 0, spos P. Stream length: L." and the way out (028-60;
-since 028-67 the message goes on with P and the cut, and the refusal
-comes before the recovery completes a meta block that the end of the
-stream cut: it writes nothing). A size field that the end of the stream
-cuts, 1 to 3 zero bytes, is completed as any torn record's and recovered
-as an aborted record (Codex's review of 028-60, 2026-11-25).
+zeros; blocks of zeros among them are not valid (1.2, step 3). Zeros
+that cover a whole size field at a record's start, where they begin or
+past the end of the record they begin in, give z = 0 there: refused,
+"Bad transaction size in db stream, 0, spos P. Stream length: L." and
+the way out (028-60; since 028-67 the message goes on with P and the
+cut, and the refusal comes before the recovery completes a meta block
+that the end of the stream cut: it writes nothing). A size field that
+the end of the stream cuts, 1 to 3 zero bytes, is completed as any torn
+record's and recovered as an aborted record (Codex's review of 028-60,
+2026-11-25).
 
 Another file's bytes in the last file within its length, which a kill
 during an append can leave on APFS (035-02), are refused in the same
