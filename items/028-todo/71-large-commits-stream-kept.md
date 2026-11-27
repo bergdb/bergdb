@@ -51,8 +51,10 @@ Built
 * What: a commit's step scans up to its allowance, at most the larger of
   `MAX_STEP_SIZE` (16 kB) and twice the allowance that the application's
   last record and the records after it added, `2 fractionOf(L0 - a)`
-  (`Reclaim.commitStepSize`, `STEP_GROWTH_FACTOR`). Until then at most
-  16 kB a commit. A commit after small records keeps 16 kB; a commit after
+  (`Reclaim.commitStepSize`, `STEP_GROWTH_FACTOR`), and at most 128 KiB
+  (`MAX_COMMIT_STEP_SIZE`, half of the step's fixed room, so that the
+  record stays within its cap as 031-06's section 3 derives it). Until
+  then at most 16 kB a commit. A commit after small records keeps 16 kB; a commit after
   large ones carries a step of about their size times the fraction, so
   the steps spend the allowance as it grows, with room to catch up. A
   part's step stays at `MAX_STEP_SIZE`.
@@ -67,16 +69,22 @@ Built
 
   | Commits | Kept x live, before | After | Share, before | After |
   |---|---:|---:|---:|---:|
-  | one put of 20 kB      |  7.7 |  8.1 | 0.257 | 0.248 |
-  | one put of 100 kB     | 13.8 |  7.2 | 0.171 | 0.279 |
-  | one put of 300 kB     | 36.4 |  7.8 | 0.063 | 0.237 |
-  | 200 puts of 100 bytes | 21.9 | 10.7 | 0.100 | 0.238 |
+  | one put of 20 kB      |   7.7 |  8.1 | 0.257 | 0.248 |
+  | one put of 100 kB     |  13.8 |  7.2 | 0.171 | 0.279 |
+  | one put of 300 kB     |  36.4 |  7.8 | 0.063 | 0.237 |
+  | one put of 1 MB       | 115.7 | 18.2 | 0.019 | 0.102 |
+  | 200 puts of 100 bytes |  21.9 | 10.7 | 0.100 | 0.238 |
+  | 500 puts of 50 bytes  |  32.1 |  9.8 | 0.062 | 0.223 |
 
   "Kept" is the largest stream kept in the run's last third over the cold
   live data; it was steady from the middle third to the last in each run
-  after the change. The figures after include step 3's charge (the
-  after-row charge in the record), which changes the share of small
-  commits too (0.305 to 0.281 at 200-byte values).
+  after the change (before, it grew under commits of 1 MB and of 500
+  puts). The puts are at random keys among 20,000. Commits of more than
+  about 400 kB carry less than their allowance by the cap of 128 KiB: at
+  1 MB the stream kept is 18 times the live data, steady. The figures
+  after include step 3's charge (the after-row charge in the record),
+  which changes the share of small commits too (0.305 to 0.281 at 200-byte
+  values).
 
 
 Log
