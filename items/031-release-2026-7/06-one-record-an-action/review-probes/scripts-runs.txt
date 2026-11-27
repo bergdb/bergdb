@@ -1,0 +1,152 @@
+bergdb 031-06, the review: the item's scripts and the repository's, as run in the clone at fa11d15f (2026-11-27).
+
+== java/before-commit.sh
+BEFORE COMMIT OK (62 s)
+
+== sh items/.../probes/sweep.sh OUT (summary lines)
+lines with 0 different: 63
+SWEEP DONE
+
+== sh items/.../probes/faults.sh OUT
+lines with bad 0, not hit 0: 42
+FAULTS DONE
+
+== sh items/.../probes/conc.sh OUT
+replayed, the same stream: 10
+CONC DONE
+
+== SafetyProbe: -Dlimit=200000 -Dreserve=2000, seeds 1, 103, 107, 211 (6000, 6000, 8000, 8000 actions)
+core: seed 1, 6000 actions (378 large, 486 key transformations, 582 value transformations, 561 deletes, 357 maintain() calls, 54 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 0: 414 checks, 451710 historical reads, 124031 walks (147126 copies followed, 98789 refused: the write before the first available time), 242 cuts; the stream kept at most 36.0 % of the bound; its largest in the last third 4037272, in the middle third 3674536: OK
+pub: 1500 actions, 1862 transactionInfo() checked, 4 cuts seen: OK
+core: seed 103, 6000 actions (361 large, 484 key transformations, 623 value transformations, 599 deletes, 341 maintain() calls, 54 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 0: 398 checks, 434349 historical reads, 121323 walks (144163 copies followed, 95976 refused: the write before the first available time), 232 cuts; the stream kept at most 36.9 % of the bound; its largest in the last third 4494368, in the middle third 4649848: OK
+pub: 1500 actions, 1997 transactionInfo() checked, 4 cuts seen: OK
+core: seed 107, 8000 actions (514 large, 624 key transformations, 805 value transformations, 798 deletes, 480 maintain() calls, 85 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 0: 560 checks, 611328 historical reads, 167746 walks (199259 copies followed, 132970 refused: the write before the first available time), 316 cuts; the stream kept at most 38.7 % of the bound; its largest in the last third 4314640, in the middle third 3830408: OK
+pub: 2000 actions, 2248 transactionInfo() checked, 5 cuts seen: OK
+core: seed 211, 8000 actions (465 large, 602 key transformations, 821 value transformations, 792 deletes, 441 maintain() calls, 85 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 0: 544 checks, 593853 historical reads, 161246 walks (194807 copies followed, 128108 refused: the write before the first available time), 305 cuts; the stream kept at most 36.5 % of the bound; its largest in the last third 4098576, in the middle third 4212688: OK
+pub: 2000 actions, 2238 transactionInfo() checked, 6 cuts seen: OK
+
+== sh review-probes/safety2.sh
+== -Dlimit=100000 -Dreserve=500 -Dnode=8 -Dcold=600 103 6000
+core: seed 103, 6000 actions (378 large, 492 key transformations, 613 value transformations, 629 deletes, 344 maintain() calls, 70 restarts, 0 refused), record limit 100000, cap 455894, reserve 500, node 8: 356 checks, 708987 historical reads, 202762 walks (249268 copies followed, 176668 refused: the write before the first available time), 172 cuts; the stream kept at most 47.4 % of the bound; its largest in the last third 5324960, in the middle third 6498064: OK
+pub: 1500 actions, 1723 transactionInfo() checked, 6 cuts seen: OK
+== -Dlimit=300000 -Dreserve=100000 -Dnode=30 -Dhot=200 104 6000
+core: seed 104, 6000 actions (353 large, 456 key transformations, 600 value transformations, 621 deletes, 360 maintain() calls, 51 restarts, 0 refused), record limit 300000, cap 843394, reserve 100000, node 30: 615 checks, 920526 historical reads, 264115 walks (406225 copies followed, 224154 refused: the write before the first available time), 453 cuts; the stream kept at most 18.4 % of the bound; its largest in the last third 1859136, in the middle third 1890624: OK
+pub: 1500 actions, 1403 transactionInfo() checked, 11 cuts seen: OK
+== -Dlimit=150000 -Dreserve=300 -Dnode=8 -Dsd=500 -Dcold=200 -Dhot=20 107 8000
+core: seed 107, 8000 actions (486 large, 655 key transformations, 756 value transformations, 819 deletes, 494 maintain() calls, 78 restarts, 0 refused), record limit 150000, cap 552769, reserve 300, node 8: 621 checks, 417306 historical reads, 109831 walks (138520 copies followed, 89953 refused: the write before the first available time), 390 cuts; the stream kept at most 34.3 % of the bound; its largest in the last third 2581536, in the middle third 2525344: OK
+pub: 2000 actions, 2106 transactionInfo() checked, 9 cuts seen: OK
+== -Dlimit=120000 -Dreserve=400 -Dnode=8 -Dsd=300 -Dcold=1500 -Dhot=5 211 8000
+core: seed 211, 8000 actions (486 large, 622 key transformations, 814 value transformations, 807 deletes, 531 maintain() calls, 63 restarts, 0 refused), record limit 120000, cap 494644, reserve 400, node 8: 343 checks, 1552734 historical reads, 464428 walks (588417 copies followed, 445527 refused: the write before the first available time), 123 cuts; the stream kept at most 68.4 % of the bound; its largest in the last third 11921808, in the middle third 11964280: OK
+pub: 2000 actions, 1921 transactionInfo() checked, 9 cuts seen: OK
+SAFETY2 DONE
+
+== UndercountProbe 30000
+(the item's three lines, the same numbers)
+
+== sh java/stress/level3.sh (full)
+1. Unit tests
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 10 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 10 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 9 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 10 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 5 rounds, 0 failures, 5 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 818357 gets and 335631 scans correct, expired at admission 14, expired during 39, 7 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 1281780 gets and 479971 scans correct, expired at admission 13, expired during 42, 5 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 34477159 gets and 11578875 scans correct, expired at admission 31, expired during 2, 68 s.
+6. LoadTest with reclaim, a restart at every cut
+   restarts with a full check after a cut: 6
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; without per-append forces 448, and of 96 hole images 0 recovered, 96 failed (a known limit, bergdb 014-01); negative controls caught
+8. Conformance with the Lean model, with reclaim
+LEVEL 3 FAILED: C-STEP's fault test, lean/test-traces/step-faults.sh (log: build/level3/step-faults.txt)
+
+== build/level3/step-faults.txt, the last lines
+   rmiss: WRONG, expected STEP-resume:  TRACECHECK FAILED: exporter
+   rc: WRONG, expected STEP-resume:  TRACECHECK FAILED: exporter
+   rlast: WRONG, the fault changed nothing
+   re: WRONG, expected STEP-resume:  TRACECHECK FAILED: exporter
+STEP FAULTS FAILED: 16
+
+== sh java/stress/level4.sh quick
+1. Unit tests
+2. EvictionInvariance, every schedule, the audit on
+3. RestartInvariance, CrashTest and ReclaimStress with forced schedules, the audit on
+4. ReclaimReaders with forced schedules
+5. Conformance with the Lean model, with eviction
+6. LargerThanMemory, on disk, a capped JVM
+LEVEL 4 OK
+
+== java/night.sh tests
+SUCCESS, 26 successful tests in 739.2 s.
+
+== sh java/stress/transcheck.sh
+f: SUCCESS, 90 successful tests in 59.2 s.
+   TRANSCHECK: 3799327 transactions, 11721577 nodes visited, 756579 made, 0 made or changed and not reached, 4431440 keys of the transactions, 28667954 reads, 0 faults made on purpose found; no failure
+Time: 66 s
+TRANSCHECK OK
+
+== java/stress/core-build.sh unit f
+   unit: SUCCESS, 992 successful tests in 21.5 s.
+   f: SUCCESS, 69 successful tests in 28.5 s.
+CORE BUILD OK
+
+== PER_DB=20 LIMIT_S=900 java/stress/kill-restart.sh 150 20261127
+KILL RESTART OK: 150 kills and 6 exits in 221 s, seed 20261127
+
+== sh java/stress/level2.sh quick
+0. The pins (bergdb 030-28)
+1. Unit tests
+2. RestartStress, random configurations
+3. RestartStress, small and default startup distances
+4. RestartInvariance
+5. CrashTest, the stream cut at random positions
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+8. The tree model against Java (bergdb 024-12)
+LEVEL 2 FAILED: treeconf.sh reclaim (log: build/level2/treeconf-reclaim.txt)
+
+== build/level2/treeconf-reclaim.txt, the summary
+Summed over the traces of tree-reclaim:
+   2515 transactions, 9190 operations (538 noops), 3531 key nodes made, 0 taken back, 10826 KN lines, 10060 GET lines, 2515 SCAN lines, 105 touches
+   18930 key nodes marked, dirtyNodeBound 88607, summed
+   1612 records of the model's own run compared with Java's
+   C-T1 change: 0 failures
+   C-T2 klongs: 0 failures
+   C-T3 noops: 0 failures
+   C-T4 reads: 0 failures
+   C-T5 touch: 92 failures
+   C-T6 invariants: 0 failures
+   C-T8 bound: 0 failures
+   C-T9 run: 150 failures
+   C-T7 form: 0 failures
+   C-T7 model errors: 0 failures
+   reached pe.append: 7290
+   reached pe.cut: 233
+   reached pe.join: 115
+   reached pe.new: 183
+   reached pe.replace: 2752
+   reached top.new: 158
+   exporter errors: 0
+Time: 4 s
+TREECONF FAILED: 5 traces
+
+== sh java/stress/apps.sh quick
+lines OK: 28
+APPS OK
+
+== sh items/.../probes/sweep2.sh OUT, ended by the review after 26 of its 36 runs (python3 review-probes/sum-sweep.py LOG)
+26 reference runs, 18969 records = accepted actions; 36675 interruptions {'crash': 12225, 'pre': 12225, 'stop': 12225} different 0 memory other 0
+
+== sh items/.../probes/sweep.sh OUT, summed the same way
+23 reference runs, 16634 records = accepted actions; 27720 interruptions {'crash': 9240, 'pre': 9240, 'stop': 9240} different 0 memory other 0

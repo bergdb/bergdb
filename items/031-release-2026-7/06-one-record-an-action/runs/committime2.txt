@@ -1,0 +1,16 @@
+== c5b round 1
+K 20000, V 200, 30000 commits: 1639 made a step (5.5 %)
+  with a step:    median 113.1 us, p90 210.0 us, p99 1387.4 us, max 6992.3 us
+  without a step: median 3.8 us, p90 8.8 us, p99 43.5 us, max 9870.5 us
+== c315 round 1
+K 20000, V 200, 30000 commits: 1649 made a step (5.5 %)
+  with a step:    median 118.6 us, p90 213.2 us, p99 1103.0 us, max 6724.2 us
+  without a step: median 3.5 us, p90 8.1 us, p99 32.3 us, max 14863.3 us
+== c5b round 2
+K 20000, V 200, 30000 commits: 1639 made a step (5.5 %)
+  with a step:    median 114.8 us, p90 229.7 us, p99 1965.6 us, max 10144.3 us
+  without a step: median 4.1 us, p90 10.7 us, p99 48.8 us, max 11291.2 us
+== c315 round 2
+K 20000, V 200, 30000 commits: 1649 made a step (5.5 %)
+  with a step:    median 120.2 us, p90 233.2 us, p99 12301.5 us, max 61747.0 us
+  without a step: median 3.5 us, p90 8.3 us, p99 34.8 us, max 25665.8 us

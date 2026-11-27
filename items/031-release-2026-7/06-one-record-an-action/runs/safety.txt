@@ -1,0 +1,22 @@
+== -Dlimit=200000 -Dreserve=2000 1 6000
+core: seed 1, 6000 actions (378 large, 486 key transformations, 582 value transformations, 561 deletes, 357 maintain() calls, 54 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 0: 414 checks, 451710 historical reads, 124031 walks (147126 copies followed, 98789 refused: the write before the first available time), 242 cuts; the stream kept at most 36.0 % of the bound; its largest in the last third 4037272, in the middle third 3674536: OK
+pub: 1500 actions, 1862 transactionInfo() checked, 4 cuts seen: OK
+== -Dlimit=200000 -Dreserve=2000 -Dnode=8 2 6000
+core: seed 2, 6000 actions (348 large, 480 key transformations, 582 value transformations, 610 deletes, 363 maintain() calls, 48 restarts, 0 refused), record limit 200000, cap 649644, reserve 2000, node 8: 422 checks, 460611 historical reads, 126548 walks (156736 copies followed, 101569 refused: the write before the first available time), 259 cuts; the stream kept at most 34.2 % of the bound; its largest in the last third 4452536, in the middle third 4531352: OK
+pub: 1500 actions, 1646 transactionInfo() checked, 7 cuts seen: OK
+== -Dlimit=100000 -Dreserve=500 -Dnode=8 -Dcold=600 3 6000
+core: seed 3, 6000 actions (358 large, 473 key transformations, 620 value transformations, 620 deletes, 344 maintain() calls, 67 restarts, 0 refused), record limit 100000, cap 455894, reserve 500, node 8: 363 checks, 723009 historical reads, 203228 walks (253432 copies followed, 176624 refused: the write before the first available time), 178 cuts; the stream kept at most 45.1 % of the bound; its largest in the last third 6233960, in the middle third 6303864: OK
+pub: 1500 actions, 1837 transactionInfo() checked, 6 cuts seen: OK
+== -Dlimit=300000 -Dreserve=100000 -Dnode=30 -Dhot=200 4 6000
+core: seed 4, 6000 actions (352 large, 494 key transformations, 560 value transformations, 607 deletes, 371 maintain() calls, 65 restarts, 0 refused), record limit 300000, cap 843394, reserve 100000, node 30: 644 checks, 965139 historical reads, 277448 walks (438358 copies followed, 235451 refused: the write before the first available time), 466 cuts; the stream kept at most 19.2 % of the bound; its largest in the last third 1771208, in the middle third 1922800: OK
+pub: 1500 actions, 1427 transactionInfo() checked, 11 cuts seen: OK
+== -Dlimit=1000000 -Dreserve=4000 -Dsd=10000 -Dcold=2000 5 5000
+core: seed 5, 5000 actions (312 large, 385 key transformations, 528 value transformations, 486 deletes, 335 maintain() calls, 49 restarts, 0 refused), record limit 1000000, cap 2199644, reserve 4000, node 0: 208 checks, 1287852 historical reads, 405562 walks (503510 copies followed, 375984 refused: the write before the first available time), 60 cuts; the stream kept at most 76.4 % of the bound; its largest in the last third 20243616, in the middle third 27063464: OK
+pub: 1250 actions, 1880 transactionInfo() checked, 4 cuts seen: OK
+== -Dlimit=0 -Dreserve=4194304 -Dsd=20000 -Dcold=1000 6 3000
+core: seed 6, 3000 actions (171 large, 254 key transformations, 305 value transformations, 305 deletes, 174 maintain() calls, 37 restarts, 171 refused), record limit 2147483639, cap 2147483639, reserve 4194304, node 0: 241 checks, 766044 historical reads, 239534 walks (333607 copies followed, 224171 refused: the write before the first available time), 147 cuts; the stream kept at most 0.0 % of the bound; its largest in the last third 1025464, in the middle third 1037416: OK
+pub: 750 actions, 1303 transactionInfo() checked, 3 cuts seen: OK
+== -Dlimit=150000 -Dreserve=300 -Dnode=8 -Dsd=500 -Dcold=200 -Dhot=20 7 8000
+core: seed 7, 8000 actions (487 large, 645 key transformations, 871 value transformations, 755 deletes, 508 maintain() calls, 79 restarts, 0 refused), record limit 150000, cap 552769, reserve 300, node 8: 624 checks, 419202 historical reads, 112202 walks (145508 copies followed, 92266 refused: the write before the first available time), 394 cuts; the stream kept at most 37.4 % of the bound; its largest in the last third 2705128, in the middle third 2524056: OK
+pub: 2000 actions, 2079 transactionInfo() checked, 9 cuts seen: OK
+SAFETY DONE

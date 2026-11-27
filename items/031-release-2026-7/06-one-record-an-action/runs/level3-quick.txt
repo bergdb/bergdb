@@ -1,0 +1,12 @@
+Kind: functional
+1. Unit tests
+SUCCESS, 1758 successful tests in 39.3 s.
+SUCCESS, 22 successful tests in 3.9 s.
+2. ReclaimStress, random configurations
+3. RestartInvariance with reclaim
+4. CrashTest with reclaim
+5. ReclaimReaders, readers while reclaim cuts
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 1 seeds, 19 cold recoveries; without per-append forces 20, and of 4 hole images 0 recovered, 4 failed (a known limit, bergdb 014-01); negative controls caught
+8. Conformance with the Lean model, with reclaim
+LEVEL 3 FAILED: C-STEP's fault test, lean/test-traces/step-faults.sh (log: build/level3/step-faults.txt)

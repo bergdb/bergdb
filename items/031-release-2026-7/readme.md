@@ -54,6 +54,20 @@ Files
 * [031-05](05-writes-from-the-stream/readme.md): every write a function of
   the stream and the user actions, a study: P2 extended to maintenance and
   to anything that writes (Frans, 2026-11-26); answers 028-54.
+* [031-06](06-one-record-an-action/readme.md): one record an action: an
+  accepted action (a transaction, a setter, a part of `maintain()`)
+  appends exactly one record, which holds the maintenance that reclaim
+  owes; A1's (e), decided by Frans on 2026-11-27. Its files:
+  * `readme.md`: the design as built in the prototype, its evidence, the
+    decision, and the landing's plan (section 9);
+  * `study.md` and `study-d.md`: the studies of (e) and of (d), the
+    compound unit, not taken; `codex-studies.md`: Codex's opinion on
+    them;
+  * `prototype.diff`, `probes/`, `runs/`: the prototype's code against
+    031-05's, its probes and their output;
+  * `review-fable.md`, `review-probes/`: the independent review of the
+    prototype and its probes;
+  * `p2-draft.md`: a draft of P2's extended wording, a proposal.
 
 
 Log
@@ -96,3 +110,9 @@ answers 028-54.
 documentation's update. The theme's wording is Frans's and not set yet.
 031-06, a prototype of one record an action, is built (006-37); its
 files come with its landing.
+
+2026-11-27. 031-06 created: one record an action. Frans's focus of the
+day was how a commit's maintenance is written (006-37, A1); the options
+(c), (d) and (e) were studied, a prototype of (e) built and reviewed,
+and A1 decided as (e) (031-06, section 8). The landing's plan is its
+section 9. The internal crypto code left the tree the same day (028-69).

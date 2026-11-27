@@ -1,0 +1,11 @@
+Kind: functional
+1. Unit tests
+SUCCESS, 51 successful tests in 2.7 s.
+SUCCESS, 19 successful tests in 17.1 s.
+2. EvictionInvariance, every schedule, the audit on
+3. RestartInvariance, CrashTest and ReclaimStress with forced schedules, the audit on
+4. ReclaimReaders with forced schedules
+5. Conformance with the Lean model, with eviction
+6. LargerThanMemory, on disk, a capped JVM
+LEVEL 4 OK
+LEVELS DONE

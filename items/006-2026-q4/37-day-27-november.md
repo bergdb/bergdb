@@ -118,6 +118,19 @@ Frans, 2026-11-27:
   * the reclaim step reserve, a setting for tests: 028-68, decided
     with 031-06's landing.
 * These answer C1 and B2, and A4 and B3 in part (section 4).
+* Frans, 13:53: Codex's review of the prototype is not needed to go on:
+  the review by the agent on Fable is enough, if it is ok.
+* Frans, 14:00 to 14:09, on the prototype's three problems (031-06,
+  section 8): none is a blocker. That readers see a commit after its
+  scan is not a problem. The record's size needs no formal bound: that
+  it works in practice, with enough testing, is enough, and a guarantee
+  that is cheap is welcome. The after-row charge (B1): the fixed-width
+  patch of the row is tried first, later; the fallback is the charge
+  one record later.
+* **A1 is (e), one record an action** (14:32): by Frans's condition of
+  13:53 and the review's verdict of 14:30 (section 3): no probe broke
+  the prototype, and (e) is the one for `main` after three fixes. The
+  landing is 031-06's section 9. Section 4.0 says what this answers.
 
 Gone ahead by default:
 
@@ -279,6 +292,54 @@ The lead's overview (08:30), its conclusions:
   crypto code in a clone (028-69); the lead gates and lands it, then
   028-60's part 2 on it.
 
+* 12:40 028-69 landed: the internal crypto code removed (`1809e04c`),
+  `BEFORE COMMIT OK` in the agent's clone, recorded in 017-10's log. A
+  database that an earlier release encrypted is still refused, by its
+  `created.txt`; a new database's `created.txt` has no line "crypto
+  key:" any more.
+* 12:58 028-60's part 2 landed (`ac33aa93`), rebased on 028-69 without
+  its opt-out, after a third review by Codex: RB-012 is fixed on `main`
+  for 2026.7. `BEFORE COMMIT OK`; `KILL RESTART OK`, 200 kills;
+  KillWriter's seeds 63 and 91 OK. 028-69 done; 028-70 registered from
+  the review (a start refused after its recovery has written).
+* 13:09 The prototype of (e) done, on the branch `031-06` (`fa11d15f`)
+  in the agent's clone: `BEFORE COMMIT OK`; 27,720 crashes, failures and
+  stops at record boundaries, and 49,029 more with the variants of
+  031-05's review, all continued to the uninterrupted stream, with a
+  start's memory the running database's; as many records as accepted
+  actions in 59 runs; Codex's three tests; the count gates,
+  `level4.sh quick` and `apps.sh quick` OK. `level2.sh` and `level3.sh`
+  stop at their trace steps, as expected. Its own three problems: the
+  mixed record's bound is assumed in part; the after-row charge not
+  made is 25 % of the charge at node size 30 and 39 % at node size 8;
+  readers see a commit after its scan.
+* 13:12 The two reviews of the prototype started, each in a clone of
+  its own, neither with the other's report nor the lead's
+  recommendation: an agent on Fable, high, and Codex, run by an agent.
+  Codex met its usage limit at 13:12 and went on at 14:22.
+* 14:24 Codex's review was stopped by OpenAI's content filter ("flagged
+  for possible cybersecurity risk"), after about three minutes of work,
+  with no report. Not reworded or tried again (013-04, section 9); for
+  Frans.
+* 14:30 The review by the agent on Fable (031-06, `review-fable.md`):
+  no probe broke the prototype: no live value lost, no acknowledged
+  commit missing, no refused commit in the stream, no reader with a
+  wrong state, no start that differs from the running database. F1 to
+  F9 are of cost, margin and scope. (e) is the one for `main`, simpler
+  and safer at crashes and starts than (c), after three fixes: the
+  conformance (the trace format, the checkers, `StepTx`); the record's
+  room by a check; the pace.
+* 14:32 A1 = (e) (section 2). The landing started: an agent (Opus,
+  xhigh) on its steps 0 and 1 in a clone (031-06, section 9). 031-06's
+  files landed on `main` from the clones: the item, the study, the
+  prototype's diff, the probes and runs, the review and its probes, the
+  study of (d), Codex's opinion on the studies, and the draft of P2's
+  wording. 028-71 registered from the review's F3 (large commits keep
+  36 times the live data), and 028-68 updated from F7.
+* 14:35 The lead asked Frans for A2 and A3 (section 4.0), needed before
+  the branch is merged.
+* `night.sh` is due tonight on the day's `main`: its Java changed
+  (028-69, 028-60's part 2).
 
 ## 4. Waiting for Frans
 
@@ -289,6 +350,53 @@ with a time: none is open.
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
+
+### 4.0. After A1 = (e) (14:32)
+
+A1 is decided (section 2). What that does to the questions below; the
+text of sections 4.1 to 4.3 is left as it was written during the day.
+
+* **Asked at 14:35, needed before the landing's branch is merged**
+  (class 3):
+  * **A2:** `maintain(int budget)` replaces `maintain()` in the Core
+    and the Pub API in 2026.7.
+  * **A3:** 2026.7 does not open a database of 2026.6: a new format
+    version, refused with a clear message. Under (e) the copy mark and
+    one record an action change the format beyond what A3 lists
+    (031-06, Q5).
+* **Answered by (e) or by Frans today:** A1; B1 (the fixed-width patch
+  first, later); B2 (the index jobs are user actions); B5 (the part is
+  the unit); B7 (under (e) the setters carry no maintenance, as on
+  `main`: what a setting makes due is decided by the next record that
+  carries maintenance; 031-06, rule 9); C1 (028-69; part 2 landed,
+  `ac33aa93`); 031-06's Q1 and Q2.
+* **Moot under (e):** B4 (no maintenance record has a time of its own,
+  and nothing is held); B6 (nothing is due, so a refused call writes
+  nothing); A6 (the day's studies of (d) and (e) were Frans's focus;
+  from here a finding is a 028 entry: 028-70, 028-71).
+* **Still open, P2's wording** (A4, B3; the draft is 031-06's
+  `p2-draft.md`): the text itself, which is Frans's; whether the
+  setters stay actions of their own or become `execute()` calls (W2);
+  the creation as part of the stream as it is, or as action 0 (W4);
+  the README's sentence (W5).
+* **Still open, the proof** (A5): when the Lean statement of the
+  principle is made. The landing's step 1 restates the contract's
+  `StepTx`, so that what 2026.6 proved stays proved; the new theorem
+  is after it. 2026.8's theme is undecided (Frans, 11:50).
+* **Still open, of 031-04's design, decided as the landing reaches
+  them:** B8 (the getter's name, class 3), B9, B10, B11, B12 (the
+  budget's range, class 3, with A2), B13 (the take before a pass, with
+  A3), B14.
+* **Still open, of the landing** (031-06, section 9): Q3, the step's
+  room (step 2; no formal bound is required, Frans, 14:09); 028-68, the
+  step reserve (step 2; Frans's decision between A, B and C); Q4 and Q5
+  (step 4); Q6 (a timing run).
+* **Still open, small and independent:** C2 (028-66), C3 (028-67), C4
+  (028-54's question for 033), C5 (028-34), C6 (026-04), C7 (026-14).
+* **For Frans, new:** whether the history of reclaim's records (an
+  agent's file of 09:30, outside the repository) is published: it
+  quotes passages of his notes of 2012 to 2014 that he has not approved
+  for it; Codex's stop by the content filter (section 3, 14:24).
 
 ### 4.1. The direction, first
 
@@ -328,6 +436,7 @@ details are in the items, cited by ID and section.
   * Frans, 11:18: the prototype of (e) is built today (031-06; section
     2). A1 is chosen on its evidence and Codex's review of it; no
     default goes ahead.
+  * **Decided, 14:32: (e)** (section 2; section 4.0).
 * **A2. In 2026.7** (class 3: the scope and the Pub API). The design
   lands in Java with its tests in 2026.7: `maintain(int budget)`
   replaces `maintain()` in `Db` and `Database` (031-04, C1), and it

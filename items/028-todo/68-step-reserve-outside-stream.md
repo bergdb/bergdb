@@ -42,9 +42,10 @@ Frans: decision, between:
 Recommendation (the lead, 2026-11-27): A: no new action, and the tests
 keep their choice.
 
-When: decided with 031-06's landing, not before: design (e) reworks the
-step's sizing (the step's allowance of its own in the record), which may
-take over the reserve's role or change what it bounds.
+When: decided in step 2 of 031-06's landing (031-06, section 9), with
+the record's room: design (e) reworks the step's sizing (the step's
+allowance of its own in the record), which may take over the reserve's
+role or change what it bounds.
 
 Done when: Frans's choice is built, and `RestartInvariance` passes with
 a start that gives another reserve than the creation's;
@@ -64,3 +65,12 @@ Log
 
 2026-11-27. Registered by lead-1127, from Frans's rule of the day for
 P2's wording; found while the wording was drafted.
+
+2026-11-27. The independent review of 031-06's prototype (031-06,
+`review-fable.md`, F7) ran it: the reserve splits steps at its default
+too. In the review's case for P1 (60,000 cold keys of 1,000 bytes, then
+600,000 new keys put ahead of a running iteration's scan), the default
+of 4 MiB split 16 steps and 1 MiB split 65, and the same actions gave
+streams of 328,668,424 and 265,554,968 bytes. So "at the default no step
+is split" above holds for the stress workloads only. The reviewer's
+proposal is B, a constant. Decided in the landing's step 2.

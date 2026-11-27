@@ -46,3 +46,12 @@ Log
 2026-11-26. Answered by 031-05's direction (Frans, 2026-11-26): every
 write to the stream a function of the stream and the user actions, a
 restart, a stop or a crash inside a commit's maintenance included.
+
+2026-11-27. A1 is (e), one record an action (Frans; 031-06, section 8):
+an action's record holds its maintenance, so no record comes between a
+user's record and its maintenance, and a crash or a stop cannot land
+there. On the prototype, 27,720 crashes, failures and stops at record
+boundaries continued to the uninterrupted stream (031-06, section 4.1).
+`main` has the fault until 031-06 lands. Still open: whether the README's
+sentence ("The same transactions in the same order give the same bytes")
+makes it a released bug for 033.

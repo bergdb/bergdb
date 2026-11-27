@@ -1,0 +1,11 @@
+Kind: functional
+0. The pins (bergdb 030-28)
+1. Unit tests
+SUCCESS, 1758 successful tests in 47.5 s.
+2. RestartStress, random configurations
+3. RestartStress, small and default startup distances
+4. RestartInvariance
+5. CrashTest, the stream cut at random positions
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+8. The tree model against Java (bergdb 024-12)
+LEVEL 2 FAILED: treeconf.sh reclaim (log: build/level2/treeconf-reclaim.txt)

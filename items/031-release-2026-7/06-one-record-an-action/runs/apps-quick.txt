@@ -1,0 +1,32 @@
+Kind: functional
+Apps quick: 2026-11-27 12:31, log java/build/apps/quick/out.txt
+12:31:26 OK DeleteHeavy seed 1 node 8 n 3000 rounds 2: 132 transactions, 33173 operations, 10 restarts, 9996 checks, 2 refused, live 2394, stream 5523977 bytes, 2013 ms
+12:31:29 OK Churn seed 1 node 30 keys 3000: 4000 transactions, 173382 operations, 7 restarts, 18662 checks, old reads 295 ok and 53 cut, chain steps 48, max live stream 11156128, max ratio 49.421, 2779 ms
+12:31:34 OK Churn seed 2 node 8 keys 2000: 8000 transactions, 483634 operations, 16 restarts, 39232 checks, old reads 643 ok and 61 cut, chain steps 0, max live stream 18161008, max ratio 95.126, 5453 ms
+12:31:42 OK Limits: 141783 checks, 685 refusals checked, 34 notes
+OK WorstCase
+12:32:01 OK Kill seed 1: 10 kills (1 aimed at the start), 0 clean exits, 2 databases, 10 recoveries checked, 15 s
+12:32:21 OK Readers seed 1 node 8 readers 3 retain 1000: 53051 transactions, 2707 checked reads (1489 full scans), 669 cut reads, 20205 ms
+12:32:34 OK IndexChurn seed 1: 2000 transactions, 5 restarts, 4872 checks, old reads 112 ok and 0 cut, live 1261, 13116 ms
+OK written
+OK create() refused too: VersioningStreamException
+OK 2026.4 reads it all
+OldNodeSize: skipped, no build/apps/old-dbs/b2-node62
+12:32:41 OK BackToEmpty seed 1 node 30 keys 20000: 12459 transactions, 7 restarts, 55 checks, 41 cuts checked at the oldest state, 2816 ms
+12:33:02 OK Transform seed 1 node 30: 173590 transformer commits, 55350 refusals {vt-throws=7916, vt-throws-once=7806, vt-over-L4=7840, kt-over-L2=7854, vt-over-L5=7988, kt-throws=8128, kt-duplicate=7818}, 7806 reruns, 56608 plain transactions, 33861104 group reads, 20661 ms
+12:33:53 OK Buffers many seed 1: 60 databases, 1033 bursts, 154969 transactions, 1326 MB, 943 gaps of 1.5 to 2.5 s, 88 reopens, 201 open-write-close cycles, buffers' heap after 3.5 s idle 31 kB a database, 50 s
+12:33:54 OK KeyLimits seed 1: 2146 taken, 913 refused for length, 1387 bad form, 594 deletes, 2300 messages compared, 153 key-replace puts, 2233 keys kept, 851 ms
+12:33:56 OK GivenBack: 50 rounds, 0 reads whose state changed, 0 currentTime() calls that waited over 20 ms for the transaction
+12:34:04 OK Huge: 4 rounds of transactions of 7 to 31 MB
+12:34:25 OK KillEmpty seed 1: 12 kills (2 aimed at the start), 1 clean exits, 3 databases, 12 recoveries checked, 0 creations cut and made again, 21 s
+12:34:47 OK Buffers kill seed 1: 6 kills, 8 databases, 4285 committed transactions seen, 0 databases lost a transaction committed 2 s or more before the kill, 21 s
+OK D1Ledger commits=4000 snapshots=113 restart=checked
+OK D2ScanHistory transactions=1800 cuts=4 checks=2756 restarts=2
+OK D3ObjectIndex scans=5408 gets=1380 cuts=4 expired=73 restarts=3
+OK D3ObjectIndex scans=5216 gets=1400 cuts=0 expired=0 restarts=3
+OK D4CrashBatches kills=10 synced=410 recovered=410
+OK D5ContractEdges assertions=15519 refused=124 restart=checked
+OK D6SchemaValues sources=539 conversions=12936 assertions=47099 restart=checked
+OK D7RwConflicts pairs=120 retries=360 assertions=7659 restart=checked
+OK D8OnlineIndex scans=286 rowsChecked=395741 canceled=6 resumed=6
+APPS OK

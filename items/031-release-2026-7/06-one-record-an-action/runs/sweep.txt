@@ -1,0 +1,110 @@
+== 1 150 10000 all
+seed 1, actions 153 (7 calls of 100), sd 10000: records 172 = accepted actions 172 (138 commits, 6 carrying maintenance; 5 setters; 29 parts), length 625760, cut 16312, decided 16312, digest 5cf9bd8e93e7afb8
+crash: 172 the same, 0 different; 172 ended at the record, 14 after a physical cut; the start's memory the running one's at 172, other at 0
+pre: 172 the same, 0 different; 172 ended at the record, 13 after a physical cut; the start's memory the running one's at 172, other at 0
+stop: 172 the same, 0 different; 172 ended at the record, 16 after a physical cut; the start's memory the running one's at 172, other at 0
+== 2 400 2000 all
+seed 2, actions 403 (31 calls of 100), sd 2000: records 493 = accepted actions 493 (359 commits, 31 carrying maintenance; 11 setters; 123 parts), length 3604280, cut 1399224, decided 1399224, digest 2b7c2e1880f2547e
+crash: 493 the same, 0 different; 493 ended at the record, 427 after a physical cut; the start's memory the running one's at 493, other at 0
+pre: 493 the same, 0 different; 493 ended at the record, 427 after a physical cut; the start's memory the running one's at 493, other at 0
+stop: 493 the same, 0 different; 493 ended at the record, 427 after a physical cut; the start's memory the running one's at 493, other at 0
+== 3 400 2000 all
+seed 3, actions 403 (32 calls of 100), sd 2000: records 497 = accepted actions 497 (361 commits, 26 carrying maintenance; 10 setters; 126 parts), length 3484912, cut 1698184, decided 2144424, digest ac8820e6d746561b
+crash: 497 the same, 0 different; 497 ended at the record, 374 after a physical cut; the start's memory the running one's at 497, other at 0
+pre: 497 the same, 0 different; 497 ended at the record, 373 after a physical cut; the start's memory the running one's at 497, other at 0
+stop: 497 the same, 0 different; 497 ended at the record, 374 after a physical cut; the start's memory the running one's at 497, other at 0
+== 11 400 2000 all
+seed 11, actions 403 (33 calls of 100), sd 2000: records 504 = accepted actions 504 (359 commits, 35 carrying maintenance; 10 setters; 135 parts), length 3690288, cut 2398952, decided 2398952, digest f83533076c24ef2b
+crash: 504 the same, 0 different; 504 ended at the record, 437 after a physical cut; the start's memory the running one's at 504, other at 0
+pre: 504 the same, 0 different; 504 ended at the record, 438 after a physical cut; the start's memory the running one's at 504, other at 0
+stop: 504 the same, 0 different; 504 ended at the record, 440 after a physical cut; the start's memory the running one's at 504, other at 0
+== 12 400 10000 all
+seed 12, actions 403 (36 calls of 100), sd 10000: records 539 = accepted actions 539 (361 commits, 44 carrying maintenance; 5 setters; 173 parts), length 3251792, cut 2265104, decided 2265104, digest da5f282065539ed0
+crash: 539 the same, 0 different; 539 ended at the record, 471 after a physical cut; the start's memory the running one's at 539, other at 0
+pre: 539 the same, 0 different; 539 ended at the record, 471 after a physical cut; the start's memory the running one's at 539, other at 0
+stop: 539 the same, 0 different; 539 ended at the record, 471 after a physical cut; the start's memory the running one's at 539, other at 0
+== 13 300 50000 all
+seed 13, actions 303 (18 calls of 1000), sd 50000: records 557 = accepted actions 557 (279 commits, 78 carrying maintenance; 6 setters; 272 parts), length 11225288, cut 7833528, decided 7833528, digest ccd62f19ecc34fc6
+crash: 557 the same, 0 different; 557 ended at the record, 503 after a physical cut; the start's memory the running one's at 557, other at 0
+pre: 557 the same, 0 different; 557 ended at the record, 504 after a physical cut; the start's memory the running one's at 557, other at 0
+stop: 557 the same, 0 different; 557 ended at the record, 504 after a physical cut; the start's memory the running one's at 557, other at 0
+== 14 600 1000 all
+seed 14, actions 603 (57 calls of 100), sd 1000: records 767 = accepted actions 767 (529 commits, 56 carrying maintenance; 16 setters; 222 parts), length 3365296, cut 2557800, decided 2557800, digest 731a35d0dc259b12
+crash: 767 the same, 0 different; 767 ended at the record, 656 after a physical cut; the start's memory the running one's at 767, other at 0
+pre: 767 the same, 0 different; 767 ended at the record, 659 after a physical cut; the start's memory the running one's at 767, other at 0
+stop: 767 the same, 0 different; 767 ended at the record, 662 after a physical cut; the start's memory the running one's at 767, other at 0
+== 15 400 5000 all
+seed 15, actions 403 (36 calls of 10000), sd 5000: records 549 = accepted actions 549 (356 commits, 43 carrying maintenance; 9 setters; 184 parts), length 4807704, cut 2982744, decided 2982744, digest 2cda63c5bcc110a9
+crash: 549 the same, 0 different; 549 ended at the record, 478 after a physical cut; the start's memory the running one's at 549, other at 0
+pre: 549 the same, 0 different; 549 ended at the record, 476 after a physical cut; the start's memory the running one's at 549, other at 0
+stop: 549 the same, 0 different; 549 ended at the record, 478 after a physical cut; the start's memory the running one's at 549, other at 0
+== 16 500 2000 all
+seed 16, actions 503 (39 calls of 100), sd 2000: records 554 = accepted actions 554 (451 commits, 29 carrying maintenance; 12 setters; 91 parts), length 974024, cut 598464, decided 598464, digest e886f0f3f7a45443
+crash: 554 the same, 0 different; 554 ended at the record, 399 after a physical cut; the start's memory the running one's at 554, other at 0
+pre: 554 the same, 0 different; 554 ended at the record, 399 after a physical cut; the start's memory the running one's at 554, other at 0
+stop: 554 the same, 0 different; 554 ended at the record, 399 after a physical cut; the start's memory the running one's at 554, other at 0
+== 21 400 2000 all
+seed 21, actions 403 (49 calls of 100), sd 2000: records 561 = accepted actions 561 (347 commits, 39 carrying maintenance; 7 setters; 207 parts), length 4193928, cut 2560096, decided 2560096, digest b07c4ae233a07df6
+crash: 561 the same, 0 different; 561 ended at the record, 498 after a physical cut; the start's memory the running one's at 561, other at 0
+pre: 561 the same, 0 different; 561 ended at the record, 498 after a physical cut; the start's memory the running one's at 561, other at 0
+stop: 561 the same, 0 different; 561 ended at the record, 498 after a physical cut; the start's memory the running one's at 561, other at 0
+== 22 400 5000 all
+seed 22, actions 403 (77 calls of 100), sd 5000: records 425 = accepted actions 425 (313 commits, 24 carrying maintenance; 12 setters; 100 parts), length 1177248, cut 550224, decided 550224, digest 58b89bfd10e21f27
+crash: 425 the same, 0 different; 425 ended at the record, 282 after a physical cut; the start's memory the running one's at 425, other at 0
+pre: 425 the same, 0 different; 425 ended at the record, 282 after a physical cut; the start's memory the running one's at 425, other at 0
+stop: 425 the same, 0 different; 425 ended at the record, 282 after a physical cut; the start's memory the running one's at 425, other at 0
+== 23 300 20000 all
+seed 23, actions 303 (56 calls of 1000), sd 20000: records 372 = accepted actions 372 (241 commits, 31 carrying maintenance; 5 setters; 126 parts), length 2900816, cut 1648456, decided 1648456, digest 8a10e77c64a6c2b0
+crash: 372 the same, 0 different; 372 ended at the record, 314 after a physical cut; the start's memory the running one's at 372, other at 0
+pre: 372 the same, 0 different; 372 ended at the record, 314 after a physical cut; the start's memory the running one's at 372, other at 0
+stop: 372 the same, 0 different; 372 ended at the record, 314 after a physical cut; the start's memory the running one's at 372, other at 0
+== 24 500 1000 all
+seed 24, actions 503 (69 calls of 100), sd 1000: records 608 = accepted actions 608 (424 commits, 48 carrying maintenance; 8 setters; 176 parts), length 1828800, cut 1500392, decided 1500392, digest 361ed4900d60d0ed
+crash: 608 the same, 0 different; 608 ended at the record, 542 after a physical cut; the start's memory the running one's at 608, other at 0
+pre: 608 the same, 0 different; 608 ended at the record, 541 after a physical cut; the start's memory the running one's at 608, other at 0
+stop: 608 the same, 0 different; 608 ended at the record, 545 after a physical cut; the start's memory the running one's at 608, other at 0
+== 31 2000 5000 all
+seed 31, actions 2003 (165 calls of 100), sd 5000: records 2543 = accepted actions 2543 (1783 commits, 134 carrying maintenance; 42 setters; 718 parts), length 22083936, cut 20267920, decided 20267920, digest 5ff4a350b69cf6eb
+crash: 509 the same, 0 different; 509 ended at the record, 493 after a physical cut; the start's memory the running one's at 509, other at 0
+pre: 509 the same, 0 different; 509 ended at the record, 493 after a physical cut; the start's memory the running one's at 509, other at 0
+stop: 509 the same, 0 different; 509 ended at the record, 493 after a physical cut; the start's memory the running one's at 509, other at 0
+== 32 1500 3000 all
+seed 32, actions 1503 (41 calls of 100000), sd 3000: records 1994 = accepted actions 1994 (1419 commits, 214 carrying maintenance; 33 setters; 542 parts), length 18248392, cut 16024992, decided 16024992, digest fc5a0af9047c54df
+crash: 665 the same, 0 different; 665 ended at the record, 646 after a physical cut; the start's memory the running one's at 665, other at 0
+pre: 665 the same, 0 different; 665 ended at the record, 644 after a physical cut; the start's memory the running one's at 665, other at 0
+stop: 665 the same, 0 different; 665 ended at the record, 644 after a physical cut; the start's memory the running one's at 665, other at 0
+== 33 1000 2000 all
+seed 33, actions 1003 (71 calls of 1000), sd 2000: records 2529 = accepted actions 2529 (903 commits, 102 carrying maintenance; 25 setters; 1601 parts), length 58196600, cut 41810024, decided 41810024, digest f614331287021ca4
+crash: 281 the same, 0 different; 281 ended at the record, 271 after a physical cut; the start's memory the running one's at 281, other at 0
+pre: 281 the same, 0 different; 281 ended at the record, 271 after a physical cut; the start's memory the running one's at 281, other at 0
+stop: 281 the same, 0 different; 281 ended at the record, 271 after a physical cut; the start's memory the running one's at 281, other at 0
+== 41 300 200 all
+seed 41, actions 303 (150 calls of 100), sd 200: records 269 = accepted actions 269 (148 commits, 30 carrying maintenance; 5 setters; 116 parts), length 882336, cut 686304, decided 686304, digest ad5596abef7a41f0
+crash: 269 the same, 0 different; 269 ended at the record, 220 after a physical cut; the start's memory the running one's at 269, other at 0
+pre: 269 the same, 0 different; 269 ended at the record, 220 after a physical cut; the start's memory the running one's at 269, other at 0
+stop: 269 the same, 0 different; 269 ended at the record, 221 after a physical cut; the start's memory the running one's at 269, other at 0
+== 3 400 2000 all
+seed 3, actions 403 (32 calls of 100), sd 2000, restart every 7: records 497 = accepted actions 497 (361 commits, 26 carrying maintenance; 10 setters; 126 parts), length 3484912, cut 1698184, decided 2144424, digest ac8820e6d746561b
+crash: 497 the same, 0 different; 497 ended at the record, 373 after a physical cut; the start's memory the running one's at 497, other at 0
+pre: 497 the same, 0 different; 497 ended at the record, 374 after a physical cut; the start's memory the running one's at 497, other at 0
+stop: 497 the same, 0 different; 497 ended at the record, 375 after a physical cut; the start's memory the running one's at 497, other at 0
+== 24 500 1000 all
+seed 24, actions 503 (69 calls of 100), sd 1000, restart every 1: records 608 = accepted actions 608 (424 commits, 48 carrying maintenance; 8 setters; 176 parts), length 1828800, cut 1500392, decided 1500392, digest 361ed4900d60d0ed
+crash: 152 the same, 0 different; 152 ended at the record, 133 after a physical cut; the start's memory the running one's at 152, other at 0
+pre: 152 the same, 0 different; 152 ended at the record, 136 after a physical cut; the start's memory the running one's at 152, other at 0
+stop: 152 the same, 0 different; 152 ended at the record, 136 after a physical cut; the start's memory the running one's at 152, other at 0
+== 41 300 200 all
+seed 41, actions 303 (150 calls of 100), sd 200, restart every 3: records 269 = accepted actions 269 (148 commits, 30 carrying maintenance; 5 setters; 116 parts), length 882336, cut 686304, decided 686304, digest ad5596abef7a41f0
+crash: 269 the same, 0 different; 269 ended at the record, 220 after a physical cut; the start's memory the running one's at 269, other at 0
+pre: 269 the same, 0 different; 269 ended at the record, 220 after a physical cut; the start's memory the running one's at 269, other at 0
+stop: 269 the same, 0 different; 269 ended at the record, 221 after a physical cut; the start's memory the running one's at 269, other at 0
+== 3 400 2000 torn
+seed 3, actions 403 (32 calls of 100), sd 2000: records 497 = accepted actions 497 (361 commits, 26 carrying maintenance; 10 setters; 126 parts), length 3484912, cut 1698184, decided 2144424, digest ac8820e6d746561b
+torn: 219 torn records (commits): 219 continued the same with and without a restart, 0 different; 219 with the action not accepted; 219 with the reference's bytes before it
+== 21 400 2000 torn
+seed 21, actions 403 (49 calls of 100), sd 2000: records 561 = accepted actions 561 (347 commits, 39 carrying maintenance; 7 setters; 207 parts), length 4193928, cut 2560096, decided 2560096, digest b07c4ae233a07df6
+torn: 204 torn records (commits): 204 continued the same with and without a restart, 0 different; 204 with the action not accepted; 204 with the reference's bytes before it
+== 41 300 200 torn
+seed 41, actions 303 (150 calls of 100), sd 200: records 269 = accepted actions 269 (148 commits, 30 carrying maintenance; 5 setters; 116 parts), length 882336, cut 686304, decided 686304, digest ad5596abef7a41f0
+torn: 144 torn records (commits): 144 continued the same with and without a restart, 0 different; 144 with the action not accepted; 144 with the reference's bytes before it
+SWEEP DONE

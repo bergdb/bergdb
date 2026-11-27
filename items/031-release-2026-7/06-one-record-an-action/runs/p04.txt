@@ -1,0 +1,17 @@
+== HoleProbe 4000 20000
+before the second writes: fp 0, length 1224584, rows 1
+after them: fp 0, length 5770488
+after 10 R of calls: kept 71368, the twin's 52664; last call with work 1605 of 10000; fp 6592440
+== HoleProbe 20000 20000
+before the second writes: fp 0, length 5486712, rows 1
+after them: fp 0, length 10080216
+after 10 R of calls: kept 125976, the twin's 113512; last call with work 1605 of 10000; fp 10875392
+== IdleLiveProbe 30000 1000000 20 10
+live 30000 (61444 kB stream) sd 1000000: wrote 6092 kB in 20 R, 0 kB in the last 10 R; last true call 2078; kept 5918 kB; fp 61617 kB
+== IdleLiveProbe 15000 1000000 20 10
+live 15000 (29120 kB stream) sd 1000000: wrote 3842 kB in 20 R, 0 kB in the last 10 R; last true call 2051; kept 2954 kB; fp 30009 kB
+== IdleLiveProbe 100000 1000000 20 10
+live 100000 (202616 kB stream) sd 1000000: wrote 19968 kB in 20 R, 0 kB in the last 10 R; last true call 2279; kept 19699 kB; fp 202885 kB
+== IdleLiveProbe 100000 5000000 20 10
+live 100000 (200729 kB stream) sd 5000000: wrote 25015 kB in 20 R, 0 kB in the last 10 R; last true call 2340; kept 19502 kB; fp 206242 kB
+P04 DONE

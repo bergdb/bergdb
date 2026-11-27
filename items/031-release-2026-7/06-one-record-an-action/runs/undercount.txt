@@ -1,0 +1,8 @@
+Exception in thread "main" java.lang.NullPointerException: Cannot read field "steps" because "<local18>" is null
+	at bergdb.core.UndercountProbe.main(UndercountProbe.java:67)
+node 8, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 3001827 bytes (values 779283 + their nodes' overhead + the touch's 1262480); not charged, after the row: 1185808 bytes, 39.5 % of the charge
+node 30, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 2558803 bytes (values 779283 + their nodes' overhead + the touch's 819456); not charged, after the row: 657424 bytes, 25.7 % of the charge
+node default, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 2558803 bytes (values 779283 + their nodes' overhead + the touch's 819456); not charged, after the row: 657424 bytes, 25.7 % of the charge
+node 8, 100000 keys: a pass of 787 steps (parts), 100002 copies; charged 9904915 bytes (values 2599283 + their nodes' overhead + the touch's 4105568); not charged, after the row: 3872960 bytes, 39.1 % of the charge
+node 30, 100000 keys: a pass of 787 steps (parts), 100002 copies; charged 8474819 bytes (values 2599283 + their nodes' overhead + the touch's 2675472); not charged, after the row: 2150912 bytes, 25.4 % of the charge
+node default, 100000 keys: a pass of 787 steps (parts), 100002 copies; charged 8474819 bytes (values 2599283 + their nodes' overhead + the touch's 2675472); not charged, after the row: 2150912 bytes, 25.4 % of the charge

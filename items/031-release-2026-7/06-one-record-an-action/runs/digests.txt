@@ -1,0 +1,8 @@
+1
+inv-every1.txt: STREAM: identical; CUT: A=1549696 B=1549696, first available lookup time A=995000010 B=995000010, same; checks with 0: 6
+inv-level1.txt: STREAM: identical; ; checks with 0: 6
+inv-node14.txt: STREAM: identical; CUT: A=1370920 B=1370920, first available lookup time A=2041500010 B=2041500010, same; checks with 0: 6
+inv-node62.txt: STREAM: identical; CUT: A=6675440 B=6675440, first available lookup time A=2026000010 B=2026000010, same; checks with 0: 6
+inv-node8.txt: STREAM: identical; CUT: A=5225320 B=5225320, first available lookup time A=2030600010 B=2030600010, same; checks with 0: 6
+DIGESTS DONE
+Done: 11 configurations, 4 modes; the modes give the same stream

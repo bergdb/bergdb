@@ -1,0 +1,20 @@
+G1 BD1 largest record without its values, bytes value 104828 limit 1000000 margin 9.54 PASS
+G2 BD13 reachable key nodes over the twin's, worst shape value 1.229 limit 2.000 margin 1.63 PASS
+G3 BD10 (stream kept - H_R) / L0, peak value 4.303 limit 6.000 margin 1.39 PASS
+G4 M1 kept, most in the last R over the twin's (2397752 / 2403144) value 0.998 limit 2.000 margin 2.00 PASS
+G4 lag over R, the drive transactions until kept stays at most twice the twin's M1 (1285 / 1000) value 1.285 limit 2.000 margin 1.56 PASS
+G4 M4 reachable key nodes over the twin's (7 / 7) value 1.000 limit 2.000 margin 2.00 PASS
+G4 M5 dead KEY klongs over the twin's (20 / 14) value 1.429 limit 2.000 margin 1.40 PASS
+G4 M11 resident index objects over the twin's (488 / 432) value 1.130 limit 2.000 margin 1.77 PASS
+G4 M11 live handles over the twin's (488 / 432) value 1.130 limit 2.000 margin 1.77 PASS
+G4 ST6 cache table slots over the larger of 2.0 times the twin's and the tables' floor 65536 (64816 / 59840) value 0.542 limit 1.000 margin 1.85 PASS
+G4 heap after a GC over the twin's (2935168 / 2722736) value 1.078 limit 2.000 margin 1.86 PASS
+G5 M1 kept, most in the last R, over twice the twin's plus 600000 (191240 / 199296) value 0.192 limit 1.000 margin 5.22 PASS
+G5 calls returning true, the last of 20000 (2004), over 3/4 of the drive value 0.134 limit 1.000 margin 7.49 PASS
+G5 M4 reachable key nodes over the larger of twice the twin's and the twin's plus 10 (7 / 7) value 0.412 limit 1.000 margin 2.43 PASS
+G5 M5 dead KEY klongs over the larger of twice the twin's and the twin's plus 70 (31 / 10) value 0.388 limit 1.000 margin 2.58 PASS
+G5 M11 resident index objects over the larger of twice the twin's and the twin's plus 10 (8 / 8) value 0.444 limit 1.000 margin 2.25 PASS
+G5 M11 live handles over the larger of twice the twin's and the twin's plus 10 (8 / 8) value 0.444 limit 1.000 margin 2.25 PASS
+G5 ST6 cache table slots over the larger of 2.0 times the twin's and the tables' floor 65536 (51456 / 128) value 0.785 limit 1.000 margin 1.27 PASS
+G5 heap after a GC over the twin's (1181264 / 943992) value 1.251 limit 2.000 margin 1.60 PASS
+[105.5s] COUNT GATES OK

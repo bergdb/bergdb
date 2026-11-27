@@ -1,0 +1,94 @@
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 1 4000
+RvFront seed 1 node 0: 4000 actions, 2967 aimed at the scan's front, 62 copies dropped in 1012 steps 202 cuts, 88 restarts, 247 refused, 712824 historical reads: OK
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 2 4000 8
+RvFront seed 2 node 8: 4000 actions, 2939 aimed at the scan's front, 83 copies dropped in 1139 steps 221 cuts, 60 restarts, 251 refused, 689024 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 4 5000
+RvFront seed 4 node 0: 5000 actions, 3944 aimed at the scan's front, 97 copies dropped in 2498 steps 72 cuts, 92 restarts, 327 refused, 2380528 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 5 5000 8
+RvFront seed 5 node 8: 5000 actions, 3972 aimed at the scan's front, 153 copies dropped in 2712 steps 79 cuts, 113 restarts, 295 refused, 2586248 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 6 6000 30
+RvFront seed 6 node 30: 6000 actions, 4657 aimed at the scan's front, 165 copies dropped in 3032 steps 112 cuts, 129 restarts, 346 refused, 3204460 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -Dmaint=0 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 21 6000
+RvFront seed 21 node 0: 6000 actions, 4853 aimed at the scan's front, 434 copies dropped in 1040 steps 42 cuts, 351 restarts, 396 refused, 4472828 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -Dmaint=0 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 22 6000 8
+RvFront seed 22 node 8: 6000 actions, 4764 aimed at the scan's front, 457 copies dropped in 1069 steps 43 cuts, 334 restarts, 370 refused, 4325192 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -Dmaint=1 -Dcache=200000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 23 6000 8
+RvFront seed 23 node 8: 6000 actions, 4737 aimed at the scan's front, 295 copies dropped in 1352 steps 53 cuts, 314 restarts, 322 refused, 4259456 historical reads: OK
+== -Dcold=2000 -Dlen=1500 -Dmaint=0 -Dsd=500 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 24 6000 30
+RvFront seed 24 node 30: 6000 actions, 4715 aimed at the scan's front, 482 copies dropped in 1040 steps 40 cuts, 383 restarts, 366 refused, 4718784 historical reads: OK
+== -Dcold=40 -Dlen=3000000 -Dcache=60000000 -Dmaint=1 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 31 1500
+RvFront seed 31 node 0: 1500 actions, 1152 aimed at the scan's front, 14 copies dropped in 205 steps 54 cuts, 71 restarts, 100 refused, 64304 historical reads: OK
+== -Dcold=40 -Dlen=3000000 -Dcache=60000000 -Dmaint=0 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvFront 32 2500 8
+RvFront seed 32 node 8: 2500 actions, 1863 aimed at the scan's front, 26 copies dropped in 321 steps 81 cuts, 138 restarts, 144 refused, 110360 historical reads: OK
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvStop 1 150
+RvStop seed 1 node 0: 150 rounds, 121012 commits returned and are in the stream, 242 threw and are not {DbStoppingException=242}, 106633 records of maintain()'s parts, 150 rounds ended after a cut: OK
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvStop 2 150 8
+RvStop seed 2 node 8: 150 rounds, 112781 commits returned and are in the stream, 286 threw and are not {DbStoppingException=286}, 78085 records of maintain()'s parts, 150 rounds ended after a cut: OK
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvRead 3 12
+RvRead seed 3 node 0 cache 0: 87756 commits, 9260 maintain() calls, 490082 scans with the sum right (162791 at earlier times), 1 refused as no longer available; 158948 walks to the writing record through 1041495 copies, 302834 refused; the first available position 1167582760: OK
+== -Dcache=300000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvRead 4 12 8
+RvRead seed 4 node 8 cache 300000: 26938 commits, 3352 maintain() calls, 32944 scans with the sum right (10262 at earlier times), 852 refused as no longer available; 76766 walks to the writing record through 511175 copies, 148051 refused; the first available position 342306624: OK
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 20000 200 20000 200 20
+RvPace cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes, 20 ms apart, node 0:
+  written by the commits: 10519736; without reclaim 7309088; reclaim's share of the growth 0.305 (the internal fraction: 0.250); write amplification 1.44
+  the stream kept, largest in each third: 10325544, 13822648, 17332392 = 2.2, 2.9, 3.6 x live; cuts 1; largest record 15392; the stream kept at most 20.6 % of 031-06's stated bound with CAP = 0 (W at most 68912)
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 20000 200 20000 200 20 8
+RvPace cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes, 20 ms apart, node 8:
+  written by the commits: 12561104; without reclaim 8782912; reclaim's share of the growth 0.301 (the internal fraction: 0.250); write amplification 1.43
+  the stream kept, largest in each third: 11578816, 15778184, 19337064 = 2.4, 3.3, 4.0 x live; cuts 2; largest record 18224; the stream kept at most 23.0 % of 031-06's stated bound with CAP = 0 (W at most 75784)
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 20000 10 30000 100 20 8
+RvPace cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes, 20 ms apart, node 8:
+  written by the commits: 17885096; without reclaim 10792816; reclaim's share of the growth 0.397 (the internal fraction: 0.250); write amplification 1.66
+  the stream kept, largest in each third: 8887240, 11864040, 15156080 = 8.9, 11.9, 15.2 x live; cuts 4; largest record 28856; the stream kept at most 65.1 % of 031-06's stated bound with CAP = 0 (W at most 159248)
+== -Ddeep=true -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 20000 10 30000 100 20 8
+RvPace cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes, 20 ms apart, node 8:
+  written by the commits: 17880536; without reclaim 12684208; reclaim's share of the growth 0.291 (the internal fraction: 0.250); write amplification 1.41
+  the stream kept, largest in each third: 27693360, 30965488, 33706888 = 27.7, 31.0, 33.7 x live; cuts 2; largest record 43432; the stream kept at most 145.9 % of 031-06's stated bound with CAP = 0 (W at most 100552)
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 4000 1000 6000 20000 200
+RvPace cold 4000 x 1000 (live about 4160000), 6000 commits of 20000 bytes, 200 ms apart, node 0:
+  written by the commits: 164798208; without reclaim 122462064; reclaim's share of the growth 0.257 (the internal fraction: 0.250); write amplification 1.35
+  the stream kept, largest in each third: 31964328, 32111136, 32185552 = 7.7, 7.7, 7.7 x live; cuts 18; largest record 40752; the stream kept at most 46.5 % of 031-06's stated bound with CAP = 0 (W at most 318224)
+== -Dcap=2200000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 4000 1000 3000 100000 200
+RvPace cold 4000 x 1000 (live about 4160000), 3000 commits of 100000 bytes, 200 ms apart, node 0:
+  written by the commits: 363393720; without reclaim 301361248; reclaim's share of the growth 0.171 (the internal fraction: 0.250); write amplification 1.21
+  the stream kept, largest in each third: 57155832, 57381544, 57330024 = 13.7, 13.8, 13.8 x live; cuts 21; largest record 131008; the stream kept at most 75.7 % of 031-06's stated bound with CAP = 2200000 (W at most 1041696)
+== -Dcap=2200000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 4000 1000 1500 300000 200
+RvPace cold 4000 x 1000 (live about 4160000), 1500 commits of 300000 bytes, 200 ms apart, node 0:
+  written by the commits: 481261504; without reclaim 450862160; reclaim's share of the growth 0.063 (the internal fraction: 0.250); write amplification 1.07
+  the stream kept, largest in each third: 151302392, 151392992, 151522632 = 36.4, 36.4, 36.4 x live; cuts 11; largest record 330592; the stream kept at most 188.0 % of 031-06's stated bound with CAP = 2200000 (W at most 2639488)
+== -Dcap=2200000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvPace 20000 1000 2500 300000 500
+RvPace cold 20000 x 1000 (live about 20800000), 2500 commits of 300000 bytes, 500 ms apart, node 0:
+  written by the commits: 798006264; without reclaim 751641696; reclaim's share of the growth 0.058 (the internal fraction: 0.250); write amplification 1.06
+  the stream kept, largest in each third: 278202856, 533097528, 702935824 = 13.4, 25.6, 33.8 x live; cuts 4; largest record 334288; the stream kept at most 201.9 % of 031-06's stated bound with CAP = 2200000 (W at most 1333216)
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvP1 100000 200 0 4000
+  step reserve 4194304: 0 steps split by it; the stream's length 41600928
+RvP1 cold 100000 x 200, 0 new keys ahead of the scan, cache none (all in memory): 373 commits carried a step; the most KVs one scan met 37
+  the plan (before the go point): median 0.05 ms, p99 0.44 ms, max 1.47 ms
+  the whole execute():            median 0.10 ms, p99 0.62 ms, max 2.11 ms
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvP1 300 1000000 0 1500
+  step reserve 4194304: 0 steps split by it; the stream's length 305563608
+RvP1 cold 300 x 1000000, 0 new keys ahead of the scan, cache none (all in memory): 2 commits carried a step; the most KVs one scan met 4
+  the plan (before the go point): median 1.34 ms, p99 1.34 ms, max 1.34 ms
+  the whole execute():            median 2.63 ms, p99 2.63 ms, max 2.63 ms
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvP1 60000 1000 600000 14000
+  step reserve 4194304: 16 steps split by it; the stream's length 328668424
+RvP1 cold 60000 x 1000, 600000 new keys ahead of the scan, cache none (all in memory): 3395 commits carried a step; the most KVs one scan met 36902
+  the plan (before the go point): median 0.01 ms, p99 0.05 ms, max 4.79 ms
+  the whole execute():            median 0.11 ms, p99 0.21 ms, max 5.25 ms
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvP1 60000 1000 600000 14000 30000000
+  step reserve 4194304: 16 steps split by it; the stream's length 328668424
+RvP1 cold 60000 x 1000, 600000 new keys ahead of the scan, cache 30000000 bytes: 3395 commits carried a step; the most KVs one scan met 36902
+  the plan (before the go point): median 0.02 ms, p99 0.13 ms, max 8.00 ms
+  the whole execute():            median 0.12 ms, p99 0.42 ms, max 8.27 ms
+== -Dreserve=1048576 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvP1 60000 1000 600000 14000
+  step reserve 1048576: 65 steps split by it; the stream's length 265554968
+RvP1 cold 60000 x 1000, 600000 new keys ahead of the scan, cache none (all in memory): 2616 commits carried a step; the most KVs one scan met 9150
+  the plan (before the go point): median 0.01 ms, p99 0.70 ms, max 1.95 ms
+  the whole execute():            median 0.09 ms, p99 0.73 ms, max 2.57 ms
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvLong 3000 8
+RvLong: a key of 2572 segments (17997 bytes) under "/#", put by Trans.Builder.putLongKey: accepted; its value node is a copy of a commit's step: true; 12 copies in all, the most index nodes one record made dirty 2581, the largest record 217640 bytes; first available position 2572568, startup pos 4240120, stream length 4246808
+== -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvLong 7000 8
+RvLong: a key of 6000 segments (41997 bytes) under "/#", put by Trans.Builder.putLongKey: accepted; its value node is a copy of a commit's step: true; 9 copies in all, the most index nodes one record made dirty 6009, the largest record 503264 bytes; first available position 3096352, startup pos 7173472, stream length 7180160
+== -Dlimit=100000 -cp review-probes/out-run:review-probes/bergdb-e.jar bergdb.core.RvLong 7000 8
+RvLong: a key of 6000 segments (41997 bytes) under "/#", put by Trans.Builder.putLongKey: accepted; its value node is a copy of a commit's step: true; 120 copies in all, the most index nodes one record made dirty 4, the largest record 282424 bytes; first available position 0, startup pos 512, stream length 31908336 (record limit 100000, cap 455894)
+REVIEW PROBES DONE

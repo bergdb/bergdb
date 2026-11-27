@@ -1,0 +1,55 @@
+== -Dmaxv=100 -Dkeys=30 -Dnode=8 -Dmaint=50 41 300 200 8
+seed 41, actions 303, records 269, reference digest ad5596abef7a41f0; records chosen: {B commit=[15, 28, 37, 50, 62, 73, 83, 93], B part=[4], C commit=[83, 103, 133, 158, 160, 172, 186, 200], C part=[49, 70, 80, 112, 122, 135, 223, 243], P part=[7, 22, 31, 42, 53, 68, 76, 88], S part=[5, 20, 29, 40, 51, 66, 74, 86]}
+plan-stop: 40 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 40 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+go-stop: 0 refused, 40 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 40 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 40 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+apply-stop: 0 refused, 40 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+apply-fail: 0 refused, 40 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 40; continued to the reference (append-fail: the same with restarts) 40; bad 0; not hit 0
+== -Dmaxv=6000 -Dmaint=0 51 600 2000 8
+seed 51, actions 603, records 602, reference digest 95630110ad4e1cd8; records chosen: {B commit=[4, 38, 60, 141, 166, 316, 383, 514], C commit=[125, 196, 201, 364, 470, 554], P commit=[39, 54, 142, 158, 317, 384, 515, 571], S commit=[12, 37, 52, 66, 77, 92, 111, 125]}
+plan-stop: 29 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 29 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+go-stop: 0 refused, 29 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 29 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 29 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+apply-stop: 0 refused, 29 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+apply-fail: 0 refused, 29 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 29; continued to the reference (append-fail: the same with restarts) 29; bad 0; not hit 0
+== -Dmaxv=3000 -Dmaint=2 52 800 1000 8
+seed 52, actions 803, records 839, reference digest 6ab0959334ad6e6b; records chosen: {B commit=[5, 18, 35, 62, 104, 149, 223, 312], C commit=[149, 190, 228, 265, 353, 453, 585, 625], P commit=[36, 62, 105, 313, 420, 506, 609, 767], P part=[15, 147, 221, 537, 623], S commit=[34, 54, 60, 76, 88, 103, 117, 130], S part=[13, 144, 145, 219, 322, 323, 324, 325]}
+plan-stop: 43 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+go-stop: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+apply-stop: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+apply-fail: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+== -Dmaxv=2000 -Dmaint=4 -Dnode=8 -Dkeys=500 53 800 1000 8
+seed 53, actions 803, records 889, reference digest 9314a010fd29368c; records chosen: {B commit=[6, 16, 47, 82, 114, 156, 186, 235], C commit=[145, 188, 214, 284, 290, 366, 386, 434], P commit=[166], P part=[13, 26, 56, 90, 152, 233, 255, 307], S commit=[138, 197, 209, 225, 388, 390, 400, 406], S part=[11, 24, 53, 54, 86, 87, 88, 148]}
+plan-stop: 41 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 41 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+go-stop: 0 refused, 41 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 41 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 41 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+apply-stop: 0 refused, 41 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+apply-fail: 0 refused, 41 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 41; continued to the reference (append-fail: the same with restarts) 41; bad 0; not hit 0
+== -Dmaxv=20000 -Dbudget=1000 -Dkeys=100 54 400 10000 8
+seed 54, actions 403, records 622, reference digest 3e82148665db2614; records chosen: {B commit=[6, 19, 29, 61, 79, 104, 133, 162], C commit=[50, 167, 194, 205, 209, 267, 293, 315], P commit=[25, 220, 457], P part=[12, 59, 76, 102, 131, 147, 188, 240], S commit=[23, 35, 53, 65, 86, 109, 168, 203], S part=[9, 10, 55, 56, 57, 71, 72, 73]}
+plan-stop: 43 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+go-stop: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 43 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+apply-stop: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+apply-fail: 0 refused, 43 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 43; continued to the reference (append-fail: the same with restarts) 43; bad 0; not hit 0
+== -Dmaxv=400 -Dmaint=15 -Dnode=30 -Dkeys=2000 55 800 500 8
+seed 55, actions 803, records 934, reference digest bf8e2d86465426db; records chosen: {B commit=[4, 18, 32, 77, 98, 129, 158, 188], C commit=[77, 200, 207, 224, 252, 289, 318, 362], C part=[524, 680], P commit=[421, 548], P part=[9, 21, 74, 86, 103, 134, 168, 194], S part=[7, 19, 72, 84, 100, 101, 131, 132]}
+plan-stop: 35 refused, 0 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+plan-fail: 0 refused, 0 accepted, 35 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+go-stop: 0 refused, 35 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+go-fail: 0 refused, 0 accepted, 35 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+append-fail: 0 refused, 0 accepted, 35 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+apply-stop: 0 refused, 35 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+apply-fail: 0 refused, 35 accepted, 0 failed (a torn record for append-fail); the start's memory as the running one's 35; continued to the reference (append-fail: the same with restarts) 35; bad 0; not hit 0
+FAULTS DONE
