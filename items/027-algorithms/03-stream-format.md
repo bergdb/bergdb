@@ -135,9 +135,9 @@ version number. From the bottom up:
 | The files of a directory         | `stream/FileStream`                      | 4       | none     |
 | Encryption (none since 028-69)   | none                                     | 16      | none     |
 | The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 155 |
-| The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 8 |
+| The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 9 |
 | The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 3, 3, 5  |
-| The tree a record means          | `dag/PeWriter`, `dag/Dag`, `DbStarter`   | 11, 14  | record 8 |
+| The tree a record means          | `dag/PeWriter`, `dag/Dag`, `DbStarter`   | 11, 14  | record 9 |
 | The Core's internal keys         | `core/Reclaim`, `DbConstants`            | 15      | none     |
 | The Pub layer's keys             | `pubimp/IndexKeys`, `PubKeys`            | 17      | none     |
 | The Pub layer's objects          | `pubimp/ObjectFormat`, `pub/DbObject`    | 17      | 0x82     |
@@ -149,7 +149,7 @@ tag's, section 2):
 | Number             | Value | Where in the bytes       | Defined by                       |
 |---|---|---|---|
 | Meta block version | 155 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`     |
-| Record format      | 8   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
+| Record format      | 9   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
 | Top node format    | 3   | node byte 5              | `StoredTopNode.toLongs`, :203    |
 | Key node format    | 3   | node byte 5              | `StoredKeyNode.toLongs`, :55     |
 | Value node format  | 5   | node byte 5, both types  | `StoredValueNode.toBytes`, :222  |
@@ -157,6 +157,21 @@ tag's, section 2):
 What each covers, and how another value is refused, is section 21.1.
 The internal keys' texts and the Pub layer's keys have no version of
 their own; the object format has its header byte (17).
+
+Record format 9 since 2026-11-27 (031-06, landing step 2), for release
+2026.7, which does not open a database of 2026.6 (Frans, 2026-11-27: a
+new format, refused with a clear message, no upgrade path). Format 9 is
+format 8's layout with one record an action: a commit's record, and a
+part's of `maintain(budget)`, holds reclaim's copies of old values, its
+row and its table beside the action's KVs, one KV a key; a copy's value
+node has the copy mark, byte 6 of the value node (1; format 8 wrote 0
+there and skipped it), and the value node's own format stays 5. A start
+refuses a record of format 8 with a `VersioningStreamException` that
+names release 2026.6 (`StoredTrans.formatRefused`); release 2026.6
+refuses format 9 as a newer one's. No release has written format 9, so
+its meaning may still change before 2026.7 ships (028-67's checks of the
+record header are planned for it); its full description is a later step
+of 031-06's landing.
 
 
 ## 4. The stream's files
