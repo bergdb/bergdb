@@ -353,6 +353,18 @@ The rule, as built:
   value of 160,000 bytes and 40 small puts: a step carries an old value
   of the largest size beside such an action, every record within
   `recordCap()`, cuts, the values right after a restart.
+* **Before and after.** The sustained runs' workload as a probe with the
+  hook only (the same seeds; outside the repository), on step 1's jar
+  (`c46b0e01`) and on this branch's: on step 1's, 4 and 9 records whose
+  set, at the largest node sizes, passed the room of a record with no KVs
+  (largest 210,112 bytes at 100 kB, 430,336 at 200 kB), so their take
+  rested on the larger cap of a record that carries maintenance and on
+  nodes smaller than the largest; the startup pos still moved in every
+  window there. On the branch's: none over `dirtyLimit()` (largest 70,912
+  and 178,720 bytes), the startup pos moving in every window, the stream
+  kept at most 4.88 MB and 17.7 MB as on step 1's (4.81 MB, 18.2 MB). The
+  action's 7/8 refused 643 and 496 of the large actions (597 and 426 on
+  step 1's). The silent stall itself was the review's RvLong case (below).
 * **Bytes.** At the release's limits the cheap test fits every record of
   the stress workloads: StreamDigest quick on the commit of the rule
   (format 8) against step 1's jar: `DIGESTS IDENTICAL (44 of 44)`.
@@ -463,7 +475,40 @@ times, six at once: 60 passed.
 
 ### Gates
 
-Running since 16:36 (filled in at the end of the step).
+On F53, 2026-11-27, from 16:36, on the branch at `02ad45a0` (rebased on
+`main` at `dd62fc27`; the commits after it change text only), the level
+scripts each in a copy-on-write copy of the clone, so that their builds
+did not meet; load up to 25 while they ran together. Functional runs.
+
+* `java/before-commit.sh`: `BEFORE COMMIT OK (81 s)` (unit 1,733, f 94,
+  demos 14).
+* `java/stress/level2.sh` (whole, 18 min): `LEVEL 2 OK`. The pins: 144
+  files with their hashes. Step 8, treeconf: small 7,240, drain 14,120,
+  reclaim 7,545 transactions with 310 touches, as in step 1; 8b, the
+  contract and the bridge; 8c, pecmp: 0 differ in the three sets.
+* `java/stress/level3.sh` (whole, 16 min): `LEVEL 3 OK`. Step 8, C-STEP 0
+  of 23,127 transactions fail, 1,370 STEP lines, 1,042 iterations, 14,954
+  old KVs met, 14,679 copies, 23,087 records against their actions; the
+  crash set 0 of 5,593, 409 STEP lines, STEP-resume 925 restarts (135
+  crashes), 68 iterations across a restart: step 1's figures, one for one.
+* `lean/contract/gate.sh`: not run; nothing in `lean/` changed in step 2
+  (`git diff` of `lean/` from step 1's head: empty), and step 1's
+  `GATE OK` (254 theorems) stands.
+* `java/stress/level4.sh quick` (3 min): `LEVEL 4 OK` (its conformance
+  with eviction, 18 traces, TRACECHECK OK 18).
+* `java/stress/apps.sh quick` (5 min): `APPS OK`.
+* The item's probes (`probes/` with appendix 1's change), on the
+  branch's jar (`02ad45a0`), 16:46 to 16:59:
+  * `sweep.sh`: 27,720 interruptions, 0 different, the start's memory the
+    running one's at all; records = accepted actions in all 23 reference
+    runs (16,634); 567 torn records continued the same. Against
+    `runs/sweep.txt`: the same lengths, records and decided cuts; all 23
+    digests differ, by record format 9; the counts "after a physical cut"
+    (23,210 against 23,275) and seed 3's physical cut differ, which wait
+    for durability.
+  * `faults.sh`: `runs/faults.txt` line for line but the six reference
+    digests (format 9); bad 0 in all 42 lines.
+  * `conc.sh`: ten runs, the replay gave the same stream in all ten.
 
 ### For the later steps
 
@@ -513,20 +558,27 @@ Running since 16:36 (filled in at the end of the step).
 
 ## State
 
-2026-11-27, 16:05.
+2026-11-27, 17:05.
 
-* **Done:** step 0 (the port, gated, the crash probe 0 different) and step 1
-  (the conformance: the trace format, TraceExport, C-STEP with STEP-action
-  and its fault test, C-T5 and C-T9, the contract's checkers and proofs),
-  with level2.sh and level3.sh whole, gate.sh and before-commit.sh. No proof
-  left open; no `sorry`; no new axiom.
-* **Not done** (not part of steps 0 and 1): the item's text and `probes/`
-  (the lead's; the probes need the appendix's change); F2 to F7; the kept
-  times; `RECORD_FORMAT` 9 for Frans's decision of 14:36; the documents
-  beyond 027-02 (027-13 describes how Java's steps are checked and names
-  C-STEP's old rules); night.sh, week.sh; level4.sh in full (quick: OK).
-* **Next:** the lead's review of the branch `031-06-landing`; the landing's
-  later steps.
+* **Done:** steps 0 and 1 (above), and step 2: the record's room by a
+  check (F5) with the step's count from the actual keys (F6), record
+  format 9 for Frans's decision of 14:36, the step reserve a constant
+  (F7; 028-68, B), the handover test without a sampled thread state;
+  027-03 and 027-08 where they state the format's number and the index
+  limits. Gates: before-commit.sh, level2.sh and level3.sh whole,
+  level4.sh quick, apps.sh quick, the item's sweep, faults and conc; no
+  change in `lean/`.
+* **Not done:** the item's text and `probes/` (the lead's; the probes need
+  appendix 1's change, `SafetyProbe`, `PubInfoProbe` and `RvP1`
+  `testStepReserve`, `RvLong` appendix 2's); F2 to F4 (step 3); the kept
+  times (Q4); 028-67's checks (C1, C3); the documents (step 5: 027, 027-02,
+  027-13's C-STEP rules, the full description of format 9, the Javadoc of
+  `maintain(budget)`); night.sh, week.sh, level4.sh whole, timing.sh.
+* **For Frans:** O1 (BergDB's own long keys in the Core), in step 2's
+  options; recommended (a), as built.
+* **Next:** the lead's review of the branch `031-06-landing`; the merge
+  into `main` (`--no-ff`) when Frans's two points of section 9 are
+  settled; step 3 on `main`.
 
 ## Appendix: the probes for the test hook
 
