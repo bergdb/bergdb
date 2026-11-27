@@ -1639,7 +1639,7 @@ public class Reclaim implements Maintenance {
             // the start went on, and reads of those bytes failed the database later.
             // Refused before anything is cut; the storage keeps every file it had. The
             // storage's exception of a missing stream file (DatabaseBuilder.start()).
-            throw new StreamIoException(new ReadBelowFirstPosException("The stream begins at "
+            throw new StreamIoException(new StreamAfterCutException("The stream begins at "
                     + aos.getFirstPos() + ", after reclaim's cut, " + firstPos + ": the stream"
                     + " lacks bytes of the database from " + firstPos + " to "
                     + aos.getFirstPos() + ". The start has deleted nothing (bergdb 028-66)."
@@ -1661,6 +1661,20 @@ public class Reclaim implements Maintenance {
         // witness; an empty commit has none and tells by its position).
         appA = storedA == Long.MIN_VALUE || !isOwnRecord(last) ? last.tpos : storedA;
         publishWarm(db.getStreamLength());
+    }
+    
+    /**
+     * initFromDb's refusal of a stream whose first position is after reclaim's cut (bergdb
+     * 028-66): its message names the first position, the cut and the bytes that the stream
+     * lacks. Db.start() throws it as it is, as the cause of a StreamIoException; it wraps a
+     * read before the first position in a refusal of its own (bergdb 028-66, review R3).
+     */
+    static final class StreamAfterCutException extends ReadBelowFirstPosException {
+        private static final long serialVersionUID = 1L;
+        
+        StreamAfterCutException(String message) {
+            super(message);
+        }
     }
     
     /**

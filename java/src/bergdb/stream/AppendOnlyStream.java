@@ -24,11 +24,16 @@ import java.io.IOException;
  * stream may then begin later than it did, and still holds every byte from there to its
  * end. FileStream deletes the files of a cut with one force of the directory a batch, and a
  * power loss can keep the delete of a newer file and lose that of an older one, a gap that
- * its open takes as the stream's new front. A caller that cuts must have its record of the
- * cut durable before it calls pretruncate() (Reclaim, cutIfDurable), as the bytes before
- * the position may be gone after a crash. BergDB assumes correct storage: its checksums and
- * checks find some damage of the stored bytes, not all, as a best effort, and damage that
- * passes them gives wrong values with no error (bergdb 019-10; Db, "Errors").</p>
+ * its open takes as the stream's new front. An implementation removes the bytes before a
+ * pretruncate() position only after every byte before the stream's length at that call is
+ * on the device, so that what the caller wrote before the call, its record of the cut,
+ * survives every crash after which those bytes are gone (FileStream: forceTo() before each
+ * batch of deletes, also with per-append forcing off, where it reports written bytes as
+ * durable before they are forced). A caller cuts only after its record of the cut is
+ * written and reported durable (Reclaim, cutIfDurable). BergDB assumes correct storage: its
+ * checksums and checks find some damage of the stored bytes, not all, as a best effort, and
+ * damage that passes them gives wrong values with no error (bergdb 019-10; Db,
+ * "Errors").</p>
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:

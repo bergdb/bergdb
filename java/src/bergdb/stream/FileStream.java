@@ -669,11 +669,21 @@ public class FileStream implements AppendOnlyStream {
      * the smallest file size: the length and the first position are 'pos'. For this class's
      * own tests, which use it to make large positions (bergdb 019-04); AppendOnlyStream had it,
      * as seekFirstPos(), until 2026-11-05, for replication, which is gone (bergdb 005-11).
+     * It deletes the files before a gap that the open found, the leftovers, only if
+     * checkLeftovers() has found them to be the stream's own, as a cut does (2026-11-27,
+     * bergdb 028-66, review R5); else it refuses, and deletes nothing.
      * 
-     * @throws IllegalStateException  If the length is greater than 'pos'.
+     * @throws IllegalStateException  If the length is greater than 'pos', or if the stream has
+     *      leftovers that no call of checkLeftovers() has found to be its own.
      */
     synchronized void seekFirstPos(long pos) throws IOException {
         checkIOException();
+        
+        if (leftovers.length > 0 && !leftoversChecked) {
+            throw new IllegalStateException("Cannot seek to " + pos + ": the stream has "
+                    + leftovers.length + " files before a gap that no check has found to be"
+                    + " its own (checkLeftovers(); bergdb 028-66). " + gap);
+        }
         
         long len = this.length;
         
@@ -709,7 +719,13 @@ public class FileStream implements AppendOnlyStream {
      * A cut at or after the first position takes off the files before a gap that the open
      * found, the leftovers, too, before its own (2026-11-27, bergdb 028-66; the class's
      * Javadoc, "A gap in the files"), if checkLeftovers() has found them to be the
-     * stream's own; a cut before the first position takes none of them.
+     * stream's own; a cut before the first position takes none of them. They are queued
+     * after the files of the earlier cuts that the cut's thread has not deleted yet, so not
+     * oldest first if a cut came before checkLeftovers() (the Db's start checks them before
+     * it cuts: RecoverableStream.recover() before Reclaim.initFromDb). The order is safe
+     * either way (bergdb 028-66, review R5): a leftover is before the first position, so its
+     * delete moves no front; and the open takes the stream from the files after the last gap
+     * whatever subset of the deletes a power loss keeps, as for the deletes of one batch.
      */
     public synchronized void pretruncate(long pos) throws IOException {
         checkIOException();
@@ -1415,13 +1431,16 @@ public class FileStream implements AppendOnlyStream {
                     (spos, dest, offset, n) -> readLeftover(k, spos, dest, offset, n));
             if (problem != null) {
                 throw new BadDirStateException("The file " + k.file.getName() + ", before a"
-                        + " gap in the stream's files, is not the database's own: " + problem
-                        + ". " + g + " The files"
+                        + " gap in the stream's files, is not known to be the database's own: "
+                        + problem + ". " + g + " The files"
                         + " before a gap are deleted only if each one is the database's (bergdb"
                         + " 028-66), and none of them has been; the start, which checks them"
-                        + " before it writes, has written nothing. To start the database from"
-                        + " the files after the gap, move the files before the gap out of the"
-                        + " directory, and keep them: they may be another database's.");
+                        + " before it writes, has written nothing. If the files after the gap"
+                        + " are the database's, move the files before the gap out of the"
+                        + " directory to start it from them, and keep them: they may be another"
+                        + " database's. If the files before the gap are the database's, a file"
+                        + " after the gap was put there by hand: put the database's own files"
+                        + " back in its place.");
             }
         }
         synchronized (this) {
@@ -2908,6 +2927,49 @@ public class FileStream implements AppendOnlyStream {
             readAndCheck(f3, 400 * 1000, 100 * 1000, bytes);
         } finally {
             f3.close();
+        }
+    }
+    
+    /**
+     * bergdb 028-66, review R5 (2026-11-27): seekFirstPos(), which erases the stream, deletes
+     * the files before a gap only after checkLeftovers() has found them to be the stream's
+     * own, as a cut does; before, it refuses and deletes nothing. Until the fix it deleted
+     * them unchecked.
+     */
+    @Nano
+    static void testSeekFirstPosKeepsTheRuleOfTheFilesBeforeAGap(TestEnvironment c) 
+            throws IOException {
+        byte[] bytes = new byte[500*1000];     // 3 stream files
+        new Random(67).nextBytes(bytes);
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        f.append(bytes, 0, bytes.length);
+        f.close();
+        Assert.assertTrue(new File(dir, fileName(200 * 1000)).delete());
+        
+        FileStream f2 = new FileStream(dir);
+        try {
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            try {
+                f2.seekFirstPos(1000 * 1000);
+                throw new AssertionError("seekFirstPos() with an unchecked leftover");
+            } catch (IllegalStateException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("before a gap")
+                        && e.getMessage().contains("from 200000 to 400000"));
+            }
+            Assert.assertTrue(new File(dir, fileName(0)).exists());
+            Assert.assertEquals(400 * 1000L, f2.getFirstPos());
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            readAndCheck(f2, 400 * 1000, 100 * 1000, bytes);
+            
+            f2.checkLeftovers((position, length, piece) -> null);
+            f2.seekFirstPos(1000 * 1000);
+            Assert.assertEquals(0, f2.getLeftoverCount());
+            Assert.assertEquals(1000 * 1000L, f2.getFirstPos());
+            Assert.assertFalse(new File(dir, fileName(0)).exists());
+            Assert.assertFalse(new File(dir, fileName(400 * 1000)).exists());
+        } finally {
+            f2.close();
         }
     }
     

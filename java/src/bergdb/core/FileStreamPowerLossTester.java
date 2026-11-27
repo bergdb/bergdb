@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -149,6 +150,29 @@ public class FileStreamPowerLossTester {
                 result.put(name, bytes == null ? new byte[0] : bytes);
             }
             return result;
+        }
+
+        /**
+         * Whether a stream file holds bytes that no file force has covered: its bytes on disk
+         * are not those that the model has as forced (bergdb 028-66). A file deleted meanwhile
+         * holds none.
+         */
+        synchronized boolean hasUnforcedBytes() throws IOException {
+            File[] files = dir.listFiles((d, name) -> name.endsWith(".bergdb"));
+            if (files == null) throw new IOException("cannot list model directory");
+            for (File file : files) {
+                byte[] current;
+                try {
+                    current = Files.readAllBytes(file.toPath());
+                } catch (NoSuchFileException deleted) {
+                    continue;
+                }
+                byte[] bytes = forced.get(file.getName());
+                if (bytes == null ? current.length > 0 : !Arrays.equals(bytes, current)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         synchronized Image image(String event) {
@@ -722,6 +746,57 @@ public class FileStreamPowerLossTester {
     }
     
     /**
+     * bergdb 028-66, review R2 and R3 (2026-11-27; the review's CreatedTxtProbe): a start
+     * refused because the stream's first position is after reclaim's cut writes no
+     * created.txt; until the fix it wrote a missing one before Reclaim.initFromDb refused. And
+     * the refusal is Reclaim's own, which says what is the case, not Db's of a read before the
+     * first position, which the start did not make. A database cut (writeUntilCut()), then
+     * written with no cut (retained forever), so that reclaim has moved its live nodes past
+     * the first file; its first file removed, the cut in it; a start with a created.txt
+     * directory and no created.txt is refused; the stream files are as they were, and there is
+     * no created.txt.
+     */
+    @Nano
+    public static void testRefusedStartWritesNoCreatedTxt() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-created-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock();
+            writeUntilCut(dir, clock, new TreeMap<String, byte[]>(), null);
+            Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).start();
+            try {
+                db.setRetainDuration(Long.MAX_VALUE);
+                Random random = new Random(69);
+                long time = clock.getTime();
+                for (int i = 0; i < 1500; i++) {
+                    time += SEC / 10; clock.setTime(time);
+                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 12), value).build());
+                }
+                db.sync(SyncLevel.ORDINARY);
+            } finally { db.close(); }
+            File first = new File(dir, "00000000000006.bergdb");
+            Assert.assertTrue(first.delete());
+            File created = new File(dir, "created.txt");
+            Assert.assertFalse(created.exists());
+            Map<String, byte[]> files = streamFiles(dir);
+            clock.setTime(clock.getTime() + SEC);
+            try {
+                Db.builder().testSetup(new FileStream(dir)).createdTxt(dir).clock(clock).start()
+                        .close();
+                throw new AssertionError("started on a stream that lacks bytes");
+            } catch (StreamIoException e) {
+                Assert.assertTrue(String.valueOf(e.getCause()),
+                        e.getCause() instanceof Reclaim.StreamAfterCutException);
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("The stream begins at"
+                        + " 800000, after reclaim's cut, ") 
+                        && !e.getMessage().contains("The start needs"));
+            }
+            Assert.assertFalse("the refused start wrote created.txt", created.exists());
+            Assert.assertTrue("the start changed the files", sameFiles(files, streamFiles(dir)));
+        } finally { remove(dir); }
+    }
+    
+    /**
      * bergdb 028-66, the rule of the files before a gap (Frans, 2026-11-27): a file of the
      * database before a gap, here its first file, kept before a cut deleted it and put back,
      * is checked at the start (its first meta block holds its own position and the
@@ -1121,6 +1196,11 @@ public class FileStreamPowerLossTester {
             io.acknowledged.set(db.lookupTime(Long.MAX_VALUE));
             io.acknowledgedFrontier.set(db.getFirstAvailableLookupTime());
             io.checkpoint("final_acknowledgement");
+            // Without per-append forces, the last file's bytes are forced by the last batch's
+            // force (CUT), which can cover all of them, or else by close() (CLOSE); so a CLOSE
+            // force is required only if bytes were unforced when close() began (bergdb 028-66).
+            stream.awaitDeletes();
+            boolean unforcedAtClose = !appendForces && omit == null && io.hasUnforcedBytes();
             db.close(); db = null;
             if (io.deletes < 2) throw new AssertionError("trace did not exercise physical deletion: " + io.deletes);
             if (io.maxDeleteBatch < 2 && !negative) {
@@ -1134,7 +1214,7 @@ public class FileStreamPowerLossTester {
                 // close() forced the last file (bergdb 005-47): all that was acknowledged.
                 cases.add(new Image("after_close", io.durableFiles(), io.acknowledged.get(),
                         io.logicalNow.get(), io.acknowledgedFrontier.get()));
-                if (omit == null) checkForcesWithoutAppendForces(io);
+                if (omit == null) checkForcesWithoutAppendForces(io, unforcedAtClose);
             }
             if (cases == null || cases.isEmpty()) throw new AssertionError("no power-loss checkpoints");
             int checked = 0, gapImages = 0;
@@ -1184,15 +1264,28 @@ public class FileStreamPowerLossTester {
     
     /**
      * Without per-append forces, the trace forced no append, and forced the last file before
-     * a new file, before a cut's deletes and at close() (bergdb 005-47).
+     * a new file, before a cut's deletes and at close() (bergdb 005-47), and after close() no
+     * byte of a stream file is unforced. A CLOSE force is required only if close() began
+     * with unforced bytes ('unforcedAtClose'): since 2026-11-27 (bergdb 028-66) the cut's
+     * thread deletes in batches, and the force of the trace's last batch (CUT) can cover the
+     * whole last file, so that close() has nothing to force; until the fix of 028-66's review
+     * (R1) the check required one, and failed for 5 of the 12 seeds 1001 to 1012 at 3,000
+     * transactions.
      */
-    static void checkForcesWithoutAppendForces(ModelIo io) {
+    static void checkForcesWithoutAppendForces(ModelIo io, boolean unforcedAtClose) 
+            throws IOException {
         Map<FileStreamIo.Force, Integer> f = io.forces;
         if (f.containsKey(FileStreamIo.Force.APPEND)) {
             throw new AssertionError("an append was forced: " + f);
         }
+        if (io.hasUnforcedBytes()) {
+            throw new AssertionError("close() left bytes of the stream unforced: " + f);
+        }
         for (FileStreamIo.Force why : new FileStreamIo.Force[] {FileStreamIo.Force.SWITCH, 
                 FileStreamIo.Force.CUT, FileStreamIo.Force.CLOSE}) {
+            if (why == FileStreamIo.Force.CLOSE && !unforcedAtClose) {
+                continue;
+            }
             if (!f.containsKey(why)) {
                 throw new AssertionError("the trace made no " + why + " force: " + f);
             }

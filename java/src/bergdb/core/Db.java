@@ -1224,8 +1224,9 @@ public class Db implements AutoCloseable {
      *          028-66): the first position is after reclaim's cut, or the start reads before
      *          it, as when a file of a FileStream's was removed by hand, or a copy of the
      *          files missed some. The message has what the storage says, FileStream's a gap
-     *          in its files. The start deletes nothing; recovery may have completed a torn
-     *          end of the stream, as a start of the whole stream would. With the storage's
+     *          in its files. The start deletes nothing, and writes nothing but what recovery
+     *          writes to complete a torn end of the stream, as a start of the whole stream
+     *          would: no created.txt either (bergdb 028-66, review R2). With the storage's
      *          exception as the cause, for a FileStream a BadDirStateException, if the
      *          storage holds bytes before its first position that are not the database's
      *          (Frans, 2026-11-27; bergdb 028-66): a file before a gap in a FileStream's
@@ -1280,7 +1281,9 @@ public class Db implements AutoCloseable {
      * The failure of a start that read the stream before its first position (2026-11-27,
      * bergdb 028-66), as a StreamIoException that says so, the storage's exception of a
      * missing stream file (DatabaseBuilder.start()), whose cause, a ReadBelowFirstPosException
-     * with the same message, has the failure as its cause; any other failure as it is. A start reads nothing before reclaim's cut: the last valid meta
+     * with the same message, has the failure as its cause; Reclaim.initFromDb's refusal of a
+     * first position after the cut (Reclaim.StreamAfterCutException) and any other failure as
+     * they are. A start reads nothing before reclaim's cut: the last valid meta
      * block names a record at or after it, the startup pos is at or after it, and every node
      * and value of the latest state is stored at or after it (Reclaim's class comment; the
      * restarts on CutStream, which refuses a read below the cut, check it). And the storage's
@@ -1291,6 +1294,12 @@ public class Db implements AutoCloseable {
      */
     private Throwable refusalOfMissingBytes(Throwable e) {
         if (!isReadBelowCut(e)) {
+            return e;
+        }
+        if (e instanceof StreamIoException
+                && e.getCause() instanceof Reclaim.StreamAfterCutException) {
+            // Reclaim's own refusal, which says what is the case: the start read nothing
+            // before the first position (2026-11-27, bergdb 028-66, review R3).
             return e;
         }
         try {
@@ -1371,15 +1380,18 @@ public class Db implements AutoCloseable {
         keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         createPutAndGetData();
-        if (!creating) {
-            writeCreatedTxtIfMissing();     // the creating start writes it at its end
-        }
         
         this.state = DbState.ACTIVE;
         readStartupDistanceKv(creating);
         // The stream's last record, for a (bergdb 031-04, R3); it is in the section (a
         // record's startup pos is before its own position).
         reclaim.initFromDb(transactions.get(transactions.size() - 1));
+        // After initFromDb, which refuses a stream whose first position is after reclaim's
+        // cut (2026-11-27, bergdb 028-66, review R2): before, a start so refused had written
+        // a missing created.txt first.
+        if (!creating) {
+            writeCreatedTxtIfMissing();     // the creating start writes it at its end
+        }
         synchronized (writeLock) {
             // The admission of the large values that the start made resident, as after a
             // record that this database writes (Eviction.recordWritten): their records are in

@@ -527,9 +527,12 @@ public class RecoverableStream {
                     + " written at another place, or damaged";
         }
         if (!b.hasId(id)) {
+            // The ID of the stream after the gap, which is the other database's if a file
+            // there was put by hand (bergdb 028-66, review R3): either may be another's.
             return where + "holds the database ID " + StringUtil.toHex(b.getId())
-                    + ", and this database's is " + StringUtil.toHex(id)
-                    + ": another database's";
+                    + ", and the stream's first meta block after the gap holds "
+                    + StringUtil.toHex(id) + ": the file and the files after the gap are of two"
+                    + " databases, and either may be another database's";
         }
         return null;
     }
@@ -2674,7 +2677,9 @@ public class RecoverableStream {
             byte[] other = id.clone();
             other[15] = 67;
             p = leftoverProblem(200000, 200000, reader, other);
-            Assert.assertTrue(p, p.contains("holds the database ID") && p.contains("another"));
+            Assert.assertTrue(p, p.contains("holds the database ID " + StringUtil.toHex(id))
+                    && p.contains("after the gap holds " + StringUtil.toHex(other))
+                    && p.contains("either may be another database's"));
             
             block[0] = good.clone();
             Bytes.intToBytesLE(155, block[0], 4);

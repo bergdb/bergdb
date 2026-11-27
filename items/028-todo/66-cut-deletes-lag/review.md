@@ -78,6 +78,15 @@ R2 to R5 can follow the landing.
   require `CLOSE` only when the last file had unforced bytes at
   `close()`.
 
+Fixed (2026-11-27): the tester's expectation, not the product: after
+the final sync the trace waits for the cut's thread and notes whether a
+stream file has bytes that no force covered
+(`ModelIo.hasUnforcedBytes`); `checkForcesWithoutAppendForces` requires
+a `CLOSE` force only then, and requires in every trace that no byte is
+unforced after `close()`: the tail forced by the last batch (`CUT`) or
+by `close()`. Seeds 1001 to 1012 at 3,000 transactions pass (the
+entry, 6.7).
+
 ### R2 (low; shown by a probe). A refused start writes created.txt
 
 * **Where:** `Db.startInner` calls `writeCreatedTxtIfMissing()` (Db.java
@@ -101,6 +110,19 @@ R2 to R5 can follow the landing.
 * **Fix:** write `created.txt` after `initFromDb`, or say in the Javadoc
   and in `Db.start()`'s that it may be written.
 
+Fixed (2026-11-27): `Db.startInner` writes a missing `created.txt`
+after `reclaim.initFromDb`, the last of the start's refusals of a
+stream that lacks bytes, so a refused start writes nothing but what
+recovery writes at a torn end; `Db.start()`'s Javadoc says so. The test
+`FileStreamPowerLossTester.testRefusedStartWritesNoCreatedTxt`: a
+database cut, then written with no cut until reclaim has moved its
+live nodes past its first file, which is removed; a start with a
+`created.txt` directory and no `created.txt` is refused by
+`initFromDb`, the files unchanged, no `created.txt`. The probe's own
+case is refused earlier, by a read before the first position (Db's
+message), also after the old place of the write: on the fix, CREATED
+TXT NOT WRITTEN.
+
 ### R3 (nit; read). Two messages of a refusal
 
 * `Db.refusalOfMissingBytes` (Db.java 1268) wraps every start failure
@@ -119,6 +141,20 @@ R2 to R5 can follow the landing.
   then refused by 028-67's check of the ID. Nothing is deleted or
   written; only the message points at the wrong files.
 
+Fixed (2026-11-27): `initFromDb` throws a `ReadBelowFirstPosException`
+of its own class, `Reclaim.StreamAfterCutException`, and
+`Db.refusalOfMissingBytes` passes it on as it is ("The stream begins at
+F, after reclaim's cut, C ..."); `testRefusedStartWritesNoCreatedTxt`
+checks it (it failed so before the fix). The block's check
+(`RecoverableStream.leftoverProblem`) now says that the file holds the
+ID A and the stream's first meta block after the gap holds B, "the file
+and the files after the gap are of two databases, and either may be
+another database's"; `FileStream.checkLeftovers` says the file "is not
+known to be the database's own", and gives both ways out: if the files
+after the gap are the database's, move the files before it out and keep
+them; if the files before it are, a file after the gap was put there by
+hand, and the database's own files go back in its place.
+
 ### R4 (nit; read). The stream contract's sentence on durability
 
 `AppendOnlyStream`'s class Javadoc (lines 22 to 29) gives the duty to
@@ -130,6 +166,15 @@ the argument rests on `FileStream`'s own `forceTo` before each batch
 do: remove bytes before a cut's position only after the bytes before its
 length at that cut are on the device.
 
+Fixed (2026-11-27): `AppendOnlyStream`'s class Javadoc states the
+implementation's duty: it removes the bytes before a `pretruncate()`
+position only after every byte before the stream's length at that call
+is on the device (FileStream: `forceTo()` before each batch of deletes,
+also with per-append forcing off, where it reports written bytes as
+durable before they are forced); and the caller's: it cuts only after
+its record of the cut is written and reported durable (Reclaim,
+`cutIfDurable`).
+
 ### R5 (nit; read). Two corners of FileStream that the Db does not reach
 
 * `deleteAllFiles` (FileStream.java 1565) deletes the leftovers without
@@ -138,6 +183,17 @@ length at that cut are on the device.
 * `pretruncate` queues the leftovers behind files that an earlier cut
   queued (line 747), not oldest first, if a cut at or after the first
   position came before `checkLeftovers()`; the Db always checks first.
+
+Fixed (2026-11-27): `seekFirstPos`, the only caller of `deleteAllFiles`,
+refuses with an `IllegalStateException` and deletes nothing while the
+stream has leftovers that no `checkLeftovers()` call has found to be
+its own; after a check that passed it deletes them, as a cut does (the
+test `FileStream.testSeekFirstPosKeepsTheRuleOfTheFilesBeforeAGap`).
+The order is left as it is, and `pretruncate`'s Javadoc says why it is
+safe: a leftover is before the first position, so its delete moves no
+front, and the open takes the stream from the files after the last gap
+whatever subset of the deletes a power loss keeps, as for the deletes
+of one batch.
 
 ### Limits of the rule (not findings)
 
