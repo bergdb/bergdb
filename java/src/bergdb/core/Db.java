@@ -1001,6 +1001,13 @@ public class Db implements AutoCloseable {
      * wait spins until the writers have the lock.
      */
     private void giveWayToWriters() {
+        if (writersWaiting.get() == 0) {
+            return;
+        }
+        final TestHooks hooks = testHooks;
+        if (hooks != null) {
+            hooks.givingWay();
+        }
         for (int spins = 0; writersWaiting.get() > 0; spins++) {
             if (spins < 100) {
                 Thread.onSpinWait();
@@ -4630,6 +4637,15 @@ public class Db implements AutoCloseable {
         public default int maintainMaxParts() {
             return Integer.MAX_VALUE;
         }
+        
+        /**
+         * bergdb 031-06: a call of maintain(budget) gives way to a commit that waits for the
+         * write lock (giveWayToWriters()): called on the call's thread, without the lock,
+         * when its wait begins, before it spins or parks. For the test of the handover
+         * (ReclaimMaintainTester.testCommitGoesBeforeTheNextPart), which waited for the
+         * thread's state until then, a sample that a loaded machine could keep RUNNABLE.
+         */
+        public default void givingWay() {}
 
         /** The transaction being executed created a value node. */
         public void valueNodeCreated(ValueNode node, long[] key);

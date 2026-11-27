@@ -390,9 +390,14 @@ public class ReclaimMaintainTester {
      * The handover of the write lock (bergdb 031-04, Q9): a commit that waits for the lock
      * goes before the next part of maintain() calls that wait with it, here two calls at
      * once. The test holds the lock, starts the commit, waits until it counts as waiting
-     * (writersWaiting), starts the calls, waits until both are parked in the handover, and
-     * lets the lock go: the first record after that is the commit's, and the calls then
-     * write their parts. writersWaiting is 0 at the end.
+     * (writersWaiting), starts the calls, waits until both have begun to give way
+     * (Db.TestHooks.givingWay, in the handover's wait, which ends only when the commit has
+     * the lock), and lets the lock go: the first record after that is the commit's, and the
+     * calls then write their parts. writersWaiting is 0 at the end. Since bergdb 031-06 the
+     * test waits for the hook, not for the threads' state, TIMED_WAITING, which it sampled:
+     * a thread that parks for 20 us and then waits for a core is RUNNABLE most of the time
+     * on a loaded machine, and the sample failed once so (031-06's landing, step 1). The
+     * waits' time limits are hang guards.
      */
     @Nano
     public static void testCommitGoesBeforeTheNextPart() throws Exception {
@@ -419,27 +424,34 @@ public class ReclaimMaintainTester {
                     }
                 });
             }
+            final java.util.concurrent.CountDownLatch givingWay =
+                    new java.util.concurrent.CountDownLatch(m.length);
             final long released;
             synchronized (db.internal().getWriteLock()) {
                 w.start();
-                final long end = System.nanoTime() + 10_000_000_000L;
+                final long end = System.nanoTime() + 60_000_000_000L;
                 while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
                     Thread.sleep(1);
                 }
                 Assert.assertEquals("the commit waits", 1, db.internal().writersWaiting());
-                for (Thread t : m) t.start();
-                for (Thread t : m) {
-                    while (t.getState() != Thread.State.TIMED_WAITING
-                            && System.nanoTime() < end) {
-                        Thread.sleep(1);
+                Db.testHooks = new Db.TestHooks() {
+                    public void givingWay() {
+                        givingWay.countDown();
                     }
-                    Assert.assertEquals("the call gives way", Thread.State.TIMED_WAITING,
-                            t.getState());
-                }
+                    public void transExecuted(Db.ExecuteData x) {}
+                    public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                    public void nodeTouched(bergdb.dag.Node node) {}
+                    public void nodeReplaced(bergdb.dag.Node node) {}
+                };
+                for (Thread t : m) t.start();
+                Assert.assertTrue("the calls give way", givingWay.await(60,
+                        java.util.concurrent.TimeUnit.SECONDS));
+                Assert.assertEquals("the commit still waits", 1, db.internal().writersWaiting());
                 released = db.getStreamLength();
             }
-            w.join(10_000);
+            w.join(60_000);
             for (Thread t : m) t.join(60_000);
+            Db.testHooks = null;
             if (failure.get() != null) throw new AssertionError("failed", failure.get());
             Assert.assertFalse("the threads ended", w.isAlive() || m[0].isAlive()
                     || m[1].isAlive());
@@ -454,6 +466,7 @@ public class ReclaimMaintainTester {
                 Assert.assertNull(r.get(ti.transTime - 1, "/w"));
             }
         } finally {
+            Db.testHooks = null;
             r.db.close();
         }
     }
