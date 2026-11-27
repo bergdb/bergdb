@@ -1,0 +1,119 @@
+bergdb 033: the probes of RB-006's rest, RB-007 and RB-010 on main (a20b0034, after 031-06's
+merge 5b88cc80) and on release 2026.6 (tag release-2026.6, bbcd802f), 2026-11-27.
+Each probe compiled against the jar of java/build.sh and put before it on the class path:
+  javac -cp java/build/bergdb.jar -d OUT items/033-bugs/probes/*.java
+  java -ea -cp OUT:java/build/bergdb.jar bergdb.core.PROBE ARGS
+A call is maintain(100) on main and maintain() on 2026.6 (M). Sizes and counts only.
+
+RB-007: HoleProbe N1 N2 (028-53's probe; 031-04's port)
+  HoleProbe 4000 20000, main:
+    before the second writes: fp 0, length 1224584, rows 1
+    after them: fp 0, length 5770488
+    after 10 R of calls: kept 71368, the twin's 52664; last call with work 1605 of 10000; fp 6592440
+  HoleProbe 4000 20000, 2026.6:
+    before the second writes: fp 0, length 1183672, rows 1
+    after them: fp 0, length 5673080
+    after 10 R of calls: kept 4804384, the twin's 315008; last call with work 621 of 10000; fp 869184
+  HoleProbe 20000 20000, main:
+    before the second writes: fp 0, length 5486712, rows 1
+    after them: fp 0, length 10080216
+    after 10 R of calls: kept 125976, the twin's 113512; last call with work 1605 of 10000; fp 10875392
+  HoleProbe 20000 20000, 2026.6:
+    before the second writes: fp 0, length 5400976, rows 1
+    after them: fp 0, length 9890496
+    after 10 R of calls: kept 5361912, the twin's 872424; last call with work 631 of 10000; fp 4529072
+
+RB-006's rest: TwoStretchProbe (031-03's probe, 028-58's copy with 'after')
+  TwoStretchProbe 390000 390000 390000 10000 20000, main:
+    after /a: length=391800 fp=0 kept=391800 w=none rows=[pStart=391400 pCut=391400 rewritten=0 done=false cut=false]
+    iteration 1 done: length=395360 fp=0 kept=395360 w=none rows=[pStart=391400 pCut=391400 rewritten=307 done=true cut=false]
+    after /b: length=786104 fp=0 kept=786104 w=none rows=[pStart=391400 pCut=391400 rewritten=307 done=true cut=false]
+    after /c (iteration 2?): length=786848 fp=0 kept=786848 w=none rows=[pStart=391400 pCut=391400 rewritten=307 done=true cut=false][pStart=786232 pCut=391400 rewritten=0 done=false cut=false]
+    after /d: length=1178432 fp=0 kept=1178432 w=none rows=[pStart=391400 pCut=391400 rewritten=307 done=true cut=false][pStart=786232 pCut=391400 rewritten=640 done=true cut=false]
+    after 20000 calls (last with work 1749): length=1201576 fp=1182680 kept=18896 w=none rows=[pStart=1182680 pCut=1182680 rewritten=467 done=true cut=true]
+    fresh kept 704; emptied kept - fresh kept = 18192
+  TwoStretchProbe 390000 390000 390000 10000 20000, 2026.6:
+    after /a: length=392280 fp=0 kept=392280 w=none rows=[pStart=391400 pCut=391400 rewritten=0 done=false cut=false]
+    iteration 1 done: length=394552 fp=0 kept=394552 w=none rows=[pStart=391400 pCut=391400 rewritten=755 done=true cut=false]
+    after /b: length=785456 fp=0 kept=785456 w=none rows=[pStart=391400 pCut=391400 rewritten=755 done=true cut=false]
+    after /c (iteration 2?): length=786552 fp=0 kept=786552 w=none rows=[pStart=391400 pCut=391400 rewritten=755 done=true cut=false][pStart=785872 pCut=391400 rewritten=0 done=false cut=false]
+    after /d: length=1180096 fp=0 kept=1180096 w=none rows=[pStart=391400 pCut=391400 rewritten=755 done=true cut=false][pStart=785872 pCut=391400 rewritten=640 done=true cut=false]
+    after 20000 calls (last with work 748): length=1181664 fp=391400 kept=790264 w=none rows=[pStart=391400 pCut=391400 rewritten=755 done=true cut=true][pStart=785872 pCut=391400 rewritten=640 done=true cut=false]
+    fresh kept 704; emptied kept - fresh kept = 789560
+  TwoStretchProbe 395000 393000 380000 196000 20000 after, main:
+    after /a: length=396800 fp=0 kept=396800 w=none rows=[pStart=396400 pCut=396400 rewritten=0 done=false cut=false]
+    iteration 1 done: length=400488 fp=0 kept=400488 w=none rows=[pStart=396400 pCut=396400 rewritten=307 done=true cut=false]
+    after /b: length=794104 fp=0 kept=794104 w=none rows=[pStart=396400 pCut=396400 rewritten=307 done=true cut=false]
+    after /c (iteration 2?): length=794848 fp=0 kept=794848 w=none rows=[pStart=396400 pCut=396400 rewritten=307 done=true cut=false][pStart=794232 pCut=396400 rewritten=0 done=false cut=false]
+    calls until the last row is cut: length=1001568 fp=799536 kept=202032 w=none rows=[pStart=799536 pCut=799536 rewritten=467 done=true cut=true]
+    after /d: length=1383352 fp=799536 kept=583816 w=none rows=[pStart=799536 pCut=799536 rewritten=467 done=true cut=true][pStart=1382648 pCut=799536 rewritten=0 done=false cut=false]
+    after 20000 calls (last with work 1001): length=1401632 fp=1384712 kept=16920 w=none rows=[pStart=1384712 pCut=1384712 rewritten=435 done=true cut=true]
+    fresh kept 704; emptied kept - fresh kept = 16216
+  TwoStretchProbe 395000 393000 380000 196000 20000 after, 2026.6:
+    after /a: length=397280 fp=0 kept=397280 w=none rows=[pStart=396400 pCut=396400 rewritten=0 done=false cut=false]
+    iteration 1 done: length=399424 fp=0 kept=399424 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=false]
+    after /b: length=793456 fp=0 kept=793456 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=false]
+    after /c (iteration 2?): length=794552 fp=0 kept=794552 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=false][pStart=793872 pCut=396400 rewritten=0 done=false cut=false]
+    calls until the last row is cut: length=798584 fp=396400 kept=402184 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=true][pStart=793872 pCut=396400 rewritten=64 done=true cut=false]
+    after /d: length=1179872 fp=396400 kept=783472 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=true][pStart=793872 pCut=396400 rewritten=64 done=true cut=false]
+    after 20000 calls (last with work -1): length=1179872 fp=396400 kept=783472 w=none rows=[pStart=396400 pCut=396400 rewritten=755 done=true cut=true][pStart=793872 pCut=396400 rewritten=64 done=true cut=false]
+    fresh kept 704; emptied kept - fresh kept = 782768
+
+RB-010: StopAtProbe (028-59's copy of 031-03's probe; interrupted at every record)
+  StopAtProbe b10 100 20000 1 all stop, main:
+    stop; uninterrupted: 14 records; after 20000 calls more kept 200112, filler live false, table 194 bytes; fp=201616 length=401728 [pStart=201616 pCut=201616 rewritten=959 done=true cut=true]
+    fresh kept 960
+    records 14, interrupted 14, filler live after the calls 0; after the calls the largest table 194 bytes, the largest |kept - uninterrupted| 0
+  StopAtProbe b10 100 20000 1 all stop, 2026.6:
+    stop; uninterrupted: 9 records; after 20000 calls more kept 199808, filler live false, table 180 bytes; fp=1528 length=201336 [pStart=1528 pCut=1528 rewritten=511 done=true cut=true]
+    fresh kept 960
+    at record 0 (app values 1): at the start filler live false; after the calls kept 1528, filler live false, table -1 bytes; fp=0 length=1528
+    at record 6 (internal filler-put values 1): at the start filler live true; after the calls kept 199672, filler live true, table 180 bytes; fp=1528 length=201200 [pStart=1528 pCut=1528 rewritten=511 done=true cut=true]
+    records 9, interrupted 9, filler live after the calls 1; after the calls the largest table 180 bytes, the largest |kept - uninterrupted| 198280
+  StopAtProbe b10 100 20000 1 all crash, main:
+    crash; uninterrupted: 14 records; after 20000 calls more kept 200112, filler live false, table 194 bytes; fp=201616 length=401728 [pStart=201616 pCut=201616 rewritten=959 done=true cut=true]
+    fresh kept 960
+    records 14, interrupted 14, filler live after the calls 0; after the calls the largest table 194 bytes, the largest |kept - uninterrupted| 0
+  StopAtProbe b10 100 20000 1 all crash, 2026.6:
+    crash; uninterrupted: 9 records; after 20000 calls more kept 199808, filler live false, table 180 bytes; fp=1528 length=201336 [pStart=1528 pCut=1528 rewritten=511 done=true cut=true]
+    fresh kept 960
+    at record 0 (app values 1): at the start filler live false; after the calls kept 1528, filler live false, table -1 bytes; fp=0 length=1528
+    at record 6 (internal filler-put values 1): at the start filler live true; after the calls kept 199672, filler live true, table 180 bytes; fp=1528 length=201200 [pStart=1528 pCut=1528 rewritten=511 done=true cut=true]
+    records 9, interrupted 9, filler live after the calls 1; after the calls the largest table 180 bytes, the largest |kept - uninterrupted| 198280
+  StopAtProbe b10 100 20000 1 all stop 300 1000, main:
+    stop; uninterrupted: 14 records; after 20000 calls more kept 119440, filler live false, table 203 bytes; fp=1082368 length=1201808 [pStart=1082368 pCut=1082368 rewritten=1295 done=true cut=true]
+    fresh kept 960
+    records 14, interrupted 14, filler live after the calls 0; after the calls the largest table 202 bytes, the largest |kept - uninterrupted| 16840
+  StopAtProbe b10 100 20000 1 all stop 300 1000, 2026.6:
+    stop; uninterrupted: 9 records; after 20000 calls more kept 284416, filler live false, table 190 bytes; fp=588752 length=873168 [pStart=815816 pCut=588752 rewritten=1264 done=true cut=true]
+    fresh kept 960
+    at record 6 (internal filler-put values 1): at the start filler live true; after the calls kept 856176, filler live true, table 193 bytes; fp=201952 length=1058128 [pStart=588376 pCut=201952 rewritten=197687 done=true cut=true]
+    records 9, interrupted 9, filler live after the calls 1; after the calls the largest table 193 bytes, the largest |kept - uninterrupted| 571760
+  StopAtProbe b10 100 20000 1 all crash 300 1000, main:
+    crash; uninterrupted: 14 records; after 20000 calls more kept 119440, filler live false, table 203 bytes; fp=1082368 length=1201808 [pStart=1082368 pCut=1082368 rewritten=1295 done=true cut=true]
+    fresh kept 960
+    records 14, interrupted 14, filler live after the calls 0; after the calls the largest table 202 bytes, the largest |kept - uninterrupted| 16840
+  StopAtProbe b10 100 20000 1 all crash 300 1000, 2026.6:
+    crash; uninterrupted: 9 records; after 20000 calls more kept 284416, filler live false, table 190 bytes; fp=588752 length=873168 [pStart=815816 pCut=588752 rewritten=1264 done=true cut=true]
+    fresh kept 960
+    at record 6 (internal filler-put values 1): at the start filler live true; after the calls kept 856176, filler live true, table 193 bytes; fp=201952 length=1058128 [pStart=588376 pCut=201952 rewritten=197687 done=true cut=true]
+    records 9, interrupted 9, filler live after the calls 1; after the calls the largest table 193 bytes, the largest |kept - uninterrupted| 571760
+
+RB-010: FillerKillProbe DIR b10 100 20000 (028-59's probe: a child JVM halted after the filler's put)
+  main:
+    child: no filler written
+    child exit 0
+    started: filler live false, kept 200112
+    after 20000 calls: filler live false, kept 200112 (length 401728, fp 201616)
+  2026.6:
+    child: the filler's put written, length 200320; halting
+    child exit 3
+    started: filler live true, kept 200320
+    after 20000 calls: filler live true, kept 199672 (length 201200, fp 1528)
+
+A database of 2026.6 (FillerKillProbe's directory on 2026.6, its filler live) started on main:
+  refused, VersioningStreamException: Cannot parse stored transaction of format version 8;
+  this version of BergDB reads format 9 only (031-06, A3).
+
+RB-006's first part on main: java -ea -cp java/build/bergdb.jar bergdb.dev.Unit -c ReclaimMaintainTester
+  (testSlowlyWritten, testEmptiedAgainAfterACut): SUCCESS, 9 successful tests.

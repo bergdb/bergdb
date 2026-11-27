@@ -212,7 +212,7 @@ RB-006. maintain() stops beginning reclaim iterations after some cuts
   space back after that growth.
 * **Severity:** S4.
 * **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
-  fixed on `main` for 2026.7.
+  fixed on `main` for 2026.7 (the rest since 2026-11-27, 031-06).
 * **Found:** 2026-11-24, by 028-47's study of commits that reclaim by
   the clock (finding F1, `SlowDriveProbe`); not known at the releases.
 * **Fix:** 028-51 (`68386bc6`), 2026-11-24: `maintain()`'s M1 begins
@@ -221,7 +221,17 @@ RB-006. maintain() stops beginning reclaim iterations after some cuts
   (028-58, 2026-11-25): when less than 400 kB is written after the cut
   and the stretch before it is just below 400 kB, an emptied database
   on `main` keeps up to about 800 kB (783,472 bytes in 028-58's probe);
-  the rest goes with RB-007's fix (031-03).
+  the rest goes with RB-007's fix (031-03). The rest fixed on `main` by
+  031-06's merge (`5b88cc80`), 2026-11-27, which brought 031-04's
+  `maintain(int budget)`: a pass that a call begins rewrites every live
+  value stored before it and cuts at its own start, with no stretches
+  and no MIN_RELEASE (031-04, section 6.2). `TwoStretchProbe` (028-58's
+  copy, ported to `maintain(int)`, `probes/`), 20,000 calls: 031-03's
+  case 18,896 bytes kept, 18,192 more than a fresh database, against
+  790,264 on 2026.6; 028-58's case with `after` 16,920, against 783,472
+  (`probes/runs-2026-11-27.txt`). The first part's unit tests,
+  `ReclaimMaintainTester`'s `testSlowlyWritten` and
+  `testEmptiedAgainAfterACut`, pass on `main`.
 
 
 RB-007. maintain() keeps the stream written while an iteration waited for its cut
@@ -243,15 +253,23 @@ RB-007. maintain() keeps the stream written while an iteration waited for its cu
   space back after about twice the startup distance of writes.
 * **Severity:** S4.
 * **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
-  not fixed on `main`.
+  fixed on `main` for 2026.7.
 * **Found:** 2026-11-24, by 028-53 while it read `maintain()`'s rules
   against a database not written to (`HoleProbe`: 4,000 keys put and
   deleted, the first iteration done, 20,000 keys put and deleted before
   its cut, then 10 R of calls: 4.8 MB kept against 0.3 MB without the
   second writes, on 2026.5, 2026.6 and `main`); not known at the
   releases.
-* **Fix:** none yet; 028-53's options A and B were not taken (Frans,
-  2026-11-25); 031-03 looks for the fix.
+* **Fix:** 028-53's options A and B were not taken (Frans,
+  2026-11-25). Fixed on `main` by 031-06's merge (`5b88cc80`),
+  2026-11-27, which brought 031-04's `maintain(int budget)`: a call
+  begins a pass while the stream kept holds a record of the
+  application's, and the pass cuts at its own start (031-04, sections
+  4.2 and 6.1). `HoleProbe` (031-04's port, `probes/`): 4,000 keys,
+  then 20,000 put and deleted before the first cut, 10 R of calls:
+  71,368 bytes kept, the twin without the second writes 52,664, against
+  4,804,384 and 315,008 on 2026.6; 20,000 keys: 125,976 and 113,512,
+  against 5,361,912 and 872,424 (`probes/runs-2026-11-27.txt`).
 
 
 RB-008. Db.getTrans refuses a large transaction's position just after a cut
@@ -313,12 +331,24 @@ RB-010. A stop or a crash during maintain() can leave its 200 kB filler live
   bytes against 284,416 without the stop).
 * **Severity:** S4.
 * **Releases:** 2026.5 (where `maintain()` came, 024-32) and 2026.6;
-  not fixed on `main`.
+  fixed on `main` for 2026.7.
 * **Found:** 2026-11-25, by the review in 031-03 (section 9.2);
   confirmed by 028-59 with a stop, a copy of the stream and a killed
   JVM, on 2026.5, 2026.6 and `main`; not known at the releases.
-* **Fix:** none yet; 031-03's design stores the filler as the table
-  padded with spaces, one record with nothing to delete.
+* **Fix:** 031-06's merge (`5b88cc80`), 2026-11-27, which brought
+  031-04's filler, 031-03's design: the table padded with spaces, one
+  record with nothing to delete; `main` writes no
+  `/#i/dreclaim/-fill.txt`. A database of 2026.6, which may hold a
+  filler left live, is refused by `main` (format 8; 031-06, A3).
+  `StopAtProbe` (028-59's copy, ported to `maintain(int)`, `probes/`),
+  a stop or a crash at each of the scenario's 14 records, then 20,000
+  calls: the filler live after none, the table at most 202 bytes, the
+  stream kept as without the interruption (200,112 bytes; written to
+  and emptied again after the start, 119,440, at most 16,840 from it).
+  On 2026.6 a stop or a crash at record 6 of 9 leaves the filler live:
+  199,672 bytes kept; written to and emptied again, 856,176 against
+  284,416. `FillerKillProbe` on `main`: no filler is written, so no
+  kill lands after one (`probes/runs-2026-11-27.txt`).
 
 
 RB-011. An emptied file database keeps its last stream file under maintain()
@@ -544,3 +574,10 @@ is not counted, as the bytes after a crash are not promised (Frans,
 16:41). Fixed on `main` for 2026.7 by 031-06, one record an action
 (`5b88cc80`). Named in the section "After the release" of 2026.6's and
 2026.5's notes and in `releases/next.md`; counts updated.
+
+2026-11-27. RB-006's rest, RB-007 and RB-010 fixed on `main` for 2026.7
+by 031-06's merge (`5b88cc80`), with 031-04's `maintain(int budget)`
+and padded table: the probes of 028-58, 028-53 and 028-59, ported to
+`maintain(int)` in `probes/`, run on `main` (`a20b0034`) and on
+2026.6, which still shows each bug (`probes/runs-2026-11-27.txt`).
+The counts are unchanged: they count the bugs in the releases.

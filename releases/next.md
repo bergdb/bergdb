@@ -49,7 +49,28 @@ Released bugs fixed
   In part (028-58, 2026-11-25): when less than 400 kB is written after
   the cut and the stretch before it is just below 400 kB, an emptied
   database still keeps up to about 800 kB; the rest goes with RB-007's
-  fix.
+  fix. The rest fixed by 031-06 (2026-11-27), with RB-007: a pass that
+  a call of `maintain(int budget)` begins cuts at its own start, and
+  031-03's case keeps 18,896 bytes of stream, from 790,264.
+* **RB-007, S4. `maintain()` kept the stream written while a reclaim
+  iteration waited for its cut** (bergdb 033; 028-53, 2026-11-24;
+  031-06, 2026-11-27). A database written to and deleted from while an
+  iteration that began within 400 kB of its cut point ran or waited for
+  its cut, and then no longer written to, kept that stream under the
+  calls, up to about twice the startup distance, though the Javadoc
+  said that they bring an emptied database to within about 400 kB of a
+  fresh one's stream. A call of `maintain(int budget)` now begins a pass
+  while the stream kept holds a record of the application's, and the
+  pass cuts at its own start: 028-53's case keeps 71,368 bytes, from
+  4,804,384.
+* **RB-010, S4. A stop or a crash during `maintain()` could leave its
+  200 kB filler live** (bergdb 033; 028-59, 2026-11-25; 031-06,
+  2026-11-27). A stop or a crash between the filler's put and its delete
+  left `/#i/dreclaim/-fill.txt` live until a later call needed another
+  filler, though the Javadoc said it is deleted at once. The filler is
+  now reclaim's table padded with spaces, one record with nothing to
+  delete, and no `-fill.txt` is written; a database of 2026.6, which may
+  hold one, is not opened.
 * **RB-008, S3. `Db.getTrans` could refuse a large transaction's
   position just after a cut** (bergdb 033; 028-55, 2026-11-25). With the
   Core API, `getTrans` of a committed transaction of over 1 MiB, just
@@ -115,21 +136,7 @@ Known released bugs
 Not fixed on `main`; a release with one needs Frans's exception
 (bergdb 034-01).
 
-* **RB-007, S4. `maintain()` keeps the stream written while a reclaim
-  iteration waited for its cut** (bergdb 033; 028-53, 2026-11-24). A
-  database written to and deleted from while an iteration that began
-  within 400 kB of its cut point ran or waited for its cut, and then no
-  longer written to, keeps that stream under the calls, up to about
-  twice the startup distance, though the Javadoc says that they bring
-  an emptied database to within about 400 kB of a fresh one's stream.
-  028-53's options A and B were not taken (Frans, 2026-11-25); 031-03
-  looks for the fix.
-* **RB-010, S4. A stop or a crash during `maintain()` can leave its
-  200 kB filler live** (bergdb 033; 028-59, 2026-11-25). A stop or a
-  crash between the filler's put and its delete leaves
-  `/#i/dreclaim/-fill.txt` live until a later call needs another
-  filler, though the Javadoc says it is deleted at once. 031-03's
-  design has no filler to delete.
+None (2026-11-27).
 
 
 Speed
