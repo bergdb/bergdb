@@ -246,7 +246,10 @@ public class Reclaim implements Maintenance {
     
     private Stats stats;                    // null unless enableStats() was called.
     
-    /** The default reserve for a step's pinned bytes, 4 MiB; see setStepReserve(). */
+    /**
+     * The reserve for a step's pinned bytes, 4 MiB, a constant for every database (bergdb
+     * 028-68, B; Frans, 2026-11-27, 16:09); see setStepReserve().
+     */
     public static final long DEFAULT_STEP_RESERVE = 4L << 20;
     
     private volatile long stepReserve = DEFAULT_STEP_RESERVE;
@@ -403,12 +406,15 @@ public class Reclaim implements Maintenance {
      * steps are not split in practice (a step scans about 16 kB of KVs). Thread-safe; used
      * from the next step.
      * 
-     * <p>A setting for tests (bergdb 015-87, F7): below the default it splits steps, and so
-     * changes the stream's bytes, but it is not kept in the stream; a start takes the
-     * builder's (DbBuilder.reclaimStepReserve). At the default no step is split in the
-     * stress workloads (bergdb 005-78, probe P4).</p>
+     * <p>The reserve is a constant, DEFAULT_STEP_RESERVE, for every database (bergdb 028-68,
+     * B; Frans, 2026-11-27, 16:09): no setting outside the stream changes its bytes. Db sets
+     * it at a start, from DbBuilder.testStepReserve(), a hook for tests only (package-private):
+     * below the constant it splits steps and changes the stream's bytes, and it is not kept
+     * in the stream, so a test gives the same value at every start of its database. At the
+     * constant no step is split in the stress workloads (bergdb 005-78, probe P4). Until
+     * 028-68 a public setting (015-87, F7), of the builder (reclaimStepReserve) and here.</p>
      */
-    public void setStepReserve(long bytes) {
+    void setStepReserve(long bytes) {
         if (bytes < 1) {
             throw new IllegalArgumentException("Illegal step reserve, " + bytes);
         }
@@ -3551,7 +3557,7 @@ public class Reclaim implements Maintenance {
                 CutStream stream = new CutStream();
                 DbBuilder builder = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
                         .evictionSchedule(Eviction.Schedule.EVERY, 1);
-                if (small) builder.reclaimStepReserve(4 * (80 + 48 * 8));
+                if (small) builder.testStepReserve(4 * (80 + 48 * 8));
                 Db db = builder.start();
                 db.setStartupDistance(2000);
                 db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
@@ -3593,8 +3599,10 @@ public class Reclaim implements Maintenance {
                 stream = stream.copy();
                 clock = new CoreTestClock();
                 clock.setTime(time);
-                db = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
-                        .evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                builder = Db.builder().testSetup(stream).clock(clock).maxNodeSize8()
+                        .evictionSchedule(Eviction.Schedule.EVERY, 1);
+                if (small) builder.testStepReserve(4 * (80 + 48 * 8));   // at every start
+                db = builder.start();
                 db.setStartupDistance(2000);
                 long first = db.getFirstAvailableLookupTime();
                 for (long lt = first; lt <= time; lt += Clock.UNITS_PER_SEC / 4) {
@@ -3608,6 +3616,42 @@ public class Reclaim implements Maintenance {
             }
             Assert.assertTrue("steps " + steps[0] + ", " + steps[1], steps[1] > steps[0]);
             Assert.assertTrue("nodes " + maxNodes[0] + ", " + maxNodes[1], maxNodes[1] < maxNodes[0]);
+        }
+
+        /**
+         * bergdb 028-68 (B; Frans, 2026-11-27, 16:09): the step reserve is a constant for every
+         * database. DbBuilder has no public method that names a reserve, Reclaim no public
+         * setter, and the system property stepreserve, the builder's default until 028-68,
+         * changes nothing: a database started through the builder's public calls has
+         * DEFAULT_STEP_RESERVE.
+         */
+        @Nano
+        public static void testStepReserveIsAConstant() {
+            for (java.lang.reflect.Method m : DbBuilder.class.getMethods()) {
+                Assert.assertFalse("DbBuilder." + m.getName(),
+                        m.getName().toLowerCase().contains("reserve"));
+            }
+            for (java.lang.reflect.Method m : Reclaim.class.getMethods()) {
+                Assert.assertFalse("Reclaim." + m.getName(), m.getName().startsWith("set")
+                        && m.getName().toLowerCase().contains("reserve"));
+            }
+            final String saved = System.getProperty("stepreserve");
+            System.setProperty("stepreserve", "1000");
+            try {
+                Db db = Db.builder().testSetup().start();
+                try {
+                    Assert.assertEquals(DEFAULT_STEP_RESERVE,
+                            db.internal().reclaim().getStepReserve());
+                } finally {
+                    db.stop();
+                }
+            } finally {
+                if (saved == null) {
+                    System.clearProperty("stepreserve");
+                } else {
+                    System.setProperty("stepreserve", saved);
+                }
+            }
         }
 
         /**

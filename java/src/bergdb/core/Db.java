@@ -604,7 +604,7 @@ public class Db implements AutoCloseable {
         });
         
         this.reclaim = new Reclaim(this, aos);
-        reclaim.setStepReserve(b.reclaimStepReserve);
+        reclaim.setStepReserve(b.testStepReserve);      // the constant but in tests (028-68)
         this.maintenance = b.maintenanceNone ? Maintenance.NONE : reclaim;    // bergdb 031-06
         // The retain duration and the internal fraction: the stream's, read by
         // Reclaim.initFromDb at the start (bergdb 015-87); not the builder's.
