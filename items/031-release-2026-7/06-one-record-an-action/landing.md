@@ -286,8 +286,8 @@ kept times, the documents):
 
 ## Step 2: the record's room by a check, the format, the reserve
 
-2026-11-27, 16:05 to 19:30, on the same branch, rebased on `main` at
-`dd62fc27`. The review's F5, F6 and F7; the record format for Frans's
+2026-11-27, 16:05 to 17:10, on the same branch, rebased on `main` at
+`a9d87266`. The review's F5, F6 and F7; the record format for Frans's
 decision of 14:36; the lock-handover test.
 
 ### The record's room (F5)
@@ -475,8 +475,9 @@ times, six at once: 60 passed.
 
 ### Gates
 
-On F53, 2026-11-27, from 16:36, on the branch at `02ad45a0` (rebased on
-`main` at `dd62fc27`; the commits after it change text only), the level
+On F53, 2026-11-27, from 16:36, on the branch at `02ad45a0`, then on
+`main`'s `dd62fc27`; rebased since onto `a9d87266`, whose new commits
+change text only: `java/` and `lean/` at the head are `02ad45a0`'s. The level
 scripts each in a copy-on-write copy of the clone, so that their builds
 did not meet; load up to 25 while they ran together. Functional runs.
 
@@ -498,7 +499,7 @@ did not meet; load up to 25 while they ran together. Functional runs.
   with eviction, 18 traces, TRACECHECK OK 18).
 * `java/stress/apps.sh quick` (5 min): `APPS OK`.
 * The item's probes (`probes/` with appendix 1's change), on the
-  branch's jar (`02ad45a0`), 16:46 to 16:59:
+  branch's jar, 16:46 to 16:59:
   * `sweep.sh`: 27,720 interruptions, 0 different, the start's memory the
     running one's at all; records = accepted actions in all 23 reference
     runs (16,634); 567 torn records continued the same. Against
