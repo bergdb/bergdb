@@ -1,0 +1,94 @@
+# bergdb 031-06, landing step 3: probes/pace.sh. Before: the jar of 48203205 (main before step 3); after: this branch before the rebase (the code as rebased; step 4 changes no record's size). Functional (figures of size).
+## before
+== -cp OUT:JAR bergdb.core.UndercountProbe 30000
+node 8, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 3001827 bytes (values 779283 + their nodes' overhead + the touch's 1262480); not charged, after the row: 1185808 bytes, 39.5 % of the charge
+node 30, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 2558803 bytes (values 779283 + their nodes' overhead + the touch's 819456); not charged, after the row: 657424 bytes, 25.7 % of the charge
+node default, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 2558803 bytes (values 779283 + their nodes' overhead + the touch's 819456); not charged, after the row: 657424 bytes, 25.7 % of the charge
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 200 20000 200 20
+PaceProbe cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes in 1 put(s), 20 ms apart, node 0, sd 20000:
+  written by the commits: 10519736; without reclaim 7309088; reclaim's share of the growth 0.305 (the internal fraction: 0.250); write amplification 1.44
+  the stream kept, largest in each third: 10325544, 13822648, 17332392 = 2.2, 2.9, 3.6 x live; cuts 1; iterations ended 0; largest record 15392
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 200 20000 200 20 8
+PaceProbe cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 12561104; without reclaim 8782912; reclaim's share of the growth 0.301 (the internal fraction: 0.250); write amplification 1.43
+  the stream kept, largest in each third: 11578816, 15778184, 19337064 = 2.4, 3.3, 4.0 x live; cuts 2; iterations ended 1; largest record 18224
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 10 30000 100 20 8
+PaceProbe cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 17885096; without reclaim 10792816; reclaim's share of the growth 0.397 (the internal fraction: 0.250); write amplification 1.66
+  the stream kept, largest in each third: 8887240, 11864040, 15156080 = 8.9, 11.9, 15.2 x live; cuts 4; iterations ended 4; largest record 28856
+== -Ddeep=true -cp OUT:JAR bergdb.core.PaceProbe 20000 10 30000 100 20 8
+PaceProbe cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 17880536; without reclaim 12684208; reclaim's share of the growth 0.291 (the internal fraction: 0.250); write amplification 1.41
+  the stream kept, largest in each third: 27693360, 30965488, 33706888 = 27.7, 31.0, 33.7 x live; cuts 2; iterations ended 1; largest record 43432
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 6000 20000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 6000 commits of 20000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 164798208; without reclaim 122462064; reclaim's share of the growth 0.257 (the internal fraction: 0.250); write amplification 1.35
+  the stream kept, largest in each third: 31964328, 32111136, 32185552 = 7.7, 7.7, 7.7 x live; cuts 18; iterations ended 17; largest record 40752
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 3000 100000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 3000 commits of 100000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 363393720; without reclaim 301361248; reclaim's share of the growth 0.171 (the internal fraction: 0.250); write amplification 1.21
+  the stream kept, largest in each third: 57155832, 57381544, 57330024 = 13.7, 13.8, 13.8 x live; cuts 21; iterations ended 20; largest record 131008
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 1500 300000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 1500 commits of 300000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 481261504; without reclaim 450862160; reclaim's share of the growth 0.063 (the internal fraction: 0.250); write amplification 1.07
+  the stream kept, largest in each third: 151302392, 151392992, 151522632 = 36.4, 36.4, 36.4 x live; cuts 11; iterations ended 10; largest record 330592
+== -Dputs=200 -Dhot=20000 -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 1500 20000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 1500 commits of 20000 bytes in 200 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 237490488; without reclaim 213789392; reclaim's share of the growth 0.100 (the internal fraction: 0.250); write amplification 1.11
+  the stream kept, largest in each third: 73940768, 90870144, 91201440 = 17.8, 21.8, 21.9 x live; cuts 10; iterations ended 9; largest record 175144
+PACE DONE
+== 1MB
+PaceProbe cold 4000 x 1000 (live about 4160000), 600 commits of 1000000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 612484904; without reclaim 600608336; reclaim's share of the growth 0.019 (the internal fraction: 0.250); write amplification 1.02
+  the stream kept, largest in each third: 205810656, 387120040, 481214600 = 49.5, 93.1, 115.7 x live; cuts 5; iterations ended 4; largest record 1029920
+== 500
+PaceProbe cold 4000 x 1000 (live about 4160000), 1000 commits of 25000 bytes in 500 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 273276976; without reclaim 256303232; reclaim's share of the growth 0.062 (the internal fraction: 0.250); write amplification 1.07
+  the stream kept, largest in each third: 88339424, 130991952, 133438200 = 21.2, 31.5, 32.1 x live; cuts 8; iterations ended 7; largest record 294776
+BASE2 DONE
+## after
+== -cp OUT:JAR bergdb.core.UndercountProbe 30000
+node 8, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 4203811 bytes (values 779283 + their nodes' overhead + index nodes 2464464, of them made by the batches after the touch 1187424); the records' index bytes 2464672, not charged 208 bytes, 0.0 % of the charge; as Trans.dirtiedBytes counted them 2445360
+node 30, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 3238227 bytes (values 779283 + their nodes' overhead + index nodes 1498880, of them made by the batches after the touch 658368); the records' index bytes 1499072, not charged 192 bytes, 0.0 % of the charge; as Trans.dirtiedBytes counted them 1472352
+node default, 30000 keys: a pass of 236 steps (parts), 30002 copies; charged 3238227 bytes (values 779283 + their nodes' overhead + index nodes 1498880, of them made by the batches after the touch 658368); the records' index bytes 1499072, not charged 192 bytes, 0.0 % of the charge; as Trans.dirtiedBytes counted them 1472352
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 200 20000 200 20
+PaceProbe cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes in 1 put(s), 20 ms apart, node 0, sd 20000:
+  written by the commits: 10171816; without reclaim 7309088; reclaim's share of the growth 0.281 (the internal fraction: 0.250); write amplification 1.39
+  the stream kept, largest in each third: 9899096, 13297272, 16688624 = 2.1, 2.8, 3.5 x live; cuts 1; iterations ended 1; largest record 14832
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 200 20000 200 20 8
+PaceProbe cold 20000 x 200 (live about 4800000), 20000 commits of 200 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 11939256; without reclaim 8782912; reclaim's share of the growth 0.264 (the internal fraction: 0.250); write amplification 1.36
+  the stream kept, largest in each third: 10698560, 14656256, 18680856 = 2.2, 3.1, 3.9 x live; cuts 1; iterations ended 1; largest record 15576
+== -cp OUT:JAR bergdb.core.PaceProbe 20000 10 30000 100 20 8
+PaceProbe cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 15049752; without reclaim 10792816; reclaim's share of the growth 0.283 (the internal fraction: 0.250); write amplification 1.39
+  the stream kept, largest in each third: 7271648, 11911680, 16956416 = 7.3, 11.9, 17.0 x live; cuts 2; iterations ended 2; largest record 16472
+== -Ddeep=true -cp OUT:JAR bergdb.core.PaceProbe 20000 10 30000 100 20 8
+PaceProbe cold 20000 x 10 (live about 1000000), 30000 commits of 100 bytes in 1 put(s), 20 ms apart, node 8, sd 20000:
+  written by the commits: 17494872; without reclaim 12684208; reclaim's share of the growth 0.275 (the internal fraction: 0.250); write amplification 1.38
+  the stream kept, largest in each third: 31063816, 31174664, 35194232 = 31.1, 31.2, 35.2 x live; cuts 1; iterations ended 1; largest record 41112
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 6000 20000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 6000 commits of 20000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 162929224; without reclaim 122462064; reclaim's share of the growth 0.248 (the internal fraction: 0.250); write amplification 1.33
+  the stream kept, largest in each third: 33542408, 33902808, 33793784 = 8.1, 8.1, 8.1 x live; cuts 17; iterations ended 16; largest record 46952
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 3000 100000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 3000 commits of 100000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 418091552; without reclaim 301361248; reclaim's share of the growth 0.279 (the internal fraction: 0.250); write amplification 1.39
+  the stream kept, largest in each third: 30146888, 30149864, 30130552 = 7.2, 7.2, 7.2 x live; cuts 46; iterations ended 45; largest record 191512
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 1500 300000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 1500 commits of 300000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 591156504; without reclaim 450862160; reclaim's share of the growth 0.237 (the internal fraction: 0.250); write amplification 1.31
+  the stream kept, largest in each third: 32612216, 32646464, 32643504 = 7.8, 7.8, 7.8 x live; cuts 62; iterations ended 61; largest record 433936
+== -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 600 1000000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 600 commits of 1000000 bytes in 1 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 668616008; without reclaim 600608336; reclaim's share of the growth 0.102 (the internal fraction: 0.250); write amplification 1.11
+  the stream kept, largest in each third: 75807024, 75856320, 75821024 = 18.2, 18.2, 18.2 x live; cuts 31; iterations ended 30; largest record 1137504
+== -Dputs=200 -Dhot=20000 -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 1500 20000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 1500 commits of 20000 bytes in 200 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 280643104; without reclaim 213789392; reclaim's share of the growth 0.238 (the internal fraction: 0.250); write amplification 1.31
+  the stream kept, largest in each third: 42739408, 44626712, 44620904 = 10.3, 10.7, 10.7 x live; cuts 22; iterations ended 21; largest record 253776
+== -Dputs=500 -Dhot=20000 -cp OUT:JAR bergdb.core.PaceProbe 4000 1000 1000 25000 200
+PaceProbe cold 4000 x 1000 (live about 4160000), 1000 commits of 25000 bytes in 500 put(s), 200 ms apart, node 0, sd 20000:
+  written by the commits: 329943216; without reclaim 256303232; reclaim's share of the growth 0.223 (the internal fraction: 0.250); write amplification 1.29
+  the stream kept, largest in each third: 40491544, 40637904, 40796376 = 9.7, 9.8, 9.8 x live; cuts 28; iterations ended 27; largest record 398608
+PACE DONE

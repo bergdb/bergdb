@@ -448,7 +448,7 @@ public class P2CrashProbe {
     /** The torn mode: see the class comment. */
     static void torn(List<Action> as, List<Rec> rs, Image ref) throws Exception {
         int every = Integer.getInteger("torn", 7);
-        int same = 0, diff = 0, notAccepted = 0, prefixSame = 0, n = 0;
+        int same = 0, diff = 0, notAccepted = 0, prefixSame = 0, n = 0, belowCut = 0;
         List<String> diffs = new ArrayList<>();
         for (int k = 2; k <= rs.size(); k += every) {
             Rec rc = rs.get(k - 1);
@@ -471,6 +471,13 @@ public class P2CrashProbe {
                 countOn = false; stopAt = -1;
                 try { d.close(); } catch (RuntimeException e) { }
                 CutStream c = s.copy();
+                if (cutAt < c.getLengthAtCut()) {
+                    // A physical cut was made after record k was appended (031-06, landing step
+                    // 3: seed 3's last records): CutStream refuses to tear below the length it
+                    // had then, as CrashTest does not; not a case this mode can make.
+                    belowCut++;
+                    continue;
+                }
                 c.truncate(cutAt);
                 n++;
                 // Continued twice from the same torn stream: alone, and with a restart.
@@ -497,7 +504,9 @@ public class P2CrashProbe {
         }
         System.out.println("torn: " + n + " torn records (commits): " + same + " continued the same "
                 + "with and without a restart, " + diff + " different; " + notAccepted
-                + " with the action not accepted; " + prefixSame + " with the reference's bytes before it");
+                + " with the action not accepted; " + prefixSame + " with the reference's bytes before it"
+                + (belowCut > 0 ? "; " + belowCut + " not torn, below the length at a physical cut made"
+                + " after the record" : ""));
         for (String x : diffs) System.out.println("  " + x);
     }
 

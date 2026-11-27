@@ -1,0 +1,11 @@
+# bergdb 031-06, landing step 3: probes/p1.sh OUT small on the branch rebased onto 734f05a2, on a busy machine: the times are not a result, only that the probe runs.
+P1Probe: 200000 keys of 200 bytes, a stream of 53 MB, cache budget 20 MB, loaded in 2251 ms; 50000 commits, every 50th of 200000 bytes, retain 10 s, sd 5000000, 2 readers
+  50000 commits in 4794 ms; the stream kept 329 MB of 383 MB
+  warm-up off, with a step:    2431 commits; execute median 0.119, p99 3.103, p99.9 9.336, max 10.667 ms; under the lock median 0.105, p99 2.249, p99.9 9.291, max 9.340 ms; the plan median 0.065, p99 1.613, p99.9 7.529, max 9.002 ms; loads by the plans' scans 117535
+  warm-up off, without a step: 22569 commits; execute median 0.009, p99 0.380, p99.9 3.439, max 8.403 ms; under the lock median 0.003, p99 0.280, p99.9 0.423, max 2.582 ms; the plan median 0.000, p99 0.003, p99.9 0.019, max 2.306 ms; loads by the plans' scans 0
+  warm-up on , with a step:    1264 commits; execute median 0.369, p99 4.770, p99.9 8.126, max 13.221 ms; under the lock median 0.136, p99 1.069, p99.9 2.672, max 2.989 ms; the plan median 0.056, p99 0.450, p99.9 0.809, max 1.246 ms; loads by the plans' scans 37
+  warm-up on , without a step: 23736 commits; execute median 0.008, p99 0.400, p99.9 4.289, max 11.381 ms; under the lock median 0.003, p99 0.285, p99.9 0.492, max 3.508 ms; the plan median 0.000, p99 0.002, p99.9 0.011, max 1.487 ms; loads by the plans' scans 0
+  gets: median 0.004, p99 0.016, p99.9 0.064, max 11.788 ms, longest 11787 us
+  the five longest commits (ms at uptime s): 13.22 at 6.8 11.38 at 7.0 10.67 at 4.5 9.34 at 4.1 9.34 at 2.4
+  resident 19 MB, 1941154 loads, 548 eviction steps, 1128280 objects evicted, eviction time 684 ms in total, 5.847 ms at most
+P1 PROBE DONE

@@ -1,0 +1,32 @@
+# bergdb 031-06, landing step 3: probes/warm.sh on the branch rebased onto 734f05a2. Functional (counts).
+== -cp OUT:JAR bergdb.core.WarmProbe 100000 200 20000 200 20 5000000
+WarmProbe cold 100000 x 200, 20000 commits of 200 bytes in 1 put(s), 20 ms apart, cache budget 5000000, node 0, maint 0:
+  without the warm-up: 1156 records with a step (1156 commits', 0 parts'); loaded under the lock 37152 (32.14 a step, at most 112), of them by the plan's scan 34976
+  with the warm-up:    1156 records with a step (1156 commits', 0 parts'); loaded under the lock 2 (0.00 a step, at most 1), of them by the plan's scan 0
+  the same stream: length 47445392, first 5439616, sha256 51bbaa126f363352
+WARM PROBE OK
+== -cp OUT:JAR bergdb.core.WarmProbe 100000 200 20000 200 20 5000000 8
+WarmProbe cold 100000 x 200, 20000 commits of 200 bytes in 1 put(s), 20 ms apart, cache budget 5000000, node 8, maint 0:
+  without the warm-up: 1138 records with a step (1138 commits', 0 parts'); loaded under the lock 66680 (58.59 a step, at most 193), of them by the plan's scan 56571
+  with the warm-up:    1138 records with a step (1138 commits', 0 parts'); loaded under the lock 2 (0.00 a step, at most 1), of them by the plan's scan 0
+  the same stream: length 52533184, first 5946840, sha256 9390f557703e97a1
+WARM PROBE OK
+== -Dmaint=50 -cp OUT:JAR bergdb.core.WarmProbe 100000 200 20000 200 20 5000000
+WarmProbe cold 100000 x 200, 20000 commits of 200 bytes in 1 put(s), 20 ms apart, cache budget 5000000, node 0, maint 50:
+  without the warm-up: 20053 records with a step (936 commits', 19117 parts'); loaded under the lock 908374 (45.30 a step, at most 112), of them by the plan's scan 853878
+  with the warm-up:    20053 records with a step (936 commits', 19117 parts'); loaded under the lock 121 (0.01 a step, at most 14), of them by the plan's scan 119
+  the same stream: length 305489536, first 258258680, sha256 df7e016b687ce06e
+WARM PROBE OK
+== -cp OUT:JAR bergdb.core.WarmProbe 20000 1000 1500 300000 200 5000000
+WarmProbe cold 20000 x 1000, 1500 commits of 300000 bytes in 1 put(s), 200 ms apart, cache budget 5000000, node 0, maint 0:
+  without the warm-up: 1644 records with a step (1644 commits', 0 parts'); loaded under the lock 169442 (103.07 a step, at most 140), of them by the plan's scan 158966
+  with the warm-up:    1644 records with a step (1644 commits', 0 parts'); loaded under the lock 100 (0.06 a step, at most 20), of them by the plan's scan 94
+  the same stream: length 631893216, first 535485480, sha256 3c6db69492a28a49
+WARM PROBE OK
+== -Dputs=200 -Dhot=20000 -cp OUT:JAR bergdb.core.WarmProbe 20000 1000 1500 20000 200 5000000
+WarmProbe cold 20000 x 1000, 1500 commits of 20000 bytes in 200 put(s), 200 ms apart, cache budget 5000000, node 0, maint 0:
+  without the warm-up: 1651 records with a step (1651 commits', 0 parts'); loaded under the lock 85313 (51.67 a step, at most 228), of them by the plan's scan 80084
+  with the warm-up:    1651 records with a step (1651 commits', 0 parts'); loaded under the lock 5 (0.00 a step, at most 2), of them by the plan's scan 3
+  the same stream: length 313853128, first 213093440, sha256 adff6f6afc8a9fc3
+WARM PROBE OK
+WARM DONE

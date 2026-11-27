@@ -5,7 +5,7 @@
 # (no other heavy run; timing.sh's load check is not in it). Usage, from the repository's
 # root, after java/build.sh:
 #   sh items/031-release-2026-7/06-one-record-an-action/probes/p1.sh OUT [small]
-# The default is the timing run: 20M keys of 200 bytes (a stream of about 6 GB), a cache
+# The default is the timing run: 20M keys of 200 bytes (a stream of about 5 GB), a cache
 # budget of 200 MB, 1M commits, every 50th of 200 kB, retain 10 s, with ZGC and a GC log in
 # OUT/gc.log. "small" is the functional check that the probe runs: 200,000 keys, 20 MB,
 # 50,000 commits. The stream's files stay in the OS page cache unless the machine's memory

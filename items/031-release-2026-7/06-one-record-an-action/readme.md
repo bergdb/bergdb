@@ -874,6 +874,39 @@ before they land.
 
 **Next:** the review's fixes, then steps 3 to 6 on `main`.
 
+**Step 3 is built** on the branch `031-06-pace` (2026-11-27, from
+20:36, an agent of lead-1127, in a clone of `main` at `48203205`, rebased
+onto `734f05a2`), for the lead to land; `landing.md`, step 3, has the
+rules, the evidence and the gates:
+
+* the after-row charge by the fixed-width patch (F2; section 8, Q2): the
+  row's `rewritten` at 19 digits, written into the record after the batch
+  with the index nodes that the record makes dirty on the step's paths
+  (`Db.chargeStep`, `RecordPlan.charge`); a pass of parts leaves 0.0 % of
+  the charge uncharged (25.7 % and 39.5 % before, section 4.6), and
+  reclaim's share of the growth under small commits is 0.264 to 0.283
+  (0.291 to 0.397 before);
+* a commit's step sized by its allowance (F3; 028-71): up to the larger of
+  16 kB and twice the allowance of the application's last record, at most
+  128 KiB (`Reclaim.commitStepSize`); under commits of 20, 100 and 300 kB
+  the stream kept is 8.1, 7.2 and 7.8 times the live data (7.7, 13.8 and
+  36.4 before), at 1 MB 18.2 times (115.7 and growing);
+* the warm-up of a step's reads before the lock (F4): `Reclaim.warmup`,
+  for a commit and a part; on databases larger than their cache budget the
+  records that carry a step read 0.00 to 0.06 versions a step from the
+  stream under the lock, 32 to 103 without it, with the same stream;
+* P1 on a database larger than the cache budget: `probes/P1Probe.java`
+  and `probes/p1.sh`, for the lead's timing run (run once small).
+
+The determinism checks hold at 0 different (the sweep's 27,741
+interruptions and 570 torn records, faults, conc, RestartInvariance,
+WarmProbe's streams with and without the warm-up); StreamDigest's digests
+change where reclaim writes (the rows' fixed width, the charge, the step
+sizes: 16 of 44, the l3-* configurations), not without reclaim. Gates,
+on the branch rebased onto `main` with step 4 (`734f05a2`): `BEFORE
+COMMIT OK (91 s)`, `LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4 OK` (quick),
+`APPS OK` (quick); nothing in `lean/` changed.
+
 
 ## Log
 
@@ -918,3 +951,9 @@ registered: the action's 7/8 against the Lean's count of nodes.
 `review-main.md`): R1 to R7, no byte changed by any interruption; R3
 and R4 registered as 028-74 and 028-75; the fixes of R1, R2, R5, R6 and
 R7 begun on a branch.
+
+2026-11-27. Step 3 of the landing, the pace, built on a branch (20:36 to
+22:30, `landing.md`, step 3): the after-row charge in the record by the
+fixed-width patch, a commit's step sized by its allowance (028-71), the
+warm-up of a step's reads before the lock, P1's probe for a database
+larger than its cache budget; gated on `main` with step 4.

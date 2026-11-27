@@ -92,7 +92,7 @@ ran, `RvP1`; figures, in memory).
 * Built (2026-11-27): the landing's step 3: the warm-up of a step's reads
   before the write lock (`Maintenance.warmup`, `Reclaim.warmup`), for a
   commit and a part. On databases larger than their cache budget the
-  records that carry a step read 0.00 to 0.05 versions a step from the
+  records that carry a step read 0.00 to 0.06 versions a step from the
   stream under the lock, against 32 to 103 without it, with the same
   stream (`probes/WarmProbe.java`); P1 on a database larger than its
   cache budget is a probe for the lead's timing run

@@ -557,9 +557,332 @@ did not meet; load up to 25 while they ran together. Functional runs.
   at node size 62), so no transaction within the public limits is refused
   by it (assumed as 024-17 assumes, TP26).
 
+## Step 3: the pace
+
+2026-11-27, from 20:36, on the branch `031-06-pace` of a clone of `main`
+at `48203205` (outside the repository), rebased at 21:46 onto `main` at
+`734f05a2` (step 4, 028-67's C1 and C3), without a conflict. The review's
+F2, F3 and F4 (`review-fable.md`); 028-71. Two commits of code, "031-06,
+landing step 3, the pace: ..." and "031-06, landing step 3: a commit's
+step at most MAX_COMMIT_STEP_SIZE, ...", and the item's text. Each rule
+says what, when, by whom and how it is checked; the principle, the record
+a function of the stream before it and the action only, holds for each:
+the charge and the step's size are counts of the record's KVs and of the
+stream before it, and the warm-up changes only what is in memory.
+
+### The after-row charge by the fixed-width patch (F2; Q2, section 8)
+
+* **What.** A step's row (`/#i/dreclaim/-current.txt`) holds its
+  `rewritten` at a fixed width, 19 digits with zeros first
+  (`Reclaim.REWRITTEN_DIGITS`; every row's text, the table's too). The row
+  and the table are made by their value transformations in `Db.putKvs`
+  after the touch and before the batch, as before, with nineteen nines,
+  `REWRITTEN_DUE` (no long), in place of the step's row's number. After
+  the batch, `Db.chargeStep` counts the index nodes that the record makes
+  dirty on the step's paths, the copies' keys and the row's
+  (`Plan.touchKeys`), each at its size then, as `Trans.dirtiedBytes`
+  counts a node: the nodes that the touch made dirty (they stay dirty also
+  if the batch replaced them) and the key nodes that the batch made dirty
+  that are on those paths after it, the new nodes in place of those it
+  replaced (PE's replacements, cuts and joins), found by walking the paths
+  again. `RecordPlan.charge` sets the row's `rewritten` to the copies'
+  bytes and that count, in memory, and writes it over `REWRITTEN_DUE` in
+  the row's bytes and the table's, which the value nodes hold; the width
+  is the same, so no node of the record changes its size. Then the record
+  is appended. One record, the exact charge of the nodes on the step's
+  paths. `RecordPlan.finish()` and the touch's charge before the batch are
+  gone (the review of the landed diff, section 5, named them the least
+  direct path of the change).
+* **Not charged, by the rule:** the record's top node, which every record
+  makes whatever it carries, and the nodes off the step's paths: in a
+  commit's record its action's (they would be written without the step),
+  in any record the table's path. A cut's sibling off every copy's path is
+  not charged either; in the pass of parts below, the records' index bytes
+  that their steps were not charged came to 208 and 192 bytes in all.
+* **When, by whom.** `Db.putKvs`, under the write lock, after the go
+  point: the row's transformation, the batch (`Dag.putKvs`),
+  `endOfTrans()`, then `chargeStep()` for a record whose plan has a touch.
+  `Reclaim.IterationInfo.deserialize` refuses a `rewritten` that is not a
+  long (`REWRITTEN_DUE` is none): a charge never made cannot be read as 0.
+* **Deterministic.** The touch and the batch are functions of the record's
+  KVs and the state before it; the paths are walked in key order; the
+  sizes are of nodes in memory, dirty or made by the record. A start reads
+  the charge off the row, as before.
+* **Checked.** `probes/UndercountProbe.java` (a pass of `maintain()`
+  parts, whose records hold the step alone), 30,000 values of 10 bytes:
+  before, 39.5 % (node size 8) and 25.7 % (30, the default) of the charge
+  not charged (`runs/undercount.txt`); after, 208 and 192 bytes of 2.46 and
+  1.50 MB of the records' index bytes not charged, 0.0 %; the index nodes
+  charged 2,464,464 and 1,498,880 bytes, of them 1,187,424 and 658,368
+  made by the batches after the touch (`runs/pace-step3.txt`). Reclaim's
+  share of the growth in the review's `RvPace` cases of F2 (now
+  `probes/PaceProbe.java`, which calls `DbBuilder.maintenanceNone()`
+  directly; `RvPace`'s reflection does not find it since step 0), commits
+  of one small put, no `maintain()`:
+
+  | Case | Share, before | After |
+  |---|---:|---:|
+  | 20,000 x 200 bytes, node size 30 | 0.305 | 0.281 |
+  | 20,000 x 200 bytes, node size 8  | 0.301 | 0.264 |
+  | 20,000 x 10 bytes, node size 8   | 0.397 | 0.283 |
+  | the same, keys of seven segments | 0.291 | 0.275 |
+
+  The share left above 0.25 is, by reading, reclaim's bytes that no
+  charge counts (not measured one by one): the row's and the table's own
+  value nodes and the table's path, and the growth of nodes that were
+  dirty before the touch and that the step's puts append to (they are not
+  made dirty by it).
+  `Reclaim.Tester.testAllowanceCountsIndexNodes` and
+  `testAllowanceCountsNodesMadeAfterTheRow` check the row against the
+  charge (`Stats.Iteration.charged`), the nodes made after the row charged
+  (`madeCharged` > 0) and at most a third of the charge left to the
+  commits' own index nodes.
+
+### A commit's step sized by its allowance (F3; 028-71)
+
+* **What.** A commit's step scans up to its allowance, at most the larger
+  of `MAX_STEP_SIZE` (16 kB) and twice the allowance that the
+  application's last record and the records after it added,
+  `2 fractionOf(L0 - a)` (`Reclaim.commitStepSize`, `STEP_GROWTH_FACTOR`),
+  and at most `MAX_COMMIT_STEP_SIZE`, 128 KiB. Until now at most 16 kB a
+  commit. A commit after small records keeps 16 kB (records under 32 kB at
+  the default fraction); after large ones, the step can spend the
+  allowance as the records add it, with room to catch up. A part's step
+  stays at `MAX_STEP_SIZE`. The step reserve, 015-50's value limit and the
+  record's room (`Db.recordDirtyFits`, step 2) bound it as before.
+* **Why 128 KiB.** The record's cap holds the step's KVs in
+  `StoredTrans.stepRoom()`: one value node of the largest size (the scan's
+  last KV, or its first alone), and `STEP_FIXED_ROOM`, 256 KiB, for the
+  scan's other KVs, the row and the table. Section 3's arithmetic and
+  `recordCap()` rest on it. With the scan's other KVs within half of it,
+  the row and the table keep the other half (assumed, as before; a table
+  of a few rows is some kB). Without the cap a step could copy up to
+  `valueLimit()` beside a large action, and pass the cap at limits between
+  the tests' and the release's (a failure of the database before the
+  append), or section 3's 42.3 MB of own bytes at the release's limits. So
+  commits of more than about 400 kB at the default fraction carry less
+  than their allowance, and reclaim falls behind them again, eight times
+  less than with 16 kB: commits of 1 MB keep 18.2 times the live data,
+  steady from the middle third, at a share of 0.102 (115.7 times and
+  growing, 0.019, before).
+* **When, by whom.** `Reclaim.planCommit`, in the plan, before the go
+  point. **Deterministic:** L0 and a are the stream's before the record (a
+  is read off the stream at a start, 031-04's R3).
+* **Checked** (`probes/PaceProbe.java`, the review's F3 runs and two with
+  commits of many small puts at random keys; 028-71 has the table): the
+  stream kept, the largest in the run's last third over the live data,
+  7.7, 13.8 and 36.4 times before at commits of 20, 100 and 300 kB, 8.1,
+  7.2 and 7.8 after, steady from the middle third; the share 0.257, 0.171
+  and 0.063 before, 0.248, 0.279 and 0.237 after. 200 puts of 100 bytes a
+  commit: 21.9 to 10.7 times, 0.100 to 0.238; 500 puts of 50 bytes at
+  20,000 keys: 32.1 to 9.8 times, 0.062 to 0.223.
+* **The record's room at lowered limits.** With the charge and the
+  steps' sizes the streams differ, and so do the room's trims:
+  `ReclaimRoomTester`'s sustained runs cut 53 to 97 steps to their first
+  copy (node size 8, seeds 1 to 12; seed 3 cut 117 before) and left 0 to 2
+  out of a commit's record; at node size 30, 79 to 111 and 0 to 5. The run
+  must show both: the tests take seed 2 at node size 8 (66 cut, 2 left
+  out) and seed 6 at node size 30 (96, 5), where seeds 3 and 2 left none
+  out. At the release's limits the room cut no step in the stress
+  workloads.
+
+### The warm-up of a step's scan before the lock (F4)
+
+* **What.** Before the write lock, a commit (`Db.executeInner`, beside its
+  own `warmup(t)`; not a setter's) and each part of `maintain()` (before
+  the part's lock) read, as a reader reads, the KVs that the next step's
+  scan would meet (`Maintenance.warmup`, `Reclaim.warmup`): if an
+  iteration runs and, for a commit, its allowance as the last record left
+  it is above `MIN_STEP_SIZE`, a scan from the row's lastKey to its
+  endKey at the latest time, with the node table's follower, the values
+  stored before pCut loaded, ending as the step's scan ends (its size at
+  `commitStepSize`, or `MAX_STEP_SIZE` for a part; the step reserve). The
+  plan's scan under the lock then meets those nodes in memory: its
+  maintenance follower takes an object in memory as it is. Reclaim
+  publishes what the warm-up reads (the running row, the stream's length
+  and a after the last record; `Reclaim.Warm`) in `apply()` and
+  `initFromDb()`; the warm-up reads it without the lock.
+* **What it may not do, and does not.** It decides nothing: what a plan
+  scans, copies and charges does not depend on what is in memory (the
+  scan's counts are of the KVs and index nodes met, resident or not).
+  Another record may come between it and the lock, so it may warm what the
+  plan then does not read. A read that a cut overtakes ends it (as
+  `Db.warmup`); on a database that is not active it reads nothing, and a
+  stop or failure during it is left to the check under the lock. Its
+  cost: a second scan of the step's range, outside the lock, and the
+  step's nodes in memory until the eviction takes them (the plan's scan
+  alone leaves nothing there, 001's M28).
+* **Checked.** `Reclaim.Tester.testWarmupBeforeTheLock` (unit): every
+  object evicted after every transaction, 3,000 single puts and
+  `maintain()` calls, without and with the warm-up: the same stream byte
+  for byte, the same steps and copies, and with it at most a tenth of the
+  loads under the lock. `Db.TestHooks.stepWarmup()` turns it off, for that
+  test and for `testStepReserveSplitsSteps` and
+  `testScanLoadsOnlyValuesToRewrite`, which count what the scan loads.
+  `probes/WarmProbe.java` (`probes/warm.sh`, `runs/warm-step3.txt`): the
+  versions read from the stream under the lock by the records that carry a
+  step, from the plan to the record's end (the node table's count), on
+  databases larger than their cache budget of 5 MB, each without and with
+  the warm-up (loaded under the lock, of them by the plan's scan):
+
+  * 100,000 values of 200 bytes, commits of one put, node size 30: 1,156
+    records with a step; 37,152 (32.1 a step, at most 112), 34,976 by the
+    scans, without; 2 (at most 1), 0 by the scans, with.
+  * The same at node size 8: 1,138; 66,680 (58.6, at most 193), 56,571;
+    2 (at most 1), 0.
+  * The same with `maintain(1000)` every 50 commits: 20,053 (19,117 of
+    them parts'); 908,374 (45.3, at most 112), 853,878; 121 (0.01, at most
+    14), 119.
+  * 20,000 values of 1,000 bytes, commits of 300 kB: 1,644; 169,442 (103.1,
+    at most 140), 158,966; 100 (0.06, at most 20), 94.
+  * The same, commits of 200 puts at 20,000 keys: 1,651; 85,313 (51.7, at
+    most 228), 80,084; 5 (at most 2), 3.
+
+  The two runs of each gave the same stream (its length, first position
+  and SHA-256): `WARM PROBE OK` in all five. The few loads left with the
+  warm-up are versions that the warm-up did not leave in memory for the
+  plan: where its scan ended before the plan's, or the eviction took them
+  in between; not analysed further. The counts vary a little from run to
+  run with the eviction (on the jar before the rebase: 36,966 and 1 in
+  the first case); the streams do not.
+
+### P1 on a database larger than the cache budget (for the lead)
+
+`probes/P1Probe.java` and `probes/p1.sh` (timing; a quiet machine): on
+disk (`FileStream`), a cache budget well under the data, a test clock of
+1 ms a commit so that reclaim's pace is the same in every run; one writer
+of overwrites of random keys, every 50th commit a put of 200 kB, retain
+10 s, two readers; the warm-up off and on in alternate blocks of a tenth
+of the commits. Printed, for the commits with a step and without, warm-up
+off and on: the time of `execute()`, the time under the lock from the plan
+to the record's end, the plan's time before the go point (a commit is
+readable only after it), each as median, p99, p99.9 and longest; the plans'
+scans' loads; the gets' times; the five longest commits with their
+uptimes for the GC log. The database is larger than the cache budget, not
+than the machine's memory (32 GB on F53): the stream's files may stay in
+the OS page cache, as dropping it needs root (`sudo purge`).
+
+* The command: `sh items/031-release-2026-7/06-one-record-an-action/probes/p1.sh OUT`
+  after `java/build.sh` (20M keys of 200 bytes, a stream of about 5 GB, a
+  budget of 200 MB, 1M commits, ZGC, a GC log in OUT).
+* Run once small, to show that it works (`p1.sh OUT small`: 200,000 keys,
+  20 MB, 50,000 commits; `runs/p1-small.txt`; on a busy machine, the times
+  are not a result): `P1 PROBE DONE`; 200,000 keys, a stream of 53 MB
+  then 383 MB; under the lock for the commits with a step, warm-up off:
+  median 0.105, p99 2.249, p99.9 9.291, longest 9.340 ms, the plans' scans
+  117,535 loads; on: 0.136, 1.069, 2.672, 2.989 ms, 37 loads; `execute()`
+  with a step, the warm-up's scan in it: median 0.119 and 0.369 ms,
+  longest 10.7 and 13.2 ms; gets longest 11.8 ms.
+
+### The determinism checks and StreamDigest
+
+On the rebased tree (`main` at `734f05a2` and this branch's commits):
+
+* **The sweep** (`probes/sweep.sh`, `P2CrashProbe`, its 23
+  configurations): 27,741 interruptions (9,247 crashes, failures before
+  `apply` and stops each), 0 different, the start's memory the running
+  database's at every one; records = accepted actions in all 23 reference
+  runs (16,661 records); torn records: 207 (seed 21) and 144 (seed 41)
+  continued the same with and without a restart, 0 different. Seed 3's
+  torn run stopped at a record that a physical cut had followed (CutStream
+  refuses to tear below the length at its last cut, as a crash after the
+  cut's durability cannot); the probe now skips such a position and says
+  so (`P2CrashProbe.torn`), and seed 3 again: 219 torn records, 0
+  different, none skipped (the physical cut waits for durability, so its
+  place varies). Before step 3 (`runs/sweep.txt` and step 2): 27,720
+  interruptions and 567 torn records; the counts follow the records, which
+  step 3 changed.
+* **RestartInvariance** (`probes/digests.sh`): level3.sh's four
+  configurations at full size and level1.sh's step 5: "STREAM:
+  identical", the same cut and first available time, the six checks with
+  0 failures, in all five.
+* **StreamDigest quick:** "Done: 11 configurations, 4 modes; the modes give
+  the same stream". Against `main` at `734f05a2` (one compiled copy of
+  StreamDigest on both jars, `compare`): 28 of 44 digests identical, the
+  configurations without reclaim (l2-*); 16 differ, the four l3-*
+  configurations in all four modes, each mode with the same new digest.
+  Where and why: every record that stores a row, whose `rewritten` now
+  has 19 digits and the charge of the batch's nodes, and from there every
+  step's size, the iterations' ends and the cuts. The stream lengths:
+  l3-every1 1,722,080 to 1,681,792 bytes (-2.3 %), l3-node8 6,176,112 to
+  5,621,440 (-9.0 %), l3-node14 1,493,128 to 1,525,920 (+2.2 %),
+  l3-node62 7,857,640 to 7,720,880 (-1.7 %). Without reclaim nothing
+  changed: no row, and no commit's step.
+* **WarmProbe:** five pairs of runs, without and with the warm-up, the
+  same stream in each (above).
+* **ConcProbe and FaultProbe** (`probes/conc.sh`, `faults.sh`): ten runs
+  of 2 to 4 writer threads, `maintain()` and the setters, with the
+  warm-ups, then a replay on one thread: the same stream in all ten;
+  faults at four points over 231 records, bad 0 in all 42 lines.
+
+### Gates
+
+On F53, 2026-11-27, from 21:46, on the rebased tree, with other work on
+the machine (the lead's night run, other sessions); functional runs, at
+most two of them at a time, the level scripts each in a copy-on-write
+copy of the clone:
+
+* `java/before-commit.sh`: `BEFORE COMMIT OK (91 s)` (unit 1,743, f 96,
+  demos 14); before the rebase `BEFORE COMMIT OK (93 s)` and `(97 s)` on
+  the two commits of code.
+* `java/stress/level2.sh`: `LEVEL 2 OK`. The pins: 144 files with their
+  hashes. Step 8, treeconf: small 7,240, drain 14,120, reclaim 7,545
+  transactions with 296 touches (310 before step 3), C-T5 and C-T9 0
+  failures; 8b, the contract and the bridge; 8c, pecmp 0 differ in the
+  three sets. Also `LEVEL 2 OK` on each commit of code before the rebase.
+* `java/stress/level3.sh`: `LEVEL 3 OK`. Step 8: C-STEP's fault test, 24
+  faults found; conformance reclaim, 40 traces, TRACECHECK OK 40, C-CUT 0
+  of 857 CUT lines fail; C-STEP 0 of 23,127 transactions fail, 1,345 STEP
+  lines, 1,032 iterations, 14,301 old KVs met, 14,051 copies, 23,087
+  records against their actions (step 2: 1,370 STEP lines, 1,042
+  iterations, 14,954, 14,679); the crash set 0 of 5,593, 395 STEP lines,
+  STEP-resume 916 restarts (131 crashes), 61 iterations with a step
+  before a restart and the next after it (step 2: 409, 925, 135, 68).
+  Iterations of several steps stay in both sets. Also `LEVEL 3 OK` on
+  each commit of code before the rebase.
+* `java/stress/level4.sh quick`: `LEVEL 4 OK` (EvictionInvariance with
+  every schedule, the conformance with eviction, 18 traces, TRACECHECK OK
+  18, LargerThanMemory).
+* `java/stress/apps.sh quick`: `APPS OK`.
+* The sweep, faults and conc: above, 0 different, bad 0.
+* `lean/`: nothing changed; the trace format, `TraceExport` and the
+  checkers did not need a change (the charge is in the row's value, which
+  the traces carry as a hash; the step's lastKey, L' and eod are as
+  before), so `lean/contract/gate.sh` was not run.
+
+### For the later steps
+
+* Q6 (the plan's cost at every commit): the warm-up adds a check of a
+  volatile at every commit and, when a step is due, a scan outside the
+  lock; `timing.sh` (step 6) shows whether CORE moves.
+* The share left above the fraction (above) is the rows' and tables' own
+  bytes; charging them is a further rule, not made.
+* 028-75 (R4) is Frans's and unchanged: with a pass of `maintain()`, the
+  parts' steps are `MAX_STEP_SIZE`, as before.
+
 ## State
 
-2026-11-27, 20:30, after the review of the landed diff (`review-main.md`).
+2026-11-27, 22:30, step 3 (the pace), for the lead.
+
+* **Done:** step 3 on the branch `031-06-pace`, rebased onto `main` at
+  `734f05a2` (step 4): the after-row charge by the fixed-width patch (F2),
+  a commit's step sized by its allowance up to 128 KiB (F3, 028-71), the
+  warm-up of a step's reads before the lock (F4), and P1's probe for a
+  database larger than its cache budget (`probes/P1Probe.java`, `p1.sh`),
+  run once small; the section above has the rules and the evidence.
+  Gates on the rebased tree: `BEFORE COMMIT OK (91 s)`, `LEVEL 2 OK`,
+  `LEVEL 3 OK`, `LEVEL 4 OK` (quick), `APPS OK` (quick), the sweep 0
+  different, faults bad 0, conc the same stream in ten.
+* **Not done:** P1's timing run (the lead's, on a quiet machine:
+  `p1.sh OUT`); `timing.sh`, `night.sh`, `week.sh` (step 6); the share
+  left above the fraction (the rows' and tables' own bytes) is not
+  charged.
+* **Not touched:** 028-75 (R4), 028-73, O1; `lean/`.
+* **Next:** the lead's review and landing of `031-06-pace`.
+
+Earlier, 2026-11-27, 20:30.
+
+After the review of the landed diff (`review-main.md`).
 
 * **Done:** its R1, R2 with R5, R6 and R7 fixed on the branch
   `031-06-review-fixes`, from `main` at `db92c882`, commit `97954827`
