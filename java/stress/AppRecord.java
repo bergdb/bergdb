@@ -32,8 +32,11 @@ import bergdb.dag.Keys;
  * Db.maintain() wrote records (their internal transactions, known by Reclaim.maintain on the
  * stack). Reclaim's internal transactions, and the records of the settings' calls (KVs at the
  * Core's own keys, Trans.coreKey), are counted only: the replay's reclaim makes its own, its
- * maintain() calls theirs, and the replay calls the settings from the SET lines. A refused
- * transaction never reaches the hooks.
+ * maintain() calls theirs, and the replay calls the settings from the SET lines. The KVs of
+ * the maintenance that a user transaction's record carries (bergdb 031-06: reclaim's copies,
+ * row and table, Db.ExecuteData.plan) are not its operations and are left out: the replay's
+ * reclaim plans its own; a recording whose user transaction writes a Core key is refused when
+ * read. A refused transaction never reaches the hooks.
  *
  * Why a recording and a replay, not a trace of the run itself: the trace's recorder reads run
  * A's database in memory after every record (TraceExport), which needs a memory stream, no
@@ -137,6 +140,22 @@ public final class AppRecord {
         }
         o.db = db;
         Trans t = x.trans;
+        // bergdb 031-06: a record carries reclaim's maintenance besides its action (x.plan:
+        // the copies, the row and the table, none at a key of the action's; Db.merge), and
+        // the Dag gets both, so kvApplied told both. The action's are the transaction's; the
+        // replay's reclaim plans its own. Until 2026-11-27 they were recorded as the
+        // application's operations: a commit that carried the table was replayed as a user
+        // transaction that writes /#i/dreclaim/-table.txt, which the Core refuses.
+        if (x.plan != null && x.plan.kvs != null && x.plan.kvs.length > 0) {
+            TreeSet<long[]> planned = new TreeSet<long[]>(Keys::compareArrays);
+            for (Kv kv : x.plan.kvs) planned.add(kv.getKey());
+            int before = mine.size();
+            mine.removeIf(kv -> planned.contains((long[]) kv[0]));
+            if (before - mine.size() != planned.size()) {
+                throw new IllegalStateException("AppRecord: the record's plan has " + planned.size()
+                        + " KVs, " + (before - mine.size()) + " of them told by kvApplied");
+            }
+        }
         // The Core's own KVs (Trans.coreKey: the startup distance's and reclaim's) come from
         // the settings' calls, which the replay makes from the SET lines.
         boolean core = !mine.isEmpty();
@@ -157,7 +176,7 @@ public final class AppRecord {
             o.settings = settings;
         }
         byte[] bytes = db.internal().nodeStream().readTransBytes(t.tpos);
-        o.w.println("TX " + t.tt + " " + t.tpos + " " + TraceExport.hash(bytes) + " " + mine.size());
+        o.w.println("TX " + t.tt + " " + t.tpos + " " + recordHash(bytes) + " " + mine.size());
         StringBuilder b = new StringBuilder();
         for (Object[] kv : mine) {
             long[] k = (long[]) kv[0];
@@ -173,6 +192,19 @@ public final class AppRecord {
             o.w.println(b);
         }
         o.txs++;
+    }
+
+    /**
+     * The hash of a record's bytes, its header's check left out: bytes 5 to 7 of the header
+     * hold a CRC over the database's ID and the record's position (bergdb 028-67, C3;
+     * StoredTrans.headerCheck), and the replay's database has an ID of its own, so its
+     * record's bytes differ from the application's there. Since 2026-11-27; until then
+     * every record compared as different after 028-67.
+     */
+    static long recordHash(byte[] bytes) {
+        byte[] b = bytes.clone();
+        for (int i = 5; i < 8 && i < b.length; i++) b[i] = 0;
+        return TraceExport.hash(b);
     }
 
     /** Whether the transaction being executed is one of a maintain() call's. */
@@ -267,6 +299,13 @@ public final class AppRecord {
                     for (int j = 0; j < n; j++) k[j] = Long.parseLong(p[2 + j]);
                     int j = tx.keys.length - left;
                     tx.keys[j] = k;
+                    if (Trans.coreKey(k)) {
+                        // The application cannot write it (Db.checkCoreKeys): a recording
+                        // that holds one took the Core's own KVs for the application's.
+                        throw new IOException("a user transaction at time " + tx.tt
+                                + " writes a key that the Core writes itself (Trans.coreKey): "
+                                + line);
+                    }
                     if (p[0].equals("P")) {
                         String h = p[2 + n];
                         byte[] v = new byte[h.equals("-") ? 0 : h.length() / 2];
@@ -381,7 +420,7 @@ public final class AppRecord {
             Tx tx = txs.get(i);
             if (rec.tt == tx.tt) sameTime++;
             if (rec.tpos == tx.tpos
-                    && TraceExport.hash(db.internal().nodeStream().readTransBytes(rec.tpos)) == tx.hash) {
+                    && recordHash(db.internal().nodeStream().readTransBytes(rec.tpos)) == tx.hash) {
                 sameRecord++;
             }
         }
