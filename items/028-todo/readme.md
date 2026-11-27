@@ -105,7 +105,7 @@ Open
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | open |
-| [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve changes the bytes and is not in the stream: A to C | decision | open |
+| [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve: B, a constant; built in 031-06's landing | decided | open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
 
@@ -621,3 +621,7 @@ valid only with this database's ID; a record header holds a 24-bit
 CRC-32C of the ID, its position and its fields; a tail that fails is
 refused before anything is written. C2 after C3 is tested; C4 not taken.
 Open until built.
+
+2026-11-27. 028-68 decided by Frans (16:09): B, the reclaim step reserve
+a constant, with a hook for tests only. Built in 031-06's landing, step
+2 (branch `031-06-landing`); open until it lands on `main`.

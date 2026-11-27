@@ -1,7 +1,8 @@
 028-68. Decide: the reclaim step reserve, a setting outside the stream that changes its bytes
 ============================================================================================
 
-Status: open. Kind: Decide. Frans: decision.
+Status: decided, built in 031-06's landing; closed when it lands on `main`.
+Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: the reclaim step reserve decides where a reclaim step splits
@@ -53,6 +54,41 @@ a start that gives another reserve than the creation's;
 `DbBuilder.reclaimStepReserve` and `Reclaim.setStepReserve`, and with A
 027-03, updated.
 
+Decision
+--------
+
+Frans, 2026-11-27, 16:09: **B**, a constant. The reclaim step reserve is
+`Reclaim.DEFAULT_STEP_RESERVE` (4 MiB) for every database, with a hook
+for tests only, outside the builder's public settings. The lead had
+recommended B by then; the recommendation above (A) is of the
+registration.
+
+Built in 031-06's landing, step 2 (branch `031-06-landing`, 2026-11-27):
+
+* `DbBuilder.reclaimStepReserve` and its default, the system property
+  `stepreserve`, are gone. The test hook is `DbBuilder.testStepReserve`,
+  package-private as `maxNodeSize8()`: for the tests and probes in
+  `bergdb.core` that split steps by a small reserve. Its Javadoc says
+  that such a test gives the same value at every start of its database,
+  as the reserve is not kept in the stream. `Reclaim.setStepReserve` is
+  package-private; Db calls it at a start with the builder's value, the
+  constant but in such a test.
+* Who set it: `Reclaim.Tester.testStepReserveSplitsSteps` (now through
+  the hook, at its start and its restart) and `DbTesterJavadoc`'s refusal
+  of a reserve below 1 (removed with the method). No script of `java/`
+  passed `-Dstepreserve`. The item probes of 031-06 that vary the reserve
+  (`SafetyProbe`, the review's `RvP1`) take the hook when they are run
+  again.
+* `Reclaim.Tester.testStepReserveIsAConstant`: `DbBuilder` has no public
+  method that names a reserve, `Reclaim` no public setter of one, and a
+  start with the system property `stepreserve` set has the constant.
+* The Javadoc of `DEFAULT_STEP_RESERVE`, `setStepReserve` and the hook
+  say that the reserve is a constant. With B, `RestartInvariance` with a
+  start that gives another reserve (the done-when of A) does not apply;
+  StreamDigest and RestartInvariance run in `level2.sh` and `level3.sh`.
+* The review's F7 is answered: no setting outside the stream changes its
+  bytes through the reserve.
+
 First step: find what sets the reserve below the default (the tests
 that call `reclaimStepReserve`, and what passes `-Dstepreserve`; no
 script of `java/` or `java/stress/` names the property on 2026-11-27),
@@ -74,3 +110,6 @@ of 4 MiB split 16 steps and 1 MiB split 65, and the same actions gave
 streams of 328,668,424 and 265,554,968 bytes. So "at the default no step
 is split" above holds for the stress workloads only. The reviewer's
 proposal is B, a constant. Decided in the landing's step 2.
+
+2026-11-27. Decided by Frans (16:09): B, a constant. Built in 031-06's
+landing, step 2, on the branch `031-06-landing` (Decision above).
