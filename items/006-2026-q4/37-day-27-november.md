@@ -25,6 +25,17 @@ Frans, 2026-11-27:
   is simpler than `main`'s, and the design to build on (08:36).
 * The principle of a deterministic stream extended to every write
   (031-05) is wanted (08:36).
+* The order: first 031-04 with 031-05 is made to work, so that it is
+  known to be possible; the principles (010) and the documents are
+  updated after that (08:41).
+* Frans's design notes of 2012 on the deterministic stream are not
+  sensitive and may be quoted in the repository (08:41): the note of
+  May 2012 (the stream's contents deterministic given the SET
+  operations; for testing, and for a secure hash of a sequence of
+  operations) and the note of July 2012 (reclaim piggyback on the
+  transactions, which allows a deterministic stream and no load when
+  the database is not used; no background threads). Where they go:
+  section 4.4.
 
 The lead's overview (08:30), its conclusions:
 
@@ -60,12 +71,18 @@ The lead's overview (08:30), its conclusions:
 * 08:30 The overview for Frans (section 2).
 * 08:36 Frans: the redesign and the principle (section 2). This plan
   made, with the page of section 4.
+* 08:41 Frans: the order (the design made to work first, 010 and the
+  documents after), and the notes of 2012 may be quoted (section 2).
+  The lead's proposal for where they go: section 4.4, by default at
+  09:15.
 
 
 ## 4. Waiting for Frans
 
-Every open question, each with a default: whose it is, and why. No
-default has a time: nothing goes ahead before Frans has read the page.
+Every open question, each with a default: whose it is, and why. The
+defaults of sections 4.1 to 4.3 have no time: nothing of them goes
+ahead before Frans has read the page. Section 4.4 has the one default
+with a time.
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
@@ -108,7 +125,8 @@ details are in the items, cited by ID and section.
   * Default: **(a), corrected as the review says** (section 12, F2 to
     F4 and F11): it holds at record boundaries; a torn record is an
     input; the unit of `maintain()` is a part; the settings are inputs.
-    The text goes into 010 after the design has landed, by Frans.
+    The text goes into 010 after the design is made to work (Frans,
+    08:41), by Frans.
 * **A5. The Lean statement** (031-05, Q9): with the landing, or after.
   Default: **after, and not a condition of 2026.7** (the study, the
   reviewer, the lead): P2 with crashes is tested in 2026.7, as five of
@@ -247,3 +265,19 @@ Not asked: 028-65 (no decision in it); 026-03 and 031-01's F1, one
 maintenance path for a commit and a call, which the landing's design
 item answers; G4's M5 at 1.933 of 2.0 (031-05, F9) and `catchUp()`
 inside the code that fails the database (F7), both work of the landing.
+
+### 4.4. By default, with a time
+
+* **D1. Where the notes of 2012 go** (class 2; proposed by the lead,
+  08:41). Frans allowed their quoting (section 2).
+  * A short section "The origin" in 031-05, with the two notes quoted
+    and dated: the deterministic stream of May 2012, and reclaim on
+    the transactions of July 2012.
+  * One line in `AGENTS.md`'s rule on Frans's notes: a passage may be
+    quoted, with its date, when Frans approves it (Frans, 2026-11-27,
+    for the two notes of 2012).
+  * P2's text in 010 is not touched: it waits for Frans (A4).
+  * **By default at 09:15**, unless Frans says otherwise. Why: the
+    origin of the principle is on record where the principle is
+    studied, and the rule on the notes states when a passage may be
+    quoted.
