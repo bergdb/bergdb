@@ -1,13 +1,25 @@
 /-
-bergdb 030-35: reclaim preserves the users' values. A history distinguishes
-user transactions from maintenance. A maintenance transaction is either a
-modelled reclaim step, or writes only reclaim's reserved namespace (table,
-row and filler stores). The reference keeps the original transaction times
-and applies only user operations outside that namespace.
+bergdb 030-35: reclaim preserves the users' values. Since bergdb 031-06 (one
+record an action) a step of reclaim rides in the record of a commit or of a part
+of maintain(), beside the action's operations, and its copies carry the copy mark
+(byte 6 of their value nodes; 027-03): the history marks maintenance per
+operation, `maintenance j op` for the copies of record j (until 031-06 per
+transaction: a step, or a store of reclaim's reserved namespace). Every copy is
+a put of an old KV that a step's scan met, with the value the key had
+immediately before the record (`StepOpOK`), and a record has one operation a
+key; reclaim's row, table and settings are at its reserved keys. The reference
+keeps the original transaction times and applies, of each record, only the
+operations outside reclaim's namespace that are not copies: the action's.
 
-The proof removes maintenance from the reference, rather than using the
-values maintenance wrote as the reference. It composes this preservation
-result with reclaim's existing cut-safety theorem.
+The proof removes the copies from each record, rather than using the values
+maintenance wrote as the reference: putting back a pair that the map holds, at
+a key that no other operation of the record writes, changes nothing
+(`applyOps_drop_copies`), so a record's effect on the user keys is that of its
+operations without the copies, its action's (`record_preserves_users`). It
+composes this preservation result with reclaim's cut-safety theorem. That the
+operations without the mark are the action as submitted is tested, not proved:
+the trace checker's C-STEP, STEP-action (lean/Check/Steps.lean,
+`actionFailures`; 027-02, section 4).
 -/
 import Contract.ReclaimSteps
 
@@ -15,46 +27,47 @@ namespace Contract
 
 open SIS.Check (BVal)
 
-/-- Every maintenance transaction is a step meeting the strengthened model,
-or writes only reclaim's reserved keys. The Boolean marks maintenance at
-zero-based transaction indexes; it does not assert any equality of maps. -/
-def MaintenanceOK (h : BHist) (maintenance : Nat → Bool) : Prop :=
-  ∀ j (hj : j < h.txs.length), maintenance j = true →
-    (∀ op ∈ h.txs[j].ops, reclaimKey op.key = true) ∨
-    ∃ c E L rule, StepTx h c j (stepScan h E L ⟨j, rule⟩) h.txs[j].ops
+/-- A copy (bergdb 031-06; from 030-35 to 031-06 every operation of a step's
+transaction but its row): a put of an old KV that the step's scan met, with the
+value the key had immediately before the record. A copy is never a delete. -/
+def StepOpOK (h : BHist) (c j : Nat) (out : ScanOut) : Op → Prop
+  | .put k v => (∃ kv ∈ out.met, kv.1 = k ∧ oldNode h c kv.2 = true) ∧
+      refGet (contents ((h.tree j).at j)) k = some v
+  | .del _ => False
 
-/-- The independent reference's transactions. Maintenance contributes no
-operations; the other transactions contribute only keys outside reclaim's
-namespace. Empty transactions keep the original lookup times. -/
-def userTransactions (h : BHist) (maintenance : Nat → Bool) : List (List Op) :=
+instance (h : BHist) (c j : Nat) (out : ScanOut) (op : Op) :
+    Decidable (StepOpOK h c j out op) := by
+  cases op <;> unfold StepOpOK <;> infer_instance
+
+/-- The copy marks of a history are its steps' copies (bergdb 031-06): `maintenance
+j op` marks the operation op of record j (zero-based) as a copy, as the copy mark
+of its value node does in Java. Every record has one operation a key, and every
+marked operation is a copy of a step's scan at that record (`StepOpOK`). The
+marks assert no equality of maps. -/
+def MaintenanceOK (h : BHist) (maintenance : Nat → Op → Bool) : Prop :=
+  ∀ j (hj : j < h.txs.length), (h.txs[j].ops.map Op.key).Nodup ∧
+    ∀ op ∈ h.txs[j].ops, maintenance j op = true →
+      ∃ c E L rule, StepOpOK h c j (stepScan h E L ⟨j, rule⟩) op
+
+/-- The independent reference's transactions: of each record, the operations
+outside reclaim's namespace that are not copies, the action's. A record without
+such operations (a part of maintain(), a setter of reclaim's) keeps its lookup
+time with no operation. -/
+def userTransactions (h : BHist) (maintenance : Nat → Op → Bool) : List (List Op) :=
   List.ofFn (fun j : Fin h.txs.length =>
-    if maintenance j then [] else h.txs[j].ops.filter (fun op => userKey op.key))
+    h.txs[j].ops.filter (fun op => userKey op.key && !maintenance j op))
 
-theorem userTransactions_length (h : BHist) (maintenance : Nat → Bool) :
+theorem userTransactions_length (h : BHist) (maintenance : Nat → Op → Bool) :
     (userTransactions h maintenance).length = h.txs.length := by
   simp [userTransactions]
 
-theorem userTransactions_get (h : BHist) (maintenance : Nat → Bool) (j : Nat)
+theorem userTransactions_get (h : BHist) (maintenance : Nat → Op → Bool) (j : Nat)
     (hj : j < h.txs.length) :
     (userTransactions h maintenance)[j]'(by simpa [userTransactions_length] using hj) =
-      if maintenance j then [] else h.txs[j].ops.filter (fun op => userKey op.key) := by
+      h.txs[j].ops.filter (fun op => userKey op.key && !maintenance j op) := by
   simp [userTransactions]
 
 open PeProof.Keys
-
-/-- Every non-row put is an old key met, carrying its pre-step value. -/
-theorem StepTx.put_value {h : BHist} {c j : Nat} {out : ScanOut} {ops : List Op}
-    (ht : StepTx h c j out ops) {k : Key} {v : Nat} (hp : Op.put k v ∈ ops)
-    (hk : k ≠ reclaimRow) :
-    (∃ kv ∈ out.met, kv.1 = k ∧ oldNode h c kv.2 = true) ∧
-      refGet (contents ((h.tree j).at j)) k = some v := by
-  exact (ht.2.2.2 (.put k v) hp).resolve_left hk
-
-/-- Deletes, including extra deletes, are forbidden in a step. -/
-theorem StepTx.no_delete {h : BHist} {c j : Nat} {out : ScanOut} {ops : List Op}
-    (ht : StepTx h c j out ops) (k : Key) : Op.del k ∉ ops := by
-  intro hd
-  exact ht.2.2.2 (.del k) hd
 
 /-- Putting an existing pair back into a map in key order changes nothing. -/
 theorem mapPut_existing {k : Key} {v : Nat} : ∀ {m : List (Key × Nat)},
@@ -67,49 +80,68 @@ theorem mapPut_existing {k : Key} {v : Nat} : ∀ {m : List (Key × Nat)},
     · have hlt : k' < k := (List.pairwise_cons.mp hs).1 _ hm
       rw [mapPut_cons_gt hlt, mapPut_existing (List.pairwise_cons.mp hs).2 hm]
 
-/-- A list of puts of pairs already present changes no map entries. -/
-theorem applyOps_existing (m : List (Key × Nat)) (hs : m.Pairwise KvLt) :
-    ∀ (ops : List Op),
-      (∀ op ∈ ops, ∃ k v, op = .put k v ∧ (k, v) ∈ m) → applyOps ops m = m
-  | [], _ => rfl
-  | op :: rest, h => by
-    obtain ⟨k, v, rfl, hm⟩ := h op (by simp)
-    rw [applyOps_cons']
-    change applyOps rest (mapPut k v m) = m
-    rw [mapPut_existing hs hm]
-    exact applyOps_existing m hs rest (fun op hop => h op (List.mem_cons_of_mem _ hop))
-
-/-- **One step preserves user contents.** Every non-row operation is a put
-of the value in the state immediately before the step; the row is reserved. -/
-theorem StepTx.preserves_users {h : BHist} {c j : Nat} {out : ScanOut} {ops : List Op}
-    (ht : StepTx h c j out ops)
-    (hs : (contents ((h.tree j).at j)).Pairwise KvLt) :
-    (applyOps ops (contents ((h.tree j).at j))).filter (fun kv => userKey kv.1) =
-      (contents ((h.tree j).at j)).filter (fun kv => userKey kv.1) := by
-  rw [applyOps_filter userKey ops _ hs]
-  apply applyOps_existing _ (hs.filter _)
-  intro op hop
-  obtain ⟨hop, hu⟩ := List.mem_filter.mp hop
-  have ht' := ht.2.2.2 op hop
+/-- A pair stays when an operation at another key is applied (`mem_mapPut_of_ne`,
+Contract/ReclaimTree.lean). -/
+theorem mem_step_of_ne {m : List (Key × Nat)} {op : Op} {k : Key} {v : Nat}
+    (hne : k ≠ op.key) (h : (k, v) ∈ m) : (k, v) ∈ step m op := by
   cases op with
-  | del k => exact ht'.elim
-  | put k v =>
-    refine ⟨k, v, rfl, List.mem_filter.mpr ⟨?_, hu⟩⟩
-    rcases ht' with rfl | hcopy
-    · simp [userKey, reclaimRow_reserved, Op.key] at hu
-    · exact mem_of_lookup' hcopy.2
+  | put k' v' => exact mem_mapPut_of_ne hne h
+  | del k' =>
+    simp only [step, mapDel]
+    exact List.mem_filter.mpr ⟨h, by simpa [Op.key] using hne⟩
 
-/-- Namespace-only stores also preserve user contents, including deletes. -/
-theorem reserved_preserves_users (ops : List Op) (m : List (Key × Nat))
-    (hs : m.Pairwise KvLt) (hr : ∀ op ∈ ops, reclaimKey op.key = true) :
-    (applyOps ops m).filter (fun kv => userKey kv.1) = m.filter (fun kv => userKey kv.1) := by
+/-- **Copies change nothing** (bergdb 031-06). On a map in key order, operations
+with one operation a key, of which the marked ones put pairs that the map holds,
+give the map that the unmarked ones give: a marked put leaves the map as it is,
+and no later operation is at its key. -/
+theorem applyOps_drop_copies (mk : Op → Bool) : ∀ (ops : List Op) (m : List (Key × Nat)),
+    m.Pairwise KvLt → (ops.map Op.key).Nodup →
+    (∀ op ∈ ops, mk op = true → ∃ k v, op = .put k v ∧ (k, v) ∈ m) →
+    applyOps ops m = applyOps (ops.filter (fun op => !mk op)) m
+  | [], _, _, _, _ => rfl
+  | op :: ops, m, hs, hnd, hc => by
+    rw [List.map_cons, List.nodup_cons] at hnd
+    by_cases hmk : mk op = true
+    · obtain ⟨k, v, rfl, hkv⟩ := hc _ List.mem_cons_self hmk
+      rw [applyOps_cons', List.filter_cons_of_neg (by simp [hmk])]
+      change applyOps ops (mapPut k v m) = _
+      rw [mapPut_existing hs hkv]
+      exact applyOps_drop_copies mk ops m hs hnd.2
+        (fun op' hop' hm' => hc op' (List.mem_cons_of_mem _ hop') hm')
+    · rw [applyOps_cons', List.filter_cons_of_pos (by simpa using hmk), applyOps_cons']
+      apply applyOps_drop_copies mk ops (step m op) (step_sorted op hs) hnd.2
+      intro op' hop' hm'
+      obtain ⟨k, v, rfl, hkv⟩ := hc op' (List.mem_cons_of_mem _ hop') hm'
+      refine ⟨k, v, rfl, mem_step_of_ne ?_ hkv⟩
+      intro he
+      have : (Op.put k v).key ∈ ops.map Op.key := List.mem_map_of_mem hop'
+      rw [show (Op.put k v).key = op.key from he] at this
+      exact hnd.1 this
+
+/-- **A record's effect on the user keys is its action's** (bergdb 031-06): with
+one operation a key, and its copies puts of the values that their keys hold before
+it, the user keys after the record are as after its operations at user keys
+without the copies, the action's. -/
+theorem record_preserves_users (mk : Op → Bool) {ops : List Op} {m : List (Key × Nat)}
+    (hs : m.Pairwise KvLt) (hnd : (ops.map Op.key).Nodup)
+    (hc : ∀ op ∈ ops, mk op = true → ∃ k v, op = .put k v ∧ refGet m k = some v) :
+    (applyOps ops m).filter (fun kv => userKey kv.1) =
+      applyOps (ops.filter (fun op => userKey op.key && !mk op))
+        (m.filter (fun kv => userKey kv.1)) := by
   rw [applyOps_filter userKey ops m hs]
-  have hf : ops.filter (fun op => userKey op.key) = [] := by
-    apply List.filter_eq_nil_iff.mpr
-    intro op hop
-    simp [userKey, hr op hop]
+  have hf : ops.filter (fun op => userKey op.key && !mk op) =
+      (ops.filter (fun op => userKey op.key)).filter (fun op => !mk op) := by
+    rw [List.filter_filter]
+    apply List.filter_congr
+    intro op _
+    exact Bool.and_comm _ _
   rw [hf]
-  rfl
+  apply applyOps_drop_copies mk _ _ (hs.filter _)
+    (List.Nodup.sublist (List.Sublist.map Op.key (List.filter_sublist ..)) hnd)
+  intro op hop hmk
+  obtain ⟨hop, hu⟩ := List.mem_filter.mp hop
+  obtain ⟨k, v, rfl, hg⟩ := hc op hop hmk
+  exact ⟨k, v, rfl, List.mem_filter.mpr ⟨mem_of_lookup' hg, by simpa [Op.key] using hu⟩⟩
 
 /-- The contract gives the full plain reference at the state of every time. -/
 theorem MeetsFull.contents_ref {p : Params} {h : BHist} {top : Nat → Top}
@@ -120,9 +152,10 @@ theorem MeetsFull.contents_ref {p : Params} {h : BHist} {top : Nat → Top}
 
 /-- **Maintenance preserves the users' reference at every history time.**
 This includes times inside an iteration, before any cut, and intervening
-user puts and deletes. No equality of references is assumed. -/
+user puts and deletes, in the records that carry the steps (bergdb 031-06) and
+in others. No equality of references is assumed. -/
 theorem user_contents_at {p : Params} {h : BHist} {top : Nat → Top}
-    (hm : MeetsFull p h top) (hM : 1 ≤ p.M) {maintenance : Nat → Bool}
+    (hm : MeetsFull p h top) (hM : 1 ≤ p.M) {maintenance : Nat → Op → Bool}
     (hmaint : MaintenanceOK h maintenance) : ∀ t, t ≤ h.txs.length →
       (contents ((h.tree t).at t)).filter (fun kv => userKey kv.1) =
         refMap ((userTransactions h maintenance).take t)
@@ -142,23 +175,19 @@ theorem user_contents_at {p : Params} {h : BHist} {top : Nat → Top}
         (userTransactions h maintenance).take j ++ [(userTransactions h maintenance)[j]] := by
       rw [List.take_add_one, List.getElem?_eq_getElem hju]
       rfl
-    rw [htake, refMap_snoc, userTransactions_get h maintenance j hj', hc.2]
-    cases hmark : maintenance j with
-    | false =>
-      simp only [Bool.false_eq_true, ite_false]
-      rw [applyOps_filter userKey _ _ hs, user_contents_at hm hM hmaint j (by omega)]
-    | true =>
-      simp only [ite_true]
-      change _ = refMap ((userTransactions h maintenance).take j)
-      rw [← user_contents_at hm hM hmaint j (by omega)]
-      rcases hmaint j hj' hmark with hr | ⟨c, E, L, rule, hstep⟩
-      · exact reserved_preserves_users _ _ hs hr
-      · exact hstep.preserves_users hs
+    rw [htake, refMap_snoc, userTransactions_get h maintenance j hj', hc.2,
+      ← user_contents_at hm hM hmaint j (by omega)]
+    obtain ⟨hnd, hcp⟩ := hmaint j hj'
+    refine record_preserves_users (maintenance j) hs hnd (fun op hop hmk => ?_)
+    obtain ⟨c, E, L, rule, hst⟩ := hcp op hop hmk
+    cases op with
+    | del k => exact hst.elim
+    | put k v => exact ⟨k, v, rfl, hst.2⟩
 
 /-- The old all-operations reference, restricted to user keys, equals the
 independent reference that excludes maintenance operations altogether. -/
 theorem user_refMap {p : Params} {h : BHist} {top : Nat → Top}
-    (hm : MeetsFull p h top) (hM : 1 ≤ p.M) {maintenance : Nat → Bool}
+    (hm : MeetsFull p h top) (hM : 1 ≤ p.M) {maintenance : Nat → Op → Bool}
     (hmaint : MaintenanceOK h maintenance) {t : Nat} (ht : t ≤ h.txs.length) :
     (refMap ((h.txs.map (·.ops)).take t)).filter (fun kv => userKey kv.1) =
       refMap ((userTransactions h maintenance).take t) := by
@@ -293,33 +322,18 @@ theorem JReadsRight.users {s : Tree} {tp : Top} {t : Nat} {mid : Bool}
     rw [hr.2 req hreq limit, ← hu]
     exact refScan_user_range _ _ huser _
 
-/-- Cuts whose iterations follow the strengthened step model, with every
-step designated maintenance. The remaining cut premises are unchanged. -/
-def CutsMeetMaintenanceSteps (h : BHist) (al : SIS.Algo BVal Nat)
-    (cs : List (Nat × Option Nat × List SIS.HCacheOp)) (maintenance : Nat → Bool) : Prop :=
-  ∀ j (hjl : j < cs.length) c, cs[j].2.1 = some c →
-    (∀ i (hi : i < j) c', cs[i].2.1 = some c' → c' ≤ c) ∧
-    ∃ it : Iteration, it.c = c ∧ StepsOK h it ∧
-      (∀ st ∈ it.steps, maintenance st.j = true) ∧
-      it.last ≤ SIS.lastFa (SIS.run h.spec al (h.ts.take (j + 1))).S ∧
-      RC4 h.spec al h.ts it.last (j + 1)
-
-theorem CutsMeetMaintenanceSteps.cutsMeetSteps {h : BHist} {al : SIS.Algo BVal Nat}
-    {cs : List (Nat × Option Nat × List SIS.HCacheOp)} {maintenance : Nat → Bool}
-    (hc : CutsMeetMaintenanceSteps h al cs maintenance) : CutsMeetSteps h al cs := by
-  intro j hj c hcut
-  obtain ⟨hord, it, hci, hit, -, hfa, hwait⟩ := hc j hj c hcut
-  exact ⟨hord, it, hci, hit, hfa, hwait⟩
-
 /-- **Reclaim preserves users' reads after cuts** (bergdb 030-35), for any
-history meeting the writer's contract, K-LEVEL and VAL-NEW. -/
+history meeting the writer's contract, K-LEVEL and VAL-NEW, with cuts whose
+iterations' steps follow the model and copy marks that are its steps' copies
+(bergdb 031-06: until then the steps were marked as maintenance transactions,
+`CutsMeetMaintenanceSteps`). -/
 theorem reclaim_user_reads_steps {p : Params} {h : BHist} {top : Nat → Top}
-    {kind : Nat → Bool} {maintenance : Nat → Bool}
+    {kind : Nat → Bool} {maintenance : Nat → Op → Bool}
     (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hkd : KindsOK kind h) (hv : ValNew h)
     (hmaint : MaintenanceOK h maintenance)
     (al : SIS.Algo BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec) (hmk : al.mark = true)
     (hpol : SIS.PolicyCutOK al) (cs : List (Nat × Option Nat × List SIS.HCacheOp))
-    (hcs : cs.map (·.1) = h.ts) (hit : CutsMeetMaintenanceSteps h al cs maintenance)
+    (hcs : cs.map (·.1) = h.ts) (hit : CutsMeetSteps h al cs)
     (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
       SIS.HCacheOp.read t ∈ cs[j].2.2 →
       SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)
@@ -331,7 +345,7 @@ theorem reclaim_user_reads_steps {p : Params} {h : BHist} {top : Nat → Top}
       JUserReadsRight s tp t mid (userTransactions h maintenance) := by
   intro V hs htp
   have hr := reclaim_java_reads_steps hm hM hkd hv al hj hmk hpol cs hcs
-    hit.cutsMeetSteps hreads hft htn mid s tp hs htp
+    hit hreads hft htn mid s tp hs htp
   exact hr.users (user_refMap hm hM hmaint htn)
 
 end Contract
@@ -343,18 +357,19 @@ variable {cf : Cfg}
 /-- **PE's reclaim preserves the users' values** (bergdb 030-35): after
 reclaim's cuts, with handles, evictions and restarts, every retained-time
 user get and scan agrees with the reference of users' operations alone.
-All maintenance transactions are excluded, including step rewrites. The
-premises describe local step operations and namespace-only stores, never
-the equality of the full and users-only references. -/
+Every copy is excluded (since bergdb 031-06 by its mark, an operation of a
+record that may hold an action too), and every store of reclaim's reserved
+keys. The premises describe the copies locally, never the equality of the
+full and users-only references. -/
 theorem pe_reclaim_user_reads_steps (hcf : cf.Ok) (hcap : cf.topBase ≤ 2 ^ 62)
-    {txs : List (List Op)} {h : BHist} {top : Nat → Top} {maintenance : Nat → Bool}
+    {txs : List (List Op)} {h : BHist} {top : Nat → Top} {maintenance : Nat → Op → Bool}
     (hlen : txs.length < 2 ^ 48 - 1) (hk : ∀ ops ∈ txs, (ops.map Op.key).Nodup)
     (hh : peHist cf txs = some (h, top)) (hM : 1 ≤ cf.params.M)
     (hmaint : MaintenanceOK h maintenance)
     (al : SIS.Algo SIS.Check.BVal Nat) (hj : al.stillDirty = SIS.javaTest h.spec)
     (hmk : al.mark = true) (hpol : SIS.PolicyCutOK al)
     (cs : List (Nat × Option Nat × List SIS.HCacheOp)) (hcs : cs.map (·.1) = h.ts)
-    (hit : CutsMeetMaintenanceSteps h al cs maintenance)
+    (hit : CutsMeetSteps h al cs)
     (hreads : ∀ j (hjl : j < cs.length), cs[j].2.1 = none → ∀ t,
       SIS.HCacheOp.read t ∈ cs[j].2.2 →
       SIS.lastFa (SIS.run h.spec al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1)

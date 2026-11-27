@@ -17,7 +17,9 @@ Checks, per transaction i of the trace, from Java's structure before it:
   C-T4  the reads: each GET line is the model's `get` on Java's structure, each
         SCAN line the model's `scan`
   C-T5  the touch (reclaim's steps): the TOUCH line is the model's `touchOf`:
-        the index nodes on the paths of the transaction's keys
+        the index nodes on the paths of the step's copies (`OP C`) and of reclaim's
+        row (since bergdb 031-06, when a step came to ride in a commit's record
+        beside the action's operations; until then all the transaction's keys)
   C-T6  the invariants (SIS/Tree/Inv.lean, `faultsAt`): on Java's structure after
         the transaction, at its time: the leftmost rule (LE-b), a live klong in
         every node but the space root, two in an inner root, the order, the

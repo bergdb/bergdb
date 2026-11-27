@@ -53,12 +53,18 @@ Checks, per transaction i (R(0) included):
        the tree model's reads: per STEP line, at the step's state, L is the L' of the
        iteration's step before (none for its first), c <= t0 + 1, L' is L or a key of
        the range (the live keys after L up to E, the greatest key live after T(t0)),
-       with eod the range's last, the step puts every KV of the range up to L' whose
-       value node was made before c, each with the value the scan read (since bergdb
-       030-34), and its operations have distinct keys, are those puts and the row's
-       put, at the row's key in the model (`-current.txt` under `/#i/dreclaim/`, since
-       bergdb 030-39; until then the key of the trace's first step's row), and no
-       delete (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops); a
+       with eod the range's last, the record writes every KV of the range up to L'
+       whose value node was made before c (a copy, `OP C`, or the action's put or
+       delete at its key, or reclaim's row or table there; since bergdb 031-06 a step
+       rides in a commit's or a part's record), each copy with the value the scan read
+       (since bergdb 030-34) and of such a KV, the record's operations have distinct
+       keys, and it puts the row, at the row's key in the model (`-current.txt` under
+       `/#i/dreclaim/`, since bergdb 030-39; until then the key of the trace's first
+       step's row) (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops);
+       every record against its action as submitted, its ACT lines (STEP-action, since
+       bergdb 031-06): the operations that are not copies are the action's, each with
+       its value, and puts of reclaim's at its reserved keys, no copy at a key the action
+       writes, copies only in a step's record; a
        STEP line in every record with a TOUCH line and in no other (STEP-line); and per
        CUT line, the iteration with its c has its last step, with eod, at the CUT's
        first available time (CUT-steps). Since bergdb 030-31, at each restart of run A
@@ -150,11 +156,12 @@ def main (args : List String) : IO UInt32 := do
   | file :: rest =>
     let o := parseOpts rest {}
     let text ← IO.FS.readFile file
-    -- RESTART and RESUME lines (bergdb 030-31) are read by Check/Tree.lean only: the trace
-    -- parser of Check/Trace.lean is pinned (lean/contract/statements.pin), and a restart
-    -- changes nothing that its checks read.
+    -- RESTART and RESUME lines (bergdb 030-31) and ACT lines (bergdb 031-06) are read by
+    -- Check/Tree.lean only: the trace parser of Check/Trace.lean is pinned
+    -- (lean/contract/statements.pin), and neither a restart nor an action as submitted
+    -- changes anything that its checks read.
     let t := parseTrace ("\n".intercalate ((text.splitOn "\n").filter (fun l =>
-      !(l.startsWith "RESTART " || l.startsWith "RESUME "))))
+      !(l.startsWith "RESTART " || l.startsWith "RESUME " || l.startsWith "ACT "))))
     IO.println s!"TRACECHECK {file}"
     IO.println s!"CONFIG {t.config}"
     IO.println s!"options: step3 {if o.mark then "mark" else "exact"}, step7 {if o.java7 then "java" else "exact"}, root {if o.virtual then "virtual" else "model"}{if o.inv then ", INV-2" else ""}"
@@ -417,7 +424,7 @@ def main (args : List String) : IO UInt32 := do
       for (i, f) in rep.fails do cstep := cstep.add i f
       IO.println (s!"C-STEP reclaim's steps (bergdb 030-27): {cstep.failing} of {total} transactions fail" ++
         (if cstep.byName.isEmpty then "" else s!" ({", ".intercalate (cstep.byName.map (fun p => s!"{p.1} {p.2}"))})") ++
-        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked put again with the value read, {rep.cuts} CUT lines with their iteration's last step" ++
+        s!"; {rep.steps} STEP lines, {rep.iterations} iterations ({rep.ended} ended by a step with eod), {rep.old} old KVs met and checked written by their record, {rep.copies} copies checked with the value read, {rep.actions} records checked against their actions as submitted ({rep.actionOps} operations), {rep.cuts} CUT lines with their iteration's last step" ++
         (if rep.restarts == 0 then "" else
           s!"; {rep.restarts} restarts ({rep.crashes} crashes), {rep.resumed} with an iteration in progress, {rep.spans} iterations with a step before a restart and the next after it"))
       for e in cstep.examples do IO.println s!"  {e}"

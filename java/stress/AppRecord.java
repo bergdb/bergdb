@@ -369,7 +369,9 @@ public final class AppRecord {
             clock.setTime(m[1]);
             int before = recs.size();
             for (int calls = 0; recs.size() - before < m[0] && calls < 100; calls++) {
-                if (!db.maintain()) break;
+                long length = db.getStreamLength();
+                db.maintain(Reclaim.MAINTAIN_MIN_BUDGET);       // bergdb 031-04
+                if (db.getStreamLength() == length) break;
             }
             replayedMaintain += recs.size() - before;
         }

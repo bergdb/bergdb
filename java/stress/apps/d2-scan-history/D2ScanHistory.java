@@ -158,7 +158,7 @@ public final class D2ScanHistory {
                 }
                 for (int n = 0; n < 5; n++) {
                     clock.setTime(Time.units(clock.getTime() + 40000000L));
-                    int steps = 0; while (db.maintain()) check(++steps < 10000, "maintenance did not quiesce");
+                    db.maintain(100000);
                     db.sync(); app.boundaries(db);
                 }
                 app.lastFirst = db.getFirstAvailableLookupTime().units();

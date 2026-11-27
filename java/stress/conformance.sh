@@ -16,10 +16,11 @@
 #   from the cut stream); a trace without a cut fails. Since bergdb 030-27 its traces
 #   are of format 3 with STEP lines (TraceExport's tree=1 and steps=1), and the
 #   checker's C-STEP checks each step of reclaim against the model of the steps
-#   (030-25; since 030-34 also the values it writes back and that it writes nothing
-#   else than them and its row) and each cut against its iteration's last step; a
-#   trace without a STEP
-#   line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
+#   (030-25; since 030-34 also the values it writes back; since 031-06, one record
+#   an action, a step rides in a commit's or a part's record, its copies are OP C
+#   lines, and every record is checked against its action as submitted, its ACT
+#   lines: STEP-action) and each cut against its iteration's last step; a trace
+#   without a STEP line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
 #   restarted after every K-th call and crashed right after every K-th step of reclaim
 #   (TraceExport's restart and crash), RESTART and RESUME lines, and C-STEP's
 #   STEP-resume: an iteration across a restart goes on from the row its last step
@@ -318,7 +319,7 @@ summary() {
     echo "   C-V: $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$3} END {print s+0}') transactions with live differences, $(grep -h '^C-V' $dir/*.check.txt | awk '{s+=$7} END {print s+0}') LIVE lines"
     if [ $1 = reclaim ] || [ $1 = crash ]; then
         echo "   C-CUT: $(grep -h '^C-CUT cuts' $dir/*.check.txt | awk '{f+=$3; n+=$5} END {print f+0 " of " n+0}') CUT lines fail; traces without a cut: $(grep -L '^CUT ' $dir/*.trace | wc -l | tr -d ' ')"
-        echo "   C-STEP: $(grep -h '^C-STEP' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail.*; ([0-9]+) STEP lines, ([0-9]+) iterations \(([0-9]+) ended.*, ([0-9]+) old KVs.*, ([0-9]+) CUT lines.*/\1 \2 \3 \4 \5 \6 \7/' | awk '{f+=$1; t+=$2; s+=$3; i+=$4; e+=$5; o+=$6; c+=$7} END {print f+0 " of " t+0 " transactions fail; " s+0 " STEP lines, " i+0 " iterations (" e+0 " ended by a step with eod), " o+0 " old KVs met and checked put again with the value read, " c+0 " CUT lines with their iteration'"'"'s last step"}'); traces without a STEP line: $(grep -L '^STEP ' $dir/*.trace | wc -l | tr -d ' ')"
+        echo "   C-STEP: $(grep -h '^C-STEP' $dir/*.check.txt | sed -E 's/.*: ([0-9]+) of ([0-9]+) transactions fail[^;]*; /\1 \2 /; s/ STEP lines, / /; s/ iterations \(/ /; s/ ended by a step with eod\), / /; s/ old KVs met and checked written by their record, / /; s/ copies checked with the value read, / /; s/ records checked against their actions as submitted \(/ /; s/ operations\), / /; s/ CUT lines.*//' | awk '{f+=$1; t+=$2; s+=$3; i+=$4; e+=$5; o+=$6; p+=$7; a+=$8; q+=$9; c+=$10} END {print f+0 " of " t+0 " transactions fail; " s+0 " STEP lines, " i+0 " iterations (" e+0 " ended by a step with eod), " o+0 " old KVs met and checked written by their record, " p+0 " copies checked with the value read, " a+0 " records checked against their actions as submitted (" q+0 " operations), " c+0 " CUT lines with their iteration'"'"'s last step"}'); traces without a STEP line: $(grep -L '^STEP ' $dir/*.trace | wc -l | tr -d ' ')"
     fi
     if [ $1 = crash ]; then
         echo "   STEP-resume: $(grep -h '^C-STEP' $dir/*.check.txt | sed -nE 's/.*; ([0-9]+) restarts \(([0-9]+) crashes\), ([0-9]+) with an iteration in progress, ([0-9]+) iterations with.*/\1 \2 \3 \4/p' | awk '{r+=$1; c+=$2; i+=$3; s+=$4} END {print r+0 " restarts (" c+0 " crashes), " i+0 " with an iteration in progress, " s+0 " iterations with a step before a restart and the next after it"}')"

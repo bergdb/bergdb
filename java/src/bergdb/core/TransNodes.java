@@ -37,6 +37,13 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     public ValueNode[] valueNodes;
     public long[][] keys;         // key (segmented key) for each value node, size = valueSize
     
+    /**
+     * bergdb 031-06: the keys of reclaim's copies in this record, sorted, or null if none
+     * (Maintenance.Plan.copyKeys): their value nodes are stored with the copy mark
+     * (StoredValueNode). Set by Db before the record is appended; clear() drops it.
+     */
+    public long[][] copyKeys;
+    
     
     public TransNodes() {
         topNodes = new TopNode[INITIAL_SIZE];
@@ -143,7 +150,14 @@ public final class TransNodes implements IDirtyNodes.TransNodesForMe, TransSeq.T
     /**
      * Clears the set of transaction nodes so it becomes empty.
      */
+    /** bergdb 031-06: whether the value node of 'key' is one of reclaim's copies (copyKeys). */
+    public final boolean isCopy(long[] key) {
+        return copyKeys != null && java.util.Arrays.binarySearch(copyKeys, key,
+                bergdb.dag.Keys::compareArrays) >= 0;
+    }
+    
     public final void clear() {
+        copyKeys = null;
         //
         // The arrays are reset to initialSize once in a while if they are long to 
         // avoid memory leak. Prime numbers are used.

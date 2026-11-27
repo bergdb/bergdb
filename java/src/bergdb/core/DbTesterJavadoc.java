@@ -352,8 +352,8 @@ public class DbTesterJavadoc {
 
     /**
      * DbBuilder's refusals: id(null), stream() with a null name
-     * or stream or a negative buffer size or time, reclaimStepReserve() below 1, each with
-     * IllegalArgumentException, and a second stream's name with IllegalStateException;
+     * or stream or a negative buffer size or time, each with
+     * IllegalArgumentException (and until bergdb 028-68 reclaimStepReserve() below 1), and a second stream's name with IllegalStateException;
      * mainStream() replaces a stream of any name, stream() one of the same name; a buffer
      * size or time of 0 taken; build() without a stream,
      * IllegalStateException, with a null clock IllegalArgumentException. Trans.Builder's: a
@@ -369,7 +369,6 @@ public class DbTesterJavadoc {
             () -> Db.builder().stream("main", null),
             () -> Db.builder().stream("main", s, -1, 10),
             () -> Db.builder().stream("main", s, 100, -1),
-            () -> Db.builder().reclaimStepReserve(0),
             () -> Db.builder().testSetup().clock(null).build(),
             () -> new Trans.Builder().put(new byte[] {5}, null),
             () -> new Trans.Builder().put(new long[] {5}, null),

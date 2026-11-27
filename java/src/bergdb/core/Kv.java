@@ -34,6 +34,12 @@ public final class Kv {
     boolean coreWrite;
     
     /**
+     * bergdb 031-06: a KV of the maintenance that a record carries (Maintenance.Plan): its
+     * value transformation, if any, runs in Db.putKvs after the touch, without a read.
+     */
+    boolean planned;
+    
+    /**
      * The constructor does not copy arrays, just references.
      * Arrays must not be changed by caller after this constructor is called.
      */

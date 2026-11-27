@@ -45,6 +45,7 @@ public class Pack implements IPack {
         Reclaim.class,
         Reclaim.Tester.class,
         ReclaimMaintainTester.class,
+        ReclaimRoomTester.class,
         ReclaimReaderTester.class,
         ReclaimRetentionTester.class,
         Reclaim.IterationInfo.class,

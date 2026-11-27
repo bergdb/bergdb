@@ -10,6 +10,31 @@ import SIS.Tree.Top
 import SIS.Tree.Pe
 import Std.Data.HashMap
 
+namespace SIS.Check
+
+/-- The key of reclaim's row, the iteration in progress (bergdb 030-35): Java's
+`Reclaim.CURRENT_KEY_NAME`, `-current.txt` under `/#i/dreclaim/`, as `Keys.toSegments`
+makes it, which is how a trace writes a key; the model's `Contract.reclaimRow` (lean/contract's
+Contract/ReclaimSteps.lean), the key at which `StepTx` requires every step to put its row.
+Contract/ReclaimValuesExample.lean proves the two equal (`checker_row`). Until 2026-11-23
+C-STEP took the row's key from the trace's first step, so that a changed value of a key
+met could pass as the row (bergdb 030-39, F1). In this file since bergdb 031-06 (until then
+in Check/Steps.lean): a step's touch is the paths of its copies and of the row (C-T5, C-T9). -/
+def reclaimRowKey : SIS.Tree.Key :=
+  [0x495ac0599d19f8, 0x195b98dadbc04bf8, 0x195ddd1d19dc1db8, 0xc1d9e9d80000020]
+
+/-- A key of reclaim's reserved prefix, `/#i/dreclaim/` (the row, the table, the settings):
+the bounds of the model's `Contract.reclaimKey` (Contract/ReclaimSteps.lean), its byte-key
+encoding as compare values, the upper bound with its last byte incremented (bergdb 031-06). -/
+def reclaimReserved (k : SIS.Tree.Key) : Bool :=
+  !SIS.Tree.keyLt k [0x495ac0599d19f8, 0x195b98dadbc04030] &&
+    SIS.Tree.keyLt k [0x495ac0599d19f8, 0x195b98dadbc08030]
+
+#guard reclaimReserved reclaimRowKey
+#guard !reclaimReserved [8]
+
+end SIS.Check
+
 namespace SIS.Check.Tree
 
 open SIS SIS.Check SIS.Tree
@@ -49,8 +74,15 @@ structure TResume where
 structure TTx where
   idx : Nat
   base : Option Nat := none
-  /-- The OP lines, in order; true for `OP N`, a delete that was a noop. -/
+  /-- The OP lines, in order; true for `OP N`, a delete that was a noop. An `OP C` (a copy of
+  reclaim's step, the copy mark of its value node; bergdb 031-06) is a put here, and its key is
+  in `copies` too. -/
   ops : Array (SIS.Tree.Op × Bool) := #[]
+  /-- The keys of the `OP C` lines, in order: the record's copies (bergdb 031-06). -/
+  copies : Array Key := #[]
+  /-- ACT lines (bergdb 031-06; with the exporter's steps=1): the record's action as submitted,
+  its puts with their values' hashes and its deletes, in the order given. -/
+  acts : Array SIS.Tree.Op := #[]
   /-- KN lines: Java's key nodes after the transaction. -/
   kns : Array (NodeId × KNode) := #[]
   /-- GET lines: the time, the key, and Java's answer (a value's hash). -/
@@ -186,12 +218,25 @@ def parseTreeLine (t : TTrace) (n : Nat) (line : String) : TTrace :=
       | some h => modTx t (fun x => { x with ops := x.ops.push (.put k h, false) })
       | none => bad "bad OP P"
     | _ => bad "bad OP P"
+  | "OP" :: "C" :: r => match takeKey r with
+    | some (k, [h]) => match h.toNat? with
+      | some h => modTx t (fun x => { x with ops := x.ops.push (.put k h, false), copies := x.copies.push k })
+      | none => bad "bad OP C"
+    | _ => bad "bad OP C"
   | "OP" :: "D" :: r => match takeKey r with
     | some (k, []) => modTx t (fun x => { x with ops := x.ops.push (.del k, false) })
     | _ => bad "bad OP D"
   | "OP" :: "N" :: r => match takeKey r with
     | some (k, []) => modTx t (fun x => { x with ops := x.ops.push (.del k, true) })
     | _ => bad "bad OP N"
+  | "ACT" :: "P" :: r => match takeKey r with
+    | some (k, [h]) => match h.toNat? with
+      | some h => modTx t (fun x => { x with acts := x.acts.push (.put k h) })
+      | none => bad "bad ACT P"
+    | _ => bad "bad ACT P"
+  | "ACT" :: "D" :: r => match takeKey r with
+    | some (k, []) => modTx t (fun x => { x with acts := x.acts.push (.del k) })
+    | _ => bad "bad ACT D"
   | "KN" :: x :: l :: cnt :: r => match x.toNat?, cnt.toNat?, parseKlongs r with
     | some x, some cnt, some ks =>
       if ks.length != cnt || (l != "0" && l != "1") then bad "bad KN"
@@ -293,6 +338,11 @@ def firstDiff {α : Type} [BEq α] (sh : α → String) (model java : List α) :
     | a :: r, b :: s => if a == b then go (i + 1) r s else s!"at {i}: the model has {sh a}, Java {sh b}"
   go 0 model java
 
+/-- The keys whose paths a step's touch visits (bergdb 031-06; Maintenance.Plan.touchKeys):
+its copies (the `OP C` lines) and reclaim's row. Until 031-06 a step was a record of its own,
+and its touch the paths of all its keys, the copies and the row. -/
+def stepTouchKeys (x : TTx) : List Key := x.copies.toList ++ [reclaimRowKey]
+
 /-- Checks transaction r (i ≥ 1) of the trace against the model, from P, Java's
 structure before it; `after` is P with the trace's changes of r. -/
 def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.run do
@@ -393,13 +443,15 @@ def checkTx (p : Params) (P after : PMap) (r : TRec) (x : TTx) : TxResult := Id.
       res := { res with reads := res.reads ++
         [s!"T({i}): SCAN at {sc.t} {repr sc.req} limit {sc.limit}: the model {ms}, Java {sc.results}"] }
   -- C-T5: the touch, on Java's structure before the transaction: a transaction with a
-  -- TOUCH line touches the paths of all its keys (Db.touchPaths, bergdb 024-07).
+  -- TOUCH line touches the paths of its copies' keys and of reclaim's row (Db.touchPaths,
+  -- bergdb 024-07; since bergdb 031-06 a step is in a commit's record beside the action's
+  -- operations, whose paths it does not touch: `stepTouchKeys`).
   if !r.touch.isEmpty then
     res := { res with touchCount := res.touchCount + 1 }
-    let mt := SIS.Tree.touchOf p (fun y => P[y]?) (i - 1) (ops.map (·.1.key))
+    let mt := SIS.Tree.touchOf p (fun y => P[y]?) (i - 1) (stepTouchKeys x)
     if mt != r.touch then
       res := { res with touch := res.touch ++
-        [s!"T({i}): the touch of the paths of its keys: the model {mt}, Java {r.touch}"] }
+        [s!"T({i}): the touch of the paths of its copies and the row: the model {mt}, Java {r.touch}"] }
   -- C-T6: the invariants, on Java's structure after the transaction, at its time; and
   -- every pointer of an entry added names a node of P (live or dead: TP4).
   for f in faultsAt p viewA i do

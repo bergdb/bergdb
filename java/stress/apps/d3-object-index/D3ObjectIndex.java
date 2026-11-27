@@ -257,7 +257,7 @@ public final class D3ObjectIndex {
                 app.verify(db, before); app.verify(db, deleted); app.verify(db, app.save(db)); db.sync();
                 if (retain) for (int n = 0; n < 6; n++) {
                     clock.setTime(Time.units(clock.getTime() + 40000000L));
-                    int steps = 0; while (db.maintain()) check(++steps < 10000, "maintenance did not quiesce");
+                    db.maintain(100000);
                     db.sync(); app.verify(db, app.save(db));
                     app.verify(db, app.snapshots.get(app.random.nextInt(app.snapshots.size())));
                 }

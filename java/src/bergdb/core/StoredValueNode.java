@@ -17,7 +17,8 @@ import bergdb.storage.VersioningStreamException;
  * This class is responsible for how to store a ValueNode in the stream.
  * 
  * <p>Format version 5 of record format 7, little-endian: bytes 0 to 3, the size; 4, the type
- * (value or delete); 5, the version; 6 and 7, zero; 8 to 11, the checksum (NodeChecksum); 12
+ * (value or delete); 5, the version; 6, the flags, 1 for one of reclaim's copies (the copy
+ * mark, bergdb 031-06; zero before), else 0; 7, zero; 8 to 11, the checksum (NodeChecksum); 12
  * to 19, the node id; 20 to 23, the node's offset in its record's bytes; for a value, 24 to
  * 27, its length L, then its L bytes; then the key's size in bytes, 8 * k, and its k
  * segments; then zeros to a multiple of 4. In version 4, until the checksum's 4 bytes (bergdb
@@ -53,6 +54,18 @@ public class StoredValueNode implements StoredNode {
     
     private ValueNode node;
     private long[] key;
+    
+    /**
+     * bergdb 031-06: the copy mark: the node is one of reclaim's copies of a live value, put
+     * again at the key by the maintenance that a record carries (Reclaim), not a write of the
+     * record's action. Stored in byte 6; covered by the checksum.
+     */
+    private boolean copy;
+    
+    /** bergdb 031-06: see 'copy'. */
+    public boolean isCopy() {
+        return copy;
+    }
 
     private StoredValueNode() {
     }
@@ -126,7 +139,14 @@ public class StoredValueNode implements StoredNode {
                     + "format version " + version + ".");
         }
         
-        offset += 2; // zero bytes
+        // The flags (bergdb 031-06: the copy mark), then a zero byte; any other value is
+        // refused, so that a later meaning of the bytes is not read as this one.
+        final byte flags = buffer[offset];
+        if ((flags & ~1) != 0 || buffer[offset + 1] != 0) {
+            throw new StreamFormatException("Bad flags of value node at spos " + spos + ", "
+                    + flags + " " + buffer[offset + 1] + ".");
+        }
+        offset += 2;
         offset += NodeChecksum.SIZE; // checksum bytes, checked before parsing
         
         long id = Bytes.bytesToLongLE(buffer, offset);
@@ -184,6 +204,7 @@ public class StoredValueNode implements StoredNode {
         StoredValueNode stored = new StoredValueNode();
         stored.node = valueNode;
         stored.key = key;
+        stored.copy = flags == 1;
         return stored;
     }
 
@@ -236,6 +257,12 @@ public class StoredValueNode implements StoredNode {
      *      The number of bytes required to store the value node.
      */
     public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int bufferOffset) {
+        return toBytes(node, key, buffer, bufferOffset, false);
+    }
+    
+    /** As toBytes() above, with the copy mark if 'copy' (bergdb 031-06). */
+    public static int toBytes(ValueNode node, long[] key, byte[] buffer, final int bufferOffset,
+            boolean copy) {
         int offset = bufferOffset;
         int byteSize = getByteSize(node, key);
         long myLong;
@@ -244,7 +271,8 @@ public class StoredValueNode implements StoredNode {
 
         myLong = ((long) byteSize) 
                 | (nodeType << (4 * 8)) 
-                | (FORMAT_VERSION << (5 * 8));
+                | (FORMAT_VERSION << (5 * 8))
+                | ((copy ? 1L : 0L) << (6 * 8));      // the copy mark (bergdb 031-06)
         
         Bytes.longToBytesLE(myLong, buffer, offset);
         offset += 8;
@@ -343,6 +371,39 @@ public class StoredValueNode implements StoredNode {
                 Assert.assertArrayEquals(where, value, stored.getNode().value);
                 Assert.assertArrayEquals(key, stored.getKey());
             }
+        }
+    }
+    
+    /**
+     * The copy mark (bergdb 031-06): byte 6 is 1 for a copy, 0 otherwise, under the checksum,
+     * and parsed back; another value of byte 6 or 7 is refused.
+     */
+    @Nano
+    private static void testCopyMark() {
+        long[] key = Keys.toSegments("/-mykey.txt");
+        ValueNode node = new ValueNode(new byte[5], Spos.NULL);
+        final int size = getByteSize(node, key);
+        for (boolean copy : new boolean[] {false, true}) {
+            byte[] buffer = new byte[size];
+            toBytes(node, key, buffer, 0, copy);
+            Assert.assertEquals(copy ? 1 : 0, buffer[6]);
+            StoredValueNode stored = (StoredValueNode) NodeStream.bytesToNode(128, buffer, 0, size);
+            Assert.assertEquals(copy, stored.isCopy());
+            byte[] other = buffer.clone();
+            other[6] ^= 1;          // the checksum covers the mark
+            try {
+                NodeStream.bytesToNode(128, other, 0, size);
+                throw new AssertionError("parsed");
+            } catch (StreamChecksumException e) {
+                // Expected.
+            }
+        }
+        for (int at : new int[] {6, 7}) {
+            byte[] buffer = new byte[size];
+            toBytes(node, key, buffer, 0, false);
+            buffer[at] = 2;
+            String refused = parseWithRightChecksum(buffer, size);
+            Assert.assertTrue(refused, refused.startsWith("Bad flags"));
         }
     }
     

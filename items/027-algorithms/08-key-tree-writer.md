@@ -587,8 +587,11 @@ of 1.9; values are not in that set.
 ### 4.2. The dirty nodes: dirtyNodeBound
 
 Before the go point a user transaction is refused if the index nodes it
-can make dirty or create could pass the record's index limit, 15/16 of
-the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31):
+can make dirty or create could pass the action's index limit, 7/8 of
+the record limit (`Db.checkDirtyNodes`; 027-03, section 8.3; 005-31;
+15/16 until 031-06, which leaves a sixteenth to the step that the record
+may carry and counts the record's KVs together within 15/16,
+`Db.recordDirtyFits`):
 
 * a transaction with a key transformation is counted after its key
   transformations, with the keys they gave, in the same way: under the

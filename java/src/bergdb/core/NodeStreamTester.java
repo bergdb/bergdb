@@ -92,6 +92,55 @@ public class NodeStreamTester {
         }
     }
 
+    /**
+     * bergdb 031-06 (Frans, 2026-11-27, 14:36): release 2026.7 does not open a database of
+     * release 2026.6, whose records are of format 8. A start on a stream whose records are
+     * of format 8, here this build's database with each record's format byte set to 8, is
+     * refused with a VersioningStreamException that names release 2026.6, and nothing is
+     * appended to the stream.
+     */
+    @Nano
+    private static void testStartRefusesFormat8() throws IOException {
+        final MemoryStream s = new MemoryStream();
+        final CoreTestClock clock = new CoreTestClock();
+        clock.setTime(1000 * 1000);
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            for (int i = 0; i < 20; i++) {
+                clock.setTime(1000 * 1000 + 1000 * (i + 1));
+                db.execute(db.trans().put("/k" + i, "v" + i).build());
+            }
+        }
+        final byte[] bytes = new byte[(int) s.getLength()];
+        s.read(0, bytes, 0, bytes.length);
+        int records = 0;
+        for (long pos = RecoverableStream.META_BLOCK_SIZE; pos < bytes.length; ) {
+            final int size = Bytes.bytesToIntLE(bytes, (int) pos);
+            final int f = (int) RecoverableStream.getSpos(pos, 4);
+            Assert.assertEquals(StoredTrans.RECORD_FORMAT, bytes[f]);
+            bytes[f] = 8;
+            records++;
+            pos = RecoverableStream.getSpos(pos, size);
+        }
+        Assert.assertTrue("records " + records, records > 20);
+        final MemoryStream old = new MemoryStream();
+        old.append(bytes, 0, bytes.length);
+        Throwable refusal = null;
+        try {
+            Db.builder().testSetup(old).clock(clock).start().close();
+        } catch (Exception e) {
+            refusal = e;
+        }
+        Assert.assertTrue("a stream of format 8 was opened", refusal != null);
+        Throwable c = refusal;
+        while (!(c instanceof bergdb.storage.VersioningStreamException) && c.getCause() != null) {
+            c = c.getCause();
+        }
+        Assert.assertTrue(String.valueOf(refusal), c instanceof bergdb.storage.VersioningStreamException
+                && c.getMessage().contains("format version 8;")
+                && c.getMessage().contains("release 2026.6"));
+        Assert.assertEquals("nothing appended", bytes.length, old.getLength());
+    }
+
     private static void checkCorruptReadSize(int reader) throws IOException {
         for (int size : new int[] {Integer.MAX_VALUE, 1 << 30, -1, 0, 6, 7}) {
             byte[] bytes = new byte[132];

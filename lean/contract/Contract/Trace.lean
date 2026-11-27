@@ -193,6 +193,12 @@ def readLine (tr : Trace) (cur : TxLines) (line : String) : Except String (Trace
     match ← readKey rest with
     | (some k, [v]) => return (tr, { cur with ops := cur.ops ++ [.put k (← num v)] })
     | _ => throw "an OP P line"
+  -- A copy of reclaim's step (bergdb 031-06; 027-02, section 4): to the writer, a put; the
+  -- copy mark changes no node of the tree.
+  | "OP" :: "C" :: rest =>
+    match ← readKey rest with
+    | (some k, [v]) => return (tr, { cur with ops := cur.ops ++ [.put k (← num v)] })
+    | _ => throw "an OP C line"
   | "OP" :: d :: rest =>
     if d != "D" && d != "N" then throw s!"an OP line of kind {d}"
     match ← readKey rest with

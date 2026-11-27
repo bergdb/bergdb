@@ -1586,7 +1586,10 @@ public final class Eviction {
         long cuts = 0;
         for (int s : schedules) {
             Twin w = new Twin(SCHEDULES[s], 1 + s, 1, quick);
-            for (int i = 0; i < (quick ? 100 : 200); i++) {
+            // 150 in the quick run since bergdb 031-06 (100 before): with one record an
+            // action the stream reaches its first meta block, which the first cut waits for,
+            // at about the 100th transaction.
+            for (int i = 0; i < (quick ? 150 : 200); i++) {
                 w.trans("k" + (i * 7 % 40) + "=" + i + big, i % 9 == 0 ? "-k" + (i % 40) : "c=" + i);
                 if (i % 50 == 49) w.restart();
                 w.check(i % 25 == 24);

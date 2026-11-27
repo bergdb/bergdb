@@ -246,8 +246,8 @@ import bergdb.stream.ReadBelowFirstPosException;
  * and which stays live, so that reclaim copies it forward as any live value (bergdb 028-15;
  * until then a value of 200 kB at "/#i/-dummy" at each change); setRetainDuration() and
  * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
- * reclaim, when it runs, keeps its state under "/#i/dreclaim/", as maintain() its filler
- * "/#i/dreclaim/-fill.txt", deleted at once. getMany() returns these keys
+ * reclaim, when it runs, keeps its state under "/#i/dreclaim/" (a stream of 2026.6 may also
+ * hold maintain()'s filler there, "/#i/dreclaim/-fill.txt"). getMany() returns these keys
  * as any other, getTrans() lists them, getTransactionCount() counts their transactions and
  * getKvCount() their KVs. So in every database, used by the Pub API or not, a key whose bytes
  * start with 01 25, the bkey of "/#", is BergDB's: do not write it, and to read only the other
@@ -420,7 +420,11 @@ public class Db implements AutoCloseable {
     /**
      * Writers waiting for writeLock in executeInner (bergdb item 009, step 3d): the eviction
      * thread gives way to them (Eviction.EvictorRun), as a monitor is not fair and a busy
-     * eviction thread would keep the writer out.
+     * eviction thread would keep the writer out. maintain(budget) gives way to them between
+     * its parts (bergdb 031-04, Q9). Counted by every commit that a user's call makes:
+     * executeInner, and the setters of the startup distance and of reclaim's settings,
+     * which commit under their own lock. A writer adds 1 before it takes the lock and takes 1 away as the first
+     * thing under it, so the count is the writers blocked on the lock, or about to be.
      */
     private final java.util.concurrent.atomic.AtomicInteger writersWaiting =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -503,7 +507,8 @@ public class Db implements AutoCloseable {
     // ---- Misc ----
     
     private DatabaseId databaseId;
-    private final TransactionListener reclaimTransactionListener;
+    /** bergdb 031-06: what a record carries besides its action's writes: reclaim, or NONE. */
+    private final Maintenance maintenance;
     private final Internal internal;
     private File createdTxtDir;
     private Cache3 cache;
@@ -599,8 +604,8 @@ public class Db implements AutoCloseable {
         });
         
         this.reclaim = new Reclaim(this, aos);
-        reclaim.setStepReserve(b.reclaimStepReserve);
-        this.reclaimTransactionListener = reclaim;
+        reclaim.setStepReserve(b.testStepReserve);      // the constant but in tests (028-68)
+        this.maintenance = b.maintenanceNone ? Maintenance.NONE : reclaim;    // bergdb 031-06
         // The retain duration and the internal fraction: the stream's, read by
         // Reclaim.initFromDb at the start (bergdb 015-87); not the builder's.
         
@@ -699,7 +704,9 @@ public class Db implements AutoCloseable {
         
         newDistance = Math.max(MIN_STARTUP_DISTANCE, Math.min(MAX_STARTUP_DISTANCE, newDistance));
         
+        writersWaiting.incrementAndGet();
         synchronized (writeLock) {
+            writersWaiting.decrementAndGet();
             // The state first, so that a refused call changes nothing (bergdb 005-53).
             assertDbStateIsActive("setStartupDistance");
             int old = this.startupDistance;
@@ -732,6 +739,7 @@ public class Db implements AutoCloseable {
         Bytes.intToBytesLE(distance, value, 0);
         Trans t = trans().putCore(DbConstants.SD_KEY, value).build();
         t.isInternal = internal;
+        t.noMaintenance = true;     // a setter's record carries none (bergdb 031-06)
         this.execute(t);
     }
     
@@ -839,7 +847,9 @@ public class Db implements AutoCloseable {
      */
     public void setRetainDuration(long duration) {
         Reclaim.checkRetainDuration(duration);
+        writersWaiting.incrementAndGet();
         synchronized (writeLock) {
+            writersWaiting.decrementAndGet();
             // The state first, so that a refused call changes nothing (bergdb 015-87, F6).
             assertDbStateIsActive("setRetainDuration");
             reclaim.setSettings(duration, reclaim.getInternalFractionUnits());
@@ -847,109 +857,163 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Does a bounded part of the database's maintenance now, and returns whether more is due
-     * (bergdb 024-32). Optional: the maintenance goes on in the ordinary operations, at the
-     * application's commits, whether this method is called or not. Frans (2026-11-10, bergdb
-     * 023-04, Y10): "maintenance should be performed while doing other operations on the
-     * database, so the user explicitly calling maintain() should be optional, not a
-     * requirement on the user that she must call maintain." What it adds: a database does
-     * no work by itself (010-01, P3), so with a finite retain duration the space of deleted
-     * and overwritten data comes back only as the application's commits grow the stream: a
-     * reclaim iteration begins at a commit only after more than twice the startup distance
-     * of stream since the last one began (setRetainDuration()). Calls of this method begin
-     * iterations and do their steps by the clock, without that growth. So they help a
-     * database that the application no longer writes to, and one that it writes to slowly
-     * after deleting much: in bergdb 026-13's C2 (30,000 keys deleted, then one value of
-     * 900 bytes overwritten every 5 ms, a startup distance of 1 MB, a retain duration R of
-     * 1 s), commits alone still kept 6.4 MB of stream at 10 R, and with calls until false
-     * after each commit 1.2 MB were kept at 2 R (026-13, U13-4). Called again and again,
-     * with time passing, it brings a database that has been emptied to within about 400 kB
-     * of the stream of a fresh one, as an iteration begins only if its cut, or the next
-     * one's, would release at least 400 kB (below; bergdb 023-02, F7;
-     * java/stress/CountGates.java, G5; 026-13, U13-5; 027-13, section 1.10; 028-51).
+     * Gives the database time for its maintenance now, within a budget (bergdb 031-04).
+     * Optional: the maintenance goes on in the ordinary operations, at the application's
+     * commits, whether this method is called or not (023-04, Y10). What it adds: a database
+     * does no work by itself (010-01, P3), so with a finite retain duration the space of
+     * deleted and overwritten data comes back only as the application's commits grow the
+     * stream. A call continues the reclaim iteration in progress, a commit's or a call's,
+     * waits for or makes its cut, and begins a pass when none runs or waits for its cut and
+     * the stream kept (getStreamLength() - getFirstAvailablePos()) still holds a record of
+     * the application's. A pass that a call begins rewrites every live value stored before
+     * it and cuts at its own start; with the application idle, the calls then go quiet.
      * 
-     * <p>One call does, in the database's own internal transactions, at most: the start of
-     * a reclaim iteration, if a quarter of the retain duration has passed since the last
-     * one began, no done iteration waits for its cut (not cut, its pCut after the first
-     * available position; Reclaim.cutPending) and its cut or the next one's would release at
-     * least 400 kB: the stream from the first available position to where the last one
-     * began, or the stream written since reclaim last stored its table (bergdb 028-51;
-     * until then only the first counted); one reclaim step (about 16 kB of KVs scanned);
-     * one write of index nodes of the startup section that an iteration waits for (at most
-     * 256 kB beyond one transaction's); one filler of at most 200 kB, put and deleted, so
-     * that a meta block follows the cut point;
-     * the cut, when it is due, after a sync if its table is not yet durable; and a batch of
-     * the eviction's dead hand, which drops the objects of versions that a cut has ended
-     * (Eviction; as after a transaction, with a cache budget). Each part is
-     * no larger than what reclaim does after a commit. With a retain duration of forever
-     * there is nothing to do (Reclaim.maintain; bergdb 024-32, section 2).</p>
+     * <p>The budget is the work allowed in the call, in cost units: a unit is about the work
+     * of writing 1 kB to the stream (Reclaim.MAINTAIN_UNIT). It is clamped to 100 .. 100,000
+     * (Reclaim.MAINTAIN_MIN_BUDGET, MAINTAIN_MAX_BUDGET), and is an indication only: the call
+     * may use less, or none, and may go past it by one part's work (a step of about 16 kB of
+     * KVs, a take of at most 256 kB beyond one transaction's, a filler of at most 200 kB).
+     * The cost is counted from deterministic counts only (Reclaim.maintainPart), so that the
+     * stream after the same calls is the same (010-01, P2); the eviction's dead hand, which
+     * writes nothing, is charged by its time, and only after reclaim's work in the call is
+     * done.</p>
      * 
-     * <p>It runs under the write lock, as a commit does: it waits for a running commit, and
-     * a commit waits for it; reads go on as during commits. The sync, if any, is outside the
-     * lock. What it writes depends on the state and the call's time, as a transaction's
-     * does, so the stream is the same after the same calls (010-01, P2). A call when
-     * nothing is due writes nothing.</p>
+     * <p>It works in parts, each under the write lock, as a commit's maintenance is: a part
+     * waits for a running commit, and a commit waits for the part that runs; reads go on.
+     * The lock is a monitor, which is not fair, so the call hands it over (bergdb 031-04,
+     * Q9): before each part, and again under the lock, it gives way while a commit waits for
+     * the lock, and goes on when none does. A commit that comes during a part then waits
+     * for that part only, of the call's work; under commits without a pause the call waits
+     * as long as they come. A cut whose table is not durable is synced outside the
+     * lock, then made. A call when nothing is due writes nothing.</p>
      * 
-     * @return True if more is due now: another call would do more. False if nothing is due
-     *      until time passes (a quarter of the retain duration for the next iteration, the
-     *      retain duration for a cut) or the application writes. A caller that wants the
-     *      space back now calls it until it returns false, and again later.
+     * @param budget  The work allowed, in cost units of about 1 kB written each.
      * @throws IllegalDbStateException, DbStoppingException, DbFailedException  On a
      *      database that is not active, as a transaction (and setRetainDuration()).
      * @throws DbException  If the database has used its top node ordinals, or has no time
      *      left for a user transaction (bergdb 005-02, 015-55): as a transaction is refused.
-     *      Nothing is written then.
+     *      Nothing more is written then.
      * @throws StreamIoException  If the sync is interrupted, or the database is stopping.
      */
-    public boolean maintain() {
-        final long durableAt;
-        synchronized (writeLock) {
-            assertDbStateIsActive("maintain");
-            refuseIfTopOrdinalsUsed();
-            if (!dbClock.userTimeLeft()) {
-                throw new DbException("No database time is left for maintain(): the times "
-                        + "after " + DbClock.LAST_USER_TIME + " are kept for reclaim's "
-                        + "internal transactions after a user transaction. Nothing is written.");
-            }
-            final long now = dbClock.currentTime();
-            final boolean more;
-            try {
-                more = reclaim.maintain(now, dbClock.lookupTime(Long.MAX_VALUE));
-            } catch (DbStoppingException | DbFailedException e) {
-                // stop() or close() came during the call (bergdb 015-53): what is committed
-                // stays, and the rest goes on after the next start. Or one of its internal
-                // transactions failed the database.
-                throw e;
-            } catch (Throwable e) {
-                // As reclaim's work within a commit's go point (executeInner): whatever else
-                // throws fails the database, since reclaim's state in memory may be ahead of
-                // the stream. The checks above refuse a call before it changes anything.
-                if (setFailed(e) == DbState.STOPPING || e instanceof Error) {
-                    if (e instanceof Error) throw (Error) e;
-                    throw (RuntimeException) e;
+    public void maintain(int budget) {
+        // A test's limit of the parts that write (TestHooks.maintainMaxParts), else none.
+        final TestHooks partHooks = testHooks;
+        final int maxParts = partHooks == null ? Integer.MAX_VALUE : partHooks.maintainMaxParts();
+        final long limit = Math.max(Reclaim.MAINTAIN_MIN_BUDGET,
+                Math.min(Reclaim.MAINTAIN_MAX_BUDGET, budget)) * Reclaim.MAINTAIN_UNIT;
+        // A caller that holds the write lock already (none in BergDB) would wait for writers
+        // that cannot get it: it does not give way.
+        final boolean giveWay = !Thread.holdsLock(writeLock);
+        long spent = 0;
+        boolean reclaimDone = false;
+        int parts = 0;
+        while (spent < limit) {
+            long cost = 0, durableAt = -1;
+            if (giveWay) giveWayToWriters();
+            synchronized (writeLock) {
+                assertDbStateIsActive("maintain");
+                if (giveWay && writersWaiting.get() > 0) {
+                    // A commit came between the wait and the lock (bergdb 031-04, Q9): it
+                    // goes first.
+                    continue;
                 }
-                throw new DbFailedException("maintain() failed after it began (the cause); "
-                        + "the database takes no more transactions or reads and must be "
-                        + "restarted: the restart rebuilds it from the stream.", e);
+                if (reclaimDone) {
+                    // The dead hand alone, after reclaim's parts: it writes nothing, so it is
+                    // charged by its time, at MAINTAIN_NANOS a unit.
+                    final long t0 = System.nanoTime();
+                    if (!maintainEviction()) {
+                        return;
+                    }
+                    spent += Math.max(1, (System.nanoTime() - t0) / MAINTAIN_NANOS)
+                            * Reclaim.MAINTAIN_UNIT;
+                    continue;
+                }
+                if (parts >= maxParts) {
+                    return;
+                }
+                cost = maintainPart();
+                if (cost > 0) parts++;
+                durableAt = reclaim.pendingCutDurableAt();
+                if (durableAt == -1 || getDurableLength() >= durableAt) {
+                    durableAt = -1;
+                    reclaim.cutIfDurableNow();
+                    // The dead hand (Eviction), as after a transaction: the objects of the
+                    // versions that the cut ended leave memory, a batch a part.
+                    maintainEviction();
+                }
             }
-            durableAt = reclaim.pendingCutDurableAt();
-            if (durableAt == -1 || getDurableLength() >= durableAt) {
-                reclaim.cutIfDurableNow();
-                // The dead hand (Eviction), as after a transaction: the objects of the
-                // versions that the cut ended leave memory, a batch a call.
-                final boolean dead = maintainEviction();
-                return reclaim.maintainDue(now) || dead;
+            if (durableAt != -1) {
+                // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a
+                // sync outside the lock, then the cut.
+                sync(durableAt - 1, SyncLevel.ORDINARY);
+                while (true) {
+                    if (giveWay) giveWayToWriters();
+                    synchronized (writeLock) {
+                        assertDbStateIsActive("maintain");
+                        if (giveWay && writersWaiting.get() > 0) continue;
+                        reclaim.cutIfDurableNow();
+                        maintainEviction();
+                        break;
+                    }
+                }
             }
+            reclaimDone = cost == 0;
+            spent += cost;
         }
-        
-        // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a sync
-        // outside the lock, then the cut.
-        sync(durableAt - 1, SyncLevel.ORDINARY);
-        synchronized (writeLock) {
-            assertDbStateIsActive("maintain");
-            reclaim.cutIfDurableNow();
-            final boolean dead = maintainEviction();
-            return reclaim.maintainDue(dbClock.currentTime()) || dead;
+    }
+
+    /**
+     * One part of maintain(budget) (bergdb 031-06): an action of its own, through the same
+     * path as a commit, executeLocked(): an empty internal transaction (Trans.part) with its
+     * own time from the clock (DbClock.transactionBegin, refused as a user transaction is
+     * after DbClock.LAST_USER_TIME, and after the top node ordinals), whose record carries
+     * the part's maintenance (Reclaim.planPart), the first of M1 to M6 that is due. A part
+     * with nothing due writes nothing and gives its time back. The caller holds the write
+     * lock and has checked that the database is active.
+     *
+     * @return The part's cost in bytes (Reclaim.planPart): the bytes its record took in the
+     *      stream and a quarter of the bytes its step read; 0 if it wrote nothing.
+     */
+    private long maintainPart() {
+        final Trans t = trans().build();
+        t.isInternal = true;
+        t.part = true;
+        final long length0 = getStreamLength();
+        final Maintenance.Plan plan = executeLocked(t, new Before(t.tt));
+        if (plan == null) {
+            return 0;
+        }
+        return getStreamLength() - length0 + plan.readBytes / 4;
+    }
+    
+    /**
+     * The time of the eviction's dead hand that maintain(budget) charges as a unit of its
+     * budget, in nanoseconds: about the time of writing 1 kB to the stream.
+     */
+    static final long MAINTAIN_NANOS = 5000;
+    
+    /**
+     * maintain(budget)'s handover of the write lock (bergdb 031-04, Q9): waits, without the
+     * lock, while a commit waits for it (writersWaiting); a few spins, then parks of 20 us.
+     * The count falls as each waiting writer gets the lock, which this thread does not hold,
+     * so the wait ends when they have it; a part then waits for the commit that runs, as
+     * any part does. An interrupt is left as it is: parkNanos then returns at once, and the
+     * wait spins until the writers have the lock.
+     */
+    private void giveWayToWriters() {
+        if (writersWaiting.get() == 0) {
+            return;
+        }
+        final TestHooks hooks = testHooks;
+        if (hooks != null) {
+            hooks.givingWay();
+        }
+        for (int spins = 0; writersWaiting.get() > 0; spins++) {
+            if (spins < 100) {
+                Thread.onSpinWait();
+            } else {
+                java.util.concurrent.locks.LockSupport.parkNanos(20 * 1000);
+            }
         }
     }
     
@@ -990,7 +1054,9 @@ public class Db implements AutoCloseable {
             throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
         }
         int units = (int) Math.round(internalFraction * Reclaim.FRACTION_ONE);
+        writersWaiting.incrementAndGet();
         synchronized (writeLock) {
+            writersWaiting.decrementAndGet();
             assertDbStateIsActive("setReclaimInternalFraction");
             reclaim.setSettings(reclaim.getRetainDuration(), units);
         }
@@ -1243,7 +1309,9 @@ public class Db implements AutoCloseable {
         
         this.state = DbState.ACTIVE;
         readStartupDistanceKv(creating);
-        reclaim.initFromDb();
+        // The stream's last record, for a (bergdb 031-04, R3); it is in the section (a
+        // record's startup pos is before its own position).
+        reclaim.initFromDb(transactions.get(transactions.size() - 1));
         synchronized (writeLock) {
             // The admission of the large values that the start made resident, as after a
             // record that this database writes (Eviction.recordWritten): their records are in
@@ -2861,7 +2929,8 @@ public class Db implements AutoCloseable {
     /**
      * The top node ordinals below the bound, TopNode.MAX_TOP_NODE_ID_VALUE, that are left
      * when user transactions are refused (bergdb item 005-02): room for the internal
-     * transactions that run after a user transaction, reclaim's, at most five today.
+     * transactions that ran after a user transaction, reclaim's, at most five; none since
+     * bergdb 031-06, where the margin is kept for now (031-06, Q4).
      */
     private static final long TOP_ORDINAL_MARGIN = 1024;
     
@@ -2914,122 +2983,211 @@ public class Db implements AutoCloseable {
         writersWaiting.incrementAndGet();
         synchronized (writeLock) {
             writersWaiting.decrementAndGet();
-            try {
-                // Again under the lock (bergdb 005-01): a writer that waited for the lock while
-                // another one failed must not run on what the failed one left in memory.
-                assertDbStateIsActive("execute");
-            
-                // The end of the top node ordinals (bergdb item 005-02, register M46): checked
-                // before the transaction changes anything. A transaction makes at most one top
-                // node, and reclaim's internal transactions run only after a user transaction,
-                // within the margin, or at a call of a setter of reclaim's settings, which
-                // Reclaim.setSettings refuses before it as this refuses a user transaction
-                // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
-                // where TopNode throws.
-                // A database that ends here can still be read and restarted.
-                if (!t.isInternal()) {
-                    refuseIfTopOrdinalsUsed();
-                }
-                if (!t.isInternal()) {
-                    checkDirtyNodes(t);
-                }
-                x.begin(t);
-            
-                stmCheckConflicts(t);
-
-                // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
-                // transaction in the times kept for reclaim's internal transactions after it
-                // (bergdb 015-55); before the try, so that nothing has begun or changed when it
-                // throws.
-                t.tt = dbClock.transactionBegin(!t.isInternal());
-            } catch (Error e) {
-                // Recorded before the lock is released, as fail() does after the go point
-                // (bergdb 019-40): a writer that waits for the lock then finds the database
-                // failed.
-                throw failed(e);
-            }
-            
-            // The key transformations, at t.tt, and the refusal of a transaction that they
-            // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
-            // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
-            final Kv[] kvs = transformKeys(t, before);
-            
-            // The index nodes of a user transaction with a key transformation, counted with
-            // the keys that its key transformations gave (bergdb 028-50; checkDirtyNodes()):
-            // before the go point too, and a refusal leaves everything as it was, as those of
-            // transformKeys() do. Until 028-50 only checkDirtyNodes() counted them, with the
-            // keys as given.
-            if (!t.isInternal() && before.keys != null) {
-                checkDirtyNodesAfterKeyTransformations(t, kvs, before);
-            }
-            
-            // The value transformations of a user transaction, at t.tt, and the refusal of one
-            // that throws or whose values pass the limits (bergdb 026-06; 010-04, R5): before
-            // the go point too. Until 026-06 they ran in putKvs(), where that failed the
-            // database. Reclaim's row stays there (transformValues()).
-            if (!t.isInternal()) {
-                transformValues(t, kvs, before);
-            }
-            
-            // The go point. From here nothing refuses the transaction and nothing is undone:
-            // whatever throws fails the database (bergdb 005-01).
-            try {
-                putKvs(kvs);
-
-                // The synch statement below publishes the changes by the writer thread 
-                // (the thread executing this code) to the readers. This is done
-                // before the t.tt can be used as lookup time, so all readers
-                // (that do: "synchronized (readSynch) {}") are guaranteed to see all 
-                // in-memory changes made by the writer.
-                synchronized (readSync) {}
-                
-                // After the call to dbClock.transactionEnd(), read operations may use
-                // t.tt as a lookup time. Not in a finally since bergdb 005-01: when putKvs()
-                // throws, t.tt never becomes a lookup time, and a read that comes in before
-                // the database is seen as failed reads the state before the transaction.
-                dbClock.transactionEnd();
-                
-                stmRecordKeys(t);
-
-                store(); 
-                
-                aux.updateStats();
-                
-                x.startupPos.releaseForEvict();
-                
-                x.trans.listener.transExecuted(x);
-                final TestHooks hooks = testHooks;
-                if (hooks != null) {
-                    hooks.transExecuted(x);
-                }
-                
-                x.end();
-                
-                eviction.afterTransaction(this);
-                if (auditEvery > 0) audit(false);
-
-                // The synch statement guarantees that the writes are visible to all readers 
-                // assuming they also do [synchronized(readSync) {}] before they start reading.
-                synchronized (readSync) {}
-                
-                // 1301 Frans. The below line moved to inside the synchronized (writeLock) block 
-                // to KISS the reclaim stuff. However, fundamentally, it does not have to 
-                // belong to the block.
-                try {
-                    reclaimTransactionListener.transactionCompleted(t);    
-                } catch (DbStoppingException e) {
-                    // stop() or close() came during reclaim's work for this transaction
-                    // (bergdb 015-53). Reclaim's reads and internal transactions are refused
-                    // at their entry, an internal transaction before its go point, so none is
-                    // half written. This transaction is committed (its record is appended, and
-                    // the close writes it), so the call returns, as stop()'s Javadoc says;
-                    // reclaim's work goes on at the next start, as after a crash here. Any
-                    // other exception fails the database, as before.
-                }
-            } catch (Throwable e) {
-                throw fail(t, e);
-            }
+            executeLocked(t, before);
         }
+    }
+    
+    /**
+     * executeInner() under the write lock, for a user transaction, an internal one, and a part
+     * of maintain() (maintainPart(); bergdb 031-06). Every accepted action appends exactly one
+     * record here (031-06, rule 1): the action's KVs and the maintenance that the record
+     * carries (planMaintenance()), merged, one KV a key, in key order.
+     *
+     * @return The plan that the record carried, or null.
+     */
+    private Maintenance.Plan executeLocked(Trans t, final Before before) {
+        try {
+            // Again under the lock (bergdb 005-01): a writer that waited for the lock while
+            // another one failed must not run on what the failed one left in memory.
+            assertDbStateIsActive("execute");
+
+            // The end of the top node ordinals (bergdb item 005-02, register M46): checked
+            // before the transaction changes anything. A transaction makes at most one top
+            // node. A user transaction and a part of maintain() are refused at the bound,
+            // and a setter of reclaim's settings, which Reclaim.setSettings refuses before it
+            // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
+            // where TopNode throws. Since bergdb 031-06 nothing runs after a user transaction.
+            // A database that ends here can still be read and restarted.
+            if (!t.isInternal() || t.part) {
+                refuseIfTopOrdinalsUsed();
+            }
+            if (!t.isInternal()) {
+                checkDirtyNodes(t);
+            }
+            x.begin(t);
+
+            stmCheckConflicts(t);
+
+            // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
+            // transaction in the times kept for reclaim's internal transactions after it
+            // (bergdb 015-55); before the try, so that nothing has begun or changed when it
+            // throws. A part of maintain() takes its time as a user transaction does (bergdb
+            // 031-06; Frans, 2026-11-27, 11:16).
+            t.tt = dbClock.transactionBegin(!t.isInternal() || t.part);
+        } catch (Error e) {
+            // Recorded before the lock is released, as fail() does after the go point
+            // (bergdb 019-40): a writer that waits for the lock then finds the database
+            // failed.
+            throw failed(e);
+        }
+
+        // The key transformations, at t.tt, and the refusal of a transaction that they
+        // leave with two KVs at one key (bergdb 024-16): before the go point, so that the
+        // refusal leaves everything as it was. Until 024-16 they ran in putKvs().
+        final Kv[] kvs = transformKeys(t, before);
+
+        // The index nodes of a user transaction with a key transformation, counted with
+        // the keys that its key transformations gave (bergdb 028-50; checkDirtyNodes()):
+        // before the go point too, and a refusal leaves everything as it was, as those of
+        // transformKeys() do. Until 028-50 only checkDirtyNodes() counted them, with the
+        // keys as given.
+        if (!t.isInternal() && before.keys != null) {
+            checkDirtyNodesAfterKeyTransformations(t, kvs, before);
+        }
+
+        // The value transformations of a user transaction, at t.tt, and the refusal of one
+        // that throws or whose values pass the limits (bergdb 026-06; 010-04, R5): before
+        // the go point too. Until 026-06 they ran in putKvs(), where that failed the
+        // database. A plan's row and table stay there (transformValues()).
+        if (!t.isInternal()) {
+            transformValues(t, kvs, before);
+        }
+
+        // The maintenance that the record carries, after the last check that may refuse
+        // the transaction (bergdb 031-06).
+        final Maintenance.Plan plan = planMaintenance(t, kvs, before);
+        if (plan == null && t.part) {
+            giveBack(t, before);    // Nothing is due: the part writes nothing.
+            return null;
+        }
+
+        // The go point. From here nothing refuses the transaction and nothing is undone:
+        // whatever throws fails the database (bergdb 005-01).
+        try {
+            x.plan = plan;
+            if (plan != null) {
+                // The fields of the plan's record, set again at each execution, as a Trans
+                // may be executed again (its Javadoc); cleared after the record, below.
+                t.dirtiedNodes = 0;
+                t.dirtiedBytes = 0;
+                t.touch = plan.touchKeys != null;
+                t.touchCount = plan.touchCount;
+                t.touchOldBefore = plan.touchOldBefore;
+                t.maintainTakeTo = plan.takeTo;
+                t.recordCap = StoredTrans.recordCap();
+            }
+            putKvs(plan == null ? kvs : merge(kvs, plan.kvs));
+
+            // The synch statement below publishes the changes by the writer thread
+            // (the thread executing this code) to the readers. This is done
+            // before the t.tt can be used as lookup time, so all readers
+            // (that do: "synchronized (readSynch) {}") are guaranteed to see all
+            // in-memory changes made by the writer.
+            synchronized (readSync) {}
+
+            // After the call to dbClock.transactionEnd(), read operations may use
+            // t.tt as a lookup time. Not in a finally since bergdb 005-01: when putKvs()
+            // throws, t.tt never becomes a lookup time, and a read that comes in before
+            // the database is seen as failed reads the state before the transaction.
+            dbClock.transactionEnd();
+
+            stmRecordKeys(t);
+
+            store();
+
+            aux.updateStats();
+
+            x.startupPos.releaseForEvict();
+
+            // bergdb 031-06: the maintenance's memory after the record, as a start reads
+            // it off the stream; then the pending physical cut, once durable. Until 031-06
+            // reclaim's listener ran here after a user transaction and wrote its own
+            // records, its steps and tables, each by an execute() of its own.
+            final TestHooks hooks = testHooks;
+            if (hooks != null) {
+                hooks.beforeApply(x);
+            }
+            maintenance.apply(plan, t);
+
+            x.trans.listener.transExecuted(x);
+            if (hooks != null) {
+                hooks.transExecuted(x);
+            }
+
+            x.end();
+
+            eviction.afterTransaction(this);
+            if (auditEvery > 0) audit(false);
+
+            // The synch statement guarantees that the writes are visible to all readers
+            // assuming they also do [synchronized(readSync) {}] before they start reading.
+            synchronized (readSync) {}
+            if (plan != null) {
+                t.touch = false;
+                t.touchCount = null;
+                t.maintainTakeTo = -1;
+                t.recordCap = 0;
+            }
+            return plan;
+        } catch (Throwable e) {
+            throw fail(t, e);
+        }
+    }
+    
+    /**
+     * The maintenance that the record of t carries (Maintenance.plan; bergdb 031-06): for a
+     * user transaction that is not a setter's (Trans.noMaintenance) and for a part of
+     * maintain() (Trans.part); none for BergDB's internal records. Called after the last check
+     * that may refuse t, before the go point; the plan reads only. A stop that comes during
+     * it, or before this returns, refuses t with nothing written (the admission, below);
+     * after it nothing refuses t. Any other exception fails the database (010-01, P7): its
+     * DbFailedException is thrown. So t ends as a refusal with nothing changed, an accepted
+     * record that holds its maintenance, or a failed database.
+     */
+    private Maintenance.Plan planMaintenance(Trans t, Kv[] kvs, Before before) {
+        if (t.isInternal() ? !t.part : t.noMaintenance) {
+            return null;
+        }
+        final Maintenance.Plan plan;
+        try {
+            final TestHooks hooks = testHooks;
+            if (hooks != null) {
+                hooks.beforePlan(x);
+            }
+            plan = maintenance.plan(t, kvs);
+        } catch (Throwable e) {
+            if (e instanceof RuntimeException && state == DbState.STOPPING) {
+                giveBack(t, before);        // A read refused by the stop: a refusal.
+                throw (RuntimeException) e;
+            }
+            throw fail(t, e);
+        }
+        if (state != DbState.ACTIVE) {
+            // The admission: a stop during the plan refuses t here, nothing written.
+            giveBack(t, before);
+            assertDbStateIsActive("execute");
+        }
+        return plan;
+    }
+
+    /**
+     * The action's KVs 'a' and the plan's 'b', each in key order, merged in key order (bergdb
+     * 031-06): one KV a key, as the plan has none at a key of the action's (Maintenance.plan);
+     * a Bug if it has. In the go point, where it fails the database.
+     */
+    private static Kv[] merge(Kv[] a, Kv[] b) {
+        final Kv[] m = new Kv[a.length + b.length];
+        int i = 0, j = 0, n = 0;
+        while (i < a.length || j < b.length) {
+            final int c = i == a.length ? 1 : j == b.length ? -1
+                    : Keys.compareArrays(a[i].getKey(), b[j].getKey());
+            if (c == 0) {
+                throw new Bug("A KV of the maintenance at a key of the action's: "
+                        + shown(a[i].getKey()) + ".");
+            }
+            m[n++] = c < 0 ? a[i++] : b[j++];
+        }
+        return m;
     }
     
     /**
@@ -3042,8 +3200,10 @@ public class Db implements AutoCloseable {
      * without the failed transaction, or with it if its record was appended before the
      * failure. stop(), close() and sync() still work.
      * 
-     * <p>Reclaim's internal transactions run within a user transaction's go point
-     * (transactionCompleted()); one that fails first fails the database, and its
+     * <p>The maintenance that a record carries is planned before the go point and applied
+     * after the record (planMaintenance(), Maintenance.apply; bergdb 031-06; until then
+     * reclaim's own transactions ran within a user transaction's go point); a read that
+     * fails first fails the database, and its
      * DbFailedException comes here and is returned as it is, as is that of a read in the
      * transaction that fails on the storage (failOnStorage()). While the database is stopping,
      * a failure is the stop's and is thrown as it is, as before: close() called within a
@@ -3236,13 +3396,15 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a transaction whose index nodes, those it makes dirty or creates, could take
-     * more than StoredTrans.dirtyLimit() bytes, before it changes anything (2026-10-24,
+     * more than StoredTrans.actionDirtyLimit() bytes, before it changes anything (2026-10-24,
      * bergdb 005-31). TransSeq.take takes transactions whole, so it would never take such a
      * transaction, and the startup pos would stay before it for good: the startup section,
      * startup, D and the stream would grow without end. Called under writeLock, before the
-     * go point; not for reclaim's internal transactions: a step makes dirty the index nodes
-     * on the paths of its own puts only (touchPaths), and it puts at most the KVs of its
-     * scan, 16 kB of them or one KV, and its row. Until bergdb 024-07 a step's touch walked
+     * go point. Since bergdb 031-06 (review F5) the limit is StoredTrans.dirtyLimit() less the
+     * step's share, StoredTrans.stepDirtyRoom(), for the maintenance that the record may carry:
+     * recordDirtyFits() counts the record, the action's KVs and the plan's together, within
+     * dirtyLimit(), and Reclaim.plan() makes the step smaller if they are over it. A step makes
+     * dirty the index nodes on the paths of its own puts only (touchPaths). Until bergdb 024-07 a step's touch walked
      * a key range and had no bound: the last step of an iteration over keys in time order
      * made dirty every index node, which at about 100M keys no record could take (024-07,
      * section 3).
@@ -3276,7 +3438,7 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a user transaction with a key transformation whose index nodes could take more
-     * than StoredTrans.dirtyLimit() bytes, counted as checkDirtyNodes() counts a transaction
+     * than StoredTrans.actionDirtyLimit() bytes, counted as checkDirtyNodes() counts a transaction
      * without one, with the keys that its key transformations gave (bergdb 028-50; option A of
      * 028-45, Frans, 2026-11-24): the cheap test, and the walk if the cheap test is over the
      * limit. Called under writeLock right after transformKeys(), before the go point. A
@@ -3328,7 +3490,7 @@ public class Db implements AutoCloseable {
      * figures they compare them with (bergdb 028-45, for DbTesterDirtyCount).
      */
     static final class DirtyNodeCounts {
-        /** StoredTrans.dirtyLimit(), bytes. */
+        /** StoredTrans.actionDirtyLimit(), bytes (StoredTrans.dirtyLimit() until 031-06). */
         long limit;
         
         /** The bytes counted for an index node: the largest node and its got-dirty entry. */
@@ -3377,14 +3539,13 @@ public class Db implements AutoCloseable {
         final TestHooks hooks = testHooks;
         final boolean walk = hooks != null && hooks.walkDirtyNodes();
         final DirtyNodeCounts c = new DirtyNodeCounts();
-        final long limit = StoredTrans.dirtyLimit();
-        final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
+        final long limit = StoredTrans.actionDirtyLimit();      // bergdb 031-06 (review F5)
+        final long nodeBytes = dirtyNodeBytes();
         // Its two top nodes: 48 + 16 h bytes each (StoredTopNode, bergdb 024-25), h at most 48
         // (TopNode.MAX_HEIGHT), and a got-dirty entry of 16 (until 024-24's merge of
         // 024-25, 40 + 16 x 64 + 16, the size before CRC32C, a bound of it too).
-        final long topBytes = 2 * (48 + 16L * 48 + 16);
-        final long height = 2 + 63 - Long.numberOfLeadingZeros(
-                Math.max(1, nodeStream.getLength() / 48));
+        final long topBytes = StoredTrans.TOP_BYTES;
+        final long height = dirtyHeight();
         c.limit = limit;
         c.nodeBytes = nodeBytes;
         c.topBytes = topBytes;
@@ -3436,6 +3597,98 @@ public class Db implements AutoCloseable {
         return c;
     }
     
+    /** The bytes counted for an index node: a key node of the largest size and its got-dirty entry. */
+    private long dirtyNodeBytes() {
+        return 32 + 16L * (maxNodeSize + 1) + 16;
+    }
+    
+    /**
+     * The cheap test's height (countDirtyNodes()): a tree of n nodes with at least two children
+     * each is at most log2(n) + 1 high, n from the stream's length.
+     */
+    private long dirtyHeight() {
+        return 2 + 63 - Long.numberOfLeadingZeros(Math.max(1, nodeStream.getLength() / 48));
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): whether the record of an action and of the maintenance that it
+     * carries makes dirty or creates index nodes within StoredTrans.dirtyLimit(): the action's
+     * KVs 'action', as they will be put, after the transformations, and the plan's 'plan', in
+     * key order each, counted together as countDirtyNodes() counts a transaction: the cheap
+     * test, and if it is over, the walk of all their keys (Dag.dirtyNodeBound, at the state
+     * before the record). A KV with no value is a delete; the plan's copies, row and table are
+     * puts. Reclaim.plan() calls it under writeLock, before the go point, and plans a smaller
+     * step if the record does not fit. The cheap test is a sum over the KVs, so an action within
+     * actionDirtyLimit() by it and a step within stepDirtyRoom() by it fit without the walk;
+     * the walk counts the record as one transaction, as a node's overflows count the klongs of
+     * all the keys below it together. The count is from the actual keys, of any length the
+     * Core accepts (review F6).
+     *
+     * @throws DbException  If the walk's read fails (readFailed()).
+     */
+    boolean recordDirtyFits(Kv[] action, Kv[] plan) {
+        final long maxNodes = (StoredTrans.dirtyLimit() - StoredTrans.TOP_BYTES)
+                / dirtyNodeBytes();
+        final long height = dirtyHeight();
+        long cheap = 0;
+        for (Kv kv : action) {
+            cheap += (kv.getValue() == null ? 20 : 3) * height * kv.getKey().length + 3;
+        }
+        for (Kv kv : plan) {
+            cheap += 3 * height * kv.getKey().length + 3;
+        }
+        if (cheap <= maxNodes) {
+            return true;
+        }
+        final long[][] keys = new long[action.length + plan.length][];
+        final boolean[] deletes = new boolean[keys.length];
+        for (int i = 0; i < action.length; i++) {
+            keys[i] = action[i].getKey();
+            deletes[i] = action[i].getValue() == null;
+        }
+        for (int i = 0; i < plan.length; i++) {
+            keys[action.length + i] = plan[i].getKey();
+        }
+        final long time = dbClock.lookupTime(Long.MAX_VALUE);
+        final long walked;
+        try {
+            walked = dag.dirtyNodeBound(time, keys, deletes, newGetData());
+        } catch (StreamException e) {
+            throw readFailed(e, time);
+        }
+        return walked <= maxNodes;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): fails the database before the record is appended if its
+     * got-dirty set, its own index nodes and those that its take keeps dirty
+     * (handleStillDirtyNodes()), each counted at its largest with its entry, is over
+     * StoredTrans.takeRoom(): no later record, not even one with no KVs, could take the set
+     * whole (TransSeq.take), and the startup pos would stay before it for good with nothing
+     * failing (the review's RvLong). The counts before the go point keep a record's own nodes
+     * within StoredTrans.dirtyLimit() (checkDirtyNodes(), recordDirtyFits()), so this checks
+     * those counts and the margin left for the nodes kept dirty. After the go point: a Bug,
+     * which fails the database (010-01, P7); nothing of the record is written.
+     */
+    private void checkTakeable() {
+        final java.util.ArrayList<Node> set = x.transInfo.gotDirtyNodes;
+        final long topBytes = StoredTrans.TOP_BYTES / 2;
+        final long nodeBytes = dirtyNodeBytes();
+        final long room = StoredTrans.takeRoom();
+        if (set.size() * Math.max(topBytes, nodeBytes) <= room) {
+            return;         // most records: a cheap test first
+        }
+        long bytes = 0;
+        for (Node n : set) {
+            bytes += n.getType() == Node.TYPE_TOP_NODE ? topBytes : nodeBytes;
+        }
+        if (bytes > room) {
+            throw new Bug("A record whose index nodes to write later, " + set.size()
+                    + " of them, may take " + bytes + " bytes, more than a later record can "
+                    + "take, " + room + " (bergdb 031-06, review F5).");
+        }
+    }
+    
     private void store() {
         long currentSp = x.startupPos.get();
         long newSp;
@@ -3453,8 +3706,11 @@ public class Db implements AutoCloseable {
             fixedBytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
         }
         
+        // bergdb 031-06: a record that carries maintenance may take the step's room on top of
+        // the transaction's (StoredTrans.recordCap).
+        final long cap = x.trans.recordCap > 0 ? x.trans.recordCap : StoredTrans.recordLimit;
         newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
-                x.transNodes, StoredTrans.recordLimit - fixedBytes);
+                x.transNodes, cap - fixedBytes);
         if (x.trans.maintainTakeTo > newSp) {
             // The empty record of a maintain() call (bergdb 024-32, section 2.2, M4): more of
             // D after the share, oldest first, up to the position that reclaim waits for.
@@ -3466,7 +3722,7 @@ public class Db implements AutoCloseable {
                 bytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
             }
             newSp = transSeq.takeTo(newSp, x.trans.maintainTakeTo, 
-                    Reclaim.MAINTAIN_TAKE_BYTES, x.transNodes, StoredTrans.recordLimit - bytes);
+                    Reclaim.MAINTAIN_TAKE_BYTES, x.transNodes, cap - bytes);
         }
         x.trans.startupPos = newSp;
         
@@ -3479,6 +3735,7 @@ public class Db implements AutoCloseable {
         resolvePointersOfTakenNodes();
         x.transNodes.clean();
         handleStillDirtyNodes();
+        checkTakeable();        // bergdb 031-06 (review F5)
         
         TopNode top = newestWrittenTop;
         for (int i = 0; i < x.transNodes.topCount; i++) {
@@ -3488,6 +3745,7 @@ public class Db implements AutoCloseable {
             }
         }
         
+        x.transNodes.copyKeys = x.plan == null ? null : x.plan.copyKeys;   // the copy mark, 031-06
         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes, top);
         newestWrittenTop = top;
         
@@ -3645,9 +3903,10 @@ public class Db implements AutoCloseable {
         for (int i = 0; i < kvs.length; i++) {
             Kv kv = kvs[i];
 
-            if (kv.valueTransformation != null && x.trans.isInternal()) {
-                final byte[] previousValue = this.getOne(x.trans.tt, kv.getKey(), x.getData);
-                kv.transformValue(x.trans.tt, previousValue);
+            if (kv.valueTransformation != null && kv.planned) {
+                // bergdb 031-06: a plan's row or table, after the touch; it reads no
+                // previous value (Reclaim.finishPlan).
+                kv.transformValue(x.trans.tt, null);
             }
 
             final TestHooks kvHooks = testHooks;
@@ -4026,8 +4285,14 @@ public class Db implements AutoCloseable {
             };
         }
         gd.accessData = x.putData.accessData;
-        for (Kv kv : x.trans.kvs) {
-            dag.followPath(x.trans.tt, kv.getKey(), gd);
+        if (x.plan != null) {
+            for (long[] key : x.plan.touchKeys) {   // the copies' and the row's (bergdb 031-06)
+                dag.followPath(x.trans.tt, key, gd);
+            }
+        } else {
+            for (Kv kv : x.trans.kvs) {     // a test's touch (DbTester): its own keys
+                dag.followPath(x.trans.tt, kv.getKey(), gd);
+            }
         }
         if (counter != null) {
             counter.finish();
@@ -4257,6 +4522,9 @@ public class Db implements AutoCloseable {
         
         public TransSeq.TransInfo transInfo;
         
+        /** bergdb 031-06: the maintenance that the record carries, or null. */
+        Maintenance.Plan plan;
+        
         /**
          * The stream length just past the last byte of the last transaction (at the start, the
          * stream's length): what sync() of the last transaction waits for. It was the position
@@ -4287,6 +4555,7 @@ public class Db implements AutoCloseable {
             assert transNodes.size() == 0 : "the nodes of another transaction, "
                     + transNodes.size();
             this.trans = trans;
+            plan = null;
             transInfo = new TransSeq.TransInfo();
             x.nextVpos = nodeStream.getNextPos() + 1;
         }
@@ -4302,6 +4571,7 @@ public class Db implements AutoCloseable {
             
             x.endOfLastTrans = x.trans.lastPos + 1;
             trans = null;
+            plan = null;
             transNodes.clear();
         }
     }
@@ -4335,33 +4605,47 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * A listener ("handler") for the transactionCompleted event, 
-     * method transactionCompleted().
-     */
-    public static interface TransactionListener {
-
-        /**
-         * Exceptions specified below are allowed since SpaceReclaim needs to
-         * run database transactions to fulfill its need. Those transactions may
-         * throw DBStreamFormatException, DBStreamIOException. In addition,
-         * DBDataException may be throws by SpaceReclaim.
-         * 
-         * @throws StreamFormatException
-         * @throws StreamIoException
-         * @throws InternalDataException
-         */
-        public void transactionCompleted(Trans t);
-    }
-
-    /**
-     * Test-only hooks (bergdb item 001, WP R2), for java/stress/TraceExport.java: called for
-     * every executed transaction, the internal ones (reclaim's steps and table stores)
+     * Test-only hooks (bergdb item 001, WP R2), for java/stress/TraceExport.java and the
+     * tests: called for every executed transaction, the internal ones (the settings' records,
+     * the parts of maintain(); bergdb 031-06: a commit's record carries reclaim's maintenance)
      * included, so that a trace can have a record for each. null, the default, does nothing.
-     * All calls come from the thread that holds the write lock.
+     * All calls but maintainMaxParts() come from the thread that holds the write lock.
      */
     public static interface TestHooks {
         /** The record of x.trans has been appended and D updated (after store()). */
         public void transExecuted(ExecuteData x);
+        
+        /**
+         * bergdb 031-06: the record of x.trans has been appended, and the maintenance's memory
+         * is not yet brought after it (Maintenance.apply): for probes of a failure there.
+         */
+        public default void beforeApply(ExecuteData x) {}
+        
+        /**
+         * bergdb 031-06: the transaction of x.trans has passed every check that may refuse it,
+         * and its record's maintenance is about to be planned: for probes of a failure or a
+         * stop there.
+         */
+        public default void beforePlan(ExecuteData x) {}
+        
+        /**
+         * bergdb 031-06: the most parts that write which a call of maintain(budget) does on
+         * this thread before it returns, read once at the call's start: the call with a
+         * smaller budget that a crash or a stop inside a call leaves, for probes that replay
+         * a call part by part. Integer.MAX_VALUE, the default, is no limit.
+         */
+        public default int maintainMaxParts() {
+            return Integer.MAX_VALUE;
+        }
+        
+        /**
+         * bergdb 031-06: a call of maintain(budget) gives way to a commit that waits for the
+         * write lock (giveWayToWriters()): called on the call's thread, without the lock,
+         * when its wait begins, before it spins or parks. For the test of the handover
+         * (ReclaimMaintainTester.testCommitGoesBeforeTheNextPart), which waited for the
+         * thread's state until then, a sample that a loaded machine could keep RUNNABLE.
+         */
+        public default void givingWay() {}
 
         /** The transaction being executed created a value node. */
         public void valueNodeCreated(ValueNode node, long[] key);

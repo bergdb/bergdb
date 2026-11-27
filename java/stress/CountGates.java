@@ -567,8 +567,9 @@ public class CountGates {
                 r.clock.setTime(r.time);
                 long len = r.db.getStreamLength();
                 long recs = r.stats.user.records + r.stats.step.records + r.stats.table.records;
-                if (r.db.maintain()) m.lastMore = k;
+                r.db.maintain(Reclaim.MAINTAIN_MIN_BUDGET);    // bergdb 031-04
                 long grown = r.db.getStreamLength() - len;
+                if (grown > 0) m.lastMore = k;
                 if (grown > 0) m.writingCalls++;
                 m.maxCallBytes = Math.max(m.maxCallBytes, grown);
                 m.maxCallRecords = Math.max(m.maxCallRecords, r.stats.user.records
@@ -711,8 +712,7 @@ public class CountGates {
     void g5() throws ReflectiveOperationException {
         G4M t = g4Run("G5", "g5-twin", 0, usedHeap(), 0, true);
         G4M e = g4Run("G5", "g5-emptied", n, usedHeap(), 0, true);
-        long allowance = Reclaim.MAINTAIN_MIN_RELEASE 
-                + bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE;
+        long allowance = 3L * bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE;
         gate("G5", "M1 kept, most in the last R, over twice the twin's plus " + allowance
                 + " (" + e.keptMax + " / " + t.keptMax + ")",
                 (double) e.keptMax / (2 * t.keptMax + allowance), 1, "%.3f");

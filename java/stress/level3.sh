@@ -48,7 +48,10 @@
 #      decides, the touch assumptions, and the probes after restarts from the
 #      cut stream; since bergdb 030-27 also each step of reclaim against the
 #      model of the steps (C-STEP, on STEP lines), after the check's own fault
-#      test (lean/test-traces/step-faults.sh). Since bergdb 030-31 also
+#      test (lean/test-traces/step-faults.sh); since bergdb 031-06 (one record an
+#      action: a step rides in a commit's or a part's record, its copies marked)
+#      also every record against its action as submitted (C-STEP's STEP-action, on
+#      ACT lines). Since bergdb 030-31 also
 #      conformance.sh crash (1 seed quick, 3 full): reclaim across restarts and
 #      crashes of the traced run, each iteration that spans a restart checked
 #      (C-STEP's STEP-resume). It needs the checker (cd ../lean && lake build,

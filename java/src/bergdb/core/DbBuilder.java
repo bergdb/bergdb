@@ -38,7 +38,7 @@ public class DbBuilder {
     Eviction.Schedule evictionSchedule = Eviction.defaultSchedule();
     long evictionSeed = Eviction.defaultSeed();
     int auditEvery = Audit.EVERY;
-    long reclaimStepReserve = Long.getLong("stepreserve", Reclaim.DEFAULT_STEP_RESERVE);
+    long testStepReserve = Reclaim.DEFAULT_STEP_RESERVE;        // bergdb 028-68
     long evictionBudget = Long.getLong("evictbudget", -1);
     long secondTopOrdinal = 1;
     
@@ -226,18 +226,33 @@ public class DbBuilder {
     }
 
     /**
-     * The reserve for a reclaim step's pinned bytes (Reclaim.setStepReserve; bergdb item 001,
-     * WP J6). The default is Reclaim.DEFAULT_STEP_RESERVE, or the system property
-     * stepreserve, so that the stress programs can split the steps. A setting for tests
-     * (bergdb 015-87, F7): below the default it changes the stream's bytes, and it is not
-     * kept in the stream.
+     * bergdb 031-06, for tests: the empty maintenance (Maintenance.NONE), whose records carry
+     * none: no record of a commit or of a part of maintain() holds anything of reclaim's.
      */
-    public DbBuilder reclaimStepReserve(long bytes) {
+    boolean maintenanceNone;
+    
+    /** bergdb 031-06: see the field maintenanceNone. For the Core's tests and probes only. */
+    DbBuilder maintenanceNone() {
+        this.maintenanceNone = true;
+        return this;
+    }
+    
+    /**
+     * For tests only: a reclaim step reserve other than the constant
+     * Reclaim.DEFAULT_STEP_RESERVE (Reclaim.setStepReserve; bergdb item 001, WP J6),
+     * package-private as maxNodeSize8(), for the tests and probes in bergdb.core that split
+     * steps by a small reserve. The reserve is a constant for every database (bergdb 028-68,
+     * B; Frans, 2026-11-27, 16:09): it is not kept in the stream, and another value changes
+     * the stream's bytes, so a test that gives one gives the same at every start of its
+     * database, and stands outside 010's P2 as a test. Until 028-68 a public setting,
+     * reclaimStepReserve(), whose default was the system property stepreserve.
+     */
+    DbBuilder testStepReserve(long bytes) {
         // Here, not in the Db's constructor after the storage has started (bergdb 005-32).
         if (bytes < 1) {
             throw new IllegalArgumentException("Illegal step reserve, " + bytes);
         }
-        this.reclaimStepReserve = bytes;
+        this.testStepReserve = bytes;
         return this;
     }
 

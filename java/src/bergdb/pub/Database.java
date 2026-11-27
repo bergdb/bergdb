@@ -545,45 +545,50 @@ public interface Database extends AutoCloseable {
     public Time getFirstAvailableLookupTime();
     
     /**
-     * <p>Does a bounded part of the database's maintenance now, and returns whether more is
-     * due (bergdb 024-32). Calling it is optional: the maintenance goes on while the
-     * application uses the database, at its commits, whether this method is called or not.
-     * In Frans Lundberg's words (2026-11-10): "maintenance should be performed while doing
-     * other operations on the database, so the user explicitly calling maintain() should be
-     * optional, not a requirement on the user that she must call maintain."</p>
+     * <p>Gives the database time for its maintenance now, within a budget (bergdb 031-04): the
+     * application's call for the database's maintenance while it is idle. Calling it is
+     * optional: the maintenance goes on while the application uses the database, at its
+     * commits, whether this method is called or not. In Frans Lundberg's words (2026-11-10):
+     * "maintenance should be performed while doing other operations on the database, so the
+     * user explicitly calling maintain() should be optional, not a requirement on the user
+     * that she must call maintain."</p>
      * 
      * <p>What it is for: a database that is not used does no work by itself, so with a
      * finite retain duration (setRetainDuration()) the stream space of deleted and
      * overwritten data comes back only as the application commits more. An application that
-     * has deleted much and then writes little or nothing can call this method, now and then,
-     * to have the space back without writes of its own. Called again and again, as time
-     * passes, it brings the stream of a database that has been emptied to within about 400 kB
-     * of the stream of a fresh one: a call begins an iteration only if its cut, or the next
-     * one's, would release 400 kB (bergdb 028-51; of the stream since 2026-11-26, 028-62).
-     * With the retain duration forever (the default) there is nothing to do, and it returns
-     * false.</p>
+     * has deleted much and then writes little or nothing can call this method when it is
+     * idle, to have the space back without writes of its own. The calls rewrite the live
+     * data once, in parts, and the space comes back once the retain duration has passed
+     * since that pass ended: a pass takes about getStreamSize() divided by the budget's bytes
+     * in calls. Calls after that do little or nothing until the application writes again.
+     * With the retain duration forever (the default) there is nothing to do.</p>
      * 
-     * <p>Each call's work is small and bounded, about that of a commit's share of the
-     * maintenance: at most one step of the rewriting of old live data, one write of index
-     * nodes, one filler of at most 200 kB that is deleted at once, and the cut of the
-     * stream's front when it is due (after a sync, if needed), and a batch of the release
-     * from memory of what the cut has ended (with a cache budget, the default). It runs in
-     * the database's
-     * own transactions, so a commit waits for it and it waits for a commit; reads go on.
-     * A call when nothing is due writes nothing.</p>
+     * <p>The budget is an indication of the work allowed in the call, in cost units: a unit
+     * is about the work of writing 1 kB to the stream. It is clamped to 100 to 100,000. The
+     * database may use less than the budget, or none, depending on its state, and may go
+     * past it by a small part's work. How the cost is counted may change between releases.
+     * The work runs in the database's own transactions, in parts: a commit waits for the
+     * part that runs, and reads go on.</p>
      * 
-     * @return True if more is due now: another call would do more. False if nothing is due
-     *     until time passes (a quarter of the retain duration, or the retain duration) or the
-     *     application writes. To have the space back now, call it until it returns false,
-     *     and again later.
+     * @param budget  The work allowed in this call, in cost units of about 1 kB written.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a
      *     transaction does.
      * @throws DbFailedException  If the database has failed, as a transaction does.
      * @throws bergdb.pub.util.DbException  If the database takes no more transactions (its
      *     top node ordinals or its times are used up), as a transaction is refused; nothing
-     *     is written then. Or if the thread is interrupted during the sync.
+     *     more is written then. Or if the thread is interrupted during a sync.
      */
-    public boolean maintain();
+    public void maintain(int budget);
+    
+    /**
+     * The size of the stream kept, in bytes: from the first position that reclaim has not
+     * cut to the stream's end (bergdb 031-04). Exact, and free to call. The storage may hold
+     * a little more (a file storage drops whole files). With a finite retain duration it
+     * holds the live data, the states that the duration keeps readable, and what reclaim
+     * has not yet given back; in a database not written to for longer than the retain
+     * duration, what it holds beyond the live data is what maintain() can give back.
+     */
+    public long getStreamSize();
 
     /**
      * A builder of a user index of the name (bergdb 020-10, section 3.1; see IndexBuilder).

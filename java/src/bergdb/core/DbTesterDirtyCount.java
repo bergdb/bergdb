@@ -488,8 +488,10 @@ public class DbTesterDirtyCount {
 
     /**
      * The check after the key transformations refuses a transaction and lets one through
-     * (bergdb 028-50): the database of deepPrefix, the record limit lowered to 10,400 bytes, so
-     * that a record takes 42 index nodes at node size 8. The put of "g" transformed to the key
+     * (bergdb 028-50): the database of deepPrefix, the record limit lowered to 11,150 bytes, so
+     * that an action is admitted with 42 index nodes at node size 8 (10,400 bytes until bergdb
+     * 031-06, which leaves an eighth of the limit to the step that the record may carry,
+     * StoredTrans.actionDirtyLimit()). The put of "g" transformed to the key
      * of 16 segments (testKeyTransformationToDeeperKey) is refused, its estimate (579) and its
      * walk over 42; until 028-50 it was taken, counted 39 with the key as given. Its key as
      * written, its write hash and the time are given back, nothing is written, and the
@@ -513,7 +515,7 @@ public class DbTesterDirtyCount {
             final long length = db.getStreamLength();
             final long count = db.getTransactionCount();
             final long ttBefore = t.tt;
-            StoredTrans.recordLimit = 10400;
+            StoredTrans.recordLimit = 11150;
             
             run.marks.expect(t);
             try {

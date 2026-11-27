@@ -118,10 +118,14 @@ import bergdb.stream.MemoryStream;
  * configuration (bergdb 026-25).
  *
  * With reclaim (bergdb item 001, WP R2; bergdb 001-07, 2.7) every executed
- * transaction is a record, reclaim's steps and table stores too: run A records each through
- * Db's test hooks (Db.TestHooks), and the trace has, besides version 1's lines, the touch of
- * each step (TOUCH), the first available time when it changes (FA), each cut decided (CUT)
- * and each move of the stream's first position (PHYSCUT; plan 001-01, 8.2). The stream is a
+ * transaction is a record: run A records each through Db's test hooks (Db.TestHooks), and
+ * the trace has, besides version 1's lines, the touch of each step (TOUCH), the first
+ * available time when it changes (FA), each cut decided (CUT) and each move of the stream's
+ * first position (PHYSCUT; plan 001-01, 8.2). Since bergdb 031-06 (one record an action) a
+ * step of reclaim is in the record of a commit or of a part of maintain(), beside the
+ * action's operations: its copies are OP C lines, from the copy mark of the record's value
+ * nodes, and with steps=1 every record has its action as submitted (ACT lines; 027-02,
+ * section 4). The stream is a
  * CutStream, which refuses every read below the cut. Run B also restarts right after each cut,
  * looks up from the first available time on, and compares the streams from the cut.
  *
@@ -392,7 +396,18 @@ public class TraceExport {
         List<String> handles = new ArrayList<String>();
         long transSeqSum;
         int puts, deletes;
-        /** With reclaim: user, step or table; a step's touch; FA, CUT and PHYSCUT lines. */
+        /** The copies among the puts: the KVs of reclaim's step with the copy mark (031-06). */
+        int copies;
+        /** A record of a user transaction, a commit (with reclaim). */
+        boolean commit;
+        /** Their keys, read from the record's value nodes (StoredValueNode.isCopy). */
+        final TreeSet<long[]> copyKeys = new TreeSet<long[]>(Keys::compareArrays);
+        /**
+         * With reclaim: step (a record that carries a step of reclaim: a commit's or a part's,
+         * bergdb 031-06), user (a commit without a step), part (a part of maintain() without a
+         * step) or table (BergDB's own internal record: the settings, the startup distance at
+         * the creating start); a step's touch; FA, CUT, STEP and PHYSCUT lines.
+         */
         String kind = "user";
         List<Long> touch;
         List<String> reclaimLines = new ArrayList<String>();
@@ -690,6 +705,11 @@ public class TraceExport {
                 continue;
             case Node.TYPE_VALUE:
                 rec.puts++;
+                // The copy mark, as the record's bytes hold it (bergdb 031-06).
+                if (sn instanceof StoredValueNode && ((StoredValueNode) sn).isCopy()) {
+                    rec.copies++;
+                    rec.copyKeys.add(((StoredValueNode) sn).getKey());
+                }
                 v.kind = "D";
                 v.hist.add(new Ent(rec.index, "V " + hash(((ValueNode) x).getValue())));
                 break;
@@ -901,6 +921,14 @@ public class TraceExport {
             }
         };
         hooksA = new Db.TestHooks() {
+            public void beforeApply(Db.ExecuteData x) {
+                // bergdb 031-06: the step's row before the record, which Maintenance.apply
+                // then brings after it.
+                if (retain > 0 && stepLines && x.plan != null && x.trans.touch) {
+                    Reclaim.IterationInfo it = dbA.internal().reclaim().currentIteration();
+                    stepBefore = it == null ? null : it.copy();
+                }
+            }
             public void transExecuted(Db.ExecuteData x) {
                 initR0.run();
                 record(dbA, x, created, touched, nsA);
@@ -908,10 +936,11 @@ public class TraceExport {
                 touched.clear();
                 treeOps.clear();
                 // crash=K (bergdb 030-31): the database fails right after the K-th step's
-                // record is durable, inside the step's call, before Reclaim.step updates its
-                // row (a crash that loses the record is one before the step).
-                if (crashEvery > 0 && x.trans.touch && x.trans.isInternal()
-                        && ++stepsSeen % crashEvery == 0) {
+                // record is durable, inside its call (a crash that loses the record is one
+                // before the step). Since bergdb 031-06 a step is in a commit's record or a
+                // part's, and the hook runs after Maintenance.apply: the start reads the row
+                // that the record holds.
+                if (crashEvery > 0 && x.trans.touch && ++stepsSeen % crashEvery == 0) {
                     dbA.sync(x.trans.lastPos, SyncLevel.ORDINARY);
                     crashing = true;
                     throw new Crash();
@@ -960,8 +989,9 @@ public class TraceExport {
     /**
      * Restarts run A's database (bergdb 030-31): after a sync and stop(), or after a crash as
      * it is, from a copy of the stream. The hooks are off during the start, which must append
-     * nothing. The last record gets the RESTART line and, with steps=1, the RESUME line; after
-     * a crash in a step, the step's STEP line comes from the row that the start read.
+     * nothing. The last record gets the RESTART line and, with steps=1, the RESUME line. A
+     * step's STEP line is made in its own record's hook (bergdb 031-06), so a crash after a
+     * step's record changes nothing of it.
      */
     void restartA(boolean crash) {
         Rec last = recs.get(recs.size() - 1);
@@ -995,29 +1025,9 @@ public class TraceExport {
         streamA = copy;
         last.restartLines.add("RESTART " + (crash ? "crash" : "stop"));
         if (retain > 0 && stepLines) {
-            if (crash) stepEndedAfterCrash(db);
             last.restartLines.add(resumeLine(db.internal().reclaim().currentIteration(), last));
         }
         Db.testHooks = hooksA;
-    }
-
-    /** The STEP line of a step that a crash ended (bergdb 030-31): lastKey after the step and
-     *  eod from its iteration's row as the start read it from the stream, the row the step
-     *  committed. */
-    void stepEndedAfterCrash(Db db) {
-        if (stepRec == null) return;
-        Reclaim rc = db.internal().reclaim();
-        Reclaim.IterationInfo row = rc.currentIteration();
-        if (row == null || row.pStart != stepRow.pStart) row = rc.lastDoneRow();
-        if (row == null || row.pStart != stepRow.pStart) {
-            error("STEP of R(" + stepRec.index + "): its iteration's row is not in the table after "
-                    + "the crash");
-            stepRec = null;
-            stepRow = null;
-            return;
-        }
-        stepRow = row;
-        stepEnded();
     }
 
     /** The RESUME line (bergdb 030-31; 027-02, section 4): the iteration in progress that the
@@ -1083,6 +1093,15 @@ public class TraceExport {
             }
             Trans t = b.build();
             userRec[i] = recs.size();
+            if (stepLines) {
+                // bergdb 031-06: the action as the workload submits it, for the ACT lines.
+                submitted = new ArrayList<Object[]>();
+                for (int j = 0; j < vs.length; j++) {
+                    long[] key = app != null ? app.txs.get(i).keys[j] : Keys.toSegments(ks[j]);
+                    submitted.add(new Object[] {key, vs[j]});
+                }
+                submittedTrans = t;
+            }
             try {
                 dbA.execute(t);
                 maintain(dbA, i);
@@ -1131,9 +1150,51 @@ public class TraceExport {
         parseRecord(db, rec);
         recordDirty(db, rec);
         if (live) recordLive(db, rec);
-        if (retain > 0) recordReclaim(db, t, touched, rec);
+        if (retain > 0) recordReclaim(db, x, touched, rec);
+        // The copies that the record's bytes mark are the plan's (bergdb 031-06).
+        long[][] planned = x.plan == null || x.plan.copyKeys == null ? new long[0][] : x.plan.copyKeys;
+        TreeSet<long[]> plannedSet = new TreeSet<long[]>(Keys::compareArrays);
+        plannedSet.addAll(Arrays.asList(planned));
+        if (plannedSet.size() != rec.copyKeys.size() || !plannedSet.containsAll(rec.copyKeys)) {
+            error("R(" + rec.index + "): " + rec.copyKeys.size() + " value nodes with the copy mark, "
+                    + "the plan's copies " + planned.length);
+        }
         if (tree) recordTree(db, t, rec, ns);
+        if (tree && stepLines) recordAction(t, rec);
     }
+
+    /**
+     * The ACT lines of R(i) (bergdb 031-06; 027-02, section 4), with steps=1: the operations of
+     * the record's action as submitted, a put with its value's hash or a delete, in the order
+     * given: a user transaction's as the workload built it (submitted), else the Trans that
+     * Db executed (a setter's, the creating start's; a part of maintain() has none).
+     */
+    void recordAction(Trans t, Rec rec) {
+        List<Object[]> ops = new ArrayList<Object[]>();
+        if (t == submittedTrans) {
+            ops = submitted;
+            submittedTrans = null;
+            submitted = null;
+        } else if (t.kvs != null) {
+            for (Kv kv : t.kvs) {
+                if (kv.getKeyTransformation() != null || kv.valueTransformation != null) {
+                    error("R(" + rec.index + "): an action of BergDB's own with a transformation");
+                }
+                ops.add(new Object[] {kv.getKey(), kv.getValue()});
+            }
+        }
+        for (Object[] op : ops) {
+            long[] key = (long[]) op[0];
+            byte[] value = (byte[]) op[1];
+            rec.treeHead.add(value == null ? "ACT D " + segs(key) : "ACT P " + segs(key) + " " + hash(value));
+        }
+    }
+
+    /** The action that the workload submits next, for its ACT lines (bergdb 031-06). */
+    List<Object[]> submitted;
+    Trans submittedTrans;
+    /** The row of the iteration before a step's record (Db.TestHooks.beforeApply). */
+    Reclaim.IterationInfo stepBefore;
 
     // ======== Trace format 3: the lines of the tree model (bergdb 024-12, section 2.6) ========
 
@@ -1226,7 +1287,9 @@ public class TraceExport {
             long[] key = (long[]) op[0];
             byte[] value = (byte[]) op[1];
             if (value != null) {
-                rec.treeHead.add("OP P " + segs(key) + " " + hash(value));
+                // OP C: a copy, the copy mark of its value node (bergdb 031-06).
+                rec.treeHead.add((rec.copyKeys.contains(key) ? "OP C " : "OP P ") + segs(key) + " "
+                        + hash(value));
             } else {
                 rec.treeHead.add("OP " + (op[2] == Boolean.TRUE ? "D " : "N ") + segs(key));
             }
@@ -1310,11 +1373,12 @@ public class TraceExport {
     int refsBelowCut = 0;       // references of records after a cut to versions before it
     int cutRecord = 0;          // c of the newest cut decided, for the records after it
 
-    /** The kind of R(i), its touch, the first available time and a cut decided at it. */
-    void recordReclaim(Db db, Trans t, List<Node> touched, Rec rec) {
-        stepEnded();
-        rec.kind = !t.isInternal() ? "user" : t.touch ? "step" : "table";
-        if (t.touch && stepLines) stepBegun(db, rec);
+    /** The kind of R(i), its touch, the first available time, a cut decided at it and its
+     *  step's STEP line. */
+    void recordReclaim(Db db, Db.ExecuteData data, List<Node> touched, Rec rec) {
+        final Trans t = data.trans;
+        rec.kind = t.touch ? "step" : !t.isInternal() ? "user" : t.part ? "part" : "table";
+        rec.commit = !t.isInternal();
         if (t.touch) {
             TreeSet<Long> ids = new TreeSet<Long>();
             for (Node x : touched) {
@@ -1344,41 +1408,36 @@ public class TraceExport {
             lastCutPStart = row.pStart;
             if (c != null) cutRecord = c;
         }
+        if (t.touch && stepLines) stepLine(data, rec);
     }
 
-    /** The step recorded last, until its STEP line is made (bergdb 030-27): its record, its
-     *  iteration's row in memory and the line's first tokens. */
-    Rec stepRec;
-    Reclaim.IterationInfo stepRow;
-    String stepHead;
-
-    /** At a step's record, inside Reclaim.step's commit: t0 (tStart's record), c (the first
-     *  record at or after pCut) and lastKey before the step, from its iteration's row, which
-     *  the step updates after its commit. */
-    void stepBegun(Db db, Rec rec) {
-        Reclaim.IterationInfo it = db.internal().reclaim().currentIteration();
-        if (it == null) {
-            error("STEP of R(" + rec.index + "): no iteration in progress");
+    /**
+     * The STEP line of a step's record (bergdb 030-27), after its CUT line: t0 (tStart's
+     * record), c (the first record at or after pCut) and lastKey before the step, from its
+     * iteration's row before the record (stepBefore, at Db.TestHooks.beforeApply); lastKey
+     * after the step and eod, whether its scan ended the iteration, from the row that the
+     * record holds, the plan's (Reclaim.RecordPlan.next; bergdb 031-06: the step is in the
+     * record of a commit or of a part, decided before it, and its row in the same record).
+     */
+    void stepLine(Db.ExecuteData x, Rec rec) {
+        Reclaim.IterationInfo it = stepBefore;
+        stepBefore = null;
+        Reclaim.IterationInfo after = x.plan instanceof Reclaim.RecordPlan
+                ? ((Reclaim.RecordPlan) x.plan).next : null;
+        if (it == null || after == null) {
+            error("STEP of R(" + rec.index + "): no iteration in progress, or no row after the step");
             return;
         }
+        if (after.pStart != it.pStart) error("STEP of R(" + rec.index + "): the row after is another iteration's");
         Integer c = idxByTpos.get(it.pCut);
         if (c == null) error("STEP of R(" + rec.index + "): pCut " + it.pCut + " is not a record's start");
-        stepRec = rec;
-        stepRow = it;
-        stepHead = "STEP " + timeIndex(it.tStart, "tStart of the step R(" + rec.index + ")") + " "
-                + (c == null ? -1 : c) + " " + (it.lastKey == null ? "-" : segs(it.lastKey));
-    }
-
-    /** The STEP line of the step recorded last, at the next record or at the end of the call,
-     *  when Reclaim.step has updated the row: lastKey after the step, and eod, whether its scan
-     *  ended the iteration (the row done, with the step's time as tEnd). */
-    void stepEnded() {
-        if (stepRec == null) return;
-        boolean eod = stepRow.done && stepRow.tEnd == stepRec.tt;
-        stepRec.reclaimLines.add(stepHead + " " + (stepRow.lastKey == null ? "-" : segs(stepRow.lastKey))
-                + " " + (eod ? 1 : 0));
-        stepRec = null;
-        stepRow = null;
+        boolean eod = ((Reclaim.RecordPlan) x.plan).eod;
+        if (eod != (after.done && after.tEnd == rec.tt)) {
+            error("STEP of R(" + rec.index + "): eod " + eod + ", but the row's done " + after.done);
+        }
+        rec.reclaimLines.add("STEP " + timeIndex(it.tStart, "tStart of the step R(" + rec.index + ")")
+                + " " + (c == null ? -1 : c) + " " + (it.lastKey == null ? "-" : segs(it.lastKey))
+                + " " + (after.lastKey == null ? "-" : segs(after.lastKey)) + " " + (eod ? 1 : 0));
     }
 
     /**
@@ -1388,7 +1447,7 @@ public class TraceExport {
      */
     void maintain(Db db, int i) {
         if (maint > 0 && (i + 1) % maint == 0) {
-            db.maintain();
+            db.maintain(Reclaim.MAINTAIN_MIN_BUDGET);  // bergdb 031-04
         }
     }
 
@@ -1396,7 +1455,6 @@ public class TraceExport {
      *  first position (the physical cut, at the call's last record), and Java's first
      *  available time against the model's. */
     void afterCall(Db db, AppendOnlyStream stream, int i) {
-        stepEnded();
         for (int r = userRec[i]; r <= userLast[i]; r++) {
             for (String line : recs.get(r).reclaimLines) {
                 if (line.startsWith("CUT ")) cutCalls.add(i);
@@ -2005,7 +2063,7 @@ public class TraceExport {
         for (Rec rec : recs) {
             out.println("TX " + rec.index);
             out.println("# tt=" + rec.tt + " tpos=" + rec.tpos + " puts=" + rec.puts + " deletes="
-                    + rec.deletes + (retain > 0 ? " kind=" + rec.kind : ""));
+                    + rec.deletes + (retain > 0 ? " kind=" + rec.kind + " copies=" + rec.copies : ""));
             for (String s : rec.treeHead) out.println(s);
             for (long id : rec.newNodes) {
                 PNode pn = nodes.get(id);
@@ -2085,17 +2143,18 @@ public class TraceExport {
         for (Rec r : x.recs) for (String s : r.probes) if (s.contains(" fail ")) probeFails++;
         String rc = "";
         if (x.retain > 0) {
-            int cuts = 0, phys = 0, steps = 0, tables = 0;
+            int cuts = 0, phys = 0, steps = 0, commitSteps = 0, parts = 0;
             for (Rec r : x.recs) {
                 for (String s : r.reclaimLines) {
                     if (s.startsWith("CUT ")) cuts++;
                     if (s.startsWith("PHYSCUT ")) phys++;
                 }
                 if ("step".equals(r.kind)) steps++;
-                if ("table".equals(r.kind)) tables++;
+                if ("step".equals(r.kind) && r.commit) commitSteps++;
+                if ("part".equals(r.kind)) parts++;
             }
-            rc = " (" + (x.recs.size() - 1) + " records: " + steps + " steps, " + tables
-                    + " table stores; " + cuts + " cuts decided, " + phys + " physical; "
+            rc = " (" + (x.recs.size() - 1) + " records: " + steps + " steps (" + commitSteps
+                    + " in commits), " + parts + " parts without a step; " + cuts + " cuts decided, " + phys + " physical; "
                     + x.refsBelowCut + " references to versions before a cut)";
         }
         if (x.epoch > 0) {

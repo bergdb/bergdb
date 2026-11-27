@@ -36,6 +36,13 @@ import bergdb.storage.VersioningStreamException;
 public class StoredTrans {
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
+     * 9 since 2026-11-27 (bergdb 031-06), for release 2026.7, which does not open a database
+     * of 2026.6 (Frans, 2026-11-27: a new format, refused with a clear message, no upgrade
+     * path): one record an action, a commit's record and a part's of maintain() hold
+     * reclaim's copies, row and table beside the action's KVs, and a copy's value node has the
+     * copy mark (StoredValueNode, byte 6), which format 8 had as zero; a stream of format 8 is
+     * of release 2026.6, refused at the start with a message that names it (formatRefused()).
+     * No release has written format 9: its meaning may still change before 2026.7.
      * 8 since 2026-11-19 (bergdb 026-25), for release 2026.6: format 7's layout, and a
      * record's KVs are rerun as one batch by the writer PE, "plan, then emit" (Dag.putKvs,
      * PeWriter; bergdb 030-21 proves it in the model), which writes each node once, so a
@@ -73,7 +80,7 @@ public class StoredTrans {
      * it writes (the rule proposed in bergdb 026-12, SF3); a stream of version 154, of
      * release 2026.5 or earlier, is refused by its meta block, before a record is read.</p>
      */
-    public final static byte RECORD_FORMAT = 8;
+    public final static byte RECORD_FORMAT = 9;
     
     /**
      * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
@@ -95,13 +102,93 @@ public class StoredTrans {
     }
     
     /**
-     * The most bytes the index nodes that one transaction makes dirty or creates may take,
-     * by Db's bound at the largest node size (2026-10-24, bergdb 005-31): 15/16 of the record
-     * limit. TransSeq.take writes them in the record of a later transaction, all in one; a
+     * The most bytes the index nodes that one record makes dirty or creates may take, by Db's
+     * bound at the largest node size (2026-10-24, bergdb 005-31): 15/16 of the record limit.
+     * TransSeq.take writes them in the record of a later transaction, all in one; a
      * transaction whose record leaves less than 1/16 of the limit for them waits for the next.
+     * Since bergdb 031-06 (review F5) it bounds a record, its action's KVs and its
+     * maintenance's together (Db.recordDirtyFits, before the go point); an action alone is
+     * admitted within actionDirtyLimit().
      */
     static long dirtyLimit() {
         return recordLimit - recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): the share of dirtyLimit() that every action leaves the step
+     * that its record may carry, a sixteenth of the record limit, so that a run of the largest
+     * actions leaves each step that room (Codex's E5).
+     */
+    static long stepDirtyRoom() {
+        return recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): the most bytes the index nodes of an action alone may take,
+     * dirtyLimit() less stepDirtyRoom(), 7/8 of the record limit (Db.checkDirtyNodes). Until
+     * 031-06 an action had dirtyLimit() and its record carried nothing else.
+     */
+    static long actionDirtyLimit() {
+        return dirtyLimit() - stepDirtyRoom();
+    }
+    
+    /**
+     * The bytes counted for a record's two top nodes, each at its largest (StoredTopNode, a
+     * height of at most 48, TopNode.MAX_HEIGHT) with its got-dirty entry of 16 (Db's counts of
+     * index nodes; bergdb 024-25).
+     */
+    static final long TOP_BYTES = 2 * (48 + 16L * 48 + 16);
+    
+    /**
+     * bergdb 031-06 (review F5): the most bytes of a record's got-dirty set, its nodes counted
+     * at their largest with their entries, that a later record with no KVs (an empty commit,
+     * a part's take, M4) can take whole: recordLimit less that record's header
+     * (TransSeq.ownBytes(0)) and TOP_BYTES. Db.store() fails the database before it appends a
+     * record whose set is over it, as no later take could take the set and the startup pos
+     * would stay before it for good. The set is the record's own nodes, within dirtyLimit()
+     * by the counts before the go point, and the nodes that its take keeps dirty
+     * (Db.handleStillDirtyNodes), which have the rest of the record limit.
+     */
+    static long takeRoom() {
+        return recordLimit - TransSeq.ownBytes(0) - TOP_BYTES;
+    }
+    
+    /**
+     * bergdb 031-06: the room of the step that a record carries besides its transaction's,
+     * for the row, the table and the scan's KVs but the last (Reclaim.MAX_STEP_SIZE).
+     */
+    static final long STEP_FIXED_ROOM = 256 * 1024L;
+    
+    /**
+     * bergdb 031-06: the largest value node that a user transaction can store, a value of
+     * Db.MAX_VALUE_BYTES (L4) at a key of Db.MAX_TRANS_KEY_BYTES (L3), within valueLimit().
+     */
+    static long maxValueNode() {
+        final long node = 12 + 8 + 4 + 4 + Db.MAX_VALUE_BYTES + 4
+                + 8L * (Db.MAX_TRANS_KEY_BYTES / 7 + 1);
+        return Math.min(valueLimit(), node + 3);
+    }
+    
+    /**
+     * bergdb 031-06: the room that the maintenance a record carries (Maintenance.Plan) has on
+     * top of its transaction's limits (valueLimit(), dirtyLimit()), so that the user's
+     * transaction never leaves the step too little (031-06, rule 4): its value nodes, at most
+     * one value node of the largest size and STEP_FIXED_ROOM; and a sixteenth of the record
+     * limit for the got-dirty entries of its index nodes. The index nodes themselves are within
+     * dirtyLimit(), with the action's (stepDirtyRoom(); review F5).
+     */
+    static long stepRoom() {
+        return maxValueNode() + STEP_FIXED_ROOM + recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06: the most bytes of a record that carries maintenance: recordLimit and the
+     * step's room on top, at most MAX_RECORD_SIZE. At the release's limits it is
+     * MAX_RECORD_SIZE, as before; a transaction within L1 to L5 and its step stay below it
+     * by 024-17, section 5.3, with the step counted as a transaction of its KVs (5.5).
+     */
+    static long recordCap() {
+        return Math.min(MAX_RECORD_SIZE, recordLimit + stepRoom());
     }
     
     /** Transaction time. */
@@ -249,6 +336,8 @@ public class StoredTrans {
      * The message of a VersioningStreamException for a record whose format byte is not
      * RECORD_FORMAT: it says whether the stream was written by an older or a newer BergDB
      * (2026-10-25, bergdb 005-40). Before, every other format got the message of format 2.
+     * Format 8 names release 2026.6, which wrote it, and that this version does not read it
+     * (bergdb 031-06).
      */
     static String formatRefused(byte version) {
         int v = version & 0xff;
@@ -256,6 +345,12 @@ public class StoredTrans {
                 + "of BergDB reads format " + RECORD_FORMAT + " only. ";
         if (v > RECORD_FORMAT) {
             return s + "A larger number is a database written by a newer version of BergDB.";
+        }
+        if (v == 8) {
+            return s + "Format 8 is a database written by release 2026.6, an older version of "
+                    + "BergDB, which this version does not open: there is no upgrade path, and "
+                    + "release 2026.6 still opens it (bergdb 031-06). It is also a database of "
+                    + "a development build of 2026.7 before one record an action.";
         }
         return s + "A smaller number is a database written by an older version of BergDB, "
                 + "which this version cannot open; or the stream is damaged, as the meta "
@@ -499,6 +594,9 @@ public class StoredTrans {
 
         /** Number of times serialize() has been called. */
         private long counter;
+        
+        /** bergdb 031-06: the record's limit, Trans.recordCap, set before serialize(); 0: recordLimit. */
+        long recordCap;
         private ArrayList<Node> gotDirtyNodes;
         
         /**
@@ -732,9 +830,10 @@ public class StoredTrans {
             extraZeros = computeZeroCount(size);
             size += extraZeros;
             
-            if (size > recordLimit) {
+            final long limit = recordCap > 0 ? recordCap : recordLimit;   // bergdb 031-06
+            if (size > limit) {
                 throw new DbException("The record of the transaction would take " + size 
-                        + " bytes, more than the limit, " + recordLimit + " (bergdb 005-17).");
+                        + " bytes, more than the limit, " + limit + " (bergdb 005-17).");
             }
             
             totalSize = (int) size;
@@ -820,7 +919,8 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode n = transNodes.valueNodes[i];
                 long[] skey = transNodes.keys[i];
-                offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset);
+                offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset,
+                        transNodes.isCopy(skey));       // the copy mark, bergdb 031-06
             }
             return offset;
         }
@@ -1212,9 +1312,9 @@ public class StoredTrans {
     private static void testRefusesFormat6() {
         Serializer serializer = new Serializer();
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
-        for (int format : new int[] {6, 7}) {
+        for (int format : new int[] {6, 7, 8}) {
             byte[] buffer = serializer.getTransBuffer().clone();
-            assertEquals(8, buffer[4]);
+            assertEquals(RECORD_FORMAT, buffer[4]);
             buffer[4] = (byte) format;
             try {
                 new Parser().parse(200, buffer);

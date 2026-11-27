@@ -13,17 +13,26 @@ import bergdb.storage.RecoverableStream;
 import bergdb.stream.CutStream;
 
 /**
- * Tests of Db.maintain() (bergdb 024-32): a call's work is bounded, a call when nothing is
- * due writes nothing and returns false, an emptied database that is not written to comes
- * back to about a fresh one's stream by maintain() calls alone, also when emptied again
- * after a cut, one written slowly keeps little, and one with live values that is not
- * written to is quiet (028-51), reads are right during and after, and the stream follows
- * the calls, also over a restart (010-01, P2).
+ * Tests of Db.maintain(budget) (bergdb 024-32, 031-04): a call's work is bounded by its
+ * budget, a call when nothing is due writes nothing, an emptied database that is not
+ * written to comes back to about a fresh one's stream by maintain() calls alone, also when
+ * emptied again after a cut, one written slowly keeps little, and one with live values
+ * that is not written to is quiet (028-51), reads are right during and after, and the
+ * stream follows the calls, also over a restart (010-01, P2).
  */
 public class ReclaimMaintainTester {
     private static final long SEC = Clock.UNITS_PER_SEC;
     private static final long MS = SEC / 1000;
     private static final byte[] HELLO = StringUtil.toBytes("Hello world!");
+    
+    /** The budget of a call in these tests: the least, about 100 kB written. */
+    private static final int BUDGET = Reclaim.MAINTAIN_MIN_BUDGET;
+    
+    /**
+     * What an emptied database may keep beyond twice a fresh one's stream: 600 kB, as
+     * 024-32's G5 allows (java/stress/CountGates.java).
+     */
+    private static final long ALLOWANCE = 3L * RecoverableStream.META_BLOCK_DISTANCE;
 
     private ReclaimMaintainTester() {}
 
@@ -68,9 +77,16 @@ public class ReclaimMaintainTester {
             clock.setTime(time);
         }
 
-        /** Calls maintain() until it returns false, at most 100 times. */
+        /** Calls maintain() with the largest budget. */
         void maintainUntilFalse() {
-            for (int k = 0; k < 100 && db.maintain(); k++) { }
+            db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
+        }
+        
+        /** Calls maintain(BUDGET); returns whether it wrote. */
+        boolean maintain() {
+            final long length = db.getStreamLength();
+            db.maintain(BUDGET);
+            return db.getStreamLength() != length;
         }
 
         void exec(Trans.Builder b) {
@@ -126,7 +142,10 @@ public class ReclaimMaintainTester {
         }
     }
 
-    /** With the retain duration forever, and on a fresh database, nothing is due. */
+    /**
+     * With the retain duration forever nothing is due; on a fresh database with a finite one,
+     * one pass and its cut, then nothing (bergdb 031-04).
+     */
     @Nano
     public static void testNothingDue() {
         for (long retain : new long[] {Long.MAX_VALUE, SEC}) {
@@ -136,7 +155,12 @@ public class ReclaimMaintainTester {
                 long length = r.db.getStreamLength();
                 for (int i = 0; i < 3000; i++) {
                     r.tick();
-                    Assert.assertFalse("retain " + retain + ", call " + i, r.db.maintain());
+                    final boolean wrote = r.maintain();
+                    Assert.assertFalse("retain " + retain + ", call " + i,
+                            wrote && (retain == Long.MAX_VALUE || i >= 1500));
+                    if (i == 1500) {
+                        length = r.db.getStreamLength();
+                    }
                 }
                 Assert.assertEquals("nothing written, retain " + retain, length,
                         r.db.getStreamLength());
@@ -152,7 +176,7 @@ public class ReclaimMaintainTester {
         Run r = new Run(SEC);
         r.db.close();
         try {
-            r.db.maintain();
+            r.db.maintain(BUDGET);
             throw new AssertionError("maintain() after close()");
         } catch (IllegalDbStateException e) {
             // expected
@@ -162,9 +186,9 @@ public class ReclaimMaintainTester {
     /**
      * An emptied database, not written to after its deletes, comes back to about a fresh
      * hello-world database's stream by maintain() calls alone, one a millisecond of the
-     * test clock (023-03, T1's second drive): each call's work is bounded, the calls return
-     * false once it has converged and then write nothing, and reads are right throughout,
-     * also in a thread of their own.
+     * test clock (023-03, T1's second drive): each call's work is bounded by its budget, the
+     * calls write nothing once it has converged, and reads are right throughout, also in a
+     * thread of their own.
      */
     @Nano
     public static void testEmptiedDatabaseConverges() throws Exception {
@@ -200,11 +224,11 @@ public class ReclaimMaintainTester {
                 r.tick();
                 twin.tick();
                 final long length = r.db.getStreamLength(), records = r.records();
-                final boolean more = r.db.maintain();
-                twin.db.maintain();
+                r.db.maintain(BUDGET);
+                twin.db.maintain(BUDGET);
                 maxGrowth = Math.max(maxGrowth, r.db.getStreamLength() - length);
                 maxRecords = Math.max(maxRecords, r.records() - records);
-                if (more || r.db.getStreamLength() != length) {
+                if (r.db.getStreamLength() != length) {
                     lastTrue = i;
                     lengthAtLastTrue = r.db.getStreamLength();
                 }
@@ -220,19 +244,18 @@ public class ReclaimMaintainTester {
             if (failure.get() != null) throw new AssertionError("the reader", failure.get());
             checkReads(r, live, n);
 
-            // Bounded work: a call writes at most a filler, a take and a few small records.
+            // Bounded work: a call writes about its budget, and at most one part more: a
+            // filler, a take, a step.
             Assert.assertTrue("growth of a call " + maxGrowth, maxGrowth
-                    < RecoverableStream.META_BLOCK_DISTANCE + Reclaim.MAINTAIN_TAKE_BYTES
-                    + 100000);
-            Assert.assertTrue("records of a call " + maxRecords, maxRecords <= 10);
-            // Converged, and quiet: the last 5 R wrote nothing and returned false.
+                    < BUDGET * Reclaim.MAINTAIN_UNIT + RecoverableStream.META_BLOCK_DISTANCE
+                    + Reclaim.MAINTAIN_TAKE_BYTES + 100000);
+            Assert.assertTrue("records of a call " + maxRecords, maxRecords <= 100);
+            // Converged, and quiet: the last 5 R wrote nothing.
             Assert.assertTrue("last call with work " + lastTrue, lastTrue < calls - 5000);
             Assert.assertEquals(lengthAtLastTrue, r.db.getStreamLength());
-            Assert.assertFalse(r.db.maintain());
-            // About a fresh database's stream: within twice the twin's and the bound that
-            // the release threshold and a filler leave (bergdb 024-32, section 2.2).
-            final long allowance = Reclaim.MAINTAIN_MIN_RELEASE
-                    + RecoverableStream.META_BLOCK_DISTANCE;
+            Assert.assertFalse(r.maintain());
+            // About a fresh database's stream: within twice the twin's and 600 kB.
+            final long allowance = ALLOWANCE;
             Assert.assertTrue("kept " + r.kept() + " (before " + keptBefore + "), the twin's "
                     + twin.kept(), r.kept() <= 2 * twin.kept() + allowance);
             Assert.assertTrue("kept before " + keptBefore, keptBefore > 4 * allowance);
@@ -240,7 +263,7 @@ public class ReclaimMaintainTester {
             // And after a restart.
             r.restart();
             checkReads(r, live, n);
-            Assert.assertFalse(r.db.maintain());
+            Assert.assertFalse(r.maintain());
         } finally {
             r.db.close();
             twin.db.close();
@@ -250,10 +273,10 @@ public class ReclaimMaintainTester {
     /**
      * An emptied database that maintain() has brought back, then filled and emptied again,
      * is brought back again by maintain() calls alone (bergdb 028-51). Its first cut is that
-     * of the first iteration, which cuts at its own pStart, so the cut of the next
-     * iteration releases nothing: until 028-51, M1 began an iteration only if its own cut
-     * released 400 kB, and with a startup distance above half the second filling's stream,
-     * so that no commit began one, that stream stayed for good.
+     * of the first iteration, which cuts at its own pStart: until 028-51, M1 began an
+     * iteration only if its own cut released 400 kB, and with a startup distance above half
+     * the second filling's stream, so that no commit began one, that stream stayed for good.
+     * Since 031-04 every pass that a call begins cuts at its own pStart.
      */
     @Nano
     public static void testEmptiedAgainAfterACut() {
@@ -280,19 +303,18 @@ public class ReclaimMaintainTester {
                 r.tick();
                 twin.tick();
                 final long length = r.db.getStreamLength();
-                final boolean more = r.db.maintain();
-                twin.db.maintain();
-                if (more || r.db.getStreamLength() != length) {
+                r.db.maintain(BUDGET);
+                twin.db.maintain(BUDGET);
+                if (r.db.getStreamLength() != length) {
                     lastWork = i;
                 }
             }
-            final long allowance = Reclaim.MAINTAIN_MIN_RELEASE
-                    + RecoverableStream.META_BLOCK_DISTANCE;
+            final long allowance = ALLOWANCE;
             Assert.assertTrue("kept before " + keptBefore, keptBefore > 4 * allowance);
             Assert.assertTrue("kept " + r.kept() + " (before " + keptBefore + "), the twin's "
                     + twin.kept(), r.kept() <= 2 * twin.kept() + allowance);
             Assert.assertTrue("last call with work " + lastWork, lastWork < calls - 3000);
-            Assert.assertFalse(r.db.maintain());
+            Assert.assertFalse(r.maintain());
         } finally {
             r.db.close();
             twin.db.close();
@@ -300,7 +322,7 @@ public class ReclaimMaintainTester {
     }
 
     /**
-     * A database written slowly, with maintain() until false after each commit, keeps about
+     * A database written slowly, with maintain() of the largest budget after each commit, keeps about
      * the stream of a few retain durations, not twice its startup distance (bergdb 028-51;
      * 028-47, finding F1): a value of 10 kB every 10 ms, 1 MB a retain duration R, so that
      * R/4 writes less than the 400 kB that M1 asks a cut to release, and a startup distance
@@ -328,8 +350,7 @@ public class ReclaimMaintainTester {
             Assert.assertTrue("a cut", r.db.getFirstAvailablePos() > 0);
             // At most the writes of 4 R and the allowance of testEmptiedDatabaseConverges:
             // 3.5 MB measured (028-51), 12.1 MB before 028-51.
-            Assert.assertTrue("kept " + maxKept, maxKept < 4 * perR * v.length
-                    + Reclaim.MAINTAIN_MIN_RELEASE + RecoverableStream.META_BLOCK_DISTANCE);
+            Assert.assertTrue("kept " + maxKept, maxKept < 4 * perR * v.length + ALLOWANCE);
         } finally {
             r.db.close();
         }
@@ -339,8 +360,8 @@ public class ReclaimMaintainTester {
      * A database with live values, not written to, is quiet after the first iteration's
      * cut (bergdb 028-51): the stream since that iteration began holds its rewrites of every
      * live value, and a rule that counted it would begin iterations that rewrite them
-     * again and again, about an R apart, to release only their own copies. M1 counts the
-     * stream written since the table was last stored.
+     * again and again, about an R apart, to release only their own copies. Since 031-04 a
+     * call begins a pass only while the stream kept holds a record of the application's.
      */
     @Nano
     public static void testLiveDatabaseQuiet() {
@@ -359,8 +380,93 @@ public class ReclaimMaintainTester {
             Assert.assertTrue("the first cut", r.db.getFirstAvailablePos() > 0);
             Assert.assertEquals("written in the last 5 R", lengthAtHalf,
                     r.db.getStreamLength());
-            Assert.assertFalse(r.db.maintain());
+            Assert.assertFalse(r.maintain());
         } finally {
+            r.db.close();
+        }
+    }
+
+    /**
+     * The handover of the write lock (bergdb 031-04, Q9): a commit that waits for the lock
+     * goes before the next part of maintain() calls that wait with it, here two calls at
+     * once. The test holds the lock, starts the commit, waits until it counts as waiting
+     * (writersWaiting), starts the calls, waits until both have begun to give way
+     * (Db.TestHooks.givingWay, in the handover's wait, which ends only when the commit has
+     * the lock), and lets the lock go: the first record after that is the commit's, and the
+     * calls then write their parts. writersWaiting is 0 at the end. Since bergdb 031-06 the
+     * test waits for the hook, not for the threads' state, TIMED_WAITING, which it sampled:
+     * a thread that parks for 20 us and then waits for a core is RUNNABLE most of the time
+     * on a loaded machine, and the sample failed once so (031-06's landing, step 1). The
+     * waits' time limits are hang guards.
+     */
+    @Nano
+    public static void testCommitGoesBeforeTheNextPart() throws Exception {
+        Run r = new Run(SEC);
+        try {
+            r.fill(5000, 0);
+            r.advance(2 * SEC);         // past R: a call begins a pass, and writes
+            final Db db = r.db;
+            final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
+            final Thread w = new Thread(() -> {
+                try {
+                    db.execute(db.trans().put("/w", "w").build());
+                } catch (Throwable e) {
+                    failure.set(e);
+                }
+            });
+            final Thread[] m = new Thread[2];
+            for (int i = 0; i < m.length; i++) {
+                m[i] = new Thread(() -> {
+                    try {
+                        db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
+                    } catch (Throwable e) {
+                        failure.set(e);
+                    }
+                });
+            }
+            final java.util.concurrent.CountDownLatch givingWay =
+                    new java.util.concurrent.CountDownLatch(m.length);
+            final long released;
+            synchronized (db.internal().getWriteLock()) {
+                w.start();
+                final long end = System.nanoTime() + 60_000_000_000L;
+                while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
+                    Thread.sleep(1);
+                }
+                Assert.assertEquals("the commit waits", 1, db.internal().writersWaiting());
+                Db.testHooks = new Db.TestHooks() {
+                    public void givingWay() {
+                        givingWay.countDown();
+                    }
+                    public void transExecuted(Db.ExecuteData x) {}
+                    public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                    public void nodeTouched(bergdb.dag.Node node) {}
+                    public void nodeReplaced(bergdb.dag.Node node) {}
+                };
+                for (Thread t : m) t.start();
+                Assert.assertTrue("the calls give way", givingWay.await(60,
+                        java.util.concurrent.TimeUnit.SECONDS));
+                Assert.assertEquals("the commit still waits", 1, db.internal().writersWaiting());
+                released = db.getStreamLength();
+            }
+            w.join(60_000);
+            for (Thread t : m) t.join(60_000);
+            Db.testHooks = null;
+            if (failure.get() != null) throw new AssertionError("failed", failure.get());
+            Assert.assertFalse("the threads ended", w.isAlive() || m[0].isAlive()
+                    || m[1].isAlive());
+            Assert.assertTrue("the calls wrote", db.getStreamLength() > released);
+            Assert.assertEquals("no writer waits", 0, db.internal().writersWaiting());
+            synchronized (db.internal().getWriteLock()) {
+                NodeStream.TransIterator ti =
+                        db.internal().nodeStream().createTransIteratorFromExactStartupPos(released);
+                Assert.assertTrue(ti.next());
+                Assert.assertTrue("the first record is the commit's",
+                        r.get(ti.transTime, "/w") != null);
+                Assert.assertNull(r.get(ti.transTime - 1, "/w"));
+            }
+        } finally {
+            Db.testHooks = null;
             r.db.close();
         }
     }
@@ -402,7 +508,10 @@ public class ReclaimMaintainTester {
                 }
                 a.tick();
                 b.tick();
-                Assert.assertEquals("call " + i, a.db.maintain(), b.db.maintain());
+                a.db.maintain(BUDGET);
+                b.db.maintain(BUDGET);
+                Assert.assertEquals("call " + i, a.db.getStreamLength(),
+                        b.db.getStreamLength());
             }
             Assert.assertTrue("cut", a.db.getFirstAvailablePos() > 0);
             Assert.assertEquals(a.db.getFirstAvailablePos(), b.db.getFirstAvailablePos());

@@ -124,6 +124,24 @@ public class Trans {
      * position or the taken nodes reach Reclaim.MAINTAIN_TAKE_BYTES (TransSeq.takeTo).
      */
     long maintainTakeTo = -1;
+    
+    /**
+     * bergdb 031-06: the record of a part of Db.maintain(budget), an action of its own: an
+     * empty internal transaction that carries the part's maintenance (Maintenance.plan).
+     */
+    boolean part;
+    
+    /**
+     * bergdb 031-06: a user transaction whose record carries no maintenance, a setter's
+     * (Db.setStartupDistance); what the setting makes due is decided by the next record.
+     */
+    boolean noMaintenance;
+    
+    /**
+     * bergdb 031-06: the most bytes the record may take, StoredTrans.recordCap() for a record
+     * that carries maintenance, else 0: StoredTrans.recordLimit. Set by Db.
+     */
+    long recordCap;
 
     /** startupPos stored in stream with transaction. */
     public long startupPos = Spos.NULL;

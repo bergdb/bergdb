@@ -7,7 +7,10 @@ above E (as reclaim's table store does); the first step (transaction 3) stops
 after two KVs and rewrites them, with its row; a user transaction (4) puts a
 key behind the cursor, puts again a key ahead of it, and deletes a key
 already rewritten; the last step
-(transaction 5) meets the rest up to E and rewrites the old one, with its row.
+(transaction 5) meets the rest up to E, [88], whose node is new, and [96], old,
+which the record's action deletes, so that no copy of it is made (bergdb 031-06:
+a step rides in a commit's record, and Java leaves out a copy at a key that the
+action writes); the action also puts [100], above E, and the record puts the row.
 Every key live before the first step is old, and each is written from the first
 step to the last: `IterationOK` from 3 to 5, by `iterationOK_steps`.
 -/
@@ -19,14 +22,15 @@ namespace Contract.StepsExample
 open Contract Contract.PE Contract.PE.Example
 
 /-- The operations: four keys put; a reserved key above them; step 1 (two
-rewrites and the current row); user puts behind and ahead of the cursor and
-a delete; step 2 (one rewrite and the row). -/
+copies and the current row); user puts behind and ahead of the cursor and
+a delete; step 2 in a commit's record (bergdb 031-06): the action's delete of
+the old KV [96] and its put of [100], and the row. -/
 def txs5 : List (List Op) :=
   [[.put [72] 5, .put [80] 6, .put [88] 7, .put [96] 8],
    [.put [0x495ac0599d19f8, 0x195b98dadbc04030] 1],
    [.put [72] 5, .put [80] 6, .put reclaimRow 2],
    [.put [76] 9, .put [88] 10, .del [80]],
-   [.put [96] 8, .put reclaimRow 3]]
+   [.del [96], .put [100] 11, .put reclaimRow 3]]
 
 theorem accS : (peHist cfE txs5).isSome = true := by decide +kernel
 
@@ -44,13 +48,13 @@ theorem keysS : ∀ ops ∈ txs5, (ops.map Op.key).Nodup := by decide
 theorem lenS : txs5.length < 2 ^ 48 - 1 := by decide
 
 /-- The iteration: cut 2, start 1; step 1 is transaction 3 and stops after its
-second KV; step 2 is transaction 5 and does not stop. -/
+second KV; step 2 is transaction 5, a commit's record, and does not stop. -/
 def itS : Iteration :=
   { c := 2, t0 := 1,
     steps := [⟨2, fun met _ => (false, met.length == 1)⟩, ⟨4, fun _ _ => (false, false)⟩] }
 
-instance (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) :
-    Decidable (StepTx h c j out ops) := by
+instance (h : BHist) (c : Nat) (out : ScanOut) (ops : List Op) :
+    Decidable (StepTx h c out ops) := by
   unfold StepTx
   infer_instance
 
