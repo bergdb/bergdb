@@ -253,6 +253,15 @@ Frans accepted them at 14:36: “Yes, do it.”
      though common file systems keep appends in order: the release notes
      say that FileStream relies on a file system that does.
 
+Note, 2026-11-26 (028-60, part 2; RB-012): on APFS (macOS) a kill of the
+process during an append can leave zeros within the last file's length
+where the cut write's bytes should be (031-02, F1; 035-01), not a prefix.
+For point 4 (b), `FileStream` restores the prefix: at the open it leaves
+a run of zero bytes of at most 8 MB at the end of its last file out of
+the stream, and its first append truncates the file there, on every
+system (Frans, 2026-11-26). The contract above is
+unchanged; nothing above `FileStream` changed (027-14).
+
 Of section 6's decisions, the first is made for 2026.3: each provider must
 give prefix interruption. For the broader model, decisions 1 to 5 and
 section 6's completion criteria remain open.

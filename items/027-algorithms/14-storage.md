@@ -31,12 +31,15 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   the one before ends and that every file but the last is a multiple
   of 100,000 bytes (`testMixedFileSizes`).
 * **A backup by a copy of the files.** A file is changed only by
-  appends at its end and removed only whole, the oldest first; no byte
-  is written twice, no file truncated or renamed. A copy of the
-  `*.bergdb` files of a stopped database is the database. A copy of a
-  running one that lists the files and copies them in the order of
-  their names, the last one last, is the stream as a kill of the process
-  would leave it when the copy read the last file's end, and starts as
+  appends at its end and removed only whole, the oldest first; no file
+  is renamed, and no byte written twice but in one case: the first
+  append after an open that left a tail of zeros out of the stream
+  truncates the last file where the zeros begin and writes there
+  (below). A copy of the `*.bergdb` files of a stopped database is the
+  database. A copy of a running one that lists the files and copies
+  them in the order of their names, the last one last, is the stream as
+  a kill of the process would leave it when the copy read the last
+  file's end, and starts as
   after a kill; a file that a cut deletes while it is read stays
   readable on macOS and Linux, and the copy then holds files that the
   stream has deleted, as after a crash before a cut's deletes. A listed
@@ -46,7 +49,55 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   `BackupCopy` probe: 100 copies of a database written all the time,
   with cuts, each started and holding the state after one of its
   transactions; 29 taken again. Windows not run: a delete of a file that
-  a copy program holds open can fail there, which fails the stream.
+  a copy program holds open can fail there, which fails the stream. A
+  copy that overlaps the first append after an open that left zeros
+  out (after a kill, or of a copy that ended in zeros) can hold the old
+  file's zeros in place of bytes written after them, and is not a
+  backup (Codex's reviews of 028-60, part 2). So a copy begins after an
+  append of at least one byte since the open has returned (an append of
+  nothing does not cut the zeros), or after `close()` has returned:
+  for a running database, after a transaction that changed something,
+  committed since the start, and a `sync()` that returned after it (a
+  commit alone can return before its bytes reach `FileStream`); for a
+  stopped one, after its `close()` has returned (`stop()` returns
+  before the close ends).
+* **A tail of zeros** (028-60, part 2; RB-012). At the open, after the
+  directory's lock and the check of the files' names and lengths and
+  before anything reads the stream, `FileStream` leaves a run of zero
+  bytes of at most 8 MB (`ZERO_TAIL_MAX`, 8,000,000) at the end of its
+  last file out of the stream (`zeroTailLength`): the stream's length
+  ends where the run starts, reads stop there, and the last file's size
+  class is computed from its length without the zeros. The open does
+  not change the file. The first append truncates it where the run
+  starts (`FileStreamIo.truncate`) and forces it (`ZERO_TAIL`), also
+  with per-append forcing off, before its check of the file's length
+  and its write; so does a cut that deletes files before it
+  (`pretruncate`: else a last file of zeros only, left as the only
+  file, would be taken whole by the next open); `close()` and an
+  append of nothing do not. So a start
+  refused before it writes (another node size, an unsupported version,
+  bytes that are not a BergDB stream's, as an earlier release's
+  encryption: "The start has written nothing") leaves the files as they
+  were; a recovery may append before a later check refuses a start,
+  and then the cut is made. A longer run is left, and so is a stream
+  whose only file is all zeros (a repair never empties a stream). The same rule on every operating system and file system,
+  with no detection of either (Frans, 2026-11-26). The layers above see
+  a stream cut short, a prefix of what was appended (014-01, section 7),
+  and recovery completes and aborts the torn last record (027-11, 1.3);
+  nothing above `FileStream` changed. Safe for the stream format: a
+  committed record and a valid meta block end in the byte 10 (027-03),
+  so zeros at the end of the last file are the system's, a torn
+  record's that was never synced, or a recovery's zeros of an aborted
+  record, which the next recovery writes again. The bound limits a
+  silent repair in the case outside the contract, a power loss that
+  destroyed forced bytes. Not removed: bytes that are not zero (028-67).
+  The rule holds for every stream that `FileStream` opens, with no way
+  to turn it off; BergDB has no encrypted stream since 028-69
+  (2026-11-27). Tests: `FileStream.testZeroTailRemoved`,
+  `testZeroTailLastFileOnly`, `testZeroTailCutAtFirstAppend`,
+  `testZeroTailFileSize`, `testZeroTailCutBeforeFirstAppend`; `DbTesterStream.testZeroedTailOverMetaBlock`,
+  `testRefusedStartsKeepZeroTail`;
+  `PubTester.testEncryptedByAnEarlierReleaseRefused`.
 
 
 Log
@@ -57,3 +108,11 @@ recommended").
 
 2026-11-26. The files and the disk, and a backup by a copy of the
 files, recorded from the code before the part is written (028-62).
+
+2026-11-26. A tail of zeros: `FileStream`'s open leaves one of at most
+8 MB at the end of its last file out of the stream, and the first
+append cuts it from the file (028-60, part 2, after Codex's review);
+the backup's one exception to appends only.
+
+2026-11-27. The tail of zeros on `main`, for every stream, with no
+opt-out: the internal encryption is gone (028-69; 028-60, part 2).

@@ -70,10 +70,18 @@ import bergdb.pub.util.SyncLevel;
  * 
  * <p>A power loss must leave a cut tail and no other bytes: the file storage forces each
  * append to the device before the append returns, and relies on a file system that keeps a
- * file's appends in order, as common ones do (bergdb 014-01, section 7; 005-83). A tail of
- * zeros or of other bytes after the last transaction, as a file system that writes a file's
- * length before its data can leave, is refused: start() throws a StreamFormatException,
- * "Bad transaction size in db stream, S, spos P. Stream length: L." (U8-3). To start the
+ * file's appends in order, as common ones do (bergdb 014-01, section 7; 005-83). A kill of
+ * the process or a crash can also leave zeros within the last stream file's length, where
+ * the bytes of the last write should be, as APFS (macOS) does (bergdb 033, RB-012): a start
+ * leaves a run of zero bytes of at most 8 MB at the end of the last stream file out of the
+ * stream, and recovers the stream as a cut tail; the file storage cuts the zeros from the
+ * file at its first write, so a start refused before it writes leaves the files as they
+ * were. No committed transaction is among such zeros: each committed transaction's record
+ * and each valid meta block of the stream ends in the byte 10. A longer run of zeros that
+ * reaches past a transaction's end, or other bytes
+ * after the last transaction, as a file system that writes a file's length before its data
+ * can leave, is refused: start() throws a StreamFormatException, "Bad transaction size in
+ * db stream, S, spos P. Stream length: L." (U8-3). To start the
  * database, keep a copy of its files, then cut the stream at P: cut the stream file that
  * holds P to P less the file's first position, which is the number in its name times
  * 100,000 (00000000000300.bergdb begins at 30,000,000), and remove the later stream files,

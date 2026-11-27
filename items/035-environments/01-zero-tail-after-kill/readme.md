@@ -424,6 +424,35 @@ fits every cut file, on all three APFS devices:
   case of old bytes for 028-60's owner.
 
 
+## 12. What BergDB does: the zero-tail cut
+
+Frans decided on 2026-11-26, for 028-60's part 2: one rule on every
+operating system and file system, with no detection of either. At the
+open, `FileStream` leaves a run of zero bytes of at most 8 MB at the
+end of its last file out of the stream; its first append truncates the
+file where the run starts and forces it. Nothing above `FileStream` changed; the layers above see a
+stream cut short, a prefix of what was appended (014-01, section 7),
+and the start's recovery completes and aborts the torn last record. The
+code, its tests and the runs are in 028-60 (sections 7 to 10).
+
+* **Why one rule.** The cut's safety rests on BergDB's own format, not
+  on a file system's behaviour: a committed record and a valid meta
+  block end in the byte 10, so zeros at the end of the last file are
+  the system's, or part of a torn record that recovery aborts. No
+  committed transaction can be among them, on any system.
+* **The bound.** 8 MB covers every zeroed tail measured here (section
+  10: within one piece of a write, the write at most 5 MB). It limits a
+  silent repair in the case outside the contract, a power loss that
+  destroyed forced bytes and left zeros in their place; a longer run is
+  left, and the start takes it as before.
+* **Section 10's alignment conditions dropped.** The 4 KiB boundary at
+  or before P and the last file's length a multiple of 4,096 are a
+  fingerprint of APFS, not part of why the cut is safe.
+* **Stale bytes that are not zero** (section 10, "Old bytes"; 035-02)
+  are not removed: the start refuses them as before, and they are
+  handled apart, in 028-67.
+
+
 ## Log
 
 2026-11-26. Created (Frans), in 035.
@@ -439,3 +468,7 @@ image some such pages held a deleted file's bytes. Writes of one page
 or less were never cut. s1 (ext4) and HFS+: prefixes or nothing, no
 zeros. Recommendation for 028-60's part 2: B2 with four conditions
 (section 10).
+
+2026-11-26. Section 12: what BergDB does, the zero-tail cut in
+`FileStream` as Frans decided it for 028-60's part 2 (one rule on every
+system, at most 8 MB, no alignment conditions; stale bytes in 028-67).

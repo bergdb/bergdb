@@ -75,3 +75,6 @@ Log
 2026-11-26. Created (Frans), with 035-01.
 
 2026-11-26. 035-02 created (Frans).
+
+2026-11-26. 035-01, section 12: the zero-tail cut that BergDB makes
+(028-60, part 2; Frans's decision).

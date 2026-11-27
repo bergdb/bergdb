@@ -365,7 +365,10 @@ recovery copies the last valid block whole, reserved bytes included
   them (028-60): a tail of zeros within the stream's length, which a
   kill of the process during an append left on macOS (031-02, F1), can
   cover a block's position; until 2026-11-25 it was a `BadMagicBytes`,
-  and the start refused the stream.
+  and the start refused the stream. Since 2026-11-27 `FileStream`'s
+  open leaves such a tail out of the stream first, a run of at most 8
+  MB at the end of the last file (027-14; 028-60, part 2); the reader
+  still passes over zero blocks of a longer run or of another storage.
 * `MetaBlock.checkFormat` (:116), for a valid block: lastTrans below 0 and
   not −1, and a time below 0, are SFEs.
 * `RecoverableStream.checkLastTransSpos` (:170, 019-34): lastTrans must
@@ -1819,3 +1822,8 @@ puts (Lean, given the fill rules).
 (section 6), and a cut block whose bytes are zero so far is completed
 with zeros (section 7). By an agent of lead-1125, on the branch
 `028-60`.
+
+2026-11-26. 028-60, part 2: section 6 notes that `FileStream`'s open
+leaves a tail of zeros of at most 8 MB at the end of the last file out
+of the stream before the reads (027-14). By an agent of lead-1126, on the branch
+`028-60b`.

@@ -61,17 +61,28 @@ import bergdb.pub.util.BadFormatException;
  * 
  * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
  * only by appends at its end, and removes files only whole, by deletes, the oldest first;
- * it never writes a byte of a file twice, truncates or renames one (recovery after a crash
- * appends too, RecoverableStream). So the stream's files (*.bergdb), copied in the order of
- * their names, are a backup; bergdb.lock is not needed:
+ * it never renames a file, and never writes a byte of one twice but in one case: the first
+ * append after an open that left a tail of zeros of the last file out of the stream
+ * (below; bergdb 028-60) truncates the file where the zeros begin and then writes there.
+ * Recovery after a crash appends too (RecoverableStream). So the stream's files (*.bergdb),
+ * copied in the order of their names, are a backup; bergdb.lock is not needed:
  * - Of a closed stream (a stopped database), the copy is the stream.
- * - Of an open one, a copy that lists the files and then copies them in that order, the
- *   last one last, holds the stream as a kill of the process would leave it at the moment
- *   the copy read the last file's end: every file before the last whole, as they never
- *   change, and the last one up to some point of the appends, its end possibly torn (on
- *   macOS possibly zeros within its length, as after a kill: bergdb 033, RB-012). A start
- *   on the copy recovers it as after a kill. A file made after the listing is not in the
- *   copy, which then ends as at a kill before that file.
+ * - Of an open one (a running database), a copy that lists the files and then copies them
+ *   in that order, the last one last, holds the stream as a kill of the process would
+ *   leave it at the moment the copy read the last file's end: every file before the last
+ *   whole, as they never change, and the last one up to some point of the appends, its end
+ *   possibly torn (on macOS possibly zeros within its length, as after a kill: bergdb 033,
+ *   RB-012). A start on the copy recovers it as after a kill. A file made after the
+ *   listing is not in the copy, which then ends as at a kill before that file.
+ * - Except a copy that overlaps the first append after the open: when the open left zeros
+ *   out (after a kill, or of a copy that ended in zeros), the copy can hold the old file's
+ *   zeros in place of bytes written after them: it is not a backup. So a copy begins after
+ *   an append of at least one byte since the open has returned (an append of nothing does
+ *   not cut the zeros), or after close() has returned. For a running
+ *   database: after a transaction that changed something, committed since the start, and
+ *   a sync() that returned after it; a commit alone is not enough, as it can return
+ *   before its bytes reach this class (BufferedStream). For a stopped one: after its
+ *   close() has returned; stop() returns before the close ends.
  * - A file that a cut deletes while the copy reads it stays readable to the copy on macOS
  *   and Linux; the copy then holds files that the stream no longer has, as after a crash
  *   before a cut's deletes, and a start on it cuts again (Reclaim). A listed file that a cut
@@ -80,6 +91,38 @@ import bergdb.pub.util.BadFormatException;
  *   that misses only its first files can lack the record of the cut that deleted them.
  * - Not run on Windows, where a delete of a file that a copy program holds open can fail,
  *   which fails the stream.
+ * A tail of zeros (2026-11-26, bergdb 028-60; 033, RB-012). At the open, before anything
+ * reads the stream, the constructor leaves a run of zero bytes of at most 8 MB at the end
+ * of the last file (ZERO_TAIL_MAX) out of the stream: the stream's length ends where the
+ * run starts, reads stop there, and appends begin there. The file is not changed at the
+ * open: the first append truncates it where the run starts and forces it, also with
+ * per-append forcing off, before it writes, and so does a cut that deletes files before it
+ * (pretruncate(): else a last file of zeros only, left as the only file, would be taken
+ * whole by the next open); close() and an append of nothing do not. So an
+ * open that is closed before an append, as a start refused before it writes (another node
+ * size, an unsupported version, bytes that are not BergDB's stream format), leaves the
+ * files as they were. A start's recovery
+ * may append before a later check refuses the start; then the cut is made. The same rule on
+ * every operating system and file system, with no detection of either (Frans, 2026-11-26).
+ * A kill of the process during an append can leave the last file with zeros within its
+ * length on APFS (macOS), from a page boundary on, where the cut write's bytes should be
+ * (bergdb 031-02, F1; 035-01); without them the layers above see a stream cut short, a
+ * prefix of what was appended (AppendOnlyStream, "CRASHES"), and the start's recovery
+ * completes and aborts the torn last record. Safe for BergDB's stream format: a committed
+ * record and a valid meta block end in the byte 10, so the zeros at the end hold no
+ * committed transaction. A longer run is left in the stream, and the start takes it as
+ * before: as a cut tail where its zeros begin inside the last record, else refused, "Bad
+ * transaction size in db stream, 0, spos P" (Database, "What a crash keeps"); so is a
+ * stream whose only file is all zeros, so that the repair never empties a stream
+ * (DatabaseBuilder's open() would then create a database in its place). The bound limits a
+ * silent repair in the case outside the contract, a power loss that destroyed forced
+ * bytes. Bytes that are not zero are never left out (stale bytes after a kill, bergdb
+ * 028-67). The rule holds for every stream that this class opens, with no way to turn it
+ * off: a stream of other bytes than BergDB's format, whose last byte can be zero, loses
+ * its trailing zeros at each open that appends; BergDB has no such stream since its
+ * internal encryption was removed (2026-11-27, bergdb 028-69).
+ * getZeroTailRemoved() tells how many bytes the open left out.
+ * 
  * Each file is named &lt;14-digit index&gt;.bergdb. The index is the file's first stream 
  * position divided by 100,000, padded with zeros (indexToString).
  * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb. A new stream has
@@ -187,6 +230,15 @@ public class FileStream implements AppendOnlyStream {
     /** File size index for 2G. */
     private static final int INDEX_2G = 6;
     
+    /**
+     * The longest tail of zero bytes at the end of the last file that the open leaves out of
+     * the stream (zeroTailLength(); 2026-11-26, bergdb 028-60): 8 MB, decimal. A write of
+     * BufferedStream's thread is at most 5 MB (bergdb 026-07); the zeros that a kill left on
+     * APFS were 115 to 459 kB (bergdb 031-02, F1), in 035-01 within one piece of a write
+     * (bergdb 035-01).
+     */
+    public static final long ZERO_TAIL_MAX = 8*M;
+    
     /** The lock file, in the stream's directory (bergdb 005-63). */
     private static final String LOCK_NAME = "bergdb.lock";
     
@@ -227,6 +279,12 @@ public class FileStream implements AppendOnlyStream {
     
     /** Per-append forcing (bergdb 005-47): on, every append is forced before it returns. */
     private final boolean forceAppends;
+    
+    /**
+     * The number of zero bytes at the end of the last file that the open left out of the
+     * stream (zeroTailLength(); bergdb 028-60), 0 if none. Set by the constructor.
+     */
+    private long zeroTailRemoved = 0;
     private volatile long firstPos = 0;
     private volatile long length = 0;
     private int fileSizeIndex = 0;
@@ -616,6 +674,11 @@ public class FileStream implements AppendOnlyStream {
         }
         
         if (index != -1) {
+            // The zeros that the open left out are cut from the last file first (2026-11-26,
+            // bergdb 028-60): a last file of zeros only that the cut leaves as the only file
+            // would be taken whole at the next open (zeroTailLength()), past the length.
+            files[files.length - 1].cutZeroTailIfPending();
+            
             int newSize = files.length - (index + 1);
             
             DbFile[] newFiles = new DbFile[newSize];
@@ -1043,6 +1106,13 @@ public class FileStream implements AppendOnlyStream {
         long currentSpos = checkDbFiles(bergdbFiles);
         determineFileSizeIndexFromFiles(bergdbFiles);
         createDbFileObjects(bergdbFiles, currentSpos);
+        if (zeroTailRemoved > 0) {
+            // The last file's size from its length without the zeros (bergdb 028-60).
+            DbFile[] files = dbFiles;
+            long before = files.length > 1 ? files[files.length - 2].fileLength : 0;
+            determineFileSizeIndexFromLengths(findLastFile().fileLength, before);
+            findLastFile().maxSize = FILE_SIZES[fileSizeIndex];
+        }
     }
 
     private void createDbFileObjects(File[] bergdbFiles, long currentSpos) throws IOException,
@@ -1080,12 +1150,14 @@ public class FileStream implements AppendOnlyStream {
             }
             
             if (i == bergdbFiles.length - 1) {
-                dbFiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex]);
+                // The tail of zeros goes before anything reads the stream (bergdb 028-60).
+                dbFiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex], true,
+                        bergdbFiles.length == 1);
             } else {
                 dbFiles[i] = openForR(currentSpos, f);
             }
             
-            currentSpos += f.length();
+            currentSpos += dbFiles[i].fileLength;
         }
         
         this.length = currentSpos;
@@ -1098,20 +1170,27 @@ public class FileStream implements AppendOnlyStream {
         if (bergdbFiles.length == 0) {
             this.fileSizeIndex = 0;
         } else {
-            long fileSize = bergdbFiles[bergdbFiles.length - 1].length();
-            if (bergdbFiles.length > 1) {
-                fileSize = Math.max(fileSize, bergdbFiles[bergdbFiles.length - 2].length());
+            determineFileSizeIndexFromLengths(bergdbFiles[bergdbFiles.length - 1].length(),
+                    bergdbFiles.length > 1 ? bergdbFiles[bergdbFiles.length - 2].length() : 0);
+        }
+    }
+    
+    /**
+     * Computes and sets this.fileSizeIndex from the lengths of the last file and the one
+     * before it, 0 if none: the smallest size that holds both. The last file's length is the
+     * stream's part of it, without a tail of zeros that the open left out (bergdb 028-60).
+     */
+    private void determineFileSizeIndexFromLengths(long last, long beforeLast) {
+        long fileSize = Math.max(last, beforeLast);
+        
+        this.fileSizeIndex = FILE_SIZES.length - 1;    // max
+        
+        for (int i = FILE_SIZES.length - 1; i >= 0; i--) {
+            long s0 = FILE_SIZES[i];
+            if (s0 < fileSize) {
+                break;
             }
-            
-            this.fileSizeIndex = FILE_SIZES.length - 1;    // max
-            
-            for (int i = FILE_SIZES.length - 1; i >= 0; i--) {
-                long s0 = FILE_SIZES[i];
-                if (s0 < fileSize) {
-                    break;
-                }
-                this.fileSizeIndex = i;
-            }
+            this.fileSizeIndex = i;
         }
     }
 
@@ -1307,7 +1386,7 @@ public class FileStream implements AppendOnlyStream {
         
         applyFileSizeChangeRules();
         
-        DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
+        DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex], false, false);
         
         // To make sure no-one just created the file and wrote to it.
         long newFileLength = newFile.file.length();
@@ -1429,18 +1508,27 @@ public class FileStream implements AppendOnlyStream {
      * Opens a file for appends, and makes it if it is not there: the last file at a start,
      * and newFile()'s. The directory is checked right before the open, with nothing that
      * waits in between, and again after the steps by name (2026-11-09, bergdb 021-24; see
-     * checkDirectory()).
+     * checkDirectory()). With 'zeroTail', the last file at a start, a tail of zeros is left
+     * out of the stream, and cut from the file at its first append (zeroTailLength(); bergdb
+     * 028-60); 'onlyFile' says that the file is the stream's only one.
      */
-    private DbFile openForRw(long spos, File file, long maxSize) throws IOException {
+    private DbFile openForRw(long spos, File file, long maxSize, boolean zeroTail,
+            boolean onlyFile) throws IOException {
         DbFile k = new DbFile(spos, file, maxSize);
         checkDirectory();
         k.rfile = io.open(file);
         try {
+            // Read only; the file is not changed here (bergdb 028-60).
+            final long zeros = zeroTail ? zeroTailLength(k.rfile, onlyFile) : 0;
             // Persist both the file and its directory entry before it can
             // contribute to StorageManager's confirmed (durable) length.
             k.force(FileStreamIo.Force.OPEN);
             forceDirectory(dir);
-            k.fileLength = k.rfile.length();
+            k.fileLength = k.rfile.length() - zeros;
+            k.zeroTail = zeros;
+            if (zeroTail) {
+                zeroTailRemoved = zeros;
+            }
             k.forcedLength = k.fileLength;
             k.channel = io.openRead(file);
             checkDirectory();
@@ -1469,6 +1557,72 @@ public class FileStream implements AppendOnlyStream {
         k.maxSize = maxSize;
         synchronized (k) {}
         return k;
+    }
+    
+    /**
+     * The length of the tail of zeros of the last file that the open leaves out of the stream
+     * (2026-11-26, bergdb 028-60): the run of zero bytes at the file's end when it is at most
+     * ZERO_TAIL_MAX, 8 MB, else 0; 0 too for a run that is the whole stream, the only file all
+     * zeros, which is not a stream that a start can take as a cut one (a repair never empties
+     * a stream, so open() of DatabaseBuilder never creates a database in its place). It reads
+     * the file and changes nothing. The stream's length then ends where the run starts, and
+     * reads stop there; the file keeps the zeros until the stream's first append, which
+     * truncates it there and forces it before it writes, or a cut that deletes files before
+     * it (DbFile.cutZeroTail()). So an open
+     * that is closed, or a start refused, before anything is appended leaves the files as they
+     * were. Runs in the constructor, after the directory's lock and the check of the files'
+     * names and lengths, before anything reads the stream; the same on every operating system
+     * and file system, with no detection of either.
+     * 
+     * Why. After a kill of the process during an append, APFS (macOS) can leave the last file
+     * with zeros within its length, from a page boundary on, where the bytes of the cut write
+     * should be (bergdb 031-02, F1; 035-01): not a prefix of what was appended, which the
+     * storage contract asks for (AppendOnlyStream, "CRASHES"; bergdb 014-01, section 7).
+     * Without the zeros it is one, and the layers above see a stream cut short, which the
+     * start's recovery completes and aborts as a torn last record. It is safe for BergDB's
+     * stream format: a committed record and a valid meta block end in the byte 10, so zeros
+     * at the end of the last file are the system's, or bytes of a torn record that was never
+     * synced, or a recovery's zeros of an aborted record (completed again by the next
+     * recovery); none holds a committed transaction. The bound limits a silent repair in the
+     * case outside the contract, a power loss that destroyed forced bytes and left zeros in
+     * their place. Stale bytes that are not zero (bergdb 028-67) are not removed.
+     */
+    private static long zeroTailLength(RandomAccessFile handle, boolean onlyFile)
+            throws IOException {
+        final long fileLength = handle.length();
+        final long limit = Math.min(fileLength, ZERO_TAIL_MAX + 1);
+        if (limit == 0) {
+            return 0;
+        }
+        final byte[] buffer = new byte[(int) Math.min(limit, 64 * 1024)];
+        long zeros = 0;         // the zero bytes at the file's end, so far
+        while (zeros < limit) {
+            int n = (int) Math.min(buffer.length, limit - zeros);
+            handle.seek(fileLength - zeros - n);
+            handle.readFully(buffer, 0, n);
+            int i = n;
+            while (i > 0 && buffer[i - 1] == 0) {
+                i--;
+            }
+            zeros += n - i;
+            if (i > 0) {
+                break;
+            }
+        }
+        if (zeros > ZERO_TAIL_MAX || (onlyFile && zeros == fileLength)) {
+            return 0;
+        }
+        return zeros;
+    }
+    
+    /**
+     * The number of zero bytes at the end of the last file that the open left out of the
+     * stream, 0 if none (zeroTailLength(); 2026-11-26, bergdb 028-60); the stream's length is
+     * where they begin. For tests and tools: the layers above see the stream as cut short
+     * there. The file keeps them until the first append.
+     */
+    public long getZeroTailRemoved() {
+        return zeroTailRemoved;
     }
     
     /**
@@ -1513,6 +1667,7 @@ public class FileStream implements AppendOnlyStream {
         private final Object channelLock = new Object();
         private volatile long fileLength;   // current length of the file
         private long forcedLength = 0;      // its bytes forced so far (bergdb 005-47); under this
+        private long zeroTail = 0;          // zeros after fileLength, cut at the 1st append (028-60)
         private boolean isRw = false;
         private final long spos;    // spos of first byte in file
         private long maxSize;
@@ -1780,6 +1935,32 @@ public class FileStream implements AppendOnlyStream {
         }
         
         /**
+         * Cuts the tail of zeros that the open left out of the stream from the file (bergdb
+         * 028-60, FileStream.zeroTailLength()): truncates the file to the stream's part of it
+         * and forces it (ZERO_TAIL), also with per-append forcing off. At the first append to
+         * the file, before its check of the file's length and its write, or at a cut that
+         * deletes files (pretruncate()); not at close() or at an append of nothing. A failure
+         * is the stream's, and the file keeps the zeros or a part of them: the next open
+         * leaves them out again.
+         */
+        synchronized void cutZeroTailIfPending() throws IOException {
+            if (zeroTail > 0 && rfile != null && !isClosed) {
+                cutZeroTail();
+            }
+        }
+        
+        private void cutZeroTail() throws IOException {
+            try {
+                io.truncate(file, rfile, fileLength);
+                force(FileStreamIo.Force.ZERO_TAIL);
+            } catch (IOException e) {
+                ioException = e;
+                throw e;
+            }
+            zeroTail = 0;
+        }
+        
+        /**
          * Appends bytes to the file, returns actual number of bytes appended. With per-append
          * forcing on, the bytes are forced before it returns; off, only written (bergdb
          * 005-47).
@@ -1792,6 +1973,10 @@ public class FileStream implements AppendOnlyStream {
             if (isClosed) {
                 ioException = new IOException("File closed, " + file.getPath() + ".");
                 throw ioException;
+            }
+            
+            if (zeroTail > 0) {
+                cutZeroTail();      // Before the check of the file's length (bergdb 028-60).
             }
             
             long available = maxSize - this.fileLength;
@@ -2069,6 +2254,263 @@ public class FileStream implements AppendOnlyStream {
     
     private static byte patternByte(long pos) {
         return (byte) (pos * 131 + (pos >>> 13));
+    }
+    
+    /**
+     * Bergdb 028-60: the open leaves a run of zero bytes of at most ZERO_TAIL_MAX, 8 MB, at
+     * the end of the last file out of the stream, and a longer one in; zeros before the last
+     * non-zero byte stay. Runs of 0, 1, 4,095 and 8 MB bytes are left out, one of 8 MB + 1 is
+     * not. The stream's length ends where the run starts and a read past it fails, while the
+     * file keeps its length through an append of nothing, a close and a second open; the
+     * first append truncates it and writes there, and a third open has nothing to leave out.
+     */
+    @Nano
+    static void testZeroTailRemoved(TestEnvironment c) throws IOException {
+        for (long zeros : new long[] {0, 1, 4095, ZERO_TAIL_MAX, ZERO_TAIL_MAX + 1}) {
+            String what = zeros + " zeros";
+            File dir = c.createTempDir();
+            FileStream f = new FileStream(dir, new StreamContract.NoForceIo());
+            byte[] bytes = new byte[] {7, 0, 0, 10};      // a zero inside stays
+            f.append(bytes, 0, bytes.length);
+            f.close();
+            File file = new File(dir, "00000000000000.bergdb");
+            try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+                raf.setLength(4 + zeros);
+            }
+            boolean removed = zeros <= ZERO_TAIL_MAX;
+            for (int open = 0; open < 2; open++) {
+                f = new FileStream(dir, new StreamContract.NoForceIo());
+                Assert.assertEquals(what, removed ? zeros : 0, f.getZeroTailRemoved());
+                Assert.assertEquals(what, removed ? 4 : 4 + zeros, f.getLength());
+                byte[] b = new byte[4];
+                f.read(0, b, 0, 4);
+                Assert.assertArrayEquals(what, bytes, b);
+                if (removed) {
+                    try {
+                        f.read(4, new byte[1], 0, 1);
+                        throw new AssertionError(what + ": read past the end");
+                    } catch (EOFException e) {
+                        // Expected: the zeros are not in the stream.
+                    }
+                }
+                f.append(new byte[1], 0, 0);
+                Assert.assertEquals(what, 4 + zeros, file.length());
+                if (open == 0) {
+                    f.close();
+                    Assert.assertEquals(what, 4 + zeros, file.length());
+                }
+            }
+            f.append(new byte[] {5}, 0, 1);
+            long length = f.getLength();
+            Assert.assertEquals(what, removed ? 5 : 5 + zeros, length);
+            Assert.assertEquals(what, length, file.length());
+            byte[] b = new byte[1];
+            f.read(length - 1, b, 0, 1);
+            Assert.assertEquals(what, 5, b[0]);
+            f.close();
+            f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, 0, f.getZeroTailRemoved());
+            Assert.assertEquals(what, length, f.getLength());
+            f.close();
+        }
+    }
+    
+    /**
+     * Bergdb 028-60: only the last file's zeros are left out; a last file of zeros only is
+     * left out whole and cut to 0 bytes at the first append, and a file before it keeps its
+     * zeros at its end; and the only file of a stream, all zeros, is left in (a repair never
+     * empties a stream).
+     */
+    @Nano
+    static void testZeroTailLastFileOnly(TestEnvironment c) throws IOException {
+        // A first file of 200 kB that ends in zeros, a second of zeros only.
+        File dir = c.createTempDir();
+        byte[] first = new byte[(int) SMALLEST_FILE_SIZE];
+        first[1000] = 10;
+        writeFile(new File(dir, "00000000000000.bergdb"), first);
+        File second = new File(dir, "00000000000002.bergdb");
+        writeFile(second, new byte[3000]);
+        FileStream f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(3000, f.getZeroTailRemoved());
+        Assert.assertEquals(SMALLEST_FILE_SIZE, f.getLength());
+        Assert.assertEquals(3000L, second.length());
+        f.append(new byte[] {10}, 0, 1);
+        Assert.assertEquals(1L, second.length());
+        f.close();
+        f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(SMALLEST_FILE_SIZE + 1, f.getLength());
+        f.close();
+        Assert.assertEquals(SMALLEST_FILE_SIZE,
+                new File(dir, "00000000000000.bergdb").length());
+        
+        // The only file, all zeros: left.
+        dir = c.createTempDir();
+        writeFile(new File(dir, "00000000000000.bergdb"), new byte[5000]);
+        f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(0, f.getZeroTailRemoved());
+        Assert.assertEquals(5000, f.getLength());
+        f.close();
+    }
+    
+    /**
+     * Bergdb 028-60: the open changes no file; the first append truncates the last file and
+     * forces it (ZERO_TAIL) before it writes, also with per-append forcing off, and a close
+     * after it forces the write (CLOSE). A truncation that fails fails the append and the
+     * stream, with the file as it was; the next open leaves the zeros out again.
+     */
+    @Nano
+    static void testZeroTailCutAtFirstAppend(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        File file = new File(dir, "00000000000000.bergdb");
+        writeFile(file, new byte[] {10, 0, 0, 0});
+        final List<String> events = new ArrayList<String>();
+        FileStreamIo failing = new FileStreamIo() {
+            @Override protected void truncate(File file, RandomAccessFile handle, long length)
+                    throws IOException {
+                events.add("truncate " + length);
+                throw new IOException("planted");
+            }
+        };
+        FileStream f = new FileStream(dir, failing);
+        Assert.assertEquals(1L, f.getLength());
+        try {
+            f.append(new byte[] {10}, 0, 1);
+            throw new AssertionError("appended");
+        } catch (IOException e) {
+            Assert.assertEquals("planted", e.getMessage());
+        }
+        Assert.assertEquals(4L, file.length());
+        try {
+            f.append(new byte[] {10}, 0, 1);
+            throw new AssertionError("appended after the failure");
+        } catch (IOException e) {
+            Assert.assertEquals("planted", e.getMessage());
+        }
+        try {
+            f.close();
+            throw new AssertionError("closed without the failure");
+        } catch (IOException e) {
+            Assert.assertEquals("planted", e.getMessage());
+        }
+        Assert.assertEquals("[truncate 1]", events.toString());
+        Assert.assertEquals(4L, file.length());
+        
+        events.clear();
+        FileStreamIo counting = new FileStreamIo() {
+            @Override protected void truncate(File file, RandomAccessFile handle, long length)
+                    throws IOException {
+                events.add("truncate " + length);
+                super.truncate(file, handle, length);
+            }
+            @Override protected void forceFile(File file, RandomAccessFile handle,
+                    FileStreamIo.Force why) throws IOException {
+                events.add("force " + why);
+            }
+        };
+        f = new FileStream(dir, counting, false);
+        Assert.assertEquals(3L, f.getZeroTailRemoved());
+        Assert.assertEquals(1L, f.getLength());
+        Assert.assertEquals(4L, file.length());
+        f.append(new byte[] {10}, 0, 1);
+        Assert.assertEquals(2L, f.getLength());
+        Assert.assertEquals(2L, file.length());
+        f.close();
+        Assert.assertEquals("[force OPEN, truncate 1, force ZERO_TAIL, force CLOSE]",
+                events.toString());
+    }
+    
+    /**
+     * Bergdb 028-60: the last file's size, its capacity for appends, is computed from its
+     * length without the zeros that the open left out. A file of 150,000 bytes and 100,000
+     * zeros takes 50,000 bytes more, to 200,000, the smallest size, not the 1 MB of its
+     * length with the zeros; one of 200,000 bytes and 50,000 zeros is full, and the append
+     * cuts it and goes on in a new file. Both are opened again with every byte.
+     */
+    @Nano
+    static void testZeroTailFileSize(TestEnvironment c) throws IOException {
+        for (int stream : new int[] {150 * 1000, 200 * 1000}) {
+            String what = stream + " bytes";
+            File dir = c.createTempDir();
+            File file = new File(dir, "00000000000000.bergdb");
+            byte[] bytes = new byte[250 * 1000];
+            Arrays.fill(bytes, 0, stream, (byte) 7);
+            bytes[stream - 1] = 10;
+            writeFile(file, bytes);
+            FileStream f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, 250 * 1000 - stream, f.getZeroTailRemoved());
+            byte[] more = new byte[100 * 1000];
+            Arrays.fill(more, (byte) 8);
+            f.append(more, 0, more.length);
+            f.close();
+            File next = new File(dir, "00000000000002.bergdb");
+            Assert.assertEquals(what, SMALLEST_FILE_SIZE, file.length());
+            Assert.assertEquals(what, stream + more.length - SMALLEST_FILE_SIZE, next.length());
+            f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, 0, f.getZeroTailRemoved());
+            Assert.assertEquals(what, stream + more.length, f.getLength());
+            byte[] all = new byte[stream + more.length];
+            f.read(0, all, 0, all.length);
+            Assert.assertArrayEquals(what, Arrays.copyOf(bytes, stream),
+                    Arrays.copyOf(all, stream));
+            Assert.assertArrayEquals(what, more, Arrays.copyOfRange(all, stream, all.length));
+            f.close();
+        }
+    }
+    
+    /**
+     * Bergdb 028-60, Codex's second review of part 2 (2026-11-26, its LogicalProbe): a cut
+     * that deletes files before the first append cuts the zeros that the open left out
+     * first. A first file of 200,000 bytes and a last one of 3,000 zeros: the open shows
+     * 200,000; pretruncate(200,000) deletes the first file, and the last one, now the only
+     * one, is 0 bytes, so the next open shows 200,000 too (on af26333d it showed 203,000,
+     * the only file all zeros taken whole). With 1,000 bytes before 2,000 zeros, 201,000
+     * both times. A cut that deletes nothing leaves the zeros in the file.
+     */
+    @Nano
+    static void testZeroTailCutBeforeFirstAppend(TestEnvironment c) throws IOException {
+        for (int prefix : new int[] {0, 1000}) {
+            String what = prefix + " bytes before the zeros";
+            File dir = c.createTempDir();
+            byte[] first = new byte[(int) SMALLEST_FILE_SIZE];
+            Arrays.fill(first, (byte) 7);
+            first[first.length - 1] = 10;
+            writeFile(new File(dir, "00000000000000.bergdb"), first);
+            byte[] last = new byte[3000];
+            Arrays.fill(last, 0, prefix, (byte) 7);
+            if (prefix > 0) {
+                last[prefix - 1] = 10;
+            }
+            File lastFile = new File(dir, "00000000000002.bergdb");
+            writeFile(lastFile, last);
+            long end = SMALLEST_FILE_SIZE + prefix;
+            
+            FileStream f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, end, f.getLength());
+            f.pretruncate(1000);        // in the first file: deletes nothing
+            f.awaitDeletes();
+            Assert.assertEquals(what, 3000L, lastFile.length());
+            f.pretruncate(SMALLEST_FILE_SIZE);
+            f.awaitDeletes();
+            Assert.assertEquals(what, SMALLEST_FILE_SIZE, f.getFirstPos());
+            Assert.assertEquals(what, end, f.getLength());
+            Assert.assertEquals(what, (long) prefix, lastFile.length());
+            f.close();
+            
+            f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, SMALLEST_FILE_SIZE, f.getFirstPos());
+            Assert.assertEquals(what, end, f.getLength());
+            f.append(new byte[] {10}, 0, 1);
+            f.close();
+            f = new FileStream(dir, new StreamContract.NoForceIo());
+            Assert.assertEquals(what, end + 1, f.getLength());
+            f.close();
+        }
+    }
+    
+    private static void writeFile(File file, byte[] bytes) throws IOException {
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(bytes);
+        }
     }
     
     /** A stream file of the bytes of 'pattern' from 'spos', as a stream would have made it. */

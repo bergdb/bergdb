@@ -83,15 +83,20 @@ Released bugs fixed
   the order of their names, are a backup. Files made by the quarter open
   beside new ones. The stream's bytes are the same; a stream has about
   three times as many files.
-* **RB-012, S2, in part. After a kill on macOS, a zeroed tail over a
-  meta block stopped the start** (bergdb 033; 028-60, 2026-11-25). A
-  kill during a large append can leave the last stream file ending in
-  zeros within its length; where they covered a meta block, the start
-  threw "Invalid magic bytes". A meta block of zero bytes is now not
-  valid: zeros that begin inside the last record are recovered as a cut
-  tail, and zeros past a record's end get the documented refusal with
-  the position P to cut at, which then starts. Whether the start cuts
-  such a tail itself is open (028-60).
+* **RB-012, S2. After a kill on macOS, a zeroed tail over a meta block
+  stopped the start** (bergdb 033; 028-60, 2026-11-25 and 2026-11-27).
+  A kill during a large append can leave the last stream file ending in
+  zeros within its length (APFS); where they covered a meta block, the
+  start threw "Invalid magic bytes", and where they reached past a
+  record's end, it refused the database until a person cut the file. A
+  meta block of zero bytes is now not valid, and at the open the file
+  storage leaves a run of zero bytes of at most 8 MB at the end of the
+  last stream file out of the stream, and truncates the file there at
+  its first write, the same on every system: the start recovers the
+  stream as a cut tail, with every transaction that a sync returned
+  for. `Database`'s Javadoc, "What a crash keeps",
+  says so. A longer run of zeros past a record's end, or other bytes, is
+  refused as before.
 
 
 Known released bugs

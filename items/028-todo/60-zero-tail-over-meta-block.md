@@ -1,9 +1,14 @@
 028-60. Fix: after a kill, a zeroed tail over a meta block stops the start
 =========================================================================
 
-Status: open: part 1 done (a meta block of zeros is not valid; the branch
-`028-60`), part 2 lands after 028-69 (Frans, 2026-11-27; the log). Kind:
-Fix. Frans: none.
+Status: done (2026-11-27): part 1 (2026-11-25, the branch `028-60`: a
+meta block of zeros is not valid) and part 2 (made 2026-11-26 on the
+branch `028-60b`, revised after Codex's two reviews, section 10;
+rebased on 028-69 without its opt-out for encrypted streams on the
+branch `028-60c`, 2026-11-27, section 11): `FileStream`'s open leaves
+a tail of zeros out of the stream, and its first append cuts it, for
+every stream. Kind: Fix. Frans: decided (2026-11-26, section 7;
+2026-11-27, the removal of the internal crypto code, 028-69).
 Created 2026-11-25 by Frans Lundberg.
 
 What: 031-02's app hunt, finding F1 (section 5): three times in about
@@ -270,6 +275,374 @@ On the branch `028-60` (on `cbf0a7e0`), macOS, JDK 27, 2026-11-25, beside
   seed 63 is refused as documented and, cut at P, starts at k = 56,280,
   the last synced (section 3).
 
+### 7. Decision for part 2 (Frans, 2026-11-26)
+
+Neither B1, B2 nor B3 as written. The repair lives in `FileStream`
+only, the same rule on every operating system and file system, with no
+detection of either: at open, `FileStream` removes a run of zero bytes,
+at most 8 MB, at the end of its last file (it truncates the file where
+the run starts and forces it). Nothing above `FileStream` changes: no new
+method in `AppendOnlyStream`, no change in `RecoverableStream`. The
+layers above then see a stream cut short, a prefix of what was appended
+(014-01, section 7), and the existing recovery completes and aborts the
+torn last record.
+
+* **Why it is safe:** a complete record and a valid meta block end in
+  the byte 10, so zeros at the end of the last file are the system's or
+  part of a torn, never-synced record.
+* **The bound:** 8 MB limits a silent repair in the case outside the
+  contract, a power loss that destroyed forced bytes.
+* **Not part of the rule:** 035-01's 4 KiB alignment conditions
+  (dropped: a fingerprint of APFS, not part of why the cut is safe), and
+  stale bytes that are not zero (028-67, separate).
+
+### 8. Part 2, the fix
+
+On the branch `028-60b` (on `27548f13`), 2026-11-26:
+
+* **Where it runs.** `FileStream`'s constructor: after
+  `createDirIfNeeded()`, `lockDir()` and `checkDbFiles()` (the files'
+  names and lengths), in `openForRw()` of the last file, right after
+  `FileStreamIo.open()`. Nothing reads the stream before it:
+  `RecoverableStream`, `Db.refuseOtherNodeSize` and the recovery come
+  after the constructor. `zeroTailLength()` reads the file backwards in
+  pieces of 64 KiB until a byte that is not zero or 8 MB + 1 zero bytes;
+  a run of 1 to 8,000,000 bytes (`ZERO_TAIL_MAX`, decimal as the class's
+  sizes) is left out of the stream: the last file's length in the
+  stream (`DbFile.fileLength`) and the stream's length end where the run
+  starts, so reads stop there, and the last file's size class, its
+  room for appends, is computed from that length. A run of zeros over
+  8 MB is left in, and the start takes it as after part 1. `newFile()`'s
+  open does not run it.
+* **The cut, at the first append** (after Codex's review, section 10;
+  its recommendation (b)). The open changes no file. The first append
+  with bytes, in `DbFile.append()` before its check of the file's
+  length and its write, truncates the file where the run starts
+  (`FileStreamIo.truncate()`, new, `setLength`) and forces it (a new
+  `Force.ZERO_TAIL`), also with per-append forcing off; so does a cut
+  that deletes files before the first append (`pretruncate()`, after
+  Codex's second review); `close()` and an append of nothing do not. A failure of either is the stream's, and
+  the next open leaves the zeros out again.
+* **One case left alone.** A stream whose only file is all zeros: a
+  repair never empties a stream, as an empty stream is a new database
+  and `DatabaseBuilder.open()` must never create one (the start refuses
+  it as before). On `028-60b` an encrypted stream was a second case,
+  with the removal off (section 10); since 028-69 there is no encrypted
+  stream, and the rule has no exception and no way to turn it off
+  (section 11). Nothing above `FileStream` changed: `AppendOnlyStream`,
+  `RecoverableStream` and `DatabaseBuilderImp` are unchanged.
+* **Reporting.** `FileStream` has no log or listener; it reports by
+  exceptions and its Javadoc. `getZeroTailRemoved()` (new) returns the
+  number of bytes the open removed, 0 if none, for tests and tools.
+* **What a start changes.** A start refused before it writes (another
+  node size, an unsupported version, bytes that are not a BergDB
+  stream's, a creation that did not complete) leaves the files as they were, the zeros too, so the
+  refusals' "The start has written nothing" holds. A recovery may append
+  before a later check refuses a start; then the cut is made: the first
+  append is not proof that the start succeeded (Codex). A stream that
+  ends in a recovery's zeros of an aborted record, with nothing written
+  after, has them left out at each open and written again by the
+  recovery: the same bytes.
+* **Texts.** `FileStream`'s class Javadoc (a tail of zeros; the backup's
+  one exception to appends only, and a copy that overlaps the cut),
+  `zeroTailLength()`, `DbFile.cutZeroTail()`, `FileStreamIo.truncate()`
+  and `Force.ZERO_TAIL`, `Database`'s "What a crash keeps"; 027-14,
+  027-11 (1.3), 027-03 (section 6), 014-01 (a note at section 7),
+  035-01 (section 12), 033 (RB-012), `releases/next.md`.
+  `DatabaseBuilder.start()`'s Javadoc is as before part 2.
+* **Not changed:** the C clone (item 012, following release 2026.2),
+  whose file storage is its own; release 2026.6's notes (RB-012's
+  bullet in "After the release" says "fixed in part").
+
+### 9. Part 2, tests and runs
+
+Tests (unit and f), on synthetic files:
+
+* `FileStream.testZeroTailRemoved`: a stream of the bytes 7, 0, 0, 10,
+  then 0, 1, 4,095 and 8,000,000 zero bytes left out, 8,000,001 left
+  in; the stream's length, a read past its end and
+  `getZeroTailRemoved()` checked; the file unchanged through an append
+  of nothing, a close and a second open; the first append cuts it, and
+  a third open has nothing to leave out.
+* `FileStream.testZeroTailLastFileOnly`: a last file of zeros only left
+  out whole and cut to 0 bytes at the first append, while the file
+  before keeps its zeros; the only file all zeros left in. (On
+  `028-60b` it also checked the removal off; gone with it, section 11.)
+* `FileStream.testZeroTailCutAtFirstAppend`: with per-append forcing
+  off, the forces are `OPEN`, then at the first append the truncation
+  and `ZERO_TAIL`, then `CLOSE`; a truncation that fails fails the
+  append and the stream, the file as it was.
+* `FileStream.testZeroTailFileSize`: the last file's room for appends
+  from its length without the zeros: 150,000 bytes and 100,000 zeros
+  take 50,000 bytes more and a new file, not the 1 MB size of 250,000;
+  200,000 bytes and 50,000 zeros are full, cut, and a new file follows.
+* `FileStream.testZeroTailCutBeforeFirstAppend` (Codex's second
+  review, its `LogicalProbe`): a first file of 200,000 bytes and a last
+  one of 3,000 zeros (or 1,000 bytes and 2,000 zeros); a cut at
+  200,000 before an append deletes the first file and cuts the zeros
+  first, and the next open shows 200,000 (201,000), not 203,000; a cut
+  that deletes nothing leaves the zeros. Fails on `af26333d`.
+* `DbTesterStream.testRefusedStartsKeepZeroTail` (Codex's finding 4):
+  starts refused for another node size and for meta block version 156,
+  with 4,096 zeros after the stream, leave the file byte for byte; each
+  starts with the size or version restored.
+* `PubTester.testKeylessStartOfEncryptedFilesChangesNothing` (finding
+  1, on `028-60b` only): an encrypted file database without
+  `created.txt`, its last file ending in 3 zeros added by hand, refused
+  without the key, its file byte for byte as before. It and
+  `testRefusedStartsKeepZeroTail` failed on `5a25d1e0` (the truncation
+  at the open). Replaced on `028-60c` (section 11).
+* `DbTesterStream.testZeroedTailOverMetaBlock` (an f-test, 1.2 s),
+  extended: zeros from inside the last record over two meta blocks
+  (starts without that record, as in part 1); zeros from inside the
+  record before it, over two records' starts, as seed 63 (refused in
+  part 1, now starts with the records before, writes and starts again);
+  0, 1 and 8,000,000 zero bytes after the last record's end (every
+  record there, writes and starts again); 8,000,001 (left, refused "Bad
+  transaction size in db stream, 0, spos P" at the last record's end).
+* `PubTester.testFailedStartsDirectoryRemoved`: as before part 2, a
+  creation cut at 200 bytes is refused (`DatabaseNotCreatedException`)
+  and its file is 200 bytes (on `5a25d1e0` the open truncated it to 199).
+
+The kept files (outside the repository, on copies, the branch's release
+jar, a checker that starts each twice and compares its whole state with
+KillWriter's oracle: every key, object, index scan both ways, counter):
+
+* **Seed 63 starts**, with nothing done by hand, at k = 56,280, the last
+  transaction a sync returned for, its state equal to the oracle's, twice.
+  The open left the zeros from 3,915,776 to the end of
+  `00000000093350.bergdb` out of the stream; the recovery's append cut
+  them from the file, and the recovery completed the record at
+  9,338,902,640 and aborted it (the file then 4,097,736 bytes, P less the
+  file's first position, as cut by hand in part 1). The same after
+  Codex's review (section 10), on a new copy of the kept files.
+* **Seed 91 starts** at k = 122,334, its state equal to the oracle's,
+  twice (as in part 1; the file 15,197,768 bytes after the recovery).
+* 035-01's kept files (`z351/fs/*/keep/*.bin`, the probe's own bytes,
+  not streams) are the two with a deleted file's bytes, not zeros:
+  opened as a stream's only file, nothing is removed (028-67's case).
+
+Gates (macOS, JDK 27, 2026-11-26, beside `week.sh` and other sessions'
+runs). After Codex's second review (section 10), on the cut before
+the first append and the backup text:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (74 s; unit 1,762, f 90).
+* `java/stress/kill-restart.sh 200`: SELF-CHECK OK, LATE EXIT OK, KILL
+  RESTART OK: 200 kills and 8 exits in 285 s, seed 20261126.
+
+After Codex's first review (section 10), on the change there:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (76 s; unit 1,761, f 90).
+* `java/stress/kill-restart.sh 200`: SELF-CHECK OK, LATE EXIT OK, KILL
+  RESTART OK: 200 kills and 8 exits in 269 s, seed 20261126.
+* 031-02's KillWriter, `-DnoSd=true`, on the branch's release jar: seed
+  63, 250 kills, KILLWRITER OK (88,492 transactions, 552 older states),
+  and seed 91, 250 kills, KILLWRITER OK (91,075 transactions, 548 older
+  states); no zeroed tail of a kill came.
+* The kept files, on new copies: seed 63 starts at k = 56,280 and seed
+  91 at k = 122,334, each state equal to the oracle's, twice.
+
+Before it, on `5a25d1e0`:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (81 s; unit 1,758, f 90).
+* `java/stress/kill-restart.sh 200`: SELF-CHECK OK, LATE EXIT OK, KILL
+  RESTART OK: 200 kills and 8 exits in 295 s, seed 20261126.
+* 031-02's KillWriter, `-DnoSd=true`, on the branch's release jar: seed
+  63, 250 kills, KILLWRITER OK (82,295 transactions, 519 older states),
+  and seed 91, 250 kills, KILLWRITER OK (76,174 transactions, 541 older
+  states); fewer transactions than on 2026-11-25 under the machine's
+  load. No zeroed tail of a kill came in these 500 kills; three starts
+  found the last file ending in a recovery's zeros of an aborted record
+  (KillWriter's note "a start's fill"), which the open removed and the
+  recovery wrote again, every check passing.
+
+
+### 10. Codex's review of part 2, and the change after it
+
+Codex reviewed the branch at `5a25d1e0` (2026-11-26), with probes of
+its own. The plaintext repair holds: the last complete record or valid
+meta block ends in the byte 10, which stops the scan, so no synced
+transaction is cut; a failed truncation or force fails the open, and a
+halt after the truncation reopens. Its findings:
+
+1. **A refused start without the key lost a synced encrypted
+   transaction.** The opt-out follows the key given, not the stored
+   bytes. Without `created.txt` (a copy of the `*.bergdb` files only), a
+   start without the key opens the stream with the removal on; the open
+   truncated a zero that ends a committed ciphertext record, and then
+   the start was refused (bad magic bytes). Codex's `EncryptionProbe`:
+   the file 36,088 bytes to 36,087, and the next start with the key read
+   value-333, not the synced value-334.
+2. **A minimum run length does not make the rule safe for encrypted
+   streams.** A committed ciphertext record can end in a zero next to
+   the system's zeros, and the runs merge: with 4,096 as the minimum,
+   a synthetic tail of 035-01's page geometry cut a synced value
+   (`MinimumDatabaseProbe`); given such a run, about 1 in 256.
+3. **The backup paragraph.** A copy taken while a reopen repairs the
+   tail can mix generations: zeros of the old file over a new record,
+   with its new last byte 10 (`BackupProbe`; the start refused at the
+   size 0).
+4. **Refused starts changed the files.** Another node size and an
+   unsupported meta block version were refused after the open had cut
+   the zeros (`RecoveryProbe`: 4,512 bytes to 416), and their messages
+   still said "The start has written nothing".
+
+Done (2026-11-26, Codex's recommendation (b); the code in section 8):
+
+* **The cut at the first append.** The open leaves the zeros out of the
+  stream and changes no file; reads stop at the stream's end; the last
+  file's size class is computed from its length without the zeros. The
+  first append with bytes truncates the file and forces it
+  (`Force.ZERO_TAIL`), also with per-append forcing off, before its
+  check of the file's length and its write; not `close()`, not an
+  append of nothing.
+* **Findings 1 and 4, Codex's probes again**, on the branch's jar:
+  `EncryptionProbe`, the start without the key refused, the file 36,088
+  bytes before and after, and the start with the key read value-334, the
+  synced value (the probe's own check, which expects the loss, now
+  fails). `RecoveryProbe`: another node size refused, 4,512 bytes before
+  and after; version 156 refused (`VersioningStreamException`), 4,512
+  and 4,512; so "The start has written nothing" holds again. Its other
+  cases as before. Unit tests: `testRefusedStartsKeepZeroTail` and
+  `testKeylessStartOfEncryptedFilesChangesNothing` (section 9), which
+  fail on `5a25d1e0`.
+* **Finding 3.** `FileStream`'s class Javadoc and 027-14 now say: a copy
+  of a stopped database is the database; a copy of a running one, in
+  the order of the names, as before; except a copy that overlaps the
+  first append after an open that left zeros out (after a kill, or of a
+  copy that ended in zeros), which can hold the old file's zeros in
+  place of bytes written after them and is not a backup. A running
+  database is copied once it has committed a transaction since its
+  start, which appends, or stopped (made precise after Codex's second
+  review, below).
+* **Finding 2: open, for Frans** on 2026-11-26; moot since 2026-11-27
+  (section 11).
+
+Codex's second review, of `af26333d` (2026-11-26): findings 1 and 4
+fixed (its probes again: 36,088 bytes and the synced value-334 kept;
+4,512 bytes kept by both refusals); the plaintext recovery and append
+path holds, also with failed forces and writes at the cut and process
+halts after the truncation. Two findings, fixed on the same branch:
+
+* **A commit is not a barrier for a copy.** A commit can return with
+  its bytes still in `BufferedStream`, before the first append and its
+  cut (`BackupCommitProbe`: a copy begun after a commit holds the old
+  zeros over the new record, refused at the size 0 at 536). The backup
+  paragraph (`FileStream`, 027-14) now says: a copy begins after an
+  append since the open has returned, or after `close()` has returned;
+  for a running database, after a transaction that changed something,
+  committed since the start, and a `sync()` that returned after it;
+  for a stopped one, after its `close()` has returned (`stop()`
+  returns before the close ends). `BackupCommitProbe` again: refused
+  as before (a commit alone is not enough, as the text says); a copy
+  of the probe that begins the copy after the commit's `sync()` starts,
+  with the new value.
+* **A cut before the first append brought the tail back.** A first
+  file of 200,000 bytes and a last one of 3,000 zeros: the open showed
+  200,000; `pretruncate(200000)` deleted the first file; the next open
+  showed 203,000, the only file all zeros taken whole
+  (`LogicalProbe`). Now a cut that deletes files cuts the pending zeros
+  from the last file first, truncated and forced
+  (`DbFile.cutZeroTailIfPending()`). `LogicalProbe` again: 200,000 ->
+  200,000; its other cases as before. Unit test
+  `testZeroTailCutBeforeFirstAppend` (section 9).
+
+**The repair and encrypted streams** were an open question for Frans
+on 2026-11-26: the opt-out above, a check inside `FileStream` whether
+the stream is plaintext, or a repair at the record level above it.
+Frans removed the internal crypto code instead (028-69, 2026-11-27);
+section 11.
+
+
+### 11. Without the opt-out, on 028-69 (2026-11-27)
+
+Frans had the internal crypto code removed (028-69, `1809e04c` on
+`main`): `SalsaStream`, `CryptoKey` and `DatabaseBuilderImp.cryptoKey()`
+are gone, and no stream of BergDB is encrypted. The opt-out had nothing
+left to protect. On the branch `028-60c`, the three commits of `028-60b`
+on `main`'s `ae1b829b`, and then:
+
+* **Removed with the opt-out:** `DatabaseBuilderImp`'s
+  `openDir(dir, removeZeroTail)` (back to `new FileStream(dir)`, as on
+  `main`); `FileStream`'s constructor
+  `FileStream(dir, io, forceAppends, removeZeroTail)` and its field;
+  the part of `testZeroTailLastFileOnly` with the removal off;
+  `PubTester.testKeylessStartOfEncryptedFilesChangesNothing` (it needs
+  the crypto key); the Javadoc and 027-14's sentence on encrypted
+  streams. The repair is a rule of `FileStream` alone, for every
+  stream, with no way to turn it off; `FileStream`'s Javadoc says so,
+  and that a stream of other bytes than BergDB's format would lose its
+  trailing zeros at an open that appends.
+* **In its place:** `PubTester.testEncryptedByAnEarlierReleaseRefused`
+  (028-69's test of a database that 2026.3 encrypted, its stream's bits
+  flipped) starts without `created.txt` also with 3 zeros after the
+  last file's end: refused by the magic bytes before anything is
+  appended, every file byte for byte as before; finding 1 in the form
+  that is left. With the cut at the open (a mutation), it fails.
+* **Codex's findings again.** Moot, as they concerned only encryption:
+  finding 2 of the first review (a minimum run length is not safe for
+  ciphertext), the encrypted part of finding 1 (a ciphertext zero at
+  the end of a committed record), and the second review's view of the
+  three alternatives. Fixed, and still fixed on `028-60c`, each by its
+  test or probe: findings 1 and 4 of the first review (refused starts
+  change no file): `testRefusedStartsKeepZeroTail` and the test above
+  pass, and fail with the cut moved to the open; Codex's
+  `RecoveryProbe` again: another node size and version 156 refused,
+  4,512 bytes before and after. Finding 2 of the second review (a cut
+  before the first append): `testZeroTailCutBeforeFirstAppend` passes,
+  and fails without the cut in `pretruncate()`; `LogicalProbe` again:
+  200,000 -> 200,000. Finding 3 of the first review and finding 1 of
+  the second (the backup paragraph): the text in `FileStream` and
+  027-14 as on `028-60b`. Codex's `MetaProbe` and `CrashProbe` pass as
+  before.
+
+Gates on `028-60c` (macOS, JDK 27, 2026-11-27, beside other sessions'
+runs):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (66 s; unit 1,726, f 90),
+  and after Codex's review below, BEFORE COMMIT OK (64 s; unit 1,726,
+  f 90).
+* `java/stress/kill-restart.sh 200`: SELF-CHECK OK, LATE EXIT OK, KILL
+  RESTART OK: 200 kills and 9 exits in 248 s, seed 20261127.
+* 031-02's KillWriter, `-DnoSd=true`, on the branch's release jar: seed
+  63, 250 kills, KILLWRITER OK (110,368 transactions, 532 older states),
+  and seed 91, 250 kills, KILLWRITER OK (123,449 transactions, 545 older
+  states); no zeroed tail of a kill came.
+* The kept files, on new copies of 031-02's, the branch's release jar,
+  KillWriter's oracle checked twice: seed 63 starts at k = 56,280 (the
+  last file cut from 4,374,528 to 4,097,736 bytes) and seed 91 at k =
+  122,334, with nothing done by hand.
+
+Codex's third review (2026-11-27), of `main...028-60c` and of 028-69's
+`1809e04c`, with probes of its own: the repair and the removal hold; no
+loss of a committed or synced transaction within the storage's fault
+model; every writer's records and valid meta blocks end in 10 (fills of
+recovery, maintenance and reclaim are inside records; no
+preallocation), and the trailing zeros of an aborted record or a cut
+meta block are left out and written again by the next recovery
+(five cycles). A database that release 2026.3 encrypted with its real
+key (built from the tag) is refused, with and without `created.txt`,
+and with 3 zeros after its last file, every file unchanged. No dead
+reference to the removed code. Two findings:
+
+* **The backup barrier needs an append of at least one byte**: an
+  append of nothing returns without cutting the zeros, and a copy begun
+  after it can still mix the old zeros with a new record (its
+  `ReviewProbe`). Fixed in the text: `FileStream`'s class Javadoc and
+  027-14 say "an append of at least one byte since the open"; the
+  behaviour, that an append of nothing does not cut, is
+  `testZeroTailRemoved`'s.
+* **A start refused after its recovery has written** (a committed
+  record of a format version this release does not read, refused by
+  `VersioningStreamException` after `RecoverableStream.recover()`
+  completed a torn last record): the start appends, and on this branch
+  the pending zeros are cut first. The same refusal changes the stream
+  on `main` (Codex ran both); the message does not say that nothing was
+  written, and `FileStream`'s Javadoc and 027-14 say that a recovery may
+  append before a later check refuses a start. Not changed here: a
+  check of the records' versions before the recovery writes is a
+  change of the start's order, outside this entry.
+
 
 Log
 ---
@@ -301,7 +674,48 @@ file's length a multiple of 4,096, P in the last file, a run of at most
 8 MB); a new risk: on APFS disk images and RAM disks a cut write held a
 deleted file's bytes, not zeros, which no option covers (035-01).
 
+2026-11-26. Part 2 decided by Frans (section 7: neither B1, B2 nor B3 as
+written; the repair in `FileStream` only, the same on every system) and
+done by an agent of lead-1126 on the branch `028-60b`: `FileStream`'s
+open removes a run of zero bytes of at most 8 MB at the end of its last
+file (section 8); seed 63's kept files start at k = 56,280, the last
+synced, with nothing done by hand; tests and gates in section 9. Off for
+an encrypted stream, and a stream whose only file is all zeros is left
+(section 8). Status done.
+
+2026-11-26. Codex's review of part 2 (lead-1126; section 10): the
+plaintext repair holds; four findings: a refused start without the key
+of an encrypted database cut a synced transaction's last byte; a
+minimum run length does not make the rule safe for encrypted streams;
+a copy that overlaps the repair can mix generations; refused starts
+changed the files while their messages said "written nothing". Done by
+an agent of lead-1126 on the branch `028-60b`, as Codex's
+recommendation (b): the open leaves the zeros out of the stream and
+changes no file, and the first append cuts and forces them; findings 1
+and 4 fixed (Codex's probes again, two new unit tests); the backup
+paragraph corrected; finding 2 open for Frans, the internal-key opt-out
+kept. Gates in section 9.
+
+2026-11-26. Codex's second review, of `af26333d` (lead-1126; section
+10): findings 1 and 4 fixed, the plaintext path holds; two findings,
+fixed by an agent of lead-1126 on the branch `028-60b`: the backup
+paragraph names the barrier for a copy (an append returned since the
+open: for a database a changing transaction and a `sync()` after it,
+or a returned `close()`), and a cut that deletes files before the first
+append cuts the pending zeros first, so a last file of zeros only is
+not taken whole at the next open. Probes again and gates in sections 9
+and 10.
+
 2026-11-27. Frans decided to remove the internal crypto code (028-69).
 Part 2's choice for encrypted streams (section 10 on the branch
 `028-60b`) falls away with it: the branch is rebased on 028-69 without
 its opt-out, looked at by Codex again, and landed.
+
+2026-11-27. Rebased by an agent of lead-1127 on 028-69 without the
+opt-out for encrypted streams, on the branch `028-60c` (section 11):
+the repair is a rule of `FileStream` alone, for every stream; Codex's
+findings that concerned only encryption are moot, the others still
+fixed by their tests; gates in section 11. Codex's third review: the
+repair and the removal hold; the backup barrier is an append of at
+least one byte (text fixed); a start refused after its recovery has
+written is as on `main`, not changed. Status done.

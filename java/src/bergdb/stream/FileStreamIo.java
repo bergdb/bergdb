@@ -42,7 +42,12 @@ public class FileStreamIo {
         /** The last file, before the files of a cut are deleted. */
         CUT,
         /** The last file, at close(). */
-        CLOSE
+        CLOSE,
+        /**
+         * The last file, at the first append after the open, when the truncation has cut the
+         * tail of zeros that the open left out of the stream (bergdb 028-60).
+         */
+        ZERO_TAIL
     }
 
     /**
@@ -71,6 +76,15 @@ public class FileStreamIo {
         try (FileChannel channel = FileChannel.open(directory.toPath(), StandardOpenOption.READ)) {
             channel.force(true);
         }
+    }
+
+    /**
+     * Truncates the file to 'length': FileStream's cut of the tail of zeros that its open left
+     * out of the stream, at the first append (2026-11-26, bergdb 028-60). The force that
+     * follows is forceFile()'s, ZERO_TAIL.
+     */
+    protected void truncate(File file, RandomAccessFile handle, long length) throws IOException {
+        handle.setLength(length);
     }
 
     protected boolean delete(File file) throws IOException {

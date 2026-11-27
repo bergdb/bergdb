@@ -16,8 +16,10 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
+import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.FileStreamIo;
@@ -573,10 +575,13 @@ public class DbTesterStream {
      * 031-02's seed 91 left it. The start takes it as a cut tail: the records before it,
      * synced, are there and the zeroed one is not; the database writes and starts again.
      * Zeros that reach past a record's end, here from inside the record of 230 kB before it,
-     * as the kill of seed 63 left them, are refused as Database's Javadoc says ("What a crash
-     * keeps"): "Bad transaction size in db stream, 0, spos P", nothing written, and the file
-     * cut at P less its first position starts. Until 2026-11-25 the start refused all three,
-     * "Invalid magic bytes in stream", from the zero meta block (Db.refuseOtherNodeSize).
+     * as the kill of seed 63 left them, are left out by FileStream's open (2026-11-26, part 2
+     * of 028-60): the start has the records before that record, and writes and starts again;
+     * until then they were refused, "Bad transaction size in db stream, 0, spos P". Zeros
+     * after the last record's end, 0, 1 and 8 MB of them (FileStream.ZERO_TAIL_MAX), are
+     * left out and the start has every record; 8 MB + 1 are left in, and the start refuses them
+     * with that message. Until 2026-11-25 the start refused the first three, "Invalid magic
+     * bytes in stream", from the zero meta block (Db.refuseOtherNodeSize).
      */
     @Nano("f")
     private static void testZeroedTailOverMetaBlock(TestEnvironment env) throws IOException {
@@ -624,7 +629,10 @@ public class DbTesterStream {
             final String what = "length " + length;
             final File copy = copyStreamFiles(dir, env.createTempDir());
             zeroFileTail(new File(copy, lastName), zerosInC - fileStart, length - fileStart);
-            try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+            final FileStream fs = new FileStream(copy);
+            Assert.assertTrue(what + ", removed " + fs.getZeroTailRemoved(),
+                    fs.getZeroTailRemoved() >= length - zerosInC);
+            try (Db db = Db.builder().testSetup(fs).clock(clock).start()) {
                 Assert.assertArrayEquals(what, StringUtil.toBytes("z-value"),
                         DbUtil.get(db, Long.MAX_VALUE, "z"));
                 Assert.assertArrayEquals(what, a, DbUtil.get(db, Long.MAX_VALUE, "a"));
@@ -642,35 +650,145 @@ public class DbTesterStream {
             }
         }
 
-        // Zeros from inside a's record, over b's and c's: refused, then cut by hand at P.
-        final File copy = copyStreamFiles(dir, env.createTempDir());
-        final File last = new File(copy, lastName);
-        zeroFileTail(last, page, fileLength);
-        final long p;
-        try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
-            throw new AssertionError("started with zeros past a record's end");
-        } catch (StreamFormatException e) {
-            final String prefix = "Bad transaction size in db stream, 0, spos ";
-            final String message = e.getMessage();
-            Assert.assertTrue(message, message.startsWith(prefix)
-                    && message.contains(". Stream length: "));
-            p = Long.parseLong(message.substring(prefix.length(),
-                    message.indexOf(". Stream length: ")));
-        }
-        Assert.assertEquals("nothing written", fileLength, last.length());
-        Assert.assertTrue("P " + p + ", b's record before " + recordC,
-                p > fileStart + page && p < recordC);
-        try (RandomAccessFile f = new RandomAccessFile(last, "rw")) {
-            f.setLength(p - fileStart);
+        // Zeros from inside a's record, over b's and c's: removed at the open (part 2).
+        File copy = copyStreamFiles(dir, env.createTempDir());
+        zeroFileTail(new File(copy, lastName), page, fileLength);
+        FileStream fs = new FileStream(copy);
+        Assert.assertTrue("removed " + fs.getZeroTailRemoved(),
+                fs.getZeroTailRemoved() >= fileLength - page);
+        try (Db db = Db.builder().testSetup(fs).clock(clock).start()) {
+            Assert.assertArrayEquals(StringUtil.toBytes("z-value"),
+                    DbUtil.get(db, Long.MAX_VALUE, "z"));
+            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "a") == null);
+            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "b") == null);
+            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "c") == null);
+            clock.setTime(time += 100);
+            db.execute(db.trans().put("d", "d-value"));
         }
         try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
             Assert.assertArrayEquals(StringUtil.toBytes("z-value"),
                     DbUtil.get(db, Long.MAX_VALUE, "z"));
             Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "a") == null);
-            Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "b") == null);
+            Assert.assertArrayEquals(StringUtil.toBytes("d-value"),
+                    DbUtil.get(db, Long.MAX_VALUE, "d"));
         }
+        
+        // Zeros after c's end, the stream's: removed up to 8 MB, the records whole.
+        for (long zeros : new long[] {0, 1, FileStream.ZERO_TAIL_MAX}) {
+            final String what = zeros + " zeros after the end";
+            copy = copyStreamFiles(dir, env.createTempDir());
+            try (RandomAccessFile f = new RandomAccessFile(new File(copy, lastName), "rw")) {
+                f.setLength(fileLength + zeros);
+            }
+            fs = new FileStream(copy);
+            Assert.assertEquals(what, zeros, fs.getZeroTailRemoved());
+            Assert.assertEquals(what, fileStart + fileLength, fs.getLength());
+            try (Db db = Db.builder().testSetup(fs).clock(clock).start()) {
+                Assert.assertArrayEquals(what, a, DbUtil.get(db, Long.MAX_VALUE, "a"));
+                Assert.assertArrayEquals(what, StringUtil.toBytes("b-value"),
+                        DbUtil.get(db, Long.MAX_VALUE, "b"));
+                Assert.assertArrayEquals(what, c, DbUtil.get(db, Long.MAX_VALUE, "c"));
+                clock.setTime(time += 100);
+                db.execute(db.trans().put("d", "d-value"));
+            }
+            try (Db db = Db.builder().testSetup(new FileStream(copy)).clock(clock).start()) {
+                Assert.assertArrayEquals(what, c, DbUtil.get(db, Long.MAX_VALUE, "c"));
+                Assert.assertArrayEquals(what, StringUtil.toBytes("d-value"),
+                        DbUtil.get(db, Long.MAX_VALUE, "d"));
+            }
+        }
+        
+        // 8 MB + 1 zeros after the end: left, and refused at the size 0 after c.
+        copy = copyStreamFiles(dir, env.createTempDir());
+        final File last = new File(copy, lastName);
+        try (RandomAccessFile f = new RandomAccessFile(last, "rw")) {
+            f.setLength(fileLength + FileStream.ZERO_TAIL_MAX + 1);
+        }
+        fs = new FileStream(copy);
+        Assert.assertEquals(0L, fs.getZeroTailRemoved());
+        try (Db db = Db.builder().testSetup(fs).clock(clock).start()) {
+            throw new AssertionError("started with 8 MB + 1 zeros");
+        } catch (StreamFormatException e) {
+            final String prefix = "Bad transaction size in db stream, 0, spos ";
+            final String message = e.getMessage();
+            Assert.assertTrue(message, message.startsWith(prefix)
+                    && message.contains(". Stream length: "));
+            final long p = Long.parseLong(message.substring(prefix.length(),
+                    message.indexOf(". Stream length: ")));
+            Assert.assertTrue("P " + p, p >= fileStart + fileLength
+                    && p <= fileStart + fileLength + RecoverableStream.META_BLOCK_SIZE);
+        }
+        Assert.assertTrue("nothing removed", last.length() >= fileLength
+                + FileStream.ZERO_TAIL_MAX + 1);
     }
 
+    /**
+     * Bergdb 028-60, Codex's review of part 2 (2026-11-26), finding 4: a start refused before
+     * it writes, for another node size (bergdb 005-50) or an unsupported version of the meta
+     * block (005-40), leaves the stream's file as it was, also its tail of zeros: FileStream's
+     * open leaves the zeros out of the stream and cuts them from the file only at an append.
+     * So the refusals' "The start has written nothing" holds. On the branch 028-60b before
+     * this, the open truncated the zeros first. With the node size or the version restored,
+     * each starts.
+     */
+    @Nano
+    private static void testRefusedStartsKeepZeroTail(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        // Another node size.
+        File dir = env.createTempDir();
+        try (Db db = TestNodeSize.builder(8).testSetup(new FileStream(dir)).start()) {
+            db.execute(db.trans().put("a", "a-value"));
+        }
+        File file = new File(dir, "00000000000000.bergdb");
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.setLength(f.length() + 4096);
+        }
+        byte[] before = java.nio.file.Files.readAllBytes(file.toPath());
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
+            throw new AssertionError("started with another node size");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size")
+                    && e.getMessage().contains("written nothing"));
+        }
+        Assert.assertArrayEquals(before, java.nio.file.Files.readAllBytes(file.toPath()));
+        try (Db db = TestNodeSize.builder(8).testSetup(new FileStream(dir)).start()) {
+            Assert.assertArrayEquals(StringUtil.toBytes("a-value"),
+                    DbUtil.get(db, Long.MAX_VALUE, "a"));
+        }
+        
+        // An unsupported version of the meta block (the first, at 0; its version at 4).
+        dir = env.createTempDir();
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
+            db.execute(db.trans().put("a", "a-value"));
+        }
+        file = new File(dir, "00000000000000.bergdb");
+        int version;
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.seek(4);
+            version = f.read();
+            f.seek(4);
+            f.write(156);
+            f.setLength(f.length() + 4096);
+        }
+        before = java.nio.file.Files.readAllBytes(file.toPath());
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
+            throw new AssertionError("started with version 156");
+        } catch (VersioningStreamException e) {
+            // Expected (bergdb 005-40).
+        }
+        Assert.assertArrayEquals(before, java.nio.file.Files.readAllBytes(file.toPath()));
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.seek(4);
+            f.write(version);
+        }
+        try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
+            Assert.assertArrayEquals(StringUtil.toBytes("a-value"),
+                    DbUtil.get(db, Long.MAX_VALUE, "a"));
+        }
+    }
+    
     /** Copies the stream files of 'from' to 'to', and returns 'to'. */
     private static File copyStreamFiles(File from, File to) throws IOException {
         for (File f : from.listFiles()) {

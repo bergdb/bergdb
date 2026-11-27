@@ -368,16 +368,25 @@ RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
   BergDB's part is the start's answer.
 * **Severity:** S2.
 * **Releases:** 2026.5 and 2026.6 (run on 2026.6; the same check of the
-  meta block's magic since 2026.1, by the sources); fixed in part on
-  `main` for 2026.7.
+  meta block's magic since 2026.1, by the sources); fixed on `main` for
+  2026.7.
 * **Found:** 2026-11-25, by 031-02's app hunt (KillWriter: 3 in about
   9,500 kills); not known at the releases.
-* **Fix:** in part, 028-60, 2026-11-25: a meta block of zero bytes is
-  not valid, so zeros that begin inside the last record are recovered
-  as a cut tail; zeros past a record's end get the documented refusal,
-  "Bad transaction size in db stream, 0, spos P", and the file cut at P
-  starts. Whether the start cuts such a tail itself is for Frans
-  (028-60, options B1 to B3).
+* **Fix:** part 1, 028-60 (`9cbf47f6`), 2026-11-25: a meta block of
+  zero bytes is not valid, so zeros that begin inside the last record
+  are recovered as a cut tail; zeros past a record's end get the
+  documented refusal, "Bad transaction size in db stream, 0, spos P",
+  and the file cut at P starts. Part 2, 028-60, 2026-11-27 (Frans's
+  decision of 2026-11-26: neither B1, B2 nor B3 as written): at the
+  open, `FileStream` leaves a run of zero bytes of at most 8 MB at the
+  end of its last file out of the stream, and its first append
+  truncates the file where the run starts, forced, for every stream,
+  on every operating system and file system; nothing above it changed,
+  and the start recovers the stream as a cut tail. A start refused
+  before it writes leaves the files as they were. 031-02's seed 63 now
+  starts at the last synced transaction, with nothing done by hand. A
+  longer run is left and taken as before; stale bytes that are not
+  zero are 028-67.
 
 
 Log
@@ -487,3 +496,9 @@ live values) is a space cost, not a released bug: 028-65.
 2026-11-26. RB-011 fixed on `main` for 2026.7 (028-62): the Pub's
 `Database.maintain()` promises the 400 kB of the stream, and
 `FileStream` gives a new file a tenth of the stream, not a quarter.
+
+2026-11-27. RB-012 fixed on `main` for 2026.7 (028-60, part 2, as Frans
+decided on 2026-11-26, after the removal of the internal encryption,
+028-69): `FileStream`'s open leaves a tail of zeros of at most 8 MB at
+the end of its last file out of the stream, and its first append cuts
+them, so a kill's zeroed tail past a record's end starts too.

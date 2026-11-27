@@ -3247,8 +3247,9 @@ public class PubTester {
      * its created.txt, create() and open() throw a VersioningStreamException that says so,
      * before the directory is opened; without it, the stream's magic bytes refuse it, with a
      * StreamFormatException whose message names this case. Each refusal leaves the files as
-     * they were: their names and bytes. A created.txt of 2026.4 to 2026.6, "none (not
-     * encrypted)" on that line, is not refused.
+     * they were: their names and bytes, also when the last file ends in zeros (bergdb
+     * 028-60). A created.txt of 2026.4 to 2026.6, "none (not encrypted)" on that line, is
+     * not refused.
      */
     @Nano
     private static void testEncryptedByAnEarlierReleaseRefused(TestEnvironment env) 
@@ -3285,18 +3286,33 @@ public class PubTester {
         
         File createdTxt = new File(dir, "created.txt");
         Assert.assertTrue(createdTxt.delete());
-        files = fileHashes(dir);
-        try {
-            Factory.database().open(dir.getPath()).start().close();
-            throw new AssertionError("started without created.txt");
-        } catch (StreamFormatException e) {
-            String message = e.getMessage();
-            Assert.assertFalse(message, e instanceof VersioningStreamException);
-            Assert.assertTrue(message, message.startsWith("Invalid magic bytes in stream"));
-            Assert.assertTrue(message, message.contains("an earlier release of BergDB"));
-            Assert.assertTrue(message, message.contains("it has no encryption"));
+        // With 3 zero bytes after the last file's end too: FileStream's open leaves them out
+        // and cuts them only at an append, which the refused start does not make (bergdb
+        // 028-60; Codex's review of part 2, finding 1).
+        File last = lastStreamFile(dir);
+        long lastLength = last.length();
+        for (long length : new long[] {lastLength, lastLength + 3}) {
+            try (RandomAccessFile raf = new RandomAccessFile(last, "rw")) {
+                raf.setLength(length);
+            }
+            files = fileHashes(dir);
+            try {
+                Factory.database().open(dir.getPath()).start().close();
+                throw new AssertionError("started without created.txt, " + length);
+            } catch (StreamFormatException e) {
+                String message = e.getMessage();
+                Assert.assertFalse(message, e instanceof VersioningStreamException);
+                Assert.assertTrue(message, message.startsWith("Invalid magic bytes in stream"));
+                Assert.assertTrue(message, message.contains("an earlier release of BergDB"));
+                Assert.assertTrue(message, message.contains("it has no encryption"));
+                Assert.assertTrue(message, message.contains("written nothing"));
+            }
+            Assert.assertEquals("the files without created.txt, " + length, files, 
+                    fileHashes(dir));
         }
-        Assert.assertEquals("the files without created.txt", files, fileHashes(dir));
+        try (RandomAccessFile raf = new RandomAccessFile(last, "rw")) {
+            raf.setLength(lastLength);
+        }
         
         flipStreamFiles(dir);
         d = Factory.database().open(dir.getPath()).start();
@@ -3343,6 +3359,13 @@ public class PubTester {
                 java.nio.file.Files.write(f.toPath(), bytes);
             }
         }
+    }
+    
+    /** The directory's last stream file (*.bergdb), by name. */
+    private static File lastStreamFile(File dir) {
+        File[] files = dir.listFiles((parent, name) -> name.endsWith(".bergdb"));
+        Arrays.sort(files);
+        return files[files.length - 1];
     }
     
     /** The files of dir, by name, each with its length and the hash of its bytes. */

@@ -102,7 +102,6 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
-| [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 lands after 028-69 | none | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
@@ -115,6 +114,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a kill's zeroed tail; FileStream removes up to 8 MB | FileStream only | done | 2026-11-27 |
 | [028-62](62-emptied-file-db-last-file/readme.md) | Decide | RB-011: new files a tenth of the stream; the Javadoc of the stream | neither J nor S | done | 2026-11-26 |
 | [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
 | [028-64](64-week-run-ten-hours.md) | Change | week.sh in three lanes, about 6 hours, no coverage cut | none | done | 2026-11-26 |
@@ -589,3 +589,12 @@ encrypted streams.
 (`1809e04c`; `BEFORE COMMIT OK`), recorded in 017-10's log. New
 databases' `created.txt` has no line "crypto key:". A database that an
 earlier release encrypted is still refused, by its `created.txt`.
+
+2026-11-27. 028-60, part 2, decided by Frans on 2026-11-26 (neither B1,
+B2 nor B3 as written), made by an agent of lead-1126 (branch `028-60b`,
+reviewed twice by Codex) and rebased on 028-69 by an agent of lead-1127
+without its opt-out for encrypted streams (branch `028-60c`):
+`FileStream`'s open leaves a run of zero bytes of at most 8 MB at the
+end of its last file out of the stream, and its first append cuts it,
+for every stream, on every system; nothing above it changed. RB-012
+fixed for 2026.7. Moved to Closed.

@@ -108,18 +108,22 @@ prefix of what was appended, a start recovers only a truncated tail, and
 other damage is refused as far as the checks see it.
 
 A tail of zeros within the stream's length, which a kill of the process
-during an append left on macOS (031-02, F1), is recovered as a cut where
-its zeros begin inside the last record: z, read before them, reaches to
-or past the end, and the zeros are not read; blocks of zeros among them
-are not valid (1.2, step 3). Zeros that cover a whole size field at a
-record's start, where they begin or past the end of the record they
-begin in, give z = 0 there: an SFE, "Bad transaction size in db stream,
-0, spos P" (028-60). Before it reads the sizes, the recovery completes a
-meta block that the end of the stream cut, so the refusal may append
-that block's missing bytes; it writes nothing else. A size field that
-the end of the stream cuts, 1 to 3 zero bytes, is completed as any torn
-record's and recovered as an aborted record (Codex's review of 028-60,
-2026-11-25).
+during an append left on macOS (031-02, F1), is left out of the stream
+before the start reads it, when it is a run of at most 8 MB at the end
+of the last file: `FileStream`'s open ends the stream where the run
+starts, and its first append truncates the file there (027-14; 028-60,
+part 2, 2026-11-26); the recovery above sees a cut tail. A longer run, or one on another storage, is recovered
+as a cut where its zeros begin inside the last record: z, read before
+them, reaches to or past the end, and the zeros are not read; blocks of
+zeros among them are not valid (1.2, step 3). Zeros that cover a whole
+size field at a record's start, where they begin or past the end of the
+record they begin in, give z = 0 there: an SFE, "Bad transaction size
+in db stream, 0, spos P" (028-60). Before it reads the sizes, the
+recovery completes a meta block that the end of the stream cut, so the
+refusal may append that block's missing bytes; it writes nothing else. A
+size field that the end of the stream cuts, 1 to 3 zero bytes, is
+completed as any torn record's and recovered as an aborted record
+(Codex's review of 028-60, 2026-11-25).
 
 ### 1.4. The startup pos and the section
 
@@ -623,3 +627,7 @@ both before `created.txt` (1.2, 1.9).
 3); a cut block whose bytes are zero so far is completed with zeros
 (1.3); what recovery does with a tail of zeros (1.3). By an agent of
 lead-1125, on the branch `028-60`.
+
+2026-11-26. 028-60, part 2: `FileStream`'s open leaves a tail of zeros
+of at most 8 MB at the end of the last file out of the stream before
+the start reads it, and its first append cuts them (1.3). By an agent of lead-1126, on the branch `028-60b`.
