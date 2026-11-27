@@ -1,0 +1,174 @@
+# bergdb 031-06, review 3, W1 and W2 (2026-11-28): probes/warmahead.sh, before (the branch 031-06-pace rebased onto main, without the fixes) and after (with them). Functional (counts); F53 with other work on the machine; the counts vary with the threads.
+## before
+== -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 1
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, pause 0 ns, hold 0 ns:
+  without the warm-up: 229 records with a step, 7560 copies; the plans' scans loaded under the lock 8132 versions (35.51 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8744; stream 47463704
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); warm-up scans 229, loads in all 8164; stream 47463704
+== -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 2
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 0 ns, hold 0 ns:
+  without the warm-up: 229 records with a step, 7553 copies; the plans' scans loaded under the lock 8124 versions (35.48 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8727; stream 47452496
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 1170 versions (5.11 a step, at most 35); steps whose scan loaded any: 48 (21.0 %); warm-up scans 232, loads in all 9350; stream 47463704
+== -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 4
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 0 ns, hold 0 ns:
+  without the warm-up: 227 records with a step, 7476 copies; the plans' scans loaded under the lock 8042 versions (35.43 a step, at most 99); steps whose scan loaded any: 227 (100.0 %); warm-up scans 0, loads in all 8685; stream 47371352
+  with the warm-up:    229 records with a step, 7551 copies; the plans' scans loaded under the lock 791 versions (3.45 a step, at most 36); steps whose scan loaded any: 32 (14.0 %); warm-up scans 239, loads in all 8965; stream 47436976
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 2
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 229 records with a step, 7551 copies; the plans' scans loaded under the lock 8122 versions (35.47 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8729; stream 47454848
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 1585 versions (6.92 a step, at most 37); steps whose scan loaded any: 55 (24.0 %); warm-up scans 338, loads in all 10026; stream 47460664
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 4
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 228 records with a step, 7519 copies; the plans' scans loaded under the lock 8088 versions (35.47 a step, at most 99); steps whose scan loaded any: 228 (100.0 %); warm-up scans 0, loads in all 8662; stream 47400424
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 1359 versions (5.93 a step, at most 55); steps whose scan loaded any: 50 (21.8 %); warm-up scans 296, loads in all 9656; stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 8
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 8, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 229 records with a step, 7560 copies; the plans' scans loaded under the lock 8132 versions (35.51 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8735; stream 47463704
+  with the warm-up:    229 records with a step, 7551 copies; the plans' scans loaded under the lock 2798 versions (12.22 a step, at most 55); steps whose scan loaded any: 100 (43.7 %); warm-up scans 409, loads in all 11223; stream 47454848
+== -cp OUT:JAR bergdb.core.HandoverWarmProbe 50000 200 20000 200 20 5000000 2 2000
+HandoverWarmProbe cold 50000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, maintain(2000) in a loop:
+  maintain(): 1 calls, 194 rounds that gave way, 127 parts (127 with a step), 291 warm-up scans (2.29 a part)
+  records 20129 (362 commits with a step), rows published by copy 20126; stream 31302824
+HANDOVER WARM PROBE DONE
+== -cp OUT:JAR bergdb.core.HandoverWarmProbe 50000 200 20000 200 20 5000000 1 300
+HandoverWarmProbe cold 50000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, maintain(300) in a loop:
+  maintain(): 39 calls, 886 rounds that gave way, 608 parts (608 with a step), 985 warm-up scans (1.62 a part)
+  records 20610 (13 commits with a step), rows published by copy 20607; stream 36332720
+HANDOVER WARM PROBE DONE
+WARM AHEAD DONE
+## after
+== -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 1
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, pause 0 ns, hold 0 ns:
+  without the warm-up: 229 records with a step, 7560 copies; the plans' scans loaded under the lock 8132 versions (35.51 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8736; stream 47463704
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); warm-up scans 229, loads in all 8188; stream 47463704
+== -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 2
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 0 ns, hold 0 ns:
+  without the warm-up: 229 records with a step, 7553 copies; the plans' scans loaded under the lock 8124 versions (35.48 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8735; stream 47452496
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 77 versions (0.34 a step, at most 35); steps whose scan loaded any: 7 (3.1 %); warm-up scans 453, loads in all 8570; stream 47463704
+== -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 4
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 0 ns, hold 0 ns:
+  without the warm-up: 229 records with a step, 7551 copies; the plans' scans loaded under the lock 8122 versions (35.47 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8731; stream 47454848
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); warm-up scans 868, loads in all 8235; stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 2
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 228 records with a step, 7530 copies; the plans' scans loaded under the lock 8100 versions (35.53 a step, at most 99); steps whose scan loaded any: 228 (100.0 %); warm-up scans 0, loads in all 8720; stream 47439616
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 750 versions (3.28 a step, at most 36); steps whose scan loaded any: 31 (13.5 %); warm-up scans 427, loads in all 9049; stream 47460664
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 4
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 229 records with a step, 7560 copies; the plans' scans loaded under the lock 8132 versions (35.51 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8739; stream 47463704
+  with the warm-up:    229 records with a step, 7560 copies; the plans' scans loaded under the lock 1 versions (0.00 a step, at most 1); steps whose scan loaded any: 1 (0.4 %); warm-up scans 954, loads in all 8245; stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.WarmAheadProbe 100000 200 20000 200 20 5000000 8
+WarmAheadProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 8, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 229 records with a step, 7552 copies; the plans' scans loaded under the lock 8123 versions (35.47 a step, at most 99); steps whose scan loaded any: 229 (100.0 %); warm-up scans 0, loads in all 8714; stream 47451624
+  with the warm-up:    229 records with a step, 7551 copies; the plans' scans loaded under the lock 38 versions (0.17 a step, at most 35); steps whose scan loaded any: 4 (1.7 %); warm-up scans 1465, loads in all 8419; stream 47454848
+== -cp OUT:OUT-w1.jar bergdb.core.HandoverWarmProbe 50000 200 20000 200 20 5000000 2 2000
+HandoverWarmProbe cold 50000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, maintain(2000) in a loop:
+  maintain(): 1 calls, 92 rounds that gave way, 137 parts (137 with a step), 183 warm-up scans (1.34 a part)
+  records 20139 (348 commits with a step), rows published by copy 485; stream 31352064
+HANDOVER WARM PROBE DONE
+== -cp OUT:OUT-w1.jar bergdb.core.HandoverWarmProbe 50000 200 20000 200 20 5000000 1 300
+HandoverWarmProbe cold 50000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, maintain(300) in a loop:
+  maintain(): 22 calls, 401 rounds that gave way, 360 parts (360 with a step), 364 warm-up scans (1.01 a part)
+  records 20362 (108 commits with a step), rows published by copy 468; stream 32736256
+HANDOVER WARM PROBE DONE
+WARM AHEAD DONE
+# review-3-probes/run.sh OUT cost (WarmCostProbe: every object evicted after every transaction), before and after
+## before
+== -cp OUT:JAR bergdb.core.WarmCostProbe 20000 200 10000 2000 20 1
+WarmCostProbe cold 20000 x 200, 10000 commits of 2000 bytes, 20 ms apart, writers 1, every object evicted after every transaction:
+  without the warm-up: 879 records with a step; loads 45855, of them by the plans' scans 29033; warm-up calls while an iteration ran 9997; stream 38060744
+  with the warm-up:    879 records with a step; loads 41683, of them by the plans' scans 0; warm-up calls while an iteration ran 9997; stream 38060744
+== -cp OUT:JAR bergdb.core.WarmCostProbe 20000 200 10000 2000 20 4
+WarmCostProbe cold 20000 x 200, 10000 commits of 2000 bytes, 20 ms apart, writers 4, every object evicted after every transaction:
+  without the warm-up: 881 records with a step; loads 45976, of them by the plans' scans 29091; warm-up calls while an iteration ran 9997; stream 38119704
+  with the warm-up:    879 records with a step; loads 43922, of them by the plans' scans 2058; warm-up calls while an iteration ran 9997; stream 38060744
+RUN DONE cost
+## after
+== -cp OUT:OUT-w1.jar bergdb.core.WarmCostProbe 20000 200 10000 2000 20 1
+WarmCostProbe cold 20000 x 200, 10000 commits of 2000 bytes, 20 ms apart, writers 1, every object evicted after every transaction:
+  without the warm-up: 879 records with a step; loads 45855, of them by the plans' scans 29033; warm-up calls while an iteration ran 9997; stream 38060744
+  with the warm-up:    879 records with a step; loads 41683, of them by the plans' scans 0; warm-up calls while an iteration ran 9997; stream 38060744
+== -cp OUT:OUT-w1.jar bergdb.core.WarmCostProbe 20000 200 10000 2000 20 4
+WarmCostProbe cold 20000 x 200, 10000 commits of 2000 bytes, 20 ms apart, writers 4, every object evicted after every transaction:
+  without the warm-up: 879 records with a step; loads 45849, of them by the plans' scans 29033; warm-up calls while an iteration ran 9997; stream 38060744
+  with the warm-up:    880 records with a step; loads 133596, of them by the plans' scans 566; warm-up calls while an iteration ran 9997; stream 38020240
+RUN DONE cost
+# review-3-probes/run.sh OUT mw (MwWarmProbe, the review's cases; its records with a step include the cold load's), before (two runs) and after
+## before
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 1
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 35047 versions (30.32 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); stream 47463704
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 0 ns, hold 0 ns:
+  without the warm-up: 1155 records with a step, 31681 copies; the plans' scans loaded under the lock 35015 versions (30.32 a step, at most 103); steps whose scan loaded any: 1057 (91.5 %); stream 47439616
+  with the warm-up:    1156 records with a step, 31704 copies; the plans' scans loaded under the lock 5827 versions (5.04 a step, at most 54); steps whose scan loaded any: 209 (18.1 %); stream 47452496
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 0 ns, hold 0 ns:
+  without the warm-up: 1155 records with a step, 31681 copies; the plans' scans loaded under the lock 35015 versions (30.32 a step, at most 103); steps whose scan loaded any: 1057 (91.5 %); stream 47439616
+  with the warm-up:    1156 records with a step, 31703 copies; the plans' scans loaded under the lock 5184 versions (4.48 a step, at most 55); steps whose scan loaded any: 199 (17.2 %); stream 47451624
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31703 copies; the plans' scans loaded under the lock 35038 versions (30.31 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47451624
+  with the warm-up:    1156 records with a step, 31702 copies; the plans' scans loaded under the lock 2093 versions (1.81 a step, at most 54); steps whose scan loaded any: 62 (5.4 %); stream 47454848
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31702 copies; the plans' scans loaded under the lock 35037 versions (30.31 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47436976
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 2943 versions (2.55 a step, at most 58); steps whose scan loaded any: 94 (8.1 %); stream 47447384
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 8
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 8, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31702 copies; the plans' scans loaded under the lock 35037 versions (30.31 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47454848
+  with the warm-up:    1156 records with a step, 31703 copies; the plans' scans loaded under the lock 2703 versions (2.34 a step, at most 54); steps whose scan loaded any: 98 (8.5 %); stream 47451624
+RUN DONE mw
+done
+## before
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 1
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 35046 versions (30.32 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); stream 47463704
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31704 copies; the plans' scans loaded under the lock 35042 versions (30.31 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47452496
+  with the warm-up:    1156 records with a step, 31704 copies; the plans' scans loaded under the lock 1448 versions (1.25 a step, at most 41); steps whose scan loaded any: 59 (5.1 %); stream 47452496
+== -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 0 ns, hold 0 ns:
+  without the warm-up: 1155 records with a step, 31681 copies; the plans' scans loaded under the lock 34968 versions (30.28 a step, at most 103); steps whose scan loaded any: 1057 (91.5 %); stream 47439616
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 2019 versions (1.75 a step, at most 36); steps whose scan loaded any: 77 (6.7 %); stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 34896 versions (30.19 a step, at most 103); steps whose scan loaded any: 1056 (91.3 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31702 copies; the plans' scans loaded under the lock 1977 versions (1.71 a step, at most 54); steps whose scan loaded any: 60 (5.2 %); stream 47454848
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 35047 versions (30.32 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47463704
+  with the warm-up:    1155 records with a step, 31670 copies; the plans' scans loaded under the lock 2326 versions (2.01 a step, at most 54); steps whose scan loaded any: 78 (6.8 %); stream 47421592
+== -Dhold=50000 -Dpause=200000 -cp OUT:JAR bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 8
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 8, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1155 records with a step, 31670 copies; the plans' scans loaded under the lock 34931 versions (30.24 a step, at most 103); steps whose scan loaded any: 1055 (91.3 %); stream 47421592
+  with the warm-up:    1156 records with a step, 31707 copies; the plans' scans loaded under the lock 2579 versions (2.23 a step, at most 54); steps whose scan loaded any: 90 (7.8 %); stream 47448040
+RUN DONE mw
+## after
+== -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 1
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 1, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 34975 versions (30.26 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 0 versions (0.00 a step, at most 0); steps whose scan loaded any: 0 (0.0 %); stream 47463704
+== -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31702 copies; the plans' scans loaded under the lock 34840 versions (30.14 a step, at most 103); steps whose scan loaded any: 1060 (91.7 %); stream 47454848
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 60 versions (0.05 a step, at most 32); steps whose scan loaded any: 4 (0.3 %); stream 47463704
+== -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 0 ns, hold 0 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 34734 versions (30.05 a step, at most 103); steps whose scan loaded any: 1054 (91.2 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31703 copies; the plans' scans loaded under the lock 1 versions (0.00 a step, at most 1); steps whose scan loaded any: 1 (0.1 %); stream 47451624
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 2
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 2, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31711 copies; the plans' scans loaded under the lock 35023 versions (30.30 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47463704
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 75 versions (0.06 a step, at most 36); steps whose scan loaded any: 7 (0.6 %); stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 4
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 4, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1154 records with a step, 31647 copies; the plans' scans loaded under the lock 34820 versions (30.17 a step, at most 103); steps whose scan loaded any: 1054 (91.3 %); stream 47381160
+  with the warm-up:    1156 records with a step, 31711 copies; the plans' scans loaded under the lock 119 versions (0.10 a step, at most 36); steps whose scan loaded any: 5 (0.4 %); stream 47463704
+== -Dhold=50000 -Dpause=200000 -cp OUT:OUT-w1.jar bergdb.core.MwWarmProbe 100000 200 20000 200 20 5000000 8
+MwWarmProbe cold 100000 x 200, 20000 commits of 200 bytes, 20 ms apart, cache budget 5000000, writers 8, pause 200000 ns, hold 50000 ns:
+  without the warm-up: 1156 records with a step, 31702 copies; the plans' scans loaded under the lock 34973 versions (30.25 a step, at most 103); steps whose scan loaded any: 1058 (91.5 %); stream 47454848
+  with the warm-up:    1154 records with a step, 31646 copies; the plans' scans loaded under the lock 4 versions (0.00 a step, at most 1); steps whose scan loaded any: 4 (0.3 %); stream 47394736
+RUN DONE mw

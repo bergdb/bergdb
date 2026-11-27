@@ -653,8 +653,11 @@ stream before it, and the warm-up changes only what is in memory.
 * **Why 128 KiB.** The record's cap holds the step's KVs in
   `StoredTrans.stepRoom()`: one value node of the largest size (the scan's
   last KV, or its first alone), and `STEP_FIXED_ROOM`, 256 KiB, for the
-  scan's other KVs, the row and the table. Section 3's arithmetic and
-  `recordCap()` rest on it. With the scan's other KVs within half of it,
+  scan's other KVs, the row and the table. `recordCap()` and the
+  record's own bytes in section 3 rest on it; its index nodes rest on
+  step 2's checks, `recordDirtyFits` and `checkTakeable` (section 3's
+  arithmetic holds for a step of 16 kB, not of 128 KiB; review 3, D1,
+  fixed 2026-11-28). With the scan's other KVs within half of it,
   the row and the table keep the other half (assumed, as before; a table
   of a few rows is some kB). Without the cap a step could copy up to
   `valueLimit()` beside a large action, and pass the cap at limits between
@@ -849,6 +852,90 @@ copy of the clone:
   checkers did not need a change (the charge is in the row's value, which
   the traces carry as a hash; the step's lastKey, L' and eod are as
   before), so `lean/contract/gate.sh` was not run.
+
+### After review 3 (2026-11-28)
+
+`review-3.md` (on `main` at `80f50c37`) found no fault of correctness in
+step 3, and three of low weight; each has its "Fixed" line there. The
+branch rebased onto `main` at `80f50c37` (review 3 and the AppRecord fix
+of the night), without a conflict; one commit of code and probes, and the
+item's text.
+
+* **W2, maintain()'s rounds** (`Db.maintain`, `Reclaim.warmup`,
+  `publishWarm`). What: a part's warm-up is given the row that the last
+  one read (`Maintenance.warmup`'s `done`) and reads nothing while the
+  published row is that copy; `publishWarm` copies the row only when it
+  differs in what the warm-up reads (`IterationInfo.sameScan`). When: before
+  each part's lock, in every round; by `maintain()`'s thread. So a round
+  that gave way warms again only after a record moved the row. Checked by
+  `HandoverWarmProbe`: 2.29 and 1.62 warm-up scans a part before, 1.34 and
+  1.01 after; the rows copied one a record before, only at the records
+  that moved the row after (485 of 20,139).
+* **W1, several writers** (`Db.commitsAhead`, `Reclaim.warmup`,
+  `WARM_AHEAD_MAX`). What: a commit's warm-up counts the commits ahead
+  of it at the lock, at most 4, and reads the steps that the records from
+  the next one to its own may take, each record adding the allowance of
+  the application's last record; with none ahead, as before. When: before
+  the lock, by the committing thread; a commit is counted from after its
+  warm-up until its record's maintenance is applied, before `apply()`
+  publishes the state after it. It changes only what is in memory.
+  Checked by `WarmAheadProbe` (MwWarmProbe's cases, the commits' steps
+  only): the steps whose scan loaded under the lock, 2 to 8 writers, 14.0
+  to 43.7 % before, 0.0 to 13.5 % after (four of five cases under 3.2 %);
+  the cost, 1.9 to 6.4 warm-up scans a step in place of about one, and
+  with every object evicted after every transaction three times the loads
+  in all (`WarmCostProbe`). The timing run decides whether it stays
+  (`review-3.md`, section 5, point 4).
+* **D1, the text** (readme section 3 and rule 5, `STEP_FIXED_ROOM`,
+  `MAX_COMMIT_STEP_SIZE`): section 3's arithmetic is for a step of 16 kB,
+  a part's; a commit's step of up to 128 KiB rests on step 2's checks,
+  `recordDirtyFits` and `checkTakeable`, with its worst count stated.
+  Bounding the step's segments instead was not chosen (it would undo
+  028-71's pace for small values).
+* **Determinism.** Neither fix changes a record: the warm-ups decide
+  nothing, and `publishWarm`'s copy is read by the warm-up only.
+  `EvictChargeProbe` (the same stream with and without eviction, with
+  every object evicted, and without the warm-up), the sweep and the faults
+  on the tree: below.
+
+#### Two timing probes for the lead
+
+Both run on `main`'s jar and on this branch's (`JAR=`, as `p1.sh`), on a
+quiet machine; each was run once small to show that it works
+(`runs/timing-probes-small.txt`; the figures are not a result).
+
+* **A commit that carries a step of 128 KiB of small values**
+  (`probes/BigStepProbe.java`, `bigstep.sh`; review 3, section 5, point 2):
+  2M cold keys of 20 to 30 bytes on disk, a cache budget of 50 MB, 100,000
+  commits, every 50th of 600 kB; the commit after a large one carries a
+  step of about 930 copies (115 on `main`, 16 kB). Printed: execute() and
+  the time under the lock for the commits with a step and without, the
+  copies a step, the longest under the lock and the longest commit against
+  20 ms, the five longest commits with their uptimes for the GC log.
+
+  ```
+  sh items/031-release-2026-7/06-one-record-an-action/probes/bigstep.sh OUT
+  JAR=MAIN/java/build/bergdb.jar sh items/031-release-2026-7/06-one-record-an-action/probes/bigstep.sh OUT-MAIN
+  ```
+
+* **The start of a file database whose last record is large**
+  (`probes/BigTailProbe.java`, `bigtail.sh`; review 3, section 5, point
+  5): 4M keys, then a quarter of them overwritten at the startup distance
+  of 1 GB, then the distance set to 1 MB and one commit of 24 MiB, whose
+  record takes the dirty index nodes of the tree, about 145 MB (the probe
+  prints its size; 31 MB at the small size, 55 MB at 1M keys); the
+  database closed, then three starts, each timed.
+
+  ```
+  sh items/031-release-2026-7/06-one-record-an-action/probes/bigtail.sh OUT
+  JAR=MAIN/java/build/bergdb.jar sh items/031-release-2026-7/06-one-record-an-action/probes/bigtail.sh OUT-MAIN
+  ```
+
+`MAIN` is a clone of `main` built with `java/build.sh`.
+
+#### Gates after review 3
+
+GATES_PLACEHOLDER
 
 ### For the later steps
 

@@ -162,6 +162,35 @@ machine; no time was measured.
   that no plan uses (up to 17 % more reads in all, when nothing is in
   memory). The stream does not depend on it. For the timing run (section
   5).
+* **Fixed (2026-11-28):** a commit's warm-up counts the commits ahead of
+  it at the lock (`Db.commitsAhead`, `commitsQueued`: a commit is counted
+  from after its warm-up until its record's maintenance is applied, just
+  before `apply()` publishes the state after it; a guide only, the
+  monitor is not fair), at most 4 (`Reclaim.WARM_AHEAD_MAX`), and reads
+  the steps that the records from the next one to its own may take: each
+  record adds the allowance that the application's last record added,
+  `fractionOf(L0 - a)`, and one whose allowance is then above
+  `MIN_STEP_SIZE` takes a step from where the row is. With none ahead it
+  reads the next record's step, as before. It decides nothing, as before.
+  Measured (`probes/warmahead.sh`: `WarmAheadProbe`, MwWarmProbe's cases
+  with the steps of the commits' phase only, 229, and two more counts;
+  `runs/warm-review3.txt`), the steps whose scan loaded any version under
+  the lock:
+  * 2 and 4 writers: 21.0 and 14.0 % before, 3.1 and 0.0 % after;
+  * 2, 4 and 8 writers with pauses and the lock held 50 us longer: 24.0,
+    21.8 and 43.7 % before, 13.5, 0.4 and 1.7 % after;
+  * one writer: 0 in both; the versions loaded under the lock, the five
+    cases above: 1,170, 791, 1,585, 1,359 and 2,798 before; 77, 0, 750, 1
+    and 38 after.
+
+  Its cost: the warm-up scans go from about one a step (232 to 409 for
+  229 steps) to 1.9 to 6.4 a step (427 to 1,465) with 2 to 8 writers. With
+  the cache budget the extra scans meet nodes in memory, and the loads in
+  all are fewer (8,235 to 9,049 after, 8,965 to 11,223 before). With every
+  object evicted after every transaction (`WarmCostProbe`, 4 writers) the
+  scans' loads under the lock go from 2,058 to 566, and the loads in all
+  from 43,922 to 133,596: each waiting writer's scan loads again what the
+  records before it evicted. Section 5, point 4, measures the throughput.
 
 ### W2. maintain() scans again at every handover (low; step 3; by reading)
 
@@ -175,6 +204,20 @@ machine; no time was measured.
 * `Reclaim.apply` makes a copy of the running row for the warm-up at
   every record while an iteration runs (`publishWarm`). Small; named for
   CORE in the timing run.
+* **Fixed (2026-11-28):** `Reclaim.publishWarm` copies the row only when
+  it differs from the published copy in what the warm-up reads
+  (`IterationInfo.sameScan`: pStart, pCut, rewritten, done, lastKey and
+  endKey). `Reclaim.warmup` for a part is given the row it read last
+  (`Maintenance.warmup`'s `done`, which `Db.maintain` keeps from round to
+  round) and reads nothing while the published row is that copy. So a
+  round that gives way warms again only after a record moved the row (a
+  part, or a commit's step). `HandoverWarmProbe` (`probes/warmahead.sh`,
+  `runs/warm-review3.txt`; 2 writers without a pause and `maintain(2000)`
+  in a loop, then 1 writer and `maintain(300)`): `maintain()`'s warm-up
+  scans 2.29 and 1.62 a part before (291 for 127 parts, 985 for 608), 1.34
+  and 1.01 after (183 for 137, 364 for 360); the rows copied for the
+  warm-up 20,126 and 20,607, one a record, before, 485 and 468 after, the
+  records that moved the row.
 
 ### D1. Section 3's arithmetic and three comments still say 16 kB (low; text)
 
@@ -200,6 +243,16 @@ machine; no time was measured.
   section 3's "the row and the table together are at most 240 kB" (now
   128 KiB, `STEP_FIXED_ROOM` / 2), and `StoredTrans.STEP_FIXED_ROOM`'s
   Javadoc ("the scan's KVs but the last (Reclaim.MAX_STEP_SIZE)").
+* **Fixed (2026-11-28):** the text. The readme's section 3 states the
+  derivation for a step of 16 kB, a part's, and for a commit's step of up
+  to 128 KiB that the record's room rests on `recordDirtyFits` and
+  `checkTakeable`, with the worst count: 16,444 segments, 2.79 GB at node
+  size 8 by 024-17's count, 1.78 M nodes by the cheap count at a stream of
+  1 TB. Bounding the step's segments so that the arithmetic held again was
+  not chosen: about 2,000 segments a step would cap a commit's step of
+  small keys near 16 kB and undo 028-71's pace for small values. Rule 5,
+  section 3's 240 kB (now 128 KiB), and the Javadoc of `STEP_FIXED_ROOM`
+  and `MAX_COMMIT_STEP_SIZE` say the same.
 
 
 ## 3. Step 3: what was checked and found right

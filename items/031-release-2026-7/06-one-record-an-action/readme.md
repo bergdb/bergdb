@@ -929,7 +929,15 @@ rules, the evidence and the gates:
   records that carry a step read 0.00 to 0.06 versions a step from the
   stream under the lock, 32 to 103 without it, with the same stream;
 * P1 on a database larger than the cache budget: `probes/P1Probe.java`
-  and `probes/p1.sh`, for the lead's timing run (run once small).
+  and `probes/p1.sh`, for the lead's timing run (run once small);
+* after review 3 (2026-11-28; `review-3.md`, each finding's "Fixed"
+  line): W2, `maintain()` warms a part once while it gives way; W1, a
+  commit's warm-up reads the steps of the commits ahead of it at the
+  lock; D1, section 3 states that a commit's step of up to 128 KiB rests
+  on step 2's checks; two more probes for the timing run, `bigstep.sh`
+  (a commit that carries a step of 128 KiB of small values) and
+  `bigtail.sh` (the start of a file database whose last record is about
+  145 MB).
 
 The determinism checks hold at 0 different (the sweep's 27,741
 interruptions and 570 torn records, faults, conc, RestartInvariance,
@@ -990,3 +998,8 @@ R7 begun on a branch.
 fixed-width patch, a commit's step sized by its allowance (028-71), the
 warm-up of a step's reads before the lock, P1's probe for a database
 larger than its cache budget; gated on `main` with step 4.
+
+2026-11-28. Step 3 after review 3 (`review-3.md`, W1, W2 and D1 fixed;
+`landing.md`, step 3, "After review 3"): the warm-up with several writers
+and in `maintain()`'s rounds, the text of section 3 for a commit's step of
+up to 128 KiB, and two timing probes for the lead.
