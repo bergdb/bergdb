@@ -107,6 +107,7 @@ Open
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
 | [028-72](72-action-room-lean-count.md) | Investigate | The action's 7/8 against the worst action by the Lean's node count | none | open |
+| [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
 
 
 Closed
@@ -641,3 +642,7 @@ records with copies (031-06).
 
 2026-11-27. 028-72 registered by lead-1127, from the investigation of
 BergDB's own long keys (031-06, section 8, O1).
+
+2026-11-27. 028-73 registered by lead-1127, from the timing run on
+`main` (the pause probe's load phase) and its bisection to `05fc573c`
+(028-62); options (a) to (d) for Frans, (b) recommended.

@@ -460,6 +460,35 @@ The lead's overview (08:30), its conclusions:
   on own keys (O1); removing a checksum or changing 010; deletions other
   than the lead's own run data; landing 028-66's C before its rule and
   its review.
+* 17:27 Frans left for the evening; the lead runs unattended until
+  Monday 07:00 on the plan above.
+* 17:28 The investigation's results on `main` (`a20b0034`): O1 in
+  031-06 with options (a) to (c), 028-72 registered, 028-66's decision
+  of 17:26 in its entry.
+* 18:07 The timing run on `main` (`5b88cc80`, the run of 17:16, against
+  release 2026.6): TIMING ALERTS: pauses. CORE 0.963 of 2026.6 (0.260
+  against 0.270). The perf step: no alerts; writes 6 to 14 % faster
+  (w-uni-100-inf +5.8 %, w10m-fin +7.3 %, w10m-inf +13.9 %). Pauses:
+  one commit of 68.9 ms in one of the candidate's two runs (phase
+  tsize=500, with gets of 33.6 ms at the same moment), 15.6 ms in the
+  other; 2026.6 23.2 and 11.6 ms; guide 50 ms.
+* 18:08 to 18:18 Two reruns of the pause step, ABBA against 2026.6:
+  TIMING OK both, the candidate 10.2 to 13.4 ms, 2026.6 10.1 to
+  11.5 ms; the 68.9 ms did not repeat. The probe's load phase, which
+  its figure does not count, had waits for room in the write buffer
+  in 6 of 6 runs on `main`, 144 to 282 ms, against 0 to 16 ms on
+  2026.6 and 15 to 26 ms on 031-06's prototype.
+* 18:22 The independent review of the landed diff started, an agent on
+  Fable (plan step 1); with it, an agent on the load phase's waits.
+* 18:41 The waits bisected to `05fc573c` (028-62, new files a tenth of
+  the stream kept): a new database writes its first 10 MB in 200 kB
+  files and the writer's thread drains slower than a fast load appends;
+  the stream's bytes are the same, 031-06 is not involved. 028-73
+  registered, options for Frans (section 4); (b), a floor of 1 MB from
+  4 MB kept, made and gated on a branch (`5731b6c9`), not on `main`.
+* 18:43 `night.sh` on `main` started (report `2026-11-27-1843`); the
+  agent for the probes of RB-007, RB-010 and RB-006's rest on `main`
+  follows it.
 
 ## 4. Waiting for Frans
 
@@ -471,7 +500,7 @@ with a time: none is open.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (17:28)
+### Open now (18:45)
 
 What is open for Frans after the decisions of 16:09 to 17:26 (section
 2). The text of sections 4.0 to 4.3 is left as it was written.
@@ -491,9 +520,26 @@ What is open for Frans after the decisions of 16:09 to 17:26 (section
     lines.
   * (c) Every key within L2: not possible without a new index format.
   * Recommended: (b), 1,024 bytes. Parked until Frans decides.
+* **028-73. New stream files a tenth: the writer waits at a new
+  database's first 10 MB** (Frans's rule of 028-62, 2026-11-26). The
+  timing run of 17:16 and its bisection: since `05fc573c` a new database
+  writes its first 10 MB in 200 kB files; with per-append forcing the
+  writer's thread drains about 20 MB/s, and a fast load waits 144 to
+  282 ms for room in the write buffer, once (2026.6: 0 to 16 ms). The
+  stream's bytes are the same.
+  * (a) Accept it: once a new database, the disk's wait.
+  * (b) A floor of 1 MB once the kept stream reaches 4 MB, as the
+    quarter gave; the tenth unchanged above 10 MB; RB-011's bound "a
+    tenth, or 1 MB for 4 to 10 MB kept". Made and gated on branch
+    `loadwait-1mb-floor` (`5731b6c9`): 1 wait of 7 to 21 ms against
+    `main`'s 145 to 169 ms.
+  * (c) (b), and a floor of 5 MB from 20 MB, for a faster writer;
+    RB-011's bound 5 MB for 20 to 50 MB kept.
+  * (d) Back to the quarter, which undoes RB-011's fix.
+  * Recommended: (b). Parked until Frans decides.
 * **The review of the landed diff** (031-06, section 9): an independent
   review of the code merged at `5b88cc80` before step 3 builds on it;
-  the lead runs it this weekend unless Frans says otherwise.
+  running since 18:22 (section 3).
 * **031-07's review** of the stream's checksums.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
