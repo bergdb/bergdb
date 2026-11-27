@@ -567,8 +567,8 @@ public class DbTesterStream {
      * Bergdb 028-60: after a kill of the process during an append, the last stream file can
      * end in zeros within its length, from a page boundary on (macOS, APFS; bergdb 031-02,
      * F1), and the zeros can cover a meta block's position. Made here on a stopped database's
-     * last file, of 1 MB from stream position 10,000,000 (FileStream's files are of 200 kB
-     * before; from 4,000,000 until 2026-11-26, when a new file took a quarter of the stream,
+     * last file, of 1 MB from stream position 10,000,000 (FileStream's files are of 1 MB from
+     * 4,000,000 on; from 10,000,000 on with the tenth alone, from 2026-11-26 to 2026-11-27,
      * bergdb 028-62): its last record, a value of 400 kB over the meta blocks at 10,400,000
      * and 10,600,000, zero from the first 16 KiB page of the file after the record's header to the
      * file's end, with the file's length as it is and cut inside the record, as the kill of

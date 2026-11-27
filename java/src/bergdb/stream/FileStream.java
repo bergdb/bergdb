@@ -42,24 +42,27 @@ import bergdb.pub.util.BadFormatException;
  * 
  * The files and the disk (2026-11-26, bergdb 028-62). A new file gets the largest of these
  * sizes that is at most a tenth of the stream that the files hold when it is made, from the
- * first file's start to the length: 200 kB below 10 MB, 1 MB from 10 MB, 5 MB from 50 MB;
- * a quarter until 2026-11-26. A larger size than the last file's begins only at a length
+ * first file's start to the length, and at least 1 MB from 4 MB on: 200 kB below 4 MB, 1 MB
+ * from 4 MB, 5 MB from 50 MB; a quarter until 2026-11-26. The 1 MB from 4 MB is the
+ * quarter's (2026-11-27): 200 kB files to 10 MB took two forces each, a new database's
+ * first 10 MB about 0.5 s of them on F53, and the writer waited for room in its buffer
+ * during a fast load. A larger size than the last file's begins only at a length
  * that is a multiple of the next larger size, a smaller one at once (determineFileSizeIndex).
  * The stream moves to a new file only when the last one has reached its size; a start gives
  * the last file the smallest size not below the lengths of the last two files. A cut
  * (pretruncate) deletes whole files only, those that end before its position, and never the
  * last one. So the files hold the stream from the start of the file that the cut's position
  * lies in: the disk can hold up to about one file more than the stream, about a tenth of the
- * stream when that file was made, and, for a while after a cut, the files that the cut's
- * thread has not yet deleted (since 2026-11-27 a batch at a time, the directory forced once
- * after it: runCuts, bergdb 028-66). This holds also after the stream has shrunk: a database
- * emptied after a large stream keeps the file that its first position lies in until appends
- * fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed 5, 10,400 kB of a 20 MB
- * file on disk for 61 kB of stream with the quarter, 400 kB with the tenth). A start accepts
- * files of any of the sizes beside each other, those of the quarter beside those of the
- * tenth: it checks that each file begins where the one before ends, or after a gap (below,
- * "A gap in the files"), and that every file but the last is a multiple of 100,000 bytes
- * long (checkDbFiles; testMixedFileSizes).
+ * stream when that file was made (1 MB for 4 to 10 MB), and, for a while after a cut, the
+ * files that the cut's thread has not yet deleted (since 2026-11-27 a batch at a time, the
+ * directory forced once after it: runCuts, bergdb 028-66). This holds also after the stream
+ * has shrunk: a database emptied after a large stream keeps the file that its first position
+ * lies in until appends fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed
+ * 5, 10,400 kB of a 20 MB file on disk for 61 kB of stream with the quarter, 400 kB with
+ * the tenth). A start accepts files of any of the sizes beside each other, those of the
+ * quarter beside those of the tenth: it checks that each file begins where the one before
+ * ends, or after a gap (below, "A gap in the files"), and that every file but the last is a
+ * multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).
  * 
  * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
  * only by appends at its end, and removes files only whole, by deletes, issued oldest first
@@ -1672,7 +1675,8 @@ public class FileStream implements AppendOnlyStream {
     /**
      * The size of the next file (2026-11-26, bergdb 028-62): the largest of FILE_SIZES that
      * is at most a tenth of 'streamSize', the stream that the files hold, from the first
-     * file's start to the length; FILE_SIZES[0] if none is. A larger size than the current
+     * file's start to the length, and 1 MB if that is smaller and 'streamSize' is at least 4
+     * MB (the quarter's, 2026-11-27); FILE_SIZES[0] if none is. A larger size than the current
      * one begins only at a length that is a multiple of the next larger size; a smaller one
      * at once. Until 2026-11-26 the rule took a quarter: an emptied database kept the file
      * that its first available position was in, up to a quarter of the stream when the file
@@ -1681,6 +1685,12 @@ public class FileStream implements AppendOnlyStream {
     private int determineFileSizeIndex(int currentFileSizeIndex, long streamLength, long streamSize) {
         long currentSize = FILE_SIZES[this.fileSizeIndex];
         long size = streamSize / 10;    // a quarter until 2026-11-26 (bergdb 028-62)
+        // 1 MB from 4 MB, as the quarter gave (2026-11-27): 200 kB files to 10 MB, each with
+        // its force and the next file's, slowed BufferedStream's thread to about 20 MB/s on
+        // F53, and a load waited for room in the buffer for about 0.2 s.
+        if (streamSize >= 4 * M && size < FILE_SIZES[1]) {
+            size = FILE_SIZES[1];
+        }
         long foundSize = FILE_SIZES[0];
         int foundIndex = 0;
         int result = currentFileSizeIndex;
@@ -2394,18 +2404,30 @@ public class FileStream implements AppendOnlyStream {
         assert dir != null : "dir is null";
         FileStream f = new FileStream(dir);
         
-        // A tenth of the stream (2026-11-26, bergdb 028-62; a quarter before: 5 MB gave 1 MB).
+        // A tenth of the stream (2026-11-26, bergdb 028-62), at least 1 MB from 4 MB, as the
+        // quarter (2026-11-27).
         size = 10 * 1000000L;
         newIndex = f.determineFileSizeIndex(0, size, size);
         Assert.assertEquals(1, newIndex);
         
         size = 9 * 1000000L;
         newIndex = f.determineFileSizeIndex(0, size, size);
-        Assert.assertEquals(0, newIndex);
+        Assert.assertEquals(1, newIndex);
         
-        size = 5 * 1000000L;
+        size = 4 * 1000000L;
+        newIndex = f.determineFileSizeIndex(0, size, size);
+        Assert.assertEquals(1, newIndex);
+        
+        size = 3900 * 1000L;
         newIndex = f.determineFileSizeIndex(0, size, size);
         Assert.assertEquals(0, newIndex);
+        
+        // Smaller at once: 3 MB kept after 1 MB files.
+        size = 3 * 1000000L;
+        f.fileSizeIndex = 1;
+        newIndex = f.determineFileSizeIndex(1, 20 * 1000000L, size);
+        Assert.assertEquals(0, newIndex);
+        f.fileSizeIndex = 0;
         
         // The rule reads the current size from the field, as applyFileSizeChangeRules passes it.
         size = 50 * 1000000L;
@@ -2455,10 +2477,10 @@ public class FileStream implements AppendOnlyStream {
     /**
      * A start accepts files of the quarter rule (until 2026-11-26) beside files of the tenth
      * (bergdb 028-62): 200 kB files, then 1 MB files from 4 MB on, as the quarter made them
-     * (the tenth makes 1 MB files from 10 MB on), the last half full. The stream is opened,
-     * cut, written on into files of the tenth, and opened again, twice; every byte is read
-     * back each time. Without forces, for the test's time: the forces of a new file are
-     * most of it on macOS.
+     * (and the tenth with its 1 MB from 4 MB, since 2026-11-27), the last half full. The
+     * stream is opened, cut, written on into files of the tenth, and opened again, twice;
+     * every byte is read back each time. Without forces, for the test's time: the forces of
+     * a new file are most of it on macOS.
      */
     @Nano
     static void testMixedFileSizes(TestEnvironment c) throws IOException {
@@ -3374,13 +3396,13 @@ public class FileStream implements AppendOnlyStream {
         byte[] bytes = new byte[100*1000];
         FileStream f = new FileStream(dir);
         
-        // 11 MB: 200 kB files to 10 MB, then a 1 MB file, a tenth (2026-11-26, bergdb 028-62;
-        // with a quarter, 5 MB gave 200 kB files to 4 MB and a 1 MB file).
+        // 11 MB: 200 kB files to 4 MB, then 1 MB files, as with the quarter (2026-11-27; 200
+        // kB files to 10 MB with the tenth alone, bergdb 028-62).
         for (int i = 0; i < 110; i++) {
             f.append(bytes, 0, bytes.length);
         }
         
-        Assert.assertEquals(51, f.dbFiles.length);
+        Assert.assertEquals(27, f.dbFiles.length);
         Assert.assertEquals(200*1000, f.dbFiles[0].fileLength);
         Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         
