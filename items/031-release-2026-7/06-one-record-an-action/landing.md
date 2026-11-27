@@ -175,7 +175,27 @@ copies, reclaim's row and maybe its table, one operation a key.
   java/stress/TraceExport.java 132, 73; java/stress/conformance.sh 5, 4;
   027-02 86, 28.
 
-(The level scripts' lines: below, as they ran.)
+**Gates** (on F53, 2026-11-27, from 15:25; other sessions' work on the
+machine; functional runs):
+
+* `lean/test-traces/step-faults.sh`: `STEP FAULTS OK`, 23 faults found.
+* `java/stress/treeconf.sh reclaim 1`: `TREECONF OK`; C-T5 and C-T9 0
+  failures over 2,515 transactions with 105 touches.
+* `java/stress/level3.sh` (full, 10:51 min): `LEVEL 3 OK`. Step 8:
+  conformance reclaim, 40 traces, TRACECHECK OK 40, C-CUT 0 of 869 CUT lines
+  fail; C-STEP 0 of 23,127 transactions fail, 1,370 STEP lines (557 of them
+  in commits' records, the rest in parts' records of the `maint` sets), 1,042
+  iterations, 14,954 old KVs met and written by their record, 14,679 copies
+  with the value read, 23,087 records against their actions as submitted
+  (55,718 operations); 30 of the 40 traces have a step in a commit's record
+  with an action. Crash: 15 traces, TRACECHECK OK 15, C-STEP 0 of 5,593
+  fail, 409 STEP lines (209 in commits' records), 8,785 copies, 5,578 records
+  against their actions; STEP-resume 925 restarts (135 crashes), 68
+  iterations with a step before a restart and the next after it. (The copy and
+  action counts are from the run's check files, summed with the summary of
+  `conformance.sh` as committed after the run; the run printed the old
+  summary's words.)
+* `lean/contract/gate.sh`: `GATE OK` (above).
 
 ## What depends on Frans's two answers
 
