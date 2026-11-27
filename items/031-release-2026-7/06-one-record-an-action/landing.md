@@ -39,7 +39,12 @@ lands the item's text; this file does not replace the item's `readme.md`.
   interruptions, 27,720 the same, 0 different, the start's memory the
   running database's at every one; 567 torn records continued the same; the
   23 reference streams have the digests of the item's `runs/sweep.txt`, one
-  for one.
+  for one. With the same adapted probes on the jar of step 1: `faults.sh`
+  (`FaultProbe`, six seeds, faults at four points), the item's
+  `runs/faults.txt` line for line, its six reference digests the same, bad
+  0; `conc.sh` (`ConcProbe`, threads, then a one-thread replay whose parts
+  are `maintain(B)` calls with `maintainMaxParts()` 1): ten runs, the replay
+  gave the same stream in all ten.
 
 ## Step 1: the conformance (review, F1)
 
@@ -196,6 +201,21 @@ machine; functional runs):
   `conformance.sh` as committed after the run; the run printed the old
   summary's words.)
 * `lean/contract/gate.sh`: `GATE OK` (above).
+* `java/stress/level2.sh` (full, 12:56 min): `LEVEL 2 OK`. Step 0, the pins:
+  144 files with their pinned hashes. Step 8, treeconf: reclaim 7,545
+  transactions with 310 touches, C-T5 and C-T9 0 failures (with small 7,240
+  and drain 14,120 transactions). Step 8b, `check.sh small drain`: CONTRACT OK,
+  with its fault tests, bridge-faults.sh among them on the reclaim trace
+  `r-del-1` (193 `OP C` lines). Step 8c, pecmp: 0 differ in the small, drain
+  and reclaim sets. A first run of level2 (15:44) failed at its unit tests, in
+  `ReclaimMaintainTester.testCommitGoesBeforeTheNextPart` (031-04's test of the
+  lock's handover: "the call gives way, expected TIMED_WAITING, got
+  RUNNABLE"); the test passed alone six times, six runs at once, in both runs
+  of before-commit.sh, in level3's unit tests and in the second level2 run.
+  It decides by sampling a thread's state, which a loaded machine can keep
+  RUNNABLE (a thread that waits for a core); it is the prototype's test, not
+  changed here (later steps).
+* `java/before-commit.sh` at the end: `BEFORE COMMIT OK (65 s)`.
 
 ## What depends on Frans's two answers
 
@@ -226,11 +246,59 @@ format version, refused with a clear message, no upgrade path).
 
 ## For the later steps
 
-(Filled in at the end.)
+What this work met that bears on the steps not taken here (F2 to F7, the
+kept times, the documents):
+
+* **The step's size (F3, F4).** With one record an action a step rides on a
+  commit whenever the commit's allowance passes `MIN_STEP_SIZE`: in the
+  small configurations every iteration now ends in one step. C-STEP's fault
+  test's second trace (30 keys of 20 bytes, restarts every 10 actions) no
+  longer had an iteration across a restart and now uses the crash set's
+  c-vals; a change of the step's size or of its allowance should keep at least
+  one configuration of each set with iterations of several steps (level 3
+  prints the counts: 1,042 iterations for 1,370 STEP lines in the reclaim set).
+  In the `maint` sets every step is a part's (0 in commits' records).
+* **The admission and the record's room (F5, F6).** The contract's
+  `MaintenanceOK` and C-STEP's STEP-ops require one operation a key in a
+  record (`Db.merge`, which fails the database on a key in both): a change
+  that admits or trims the step's KVs by the room must keep the merge's rule
+  and the drop of a copy at a key the action writes.
+* **What the trace reads of the prototype's code.** `TraceExport` takes
+  lastKey before a step from `Db.TestHooks.beforeApply` and L' and eod from
+  `Reclaim.RecordPlan.next` and `eod`, and the copy keys from
+  `Maintenance.Plan.copyKeys` (checked against the copy marks of the record's
+  bytes). A refactoring of the plan (F2's charge, F7's reserve as a constant,
+  Q6's cheap first test) must keep these, or change the exporter with it.
+* **The action as submitted.** STEP-action compares a record with the
+  exporter's own copy of the workload's transaction, so a change in what Db
+  writes for an action (a transformation, a merge) shows there; for BergDB's
+  own actions (setters, the start's record) the exporter takes the Trans Db
+  executed, which is weaker; a part's action is empty.
+* **F9.** The copy mark is in the bytes, and the exporter reads it with
+  `StoredValueNode.isCopy`; `Db.getTrans` and `transactionInfo` can tell a
+  record's copies the same way.
+* **The format (Frans, 14:36).** `RECORD_FORMAT` 9 is the change that
+  refuses a 2026.6 database; the traces' format (`TRACE 3`) did not change, as
+  `OP C` and `ACT` are new lines that the old checkers refuse or ignore
+  (`tracecheck` filters ACT before its pinned parser).
 
 ## State
 
-(Filled in at the end.)
+2026-11-27, 16:05.
+
+* **Done:** step 0 (the port, gated, the crash probe 0 different) and step 1
+  (the conformance: the trace format, TraceExport, C-STEP with STEP-action
+  and its fault test, C-T5 and C-T9, the contract's checkers and proofs),
+  with level2.sh and level3.sh whole, gate.sh and before-commit.sh. No proof
+  left open; no `sorry`; no new axiom.
+* **Not done** (not part of steps 0 and 1): the item's text and `probes/`
+  (the lead's; the probes need the appendix's change); F2 to F7; the kept
+  times; `RECORD_FORMAT` 9 for Frans's decision of 14:36; the documents
+  beyond 027-02 (027-13 describes how Java's steps are checked and names
+  C-STEP's old rules); night.sh, week.sh; level4.sh (its conformance with
+  eviction reads the same traces' kinds; not run here).
+* **Next:** the lead's review of the branch `031-06-landing`; the landing's
+  later steps.
 
 ## Appendix: the probes for the test hook
 
