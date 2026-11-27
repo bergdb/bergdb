@@ -47,6 +47,9 @@ if [ $WHAT = all ] || [ $WHAT = pass ]; then
     java -ea -cp $C bergdb.core.RmPassProbe 100000 200 100000
 fi
 
+# R7: Rm7.lean, from lean/ after its build (lake build): lake env lean ../items/031-release-2026-7/06-one-record-an-action/review-main-probes/Rm7.lean
+# prints [] twice: both records pass STEP-action.
+
 # Section 4: the item's P2CrashProbe (with landing.md's appendix applied) and the review's
 # variants: -Dlimit (a lowered record limit, so that the record's room plans steps again),
 # -Dbig and -Dbigkeys (actions of many keys), -Dreserve (split steps), -Dxform (value

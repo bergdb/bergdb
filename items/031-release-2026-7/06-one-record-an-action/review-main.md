@@ -1,6 +1,6 @@
 # 031-06. Review of the landed diff
 
-2026-11-27, from 18:20, by an agent of lead-1127 on Fable, in a clone of
+2026-11-27, 18:20 to 19:20, by an agent of lead-1127 on Fable, in a clone of
 `main` outside the repository (branch `031-06-review-main`, from
 `5b88cc80`). Reviewed: the merge `5b88cc80`, "Merge 031-06: one record an
 action", as `git diff 5b88cc80^1 5b88cc80` of `java/` and `lean/`: the
@@ -34,7 +34,7 @@ run. On F53, functional runs, other work on the machine.
   record and of a cut meta block, as before; no record is appended
   between two actions; a part with nothing due appends nothing.
 * `java/before-commit.sh` on the clone at `5b88cc80`: `BEFORE COMMIT OK
-  (65 s)`.
+  (65 s)`; `java/stress/level3.sh`, whole: `LEVEL 3 OK`.
 
 
 ## 2. Findings, ranked
@@ -239,6 +239,10 @@ run. On F53, functional runs, other work on the machine.
   `Db.merge` fails the database), so nothing is wrong in a trace; the
   check is one line in `actionFailures`, and a fault for
   `step-faults.sh`.
+* **Shown.** `review-main-probes/Rm7.lean` (`lake env lean` on it, in
+  `lean/` after its build): `actionFailures` of a record without a step
+  with the action's put and a second put, or a delete, at the same key
+  gives no failure, `[]`, for both.
 
 
 ## 3. The record-room arithmetic
@@ -277,9 +281,9 @@ run. On F53, functional runs, other work on the machine.
 ## 4. What was checked and found right
 
 * **Restarts, stops, failures and torn records where the room plans
-  again.** `review-main-probes/P2CrashProbe.java` and `sweep-rm.sh`: the
-  item's probe with a lowered record limit (`-Dlimit`), actions of 2 to
-  200 keys (`-Dbig`), split steps (`-Dreserve`), value transformations
+  again.** `review-main-probes/P2CrashProbe.java` (`run.sh OUT sweep`):
+  the item's probe with a lowered record limit (`-Dlimit`), actions of 2
+  to 200 keys (`-Dbig`), split steps (`-Dreserve`), value transformations
   that read the value before, some giving a delete (`-Dxform`), keys of
   14 segments (`-Ddeep`), and torn records of parts and setters too
   (`-Dtornall`). The results are in section 4.1.
@@ -343,8 +347,16 @@ jar of `5b88cc80`:
   0 different, the bytes before it the reference's.
 * The reference runs had reclaim's statistics on and the continued runs
   had them off: the same streams, so the statistics change no byte.
-* `java/stress/level3.sh`, whole, on a copy of the clone at `5b88cc80`:
-  see `runs/level3.txt`.
+* `java/stress/level3.sh`, whole, on a copy of the clone at `5b88cc80`
+  (`runs/level3.txt`): `LEVEL 3 OK`. Its step 8: C-STEP 0 of 23,127
+  transactions fail, 1,370 STEP lines, 14,954 old KVs met, 14,679
+  copies, 23,087 records against their actions; the crash set 0 of
+  5,593, 409 STEP lines, 925 restarts: the landing's figures, one for
+  one.
+* The item's `ConcProbe` with `landing.md`'s appendix and a lowered
+  record limit (30 kB to 60 kB, node size 8), four runs of 6 s with 2 to
+  4 writers: the replay gave the same stream in all four; the room
+  planned no step again in them. Not kept.
 
 
 ## 5. Simplicity and clean-up
@@ -388,8 +400,9 @@ jar of `5b88cc80`:
 
 ## 6. Not done
 
-* `night.sh`, `week.sh`, `timing.sh`, the level scripts and
-  `lean/contract/gate.sh` were not run again.
+* `night.sh`, `week.sh`, `timing.sh`, `level2.sh`, `level4.sh`,
+  `apps.sh` and `lean/contract/gate.sh` were not run again
+  (`before-commit.sh` and `level3.sh` were).
 * The Pub layer's index jobs, the trace exporter and the contract's
   proofs were read for what the diff changed, not reviewed as a whole.
 * No run at the release's limits with records near them.
@@ -411,7 +424,7 @@ review's branch).
     the set. The stall of F5 is not reached silently any more: a set
     within `takeRoom()` is taken by a record with no KVs.
   * R3 is of `DbClock`, which neither the prototype nor the landing
-    changed; that review's runs, as the item's, gave a reader its time
+    changed; the item's runs with a reader's time (`sweep2.sh`) gave it
     in the continuation too.
   * R4 is of 031-04's rule, which the prototype had; that review measured
     the pace of commits (F2, F3), not a call after one put.
@@ -425,7 +438,8 @@ review's branch).
   * F6, long keys: the count is from the actual keys
     (`Db.recordDirtyFits`); O1 is open.
   * F7, the step reserve: a constant with a test hook (028-68, B); no
-    builder setting or system property of it is left in `java/src`.
+    public builder setting of it is left, and nothing in `java/src` but
+    a test reads a system property for it.
   * F8, the Pub layer's jobs that commit by themselves: as it was; not
     in this diff.
   * F9, `Db.getTrans` gives a commit's record with reclaim's copies, row

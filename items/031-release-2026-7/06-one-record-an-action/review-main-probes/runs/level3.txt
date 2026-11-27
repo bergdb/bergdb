@@ -1,0 +1,39 @@
+Kind: functional
+1. Unit tests
+SUCCESS, 1733 successful tests in 42.4 s.
+SUCCESS, 94 successful tests in 64.2 s.
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 16 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 16 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 15 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 16 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 10 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 5 rounds, 0 failures, 11 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 5 rounds, 0 failures, 10 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 5 rounds, 0 failures, 10 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 5 rounds, 0 failures, 11 s. Cuts where a transaction ends at a meta block's position: 0.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 1935550 gets and 708207 scans correct, expired at admission 11, expired during 39, 11 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 3560374 gets and 1239887 scans correct, expired at admission 14, expired during 23, 10 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 29856022 gets and 10030737 scans correct, expired at admission 30, expired during 1, 74 s.
+6. LoadTest with reclaim, a restart at every cut
+   restarts with a full check after a cut: 6
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; without per-append forces 448, and of 96 hole images 1 recovered, 95 failed (a known limit, bergdb 014-01); negative controls caught
+8. Conformance with the Lean model, with reclaim
+   C-STEP's fault test: 23 faults found, STEP FAULTS OK
+   conformance: traces: 40, TRACECHECK OK: 40; C-CUT 0 of 869 CUT lines fail; traces without a cut: 0
+   C-STEP: 0 of 23127 transactions fail; 1370 STEP lines, 1042 iterations (1041 ended by a step with eod), 14954 old KVs met and checked written by their record, 14679 copies checked with the value read, 23087 records checked against their actions as submitted (55718 operations), 869 CUT lines with their iteration's last step; traces without a STEP line: 0
+   across restarts and crashes: traces: 15, TRACECHECK OK: 15
+   C-STEP: 0 of 5593 transactions fail; 409 STEP lines, 341 iterations (339 ended by a step with eod), 8837 old KVs met and checked written by their record, 8785 copies checked with the value read, 5578 records checked against their actions as submitted (15204 operations), 270 CUT lines with their iteration's last step; traces without a STEP line: 0
+   STEP-resume: 925 restarts (135 crashes), 724 with an iteration in progress, 68 iterations with a step before a restart and the next after it
+9. InterruptStress, interrupts everywhere
+   InterruptStress: 60 s, 10313370 calls, 260809 of them with an interrupt, the flag kept by all; syncs ended by an interrupt 24130; reads expired by a cut 0; restarts 12; storage threads interrupted 583; first available lookup time 23097600000
+LEVEL 3 OK
+exit 0
