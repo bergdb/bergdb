@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
@@ -44,8 +45,11 @@ import bergdb.stream.ReadBelowFirstPosException;
  * latest rolls back) and subset_delete (a random subset of the pending unlinks survives)
  * leave gaps in the files' sequence. FileStream's open takes the files after the last gap
  * as the stream, and each such image must start, hold every acknowledged commit, and have
- * its start delete the files before the gap. Until 2026-11-27 the thread forced the
- * directory after each file, and a gap image was the negative control of that order
+ * its start delete the files before the gap, which it does only after it has found each
+ * one's first meta block to be the database's (Frans, 2026-11-27; RecoverableStream,
+ * checkLeftovers()); a file before a gap that is not the database's is refused
+ * (testStartRefusesAFileBeforeAGapThatIsNotTheDatabases). Until 2026-11-27 the thread forced
+ * the directory after each file, and a gap image was the negative control of that order
  * (BadDirStateException at the open).
  * 
  * Without per-append forces (2026-11-04, bergdb 005-47): runTraceWithoutAppendForces runs
@@ -635,6 +639,7 @@ public class FileStreamPowerLossTester {
                     if (reopened.getLeftoverCount() > 0) gaps++;
                     byte[] tail = new byte[200000]; reopened.read(800000, tail, 0, tail.length);
                     for (byte value : tail) Assert.assertEquals(31, value);
+                    reopened.checkLeftovers((position, length, piece) -> null);
                     reopened.pretruncate(800000);
                     reopened.awaitDeletes();
                 } finally { reopened.close(); }
@@ -717,38 +722,27 @@ public class FileStreamPowerLossTester {
     }
     
     /**
-     * bergdb 028-66: a file before a gap that is no leftover of the stream's, here one of
-     * zeros put there by hand, is not read, and the start of the stream after the gap, whose
-     * cut is after the gap's end, deletes it; every key reads as before. (Until 2026-11-27,
-     * refused: BadDirStateException.)
+     * bergdb 028-66, the rule of the files before a gap (Frans, 2026-11-27): a file of the
+     * database before a gap, here its first file, kept before a cut deleted it and put back,
+     * is checked at the start (its first meta block holds its own position and the
+     * database's ID) and deleted by the start's cut, as the stream after the gap holds its
+     * cut, after the gap's end; every key reads as before, and the directory has no gap.
      */
     @Nano
-    public static void testStartDeletesAFileBeforeAGap() throws Exception {
+    public static void testStartDeletesTheDatabasesFileBeforeAGap() throws Exception {
         File dir = Files.createTempDirectory("bergdb-power-before-gap-").toFile();
         try {
-            CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
-            FileStream stream = new FileStream(dir);
-            Db db = start(stream, clock);
-            Random random = new Random(28066);
+            CoreTestClock clock = new CoreTestClock();
             Map<String, byte[]> model = new TreeMap<String, byte[]>();
-            long time = SEC;
-            try {
-                for (int i = 0; i < 2000 && stream.getFirstPos() < 600000; i++) {
-                    time += SEC / 10; clock.setTime(time);
-                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
-                    db.execute(db.trans().put(key(i % 12), value).build());
-                    model.put(key(i % 12), value);
-                }
-                Assert.assertTrue("no cut: " + stream.getFirstPos(), stream.getFirstPos() >= 600000);
-                db.sync(SyncLevel.ORDINARY);
-            } finally { db.close(); }
-            File junk = new File(dir, "00000000000000.bergdb");
-            Files.write(junk.toPath(), new byte[200000]);
+            byte[] first = writeUntilCut(dir, clock, model, null);
+            File kept = new File(dir, "00000000000000.bergdb");
+            Assert.assertFalse(kept.exists());
+            Files.write(kept.toPath(), first);
             
-            clock.setTime(time + SEC);
+            clock.setTime(clock.getTime() + SEC);
             FileStream again = new FileStream(dir);
             Assert.assertEquals(1, again.getLeftoverCount());
-            db = start(again, clock);
+            Db db = start(again, clock);
             try {
                 for (Map.Entry<String, byte[]> e : model.entrySet()) {
                     Assert.assertTrue(e.getKey(), Arrays.equals(e.getValue(),
@@ -756,9 +750,129 @@ public class FileStreamPowerLossTester {
                 }
                 Assert.assertEquals(0, again.getLeftoverCount());
             } finally { db.close(); }
-            Assert.assertFalse("the file before the gap stayed", junk.exists());
+            Assert.assertFalse("the file before the gap stayed", kept.exists());
             Assert.assertFalse(hasGap(dir));
         } finally { remove(dir); }
+    }
+    
+    /**
+     * bergdb 028-66, the rule of the files before a gap (Frans, 2026-11-27): a file before a
+     * gap whose first meta block is not the database's is refused at the start, with a
+     * StreamIoException whose cause is a BadDirStateException that names the file, what is
+     * wrong and the way out, and the start deletes and writes nothing (the files compared
+     * byte for byte): another database's first file; the database's own first file with its
+     * first block of version 155, the meta version of release 2026.6 and of main before
+     * 028-67; with that block's last byte damaged, or its position; a file of zeros; a file
+     * of 100,000 bytes at 100,000, which holds no meta block. Until 2026-11-27 such a file
+     * of zeros was deleted by the start (testStartDeletesAFileBeforeAGap), and before
+     * 028-66 the open refused every gap. Then, with the file moved out, as the message says,
+     * the database starts and reads as before.
+     */
+    @Nano
+    public static void testStartRefusesAFileBeforeAGapThatIsNotTheDatabases() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-not-ours-").toFile();
+        File other = Files.createTempDirectory("bergdb-power-other-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock();
+            Map<String, byte[]> model = new TreeMap<String, byte[]>();
+            byte[] first = writeUntilCut(dir, clock, model, null);
+            byte[] id = new byte[16];
+            Arrays.fill(id, (byte) 67);
+            byte[] another = writeUntilCut(other, new CoreTestClock(),
+                    new TreeMap<String, byte[]>(), DatabaseId.createFromBytes(id));
+            Assert.assertEquals(200000, first.length);
+            Assert.assertEquals(200000, another.length);
+            
+            byte[] older = first.clone();
+            Bytes.intToBytesLE(155, older, 4);
+            byte[] lastByte = first.clone();
+            lastByte[127] = 0;
+            byte[] position = first.clone();
+            position[46] ^= 1;
+            
+            String name = "00000000000000.bergdb";
+            refusedBeforeGap(dir, clock, name, another, "holds the database ID 4343");
+            refusedBeforeGap(dir, clock, name, older, "of version 155");
+            refusedBeforeGap(dir, clock, name, lastByte, "its last byte 0");
+            refusedBeforeGap(dir, clock, name, position, "holds the position 1, not its own");
+            refusedBeforeGap(dir, clock, name, new byte[200000], "does not begin as a meta block");
+            refusedBeforeGap(dir, clock, "00000000000001.bergdb", first.clone(), // no block
+                    "holds no meta block");
+            
+            clock.setTime(clock.getTime() + SEC);
+            Db db = start(new FileStream(dir), clock);
+            try {
+                for (Map.Entry<String, byte[]> e : model.entrySet()) {
+                    Assert.assertTrue(e.getKey(), Arrays.equals(e.getValue(),
+                            DbUtil.get(db, Long.MAX_VALUE, e.getKey())));
+                }
+            } finally { db.close(); }
+        } finally { remove(dir); remove(other); }
+    }
+    
+    /**
+     * Puts 'bytes' into 'dir' as the file 'name', before a gap, and asserts that a start on
+     * 'dir' refuses it with 'what' in the message and leaves the files as they were; then
+     * removes the file (bergdb 028-66).
+     */
+    static void refusedBeforeGap(File dir, CoreTestClock clock, String name, byte[] bytes,
+            String what) throws IOException {
+        File file = new File(dir, name);
+        Assert.assertFalse(file.exists());
+        Files.write(file.toPath(), name.equals("00000000000001.bergdb")
+                ? Arrays.copyOf(bytes, 100000) : bytes);
+        Map<String, byte[]> files = streamFiles(dir);
+        clock.setTime(clock.getTime() + SEC);
+        try {
+            Db db = start(new FileStream(dir), clock);
+            db.close();
+            throw new AssertionError("started with a file before a gap that is not its own: "
+                    + what);
+        } catch (StreamIoException e) {
+            Assert.assertTrue(e.getMessage(), e.getCause() instanceof BadDirStateException
+                    && e.getMessage().contains(name) && e.getMessage().contains(what)
+                    && e.getMessage().contains("move the files before the gap out")
+                    && e.getMessage().contains("has written nothing"));
+        }
+        Assert.assertTrue("the start changed the files: " + what,
+                sameFiles(files, streamFiles(dir)));
+        Assert.assertTrue(file.delete());
+    }
+    
+    /**
+     * Writes a database in 'dir' until a cut has deleted its first three files, its stream
+     * from 600,000 on, and closes it; 'model' gets each key's last value; 'id' is its
+     * database ID, or null for the tests' (DbBuilder.testId()). Returns the bytes of its
+     * first file, read when it was complete, before a cut deleted it (bergdb 028-66).
+     */
+    static byte[] writeUntilCut(File dir, CoreTestClock clock, Map<String, byte[]> model,
+            DatabaseId id) throws IOException {
+        clock.setTime(SEC);
+        FileStream stream = new FileStream(dir);
+        DbBuilder b = Db.builder().testSetup(stream).clock(clock);
+        Db db = (id == null ? b : b.id(id)).start();
+        db.setStartupDistance(20000);
+        db.setRetainDuration(2 * SEC);
+        Random random = new Random(28066);
+        File firstFile = new File(dir, "00000000000000.bergdb");
+        byte[] first = null;
+        long time = SEC;
+        try {
+            for (int i = 0; i < 2000 && stream.getFirstPos() < 600000; i++) {
+                time += SEC / 10; clock.setTime(time);
+                byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                db.execute(db.trans().put(key(i % 12), value).build());
+                model.put(key(i % 12), value);
+                if (first == null && stream.getLength() > 300000) {
+                    db.sync(SyncLevel.ORDINARY);
+                    first = Files.readAllBytes(firstFile.toPath());
+                }
+            }
+            Assert.assertTrue("no cut: " + stream.getFirstPos(), stream.getFirstPos() >= 600000);
+            db.sync(SyncLevel.ORDINARY);
+        } finally { db.close(); }
+        Assert.assertTrue(first != null);
+        return first;
     }
     
     /**

@@ -245,7 +245,9 @@ newest row marked cut gives fa := its tEnd and fp := its pCut (0 and 0
 without one). If the storage's first position is below fp, the cut is
 made now: a crash came between the table and the cut, or a power loss
 left a gap in a file storage's files, and the cut deletes the files
-before it (028-66). If it is above fp, the stream lacks the database's
+before it (028-66), which the start's recovery has checked to be the
+database's before anything was written: a file whose first meta block
+is not this database's is refused (Frans, 2026-11-27; 027-14). If it is above fp, the stream lacks the database's
 bytes from fp to it, and the start refuses (a `StreamIoException`, the
 cause a `ReadBelowFirstPosException`, with what the storage says;
 028-66, 2026-11-27; before, the start went on, and reads of those bytes

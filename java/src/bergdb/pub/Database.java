@@ -53,7 +53,11 @@ import bergdb.pub.util.SyncLevel;
  * for; the next write goes where the cut is, so the lost file can no longer be put back. A
  * stream file deleted or cut anywhere else is refused by the start, and other damage to the
  * files is refused by the start or fails a read (DbFailedException), or passes the checks
- * (above). So leave the files alone while the database is stopped, as while it runs, and
+ * (above). The files before a gap in the stream's files, as a power loss can leave among
+ * the old files that reclaim's cut deletes, are not the stream: the start deletes them if
+ * each one is the database's, by its first meta block, and else refuses, with a
+ * StreamIoException that names the file, having deleted and written nothing (bergdb
+ * 028-66). So leave the files alone while the database is stopped, as while it runs, and
  * copy, move or restore a stopped database's files all together: the stream's files and
  * created.txt.</p>
  * 

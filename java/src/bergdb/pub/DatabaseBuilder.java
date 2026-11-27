@@ -166,7 +166,9 @@ public interface DatabaseBuilder {
      *             that fails on the storage during the start, as on a full disk or with a
      *             stream file missing, throws the storage's exception, a StreamIoException,
      *             or a StreamFormatException for a damaged stream (Database, "Errors";
-     *             bergdb 020-24-08, U8-2). A StreamFormatException also if the stream is not
+     *             bergdb 020-24-08, U8-2); a StreamIoException also for a file before a gap
+     *             in the stream's files that is not the database's (Database, "The files";
+     *             bergdb 028-66), and the start has then deleted and written nothing. A StreamFormatException also if the stream is not
      *             a BergDB stream, or is damaged where the start reads it first: the magic
      *             bytes of its last meta block, one of the blocks written at every 200,000
      *             bytes of the stream, so in a database of less than 200 kB its first bytes;

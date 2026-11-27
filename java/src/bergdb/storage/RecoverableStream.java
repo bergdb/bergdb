@@ -1,6 +1,7 @@
 package bergdb.storage;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.function.LongSupplier;
 
 import bergdb.common.Bytes;
@@ -165,8 +166,16 @@ public class RecoverableStream {
      * P, the end of the last record that is one, and the way out, a cut of the stream at P: a
      * size from such bytes no longer makes the recovery append up to 2 GB of zeros first.</p>
      *
+     * <p>Since 2026-11-27 (Frans; bergdb 028-66): before the walk, the bytes that the storage
+     * holds before its first position and deletes at the next cut, FileStream's files before
+     * a gap, are checked (checkLeftovers()): each piece's first meta block must be this
+     * database's, by 028-67's check, else the start is refused, before anything is written
+     * or deleted.</p>
+     *
      * @param check  The layer above's check of a record's header, or null.
-     * @throws StreamIoException
+     * @throws StreamIoException  among them one whose cause is the storage's refusal of the
+     *      bytes before its first position (checkLeftovers()), thrown before anything is
+     *      written
      * @throws StreamFormatException  among them BadMagicBytes, VersioningStreamException and
      *      BadTailException, thrown before anything is written
      */
@@ -188,6 +197,8 @@ public class RecoverableStream {
                     + " (bergdb 028-66). The start has written nothing." + frontAccount()));
         }
         checkLastTransSpos(lastBlock);
+        final byte[] id = lastBlock.getId();
+        checkLeftovers(id);
         
         long spos;
         if (lastBlock.getLastTransSpos() == Constants.SposNULL) {
@@ -199,7 +210,6 @@ public class RecoverableStream {
         // 2026-11-27 (bergdb 028-67, C1): the walk reads before anything is written; until
         // then fixMetaBlockIfNeeded() came first, and the walk zero-filled a size read from
         // any bytes, up to 2 GB, before a later check refused the stream.
-        final byte[] id = lastBlock.getId();
         final long torn = walkTail(spos, check, id);
 
         fixMetaBlockIfNeeded();
@@ -451,6 +461,77 @@ public class RecoverableStream {
                 + "position, which is the number in its name times 100,000, and remove the "
                 + "later stream files, if any; the stream's bytes from there on are lost.",
                 cut);
+    }
+    
+    /**
+     * The rule of the files before a gap (Frans, 2026-11-27; bergdb 028-66, with 028-67's C3):
+     * the bytes that the storage holds before its first position and deletes at the next cut
+     * (AppendOnlyStream.checkLeftovers(), FileStream's files before a gap at its open) are
+     * deleted only if each piece's first meta block is this database's: of this version,
+     * valid, with its own position and 'id', the database ID of the stream's first block
+     * (leftoverProblem()). Otherwise the storage throws, which refuses the start; recover()
+     * calls this before anything is written, and the storage deletes nothing before a check
+     * that passed. Such a piece is a cut's leftover after a power loss (FileStream, "A gap in
+     * the files"), or a file put there by hand: another database's, a file of another version
+     * or a damaged one is refused, and an older copy of this database's file passes, as its
+     * blocks hold the same ID and their own positions.
+     * 
+     * @throws StreamIoException  with the storage's exception as the cause, for FileStream a
+     *      BadDirStateException that names the file and the way out
+     */
+    private void checkLeftovers(final byte[] id) {
+        try {
+            aos.checkLeftovers((position, length, bytes)
+                    -> leftoverProblem(position, length, bytes, id));
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+    }
+    
+    /**
+     * null if the piece of 'length' bytes from stream position 'position', which 'bytes'
+     * reads, begins as a part of the stream of the database of ID 'id' (bergdb 028-66): its
+     * first meta block, the first whole block at or after 'position', is of this version,
+     * valid, and holds its own position and 'id' (bergdb 028-67, C3); else what is wrong.
+     * Every file of a FileStream begins at a meta block.
+     */
+    static String leftoverProblem(long position, long length, AppendOnlyStream.PieceReader bytes,
+            byte[] id) throws IOException {
+        final long pos = (position + META_BLOCK_DISTANCE - 1) / META_BLOCK_DISTANCE
+                * META_BLOCK_DISTANCE;
+        if (pos + META_BLOCK_SIZE > position + length) {
+            return "it holds no meta block: it ends at " + (position + length) + ", and its"
+                    + " first would be at " + pos + ", " + META_BLOCK_SIZE + " bytes";
+        }
+        final byte[] block = new byte[META_BLOCK_SIZE];
+        bytes.read(pos, block, 0, META_BLOCK_SIZE);
+        final String where = "its first meta block, at " + pos + ", ";
+        for (int i = 0; i < 4; i++) {
+            if (block[i] != MetaBlock.MAGIC[i]) {
+                return where + "does not begin as a meta block: not BergDB's bytes, or"
+                        + " damaged";
+            }
+        }
+        if (!MetaBlock.beginsAsBlock(block)) {
+            return where + "is of version " + Bytes.bytesToIntLE(block, 4) + ", and this"
+                    + " database's are of version " + MetaBlock.CURRENT_VERSION + ": of another"
+                    + " version of BergDB";
+        }
+        final MetaBlock b = new MetaBlock(block, pos);
+        if (!b.isValid()) {
+            return where + "is not valid, its last byte " + block[META_BLOCK_SIZE - 1]
+                    + ": damaged";
+        }
+        if (b.getStoredPos() != pos) {
+            return where + "holds the position " + b.getStoredPos() + ", not its own:"
+                    + " written at another place, or damaged";
+        }
+        if (!b.hasId(id)) {
+            return where + "holds the database ID " + StringUtil.toHex(b.getId())
+                    + ", and this database's is " + StringUtil.toHex(id)
+                    + ": another database's";
+        }
+        return null;
     }
     
     /**
@@ -2560,6 +2641,57 @@ public class RecoverableStream {
                     Assert.assertTrue(s, version != 155 || s.contains("028-67"));
                 }
             }
+        }
+        
+        /**
+         * bergdb 028-66, the rule of the files before a gap (Frans, 2026-11-27):
+         * leftoverProblem() passes a piece whose first meta block, the first whole block at or
+         * after its start, is of this version, valid, at its own position and of the database
+         * ID, also of a piece that begins between two blocks; else it says what is wrong, and
+         * reads no more than the block.
+         */
+        @Nano
+        public static void testLeftoverProblem() throws IOException {
+            final byte[] id = new byte[16];
+            Arrays.fill(id, (byte) 66);
+            final MetaBlock m = new MetaBlock();
+            m.setId(id);
+            m.setStoredPos(200000);
+            final byte[] good = m.getBlock().clone();
+            final byte[][] block = {good};
+            AppendOnlyStream.PieceReader reader = (position, dest, offset, length) -> {
+                Assert.assertEquals(200000L, position);
+                Assert.assertEquals(META_BLOCK_SIZE, length);
+                System.arraycopy(block[0], 0, dest, offset, length);
+            };
+            Assert.assertTrue(leftoverProblem(200000, 200000, reader, id) == null);
+            Assert.assertTrue(leftoverProblem(100000, 200000, reader, id) == null);
+            String p = leftoverProblem(100000, 100000, reader, id);
+            Assert.assertTrue(p, p.contains("holds no meta block"));
+            p = leftoverProblem(200000, 127, reader, id);
+            Assert.assertTrue(p, p.contains("holds no meta block"));
+            
+            byte[] other = id.clone();
+            other[15] = 67;
+            p = leftoverProblem(200000, 200000, reader, other);
+            Assert.assertTrue(p, p.contains("holds the database ID") && p.contains("another"));
+            
+            block[0] = good.clone();
+            Bytes.intToBytesLE(155, block[0], 4);
+            p = leftoverProblem(200000, 200000, reader, id);
+            Assert.assertTrue(p, p.contains("of version 155"));
+            block[0] = good.clone();
+            block[0][0] = 'B';
+            p = leftoverProblem(200000, 200000, reader, id);
+            Assert.assertTrue(p, p.contains("does not begin as a meta block"));
+            block[0] = good.clone();
+            block[0][META_BLOCK_SIZE - 1] = 0;
+            p = leftoverProblem(200000, 200000, reader, id);
+            Assert.assertTrue(p, p.contains("is not valid"));
+            block[0] = good.clone();
+            Bytes.longToBytesLE(400000, block[0], MetaBlock.POS_OFFSET);
+            p = leftoverProblem(200000, 200000, reader, id);
+            Assert.assertTrue(p, p.contains("holds the position 400000, not its own"));
         }
     }
 }

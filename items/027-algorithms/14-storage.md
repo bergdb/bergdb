@@ -79,8 +79,9 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   takes a gap in the files' sequence, a file that begins after the end
   of the one before it: the stream is the files after the last gap, its
   first position the first of them's; the files before, the leftovers,
-  are not read, and the first cut at or after the first position deletes
-  them, oldest first, before its own files. Why it is safe: a file is
+  are not read as the stream, and the first cut at or after the first
+  position deletes them, oldest first, before its own files, once they
+  have been checked (below). Why it is safe: a file is
   missing only if a cut deleted it, and the thread deletes only after
   the stream is forced up to its length at the cut (`forceTo`), which
   holds the table that decided the cut, durable before the cut was made
@@ -90,16 +91,42 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   the leftovers (027-13, 1.9). A first position after the cut means
   missing bytes of the database: a file removed by hand, a copy that
   missed files; the start refuses, with the storage's account of the
-  gap, and deletes nothing. Not refused, unlike before: files before a
-  gap that are not leftovers, such as another database's put into the
-  directory by hand; the start of the stream after the gap deletes them
-  when its cut is after the gap's end. Tests: `FileStream.
-  testRestartMissingFile`, `testRestartRefusedOverlap`, `testGapsAtOpen`,
+  gap, and deletes nothing.
+* **The files before a gap must be the database's** (Frans, 2026-11-27;
+  028-66, with 028-67's C3). What: a file before a gap is deleted only
+  if its first meta block, the first whole block at or after its start
+  (every file of `FileStream`'s begins at one), is of this version,
+  valid, holds its own position (offset 46) and the database ID of the
+  stream's first block (offset 24); else the start is refused, before
+  anything is written or deleted, with a `StreamIoException` whose
+  cause is a `BadDirStateException` that names the file, what its block
+  holds, the gap and the way out: move the files before the gap out of
+  the directory, and keep them. When: at each start, in
+  `RecoverableStream.recover()`, after the last valid meta block is
+  read and before the walk of the tail. By whom: `FileStream.
+  checkLeftovers()` gives each leftover, oldest first, with a reader of
+  its bytes on a channel of its own; `RecoverableStream.leftoverProblem`
+  checks its block; `BufferedStream` and `StorageManager` pass the call
+  on (`AppendOnlyStream.checkLeftovers()`, a default that holds none).
+  `FileStream` deletes no leftover before a call that found them all to
+  be the stream's own, so a stream under a wrapper that does not pass
+  the call on keeps them. Refused so: another database's file, a file
+  of meta version 155 (release 2026.6), a damaged first block, a file
+  of zeros, a file with no whole block; before 2026-11-27 (028-66's
+  first build) such files were deleted when the stream after the gap
+  held its cut after the gap's end. Not refused: an older copy of a
+  file of the same database, whose blocks hold the same ID and their
+  own positions; it is deleted. How it is checked: the tests below.
+  Tests: `FileStream.
+  testRestartMissingFile` (no cut deletes an unchecked or a refused
+  leftover), `testRestartRefusedOverlap`, `testGapsAtOpen`,
   `testCutDeletesABatchWithOneDirectoryForce`;
   `FileStreamPowerLossTester.testRecoveryAfterEverySubsetOfABatch`,
   `testUnorderedUnforcedDeletionsLeaveAGapThatOpens`,
   `testStartRefusesAStreamThatLacksBytes`,
-  `testStartDeletesAFileBeforeAGap`, and the traces, whose images of
+  `testStartDeletesTheDatabasesFileBeforeAGap`,
+  `testStartRefusesAFileBeforeAGapThatIsNotTheDatabases` (the files
+  compared byte for byte after each refusal), and the traces, whose images of
   unforced deletes in any combination must start, hold every
   acknowledged commit and delete the files before the gap;
   `flush-order.sh` (deletes in name order, each after the files that

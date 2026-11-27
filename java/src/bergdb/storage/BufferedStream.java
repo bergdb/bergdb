@@ -911,6 +911,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         cutStream(position);
     }
     
+    /**
+     * The underlying stream's check of the bytes it holds before its first position
+     * (2026-11-27, bergdb 028-66; AppendOnlyStream.checkLeftovers()): those bytes are the
+     * underlying stream's, as its first position is; this object holds none of them.
+     */
+    public void checkLeftovers(LeftoverCheck check) throws IOException {
+        stream.checkLeftovers(check);
+    }
+    
     public void setAppendListener(AppendListener appendListener) {
         if (appendListener == null) {
             throw new IllegalArgumentException("appendListener == null not allowed");

@@ -120,6 +120,50 @@ public interface AppendOnlyStream {
     public void pretruncate(long position) throws IOException;
     
     /**
+     * Checks the bytes that the stream holds before its first position, does not read and
+     * deletes at a later cut (2026-11-27, Frans; bergdb 028-66): FileStream's files before a
+     * gap in its files at its open, the leftovers. 'check' gets each such piece, oldest first,
+     * with its first position, its length and a reader of its bytes; if it finds one that may
+     * not be deleted, this method throws an IOException that names the piece and what the
+     * check found, and the stream deletes none of them. The stream deletes them only after a
+     * call that found none, at the first pretruncate() at or after its first position. The
+     * database's start calls it before it writes or cuts anything (RecoverableStream,
+     * recover()), with a check that each piece's first meta block is the database's. A stream
+     * that holds no such bytes, as by default, returns. A stream that wraps another passes
+     * the call on (BufferedStream, StorageManager); one that does not leaves the wrapped
+     * stream's leftovers unchecked, and so not deleted.
+     * 
+     * @throws IOException  if a piece may not be deleted, or a read of one fails
+     */
+    public default void checkLeftovers(LeftoverCheck check) throws IOException {
+    }
+    
+    /**
+     * The check of the bytes that a stream holds before its first position
+     * (checkLeftovers(); bergdb 028-66).
+     */
+    @FunctionalInterface
+    public interface LeftoverCheck {
+        /**
+         * null if the piece of 'length' bytes from stream position 'position' may be deleted,
+         * else what the check found; 'bytes' reads the piece, at the stream positions from
+         * 'position' to 'position' + 'length', as read() reads the stream.
+         */
+        String problem(long position, long length, PieceReader bytes) throws IOException;
+    }
+    
+    /** Reads the bytes of a piece that checkLeftovers() gives (bergdb 028-66). */
+    @FunctionalInterface
+    public interface PieceReader {
+        /**
+         * Reads 'length' bytes at stream position 'position' into 'dest' at 'destOffset'.
+         * 
+         * @throws java.io.EOFException  if they are not all in the piece
+         */
+        void read(long position, byte[] dest, int destOffset, int length) throws IOException;
+    }
+    
+    /**
      * Flushes the stream to the underlying storage and releases resources allocated by
      * this object.
      */
@@ -128,6 +172,8 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261127 checkLeftovers(): the bytes held before the first position, checked before a cut deletes them (bergdb 028-66).
+261127 Class Javadoc: the front may move forward at a crash, never past a cut made before it (bergdb 028-66).
 261106 read(): an unexpected exception fails the database; correct storage assumed (bergdb 019-10).
 261105 Class Javadoc: the crash contract, a prefix of the bytes appended (bergdb 014-01).
 261105 Removed seekFirstPos(), added for replication, which is gone (bergdb 019-04).

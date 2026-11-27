@@ -235,8 +235,12 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
 * A gap at an open (028-66, 2026-11-27; refused until then): a file whose
   first position is after the end of the one before it. The stream is
   the files after the last gap, its first position the first of them's;
-  the files before it are not read, and the first cut at or after the
-  first position deletes them. A start then refuses a stream whose first
+  the files before it are not read as the stream, and the first cut at
+  or after the first position deletes them, if each one's first meta
+  block is this database's, with its own position and the ID of the
+  stream's first block (section 6's offsets 24 and 46; Frans,
+  2026-11-27); a start refuses one that is not, before it writes
+  (027-14). A start then refuses a stream whose first
   position is after reclaim's cut (027-13, section 1.9).
 
 **Tests.** UT: `FileStream`'s 46 tests (`testFileSizeRules0`,

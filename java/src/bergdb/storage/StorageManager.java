@@ -449,6 +449,14 @@ public class StorageManager implements AppendOnlyStream {
         mainStream.pretruncate(position);
     }
     
+    /**
+     * The main stream's check of the bytes it holds before its first position, through its
+     * BufferedStream (2026-11-27, bergdb 028-66; AppendOnlyStream.checkLeftovers()).
+     */
+    public void checkLeftovers(LeftoverCheck check) throws IOException {
+        mainStream.checkLeftovers(check);
+    }
+    
     public AppendOnlyStream getMainStream() {
         return mainStream;
     }

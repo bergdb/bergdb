@@ -107,7 +107,8 @@ import bergdb.pub.util.BadFormatException;
  * of them's, and the files before it, the leftovers, are not opened or read. A read below
  * the first position throws ReadBelowFirstPosException, whose message names the gap. The
  * first cut at or after the first position, pretruncate(), deletes the leftovers, oldest
- * first, before the files that it takes off; a cut before it deletes none of them. Why this
+ * first, before the files that it takes off, if they have been checked (below); a cut
+ * before it deletes none of them. Why this
  * is safe: a file is missing only if a cut deleted it, and the cut's thread deletes a file
  * only after the stream is forced up to its length at the cut (forceTo()), after the
  * record of the cut, which the database writes and makes durable before it cuts (Reclaim,
@@ -115,10 +116,16 @@ import bergdb.pub.util.BadFormatException;
  * loss that the deletes can leave, and the database's start, which reads its cut from the
  * stream, finds the cut at or after the first position and cuts there (Reclaim,
  * initFromDb); a stream whose first position is after its cut lacks bytes of the database,
- * and the start refuses it before it deletes anything (bergdb 028-66; Db, start()). Taken
- * now, refused until 2026-11-27: files before the gap that are not a cut's leftovers, such
- * as another database's put into the directory by hand; the start of the stream after the
- * gap deletes them if it finds its cut at or after the gap's end. Still refused
+ * and the start refuses it before it deletes anything (bergdb 028-66; Db, start()). The
+ * leftovers are deleted only if each one is the database's (Frans, 2026-11-27; bergdb
+ * 028-66): checkLeftovers() gives them to the database's start, which checks, before it
+ * writes or cuts anything, that each one's first meta block is the database's, with its
+ * own position and the database's ID (RecoverableStream; bergdb 028-67, C3), and refuses
+ * the start otherwise, with a BadDirStateException that names the file and the way out:
+ * files before the gap put into the directory by hand, another database's, a file of
+ * another version of BergDB, one whose first block is damaged. No cut deletes a leftover
+ * before such a check has passed. An older copy of a file of the same database passes it
+ * and is deleted. Still refused at the open
  * (BadDirStateException): a bad name, a file that begins before the end of the one before
  * it, and a file but the last whose length is not a multiple of 100,000 bytes.
  * 
@@ -340,6 +347,12 @@ public class FileStream implements AppendOnlyStream {
     
     /** The gap that the open found, for the messages of reads below it, or null (028-66). */
     private volatile String gap = null;
+    
+    /**
+     * Whether a call of checkLeftovers() found every leftover to be the stream's own: until
+     * then no cut deletes them (Frans, 2026-11-27; bergdb 028-66). Under this.
+     */
+    private boolean leftoversChecked = false;
     
     /** The cut's thread while it runs, or null. Under this. */
     private Thread cutThread = null;
@@ -695,7 +708,8 @@ public class FileStream implements AppendOnlyStream {
      * 
      * A cut at or after the first position takes off the files before a gap that the open
      * found, the leftovers, too, before its own (2026-11-27, bergdb 028-66; the class's
-     * Javadoc, "A gap in the files"); a cut before the first position takes none of them.
+     * Javadoc, "A gap in the files"), if checkLeftovers() has found them to be the
+     * stream's own; a cut before the first position takes none of them.
      */
     public synchronized void pretruncate(long pos) throws IOException {
         checkIOException();
@@ -730,7 +744,7 @@ public class FileStream implements AppendOnlyStream {
         // The leftovers, before the files of the cut: the deletes are issued oldest first.
         // They leave the stream's files as they are, so the zeros need no cut for them.
         boolean queued = false;
-        if (leftovers.length > 0 && pos >= getFirstPos()) {
+        if (leftovers.length > 0 && leftoversChecked && pos >= getFirstPos()) {
             for (DbFile k : leftovers) {
                 k.isDeleted = true;
                 cutFiles.addLast(k);
@@ -1375,6 +1389,90 @@ public class FileStream implements AppendOnlyStream {
     public synchronized int getLeftoverCount() {
         return leftovers.length;
     }
+    
+    /**
+     * The check of the files before a gap that the open found, the leftovers
+     * (AppendOnlyStream.checkLeftovers(); Frans, 2026-11-27; bergdb 028-66): 'check' gets each
+     * one, oldest first, with its first position, its length and a reader of its bytes, on a
+     * channel of its own (readLeftover()). If it finds one that may not be deleted, this
+     * method throws a BadDirStateException that names the file, what the check found, the gap
+     * and the way out: to move the files before the gap out of the directory, which leaves the
+     * stream as it is. Else the first cut at or after the first position deletes them
+     * (pretruncate()); until a call has found them all to be the stream's own, no cut does.
+     * Reads only, and changes no file; a failed read fails this call, not the stream.
+     */
+    public void checkLeftovers(LeftoverCheck check) throws IOException {
+        final DbFile[] pieces;
+        final String g;
+        synchronized (this) {
+            checkIOException();
+            pieces = leftovers;
+            g = gap;
+            leftoversChecked = false;       // The last call's finding counts.
+        }
+        for (DbFile k : pieces) {
+            String problem = check.problem(k.spos, k.maxSize,
+                    (spos, dest, offset, n) -> readLeftover(k, spos, dest, offset, n));
+            if (problem != null) {
+                throw new BadDirStateException("The file " + k.file.getName() + ", before a"
+                        + " gap in the stream's files, is not the database's own: " + problem
+                        + ". " + g + " The files"
+                        + " before a gap are deleted only if each one is the database's (bergdb"
+                        + " 028-66), and none of them has been; the start, which checks them"
+                        + " before it writes, has written nothing. To start the database from"
+                        + " the files after the gap, move the files before the gap out of the"
+                        + " directory, and keep them: they may be another database's.");
+            }
+        }
+        synchronized (this) {
+            if (leftovers == pieces) {
+                leftoversChecked = true;
+            }
+        }
+    }
+    
+    /**
+     * Reads 'length' bytes at stream position 'spos' of 'k', a leftover, which the open did not
+     * open (bergdb 028-66): on a read channel of its own, closed after the read. Not
+     * interruptible, as DbFile.read() is not: it clears the thread's interrupt flag first and
+     * sets it again after, and reads again on a new channel if an interrupt during the read
+     * closed the channel. A failure is this read's, not the stream's.
+     * 
+     * @throws EOFException  if the bytes are not all in the file
+     */
+    private void readLeftover(DbFile k, long spos, byte[] dest, int destOffset, int length)
+            throws IOException {
+        Util.checkRange(dest, destOffset, length);
+        if (spos < k.spos || spos + length > k.spos + k.maxSize) {
+            throw new EOFException("Cannot read " + length + " bytes at spos " + spos + " of "
+                    + k.file.getPath() + ", which holds the bytes from " + k.spos + " to "
+                    + (k.spos + k.maxSize) + ".");
+        }
+        boolean interrupted = Thread.interrupted();
+        try {
+            ByteBuffer buffer = ByteBuffer.wrap(dest, destOffset, length);
+            while (buffer.hasRemaining()) {
+                try (FileChannel ch = io.openRead(k.file)) {
+                    while (buffer.hasRemaining()) {
+                        int n = ch.read(buffer, spos - k.spos + buffer.position() - destOffset);
+                        if (n < 0) {
+                            throw new EOFException("EOF when reading " + length + " bytes at"
+                                    + " spos " + spos + " of " + k.file.getPath() + ".");
+                        }
+                    }
+                } catch (ClosedChannelException e) {
+                    if (!Thread.interrupted()) {
+                        throw e;
+                    }
+                    interrupted = true;     // Again, on a new channel.
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
 
     /**
      * Returns berg *.bergdb file in this.dir.
@@ -1472,6 +1570,7 @@ public class FileStream implements AppendOnlyStream {
             }
             leftovers = new DbFile[0];
             gap = null;
+            leftoversChecked = false;
             for (int i = 0; i < dbFiles.length; i++) {
                 dbFiles[i].delete();
                 forceDirectory(dir);
@@ -2717,8 +2816,12 @@ public class FileStream implements AppendOnlyStream {
      * bergdb 028-66: a stream whose second file of three is missing opens from the third, the
      * file after the gap, and keeps the first, a leftover, unread; until 2026-11-27 the open
      * refused it (BadDirStateException). A read below the first position names the gap. A cut
-     * before the first position deletes nothing; one at it deletes the leftover, and the
-     * stream then opens without a gap.
+     * before the first position deletes nothing; nor does one at it before checkLeftovers()
+     * has found the leftover to be the stream's own (Frans, 2026-11-27): a check that refuses
+     * it throws a BadDirStateException that names the file, what the check found and the way
+     * out, and changes nothing. After a check that passes, whose reader reads the file's
+     * bytes, and no more, a cut at the first position deletes the leftover, and the stream
+     * then opens without a gap.
      */
     @Nano
     static void testRestartMissingFile(TestEnvironment c) throws IOException {
@@ -2753,6 +2856,42 @@ public class FileStream implements AppendOnlyStream {
             f2.pretruncate(400 * 1000 - 1);       // Before the first position: nothing.
             f2.awaitDeletes();
             Assert.assertEquals(1, f2.getLeftoverCount());
+            Assert.assertTrue(new File(dir, fileName(0)).exists());
+            f2.pretruncate(400 * 1000);           // Not checked: nothing.
+            f2.awaitDeletes();
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            Assert.assertTrue(new File(dir, fileName(0)).exists());
+            
+            final List<String> seen = new ArrayList<String>();
+            try {
+                f2.checkLeftovers((position, length, piece) -> {
+                    seen.add(position + "+" + length);
+                    return "not this stream's";
+                });
+                throw new AssertionError("a refused leftover passed");
+            } catch (BadDirStateException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(fileName(0))
+                        && e.getMessage().contains("not this stream's")
+                        && e.getMessage().contains("from 200000 to 400000")
+                        && e.getMessage().contains("move the files before the gap out"));
+            }
+            Assert.assertEquals(Arrays.asList("0+200000"), seen);
+            f2.pretruncate(400 * 1000);
+            f2.awaitDeletes();
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            Assert.assertTrue(new File(dir, fileName(0)).exists());
+            
+            f2.checkLeftovers((position, length, piece) -> {
+                byte[] b = new byte[100];
+                piece.read(199900, b, 0, 100);
+                Assert.assertTrue(Arrays.equals(Arrays.copyOfRange(bytes, 199900, 200000), b));
+                try {
+                    piece.read(199901, b, 0, 100);
+                    throw new AssertionError("read past the leftover's end");
+                } catch (EOFException expected) {
+                }
+                return null;
+            });
             Assert.assertTrue(new File(dir, fileName(0)).exists());
             f2.pretruncate(400 * 1000);
             f2.awaitDeletes();
@@ -2810,7 +2949,8 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
-     * bergdb 028-66: two gaps; the stream is the files after the last one. A cut deletes the
+     * bergdb 028-66: two gaps; the stream is the files after the last one. checkLeftovers()
+     * gives the leftovers oldest first. A cut deletes the checked
      * leftovers, oldest first, before the files that it takes off, in one batch with one
      * force of the directory. A stream of one file after a gap is the stream's only file for
      * the tail of zeros (bergdb 028-60): its zeros are not left out, as the leftovers go at
@@ -2848,6 +2988,12 @@ public class FileStream implements AppendOnlyStream {
             Assert.assertEquals(1350 * 1000L, f.getLength());
             Assert.assertEquals(3, f.getLeftoverCount());
             readAndCheck(f, 1000 * 1000, 350 * 1000, bytes);
+            final List<Long> checked = new ArrayList<Long>();
+            f.checkLeftovers((position, length, piece) -> {
+                checked.add(position);
+                return null;
+            });
+            Assert.assertEquals(Arrays.asList(0L, 200 * 1000L, 600 * 1000L), checked);
             log.clear();
             f.pretruncate(1300 * 1000);
             f.awaitDeletes();

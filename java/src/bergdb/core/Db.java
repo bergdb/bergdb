@@ -1225,7 +1225,13 @@ public class Db implements AutoCloseable {
      *          it, as when a file of a FileStream's was removed by hand, or a copy of the
      *          files missed some. The message has what the storage says, FileStream's a gap
      *          in its files. The start deletes nothing; recovery may have completed a torn
-     *          end of the stream, as a start of the whole stream would.
+     *          end of the stream, as a start of the whole stream would. With the storage's
+     *          exception as the cause, for a FileStream a BadDirStateException, if the
+     *          storage holds bytes before its first position that are not the database's
+     *          (Frans, 2026-11-27; bergdb 028-66): a file before a gap in a FileStream's
+     *          files whose first meta block is not this database's, with its own position
+     *          and this database's ID (RecoverableStream, recover()). The message names the
+     *          file and the way out; the start has deleted and written nothing.
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
