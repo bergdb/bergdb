@@ -60,6 +60,9 @@ Files
   owes; A1's (e), decided by Frans on 2026-11-27. Its files:
   * `readme.md`: the design as built in the prototype, its evidence, the
     decision, and the landing's plan (section 9);
+  * `history.md`: why reclaim's writes were records of their own, from
+    Frans's notes and logs of 2008 to 2016 and the Git history (quoted
+    with his approval, 2026-11-27);
   * `study.md` and `study-d.md`: the studies of (e) and of (d), the
     compound unit, not taken; `codex-studies.md`: Codex's opinion on
     them;
@@ -116,3 +119,7 @@ day was how a commit's maintenance is written (006-37, A1); the options
 (c), (d) and (e) were studied, a prototype of (e) built and reviewed,
 and A1 decided as (e) (031-06, section 8). The landing's plan is its
 section 9. The internal crypto code left the tree the same day (028-69).
+
+2026-11-27. 031-06: `history.md` added, the history of reclaim's own
+records, with the passages of Frans's notes and logs that he approved
+for publishing.
