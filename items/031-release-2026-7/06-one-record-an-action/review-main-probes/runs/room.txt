@@ -1,0 +1,21 @@
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 20000, 20000 keys, values of 30 bytes, maintain(100000) every 30000 actions
+  NO FAILURE in 30000 actions: 30067 records, the largest got-dirty set 202 nodes, 40064 bytes at the largest sizes, the largest record 64336 bytes, at most 486 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, no maintain() call
+  NO FAILURE in 30000 actions: 30003 records, the largest got-dirty set 234 nodes, 44928 bytes at the largest sizes, the largest record 45064 bytes, at most 286 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, maintain(100000) every 30000 actions
+  THE DATABASE FAILED at action 29999, in a part of maintain() whose record carried maintenance (its cap 455894): Bug: A record whose index nodes to write later, 641 of them, may take 123712 bytes, more than a later record can take, 98288 (bergdb 031-06, review F5).
+  before it: 30040 records, the largest got-dirty set 239 nodes, 47168 bytes, the largest record 45064 bytes, at most 286 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, every 200th of 80000, no maintain() call
+  THE DATABASE FAILED at action 20200, in a commit (one put of 30 bytes) whose record carried maintenance (its cap 455894): Bug: A record whose index nodes to write later, 523 of them, may take 101696 bytes, more than a later record can take, 98288 (bergdb 031-06, review F5).
+  before it: 20203 records, the largest got-dirty set 463 nodes, 90176 bytes, the largest record 184992 bytes, at most 828 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, every 50th of 60000, no maintain() call
+  NO FAILURE in 30000 actions: 30003 records, the largest got-dirty set 241 nodes, 46272 bytes at the largest sizes, the largest record 100360 bytes, at most 277 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 1000000, 20000 keys, values of 30 bytes, maintain(100000) every 20000 actions
+  NO FAILURE in 40000 actions: 40213 records, the largest got-dirty set 508 nodes, 98176 bytes at the largest sizes, the largest record 239512 bytes, at most 2002 key nodes written in a record
+record limit 200000 (dirtyLimit 187500, takeRoom 198288, recordCap 649644), node size 8, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  NO FAILURE in 40000 actions: 40205 records, the largest got-dirty set 862 nodes, 169344 bytes at the largest sizes, the largest record 324328 bytes, at most 2272 key nodes written in a record
+record limit 200000 (dirtyLimit 187500, takeRoom 198288, recordCap 649644), node size 30, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  THE DATABASE FAILED at action 39999, in a part of maintain() whose record carried maintenance (its cap 649644): Bug: A record whose index nodes to write later, 372 of them, may take 202368 bytes, more than a later record can take, 198288 (bergdb 031-06, review F5).
+  before it: 40108 records, the largest got-dirty set 128 nodes, 69632 bytes, the largest record 29848 bytes, at most 90 key nodes written in a record
+record limit 1000000 (dirtyLimit 937500, takeRoom 998288, recordCap 2199644), node size 8, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  NO FAILURE in 40000 actions: 40205 records, the largest got-dirty set 862 nodes, 169344 bytes at the largest sizes, the largest record 324328 bytes, at most 2272 key nodes written in a record

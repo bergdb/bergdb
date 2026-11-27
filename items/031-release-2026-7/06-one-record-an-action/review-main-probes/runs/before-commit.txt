@@ -1,0 +1,4 @@
+F:    SUCCESS, 94 successful tests in 52.8 s.
+Demos: DEMOS OK, 14 runs in 4 s.
+BEFORE COMMIT OK (65 s)
+exit 0

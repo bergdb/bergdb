@@ -1,0 +1,8 @@
+20000 keys of 100 bytes (about 2320 kB live); to rest: 13 calls of maintain(1000) wrote 6433728 bytes; stream kept 4363152
+one put of 1 byte (its record 624 bytes), then to rest: 10 calls wrote 4398104 bytes; stream kept 4347224
+one put of 1 byte (its record 568 bytes), then to rest: 10 calls wrote 4433600 bytes; stream kept 4384960
+one put of 1 byte (its record 568 bytes), then to rest: 10 calls wrote 4432728 bytes; stream kept 4383992
+100000 keys of 200 bytes (about 21600 kB live); to rest: 5 calls of maintain(100000) wrote 32883088 bytes; stream kept 31962360
+one put of 1 byte (its record 648 bytes), then to rest: 3 calls wrote 31878280 bytes; stream kept 31630952
+one put of 1 byte (its record 576 bytes), then to rest: 3 calls wrote 31900888 bytes; stream kept 31664752
+one put of 1 byte (its record 576 bytes), then to rest: 3 calls wrote 31939632 bytes; stream kept 31702768

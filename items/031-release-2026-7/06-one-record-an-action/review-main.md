@@ -94,9 +94,10 @@ run. On F53, functional runs, other work on the machine.
   the record's take writes and keeps dirty (`handleStillDirtyNodes`), and
   nothing bounds those but the bytes the take may write, counted at their
   actual sizes: the rest of the record's cap. `checkTakeable` counts them
-  at the largest node size. So a take of nodes smaller than the largest,
-  many of them kept dirty, passes `takeRoom()` with a set that the next
-  record could have taken. Two things widen it at a lowered limit: a
+  at the largest node size (a node in D may still grow). So a take of
+  nodes smaller than the largest, many of them kept dirty, gives a set
+  over `takeRoom()` with every count before the go point within its
+  limit. Two things widen it at a lowered limit: a
   record that carries maintenance has `recordCap()`, 455,894 bytes at a
   limit of 100,000, as its take's room; and M4's take adds 256 KiB
   whatever the limit.
@@ -294,6 +295,12 @@ run. On F53, functional runs, other work on the machine.
   of reclaim, its steps"); `Reclaim`'s class comment of 2013
   (`transactionCompleted`); `Reclaim.recordWritten` (line 1501) counts a
   part's step by `t.touch`; `StoredTrans.takeRoom()`'s "M4" (R4).
+* Which records carry maintenance is told by three flags of `Trans`
+  (`isInternal`, `part`, `noMaintenance`; `Db.planMaintenance`, line
+  3148): one kind (a commit, a setter, a part, BergDB's own) would say
+  it. `Maintenance.Plan` holds reclaim's statistics types
+  (`Reclaim.TouchCount`, `touchOldBefore`), which the boundary need not
+  know.
 * `Reclaim.cutIfDurableNow()` only calls `cutIfDurable()`;
   `IterationTable.serialize()` has no caller.
 * The probes of the item (R5).
@@ -306,3 +313,37 @@ run. On F53, functional runs, other work on the machine.
 * The Pub layer's index jobs, the trace exporter and the contract's
   proofs were read for what the diff changed, not reviewed as a whole.
 * No run at the release's limits with records near them.
+
+
+## 7. Against the review of the prototype
+
+`review-fable.md` (13:10 to 14:30, on the prototype's `fa11d15f`), read
+after sections 1 to 6 were written and committed (`44bc504f` of the
+review's branch).
+
+* **New here, all six.**
+  * R1: that review ran "a Trans executed again" among `RvFront`'s
+    actions and compared the values read, on a database that did not
+    fail; the fields left by a failed execution, and the bytes, are new.
+  * R2: its F5 was the missing check (a dirty set over the room stalls
+    the take with no failure). Step 2 built the check; R2 is that the
+    check fails where the take, not the counts before the go point, fills
+    the set. The stall of F5 is not reached silently any more: a set
+    within `takeRoom()` is taken by a record with no KVs.
+  * R3 is of 031-04's rule, which the prototype had; that review measured
+    the pace of commits (F2, F3), not a call after one put.
+  * R4, R5 and R6 are of code and files that came with the landing.
+* **Its findings, as the landed diff has them** (read; F1 and F7 also
+  ran in the landing's gates, not again here):
+  * F1, the conformance: built (step 1). R6 is a gap in what it tests.
+  * F2, F3, F4, the pace and P1: not built (step 3); nothing here.
+  * F5, the admission: built as a count of the record and a check before
+    the append (step 2); R2 and R4.
+  * F6, long keys: the count is from the actual keys
+    (`Db.recordDirtyFits`); O1 is open.
+  * F7, the step reserve: a constant with a test hook (028-68, B); no
+    builder setting or system property of it is left in `java/src`.
+  * F8, the Pub layer's jobs that commit by themselves: as it was; not
+    in this diff.
+  * F9, `Db.getTrans` gives a commit's record with reclaim's copies, row
+    and table: as it was; `StoredValueNode.isCopy()` tells the copies.

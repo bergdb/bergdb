@@ -1,0 +1,10 @@
+== -Dmaint=3 -Dmaxv=100 -Dnode=8 -Dkeys=3000 -Dlimit=30000 -Dbig=60 -Dbigkeys=40 -Dstride=3 -Drestart=4 32 700 3000 all
+seed 32, actions 703 (15 calls of 100), sd 3000, restart every 4: records 1024 = accepted actions 1024 (454 commits, 199 carrying maintenance; 18 setters; 552 parts), length 2017792, cut 634976, decided 634976, digest 6dea37659ecaaf54; record limit 30000, refused by it 212; room: first copy 728, no step 3
+crash: 342 the same, 0 different; 342 ended at the record, 287 after a physical cut; the start's memory the running one's at 342, other at 0
+pre: 342 the same, 0 different; 342 ended at the record, 287 after a physical cut; the start's memory the running one's at 342, other at 0
+stop: 342 the same, 0 different; 342 ended at the record, 288 after a physical cut; the start's memory the running one's at 342, other at 0
+== -Dmaint=3 -Dmaxv=100 -Dnode=8 -Dkeys=3000 -Dlimit=24000 -Dbig=70 -Dbigkeys=30 -Dstride=3 33 700 3000 all
+seed 33, actions 703 (28 calls of 100), sd 3000: records 1403 = accepted actions 1403 (384 commits, 53 carrying maintenance; 20 setters; 999 parts), length 2429712, cut 622208, decided 622208, digest eca81579b7416a00; record limit 24000, refused by it 265; room: first copy 1022, no step 6
+crash: 468 the same, 0 different; 468 ended at the record, 425 after a physical cut; the start's memory the running one's at 468, other at 0
+pre: 468 the same, 0 different; 468 ended at the record, 425 after a physical cut; the start's memory the running one's at 468, other at 0
+stop: 468 the same, 0 different; 468 ended at the record, 425 after a physical cut; the start's memory the running one's at 468, other at 0
