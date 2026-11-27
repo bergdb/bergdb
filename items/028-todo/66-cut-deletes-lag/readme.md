@@ -1,8 +1,9 @@
 028-66. Investigate: the cut's deletes lag behind a fast writer
 ================================================================
 
-Status: open. Kind: Investigate. Frans: decision (land C or not, and its question 1;
-section 5.10).
+Status: open. Kind: Investigate. Frans: decided (2026-11-27, 17:26: C with
+the rule of the files before a gap, after a quiet timing run against `main`
+and a review; section 4). C with the rule built on a branch (section 6).
 Created 2026-11-26 by Frans Lundberg.
 
 What: since 005-46 the cut's own thread deletes the stream files below a
@@ -323,7 +324,9 @@ refusals after recovery (028-70).
    directory. No byte of the stream that starts is deleted, and that
    database has all its data; but files that a user put there by
    mistake can be deleted (question 1 of 5.10). Ran:
-   `testStartDeletesAFileBeforeAGap` (a file of zeros at 0).
+   `testStartDeletesAFileBeforeAGap` (a file of zeros at 0). Since
+   Frans's rule (2026-11-27, section 6.2), refused unless the file's
+   first meta block is the database's.
 9. **A stream after the gap that is no database** (an empty or stray
    file): no valid meta block, or one that names a record before the
    first position, or a read below it: refused, nothing deleted (ran:
@@ -525,6 +528,192 @@ the gates of 5.7; `main` keeps A. Sound as designed (5.2 to 5.4). Left:
 Frans's decision to land it (5.10), and question 1; on landing, a timing
 run on a quiet machine against `main`.
 
+
+### 6. Built: C on main with Frans's rule
+
+Built 2026-11-27 by an agent of lead-1127, on the branch
+`028-66-c-rule` of a clone of `main` at `734f05a2` (c66d), not pushed;
+for the lead's review and the timing run of Frans's decision 2
+(section 4). Not marked done: the timing run, the review and the
+landing are open.
+
+#### 6.1. The port
+
+The two commits of the branch `028-66c` (section 5) apply to `main` of
+2026-11-27 without a change by hand, as 5.9 planned: `main`'s
+`RecoverableStream` walks the tail before it writes (028-67, C1), and
+the refusals of a stream that lacks bytes (5.1) come before the walk;
+`Reclaim.initFromDb`'s check of the first position comes before
+031-06's lines of `a`; `FileStream`, the power-loss tester,
+`AppendOnlyStream` and `flush-order.sh`'s validator had not changed on
+`main`. The only conflict was the log of 028's index, where both sides
+added an entry. The port is its own commit; the rule is the next one,
+and C does not land without it (Frans's decision 1).
+
+#### 6.2. The rule
+
+Frans's decision 1 (2026-11-27, 17:26), with 028-67's check as it is on
+`main` (a meta block holds its own position at offset 46 and the
+database ID at offset 24, meta version 156):
+
+* What: a file before a gap is deleted only if its first meta block,
+  the first whole block at or after its start (every file that
+  `FileStream` makes begins at one), is of this version, valid (its
+  last byte), holds its own position and the database ID of the
+  stream's first block. Otherwise the start is refused before anything
+  is written or deleted, with a `StreamIoException` whose cause is a
+  `BadDirStateException`: it names the file, what its block holds (or
+  that it holds none), the gap, and the way out, to move the files
+  before the gap out of the directory and keep them.
+* When: at every start, in `RecoverableStream.recover()`, after the
+  last valid meta block is read (which gives the database ID) and
+  before the walk of the tail and recovery's writes.
+* By whom: `AppendOnlyStream.checkLeftovers(LeftoverCheck)`, a default
+  method that holds none; `BufferedStream` and `StorageManager` pass it
+  on; `FileStream` gives each file before the gap, oldest first, with a
+  reader of its bytes on a channel of its own, and throws the refusal;
+  `RecoverableStream.leftoverProblem` checks the block. `FileStream`
+  deletes no leftover before a call that found them all to be the
+  stream's own, so a cut cannot delete an unchecked or a refused one,
+  also under a wrapper that does not pass the call on (the leftovers
+  then stay).
+* How it is checked: the tests of 6.3; the traces of the power-loss
+  model, whose images with a gap must start, which they do only if the
+  check passes for the database's own leftovers.
+
+An example, another database's file put at 0 before a gap (from 200,000
+to 600,000): "The file 00000000000000.bergdb, before a gap in the
+stream's files, is not the database's own: its first meta block, at 0,
+holds the database ID 4343..., and this database's is 7dee...: another
+database's. At its open the stream's directory D had a gap in its
+files: none held the bytes from 200000 to 600000, ... The files before a
+gap are deleted only if each one is the database's (bergdb 028-66), and
+none of them has been; the start, which checks them before it writes,
+has written nothing. To start the database from the files after the
+gap, move the files before the gap out of the directory, and keep them:
+they may be another database's."
+
+Not refused, as 5.10 said: an older copy of a file of the same
+database, whose blocks hold the same ID and their own positions; the
+start deletes it. Since the rule, section 5.3's case 8 is refused: a
+file before the gap that is not the database's is no longer deleted.
+
+#### 6.3. The tests
+
+* `FileStreamPowerLossTester.testStartDeletesTheDatabasesFileBeforeAGap`:
+  the database's first file, kept before a cut deleted it and put back
+  before a gap, is checked and deleted by the start's cut; every key
+  reads as before; no gap after.
+* `FileStreamPowerLossTester.testStartRefusesAFileBeforeAGapThatIsNotTheDatabases`
+  (in place of `testStartDeletesAFileBeforeAGap`): refused, the files
+  compared byte for byte after each start, for another database's first
+  file (another ID), the database's own first file with its block of
+  version 155, with its last byte damaged, with its position damaged, a
+  file of zeros, and a file of 100,000 bytes at 100,000, which holds no
+  whole block; then, the file moved out, the database starts and reads
+  as before.
+* `RecoverableStream.Tester.testLeftoverProblem`: each branch of the
+  block's check, also a piece that begins between two blocks, and that
+  it reads the block only.
+* `FileStream.testRestartMissingFile`: a cut at the first position
+  deletes no unchecked leftover, nor one that a check refused (the
+  refusal names the file, what the check found, the gap and the way
+  out); after a check that passed, whose reader reads the file's bytes
+  and no more, it does. `testGapsAtOpen`: the check gets the three
+  leftovers oldest first. `FileStreamPowerLossTester.
+  testRecoveryAfterEverySubsetOfABatch` checks before it cuts.
+* The power-loss cases of section 5 as before: every subset of a batch
+  (`testRecoveryAfterEverySubsetOfABatch`), the unordered deletes
+  (`testUnorderedUnforcedDeletionsLeaveAGapThatOpens`), the traces'
+  images with a gap in level 3, each started through the check;
+  `testStartRefusesAStreamThatLacksBytes`; the BackupGap probe (6.4).
+
+#### 6.4. The gates
+
+On F53, 2026-11-27, 22:00 to 22:45, in the clone c66d (one level script
+at a time in a tree, a second tree for the other runs), beside
+`java/night.sh` and another session's level 2 and 3 (load 18 to 30):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (113 s) on the port's commit
+  alone; BEFORE COMMIT OK (117 s; unit 1,749 tests, f 96) on the rule's
+  commit.
+* `java/stress/level2.sh`: LEVEL 2 OK.
+* `java/stress/level3.sh`: LEVEL 3 OK: every step; the power-loss
+  stage POWERLOSS OK, 8 seeds, 488 cold recoveries, without per-append
+  forces 496, negative controls caught; its 16 traces made batches of
+  up to 3 files and 3 to 7 images with a gap each, 77 in all, every one
+  started through the rule's check, its files before the gap deleted;
+  conformance reclaim 40 traces and crash 15, TRACECHECK OK;
+  InterruptStress 60 s.
+* `java/stress/level4.sh quick`: LEVEL 4 OK.
+* `java/stress/kill-restart.sh 200`: KILL RESTART OK: 200 kills and 9
+  exits in 217 s, seed 20261127.
+* `java/stress/flush-order.sh`: NATIVE FLUSH ORDER OK: 4 writes, 9
+  successful file F_FULLFSYNC, 11 successful directory F_FULLFSYNC, 2
+  deletions, at most 2 in a batch; FLUSH PROBE OK.
+* [probes/BackupGap.java](probes/BackupGap.java), 100 copies: whole 45;
+  with a gap, started 5, refused 36; without their first files, started
+  14, refused 0; BACKUP GAP OK. Every refusal said that the stream lacks
+  bytes, none was the rule's: a copy's files before a gap are the
+  database's. More copies had a gap than in 5.3 (41 against 15), on a
+  machine about twice as loaded.
+* 031-06's `probes/sweep.sh`: SWEEP DONE, 0 different in each of its 63
+  lines (crash, pre and stop at every record, restarts in the
+  continuation, torn records).
+* 031-06's `probes/faults.sh`: FAULTS DONE, bad 0 in each of its 42
+  lines.
+
+#### 6.5. The timing comparison
+
+Frans's decision 2 asks for a timing run on a quiet machine against
+`main`. Section 1's measurement as an A/B of the two builds:
+[probes/ab-reclaimcost.sh](probes/ab-reclaimcost.sh), `ReclaimCost` on
+disk (`disk=1`, `live=20000000`, no rate limit), the reference and the
+candidate in ABBA order, 2 rounds (4 runs each), with each run's
+`STEADY`, `DISK` and `DISK PARTS` lines and the medians at the end.
+REF is a build of `main` and CAND one of the branch: each a tree's
+`java/build` after `java/build.sh`. From the repository's root, the
+builds made first, with nothing else running (no `night.sh`, level
+script, build or other session's tests):
+
+    git worktree add ../c66-ref main && (cd ../c66-ref && sh java/build.sh)
+    git worktree add ../c66-cand 028-66-c-rule && (cd ../c66-cand && sh java/build.sh)
+    sh items/028-todo/66-cut-deletes-lag/probes/ab-reclaimcost.sh \
+        ../c66-ref/java/build ../c66-cand/java/build OUT
+
+About a minute a run, 8 runs (an estimate). The script was tried with
+`LIVE=2000000 ROUNDS=1` on a loaded F53 (load 27 to 30), its plumbing
+only: 4 runs, RECLAIMCOST OK each, the medians printed; not a
+measurement.
+
+C's effect is in the medians: transactions a second (section 1 with a
+force per file, `main`: 63,000 to 68,000; with the batch: 102,000 to
+110,000), the disk over the stream kept (1.43 to 1.58 against 1.10 to
+1.15), the files that end before fp and are not yet deleted (0.45 to
+0.59 of the stream kept against 0.11 to 0.17), of them those that the
+storage's cut took off and its thread has not deleted (0.33 to 0.45
+against at most 0.02), and the files on disk (54 to 63 against 26 to
+30). The figures of section 1 and 5.8 came from a loaded F53. The rule
+adds one read of 128 bytes a leftover at a start, and nothing to a
+cut.
+
+`java/timing.sh` compares the tree with the last release, not with
+`main`; run on the branch, it checks that C costs nothing elsewhere
+(CORE, the pause probe, `performance.sh ab` with the release suite,
+whose `w-uni-100-fin`, `r-100-fin` and `w10m-fin` make cuts on a
+`FileStream`), and its figures can be set beside the timing run on
+`main` of 2026-11-27, 17:16 (006-37). Its `CAND` and `REF` take two
+builds for core and pauses only.
+
+#### 6.6. What is left
+
+* The timing run of 6.5 on a quiet machine (Frans's decision 2), and
+  027-13's figure from it in place of 5.8's indicative one.
+* The review of the branch, then the landing in place of A for 2026.7;
+  `java/night.sh` before the release as usual.
+* 028-73 (the sizes of new files) waits for Frans; C does not change
+  file sizes.
+
 Log
 ---
 
@@ -546,3 +735,15 @@ start refuses a stream whose first position is after reclaim's cut, and
 else its cut deletes the files before the gap; the power-loss model
 keeps any subset of unforced deletes. Sound (section 5); the gates of
 5.7 pass; for Frans: land C, and question 1 (5.10).
+
+2026-11-27. Frans decided (17:26): C with the rule of the files before a
+gap (question 1, option b), and C in place of A for 2026.7 after a quiet
+timing run against `main` and a review (section 4).
+
+2026-11-27. C ported onto `main` at `734f05a2` and Frans's rule built by
+an agent of lead-1127 (clone c66d, branch `028-66-c-rule`, not pushed):
+a start deletes the files before a gap only if each one's first meta
+block is the database's (028-67's position and ID), and else refuses
+before it writes or deletes; the tests and the gates of section 6; the
+A/B of `ReclaimCost` for the timing run (6.5). Left: the timing run, the
+review, the landing.

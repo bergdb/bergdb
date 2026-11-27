@@ -102,7 +102,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.7 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
-| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
+| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | timing, review open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
@@ -667,3 +667,10 @@ with one directory force; a gap in `FileStream`'s files is taken at the
 open, and a start refuses a stream whose first position is after
 reclaim's cut, else its cut deletes the files before the gap. Sound;
 the writer as fast as with the batch; for Frans: land C (028-66, 5.10).
+
+2026-11-27. 028-66: Frans decided C with the rule of the files before a
+gap (17:26). C ported onto `main` and the rule built (branch
+`028-66-c-rule`, not pushed): a start deletes the files before a gap
+only if each one's first meta block is the database's, else it refuses
+before it writes or deletes. Open: the timing run on a quiet machine,
+the review, the landing (028-66, section 6).
