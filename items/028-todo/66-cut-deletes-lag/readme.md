@@ -3,7 +3,8 @@
 
 Status: open. Kind: Investigate. Frans: decided (2026-11-27, 17:26: C with
 the rule of the files before a gap, after a quiet timing run against `main`
-and a review; section 4). C with the rule built on a branch (section 6).
+and a review; section 4). C with the rule built on a branch (section 6),
+reviewed, and the review's findings fixed (6.7).
 Created 2026-11-26 by Frans Lundberg.
 
 What: since 005-46 the cut's own thread deletes the stream files below a
@@ -710,9 +711,72 @@ builds for core and pauses only.
 * The timing run of 6.5 on a quiet machine (Frans's decision 2), and
   027-13's figure from it in place of 5.8's indicative one.
 * The review of the branch, then the landing in place of A for 2026.7;
-  `java/night.sh` before the release as usual.
+  `java/night.sh` before the release as usual. The review is made
+  ([review.md](review.md); land after the timing run), and its findings
+  R1 to R5 are fixed (6.7).
 * 028-73 (the sizes of new files) waits for Frans; C does not change
   file sizes.
+
+#### 6.7. The review's findings fixed
+
+Fixed 2026-11-27 by an agent of lead-1127, on the review's branch (one
+commit), in the clone c66e; each finding's fix is under it in
+[review.md](review.md), the findings' text as the review wrote it:
+
+* R1: the power-loss trace's check of the forces without per-append
+  forces requires a `CLOSE` force only if a stream file has unforced
+  bytes when `close()` begins, and requires in every trace that none has
+  after it: the last batch's force (`CUT`) or `close()` covers the
+  tail. The tester's check, not the product.
+* R2: `Db.startInner` writes a missing `created.txt` after
+  `Reclaim.initFromDb`, so a start refused because the stream lacks
+  bytes writes nothing but what recovery writes at a torn end, as
+  `FileStream`'s Javadoc and 6.2 say.
+* R3: `initFromDb`'s refusal is a `Reclaim.StreamAfterCutException`, a
+  `ReadBelowFirstPosException`, which `Db.start()` throws as it is
+  ("The stream begins at F, after reclaim's cut, C ..."), not wrapped
+  in its message of a read before the first position. The refusal of a
+  file before a gap whose block holds another ID names both IDs, "the
+  file and the files after the gap are of two databases, and either may
+  be another database's", and both ways out, so 6.2's example reads so
+  now ("is not known to be the database's own: ...").
+* R4: `AppendOnlyStream`'s contract states the implementation's duty:
+  the bytes before a `pretruncate()` position are removed only after
+  every byte before the stream's length at that call is on the device
+  (`FileStream`: `forceTo()` before each batch); and the caller's, a cut
+  only after its record is durable.
+* R5: `FileStream.seekFirstPos` (its own tests' only) refuses while the
+  stream has leftovers that no check has passed, and deletes nothing;
+  `pretruncate`'s Javadoc says why the order of the leftovers' deletes
+  behind an earlier cut's files is safe.
+
+The tests: `FileStreamPowerLossTester.testRefusedStartWritesNoCreatedTxt`
+(R2 and R3: a database cut, then written with no cut until reclaim has
+moved its live nodes past its first file, which is removed; a start
+with a `created.txt` directory and no `created.txt` is refused by
+`initFromDb`, with its own message, the files unchanged, no
+`created.txt`; on the code before the fix it fails at the message) and
+`FileStream.testSeekFirstPosKeepsTheRuleOfTheFilesBeforeAGap` (R5). The
+review's probes stay in this directory: `CreatedTxtProbe` on the fix
+prints CREATED TXT NOT WRITTEN (its case is refused by a read before
+the first position, after the old place of the write).
+
+The gates, on F53 beside `java/night.sh` and another review, 2026-11-27:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (79 s; unit 1,751 tests, f
+  96).
+* `PowerLossTest 1001 12 3000 3`, the review's run (seeds 1001 to 1012
+  at 3,000 transactions, with and without per-append forces): POWERLOSS
+  OK, 732 cold recoveries, without per-append forces 744, negative
+  controls caught; 7 of the 12 traces without per-append forces made no
+  `CLOSE` force, their tails forced by the last batch.
+* `java/stress/level3.sh`: LEVEL 3 OK: every step; the power-loss
+  stage POWERLOSS OK, 8 seeds, 488 cold recoveries, without per-append
+  forces 496, negative controls caught; conformance reclaim 40 traces
+  and crash 15, TRACECHECK OK; InterruptStress 60 s.
+* [NestedGap.java](NestedGap.java) with LEVEL2_SAMPLES 1000, per-append
+  forces on and off: NESTED GAP OK each, 2,060 starts, 1,812 images with
+  a gap, none refused.
 
 Log
 ---
@@ -747,3 +811,8 @@ block is the database's (028-67's position and ID), and else refuses
 before it writes or deletes; the tests and the gates of section 6; the
 A/B of `ReclaimCost` for the timing run (6.5). Left: the timing run, the
 review, the landing.
+
+2026-11-27. The review's findings R1 to R5 fixed by an agent of
+lead-1127 (clone c66e, on the review's branch, not pushed): section 6.7
+and a Fixed line under each finding in review.md. Left: the timing run,
+the landing.
