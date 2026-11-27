@@ -107,7 +107,75 @@ copies, reclaim's row and maybe its table, one operation a key.
 * **The contract checkers** (`contractcheck`, `bridgecheck`; Contract/Trace.lean
   and Contract/Complete.lean): `OP C` read as a put, in the grammar.
 
-(The gates' lines and the contract's proofs: below, as they ran.)
+* **The contract** (lean/contract, with Mathlib), proved, no `sorry`:
+  * `StepTx` (Contract/ReclaimSteps.lean): every old KV the step's scan met
+    is written by the record, `kv.1 ∈ ops.map Op.key` (a copy, or the
+    action's put or delete; it was `∈ putKeys ops`); the row put; one
+    operation a key. Its fourth conjunct, `StepOpOK` of every operation (a
+    put of an old KV met with its value before, or the row; no delete), is
+    gone from it, and with it StepTx's index j, which only that conjunct used.
+    `step_covers` takes the key as written from the first conjunct directly.
+    `iterationOK_of_stepsOK`, `reclaim_java_reads_steps`,
+    `pe_reclaim_reads_steps`: proofs unchanged; their statements change
+    only through `StepTx`.
+  * Contract/ReclaimValues.lean: maintenance is marked per operation,
+    `maintenance : Nat → Op → Bool` (the copy mark; until now per
+    transaction). `StepOpOK` (moved here) is a copy: a put of an old KV met
+    with the value the key had before the record; never a delete.
+    `MaintenanceOK`: every record has one operation a key, and every marked
+    operation is a copy of some step's scan at that record. The reference
+    `userTransactions` keeps, of each record, the operations outside
+    reclaim's prefix that are not copies: the action's. New:
+    `applyOps_drop_copies` (on a map in key order, with one operation a key,
+    marked puts of pairs the map holds change nothing) and
+    `record_preserves_users` (a record's effect on the user keys is that of
+    its operations without the copies). `user_contents_at`, `user_refMap`,
+    `reclaim_user_reads_steps` and `pe_reclaim_user_reads_steps` are proved
+    with the per-operation marks; the last two take `CutsMeetSteps`, as
+    `CutsMeetMaintenanceSteps` (steps marked as maintenance transactions)
+    has no meaning with marks per operation and is gone. Gone:
+    `StepTx.put_value`, `StepTx.no_delete`, `StepTx.preserves_users`,
+    `reserved_preserves_users`, `applyOps_existing` (unused now).
+  * What is proved and what is tested: proved, that removing the copies
+    (marked operations that put back the values before the record, at keys of
+    no other operation) leaves every user read as the reference of the
+    unmarked operations; tested, not proved, that the unmarked operations of a
+    record are its action as submitted (C-STEP's STEP-action on traces) and
+    that Java's marks are the copies (the exporter's check against the plan,
+    and STEP-values, STEP-ops).
+  * Examples (Contract/ReclaimStepsExample.lean, ReclaimValuesExample.lean):
+    the second step is a commit's record, whose action deletes an old KV the
+    step meets (so no copy of it) and puts a key above E; the steps still
+    follow the model and give `IterationOK`; the reference holds the action's
+    delete and put. `wrong_value_rejected`, `unmet_copy_rejected`,
+    `delete_copy_rejected` (on `StepOpOK`), `missing_row_rejected`,
+    `unwritten_rejected` (on `StepTx`), `mixed_step` (the commit's record
+    meets `StepTx`).
+  * The parsers: `OP C` in Contract/Trace.lean (a put) and
+    Contract/Complete.lean (the grammar).
+  * `gate.sh`: GATE OK; 254 theorems, as before, on the standard axioms only
+    (`propext`, `Classical.choice`, `Quot.sound`: the gate's list is
+    unchanged). Axioms.lean's list of theorems: removed `StepTx.put_value`,
+    `StepTx.no_delete`, `StepTx.preserves_users`,
+    `CutsMeetMaintenanceSteps.cutsMeetSteps`,
+    `ValuesExample.extra_put_rejected`, `ValuesExample.extra_delete_rejected`;
+    added `applyOps_drop_copies`, `record_preserves_users`,
+    `ValuesExample.unmet_copy_rejected`, `delete_copy_rejected`,
+    `unwritten_rejected`, `mixed_step`. `statements.pin` (pin.sh): five
+    pinned files changed (Axioms.lean, Contract/Complete.lean,
+    ReclaimSteps.lean, ReclaimValues.lean, Trace.lean); 123 files of the main
+    theorems' closure, 144 pinned, as before.
+* **Lines changed** (added, removed), from the port's commit: lean/Check/Steps.lean
+  130, 65; lean/Check/Tree.lean 56, 4; lean/Check/TreeRun.lean 4, 2;
+  lean/TraceCheck.lean 18, 11; lean/TreeCheck.lean 3, 1;
+  lean/test-traces/step-faults.sh 51, 23; lean/contract/Contract/ReclaimSteps.lean
+  37, 40; ReclaimValues.lean 133, 118; ReclaimStepsExample.lean 11, 7;
+  ReclaimValuesExample.lean 55, 34; Contract/Trace.lean 6, 0;
+  Contract/Complete.lean 4, 0; Axioms.lean 6, 6; statements.pin 5, 5;
+  java/stress/TraceExport.java 132, 73; java/stress/conformance.sh 5, 4;
+  027-02 86, 28.
+
+(The level scripts' lines: below, as they ran.)
 
 ## What depends on Frans's two answers
 
