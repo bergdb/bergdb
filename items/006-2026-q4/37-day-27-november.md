@@ -66,6 +66,27 @@ Frans, 2026-11-27:
     the study of (e), and the review's F4 (031-05, section 12) with the
     part's own time in place of its call's.
   * It answers B5, and A4 and B4 in part (section 4).
+* Frans, 11:18: a prototype of (e), one record an action, is built
+  today. It is item 031-06 (the lead's number); its files come with the
+  prototype's landing. A1 itself stays open until the prototype's
+  evidence, and (c) is the fallback. The rules fixed in its brief:
+  * `Reclaim`'s plan and apply behind an interface, with an empty
+    second implementation;
+  * the part as `maintain()`'s unit, with its own time (11:16);
+  * the setters carry no maintenance;
+  * the step has an allowance of its own in the record, so that large
+    transactions cannot starve reclaim (Codex's finding on progress,
+    section 3, 10:55);
+  * a key of reclaim's is the witness of reclaim's own record (Codex's
+    finding on the empty user commit);
+  * the copy mark on a value node;
+  * the after-row charge of 028-26 is left dropped, and measured;
+  * Lean, the trace format and the contract checkers are out of scope,
+    so the conformance levels are not expected to pass on it.
+  * Its gate: `before-commit.sh`; a crash and a stop at every record
+    boundary; as many records as accepted actions; Codex's three tests
+    (section 3, 10:55: its report names them); a figure of the time of
+    a commit that carries a step.
 
 Gone ahead by default:
 
@@ -213,6 +234,10 @@ The lead's overview (08:30), its conclusions:
   points. Frans has not chosen.
 * 11:03 to 11:16 Frans's questions on `maintain()` under (e), answered
   in the session, and his decision on a part's time (section 2).
+* 11:19 The prototype of (e), 031-06, started (section 2, 11:18): an
+  agent (Opus, xhigh) in a clone of 031-05's prototype, on a branch
+  `031-06`, to stop at 17:00. Codex reviews the result before Frans
+  decides A1.
 
 
 ## 4. Waiting for Frans
@@ -259,8 +284,10 @@ details are in the items, cited by ID and section.
     one commit's maintenance.
   * Codex (10:55; section 3): build **(c)**, with (e) a credible later
     simplification and (d) last. The lead after it (11:00): a prototype
-    of (e) with its two holes closed, (c) the fallback. The two differ;
-    Frans has not chosen.
+    of (e) with its two holes closed, (c) the fallback. The two differ.
+  * Frans, 11:18: the prototype of (e) is built today (031-06; section
+    2). A1 is chosen on its evidence and Codex's review of it; no
+    default goes ahead.
 * **A2. In 2026.7** (class 3: the scope and the Pub API). The design
   lands in Java with its tests in 2026.7: `maintain(int budget)`
   replaces `maintain()` in `Db` and `Database` (031-04, C1), and it
