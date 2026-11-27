@@ -518,18 +518,62 @@ The lead's overview (08:30), its conclusions:
 * 19:16 The fixes of R1, R2, R5, R6 and R7 (with `Db`'s stale Javadoc
   on 2026.6's filler) started on a branch, `031-06-review-fixes`.
   `night.sh` past its level 3: `LEVEL 2 OK`, `LEVEL 3 OK`.
+* 19:18 028-72 settled and on `main` (`eeefa108`): by Java's own count,
+  which `Db` compares, no transaction within L1 to L5 is refused by the
+  action's 7/8 at any node size; the worst at node size 8 is 76.5 % of
+  the 7/8; 024-17's 14 a level bounds it, the Lean's 19 is a looser
+  bound of the same count; 024-17's 9 at node size 14 is short since
+  028-21 (9.12 a level). Options A to G; A recommended (section 4.4).
+* 19:22 031-07's inventory on `main` (`5d6fe4ae`): 44 checks of the
+  stream's integrity; a probe of 255,169 damaged copies gave no wrong
+  values with node checksums besides the decided known cases, and
+  59,596 without them; of 4,783 stale tails the node checksum was never
+  the only check that refused one; 2 stale tails took another
+  database's records whole (028-67's S1 case), which C3 refuses.
+  Recommended: N1, node checksums kept; GD1, nothing added to the
+  got-dirty list; M1, the meta block's own position and database ID and
+  nothing more; W24, the header's check of 24 bits, as decided; the
+  principle as rule R6 in 010-04. For Frans (section 4).
+* 19:27 Step 4's format checks, 028-67's C3 and C1, started on a branch
+  (`028-67-c3`), beside the review's fixes.
+* 20:29 The review's fixes on `main` (`97954827`, `48203205`): R1, the
+  plan's fields set at every execution's go point (RmReuseProbe the
+  same stream in 20 of 20; a unit test); R2 with R5, the take bounded
+  by the check's own count, `takeRoom()` less the table's 256 KiB
+  (RmRoomProbe 9 of 9 cases without failure; StreamDigest quick 44 of
+  44 identical at the release's limits); R6, the item's probes compile
+  and run on `main` (the sweep 27,720 interruptions and 567 torn
+  records, 0 different); R7, the Lean's check of one operation a key in
+  every record; `Db`'s stale Javadoc on 2026.6's filler. `BEFORE COMMIT
+  OK`, `LEVEL 2 OK`, `LEVEL 3 OK` (C-STEP as the landing's). R3 and R4
+  are 028-74 and 028-75.
+* 20:36 Step 3, the pace, started on a branch (`031-06-pace`), until
+  06:00: the after-row charge, a commit's step sized by its allowance
+  under large commits (028-71), a warm-up of the plan's scan before the
+  lock, and a probe for P1 on a database larger than its cache.
+* 20:51 Step 4 built: a meta block holds its own position, valid only
+  at the position it was read at and with the ID of the stream's first
+  block (meta version 156: `main`'s older databases and 2026.6's are
+  refused at the first block, before any write); a record header holds
+  a 24-bit CRC-32C check, compared at every parse; the recovery walks
+  the tail before it writes and refuses a bad one with
+  `BadTailException`, which names the cause, the position and the cut.
+  On its branch `BEFORE COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4
+  OK` quick, `APPS OK` quick; being gated on the combined tree with
+  `main`. `night.sh` so far: every step ok (through the night tests and
+  the harness soak).
 
 ## 4. Waiting for Frans
 
 Every open question, each with a default: whose it is, and why. The
 defaults of sections 4.1 to 4.3 have no time: nothing of them goes
 ahead before Frans has read the page. Section 4.4 has the defaults
-with a time: none is open.
+with a time: one is open, 028-72's A.
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (19:20)
+### Open now (21:00)
 
 What is open for Frans after the decisions of 16:09 to 17:26 (section
 2). The text of sections 4.0 to 4.3 is left as it was written.
@@ -597,7 +641,28 @@ What is open for Frans after the decisions of 16:09 to 17:26 (section
   decision): RB-007 is fixed on `main` (18:52); the entry also covers
   the idle rewrites, which 028-75 now holds. Whether 028-53 is done is
   Frans's.
-* **031-07's review** of the stream's checksums.
+* **031-07's review of the stream's checks** (its inventory, 19:22),
+  class 3 for the format and the principle:
+  * N1: node checksums kept (the only check of keys and values at a
+    load, before reclaim's copies make damage permanent; about 3 % of a
+    1 kB commit, estimated, and 4 bytes a KV);
+  * GD1: nothing added to the got-dirty list;
+  * M1: the meta block holds its own position and the database ID,
+    nothing more;
+  * W24: the header's check of 24 bits, as decided (it catches every
+    error of 1 to 3 bits in the 32 header bytes);
+  * the principle "the storage owns integrity, detection is best
+    effort": a rule, R6 in 010-04 (the inventory's section 5.4 proposes
+    the wording), or a principle; and whether another file's bytes at
+    the tail count as a face of the expected fault, which goes with
+    028-67's C2.
+  * Recommended: N1, GD1, M1, W24, and R6 as a rule.
+* **028-67's finding: C3 does not cover nodes** (step 4, 20:51). A
+  record whose header is its own, with later nodes from another file at
+  the same offsets, still passes: with two databases of identical
+  layout, a start took the other database's value of one key. Node
+  checksums that include the position and the ID would close it; not
+  decided, with 031-07's N1. 028-67's C2 is still open.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
   Frans.
@@ -914,5 +979,11 @@ inside the code that fails the database (F7), both work of the landing.
 
 ### 4.4. By default, with a time
 
-None open. D1, where the notes of 2012 go, went ahead at 09:15
-(section 2).
+* **028-72, option A, by default Saturday 10:00** (the lead's, class
+  2): the counts in 031-06's sections 3 and 9 and in 024-17 corrected
+  (024-17's 9 a level at node size 14 becomes 10), and a `DagTester`
+  guard test of the worst path against 14, 10, 8 and 8 nodes a level;
+  B, the Lean's `nodesALevel` restated (14, 10, 9, 9) with a theorem
+  that an action fits the 7/8, with the next change of `Bound.lean`.
+
+D1, where the notes of 2012 go, went ahead at 09:15 (section 2).
