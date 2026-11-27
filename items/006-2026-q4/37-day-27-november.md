@@ -36,6 +36,19 @@ Frans, 2026-11-27:
   transactions, which allows a deterministic stream and no load when
   the database is not used; no background threads). Where they go:
   below.
+* A1, when and how a commit's maintenance is written, is the day's
+  focus: the centre of the work left before 2026.7. It is to be solved
+  today, with a clean solution. Backwards compatibility of the stream
+  does not count against a design; stability going forward does
+  (09:38). This bears on A3, whose rule is still Frans's to state.
+* Two more options for A1, their feasibility studied today (section
+  4.1):
+  * (e), raised 09:15: the maintenance inside the user's record
+    itself.
+  * (d), 09:28: the user's record and its maintenance records as one
+    compound unit, marked in the user's record; a start treats an
+    incomplete unit as a torn record, so both are kept or both are
+    void.
 
 Gone ahead by default:
 
@@ -45,6 +58,32 @@ Gone ahead by default:
   sentence in `AGENTS.md`'s rule on Frans's notes: a passage may be
   quoted, with its date, when Frans approves it. P2's text in 010 is
   not touched: it waits for Frans (A4).
+
+The history of reclaim's records (an agent, 09:19 to 09:30, reading
+Frans's notes, the Git history of 2013 to 2017 and this repository):
+
+* No reason was ever recorded for reclaim's records of their own. They
+  follow from the design of July 2012: reclaim as a thread or piggyback
+  on the transactions, with transactions of its own either way.
+* The alternative, one record, was not weighed for reclaim before
+  2026-11-25.
+* On 2014-11-01 Frans merged the index writes, which had a record of
+  their own since September 2014, into the user's record, to reduce
+  variability and to ease the startup's reruns of the transactions.
+
+The lead's reading of the proofs for A1's options (09:40; reasoning
+from 031-05, section 9 and section 12, nothing built):
+
+* (e), one record, and (d), the compound unit, map an action to one
+  record of the model, so `T1_crash` and `T2_restart` apply as they
+  are. For (d), recovery of the bytes, a prefix of whole units, is an
+  assumption to test, as a torn record is today.
+* (a), (b) and (c) need the new theorem of 031-05's sketch, a crash
+  inside a call continued by a later writer (800 to 1,600 lines by the
+  sketch); in (a) and (b) it holds only as a prefix that a later call
+  completes (F3).
+* In all five, `maintain()`'s parts are records of their own, and that
+  Java's maintenance is a function of the stream alone stays tested.
 
 The lead's overview (08:30), its conclusions:
 
@@ -89,6 +128,13 @@ The lead's overview (08:30), its conclusions:
 * 09:19 Frans asked why reclaim's writes are records of their own and
   not part of the user's record. An agent (Opus, xhigh, reading only)
   searches the history for the reason.
+* 09:21 031-05's section 13 landed (`ee8bbc42`).
+* 09:30 The history agent's result (section 2): no recorded reason.
+* 09:38 Frans: A1 is the day's focus (section 2).
+* 09:44 Two agents (Opus, xhigh, to stop at 11:15) study the
+  feasibility of (d) and of (e), each in a clone of 031-05's
+  prototype. Their reports become a subitem of 031 if Frans takes one
+  of the two.
 
 
 ## 4. Waiting for Frans
@@ -109,8 +155,18 @@ details are in the items, cited by ID and section.
   * (b) D2: in the call that made it due, and by the next call after a
     crash or a stop.
   * (c) D2, and a start writes what a crash or a stop left due.
-  * Default: **(c)** (the reviewer on Fable, the lead; the study
-    recommends (b)). Every call and every start then leaves nothing
+  * (d) The user's record and its maintenance records as one compound
+    unit, marked in the user's record; a start drops an incomplete
+    unit as it drops a torn record (Frans, 09:28). No call and no
+    start writes for another; the format changes. Feasibility studied
+    today.
+  * (e) The maintenance inside the user's record: one record a commit
+    (Frans, 09:15). The record limit and a step's put of a key that
+    the transaction writes are to be solved. Feasibility studied today.
+  * The day's focus (Frans, 09:38; section 2): no default goes ahead
+    until (d) and (e) are studied.
+  * Default until then: **(c)** (the reviewer on Fable, the lead; the
+    study recommends (b)). Every call and every start then leaves nothing
     due: the clock is never held between calls (with (b), after about
     10 % of the crash points), a call's first record is its own, and 80
     to 100 of the prototype's 231 lines go. The cost: a start after a
@@ -132,6 +188,9 @@ details are in the items, cited by ID and section.
   * Default: **(a) with an explicit refusal of old writers, and (c)**
     (Codex). The sources differ: the study recommends (b) and (c);
     Codex found (b) unsafe for a writable downgrade (finding 2).
+  * Frans, 09:38 (section 2): backwards compatibility of the stream
+    does not count against a design. Whether 2026.7 opens a database
+    of 2026.6 at all is still his to state.
 * **A4. P2's wording** (class 3: 010 is Frans's; 031-05, Q1).
   * (a) the draft of 031-05, section 4.3, which names the setters.
   * (b) without the setters, which become `execute()` calls.
