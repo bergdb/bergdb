@@ -1,7 +1,8 @@
 028-67. Fix: a deleted file's bytes in the last stream file after a kill
 =======================================================================
 
-Status: decided, open until built. Kind: Fix. Frans: decided.
+Status: decided; C1 and C3 built (2026-11-27, below), open: C2. Kind:
+Fix. Frans: decided.
 Created 2026-11-26 by Frans Lundberg.
 
 What: on APFS, a write cut by a kill of the process (or one that fails
@@ -118,6 +119,152 @@ Where it is built: in 031-06's landing, with the format's other changes
 named above, and C2 is decided.
 
 
+Built
+-----
+
+2026-11-27, by an agent of lead-1127 on the branch `028-67-c3` (from
+`main` at `5d6fe4ae`; `91584578` and `b553bd88`), for 031-06's landing,
+step 4. C1 and C3 as decided; C2 not built, C4 not taken.
+
+* **C3, the meta block.** Version 156 (`MetaBlock.VERSION_156`); bytes
+  46 to 53 hold the block's own stream position, written with each block
+  (`RecoverableStream.writeMetaBlock`). A block is the stream's
+  (`MetaBlock.isOwn`) if it is valid, holds the position it is read at,
+  and holds the database ID of the stream's first block, the first at or
+  after the first position (`readFirstMetaBlock`): that block must be
+  valid and hold its own position, and its magic and version are refused
+  as before (`BadMagicBytes`, `VersioningStreamException`). Every search
+  for a block, at a start and after (`readLastValidMetaBlock`,
+  `getPosOfTransCompletedBefore`, `getRecordStartBefore`), takes only the
+  stream's blocks: a block after the first of other bytes, of another
+  version, place or database is passed over, as a block of zeros is
+  (`readOwnMetaBlock`), and the walk below refuses such a tail where it
+  matters.
+* **C3, the record.** Bytes 5 to 7 of the header hold the low 24 bits of
+  CRC-32C over the database ID (16 bytes), the record's position (8,
+  little-endian) and the header's bytes 0 to 4 and 8 to 31, little-endian
+  (`StoredTrans.headerCheck`), set by `Serializer.serializeToBuffer`
+  (`NodeStream.appendNodes` gives the serializer the ID) and compared by
+  `Parser.parse` after the format byte; `StoredTrans.parse` and
+  `Parser.parse` take the ID (`NodeStream.databaseId()`). Record format
+  9 keeps its number (no release has written it); its Javadoc and 027-03
+  say what changed.
+* **C1.** `RecoverableStream.recover(RecordCheck)` walks the records from
+  the one the last valid block names to the end before it writes anything
+  (`walkTail`; the cut meta block's completion and the zero fill come
+  after it), with the Core's check as a hook (`StoredTrans.RECORD_CHECK`):
+  each size 5 or more, each whole record's last byte 0 or 10, each
+  committed record's header holding its check, and the header of a
+  record that the end cuts holding it before the fill (cut within its 32
+  bytes: a size the writer writes, 48 or more and a multiple of 8, and the
+  format byte 9 if there). The first record walked is refused for another
+  format first, as before; the stream's last record, if committed, and
+  the committed record before the first that fails are parsed whole, as
+  another file's bytes can begin inside a record after its own header (so
+  a start reads and parses its last record twice; not timed). A
+  tail that fails is refused with a `BadTailException` (a
+  `StreamFormatException`) whose message gives the cause, then P (the end
+  of the last record that is one, or the start of the record parsed
+  whole if it does not parse) and the way out, for example: "The header
+  of the record at 512 is not one of this database's records at its
+  place (bergdb 028-67, C3). The stream's records end at stream position
+  512: from there to the stream's end, ..., it holds bytes that are not
+  its records. A kill of the process during an append can leave such
+  bytes in the last stream file, within its length: zeros, or the bytes
+  of a file deleted before, such as an older stream file or another
+  database's, as on macOS (APFS; bergdb 028-67, 035-02); so can a
+  storage that loses or damages bytes. The start has written nothing. To
+  start the database, keep a copy of its files, then cut the stream at
+  512: cut the stream file that holds it to 512 less the file's first
+  position, which is the number in its name times 100,000, and remove the
+  later stream files, if any; the stream's bytes from there on are
+  lost." Zeros past a record's end keep the first sentence, "Bad
+  transaction size in db stream, 0, spos P. Stream length: L."
+* **Older databases.** The mechanism is the meta block's version: a
+  database of `main` before this change (version 155, headers without
+  the check) and one of release 2026.6 are refused by the stream's first
+  block before anything is written: "Cannot read meta block with version
+  155. Version supported: 156. Version 155 is a database written by
+  BergDB release 2026.6, which this release does not open: there is no
+  upgrade path, and release 2026.6 still opens it (bergdb 031-06); or by
+  a development build of 2026.7 before 2026-11-27, whose meta blocks do
+  not hold their own positions (bergdb 028-67). The start has written
+  nothing." Release 2026.6 refuses 156 as a newer version's.
+* **Tests.** `DbTesterTail` (new): stale tails on CorruptStreamTester's
+  workloads from every page of 4,096 bytes (unit) and every 512 bytes
+  (f): zeros, another database's bytes (another ID) at the same
+  positions and 4,096 after, the stream's own bytes from 4,096 and
+  200,000 before, and a size of 1 GB at each record after the last meta
+  block; the same on a file database's last file of 1 MB (f): zeros, an
+  older stream file at the same offsets and at others, another
+  database's last file and that file 4,096 bytes on, a size of
+  100,000,000; each start takes exactly the records that end before the
+  first byte that differs, or is refused with the message, nothing
+  written (every file byte for byte), and the stream cut at P (the file
+  cut at P less its first position) starts with them, writes and starts
+  again; 028-67's S1 case (031-07's probe: another database's stream
+  from 512) refused at 512; a torn last record whose size reads 1 GB
+  refused, and a header cut by the end at 1 to 31 bytes completed, or
+  refused for another format byte; another database's, another place's
+  and an older file's meta block passed over. `StoredTrans`:
+  `testHeaderCheck` (the CRC as specified; another position or ID; every
+  bit of the header), `testRecordCheck`; `MetaBlock.storedPosAndId`. The
+  tests that set a header field to reach a later check
+  (`DbTesterRestart`) set the check again (`writeHeaderField`), and the
+  version tests take 156 and 157. CorruptStreamTester: its KNOWN no
+  longer has 015-73, 019-30 and 019-31, which the check refuses; its full
+  set on seed 20768 (485,809 copies): 0 failures, no copy taken as known
+  (031-07's run on `main`: 171 of 019-30, 18 of 019-31, 1 of 015-73) and
+  no zero fill past 1 MB.
+* **Found, not covered by C3 as decided.** A record whose header is its
+  own and whose later nodes are another file's at the same offsets passes
+  the checks: the node checksum covers a node's bytes, not its position
+  or database (031-07, N1). Made with a variant of `testStaleTailFiles`
+  in which the two databases have the same value sizes, and so the same
+  record and node layout: the last file held the other database's bytes
+  from its offset 278,528 (the first byte that differs at stream position
+  10,279,200); the start refused at 10,279,488, the record after, and the
+  stream cut there held the other database's value of `k805`, whose
+  record (to 10,279,487) those bytes began in after its header. The
+  test as committed gives the two databases other value sizes. Closing
+  it needs a check of the nodes' place, such as each node's CRC-32C begun
+  with its position and the database ID (035-02's first form of C3): a
+  decision for Frans.
+* **Not changed.** The Lean model, the contract and its checkers and the
+  trace format (027-02): none reads a header's bytes or a meta block
+  (031-07, section 6); `TraceExport` and `RestartInvariance` pass the ID
+  to the parse. `RecoverableStream.holdsFirstTransactionAlone` and
+  `isIncompleteCreation` read a size without a check, as before: a size
+  of other bytes at the second record of a stream under 200,000 bytes
+  reads as a creation that did not complete. 028-70's case (a last
+  committed record of another format) is refused now before the recovery
+  writes: by the format if it is the first record walked, as
+  `NodeStreamTester.testStartRefusesFormat8` shows, else by its header's
+  check. The C clone (012, 022) follows a
+  release.
+* **Gates** (in the branch's clone, F53, beside other sessions' runs):
+  * `java/before-commit.sh`: `BEFORE COMMIT OK (78 s)` on `91584578`,
+    `BEFORE COMMIT OK (86 s)` on `b553bd88`.
+  * `java/stress/level2.sh` (full): `LEVEL 2 OK` (16 min), on `91584578`.
+  * `java/stress/level3.sh`: `LEVEL 3 OK` (15 min), on `91584578`.
+  * `java/stress/level4.sh quick`: `LEVEL 4 OK`; `java/stress/apps.sh
+    quick`: `APPS OK`; both on `b553bd88`.
+  * CorruptStreamTester's full set, seed 20768, on `b553bd88`: 0
+    failures.
+  * 031-06's `probes/faults.sh` and `probes/sweep.sh` do not run on this
+    branch, nor on `main`: `NoSuchMethodException` for
+    `Db.maintain(int, int)` (the review's R6, fixed on
+    `031-06-review-fixes`). `FaultProbe` compiled with
+    `review-main-probes/P2CrashProbe.java` (its two lines of
+    `maintain(int, int)` left out), faults.sh's six seeds: the output of
+    `main` at `5d6fe4ae` line for line, but for the digests and the
+    positions of the first byte that differs; its continuations counted
+    bad (plan-stop and plan-fail at parts, among others) are the same on
+    `main`. `review-main-probes/run.sh sweep` (P2CrashProbe): 12,105
+    interruptions and 2,142 torn records, 0 different, as on `main`.
+  * `lean/contract/gate.sh`: not run; nothing in `lean/` changed.
+
+
 Log
 ---
 
@@ -125,3 +272,6 @@ Log
 
 2026-11-27. Decided by Frans (15:50 to 16:02): C1 and C3 in 2026.7,
 built in 031-06's landing; C2 after C3 is in and tested; C4 not taken.
+
+2026-11-27. C1 and C3 built by an agent of lead-1127 on the branch
+`028-67-c3` (section Built); not landed; C2 open.
