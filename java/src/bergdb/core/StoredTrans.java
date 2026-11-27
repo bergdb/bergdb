@@ -95,13 +95,55 @@ public class StoredTrans {
     }
     
     /**
-     * The most bytes the index nodes that one transaction makes dirty or creates may take,
-     * by Db's bound at the largest node size (2026-10-24, bergdb 005-31): 15/16 of the record
-     * limit. TransSeq.take writes them in the record of a later transaction, all in one; a
+     * The most bytes the index nodes that one record makes dirty or creates may take, by Db's
+     * bound at the largest node size (2026-10-24, bergdb 005-31): 15/16 of the record limit.
+     * TransSeq.take writes them in the record of a later transaction, all in one; a
      * transaction whose record leaves less than 1/16 of the limit for them waits for the next.
+     * Since bergdb 031-06 (review F5) it bounds a record, its action's KVs and its
+     * maintenance's together (Db.recordDirtyFits, before the go point); an action alone is
+     * admitted within actionDirtyLimit().
      */
     static long dirtyLimit() {
         return recordLimit - recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): the share of dirtyLimit() that every action leaves the step
+     * that its record may carry, a sixteenth of the record limit, so that a run of the largest
+     * actions leaves each step that room (Codex's E5).
+     */
+    static long stepDirtyRoom() {
+        return recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): the most bytes the index nodes of an action alone may take,
+     * dirtyLimit() less stepDirtyRoom(), 7/8 of the record limit (Db.checkDirtyNodes). Until
+     * 031-06 an action had dirtyLimit() and its record carried nothing else.
+     */
+    static long actionDirtyLimit() {
+        return dirtyLimit() - stepDirtyRoom();
+    }
+    
+    /**
+     * The bytes counted for a record's two top nodes, each at its largest (StoredTopNode, a
+     * height of at most 48, TopNode.MAX_HEIGHT) with its got-dirty entry of 16 (Db's counts of
+     * index nodes; bergdb 024-25).
+     */
+    static final long TOP_BYTES = 2 * (48 + 16L * 48 + 16);
+    
+    /**
+     * bergdb 031-06 (review F5): the most bytes of a record's got-dirty set, its nodes counted
+     * at their largest with their entries, that a later record with no KVs (an empty commit,
+     * a part's take, M4) can take whole: recordLimit less that record's header
+     * (TransSeq.ownBytes(0)) and TOP_BYTES. Db.store() fails the database before it appends a
+     * record whose set is over it, as no later take could take the set and the startup pos
+     * would stay before it for good. The set is the record's own nodes, within dirtyLimit()
+     * by the counts before the go point, and the nodes that its take keeps dirty
+     * (Db.handleStillDirtyNodes), which have the rest of the record limit.
+     */
+    static long takeRoom() {
+        return recordLimit - TransSeq.ownBytes(0) - TOP_BYTES;
     }
     
     /**
@@ -125,7 +167,8 @@ public class StoredTrans {
      * top of its transaction's limits (valueLimit(), dirtyLimit()), so that the user's
      * transaction never leaves the step too little (031-06, rule 4): its value nodes, at most
      * one value node of the largest size and STEP_FIXED_ROOM; and a sixteenth of the record
-     * limit for its index nodes and their got-dirty entries.
+     * limit for the got-dirty entries of its index nodes. The index nodes themselves are within
+     * dirtyLimit(), with the action's (stepDirtyRoom(); review F5).
      */
     static long stepRoom() {
         return maxValueNode() + STEP_FIXED_ROOM + recordLimit / 16;

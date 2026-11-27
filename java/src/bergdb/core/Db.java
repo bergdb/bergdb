@@ -3389,13 +3389,15 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a transaction whose index nodes, those it makes dirty or creates, could take
-     * more than StoredTrans.dirtyLimit() bytes, before it changes anything (2026-10-24,
+     * more than StoredTrans.actionDirtyLimit() bytes, before it changes anything (2026-10-24,
      * bergdb 005-31). TransSeq.take takes transactions whole, so it would never take such a
      * transaction, and the startup pos would stay before it for good: the startup section,
      * startup, D and the stream would grow without end. Called under writeLock, before the
-     * go point; not for reclaim's internal transactions: a step makes dirty the index nodes
-     * on the paths of its own puts only (touchPaths), and it puts at most the KVs of its
-     * scan, 16 kB of them or one KV, and its row. Until bergdb 024-07 a step's touch walked
+     * go point. Since bergdb 031-06 (review F5) the limit is StoredTrans.dirtyLimit() less the
+     * step's share, StoredTrans.stepDirtyRoom(), for the maintenance that the record may carry:
+     * recordDirtyFits() counts the record, the action's KVs and the plan's together, within
+     * dirtyLimit(), and Reclaim.plan() makes the step smaller if they are over it. A step makes
+     * dirty the index nodes on the paths of its own puts only (touchPaths). Until bergdb 024-07 a step's touch walked
      * a key range and had no bound: the last step of an iteration over keys in time order
      * made dirty every index node, which at about 100M keys no record could take (024-07,
      * section 3).
@@ -3429,7 +3431,7 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a user transaction with a key transformation whose index nodes could take more
-     * than StoredTrans.dirtyLimit() bytes, counted as checkDirtyNodes() counts a transaction
+     * than StoredTrans.actionDirtyLimit() bytes, counted as checkDirtyNodes() counts a transaction
      * without one, with the keys that its key transformations gave (bergdb 028-50; option A of
      * 028-45, Frans, 2026-11-24): the cheap test, and the walk if the cheap test is over the
      * limit. Called under writeLock right after transformKeys(), before the go point. A
@@ -3481,7 +3483,7 @@ public class Db implements AutoCloseable {
      * figures they compare them with (bergdb 028-45, for DbTesterDirtyCount).
      */
     static final class DirtyNodeCounts {
-        /** StoredTrans.dirtyLimit(), bytes. */
+        /** StoredTrans.actionDirtyLimit(), bytes (StoredTrans.dirtyLimit() until 031-06). */
         long limit;
         
         /** The bytes counted for an index node: the largest node and its got-dirty entry. */
@@ -3530,14 +3532,13 @@ public class Db implements AutoCloseable {
         final TestHooks hooks = testHooks;
         final boolean walk = hooks != null && hooks.walkDirtyNodes();
         final DirtyNodeCounts c = new DirtyNodeCounts();
-        final long limit = StoredTrans.dirtyLimit();
-        final long nodeBytes = 32 + 16L * (maxNodeSize + 1) + 16;
+        final long limit = StoredTrans.actionDirtyLimit();      // bergdb 031-06 (review F5)
+        final long nodeBytes = dirtyNodeBytes();
         // Its two top nodes: 48 + 16 h bytes each (StoredTopNode, bergdb 024-25), h at most 48
         // (TopNode.MAX_HEIGHT), and a got-dirty entry of 16 (until 024-24's merge of
         // 024-25, 40 + 16 x 64 + 16, the size before CRC32C, a bound of it too).
-        final long topBytes = 2 * (48 + 16L * 48 + 16);
-        final long height = 2 + 63 - Long.numberOfLeadingZeros(
-                Math.max(1, nodeStream.getLength() / 48));
+        final long topBytes = StoredTrans.TOP_BYTES;
+        final long height = dirtyHeight();
         c.limit = limit;
         c.nodeBytes = nodeBytes;
         c.topBytes = topBytes;
@@ -3589,6 +3590,98 @@ public class Db implements AutoCloseable {
         return c;
     }
     
+    /** The bytes counted for an index node: a key node of the largest size and its got-dirty entry. */
+    private long dirtyNodeBytes() {
+        return 32 + 16L * (maxNodeSize + 1) + 16;
+    }
+    
+    /**
+     * The cheap test's height (countDirtyNodes()): a tree of n nodes with at least two children
+     * each is at most log2(n) + 1 high, n from the stream's length.
+     */
+    private long dirtyHeight() {
+        return 2 + 63 - Long.numberOfLeadingZeros(Math.max(1, nodeStream.getLength() / 48));
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): whether the record of an action and of the maintenance that it
+     * carries makes dirty or creates index nodes within StoredTrans.dirtyLimit(): the action's
+     * KVs 'action', as they will be put, after the transformations, and the plan's 'plan', in
+     * key order each, counted together as countDirtyNodes() counts a transaction: the cheap
+     * test, and if it is over, the walk of all their keys (Dag.dirtyNodeBound, at the state
+     * before the record). A KV with no value is a delete; the plan's copies, row and table are
+     * puts. Reclaim.plan() calls it under writeLock, before the go point, and plans a smaller
+     * step if the record does not fit. The cheap test is a sum over the KVs, so an action within
+     * actionDirtyLimit() by it and a step within stepDirtyRoom() by it fit without the walk;
+     * the walk counts the record as one transaction, as a node's overflows count the klongs of
+     * all the keys below it together. The count is from the actual keys, of any length the
+     * Core accepts (review F6).
+     *
+     * @throws DbException  If the walk's read fails (readFailed()).
+     */
+    boolean recordDirtyFits(Kv[] action, Kv[] plan) {
+        final long maxNodes = (StoredTrans.dirtyLimit() - StoredTrans.TOP_BYTES)
+                / dirtyNodeBytes();
+        final long height = dirtyHeight();
+        long cheap = 0;
+        for (Kv kv : action) {
+            cheap += (kv.getValue() == null ? 20 : 3) * height * kv.getKey().length + 3;
+        }
+        for (Kv kv : plan) {
+            cheap += 3 * height * kv.getKey().length + 3;
+        }
+        if (cheap <= maxNodes) {
+            return true;
+        }
+        final long[][] keys = new long[action.length + plan.length][];
+        final boolean[] deletes = new boolean[keys.length];
+        for (int i = 0; i < action.length; i++) {
+            keys[i] = action[i].getKey();
+            deletes[i] = action[i].getValue() == null;
+        }
+        for (int i = 0; i < plan.length; i++) {
+            keys[action.length + i] = plan[i].getKey();
+        }
+        final long time = dbClock.lookupTime(Long.MAX_VALUE);
+        final long walked;
+        try {
+            walked = dag.dirtyNodeBound(time, keys, deletes, newGetData());
+        } catch (StreamException e) {
+            throw readFailed(e, time);
+        }
+        return walked <= maxNodes;
+    }
+    
+    /**
+     * bergdb 031-06 (review F5): fails the database before the record is appended if its
+     * got-dirty set, its own index nodes and those that its take keeps dirty
+     * (handleStillDirtyNodes()), each counted at its largest with its entry, is over
+     * StoredTrans.takeRoom(): no later record, not even one with no KVs, could take the set
+     * whole (TransSeq.take), and the startup pos would stay before it for good with nothing
+     * failing (the review's RvLong). The counts before the go point keep a record's own nodes
+     * within StoredTrans.dirtyLimit() (checkDirtyNodes(), recordDirtyFits()), so this checks
+     * those counts and the margin left for the nodes kept dirty. After the go point: a Bug,
+     * which fails the database (010-01, P7); nothing of the record is written.
+     */
+    private void checkTakeable() {
+        final java.util.ArrayList<Node> set = x.transInfo.gotDirtyNodes;
+        final long topBytes = StoredTrans.TOP_BYTES / 2;
+        final long nodeBytes = dirtyNodeBytes();
+        final long room = StoredTrans.takeRoom();
+        if (set.size() * Math.max(topBytes, nodeBytes) <= room) {
+            return;         // most records: a cheap test first
+        }
+        long bytes = 0;
+        for (Node n : set) {
+            bytes += n.getType() == Node.TYPE_TOP_NODE ? topBytes : nodeBytes;
+        }
+        if (bytes > room) {
+            throw new Bug("A record whose index nodes to write later, " + set.size()
+                    + " of them, may take " + bytes + " bytes, more than a later record can "
+                    + "take, " + room + " (bergdb 031-06, review F5).");
+        }
+    }
+    
     private void store() {
         long currentSp = x.startupPos.get();
         long newSp;
@@ -3635,6 +3728,7 @@ public class Db implements AutoCloseable {
         resolvePointersOfTakenNodes();
         x.transNodes.clean();
         handleStillDirtyNodes();
+        checkTakeable();        // bergdb 031-06 (review F5)
         
         TopNode top = newestWrittenTop;
         for (int i = 0; i < x.transNodes.topCount; i++) {

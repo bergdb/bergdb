@@ -552,9 +552,35 @@ public class Reclaim implements Maintenance {
      * key; the record's own time for tEnd and the cut's now; the startup pos and the meta
      * block as the last record left them. A decision that needs the record's own length or
      * take is made in the next record. Reads only: the rows are copies.
+     * 
+     * <p>The record's room (bergdb 031-06, review F5): the index nodes that the record makes
+     * dirty or creates, its action's and its plan's together, stay within
+     * StoredTrans.dirtyLimit(), so that a later record takes them whole (TransSeq.take), as
+     * 005-31 keeps a transaction's. Db.recordDirtyFits() counts them, from the actual keys,
+     * before the go point. A plan whose step does not fit is planned again with the step's
+     * first KV to copy only, the next old KV (015-50's rule); in a commit's record a step that
+     * still does not fit is left out, for a later record, whose action leaves it more room
+     * (every action leaves it StoredTrans.stepDirtyRoom()); a part's step keeps its first KV,
+     * so that maintain() always moves the iteration, and Db.store()'s check of the record's
+     * nodes (StoredTrans.takeRoom()) guards it. Every count is a function of the stream and
+     * the record's KVs, so a restart plans the same.</p>
      */
     public Maintenance.Plan plan(Trans t, Kv[] kvs) {
         assert Thread.holdsLock(this.writeLock);
+        RecordPlan p = plan(t, kvs, Integer.MAX_VALUE);
+        if (p != null && p.next != null && !db.recordDirtyFits(kvs, p.kvs)) {
+            p = plan(t, kvs, 1);
+            if (stats != null) stats.roomFirstCopy++;
+            if (!t.part && p != null && p.next != null && !db.recordDirtyFits(kvs, p.kvs)) {
+                p = plan(t, kvs, 0);
+                if (stats != null) stats.roomNoStep++;
+            }
+        }
+        return p;
+    }
+    
+    /** plan() with a step of at most 'maxCopies' KVs to copy; none with 0. */
+    private RecordPlan plan(Trans t, Kv[] kvs, int maxCopies) {
         final RecordPlan p = new RecordPlan();
         p.part = t.part;
         p.tt = t.tt;
@@ -568,9 +594,9 @@ public class Reclaim implements Maintenance {
         }
         final long lastTime = db.lookupTime(Long.MAX_VALUE);    // the state at L0
         if (t.part) {
-            planPart(p, lastTime, kvs);
+            planPart(p, lastTime, kvs, maxCopies);
         } else {
-            planCommit(p, lastTime, kvs);
+            planCommit(p, lastTime, kvs, maxCopies);
         }
         return finishPlan(p, kvs);
     }
@@ -583,7 +609,7 @@ public class Reclaim implements Maintenance {
      * L0, after the startup pos, so P cannot mark it; a row that P marks has pSafe = L0, so C
      * cannot cut it (bergdb 031-06, study, section 1).
      */
-    private void planCommit(RecordPlan p, long lastTime, Kv[] kvs) {
+    private void planCommit(RecordPlan p, long lastTime, Kv[] kvs, int maxCopies) {
         final IterationInfo current = currentIteration(p.rows);
         if (current == null && retainDuration != Long.MAX_VALUE
                 && p.l0 > lastPStart() + 2L * db.getStartupDistance()
@@ -598,8 +624,8 @@ public class Reclaim implements Maintenance {
         } else if (current != null) {
             final long allowed = fractionOf(p.l0 - current.pStart, internalFraction)
                     - current.rewritten;
-            if (allowed > MIN_STEP_SIZE) {
-                planStep(p, current, Math.min(allowed, MAX_STEP_SIZE), kvs);     // S
+            if (allowed > MIN_STEP_SIZE && maxCopies > 0) {
+                planStep(p, current, Math.min(allowed, MAX_STEP_SIZE), kvs, maxCopies); // S
             }
         }
         planSafe(p);                                                // P
@@ -822,7 +848,7 @@ public class Reclaim implements Maintenance {
      * at the size of a full one, stepNodeBytes(); whether a node was resident does not
      * count). A part with nothing due writes nothing.</p>
      */
-    private void planPart(RecordPlan p, long lastTime, Kv[] kvs) {
+    private void planPart(RecordPlan p, long lastTime, Kv[] kvs, int maxCopies) {
         if (passDue() && db.internal().getStartupPosForEvict() >= appA) {          // M1
             final IterationInfo it = new IterationInfo();
             it.pStart = p.l0;
@@ -832,7 +858,7 @@ public class Reclaim implements Maintenance {
             p.rows.add(it);
             p.tableStored = true;
         } else if (currentIteration(p.rows) != null) {                            // M2
-            planStep(p, currentIteration(p.rows), MAX_STEP_SIZE, kvs);
+            planStep(p, currentIteration(p.rows), MAX_STEP_SIZE, kvs, maxCopies);
         } else if (planSafe(p)) {                                                  // M3
             // The table stored.
         } else if (maintainTakeTarget() != -1) {                                   // M4
@@ -1065,7 +1091,7 @@ public class Reclaim implements Maintenance {
      * leaves the copies out of the action's KVs.</p>
      */
     private void planStep(final RecordPlan p, final IterationInfo it, final long writeSize,
-            final Kv[] actionKvs) {
+            final Kv[] actionKvs, final int maxCopies) {
         final long[][] lastKeyOfStep = new long[][] {it.lastKey};
         final boolean[] eod = new boolean[] {false};
         
@@ -1142,7 +1168,8 @@ public class Reclaim implements Maintenance {
                     split[0] = true;
                     stop = true;
                 } else {
-                    stop = size > writeSize;
+                    // At most maxCopies KVs to rewrite: the record's room (plan(); 031-06).
+                    stop = size > writeSize || rewrite && toRewrite >= maxCopies;
                 }
                 if (rewrite) {
                     return stop ? ADD_AND_STOP : ADD;
@@ -1514,6 +1541,10 @@ public class Reclaim implements Maintenance {
         final List<Cut> cuts = new ArrayList<Cut>();
         boolean countTouch = true;      // Counting the touch costs time in the writer.
         long tableBytes;                // Bytes of the table stored outside steps.
+        // Plans whose step the record's room cut to its first KV to copy, and commits' plans
+        // that it left without their step (plan(); bergdb 031-06, review F5). Counted at the
+        // plan, also of an action that a stop then refuses.
+        long roomFirstCopy, roomNoStep;
 
         /** Records written, by who wrote them (2026-10-13, W4.1; see Record). */
         final Record user = new Record();       // External (user) transactions.
@@ -1582,7 +1613,7 @@ public class Reclaim implements Maintenance {
             long valueLoads;            // Of the loads, values (bergdb 024-34).
             long scanValueLoadsAtCut;   // Values the scans loaded stored at pCut or later.
             long maxStepNodes;          // Most index nodes one step's scan followed.
-            long splitSteps;            // Steps that the reserve stopped (setStepReserve).
+            long splitSteps;            // Steps that the reserve stopped (STEP_RESERVE).
             final TouchCount touch = new TouchCount();
         }
 
@@ -3997,12 +4028,15 @@ public class Reclaim implements Maintenance {
          * them; since record format 8 (PE) and bergdb 028-21's bound, up to 902, 175 kB
          * (bergdb 028-26, a probe of these transactions). At 200 kB the test still has its fault: with the touch of a key range back
          * (Db.touchRange before 024-07) it fails, the startup pos 252,408 bytes behind after
-         * 100 transactions (024-21's review, R5).
+         * 100 transactions (024-21's review, R5). 220 kB since bergdb 031-06, which admits an
+         * action within 7/8 of the limit (StoredTrans.actionDirtyLimit(), 192.5 kB), the rest
+         * for the step that its record may carry; the fault was shown at 200 kB, not again at
+         * 220 kB.
          */
         @Nano
         public static void testLastStepWithinRecordLimit() {
             final long saved = StoredTrans.recordLimit;
-            StoredTrans.recordLimit = 200 * 1000;
+            StoredTrans.recordLimit = 220 * 1000;
             Db db = null;
             try {
                 CoreTestClock clock = new CoreTestClock();
