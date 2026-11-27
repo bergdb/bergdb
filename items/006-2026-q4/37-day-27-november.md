@@ -49,6 +49,23 @@ Frans, 2026-11-27:
     compound unit, marked in the user's record; a start treats an
     incomplete unit as a torn record, so both are kept or both are
     void.
+* A `maintain()` part takes its own time from the clock, as a
+  transaction does (`DbClock.transactionBegin`), and the part is the
+  unit (11:16): an action is a transaction, a setter or a `maintain()`
+  part, each with its time, and a call of `maintain(budget)` does the
+  parts that fit its budget. The clock is not held, and there is no
+  maintenance time.
+  * The reasons: one rule of the clock for every record;
+    `currentTime()` moves during a call; a crash, a stop or a commit
+    between two parts needs no rule of its own.
+  * What it gives up: a call of `maintain(budget)` as one action with
+    one time. What is due in a call can depend on the clock during the
+    call, as it does between two commits.
+  * It holds whichever of A1's options is taken, where the option
+    allows it. It is the option (a) of the question on a part's time in
+    the study of (e), and the review's F4 (031-05, section 12) with the
+    part's own time in place of its call's.
+  * It answers B5, and A4 and B4 in part (section 4).
 
 Gone ahead by default:
 
@@ -169,6 +186,33 @@ The lead's overview (08:30), its conclusions:
   choice.
 * 10:45 Codex reviews the two studies against the code, for a second
   opinion on (c), (d) and (e).
+* 10:55 Codex's second opinion, done (its report is outside the
+  repository; it ran every probe of both studies again, with the same
+  results): it would build (c); (e) is a credible later simplification;
+  (d) is its last choice.
+  * Against (e): a step that is skipped when it does not fit has no
+    guarantee of progress (inferred): it needs a reserved share of the
+    record, or another rule.
+  * Against (e): the study's test of reclaim's own record is passed by
+    an empty user commit, which holds no KV (ran): it needs a key of
+    reclaim's as a witness.
+  * Against (e): the claim about P1 is not measured, and the contract's
+    `StepTx` must be generalized to records that mix the user's writes
+    and reclaim's copies.
+  * Against (d): a listener that syncs from the writer's thread inside
+    a unit waits for a close that the same thread has yet to write
+    (inferred); the encryption's cursor is wrong after a cut of the
+    tail (ran).
+  * For all three: (c) and (e) keep today's aborted torn record, so the
+    goal holds at record boundaries; only (d)'s cut of the tail gives
+    more.
+* 11:00 The lead's recommendation after it: a prototype of (e) with the
+  two holes closed by a rule each and Codex's three tests, and (c) the
+  fallback: about 4 lines on the prototype, checked by Codex in a
+  throwaway variant at 384 of 384 crash points and 384 of 384 stop
+  points. Frans has not chosen.
+* 11:03 to 11:16 Frans's questions on `maintain()` under (e), answered
+  in the session, and his decision on a part's time (section 2).
 
 
 ## 4. Waiting for Frans
@@ -213,6 +257,10 @@ details are in the items, cited by ID and section.
     recommends (b)), stays the fallback: every call and every start
     then leaves nothing due, and a start after a crash appends up to
     one commit's maintenance.
+  * Codex (10:55; section 3): build **(c)**, with (e) a credible later
+    simplification and (d) last. The lead after it (11:00): a prototype
+    of (e) with its two holes closed, (c) the fallback. The two differ;
+    Frans has not chosen.
 * **A2. In 2026.7** (class 3: the scope and the Pub API). The design
   lands in Java with its tests in 2026.7: `maintain(int budget)`
   replaces `maintain()` in `Db` and `Database` (031-04, C1), and it
@@ -241,6 +289,16 @@ details are in the items, cited by ID and section.
     input; the unit of `maintain()` is a part; the settings are inputs.
     The text goes into 010 after the design is made to work (Frans,
     08:41), by Frans.
+  * Answered by Frans's decision of 11:16 (section 2), as far as the
+    part goes: the unit of `maintain()` in the wording is the part, an
+    action with its own time. It replaces the draft's call that counts
+    with the work it wrote and takes one time (031-05, sections 4.1 and
+    4.3); (c) is out. Still open: the text itself; whether the setters
+    stay calls of their own, (a), or become `execute()` calls, (b) (the
+    decision names a setter as an action either way); the review's F2,
+    F3 and F11 (record boundaries and the torn record; what a call
+    leaves, which is A1's; the settings as inputs); and what stays
+    outside (B2, B3).
 * **A5. The Lean statement** (031-05, Q9): with the landing, or after.
   Default: **after, and not a condition of 2026.7** (the study, the
   reviewer, the lead): P2 with crashes is tested in 2026.7, as five of
@@ -266,8 +324,20 @@ Of 031-05 (section 10; the review, section 12):
   and time inputs; (b) no random id. Default: **(a)** (both).
 * **B4. The clock held while maintenance is due** (Q6): (a) held, (b)
   not. Default: **(a)** (both); with A1 (c) only inside calls.
+  * Answered by Frans's decision of 11:16 (section 2) for `maintain()`:
+    a part takes its own time from the clock, so nothing is held for a
+    call. Still open under A1 (c) and (d): the records that a commit's
+    maintenance writes after the user's record take their times from
+    the stream in the prototype, so that a later writer gives them the
+    same bytes, and the clock is held while they are written (031-05,
+    section 6.3). Under (e) nothing is left of Q6: a commit's
+    maintenance has no record of its own.
 * **B5. One record a part in `maintain()`** (Q7). Default: **yes**
   (both), and the part as the unit of the wording (F4).
+  * Answered by Frans's decision of 11:16 (section 2): the part is the
+    unit, an action with one time, so a part writes one record. Still
+    open: nothing of Q7; which of M1 to M6 a part's record holds is the
+    landing's design (031-05, section 6.4).
 * **B6. A refused call that writes the maintenance due** (Q8). With A1
   (c) the case is gone: a refused call writes nothing. Under (b):
   accept (the study).
