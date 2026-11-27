@@ -275,7 +275,10 @@ public class StoredTrans {
     
     /**
      * bergdb 031-06: the room of the step that a record carries besides its transaction's,
-     * for the row, the table and the scan's KVs but the last (Reclaim.MAX_STEP_SIZE).
+     * for the scan's KVs but the last, at most half of it (a part's Reclaim.MAX_STEP_SIZE, 16
+     * kB; a commit's at most Reclaim.MAX_COMMIT_STEP_SIZE, 128 KiB, since 031-06's landing,
+     * step 3), and the row and the table, the other half (assumed: 031-06, section 3). The
+     * step's index nodes are not in it: Db.recordDirtyFits and checkTakeable bound them.
      */
     static final long STEP_FIXED_ROOM = 256 * 1024L;
     

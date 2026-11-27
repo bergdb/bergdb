@@ -145,6 +145,13 @@ public class Trans {
     boolean part;
     
     /**
+     * bergdb 031-06 (review 3, W1): the commit is counted in Db.commitsQueued, from after its
+     * step's warm-up until its record's maintenance is applied, or until execute() leaves
+     * the lock without one.
+     */
+    boolean queued;
+    
+    /**
      * bergdb 031-06: a user transaction whose record carries no maintenance, a setter's
      * (Db.setStartupDistance); what the setting makes due is decided by the next record.
      */

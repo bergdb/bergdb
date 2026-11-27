@@ -222,13 +222,15 @@ public class Reclaim implements Maintenance {
     /**
      * The most bytes that a commit's step scans (commitStepSize; bergdb 031-06, landing step
      * 3): half of the step's room for its KVs but the last, its row and its table
-     * (StoredTrans.STEP_FIXED_ROOM, 256 KiB, in StoredTrans.stepRoom()), so that a record
-     * that carries a step stays within StoredTrans.recordCap() as section 3 of 031-06 derives
-     * it: the scan's KVs but the last within 128 KiB, the last within one value node of the
-     * largest size, the row and the table within the other 128 KiB (assumed, as before: a
-     * table of a few rows is some kB). So commits of more than about 400 kB (at the default
-     * fraction) carry less than their allowance, and reclaim falls behind them again, by
-     * eight times less than with MAX_STEP_SIZE.
+     * (StoredTrans.STEP_FIXED_ROOM, 256 KiB, in StoredTrans.stepRoom()), so that the step's
+     * own bytes stay within stepRoom(): the scan's KVs but the last within 128 KiB, the last
+     * within one value node of the largest size, the row and the table within the other 128
+     * KiB (assumed, as before: a table of a few rows is some kB). The step's index nodes are
+     * not bounded by this size but by Db.recordDirtyFits (a smaller step if the record does
+     * not fit) and Db.checkTakeable; section 3 of 031-06's arithmetic holds for a step of 16
+     * kB, not for one of 128 KiB (031-06, section 3; review 3, D1). So commits of more than
+     * about 400 kB (at the default fraction) carry less than their allowance, and reclaim
+     * falls behind them again, by eight times less than with MAX_STEP_SIZE.
      */
     static final long MAX_COMMIT_STEP_SIZE = StoredTrans.STEP_FIXED_ROOM / 2;
 
@@ -1359,7 +1361,8 @@ public class Reclaim implements Maintenance {
     /**
      * What a warm-up before the write lock reads of reclaim's memory (bergdb 031-06, landing
      * step 3): the running iteration's row after the last record, a copy that no one
-     * changes, the stream's length after that record, and a then. Published by apply() and
+     * changes (made at an earlier record if the fields that the warm-up reads are the same
+     * since), the stream's length after that record, and a then. Published by apply() and
      * initFromDb() under the write lock; read without it.
      */
     private static final class Warm {
@@ -1375,9 +1378,28 @@ public class Reclaim implements Maintenance {
 
     private volatile Warm warm;
 
+    /**
+     * The most records of other commits that a commit's warm-up counts before its own
+     * (warmup(); bergdb 031-06, review 3, W1), so that it reads at most a few steps' ranges.
+     */
+    private static final int WARM_AHEAD_MAX = 4;
+
+    /**
+     * Publishes the state after a record for the warm-up (apply(), initFromDb()). The row is
+     * copied only when it differs from the published copy in what the warm-up reads
+     * (IterationInfo.sameScan): after a record without a step the published copy serves
+     * (031-06, review 3, W2), and maintain() tells by its identity that the range of its
+     * next part has not moved (warmup()'s 'done').
+     */
     private void publishWarm(long length) {
         final IterationInfo it = currentIteration();
-        warm = it == null ? null : new Warm(it.copy(), length, appA);
+        if (it == null) {
+            warm = null;
+            return;
+        }
+        final Warm w = warm;
+        final IterationInfo row = w != null && w.row.sameScan(it) ? w.row : it.copy();
+        warm = new Warm(row, length, appA);
     }
 
     /**
@@ -1397,34 +1419,60 @@ public class Reclaim implements Maintenance {
      * transaction's own warm-up (Db.warmup). What it costs: a second scan of the step's
      * range, by the committing thread outside the lock, and the step's nodes in memory
      * until the eviction takes them (until 2026-10-17 every step left them there, bergdb item
-     * 001, WP R8, M28).
+     * 001, WP R8, M28). For a part, 'done' is the row that the last call returned: while the
+     * published row is that copy (publishWarm), no record has moved the part's range, and the
+     * call reads nothing (031-06, review 3, W2).
      */
-    public void warmup(Trans t) {
+    public Object warmup(Trans t, Object done) {
         final Warm w = warm;
         if (w == null) {
-            return;
+            return null;
+        }
+        if (t == null && done == w.row) {
+            return done;
         }
         final Db.TestHooks hooks = Db.testHooks;
         if (hooks != null && !hooks.stepWarmup()) {
-            return;
+            return null;
         }
         final IterationInfo it = w.row;
         final long writeSize;
+        int steps = 1;
         if (t == null) {
             writeSize = MAX_STEP_SIZE;
         } else {
-            final long allowed = fractionOf(w.length - it.pStart, internalFraction)
-                    - it.rewritten;
-            if (allowed <= MIN_STEP_SIZE) {
-                return;
+            // The commits ahead of this one at the lock (Db.commitsAhead; 031-06, review 3,
+            // W1) append their records before its own, in an order that the lock decides:
+            // each adds about the allowance that the application's last record added, and
+            // one whose allowance is then above MIN_STEP_SIZE takes a step from where the
+            // row is. The warm-up reads the steps of the next record to its own, as far as
+            // they may go; with none ahead, the next record's step, at the published state.
+            final long cap = commitStepSize(w.length, w.a, internalFraction);
+            final long growth = w.a < 0 ? 0
+                    : fractionOf(Math.max(0, w.length - w.a), internalFraction);
+            final int ahead = Math.min(WARM_AHEAD_MAX, db.commitsAhead());
+            long allowed = fractionOf(w.length - it.pStart, internalFraction) - it.rewritten;
+            long size = 0;
+            steps = 0;
+            for (int i = 0; i <= ahead; i++) {
+                if (allowed > MIN_STEP_SIZE) {
+                    final long step = Math.min(allowed, cap);
+                    size += step;
+                    allowed -= step;
+                    steps++;
+                }
+                allowed += growth;
             }
-            writeSize = Math.min(allowed, commitStepSize(w.length, w.a, internalFraction));
+            if (size == 0) {
+                return it;
+            }
+            writeSize = size;
         }
         if (it.endKey.length == 0
                 || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0)) {
-            return;
+            return it;
         }
-        final long maxNodes = Math.max(1, stepReserve / stepNodeBytes());
+        final long maxNodes = Math.max(1, stepReserve / stepNodeBytes()) * steps;
         final GetMany g = db.newGetMany();
         final bergdb.dag.PointerFollower follower = g.gd.pointerFollower;
         final Set<Node> nodes = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
@@ -1463,8 +1511,11 @@ public class Reclaim implements Maintenance {
         try {
             db.getMany(g);
         } catch (bergdb.pub.util.LookupTimeNotAvailableException e) {
-            // A cut overtook the read (Db.warmup): the plan reads again under the lock.
+            // A cut overtook the read (Db.warmup): the plan reads again under the lock, and
+            // a part's next round warms again.
+            return null;
         }
+        return it;
     }
 
     /** Whether the action's KVs 'kvs', in key order, have one at 'key'. */
@@ -1986,6 +2037,16 @@ public class Reclaim implements Maintenance {
          */
         long pCut;
         
+        /**
+         * Whether 'o' holds what the warm-up reads of a row (Reclaim.warmup) as this row does:
+         * the iteration's positions, its charge so far and its keys (Reclaim.publishWarm).
+         */
+        boolean sameScan(IterationInfo o) {
+            return pStart == o.pStart && pCut == o.pCut && rewritten == o.rewritten
+                    && done == o.done && Arrays.equals(lastKey, o.lastKey)
+                    && Arrays.equals(endKey, o.endKey);
+        }
+
         IterationInfo copy() {
             IterationInfo c = new IterationInfo();
             c.set(this);

@@ -122,13 +122,17 @@ checked; the evidence is in section 4.
      min(`MAX_RECORD_SIZE`, `recordLimit` + `stepRoom()`), with
      `stepRoom()` = one value node of the largest size a transaction can
      store (`maxValueNode()`: L4 at an L3 key, at most `valueLimit()`) +
-     256 kB (`STEP_FIXED_ROOM`: the scan's other KVs, 16 kB, the row and
-     the table) + `recordLimit` / 16 (the step's index nodes). The take
-     and the serializer use the cap (`Trans.recordCap`). The step's
-     scan keeps 015-50's rule (its first KV always, later ones within
-     `valueLimit()`) and its 16 kB (`MAX_STEP_SIZE`, 011-04). So no step
-     waits for the room a transaction leaves, and an old value of the
-     largest size is copied.
+     256 KiB (`STEP_FIXED_ROOM`: the scan's other KVs, at most 128 KiB,
+     and the row and the table, the other 128 KiB) + `recordLimit` / 16
+     (the step's index nodes). The take and the serializer use the cap
+     (`Trans.recordCap`). The step's scan keeps 015-50's rule (its first
+     KV always, later ones within `valueLimit()`), and its size: 16 kB
+     for a part (`MAX_STEP_SIZE`, 011-04), for a commit up to 128 KiB by
+     its allowance since landing step 3 (`MAX_COMMIT_STEP_SIZE`,
+     `Reclaim.commitStepSize`). So no step waits for the room a
+     transaction leaves, and an old value of the largest size is copied.
+     The step's index nodes are within the record's room by the checks
+     of step 2, `Db.recordDirtyFits` and `checkTakeable` (section 3).
    * Checked: `SafetyProbe` at record limits of 100 kB to 1 MB, with
      transactions whose values take 0.5 to 0.8 of the value limit in 6 %
      of the actions (4.3); `LimitsTester` and `DbTester`'s lowered-limit
@@ -262,9 +266,10 @@ code and the decision:
 
 ## 3. The record limit and 024-17's bound for a mixed record
 
-* **Derived, at the release's limits** (024-17, sections 5.2a, 5.3 and
-  5.5, the same arithmetic). A transaction within L1 to L5 has own bytes
-  of at most 33.6 MB and a dirty set, by the count with q, of at most
+* **Derived, at the release's limits, for a step of 16 kB** (a part's,
+  `MAX_STEP_SIZE`; until landing step 3 every step's; 024-17, sections
+  5.2a, 5.3 and 5.5, the same arithmetic). A transaction within L1 to L5
+  has own bytes of at most 33.6 MB and a dirty set, by the count with q, of at most
   1.47 GB at node size 8 (0.90, 0.91 and 1.33 GB at 14, 30 and 62). The
   step's KVs are a transaction of at most about 459 operations (024-17,
   5.5); its segments are at most 16,000 / 8 by the scan's count, and
@@ -276,12 +281,40 @@ code and the decision:
   so the record's transaction, the action's and the step's together, has
   a dirty set of at most 1.82 GB at node size 8. The step's own bytes are
   at most one value node of 8 MiB at an L3 key, 16 kB, and the row and
-  the table. A record that carries a step then holds at most its own
+  the table. A record that carries such a step then holds at most its own
   bytes, about 42.3 MB, and one such dirty set taken whole: 1.87 GB,
   86.9 % of 2^31 - 9 at node size 8 (1.16, 1.16 and 1.69 GB at 14, 30
   and 62). So at the release's limits `recordCap()` is
   `MAX_RECORD_SIZE`, as the record limit was, and the step's room is
   there without lowering the user's limits.
+* **A commit's step, up to 128 KiB since landing step 3: by the checks,
+  not by this arithmetic** (2026-11-27; review 3, D1). The same count
+  gives a step of 128 KiB 131,072 / 8 + 60 = 16,444 segments and a dirty
+  set of 14.5 M nodes, 2.79 GB at node size 8 (1.71, 1.66 and 2.52 GB at
+  14, 30 and 62): over the limit by itself at node sizes 8 and 62, so
+  the derivation above does not bound a record that carries a commit's
+  step. Its own bytes are still bounded: one value node of 8 MiB, 128 KiB
+  of the scan's other KVs and 128 KiB for the row and the table (assumed,
+  below), about 42.4 MB. What bounds its index nodes is step 2's check:
+  `Db.recordDirtyFits`, under the write lock before the go point, counts
+  the action's KVs and the step's together within `dirtyLimit()` (15/16
+  of the record limit) by the cheap count (3 nodes a level and segment, a
+  height from the stream's length) or, if that is over, by the walk of
+  their keys, and the plan makes a smaller step if they do not fit; then
+  `checkTakeable`, before the append, the got-dirty set within
+  `takeRoom()`, a Bug that fails the database with nothing written if not.
+  The worst step by the cheap count: 16,444 segments are 1.78 M nodes at
+  a stream of 1 TB (height 36), within the 10.5 M nodes of `dirtyLimit()`
+  at node size 8 (7.0, 3.7 and 1.9 M at 14, 30 and 62), so a step alone
+  fits by the cheap count at a stream of up to 1 TB; where the cheap
+  count is over (beside an action near its 7/8, or a longer stream at
+  node size 62), the walk decides, and the step is the smaller one if the
+  record does not fit. No failure follows: the record's own index nodes
+  stay within `dirtyLimit()` and its got-dirty set within `takeRoom()`
+  by the checks, as for any record (step 2). Bounding the
+  step's segments so that the arithmetic above held again (about 2,000
+  segments a step) would cap a commit's step of small keys near 16 kB
+  and undo 028-71's pace for small values, so the check is the bound.
 * **Assumed there**, as 024-17 assumes: the count with q holds (a
   statement checked by runs, not proved: TP26 restated); H rests on V1
   (TP30, not proved). And, here: the step's last KV has at most 60
@@ -290,20 +323,20 @@ code and the decision:
   gives 87.0 % in place of 86.9 % at node size 8, and BergDB's own keys
   under "/#" are bounded only by L3 while the Core accepts them (O1);
   by the Lean's count of nodes a level since 028-21 the figures are
-  higher (028-72); the row and the table together are
-  at most 240 kB, which the code does not bound: the table's rows are
-  removed at cuts, and the serializer's check fails the database if a
+  higher (028-72); the row and the table together are at most 128 KiB
+  (`STEP_FIXED_ROOM` / 2; 240 kB until landing step 3), which the code
+  does not bound: the table's rows are removed at cuts, and the serializer's check fails the database if a
   record passes its cap (P7).
 * **At lowered record limits** (tests), the cap is the record limit
-  plus the step's room. Derived: the step's value nodes are at most 16 kB
-  and one value node, which a transaction stored within `valueLimit()`
-  and L4, so within `maxValueNode()`. Assumed: the step's index nodes
+  plus the step's room. Derived: the step's value nodes are at most
+  128 KiB (a part's 16 kB) and one value node, which a transaction
+  stored within `valueLimit()` and L4, so within `maxValueNode()`. Assumed: the step's index nodes
   and their got-dirty entries within `recordLimit` / 16; a record over
   its cap fails the database. The runs of section 4.3 met no such
   failure.
 * **Progress** (Codex's E5): the step's allowance is the commit's
-  (`fractionOf(L0 - pStart) - rewritten`, at most 16 kB), and its room
-  does not depend on the transaction it rides with, so a run of maximal
+  (`fractionOf(L0 - pStart) - rewritten`, at most `commitStepSize`, 16 kB
+  to 128 KiB), and its room does not depend on the transaction it rides with, so a run of maximal
   transactions cannot keep reclaim from moving; a value of the largest
   size is the first KV of a step. Checked: section 4.3, with transactions
   of 0.5 to 0.8 of the value limit in 6 % of the actions at record limits

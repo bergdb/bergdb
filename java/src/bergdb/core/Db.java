@@ -430,6 +430,24 @@ public class Db implements AutoCloseable {
             new java.util.concurrent.atomic.AtomicInteger();
     
     /**
+     * The commits past their warm-up of the step (warmupStep) whose records are not yet
+     * applied (Maintenance.apply): those blocked on the write lock and the one that holds
+     * it, until its record's maintenance is in memory (bergdb 031-06, review 3, W1;
+     * Trans.queued). A commit's step warm-up reads it (commitsAhead()), after the state that
+     * the last record published, to tell how many records are likely to come before its
+     * own. A guide only:
+     * the monitor is not fair, and setters and parts are not counted; it changes what the
+     * warm-up reads, never a record.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger commitsQueued =
+            new java.util.concurrent.atomic.AtomicInteger();
+    
+    /** commitsQueued, for Reclaim.warmup. */
+    int commitsAhead() {
+        return commitsQueued.get();
+    }
+    
+    /**
      * Sync object used to make sure writes from Db(), start(), execute(), are published
      * and made visible to threads calling getOne(), getMany().
      * It is typically used with an empty block: "synchronized (readSynch) {}".
@@ -907,11 +925,14 @@ public class Db implements AutoCloseable {
         long spent = 0;
         boolean reclaimDone = false;
         int parts = 0;
+        // The state that the last warm-up read from (Maintenance.warmup): a round that comes
+        // back after giving way warms again only if a record moved it (031-06, review 3, W2).
+        Object warmed = null;
         while (spent < limit) {
             long cost = 0, durableAt = -1;
             if (giveWay) giveWayToWriters();
             if (!reclaimDone) {
-                warmupStep(null);
+                warmed = warmupStep(null, warmed);
             }
             synchronized (writeLock) {
                 assertDbStateIsActive("maintain");
@@ -2982,14 +3003,28 @@ public class Db implements AutoCloseable {
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
         if (!t.isInternal() && !t.noMaintenance) {
-            warmupStep(t);
+            warmupStep(t, null);
+            t.queued = true;
+            commitsQueued.incrementAndGet();
         }
-        final Before before = new Before(t.tt);     // a refusal gives it back (giveBack)
-        
-        writersWaiting.incrementAndGet();
-        synchronized (writeLock) {
-            writersWaiting.decrementAndGet();
-            executeLocked(t, before);
+        try {
+            final Before before = new Before(t.tt);     // a refusal gives it back (giveBack)
+            
+            writersWaiting.incrementAndGet();
+            synchronized (writeLock) {
+                writersWaiting.decrementAndGet();
+                executeLocked(t, before);
+            }
+        } finally {
+            unqueue(t);
+        }
+    }
+    
+    /** Takes 't' out of commitsQueued if it is in it (Trans.queued). */
+    private void unqueue(Trans t) {
+        if (t.queued) {
+            t.queued = false;
+            commitsQueued.decrementAndGet();
         }
     }
     
@@ -3115,6 +3150,9 @@ public class Db implements AutoCloseable {
             if (hooks != null) {
                 hooks.beforeApply(x);
             }
+            // Before apply() publishes the state after the record (Reclaim.publishWarm): a
+            // warm-up that reads that state then does not count this commit ahead of its own.
+            unqueue(t);
             maintenance.apply(plan, t);
 
             x.trans.listener.transExecuted(x);
@@ -3861,16 +3899,18 @@ public class Db implements AutoCloseable {
      * landing step 3; the review's F4): only what is in memory changes, so that the plan's
      * scan under the lock meets its nodes there. On a database that is not active it reads
      * nothing, and a stop or a failure that comes during it ends it: the lock's check then
-     * refuses the action as before (executeLocked()).
+     * refuses the action as before (executeLocked()). 'done' and the result as
+     * Maintenance.warmup's: maintain() passes what the last call returned.
      */
-    private void warmupStep(Trans t) {
+    private Object warmupStep(Trans t, Object done) {
         if (state != DbState.ACTIVE) {
-            return;
+            return done;
         }
         try {
-            maintenance.warmup(t);
+            return maintenance.warmup(t, done);
         } catch (IllegalDbStateException e) {    // also a DbStoppingException, DbFailedException
             // Refused or failed under the lock (assertDbStateIsActive("execute")).
+            return null;
         }
     }
     

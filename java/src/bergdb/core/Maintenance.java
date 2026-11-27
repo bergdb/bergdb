@@ -47,8 +47,17 @@ interface Maintenance {
      * memory when the plan reads it under the lock. It changes only what is in memory, never
      * what plan() decides or what a record holds; it may read nothing, or what no plan then
      * reads. Does nothing by default.
+     *
+     * <p>'done' is null, or for a part what an earlier call returned: the state it read
+     * from. If that state is still the one the next part would read from (no record since
+     * moved it), the call reads nothing; so maintain()'s rounds that give way to commits warm
+     * a part once, not once a round (031-06, review 3, W2).</p>
+     *
+     * @return  The state that the warm-up read from, or would have, to pass as 'done' to the
+     *      next call for a part; null if none.
      */
-    default void warmup(Trans t) {
+    default Object warmup(Trans t, Object done) {
+        return null;
     }
 
     /**
