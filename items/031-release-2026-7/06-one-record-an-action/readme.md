@@ -716,6 +716,34 @@ Q1 is answered by this. Q4 to Q6 are steps of the landing (section 9).
   format version, refused with a clear message; no upgrade path.
 * **028-67** (15:50 to 16:02): its C1 and C3 are built in this landing,
   with the format's other changes (section 9, step 4).
+* **028-68** (16:09): B, the step reserve a constant
+  (`Reclaim.DEFAULT_STEP_RESERVE`), with a hook for tests only; built in
+  step 2.
+* **028-66** (16:15): its option C is designed, with the files before a
+  hole removed by the Core's own cut; an agent works on the design. A,
+  as it is, until C is in.
+* **P2's wording** (16:26 to 16:41): the unit is the transaction; the
+  creation is the primordial transaction; the README's sentence without
+  "a crash". The words are in `p2-draft.md` (W2, W4 and W5).
+* **A transaction without maintenance** (16:31): a transaction that asks
+  for no maintenance exists already as a mode in the Core, a setter's; a
+  flag for it on user transactions is a possible later feature, not
+  now.
+* **028-34** (16:45): `transactionInfo()` as it is in 2026.7; the copy
+  mark keeps it right on records with copies (rule 7).
+* **026-04** (16:47): 1/4 kept for now; the three values and the default
+  are chosen after step 3, on the new pace, with the measurements made
+  again.
+* **026-14** (17:10): no addition to the model's scope in 2026.7; the
+  first, reclaim as a whole, belongs with the proof of P2's extension,
+  after 2026.7.
+* **RB-013** (17:12): 028-54's case, a stop between a transaction's
+  record and reclaim's records after it, is a released bug of 2026.5
+  and 2026.6, S4 (033), fixed by this item's landing.
+
+Open for Frans: O1, BergDB's own long keys under "/#" (`landing.md`,
+step 2, Options for Frans): (a) keep what the Core accepts, as built, or
+(b) a cap of about 1 KiB as a new limit in 024-17. Recommended: (a).
 
 
 ## 9. The landing
@@ -757,6 +785,31 @@ The two points that waited for Frans's word before the merge, A2 and A3
 (the public API and the stream format), were decided on 2026-11-27 at
 14:36 (section 8).
 
+**Steps 0 to 2 are done** and merged into `main` on 2026-11-27, 17:01
+(`5b88cc80`); `landing.md` has the notes, the commits and the gates:
+
+* step 0: `BEFORE COMMIT OK`;
+* step 1: `LEVEL 2 OK`, `LEVEL 3 OK`, the contract's `GATE OK` (254
+  theorems), `BEFORE COMMIT OK`, `LEVEL 4 OK` (quick);
+* step 2: `BEFORE COMMIT OK (81 s)`, `LEVEL 2 OK`, `LEVEL 3 OK`,
+  `LEVEL 4 OK` (quick), `APPS OK` (quick); the item's sweep (27,720
+  interruptions, 0 different), faults and conc as on the prototype, but
+  for the digests of format 9; nothing in `lean/` changed, so step 1's
+  `GATE OK` stands.
+
+Step 2's rule: an action alone is admitted within 7/8 of the record
+limit; the record, its action and its maintenance together, within 15/16
+by the plan's count before the go point; and before the append, a check
+that a later record with no KVs can take the record's index nodes. One
+consequence: 005-31 admits an action's index nodes up to 7/8 of the
+record limit, 15/16 before; at the release's limits that is 1.879 GB,
+and a transaction within L1 to L5 makes at most 1.47 GB dirty by
+024-17's count, so none is refused by it (`landing.md`, step 2).
+
+**Next:** an independent review of the landed diff, before step 3 builds
+on it: the code on `main` since the prototype's review is gated, not
+reviewed. Then steps 3 to 6 on `main`.
+
 
 ## Log
 
@@ -783,3 +836,10 @@ the landing's plan is section 9, and its steps 0 and 1 began.
 2026-11-27. A2 and A3 decided by Frans (14:36; section 8). A timing check
 of the prototype against 2026.6 (section 4.10): TIMING OK, a sanity check.
 028-67's C1 and C3 join the landing's step 4 (Frans, 16:02).
+
+2026-11-27. Steps 0 to 2 of the landing done and merged into `main`
+(17:01, `5b88cc80`), gated as section 9 says: the port, the conformance,
+the record's room by a check, record format 9 and the step reserve a
+constant (028-68, B). Frans's decisions of 16:09 to 17:12 in section 8;
+O1 open. Next: an independent review of the landed diff, then steps 3
+to 6.

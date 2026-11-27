@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 3 | 2 | 7 | 12 |
+| 2026.5 | 0 | 3 | 2 | 8 | 13 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-012, first found in
+release that has it (2026.6 has RB-005 to RB-013, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 3 | 2 | 7 | 12 | RB-001 to RB-012 |
-| 2026.6 | 0 | 1 | 2 | 5 | 8 | RB-005 to RB-012 |
+| 2026.5 | 0 | 3 | 2 | 8 | 13 | RB-001 to RB-013 |
+| 2026.6 | 0 | 1 | 2 | 6 | 9 | RB-005 to RB-013 |
 
 
 Released bugs
@@ -390,6 +390,39 @@ RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
   zero are 028-67.
 
 
+RB-013. A stop between a transaction's record and reclaim's records after it changes the stream's bytes
+-------------------------------------------------------------------------------------------------------
+
+* **What a user sees:** after a `stop()` from another thread that lands
+  between a transaction's record and the records of reclaim that follow
+  it in the same commit, and a restart, reclaim's interrupted work (a
+  begin, a step) goes on at the next commit at other positions, so the
+  stream's bytes differ, from that record on, from those of a run
+  without the stop, for the same accepted transactions. That is against
+  010-01's P2 (the bytes a function of the accepted transactions, not of
+  timing, threads or restarts) and the README's "The same transactions
+  in the same order give the same bytes". No value lost or changed, and
+  the database goes on. A crash at that point is not counted: a crash
+  may leave a partial append, and the bytes after a crash are not
+  promised (Frans, 2026-11-27, 16:41; 031-06's `p2-draft.md`).
+* **Severity:** S4 (Frans, 2026-11-27).
+* **Releases:** 2026.5 and 2026.6 (and before: 015-53, in 2026.3, made
+  such a stopped call return instead of throwing `DbStoppingException`,
+  and left the bytes as they were); fixed on `main` for 2026.7.
+* **Found:** 2026-11-25, by 031-01's revision after Codex's review
+  (028-54; `MidCallProbe`, a crash between a transaction's record and
+  the begin of its iteration); the stop by the code (`Db.executeInner`)
+  and by 031-05's probe on 031-04's prototype, whose commits maintain
+  as `main` (031-05, section 7.1: crash and stop alike). Never seen by a
+  user; not known at the releases. Registered 2026-11-27 (Frans, 17:12).
+* **Fix:** 031-06, one record an action, merged into `main` on
+  2026-11-27 (`5b88cc80`): a commit's record holds the maintenance that
+  reclaim owes, so no record lies between a transaction's record and its
+  maintenance, and a stop cannot land there (031-06, section 4.1 and
+  `landing.md`, step 2: 27,720 interruptions at record boundaries, 0
+  different). Fixed on `main` for 2026.7.
+
+
 Log
 ===
 
@@ -503,3 +536,11 @@ decided on 2026-11-26, after the removal of the internal encryption,
 028-69): `FileStream`'s open leaves a tail of zeros of at most 8 MB at
 the end of its last file out of the stream, and its first append cuts
 them, so a kill's zeroed tail past a record's end starts too.
+
+2026-11-27. RB-013 registered (028-54), S4 (Frans, 17:12): a stop
+between a transaction's record and reclaim's records after it changes
+the stream's bytes after a restart, in 2026.5 and 2026.6; the crash case
+is not counted, as the bytes after a crash are not promised (Frans,
+16:41). Fixed on `main` for 2026.7 by 031-06, one record an action
+(`5b88cc80`). Named in the section "After the release" of 2026.6's and
+2026.5's notes and in `releases/next.md`; counts updated.

@@ -658,3 +658,7 @@ Added after 2026-11-24; the notes above are as published on that day.
   over a meta block stops the start ("Invalid magic bytes"); fixed in
   part on main for 2026.7 (bergdb 028-60;
   [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-27. **RB-013, S4**, found after the release, in 2026.6 and
+  2026.5: a stop between a transaction's record and reclaim's records
+  after it changes the stream's bytes after a restart; fixed on main for
+  2026.7 (bergdb 031-06; [bergdb 033](../../items/033-bugs/readme.md)).

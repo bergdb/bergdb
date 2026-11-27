@@ -1,7 +1,7 @@
 028-68. Decide: the reclaim step reserve, a setting outside the stream that changes its bytes
 ============================================================================================
 
-Status: decided, built in 031-06's landing; closed when it lands on `main`.
+Status: done 2026-11-27.
 Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
@@ -113,3 +113,9 @@ proposal is B, a constant. Decided in the landing's step 2.
 
 2026-11-27. Decided by Frans (16:09): B, a constant. Built in 031-06's
 landing, step 2, on the branch `031-06-landing` (Decision above).
+
+2026-11-27. Done: built in 031-06's landing, step 2 (`615fad10`:
+`Reclaim.DEFAULT_STEP_RESERVE` for every database, `DbBuilder`'s
+`reclaimStepReserve` and the system property `stepreserve` removed,
+`DbBuilder.testStepReserve` a hook for tests only), and on `main` with
+the merge of 031-06 (`5b88cc80`). Moved to Closed.

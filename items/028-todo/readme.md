@@ -99,13 +99,11 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
+| [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.7 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
-| [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | open |
-| [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve: B, a constant; built in 031-06's landing | decided | open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
 
@@ -115,6 +113,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-68](68-step-reserve-outside-stream.md) | Decide | Step reserve a constant (B), built in 031-06 | B (16:09) | done | 2026-11-27 |
+| [028-54](54-p2-inside-maintenance.md) | Investigate | Stop inside maintenance: RB-013, fixed by 031-06 | answered | done | 2026-11-27 |
 | [028-69](69-remove-crypto-code.md) | Implement | The internal crypto code removed (`1809e04c`); recorded in 017-10 | none | done | 2026-11-27 |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a kill's zeroed tail; FileStream removes up to 8 MB | FileStream only | done | 2026-11-27 |
 | [028-62](62-emptied-file-db-last-file/readme.md) | Decide | RB-011: new files a tenth of the stream; the Javadoc of the stream | neither J nor S | done | 2026-11-26 |
@@ -625,3 +625,15 @@ Open until built.
 2026-11-27. 028-68 decided by Frans (16:09): B, the reclaim step reserve
 a constant, with a hook for tests only. Built in 031-06's landing, step
 2 (branch `031-06-landing`); open until it lands on `main`.
+
+2026-11-27. 028-54 done: P2 covers a restart after a stop; the crash
+case is not promised (Frans). RB-013 (S4, 2026.5 and 2026.6) registered
+in 033 (Frans, 17:12), fixed on `main` for 2026.7 by 031-06, one record
+an action (`5b88cc80`). Moved to Closed.
+
+2026-11-27. 028-68 done: built in 031-06's landing, step 2 (`615fad10`),
+and on `main` with the merge of 031-06 (`5b88cc80`). Moved to Closed.
+
+2026-11-27. 028-34: as it is in 2026.7, the API's question for a later
+release (Frans, 16:45); the copy mark keeps `transactionInfo()` right on
+records with copies (031-06).

@@ -29,9 +29,13 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
   on 2026-11-24 (026 done). Designed together with 028-53's
   fix in 031-01 (Frans, 2026-11-25).
 * 026-04, the settings of reclaim's fraction: the values and the default
-  not chosen in 2026.6 (1/4 kept); carried here on 2026-11-24.
+  not chosen in 2026.6 (1/4 kept); carried here on 2026-11-24. 1/4 kept
+  for now; the values and the default are chosen after 031-06's landing
+  step 3, on the new pace, measured again (Frans, 2026-11-27, 16:47).
 * 026-14, the Lean model's scope and three additions: not decided in
-  2026.6; carried here on 2026-11-24 (Frans).
+  2026.6; carried here on 2026-11-24 (Frans). No addition in 2026.7; the
+  first, reclaim as a whole, with the proof of P2's extension, after
+  2026.7 (Frans, 2026-11-27, 17:10).
 * 028-49, the release scripts make the GitHub release's body with
   absolute links: needed before this release is made (from the review of
   2026.6, 2026-11-24); in 034's scripts since 2026-11-24.
@@ -136,3 +140,10 @@ for publishing.
 and 2026.7 does not open a database of 2026.6. 028-67's C1 and C3 taken
 into 2026.7, built in 031-06's landing (Frans, 16:02). 031-07 created:
 the stream's checksums, a review.
+
+2026-11-27. 031-06's landing, steps 0 to 2, merged into `main` (17:01,
+`5b88cc80`); steps 3 to 6 follow on `main`. 028-68 (B) built with it and
+done; 028-54 done, RB-013 registered (S4) and fixed by it (Frans, 17:12).
+026-04: 1/4 kept for now, the choice after step 3 (Frans, 16:47).
+026-14: no addition to the model in 2026.7 (Frans, 17:10). 028-34: as it
+is in 2026.7 (Frans, 16:45).

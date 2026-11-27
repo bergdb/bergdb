@@ -143,6 +143,30 @@ Frans, 2026-11-27:
   before anything is written. C2 after C3 is in and tested; C4 not
   taken. The stream's checksums are reviewed for 2026.7, the new check
   with them: 031-07.
+* **028-68: B** (16:09): the reclaim step reserve a constant, with a
+  hook for tests only; built in the landing's step 2.
+* **028-66: C to be designed** (16:15): with the files before a hole
+  removed by the Core's own cut; an agent works on the design; A until
+  it is in.
+* **P2's wording** (16:26 to 16:41; 031-06's `p2-draft.md`, W2, W4 and
+  W5): the unit is the transaction, so a setter and a part of
+  `maintain()` need no list of kinds (16:26); the creation is the
+  primordial transaction (16:38); the README's sentence is reworded
+  without "a crash": a restart or a stop changes no byte, and a crash,
+  which may leave a partial append, is not promised (16:41).
+* A transaction that asks for no maintenance exists already as a mode
+  in the Core, a setter's; a flag for it on user transactions is a
+  possible later feature, not now (16:31).
+* **028-34** (16:45): `transactionInfo()` as it is in 2026.7; the API's
+  question in a later release.
+* **026-04** (16:47): 1/4 kept for now; the three values and the default
+  are chosen after the landing's step 3, on the new pace, with the
+  measurements made again.
+* **026-14** (17:10): no additions to the model's scope in 2026.7; the
+  first, reclaim as a whole, belongs with the proof of P2's extension,
+  after 2026.7.
+* **RB-013** (17:12): 028-54's stop case is a released bug, S4, in
+  2026.5 and 2026.6, fixed by 031-06; the crash case is not counted.
 
 Gone ahead by default:
 
@@ -361,9 +385,29 @@ The lead's overview (08:30), its conclusions:
   that he approved.
 * 15:50 to 16:02 Frans: 028-67 decided, C1 and C3 (section 2); 031-07
   registered.
-* Tonight: the full `timing.sh` on the ported branch against 2026.6 when
-  the landing's agent has stopped; then `night.sh` on `main`, whose Java
-  changed today (028-69, 028-60's part 2).
+* 16:04 The landing's steps 0 and 1 done on the branch (031-06's
+  `landing.md`): step 0 `BEFORE COMMIT OK`; step 1 `LEVEL 2 OK`,
+  `LEVEL 3 OK`, the contract's `GATE OK` (254 theorems),
+  `BEFORE COMMIT OK`, `LEVEL 4 OK` (quick).
+* 16:09 Frans: 028-68, B (section 2).
+* 16:15 Frans: 028-66, C to be designed (section 2); an agent designs
+  it.
+* 16:26 to 16:41 Frans: P2's wording (section 2), in 031-06's
+  `p2-draft.md` (`dd62fc27`, `24f15bbb`, `a9d87266`).
+* 16:45 Frans: 028-34 (section 2).
+* 16:47 Frans: 026-04 (section 2).
+* 17:00 The landing's step 2 done (031-06's `landing.md`): an action
+  alone is admitted within 7/8 of the record limit; the record, action
+  and maintenance together within 15/16, and a check before the append
+  that a later record can take its index nodes. Record format 9; the
+  step reserve a constant (028-68). `BEFORE COMMIT OK (81 s)`,
+  `LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4 OK` (quick), `APPS OK` (quick).
+* 17:01 The landing's branch merged into `main` (`5b88cc80`): steps 0
+  to 2 of 031-06; steps 3 to 6 follow on `main`. 028-68 done.
+* 17:10 Frans: 026-14 (section 2).
+* 17:12 Frans: RB-013 registered, S4 (section 2; 033); 028-54 done.
+* Tonight: `timing.sh` on `main` against 2026.6 when the 028-66 agent
+  has stopped; then `night.sh` on `main`.
 
 ## 4. Waiting for Frans
 
@@ -374,6 +418,32 @@ with a time: none is open.
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
+
+### Open now (17:12)
+
+What is open for Frans after the decisions of 16:09 to 17:12 (section
+2). The text of sections 4.0 to 4.3 is left as it was written.
+
+* **O1. BergDB's own long keys under "/#"** (031-06's `landing.md`,
+  step 2, Options for Frans): (a) keep what the Core accepts, as built;
+  (b) a cap of about 1 KiB, a new limit in 024-17. Recommended: (a).
+* **The review of the landed diff** (031-06, section 9): an independent
+  review of the code merged at `5b88cc80` before step 3 builds on it;
+  the lead runs it this weekend unless Frans says otherwise.
+* **028-66's design of C**, when the agent reports (section 2, 16:15).
+* **031-07's review** of the stream's checksums.
+* **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
+* **Codex's stop by the content filter** (section 3, 14:24), known to
+  Frans.
+* Still open from sections 4.0 to 4.3: A5, the Lean statement (026-14's
+  answer puts the first model addition with the proof of P2's extension,
+  after 2026.7); P2's text in 010, which is Frans's (031-06, step 5);
+  B8 to B14 of 031-04's design, as the landing reaches them; Q4 (step 4)
+  and Q6 (a timing run) of the landing.
+* Answered since 16:02: 028-68 (B), C2 (028-66: C to be designed), C4
+  (028-54: RB-013), C5 (028-34), C6 (026-04), C7 (026-14), P2's wording
+  (W2, W4, W5), Q3 (step 2: the record's room by a check) and Q5 (step
+  2: the record's format, 9).
 
 ### 4.0. After A1 = (e) (14:32)
 

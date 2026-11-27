@@ -237,3 +237,7 @@ the timing pass at 10M, then the three values and the default (section
 2); workload (d) again after P8.
 
 2026-11-24. Status set after the release (lead-1124).
+
+2026-11-27. Frans (16:47): 1/4 kept for now. The three values and the
+default are chosen after 031-06's landing step 3 (the pace), on the new
+pace, with the measurements made again.

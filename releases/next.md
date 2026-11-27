@@ -97,6 +97,16 @@ Released bugs fixed
   for. `Database`'s Javadoc, "What a crash keeps",
   says so. A longer run of zeros past a record's end, or other bytes, is
   refused as before.
+* **RB-013, S4. A stop between a transaction's record and reclaim's
+  records after it changed the stream's bytes** (bergdb 033; 031-06,
+  2026-11-27). After a `stop()` from another thread that came between a
+  transaction's record and the records of reclaim that followed it in
+  the same commit, and a restart, reclaim's interrupted work went on at
+  the next commit at other positions, so the bytes differed from that
+  record on from those of a run without the stop, for the same
+  transactions. Every accepted action now appends one record, and a
+  commit's record holds the maintenance that reclaim owes, so nothing
+  lies between. No value was lost or changed.
 
 
 Known released bugs

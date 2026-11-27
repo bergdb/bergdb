@@ -115,3 +115,7 @@ Log
 11:54 on the model's scope.
 
 2026-11-24. Status set after the release (lead-1124).
+
+2026-11-27. Frans (17:10): no additions to the model's scope in
+2026.7. The first addition, reclaim as a whole, belongs with the proof
+of P2's extension, after 2026.7.

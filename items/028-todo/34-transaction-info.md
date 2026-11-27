@@ -2,7 +2,7 @@
 =========================================================================
 
 Status: open, for a later release. Kind: Decide. Frans: decided for 2026.6
-(2026-11-22): keep it as it is.
+(2026-11-22) and 2026.7 (2026-11-27): keep it as it is.
 Created 2026-11-20 by Frans Lundberg.
 
 What: `Connection.transactionInfo()` (Pub API) gives the time and the
@@ -92,3 +92,8 @@ Log
 
 2026-11-22. Frans: as it is for 2026.6; the choice stays open for a later
 release (coord-1120).
+
+2026-11-27. Frans (16:45): as it is in 2026.7; the API's question is
+for a later release. With 031-06's one record an action, a record can
+hold copies of old KVs made by reclaim; the copy mark keeps
+`transactionInfo()` right on such records (031-06).
