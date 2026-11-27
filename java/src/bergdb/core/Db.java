@@ -1219,6 +1219,13 @@ public class Db implements AutoCloseable {
      * with DatabaseNotCreatedException.</p>
      * 
      * @throws StreamIoException
+     *          Among others, with a ReadBelowFirstPosException as the cause, if the stream
+     *          lacks bytes of the database before its first position (2026-11-27, bergdb
+     *          028-66): the first position is after reclaim's cut, or the start reads before
+     *          it, as when a file of a FileStream's was removed by hand, or a copy of the
+     *          files missed some. The message has what the storage says, FileStream's a gap
+     *          in its files. The start deletes nothing; recovery may have completed a torn
+     *          end of the stream, as a start of the whole stream would.
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
@@ -1249,7 +1256,7 @@ public class Db implements AutoCloseable {
                 } catch (Throwable e) {
                     // Under both locks, so that no call sees what the start left.
                     state = DbState.STOPPING;
-                    failure = e;
+                    failure = refusalOfMissingBytes(e);
                 }
             }
         }
@@ -1261,6 +1268,37 @@ public class Db implements AutoCloseable {
             throw (Error) failure;
         }
         throw new Bug("start() threw a checked exception, " + failure);
+    }
+    
+    /**
+     * The failure of a start that read the stream before its first position (2026-11-27,
+     * bergdb 028-66), as a StreamIoException that says so, the storage's exception of a
+     * missing stream file (DatabaseBuilder.start()), whose cause, a ReadBelowFirstPosException
+     * with the same message, has the failure as its cause; any other failure as it is. A start reads nothing before reclaim's cut: the last valid meta
+     * block names a record at or after it, the startup pos is at or after it, and every node
+     * and value of the latest state is stored at or after it (Reclaim's class comment; the
+     * restarts on CutStream, which refuses a read below the cut, check it). And the storage's
+     * first position is at or before the cut while it has every byte of the database
+     * (Reclaim.initFromDb refuses it after). So such a read means that the stream lacks
+     * bytes of the database: FileStream's files after a gap that hold no record of a cut at
+     * or after it, as a copy of the files that missed some, or a file removed by hand.
+     */
+    private Throwable refusalOfMissingBytes(Throwable e) {
+        if (!isReadBelowCut(e)) {
+            return e;
+        }
+        try {
+            ReadBelowFirstPosException r = new ReadBelowFirstPosException("The start needs"
+                    + " bytes of the stream before its first position, "
+                    + nodeStream.getFirstPos() + ": the stream lacks bytes of the database."
+                    + " The start has deleted nothing (bergdb 028-66)."
+                    + nodeStream.frontAccount());
+            r.initCause(e);
+            return new StreamIoException(r);
+        } catch (RuntimeException | Error x) {
+            e.addSuppressed(x);
+            return e;
+        }
     }
     
     /**

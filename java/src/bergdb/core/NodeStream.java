@@ -123,6 +123,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     public long getFirstPos() {
         return rstream.getFirstPos();
     }
+    
+    /** RecoverableStream.frontAccount(), for a start's refusal (bergdb 028-66). */
+    public String frontAccount() {
+        return rstream.frontAccount();
+    }
 
     /**
      * Returns the MetaBlock of the underlying RecoverableStream.

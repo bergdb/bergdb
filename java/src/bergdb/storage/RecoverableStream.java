@@ -180,8 +180,12 @@ public class RecoverableStream {
         // finds the same block before the fill as after it.
         MetaBlock lastBlock = readLastValidMetaBlock();
         if (lastBlock == null) {
+            final long first = aos.getFirstPos();
             throw new StreamFormatException("Could not find *any* valid meta block. "
-                    + "At least the very first meta block must be valid in a db stream.");
+                    + "At least the very first meta block must be valid in a db stream."
+                    + (first == 0 ? "" : " The stream begins at " + first + ", and the bytes"
+                    + " before it are not there: it may lack bytes that the database needs"
+                    + " (bergdb 028-66). The start has written nothing." + frontAccount()));
         }
         checkLastTransSpos(lastBlock);
         
@@ -467,6 +471,14 @@ public class RecoverableStream {
         final long spos = block.getLastTransSpos();
         if (spos == Constants.SposNULL) {
             return;
+        }
+        if (spos >= META_BLOCK_SIZE && spos < aos.getFirstPos() && spos < block.getPos()) {
+            // bergdb 028-66: the start needs bytes that the storage does not have.
+            throw new StreamFormatException("The meta block at " + block.getPos()
+                    + " names the last transaction at " + spos + ", before the stream's first"
+                    + " position, " + aos.getFirstPos() + ": the stream lacks bytes that the"
+                    + " database needs, from " + spos + " on. The start has written and"
+                    + " deleted nothing (bergdb 028-66)." + frontAccount());
         }
         if (spos < Math.max(META_BLOCK_SIZE, aos.getFirstPos()) || spos >= block.getPos()) {
             throw new StreamFormatException("The meta block at " + block.getPos()
@@ -1026,6 +1038,28 @@ public class RecoverableStream {
     /** The first position that can be read; larger than 0 after a pretruncate. */
     public long getFirstPos() {
         return aos.getFirstPos();
+    }
+    
+    /**
+     * For a start's refusal of a stream that lacks bytes it needs (2026-11-27, bergdb 028-66):
+     * what the storage says of the bytes before its first position, " The storage: " and
+     * the message of the ReadBelowFirstPosException of a read of the byte before it; "" for a
+     * stream from 0, or if the read throws something else. FileStream's message names a gap
+     * in its files. Only a start that refuses calls it.
+     */
+    public String frontAccount() {
+        final long first = aos.getFirstPos();
+        if (first <= 0) {
+            return "";
+        }
+        try {
+            aos.read(first - 1, new byte[1], 0, 1);
+        } catch (ReadBelowFirstPosException e) {
+            return " The storage: " + e.getMessage();
+        } catch (IOException e) {
+            // Not this method's to report: the start refuses with its own message.
+        }
+        return "";
     }
     
     /**

@@ -29,6 +29,7 @@ import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * This class handles stream space reclaim.
@@ -1630,9 +1631,24 @@ public class Reclaim implements Maintenance {
         if (cutRow != null) {
             firstPos = cutRow.pCut;
             firstTime = cutRow.tEnd;
-            if (aos.getFirstPos() < firstPos) {
-                pretruncate(firstPos);      // A crash came between the table write and the cut.
-            }
+        }
+        if (aos.getFirstPos() > firstPos) {
+            // 2026-11-27 (bergdb 028-66): the storage begins after the cut, and the database's
+            // bytes from the cut to the storage's first position are not there: a file of
+            // FileStream's removed by hand, or a copy of the files that missed some. Before,
+            // the start went on, and reads of those bytes failed the database later.
+            // Refused before anything is cut; the storage keeps every file it had. The
+            // storage's exception of a missing stream file (DatabaseBuilder.start()).
+            throw new StreamIoException(new ReadBelowFirstPosException("The stream begins at "
+                    + aos.getFirstPos() + ", after reclaim's cut, " + firstPos + ": the stream"
+                    + " lacks bytes of the database from " + firstPos + " to "
+                    + aos.getFirstPos() + ". The start has deleted nothing (bergdb 028-66)."
+                    + db.internal().nodeStream().frontAccount()));
+        }
+        if (cutRow != null && aos.getFirstPos() < firstPos) {
+            // A crash came between the table write and the cut; or a power loss left a gap in
+            // FileStream's files, and the cut deletes the files before it (bergdb 028-66).
+            pretruncate(firstPos);
         }
         
         synchronized (readSynch) {

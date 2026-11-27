@@ -22,9 +22,12 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StorageManager;
+import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.BadDirStateException;
 import bergdb.stream.FileStream;
 import bergdb.stream.FileStreamIo;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * Power-loss model over the production FileStream operations. Volatile data,
@@ -33,6 +36,17 @@ import bergdb.stream.FileStreamIo;
  * This proves tested ordering under the model, not physical hardware behavior.
  * In bergdb.core, not bergdb.stream: it also runs StorageManager and Db over
  * the model, and stream must not depend on storage or core (package.html).
+ * 
+ * The deletes of a cut (2026-11-27, bergdb 028-66). The cut's thread deletes a batch of
+ * files with one force of the directory after it (FileStream.runCuts). An unforced unlink
+ * may survive a power loss while an earlier one rolls back, in any combination: the images
+ * unordered_delete (only the latest pending unlink survives), unpersisted_delete (the
+ * latest rolls back) and subset_delete (a random subset of the pending unlinks survives)
+ * leave gaps in the files' sequence. FileStream's open takes the files after the last gap
+ * as the stream, and each such image must start, hold every acknowledged commit, and have
+ * its start delete the files before the gap. Until 2026-11-27 the thread forced the
+ * directory after each file, and a gap image was the negative control of that order
+ * (BadDirStateException at the open).
  * 
  * Without per-append forces (2026-11-04, bergdb 005-47): runTraceWithoutAppendForces runs
  * the trace on a FileStream with per-append forcing off. A sync then means written, and an
@@ -109,6 +123,13 @@ public class FileStreamPowerLossTester {
         int holeCount;
         boolean failFileForce, failDirectoryForce;
         int failDeleteAt, deletes, deletesSinceDirectoryForce, maxDeleteBatch;
+        /**
+         * While true, the cut's thread waits at its next delete, outside this model's monitor,
+         * so that the cuts meanwhile queue a batch of several files (bergdb 028-66). Under
+         * 'gate'.
+         */
+        boolean gated;
+        final Object gate = new Object();
 
         ModelIo(File dir, long seed, int perEvent) {
             this.dir = dir;
@@ -276,7 +297,25 @@ public class FileStreamPowerLossTester {
             checkpoint("after_directory_force");
         }
 
-        protected synchronized boolean delete(File file) throws IOException {
+        void hold() {
+            synchronized (gate) { gated = true; }
+        }
+        
+        void release() {
+            synchronized (gate) { gated = false; gate.notifyAll(); }
+        }
+        
+        protected boolean delete(File file) throws IOException {
+            synchronized (gate) {
+                while (gated) {
+                    try { gate.wait(); }
+                    catch (InterruptedException e) { throw new IOException(e); }
+                }
+            }
+            return modelDelete(file);
+        }
+        
+        synchronized boolean modelDelete(File file) throws IOException {
             checkpoint("before_delete");
             if (failDeleteAt > 0 && deletes + 1 == failDeleteAt) {
                 throw new IOException("injected deletion failure");
@@ -308,6 +347,20 @@ public class FileStreamPowerLossTester {
                 if (before != null) rollback.put(file.getName(), before);
                 keep("unpersisted_delete", new Image("unpersisted_delete", rollback, acknowledgedTime(),
                         logicalNow.get(), acknowledgedFrontier()));
+                // Any subset of the pending unlinks survives (bergdb 028-66): here a random one.
+                Map<String, byte[]> subset = durableFiles();
+                for (Map.Entry<String, byte[]> deleted : pendingDeleted.entrySet()) {
+                    if (random.nextBoolean()) subset.put(deleted.getKey(), deleted.getValue());
+                }
+                Image subsetImage = new Image("subset_delete", subset, acknowledgedTime(),
+                        logicalNow.get(), acknowledgedFrontier());
+                keep("subset_delete", subsetImage);
+                // The images with a gap, also in a bucket of their own, so that a trace checks
+                // more of them than the reservoirs of the events keep.
+                if (hasGap(subsetImage)) keep("gap_delete", subsetImage);
+                Image unorderedImage = new Image("unordered_delete", unordered, acknowledgedTime(),
+                        logicalNow.get(), acknowledgedFrontier());
+                if (hasGap(unorderedImage)) keep("gap_delete", unorderedImage);
             }
             return result;
         }
@@ -529,58 +582,242 @@ public class FileStreamPowerLossTester {
         try {
             stream.append(data, 0, data.length);
             io.failDirectoryForce = true;
+            // One batch, its four deletes before its one force (bergdb 028-66), which fails:
+            // the stream fails, and no later cut deletes.
             stream.pretruncate(800000);
             try { stream.awaitDeletes(); throw new AssertionError("directory force should fail"); }
             catch (IOException expected) { }
-            Assert.assertEquals("deletion continued after failed namespace force", 1, io.deletes);
+            Assert.assertEquals(4, io.deletes);
+            try { stream.pretruncate(900000); throw new AssertionError("cut after a failure"); }
+            catch (IOException expected) { }
+            Assert.assertEquals("deletion continued after failed namespace force", 4, io.deletes);
             Assert.assertEquals(1000000, io.image("directory failure").end());
         } finally { closeFaulted(stream); remove(dir); }
     }
 
+    /**
+     * bergdb 028-66: a cut of four files deletes them as one batch, one force of the directory
+     * after it; every image of the model, and every subset of the batch's files that a power
+     * loss before the force can leave (16), opens with the bytes from the cut on, its first
+     * position at or before the cut, and a cut there on the reopened stream leaves the files
+     * from the cut's file on only. Until 2026-11-27 (testRecoveryBetweenEveryPrefixDeletion)
+     * the deletes were one at a time, each forced, and only prefixes could survive.
+     */
     @Nano
-    public static void testRecoveryBetweenEveryPrefixDeletion() throws Exception {
+    public static void testRecoveryAfterEverySubsetOfABatch() throws Exception {
         File dir = Files.createTempDirectory("bergdb-power-delete-order-").toFile();
         ModelIo io = new ModelIo(dir, 21, 5);
         FileStream stream = new FileStream(dir, io);
         byte[] data = new byte[1000000]; Arrays.fill(data, (byte) 31);
         try {
             stream.append(data, 0, data.length);
+            Map<String, byte[]> before = io.durableFiles();
             io.recording = true;
             stream.pretruncate(800000);
             stream.awaitDeletes();
             Assert.assertEquals(4, io.deletes);
-            Assert.assertEquals(1, io.maxDeleteBatch);
-            for (Image image : io.snapshots()) {
+            Assert.assertEquals(4, io.maxDeleteBatch);
+            List<Image> images = new ArrayList<Image>(io.snapshots());
+            List<String> batch = new ArrayList<String>(before.keySet()).subList(0, 4);
+            for (int mask = 0; mask < 16; mask++) {
+                Map<String, byte[]> files = new TreeMap<String, byte[]>(before);
+                for (int i = 0; i < 4; i++) {
+                    if ((mask & (1 << i)) == 0) files.remove(batch.get(i));
+                }
+                images.add(new Image("subset " + mask, files, 0, 0, 0));
+            }
+            int gaps = 0;
+            for (Image image : images) {
                 File recovered = image.restore();
                 FileStream reopened = new FileStream(recovered);
                 try {
+                    Assert.assertTrue(image.event, reopened.getFirstPos() <= 800000);
+                    if (reopened.getLeftoverCount() > 0) gaps++;
                     byte[] tail = new byte[200000]; reopened.read(800000, tail, 0, tail.length);
                     for (byte value : tail) Assert.assertEquals(31, value);
-                } finally { reopened.close(); remove(recovered); }
+                    reopened.pretruncate(800000);
+                    reopened.awaitDeletes();
+                } finally { reopened.close(); }
+                try {
+                    Assert.assertEquals(image.event, Arrays.asList("00000000000008.bergdb"),
+                            Arrays.asList(recovered.list((d, name) -> name.endsWith(".bergdb"))));
+                } finally { remove(recovered); }
             }
+            Assert.assertTrue("gaps " + gaps, gaps >= 11);    // 11 of the 16 subsets have one.
         } finally { stream.close(); remove(dir); }
     }
 
+    /**
+     * bergdb 028-66: deletes with no force of the directory, whose images keep the latest
+     * unlink and roll back the earlier ones, leave a gap, which the open takes: the stream is
+     * the files after it. Until 2026-11-27 this was the negative control of the order of
+     * deletes (testUnorderedUnforcedDeletionsAreDetected): the open refused the gap.
+     */
     @Nano
-    public static void testUnorderedUnforcedDeletionsAreDetected() throws Exception {
+    public static void testUnorderedUnforcedDeletionsLeaveAGapThatOpens() throws Exception {
         File dir = Files.createTempDirectory("bergdb-power-unordered-").toFile();
         ModelIo io = new ModelIo(dir, 22, 5);
         FileStream stream = new FileStream(dir, io);
         try {
-            stream.append(new byte[1000000], 0, 1000000);
+            byte[] data = new byte[1000000]; Arrays.fill(data, (byte) 5);
+            stream.append(data, 0, 1000000);
             io.recording = true; io.omitDirectoryForce = true;
             stream.pretruncate(800000);
             stream.awaitDeletes();
-            boolean caught = false;
+            boolean gap = false;
             for (Image image : io.images.get("unordered_delete")) {
                 File recovered = image.restore();
-                FileStream reopened = null;
-                try { reopened = new FileStream(recovered); }
-                catch (BadDirStateException expected) { caught = true; }
-                finally { if (reopened != null) reopened.close(); remove(recovered); }
+                FileStream reopened = new FileStream(recovered);
+                try {
+                    if (reopened.getLeftoverCount() > 0) gap = true;
+                    byte[] tail = new byte[200000]; reopened.read(800000, tail, 0, tail.length);
+                    for (byte value : tail) Assert.assertEquals(5, value);
+                } finally { reopened.close(); remove(recovered); }
             }
-            Assert.assertTrue("unordered deletion negative control escaped", caught);
+            Assert.assertTrue("no image with a gap", gap);
         } finally { stream.close(); remove(dir); }
+    }
+    
+    /**
+     * bergdb 028-66: a database whose stream misses a file of the bytes it needs is refused at
+     * its start, with a message that names the gap, and the start leaves the files as they
+     * were: nothing deleted, nothing written (the stream ended cleanly, so recovery has
+     * nothing to complete). First a middle file removed by hand, a gap in the live stream;
+     * then the first file too, no gap, the stream beginning after its cut (0, never cut).
+     * Until 2026-11-27 FileStream refused the gap (BadDirStateException), and the second
+     * case started and failed at reads.
+     */
+    @Nano
+    public static void testStartRefusesAStreamThatLacksBytes() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-lacks-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
+            Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).start();
+            try {
+                Random random = new Random(66);
+                for (int i = 0; i < 400; i++) {
+                    clock.setTime(2 * SEC + i * SEC / 10);
+                    byte[] value = new byte[2000]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 50), value).build());
+                }
+                db.sync(SyncLevel.ORDINARY);
+            } finally { db.close(); }
+            Assert.assertTrue(new File(dir, "00000000000006.bergdb").exists());
+            
+            Assert.assertTrue(new File(dir, "00000000000002.bergdb").delete());
+            Map<String, byte[]> files = streamFiles(dir);
+            refusedLacking(dir, "gap");
+            Assert.assertTrue("the start changed the files", sameFiles(files, streamFiles(dir)));
+            
+            Assert.assertTrue(new File(dir, "00000000000000.bergdb").delete());
+            files = streamFiles(dir);
+            refusedLacking(dir, "first position, 400000");
+            Assert.assertTrue("the start changed the files", sameFiles(files, streamFiles(dir)));
+        } finally { remove(dir); }
+    }
+    
+    /**
+     * bergdb 028-66: a file before a gap that is no leftover of the stream's, here one of
+     * zeros put there by hand, is not read, and the start of the stream after the gap, whose
+     * cut is after the gap's end, deletes it; every key reads as before. (Until 2026-11-27,
+     * refused: BadDirStateException.)
+     */
+    @Nano
+    public static void testStartDeletesAFileBeforeAGap() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-before-gap-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
+            FileStream stream = new FileStream(dir);
+            Db db = start(stream, clock);
+            Random random = new Random(28066);
+            Map<String, byte[]> model = new TreeMap<String, byte[]>();
+            long time = SEC;
+            try {
+                for (int i = 0; i < 2000 && stream.getFirstPos() < 600000; i++) {
+                    time += SEC / 10; clock.setTime(time);
+                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 12), value).build());
+                    model.put(key(i % 12), value);
+                }
+                Assert.assertTrue("no cut: " + stream.getFirstPos(), stream.getFirstPos() >= 600000);
+                db.sync(SyncLevel.ORDINARY);
+            } finally { db.close(); }
+            File junk = new File(dir, "00000000000000.bergdb");
+            Files.write(junk.toPath(), new byte[200000]);
+            
+            clock.setTime(time + SEC);
+            FileStream again = new FileStream(dir);
+            Assert.assertEquals(1, again.getLeftoverCount());
+            db = start(again, clock);
+            try {
+                for (Map.Entry<String, byte[]> e : model.entrySet()) {
+                    Assert.assertTrue(e.getKey(), Arrays.equals(e.getValue(),
+                            DbUtil.get(db, Long.MAX_VALUE, e.getKey())));
+                }
+                Assert.assertEquals(0, again.getLeftoverCount());
+            } finally { db.close(); }
+            Assert.assertFalse("the file before the gap stayed", junk.exists());
+            Assert.assertFalse(hasGap(dir));
+        } finally { remove(dir); }
+    }
+    
+    /**
+     * A start on 'dir' must throw a StreamIoException that says the stream lacks bytes, with a
+     * ReadBelowFirstPosException as the cause (bergdb 028-66).
+     */
+    static void refusedLacking(File dir, String also) {
+        CoreTestClock clock = new CoreTestClock(); clock.setTime(100 * SEC);
+        try {
+            Db db = Db.builder().testSetup(new FileStream(dir)).clock(clock).start();
+            db.close();
+            throw new AssertionError("started on a stream that lacks bytes");
+        } catch (StreamIoException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("lacks bytes")
+                    && e.getMessage().contains(also)
+                    && e.getCause() instanceof ReadBelowFirstPosException);
+        } catch (IOException e) {
+            throw new AssertionError(e);
+        }
+    }
+    
+    /** The stream files of 'dir', by name. */
+    static Map<String, byte[]> streamFiles(File dir) throws IOException {
+        Map<String, byte[]> result = new TreeMap<String, byte[]>();
+        for (File f : dir.listFiles((d, name) -> name.endsWith(".bergdb"))) {
+            result.put(f.getName(), Files.readAllBytes(f.toPath()));
+        }
+        return result;
+    }
+    
+    static boolean sameFiles(Map<String, byte[]> a, Map<String, byte[]> b) {
+        if (!a.keySet().equals(b.keySet())) return false;
+        for (String name : a.keySet()) {
+            if (!Arrays.equals(a.get(name), b.get(name))) return false;
+        }
+        return true;
+    }
+    
+    /** The names of the stream files in 'dir' have a gap: a file after the end of the one before. */
+    static boolean hasGap(File dir) {
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".bergdb"));
+        Arrays.sort(files);
+        for (int i = 1; i < files.length; i++) {
+            long end = Long.parseLong(files[i - 1].getName().substring(0, 14)) * 100000
+                    + files[i - 1].length();
+            if (Long.parseLong(files[i].getName().substring(0, 14)) * 100000 > end) return true;
+        }
+        return false;
+    }
+    
+    /** As hasGap(), for the files of an image. */
+    static boolean hasGap(Image image) {
+        long end = -1;
+        for (Map.Entry<String, byte[]> e : image.files.entrySet()) {
+            long start = Long.parseLong(e.getKey().substring(0, 14)) * 100000;
+            if (end != -1 && start > end) return true;
+            end = start + e.getValue().length;
+        }
+        return false;
     }
 
     static class Change {
@@ -653,6 +890,10 @@ public class FileStreamPowerLossTester {
             db.execute(db.trans().put(freshKey, value).build());
             db.sync(SyncLevel.ORDINARY);
             db.close(); db = null;      // Closed before the directory opens again (bergdb 005-63).
+            if (hasGap(dir)) {
+                // The start's cut deletes the files before a gap (bergdb 028-66).
+                throw new AssertionError(image.event + ": the start left the files before a gap");
+            }
             CoreTestClock clock2 = new CoreTestClock(); clock2.setTime(lastTime + 3 * SEC);
             db = start(new FileStream(dir), clock2);
             if (!Arrays.equals(value, DbUtil.get(db, Long.MAX_VALUE, freshKey))) {
@@ -705,6 +946,9 @@ public class FileStreamPowerLossTester {
         FileStream stream = new FileStream(dir, io, appendForces);
         Db db = start(stream, clock);
         Random random = new Random(seed);
+        // The cut's thread is held, and released every BATCH_EVERY commits, so that it deletes
+        // batches of several files, as for a fast writer (bergdb 028-66).
+        io.hold();
         List<Change> changes = new ArrayList<Change>();
         long previousIteration = 0, previousStartup = 0;
         long previousFrontier = 0;
@@ -725,7 +969,12 @@ public class FileStreamPowerLossTester {
                 db.execute(transaction);
                 // The cut's thread deletes after the commit (bergdb 005-46); waiting for it
                 // keeps the order of the trace's events, and so its images, deterministic.
-                stream.awaitDeletes();
+                // Held between, it deletes in batches (bergdb 028-66).
+                if (i % BATCH_EVERY == 0) {
+                    io.release();
+                    stream.awaitDeletes();
+                    io.hold();
+                }
                 changes.add(new Change(transaction.tt, key, value));
                 long iteration = db.getReclaimIterationCount();
                 long startup = db.internal().getStartupPosForEvict();
@@ -752,12 +1001,17 @@ public class FileStreamPowerLossTester {
                     io.checkpoint("after_durable_publication");
                 }
             }
+            io.release();
+            stream.awaitDeletes();
             db.sync(SyncLevel.ORDINARY);
             io.acknowledged.set(db.lookupTime(Long.MAX_VALUE));
             io.acknowledgedFrontier.set(db.getFirstAvailableLookupTime());
             io.checkpoint("final_acknowledgement");
             db.close(); db = null;
             if (io.deletes < 2) throw new AssertionError("trace did not exercise physical deletion: " + io.deletes);
+            if (io.maxDeleteBatch < 2 && !negative) {
+                throw new AssertionError("trace made no batch of two deletes: " + io.maxDeleteBatch);
+            }
             List<Image> cases;
             if (appendForces) {
                 cases = negative ? io.images.get("after_delete") : io.snapshots();
@@ -769,14 +1023,17 @@ public class FileStreamPowerLossTester {
                 if (omit == null) checkForcesWithoutAppendForces(io);
             }
             if (cases == null || cases.isEmpty()) throw new AssertionError("no power-loss checkpoints");
-            int checked = 0;
+            int checked = 0, gapImages = 0;
             for (Image image : cases) {
+                if (hasGap(image)) gapImages++;
                 try {
                     verify(image, changes, keys, time, exhaustive);
                 } catch (Exception | AssertionError failure) {
                     // Without per-append forces, any failure of a negative control is a detection.
+                    // A start refused for a gap (bergdb 028-66): a StreamFormatException.
                     if (omit != null || ((negativeFile || negativeDirectory) 
-                            && (failure instanceof BadDirStateException || failure instanceof AssertionError))) {
+                            && (failure instanceof BadDirStateException || failure instanceof AssertionError
+                                    || failure instanceof StreamFormatException))) {
                         throw new DetectedLoss(image.event, failure);
                     }
                     throw failure;
@@ -798,14 +1055,18 @@ public class FileStreamPowerLossTester {
                 }
             }
             System.out.println("POWER TRACE seed=" + seed + " checkpoints=" + checked
-                    + " physical_deletes=" + io.deletes + " stages=" + io.seen
+                    + " physical_deletes=" + io.deletes + " largest_batch=" + io.maxDeleteBatch
+                    + " gap_images=" + gapImages + " stages=" + io.seen
                     + (appendForces ? "" : " append_forces=off forces=" + io.forces 
                             + " hole_images=" + io.holes.size() + " of " + io.holeCount 
                             + " recovered=" + holesRecovered + " failed=" + holesFailed
                             + (firstFailure == null ? "" : " first_failure=" + firstFailure)));
             return new int[] {checked, holesRecovered, holesFailed};
-        } finally { if (db != null) db.close(); remove(dir); }
+        } finally { io.release(); if (db != null) db.close(); remove(dir); }
     }
+    
+    /** The commits between two releases of the cut's thread in trace() (bergdb 028-66). */
+    static final int BATCH_EVERY = 300;
     
     /**
      * Without per-append forces, the trace forced no append, and forced the last file before

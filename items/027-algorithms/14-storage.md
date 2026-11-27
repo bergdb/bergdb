@@ -22,16 +22,18 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   until 2026-11-26); a larger size begins only at a length that is a
   multiple of it, a smaller one at once. A cut deletes whole files
   only, those that end before its position, never the last one, on a
-  thread of the storage's own (005-46). So the disk can hold up to
+  thread of the storage's own (005-46), a batch at a time with one
+  force of the directory after it (028-66). So the disk can hold up to
   about one file more than the stream, about a tenth of the stream when
   that file was made, also after the stream has shrunk (RB-011), and,
   for a while after a cut, the files not yet deleted (027-13, section
   4). A start accepts files of any sizes beside each other, the
   quarter's beside the tenth's: it checks that each file begins where
-  the one before ends and that every file but the last is a multiple
-  of 100,000 bytes (`testMixedFileSizes`).
+  the one before ends, or after a gap (below), and that every file but
+  the last is a multiple of 100,000 bytes (`testMixedFileSizes`).
 * **A backup by a copy of the files.** A file is changed only by
-  appends at its end and removed only whole, the oldest first; no file
+  appends at its end and removed only whole, the deletes issued oldest
+  first; no file
   is renamed, and no byte written twice but in one case: the first
   append after an open that left a tail of zeros out of the stream
   truncates the last file where the zeros begin and writes there
@@ -43,9 +45,12 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   after a kill; a file that a cut deletes while it is read stays
   readable on macOS and Linux, and the copy then holds files that the
   stream has deleted, as after a crash before a cut's deletes. A listed
-  file that a cut deleted before the copy opened it is missing: the copy
-  must be taken again (with a gap, a start refuses it; without its first
-  files, it can lack the record of their cut). Checked on F53 by 028-62's
+  file that a cut deleted before the copy opened it is missing: with a
+  gap, the copy opens from the file after it (below); without its first
+  files, from its first file. Either can lack the record of the cut
+  that deleted them; a start then refuses it, as its first position is
+  after its cut, and the copy must be taken again; a start that takes it
+  deletes the files before the gap (028-66). Checked on F53 by 028-62's
   `BackupCopy` probe: 100 copies of a database written all the time,
   with cuts, each started and holding the state after one of its
   transactions; 29 taken again. Windows not run: a delete of a file that
@@ -61,6 +66,44 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   commit alone can return before its bytes reach `FileStream`); for a
   stopped one, after its `close()` has returned (`stop()` returns
   before the close ends).
+* **A gap in the files** (028-66, 2026-11-27, from the principle that
+  Frans decided that day: the stream is the bytes from reclaim's cut to
+  the end, and what the storage still holds before the cut belongs to
+  the storage's implementation). The cut's
+  thread deletes a batch of files, the deletes issued oldest first, and
+  then forces the directory once; until 2026-11-27 it forced the
+  directory after each file, and a writer with hard sync at full speed
+  wrote about 40 % slower with the tenth's files (028-66, section 1). No
+  order of the deletes on the device is assumed: a power loss can keep
+  the delete of a newer file and lose that of an older one. So the open
+  takes a gap in the files' sequence, a file that begins after the end
+  of the one before it: the stream is the files after the last gap, its
+  first position the first of them's; the files before, the leftovers,
+  are not read, and the first cut at or after the first position deletes
+  them, oldest first, before its own files. Why it is safe: a file is
+  missing only if a cut deleted it, and the thread deletes only after
+  the stream is forced up to its length at the cut (`forceTo`), which
+  holds the table that decided the cut, durable before the cut was made
+  (027-13, 1.7). So the gap's end is at or before the cut of the durable
+  table; a start reads nothing before that cut (027-11, section 1.10),
+  finds it at or after the first position, and cuts there, which deletes
+  the leftovers (027-13, 1.9). A first position after the cut means
+  missing bytes of the database: a file removed by hand, a copy that
+  missed files; the start refuses, with the storage's account of the
+  gap, and deletes nothing. Not refused, unlike before: files before a
+  gap that are not leftovers, such as another database's put into the
+  directory by hand; the start of the stream after the gap deletes them
+  when its cut is after the gap's end. Tests: `FileStream.
+  testRestartMissingFile`, `testRestartRefusedOverlap`, `testGapsAtOpen`,
+  `testCutDeletesABatchWithOneDirectoryForce`;
+  `FileStreamPowerLossTester.testRecoveryAfterEverySubsetOfABatch`,
+  `testUnorderedUnforcedDeletionsLeaveAGapThatOpens`,
+  `testStartRefusesAStreamThatLacksBytes`,
+  `testStartDeletesAFileBeforeAGap`, and the traces, whose images of
+  unforced deletes in any combination must start, hold every
+  acknowledged commit and delete the files before the gap;
+  `flush-order.sh` (deletes in name order, each after the files that
+  survive it are forced, a directory force after the last).
 * **A tail of zeros** (028-60, part 2; RB-012). At the open, after the
   directory's lock and the check of the files' names and lengths and
   before anything reads the stream, `FileStream` leaves a run of zero

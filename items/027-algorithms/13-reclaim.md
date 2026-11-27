@@ -214,7 +214,12 @@ makeCutIfDurable(): if a cut is pending and the stream is durable up to
 its mark, the storage drops the stream before pCut, and nothing is
 pending. The storage may keep more: a file storage drops whole files
 (027-03, section 4). Durable first, so that a crash cannot lose the table
-that marks the cut once the front is gone.
+that marks the cut once the front is gone. A file storage deletes the
+files of its cuts a batch at a time, with one force of the directory
+after each batch (028-66, 2026-11-27; until then after each file): a
+power loss can keep the delete of a newer file and lose that of an older
+one, a gap, and the stream after the crash begins at the first file
+after it, at or before the cut whose table is durable (027-14).
 
 ### 1.8. Reads and the retention
 
@@ -238,7 +243,15 @@ A start reads the settings, the table, and the current row, which
 replaces the table's row with the same pStart if neither is done. The
 newest row marked cut gives fa := its tEnd and fp := its pCut (0 and 0
 without one). If the storage's first position is below fp, the cut is
-made now: a crash came between the table and the cut. Nothing else is
+made now: a crash came between the table and the cut, or a power loss
+left a gap in a file storage's files, and the cut deletes the files
+before it (028-66). If it is above fp, the stream lacks the database's
+bytes from fp to it, and the start refuses (a `StreamIoException`, the
+cause a `ReadBelowFirstPosException`, with what the storage says;
+028-66, 2026-11-27; before, the start went on, and reads of those bytes
+failed the database); so does a start that reads below
+the first position, which it does only then (027-11, section 1.10).
+Nothing is deleted before the refusal. Nothing else is
 kept, so a restart does not change what reclaim writes (INV-RESTART).
 Startup on a cut stream is part 7's.
 
@@ -437,9 +450,10 @@ pending, M1's condition holds, or the dead hand has more.
   the stream kept on average, 5.5 at most (6.3 and 23.5 with the
   quarter): measured. 011-04, W5d, measured 6 to 9 percent of the whole
   disk on 2026-10-13, when a cut deleted its files on the committing
-  thread; since 005-46 a thread of the storage's own deletes them, one
-  at a time with the directory forced after each. So a fast writer is
-  ahead of the deletes: in `ReclaimCost` (about 120 MB of stream a
+  thread; since 005-46 a thread of the storage's own deletes them, from
+  005-46 to 028-66 one at a time with the directory forced after each,
+  since 028-66 (2026-11-27) a batch at a time with one force. With one
+  force a file, a fast writer was ahead of the deletes: in `ReclaimCost` (about 120 MB of stream a
   second, F53 loaded) the files that end before fp and are not yet
   deleted, most of them taken off by the storage's cut and waiting for
   its thread, the rest for the cut, which waits for durability, are 24

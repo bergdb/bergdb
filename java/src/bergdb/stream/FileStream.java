@@ -51,17 +51,19 @@ import bergdb.pub.util.BadFormatException;
  * last one. So the files hold the stream from the start of the file that the cut's position
  * lies in: the disk can hold up to about one file more than the stream, about a tenth of the
  * stream when that file was made, and, for a while after a cut, the files that the cut's
- * thread has not yet deleted. This holds also after the stream has shrunk: a database
+ * thread has not yet deleted (since 2026-11-26 a batch at a time, the directory forced once
+ * after it: runCuts, bergdb 028-66). This holds also after the stream has shrunk: a database
  * emptied after a large stream keeps the file that its first position lies in until appends
  * fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed 5, 10,400 kB of a 20 MB
  * file on disk for 61 kB of stream with the quarter, 400 kB with the tenth). A start accepts
  * files of any of the sizes beside each other, those of the quarter beside those of the
- * tenth: it checks that each file begins where the one before ends and that every file but
- * the last is a multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).
+ * tenth: it checks that each file begins where the one before ends, or after a gap (below,
+ * "A gap in the files"), and that every file but the last is a multiple of 100,000 bytes
+ * long (checkDbFiles; testMixedFileSizes).
  * 
  * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
- * only by appends at its end, and removes files only whole, by deletes, the oldest first;
- * it never renames a file, and never writes a byte of one twice but in one case: the first
+ * only by appends at its end, and removes files only whole, by deletes, issued oldest first
+ * (runCuts); it never renames a file, and never writes a byte of one twice but in one case: the first
  * append after an open that left a tail of zeros of the last file out of the stream
  * (below; bergdb 028-60) truncates the file where the zeros begin and then writes there.
  * Recovery after a crash appends too (RecoverableStream). So the stream's files (*.bergdb),
@@ -86,11 +88,40 @@ import bergdb.pub.util.BadFormatException;
  * - A file that a cut deletes while the copy reads it stays readable to the copy on macOS
  *   and Linux; the copy then holds files that the stream no longer has, as after a crash
  *   before a cut's deletes, and a start on it cuts again (Reclaim). A listed file that a cut
- *   deleted before the copy opened it is missing: take the copy again. A copy with such a
- *   gap after files copied before it is refused at its start (BadDirStateException); one
- *   that misses only its first files can lack the record of the cut that deleted them.
+ *   deleted before the copy opened it is missing. A copy with such a gap after files copied
+ *   before it opens from the first file after the gap (below); one that misses only its
+ *   first files opens from its first file. Either can lack the record of the cut that
+ *   deleted the missing files, which may be in a file made after the listing; a start then
+ *   refuses the copy, as its first position is after that copy's cut, and writes nothing
+ *   before it refuses but what recovery writes at a torn end (Db, start(); bergdb 028-66):
+ *   take the copy again. A start that takes such a copy deletes the files before the gap.
  * - Not run on Windows, where a delete of a file that a copy program holds open can fail,
  *   which fails the stream.
+ * 
+ * A gap in the files (2026-11-27, bergdb 028-66). The cut's thread deletes the files of a cut
+ * a batch at a time, the directory forced once after the batch, not after each file
+ * (runCuts); a power loss can then keep the delete of a file and lose that of an older one,
+ * as no order of the deletes on the device is assumed. So the open takes a gap in the files'
+ * sequence, a file that begins after the end of the one before it, as the end of what is
+ * not the stream: the stream is the files after the last gap, its first position the first
+ * of them's, and the files before it, the leftovers, are not opened or read. A read below
+ * the first position throws ReadBelowFirstPosException, whose message names the gap. The
+ * first cut at or after the first position, pretruncate(), deletes the leftovers, oldest
+ * first, before the files that it takes off; a cut before it deletes none of them. Why this
+ * is safe: a file is missing only if a cut deleted it, and the cut's thread deletes a file
+ * only after the stream is forced up to its length at the cut (forceTo()), after the
+ * record of the cut, which the database writes and makes durable before it cuts (Reclaim,
+ * cutIfDurable). So the record of a cut at or after the gap's end survives every power
+ * loss that the deletes can leave, and the database's start, which reads its cut from the
+ * stream, finds the cut at or after the first position and cuts there (Reclaim,
+ * initFromDb); a stream whose first position is after its cut lacks bytes of the database,
+ * and the start refuses it before it deletes anything (bergdb 028-66; Db, start()). Not
+ * refused, as before 2026-11-27: files before the gap that are not a cut's leftovers, such
+ * as another database's put into the directory by hand; the start of the stream after the
+ * gap deletes them if it finds its cut at or after the gap's end. Still refused
+ * (BadDirStateException): a bad name, a file that begins before the end of the one before
+ * it, and a file but the last whose length is not a multiple of 100,000 bytes.
+ * 
  * A tail of zeros (2026-11-26, bergdb 028-60; 033, RB-012). At the open, before anything
  * reads the stream, the constructor leaves a run of zero bytes of at most 8 MB at the end
  * of the last file (ZERO_TAIL_MAX) out of the stream: the stream's length ends where the
@@ -164,7 +195,8 @@ import bergdb.pub.util.BadFormatException;
  * with positional reads on a channel of the file's own, and finds its file in a list
  * that the writer replaces, never changes. The writer, its append and force, a new file
  * with its forces, and a cut, holds no lock that a read takes; a cut only takes its files
- * off the list, and a thread of its own deletes them, in the same order as before. Before,
+ * off the list, and a thread of its own deletes them, in the same order as before (a batch
+ * at a time, the directory forced once after it, since 2026-11-27, bergdb 028-66). Before,
  * a read of the last file waited for the writer's append and force, and every read for a
  * new file's forces and a cut's deletes; on a slow disk for seconds.
  * 
@@ -299,6 +331,15 @@ public class FileStream implements AppendOnlyStream {
     
     /** The files a cut took off the list, to be deleted in order by the cut's thread. Under this. */
     private final ArrayDeque<DbFile> cutFiles = new ArrayDeque<DbFile>();
+    
+    /**
+     * The files before the last gap at the open, oldest first, not opened: not of the stream;
+     * the first cut at or after the first position deletes them (bergdb 028-66). Under this.
+     */
+    private DbFile[] leftovers = new DbFile[0];
+    
+    /** The gap that the open found, for the messages of reads below it, or null (028-66). */
+    private volatile String gap = null;
     
     /** The cut's thread while it runs, or null. Under this. */
     private Thread cutThread = null;
@@ -445,8 +486,10 @@ public class FileStream implements AppendOnlyStream {
                 if (spos < first) {
                     // 2026-10-13 (bergdb 011-04, W1): a read admitted before a
                     // cut can come here. It fails alone; the stream is not faulty.
+                    String g = gap;
                     throw new ReadBelowFirstPosException("Cannot read at spos " + spos
-                            + ", below the first position, " + first + ".");
+                            + ", below the first position, " + first + "."
+                            + (g == null ? "" : " " + g));
                 }
                 this.ioException = new IOException("No file found for reading at spos " + spos + ".");
                 throw ioException;
@@ -649,6 +692,10 @@ public class FileStream implements AppendOnlyStream {
      * whole cut, 88 to 171 ms in P4's soak (bergdb 009-04, section 7.3). A read of a file
      * taken off throws ReadBelowFirstPosException, as one of a deleted file did. A failed
      * delete is the stream's failure: the next read, append or cut throws it, and close().
+     * 
+     * A cut at or after the first position takes off the files before a gap that the open
+     * found, the leftovers, too, before its own (2026-11-27, bergdb 028-66; the class's
+     * Javadoc, "A gap in the files"); a cut before the first position takes none of them.
      */
     public synchronized void pretruncate(long pos) throws IOException {
         checkIOException();
@@ -678,7 +725,22 @@ public class FileStream implements AppendOnlyStream {
             // bergdb 028-60): a last file of zeros only that the cut leaves as the only file
             // would be taken whole at the next open (zeroTailLength()), past the length.
             files[files.length - 1].cutZeroTailIfPending();
-            
+        }
+        
+        // The leftovers, before the files of the cut: the deletes are issued oldest first.
+        // They leave the stream's files as they are, so the zeros need no cut for them.
+        boolean queued = false;
+        if (leftovers.length > 0 && pos >= getFirstPos()) {
+            for (DbFile k : leftovers) {
+                k.isDeleted = true;
+                cutFiles.addLast(k);
+            }
+            leftovers = new DbFile[0];
+            gap = null;
+            queued = true;
+        }
+        
+        if (index != -1) {
             int newSize = files.length - (index + 1);
             
             DbFile[] newFiles = new DbFile[newSize];
@@ -690,6 +752,10 @@ public class FileStream implements AppendOnlyStream {
             
             this.firstPos = newFiles[0].spos;
             this.dbFiles = newFiles;
+            queued = true;
+        }
+        
+        if (queued) {
             this.cutForceTo = len;
             
             if (cutThread == null) {
@@ -710,27 +776,41 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
-     * The cut's thread: deletes the files that cuts took off, oldest first, and forces the
-     * directory after each, as pretruncate() did (bergdb 005-46). Each removal of a prefix
-     * is persisted before the next one: a crash must not retain an older file while losing
-     * a newer one, which would leave a hole before recovery can read the cut table. A crash
-     * before a file is deleted leaves it, and the next start cuts again (Reclaim). It ends
-     * when nothing is left to delete, or at a failure, which it keeps as the stream's.
+     * The cut's thread: deletes the files that cuts took off, oldest first (bergdb 005-46), a
+     * batch at a time (2026-11-27, bergdb 028-66): the files that the cuts so far took off,
+     * their deletes issued oldest first, then one force of the directory; files that a cut
+     * takes off meanwhile are the next batch. Until 2026-11-27 it forced the directory after
+     * each file, as pretruncate() did before 005-46, so that a power loss could not keep the
+     * delete of a newer file and lose that of an older one, which left a gap that a start
+     * refused: a directory force is a device flush (about 6 ms on F53 alone, more beside a
+     * writer's forces), and with new files a tenth of the stream kept (bergdb 028-62) a writer
+     * with hard sync at full speed wrote about 40 % slower and the deletes lagged, the disk
+     * 1.4 to 1.6 times the stream kept (bergdb 028-66 has the figures).
      * 
-     * Before a delete, it has the stream forced up to its length at the cut (2026-11-04,
-     * bergdb 005-47), a no-op with per-append forcing on. Reclaim cuts when the durable length
-     * has passed its decision (Reclaim, pendingCutDurableAt); with forcing off that length
-     * means written, and a power loss after the delete would keep the cut and lose the
-     * decision.
+     * No order of the deletes on the device is assumed: a power loss can keep any of the
+     * deletes of a batch whose force has not returned and lose the others. A gap that this
+     * leaves is taken at the open (the class's Javadoc, "A gap in the files"). What the
+     * argument needs is that a file is deleted only after the record of the cut that took it
+     * off is on the device: before a batch, the thread has the stream forced up to its length
+     * at the latest cut (2026-11-04, bergdb 005-47), a no-op with per-append forcing on; every
+     * file of the batch ends before that length, and the record is before it, as Reclaim
+     * cuts only when the durable length has passed its decision (Reclaim,
+     * pendingCutDurableAt); with forcing off that length means written. Deletes are issued
+     * oldest first for a copy of the files in the order of their names (the class's Javadoc,
+     * "A backup"), which sees the directory as the deletes leave it, not as the device has
+     * it. A crash before a file is deleted leaves it, and the next start cuts again (Reclaim).
+     * It ends when nothing is left to delete, or at a failure, which it keeps as the
+     * stream's: the files of the batch that it has not deleted stay on the queue, and
+     * close() closes them.
      */
     private void runCuts() {
         try {
             while (true) {
-                DbFile k;
+                int batch;
                 long forceTo;
                 synchronized (this) {
-                    k = cutFiles.peekFirst();
-                    if (k == null || ioException != null) {
+                    batch = cutFiles.size();
+                    if (batch == 0 || ioException != null) {
                         cutThread = null;
                         notifyAll();
                         return;
@@ -740,7 +820,19 @@ public class FileStream implements AppendOnlyStream {
                 
                 try {
                     forceTo(forceTo);
-                    k.delete();
+                    // Cuts add files at the end only, so the batch is the first 'batch' files.
+                    // A file leaves the queue once deleted: close() needs only those that are
+                    // not, to close them after a failure.
+                    for (int i = 0; i < batch; i++) {
+                        DbFile k;
+                        synchronized (this) {
+                            k = cutFiles.peekFirst();
+                        }
+                        k.delete();
+                        synchronized (this) {
+                            cutFiles.removeFirst();
+                        }
+                    }
                     forceDirectory(dir);
                 } catch (IOException e) {
                     ioException = e;
@@ -750,12 +842,6 @@ public class FileStream implements AppendOnlyStream {
                     // At most once: no cut follows a failure.
                     cutFailure.initCause(e);
                     ioException = cutFailure;
-                }
-                
-                synchronized (this) {
-                    if (ioException == null) {
-                        cutFiles.removeFirst();
-                    }
                 }
             }
         } finally {
@@ -1102,10 +1188,26 @@ public class FileStream implements AppendOnlyStream {
      * @thrown BadDirStateException
      */
     private void handleExistingFiles() throws IOException, BadDirStateException {
-        File[] bergdbFiles = getSortedDbFiles();
-        long currentSpos = checkDbFiles(bergdbFiles);
+        File[] all = getSortedDbFiles();
+        // The stream is the files after the last gap (2026-11-27, bergdb 028-66); those
+        // before it are the leftovers, not opened.
+        int first = checkDbFiles(all);
+        File[] bergdbFiles = Arrays.copyOfRange(all, first, all.length);
+        if (first > 0) {
+            leftovers = new DbFile[first];
+            for (int i = 0; i < first; i++) {
+                leftovers[i] = new DbFile(fileSpos(all[i]), all[i], all[i].length());
+            }
+            long end = leftovers[first - 1].spos + leftovers[first - 1].maxSize;
+            gap = "At its open the stream's directory " + dir.getPath() + " had a gap in its"
+                    + " files: none held the bytes from " + end + " to " + fileSpos(all[first])
+                    + ", so the stream is the files from " + all[first].getName() + " on, and"
+                    + (first == 1 ? " the file before the gap, " + all[0].getName() + ", is"
+                    : " the " + first + " files before the gap, " + all[0].getName() + " to "
+                    + all[first - 1].getName() + ", are") + " not read (bergdb 028-66).";
+        }
         determineFileSizeIndexFromFiles(bergdbFiles);
-        createDbFileObjects(bergdbFiles, currentSpos);
+        createDbFileObjects(bergdbFiles, 0);
         if (zeroTailRemoved > 0) {
             // The last file's size from its length without the zeros (bergdb 028-60).
             DbFile[] files = dbFiles;
@@ -1194,8 +1296,16 @@ public class FileStream implements AppendOnlyStream {
         }
     }
 
-    private long checkDbFiles(File[] bergdbFiles) throws BadDirStateException {
+    /**
+     * Checks the names and lengths of the files, in the order of their names, and returns the
+     * index of the first file after the last gap, 0 if there is none: a file that begins after
+     * the end of the one before it (2026-11-27, bergdb 028-66; before, refused). Refused: a
+     * bad name, a file that begins before the end of the one before it, and a file but the
+     * last whose length is not a multiple of BYTES_PER_INDEX_UNIT.
+     */
+    private int checkDbFiles(File[] bergdbFiles) throws BadDirStateException {
         long currentSpos = 0;
+        int first = 0;
         
         for (int i = 0; i < bergdbFiles.length; i++) {
             File f = bergdbFiles[i];
@@ -1220,6 +1330,9 @@ public class FileStream implements AppendOnlyStream {
             
             if (i == 0) {
                 currentSpos = fileSpos;
+            } else if (currentSpos < fileSpos) {
+                first = i;      // A gap (bergdb 028-66).
+                currentSpos = fileSpos;
             } else {
                 if (currentSpos != fileSpos) {
                     throw new BadDirStateException("Existing files in dir " + dir.getPath() 
@@ -1241,7 +1354,26 @@ public class FileStream implements AppendOnlyStream {
             
             currentSpos += fLength;
         }
-        return currentSpos;
+        return first;
+    }
+    
+    /** The first stream position of a file with a checked name (checkDbFiles). */
+    private long fileSpos(File f) throws BadDirStateException {
+        String name = f.getName();
+        try {
+            return stringToIndex(name.substring(0, name.length() - SUFFIX.length()))
+                    * BYTES_PER_INDEX_UNIT;
+        } catch (BadFormatException e) {
+            throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
+        }
+    }
+    
+    /**
+     * Internal, for testing (bergdb 028-66): the number of files before a gap that the open
+     * found, which the first cut at or after the first position has not yet taken off.
+     */
+    public synchronized int getLeftoverCount() {
+        return leftovers.length;
     }
 
     /**
@@ -1334,6 +1466,12 @@ public class FileStream implements AppendOnlyStream {
     
     private synchronized void deleteAllFiles() throws IOException {
         try {
+            for (DbFile k : leftovers) {
+                k.delete();
+                forceDirectory(dir);
+            }
+            leftovers = new DbFile[0];
+            gap = null;
             for (int i = 0; i < dbFiles.length; i++) {
                 dbFiles[i].delete();
                 forceDirectory(dir);
@@ -2575,10 +2713,17 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals((byte) 123, b[0]);
     }
     
+    /**
+     * bergdb 028-66: a stream whose second file of three is missing opens from the third, the
+     * file after the gap, and keeps the first, a leftover, unread; until 2026-11-27 the open
+     * refused it (BadDirStateException). A read below the first position names the gap. A cut
+     * before the first position deletes nothing; one at it deletes the leftover, and the
+     * stream then opens without a gap.
+     */
     @Nano
     static void testRestartMissingFile(TestEnvironment c) throws IOException {
-        // Tests starting a FileStream in directory with a missing file.
         byte[] bytes = new byte[500*1000];     // 3 stream files
+        new Random(66).nextBytes(bytes);
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
         f.append(bytes, 0, bytes.length);
@@ -2591,24 +2736,144 @@ public class FileStream implements AppendOnlyStream {
             throw new IOException("Could not delete " + second.getPath() + ".");
         }
         
-        Exception ex = null;
+        FileStream f2 = new FileStream(dir);
         try {
-            FileStream f2 = new FileStream(dir);
+            Assert.assertEquals(400 * 1000L, f2.getFirstPos());
+            Assert.assertEquals(500 * 1000L, f2.getLength());
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            readAndCheck(f2, 400 * 1000, 100 * 1000, bytes);
+            try {
+                f2.read(400 * 1000 - 1, new byte[1], 0, 1);
+                throw new AssertionError("read below the gap");
+            } catch (ReadBelowFirstPosException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("gap")
+                        && e.getMessage().contains(fileName(0))
+                        && e.getMessage().contains("from 200000 to 400000"));
+            }
+            f2.pretruncate(400 * 1000 - 1);       // Before the first position: nothing.
+            f2.awaitDeletes();
+            Assert.assertEquals(1, f2.getLeftoverCount());
+            Assert.assertTrue(new File(dir, fileName(0)).exists());
+            f2.pretruncate(400 * 1000);
+            f2.awaitDeletes();
+            Assert.assertEquals(0, f2.getLeftoverCount());
+            Assert.assertFalse(new File(dir, fileName(0)).exists());
+        } finally {
             f2.close();
-        } catch (BadDirStateException e) {
-            ex = e;
         }
         
-        Assert.assertTrue(ex != null);
+        FileStream f3 = new FileStream(dir);
+        try {
+            Assert.assertEquals(0, f3.getLeftoverCount());
+            Assert.assertEquals(400 * 1000L, f3.getFirstPos());
+            readAndCheck(f3, 400 * 1000, 100 * 1000, bytes);
+        } finally {
+            f3.close();
+        }
+    }
+    
+    /**
+     * bergdb 028-66: what the open still refuses (BadDirStateException), and the refused open
+     * releases the directory's lock (bergdb 005-63): a file that begins before the end of the
+     * one before it, and a file before a gap whose length is not a multiple of 100,000.
+     */
+    @Nano
+    static void testRestartRefusedOverlap(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        f.append(new byte[500*1000], 0, 500*1000);      // 0, 200,000, 400,000
+        f.close();
         
-        // bergdb 005-63: the failed open released the directory's lock.
-        ex = null;
+        File overlap = new File(dir, indexToString(1) + SUFFIX);       // At 100,000.
+        Files.write(overlap.toPath(), new byte[100*1000]);
+        for (int i = 0; i < 2; i++) {
+            try {
+                new FileStream(dir).close();
+                throw new AssertionError("opened with an overlap");
+            } catch (BadDirStateException e) {
+                // Expected; the second time too: the lock was released.
+            }
+        }
+        Assert.assertTrue(overlap.delete());
+        
+        // The first file, before a gap, 150,000 bytes long.
+        Assert.assertTrue(new File(dir, indexToString(2) + SUFFIX).delete());
+        try (RandomAccessFile raf = new RandomAccessFile(new File(dir, fileName(0)), "rw")) {
+            raf.setLength(150 * 1000);
+        }
         try {
             new FileStream(dir).close();
+            throw new AssertionError("opened with a bad size before the gap");
         } catch (BadDirStateException e) {
-            ex = e;
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Bad size"));
         }
-        Assert.assertTrue(ex != null);
+    }
+    
+    /**
+     * bergdb 028-66: two gaps; the stream is the files after the last one. A cut deletes the
+     * leftovers, oldest first, before the files that it takes off, in one batch with one
+     * force of the directory. A stream of one file after a gap is the stream's only file for
+     * the tail of zeros (bergdb 028-60): its zeros are not left out, as the leftovers go at
+     * the next cut and the open after it must find the same stream.
+     */
+    @Nano
+    static void testGapsAtOpen(TestEnvironment c) throws Exception {
+        final List<String> log = Collections.synchronizedList(new ArrayList<String>());
+        FileStreamIo io = new FileStreamIo() {
+            protected void forceDirectory(File directory) throws IOException {
+                super.forceDirectory(directory);
+                log.add("force");
+            }
+            
+            protected boolean delete(File file) throws IOException {
+                boolean ok = super.delete(file);
+                log.add("delete " + file.getName());
+                return ok;
+            }
+        };
+        File dir = c.createTempDir();
+        byte[] bytes = new byte[1600 * 1000];
+        new Random(28066).nextBytes(bytes);
+        // Files at 0, 200,000, 600,000, 1,000,000 and 1,200,000 (the last, 150,000 bytes):
+        // gaps at 400,000 and at 800,000.
+        long[] starts = {0, 200 * 1000, 600 * 1000, 1000 * 1000, 1200 * 1000};
+        for (long start : starts) {
+            int n = start == 1200 * 1000 ? 150 * 1000 : 200 * 1000;
+            Files.write(new File(dir, fileName(start)).toPath(),
+                    Arrays.copyOfRange(bytes, (int) start, (int) start + n));
+        }
+        FileStream f = new FileStream(dir, io);
+        try {
+            Assert.assertEquals(1000 * 1000L, f.getFirstPos());
+            Assert.assertEquals(1350 * 1000L, f.getLength());
+            Assert.assertEquals(3, f.getLeftoverCount());
+            readAndCheck(f, 1000 * 1000, 350 * 1000, bytes);
+            log.clear();
+            f.pretruncate(1300 * 1000);
+            f.awaitDeletes();
+            Assert.assertEquals(Arrays.asList("delete " + fileName(0),
+                    "delete " + fileName(200 * 1000), "delete " + fileName(600 * 1000),
+                    "delete " + fileName(1000 * 1000), "force"), log);
+            Assert.assertEquals(1200 * 1000L, f.getFirstPos());
+            f.append(bytes, 1350 * 1000, 10);
+        } finally {
+            f.close();
+        }
+        Assert.assertEquals(Arrays.asList(fileName(1200 * 1000)),
+                Arrays.asList(dir.list((d, name) -> name.endsWith(SUFFIX))));
+        
+        // One file of zeros after a gap: in the stream, not left out.
+        File dir2 = c.createTempDir();
+        Files.write(new File(dir2, fileName(0)).toPath(), Arrays.copyOf(bytes, 200 * 1000));
+        Files.write(new File(dir2, fileName(400 * 1000)).toPath(), new byte[1000]);
+        FileStream g = new FileStream(dir2);
+        try {
+            Assert.assertEquals(400 * 1000L, g.getFirstPos());
+            Assert.assertEquals(401 * 1000L, g.getLength());
+            Assert.assertEquals(0L, g.getZeroTailRemoved());
+        } finally {
+            g.close();
+        }
     }
     
     @Nano
@@ -3435,6 +3700,72 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
+     * bergdb 028-66: the cut's thread deletes the files that the cuts so far took off as one
+     * batch, oldest first, and forces the directory once after it, not after each file;
+     * files that a cut takes off while it deletes are the next batch, with a force of their
+     * own. The stream reads the same, and a restart opens it.
+     */
+    @Nano
+    static void testCutDeletesABatchWithOneDirectoryForce(TestEnvironment c) throws Exception {
+        final List<String> log = Collections.synchronizedList(new ArrayList<String>());
+        HeldIo io = new HeldIo() {
+            protected void forceDirectory(File directory) throws IOException {
+                super.forceDirectory(directory);
+                log.add("force");
+            }
+            
+            protected boolean delete(File file) throws IOException {
+                boolean ok = super.delete(file);
+                log.add("delete " + file.getName());
+                return ok;
+            }
+        };
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir, io);
+        byte[] bytes = new byte[1400 * 1000 + 100];
+        new Random(28066).nextBytes(bytes);
+        try {
+            f.append(bytes, 0, 1400 * 1000);        // Seven files of 200,000 bytes.
+            f.append(bytes, 1400 * 1000, 100);      // An eighth, at 1,400,000.
+            log.clear();
+            
+            // The thread holds in its first delete while a second cut takes off three files.
+            io.holdDelete = new java.util.concurrent.CountDownLatch(1);
+            f.pretruncate(400 * 1000);
+            Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            f.pretruncate(1000 * 1000);
+            io.holdDelete.countDown();
+            f.awaitDeletes();
+            
+            Assert.assertEquals(Arrays.asList(
+                    "delete " + fileName(0), "delete " + fileName(200 * 1000), "force",
+                    "delete " + fileName(400 * 1000), "delete " + fileName(600 * 1000),
+                    "delete " + fileName(800 * 1000), "force"), log);
+            Assert.assertEquals(1000 * 1000, f.getFirstPos());
+            readAndCheck(f, 1000 * 1000, 400 * 1000 + 100, bytes);
+            
+            // A cut that takes every file but the last: one batch of two, one force.
+            log.clear();
+            f.pretruncate(1400 * 1000 + 50);
+            f.awaitDeletes();
+            Assert.assertEquals(Arrays.asList(
+                    "delete " + fileName(1000 * 1000), "delete " + fileName(1200 * 1000),
+                    "force"), log);
+        } finally {
+            f.close();
+        }
+        Assert.assertEquals(Arrays.asList(fileName(1400 * 1000)),
+                Arrays.asList(dir.list((d, name) -> name.endsWith(SUFFIX))));
+        FileStream again = new FileStream(dir);
+        try {
+            Assert.assertEquals(1400 * 1000, again.getFirstPos());
+            readAndCheck(again, 1400 * 1000, 100, bytes);
+        } finally {
+            again.close();
+        }
+    }
+    
+    /**
      * bergdb 005-46: a read by a thread whose interrupt flag is set reads, and leaves the
      * flag set; a FileChannel would have closed itself. And a read that finds the channel
      * closed, as an interrupt during a read of another thread closes it, opens it again.
@@ -4071,7 +4402,9 @@ public class FileStream implements AppendOnlyStream {
      * the check (here inside FileStreamIo.open()). The check after the open fails the
      * stream before it writes a byte: the append and close() throw. The new file, empty, is
      * in the replacement, which a stream refuses beside the replacement's own files
-     * (BadDirStateException) until it is removed.
+     * (BadDirStateException) until it is removed: since 2026-11-27 (bergdb 028-66) for the
+     * replacement's file, before the last and not a multiple of 100,000 bytes long, as the
+     * open takes a gap in the files.
      */
     @Nano
     public static void testReplacedRightBeforeTheOpen(TestEnvironment c) throws Exception {

@@ -228,10 +228,16 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
   `ReadBelowFirstPosException`.
 * Refused at an open (`handleExistingFiles`, :978; `checkDbFiles`,
   :1055): a name that is not a number from 0 to `Long.MAX_VALUE /
-  100,000`; a file whose first position is not where the files before it
-  end; a file other than the last whose length is not a multiple of
-  100,000: `BadDirStateException`, an `IOException`, not an SFE. A
+  100,000`; a file whose first position is before the end of the file
+  before it; a file other than the last whose length is not a multiple
+  of 100,000: `BadDirStateException`, an `IOException`, not an SFE. A
   directory locked by another stream: `DirectoryInUseException`.
+* A gap at an open (028-66, 2026-11-27; refused until then): a file whose
+  first position is after the end of the one before it. The stream is
+  the files after the last gap, its first position the first of them's;
+  the files before it are not read, and the first cut at or after the
+  first position deletes them. A start then refuses a stream whose first
+  position is after reclaim's cut (027-13, section 1.9).
 
 **Tests.** UT: `FileStream`'s 46 tests (`testFileSizeRules0`,
 `testRestartMissingFile`, `testPretruncate0`, `testLockFile`, ...). C:

@@ -58,6 +58,8 @@ created, written, forced, directories = {}, {}, {}, {}
 data_forces = directory_forces = writes = deletions = 0
 last_delete = 0
 last_delete_directory = None
+last_deleted_path = ""
+unforced_unlinks = max_unforced_unlinks = 0
 for seq, op, kind, rc, amount, path in events:
     if op == "CREATE":
         assert rc == 0
@@ -71,6 +73,7 @@ for seq, op, kind, rc, amount, path in events:
         if kind == "dir":
             directories[path] = seq
             directory_forces += 1
+            unforced_unlinks = 0
         elif path.endswith(".bergdb"):
             forced[path] = seq
             data_forces += 1
@@ -80,8 +83,15 @@ for seq, op, kind, rc, amount, path in events:
         raise AssertionError("Expected fsync for force(true), found fdatasync: " + path)
     elif op == "UNLINK":
         assert rc == 0
-        if last_delete:
-            assert directories.get(last_delete_directory, 0) > last_delete, "unforced prefix deletion before next unlink"
+        # Since 2026-11-27 (bergdb 028-66) a cut's deletes are a batch, the directory forced
+        # once after it: no force between two unlinks is required, but they are issued in the
+        # order of the files' names, the oldest first (a backup copy in name order relies on
+        # it), and each after the files that survive it are forced (below). Until then a
+        # directory force was required between two unlinks.
+        assert path > last_deleted_path, ("unlink out of name order", last_deleted_path, path)
+        last_deleted_path = path
+        unforced_unlinks += 1
+        max_unforced_unlinks = max(max_unforced_unlinks, unforced_unlinks)
         survivors = [p for p in created if p > path]
         assert survivors, ("no surviving replacement file", path)
         for survivor in survivors:
@@ -96,5 +106,7 @@ for path, seq in written.items():
     assert forced.get(path, 0) > seq, ("unforced append", path)
 assert data_forces >= 8 and directory_forces >= 4 and writes >= 4 and deletions >= 2
 assert directories.get(last_delete_directory, 0) > last_delete, "last deletion was not forced"
+assert deletions >= 2 and max_unforced_unlinks >= 2, ("no batch of two deletes", max_unforced_unlinks)
 print(f"NATIVE FLUSH ORDER OK: {writes} writes, {data_forces} successful file {force_operation}, "
-      f"{directory_forces} successful directory {force_operation}, {deletions} deletions")
+      f"{directory_forces} successful directory {force_operation}, {deletions} deletions, "
+      f"at most {max_unforced_unlinks} in a batch")

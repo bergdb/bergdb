@@ -19,7 +19,14 @@ import java.io.IOException;
  * holds every byte before it and none after it. The implementation, with the storage under
  * it (file system, block device, flash), must ensure this; BergDB does not.
  * A start recovers only a truncated tail; other damage is an integrity failure outside this
- * contract (bergdb 014-01, section 7). BergDB assumes correct storage: its checksums and
+ * contract (bergdb 014-01, section 7). The front may move forward at a crash, never past
+ * the position of a pretruncate() call made before it (2026-11-27, bergdb 028-66): the
+ * stream may then begin later than it did, and still holds every byte from there to its
+ * end. FileStream deletes the files of a cut with one force of the directory a batch, and a
+ * power loss can keep the delete of a newer file and lose that of an older one, a gap that
+ * its open takes as the stream's new front. A caller that cuts must have its record of the
+ * cut durable before it calls pretruncate() (Reclaim, cutIfDurable), as the bytes before
+ * the position may be gone after a crash. BergDB assumes correct storage: its checksums and
  * checks find some damage of the stored bytes, not all, as a best effort, and damage that
  * passes them gives wrong values with no error (bergdb 019-10; Db, "Errors").</p>
  * 
