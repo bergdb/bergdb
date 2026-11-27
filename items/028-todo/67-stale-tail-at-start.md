@@ -123,7 +123,8 @@ Built
 -----
 
 2026-11-27, by an agent of lead-1127 on the branch `028-67-c3` (from
-`main` at `5d6fe4ae`; `91584578` and `b553bd88`), for 031-06's landing,
+`main` at `5d6fe4ae`; on `main` as `b0aac3a9` and `53ff486f`, after
+the review's fixes, `48203205`), for 031-06's landing,
 step 4. C1 and C3 as decided; C2 not built, C4 not taken.
 
 * **C3, the meta block.** Version 156 (`MetaBlock.VERSION_156`); bytes
@@ -243,13 +244,13 @@ step 4. C1 and C3 as decided; C2 not built, C4 not taken.
   check. The C clone (012, 022) follows a
   release.
 * **Gates** (in the branch's clone, F53, beside other sessions' runs):
-  * `java/before-commit.sh`: `BEFORE COMMIT OK (78 s)` on `91584578`,
-    `BEFORE COMMIT OK (86 s)` on `b553bd88`.
-  * `java/stress/level2.sh` (full): `LEVEL 2 OK` (16 min), on `91584578`.
-  * `java/stress/level3.sh`: `LEVEL 3 OK` (15 min), on `91584578`.
+  * `java/before-commit.sh`: `BEFORE COMMIT OK (78 s)` on `b0aac3a9`,
+    `BEFORE COMMIT OK (86 s)` on `53ff486f`.
+  * `java/stress/level2.sh` (full): `LEVEL 2 OK` (16 min), on `b0aac3a9`.
+  * `java/stress/level3.sh`: `LEVEL 3 OK` (15 min), on `b0aac3a9`.
   * `java/stress/level4.sh quick`: `LEVEL 4 OK`; `java/stress/apps.sh
-    quick`: `APPS OK`; both on `b553bd88`.
-  * CorruptStreamTester's full set, seed 20768, on `b553bd88`: 0
+    quick`: `APPS OK`; both on `53ff486f`.
+  * CorruptStreamTester's full set, seed 20768, on `53ff486f`: 0
     failures.
   * 031-06's `probes/faults.sh` and `probes/sweep.sh` do not run on this
     branch, nor on `main`: `NoSuchMethodException` for
@@ -263,6 +264,13 @@ step 4. C1 and C3 as decided; C2 not built, C4 not taken.
     `main`. `review-main-probes/run.sh sweep` (P2CrashProbe): 12,105
     interruptions and 2,142 torn records, 0 different, as on `main`.
   * `lean/contract/gate.sh`: not run; nothing in `lean/` changed.
+* **Gates on the combined tree** (2026-11-27, the lead, with the
+  commits on `main`'s `48203205`, 031-06's review fixes; the `java/` and
+  `lean/` of `b0cb561c` are the same): `BEFORE COMMIT OK (77 s)`,
+  `LEVEL 2 OK`, `LEVEL 3 OK` (C-STEP 0 of 23,127, C-CUT 0 of 869);
+  031-06's `probes/sweep.sh`, which runs again since the review's R6 was
+  fixed: 0 different in all 62 result lines; `probes/faults.sh`: bad 0
+  in all 42 lines.
 
 
 Log
