@@ -1,8 +1,9 @@
 028-69. Implement: remove the internal crypto code
 ==================================================
 
-Status: in progress: the removal is on `main` (`1809e04c`, 2026-11-27,
-`BEFORE COMMIT OK`); open until 028-60's part 2 is rebased on it. Kind: Implement. Frans: none (decided).
+Status: done (2026-11-27): the removal is on `main` (`1809e04c`,
+`BEFORE COMMIT OK`), and 028-60's part 2 is on it without its opt-out
+(`ac33aa93`). Kind: Implement. Frans: none (decided).
 Created 2026-11-27 by Frans Lundberg.
 
 What: encryption left the API in release 2026.4 (020-28), and its code
@@ -145,3 +146,9 @@ at `0edd2a2f`:
 with the code, `0edd2a2f` on main; the removal's commit: `1809e04c` in
 the branch 028-69 (main's hash replaces it at landing); the files
 removed; and the rule for the key's return.
+
+2026-11-27. Done: 028-60's part 2 landed on the removal (`ac33aa93`),
+with `FileStream`'s repair for every stream and no opt-out. Codex's
+review of the removal with it: a database that release 2026.3 encrypted
+(built from its tag) is refused with and without `created.txt`, its
+files unchanged; no reference to the removed code is left.

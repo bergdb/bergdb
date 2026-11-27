@@ -376,7 +376,8 @@ RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
   zero bytes is not valid, so zeros that begin inside the last record
   are recovered as a cut tail; zeros past a record's end get the
   documented refusal, "Bad transaction size in db stream, 0, spos P",
-  and the file cut at P starts. Part 2, 028-60, 2026-11-27 (Frans's
+  and the file cut at P starts. Part 2, 028-60 (`ac33aa93`),
+  2026-11-27 (Frans's
   decision of 2026-11-26: neither B1, B2 nor B3 as written): at the
   open, `FileStream` leaves a run of zero bytes of at most 8 MB at the
   end of its last file out of the stream, and its first append

@@ -106,7 +106,7 @@ Open
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
 | [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve changes the bytes and is not in the stream: A to C | decision | open |
-| [028-69](69-remove-crypto-code.md) | Implement | The internal crypto code removed (`1809e04c`); open until 028-60's part 2 is rebased | none | in progress |
+| [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 
 
 Closed
@@ -114,6 +114,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-69](69-remove-crypto-code.md) | Implement | The internal crypto code removed (`1809e04c`); recorded in 017-10 | none | done | 2026-11-27 |
 | [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a kill's zeroed tail; FileStream removes up to 8 MB | FileStream only | done | 2026-11-27 |
 | [028-62](62-emptied-file-db-last-file/readme.md) | Decide | RB-011: new files a tenth of the stream; the Javadoc of the stream | neither J nor S | done | 2026-11-26 |
 | [028-63](63-large-fill-envelope/readme.md) | Investigate | large run's fill: the seed's key order; the cap scales | none | done | 2026-11-26 |
@@ -598,3 +599,10 @@ without its opt-out for encrypted streams (branch `028-60c`):
 end of its last file out of the stream, and its first append cuts it,
 for every stream, on every system; nothing above it changed. RB-012
 fixed for 2026.7. Moved to Closed.
+
+2026-11-27. 028-60's part 2 landed (`ac33aa93`): RB-012 fixed on `main`
+for 2026.7. 028-69 done with it. Moved to Closed.
+
+2026-11-27. 028-70 registered by lead-1127, from Codex's third review of
+028-60's part 2: a start that is refused after its recovery has written
+changes the stream.
