@@ -246,8 +246,8 @@ import bergdb.stream.ReadBelowFirstPosException;
  * and which stays live, so that reclaim copies it forward as any live value (bergdb 028-15;
  * until then a value of 200 kB at "/#i/-dummy" at each change); setRetainDuration() and
  * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
- * reclaim, when it runs, keeps its state under "/#i/dreclaim/" (a stream of 2026.6 may also
- * hold maintain()'s filler there, "/#i/dreclaim/-fill.txt"). getMany() returns these keys
+ * reclaim, when it runs, keeps its state under "/#i/dreclaim/": its table and the row of its
+ * iteration. getMany() returns these keys
  * as any other, getTrans() lists them, getTransactionCount() counts their transactions and
  * getKvCount() their KVs. So in every database, used by the Pub API or not, a key whose bytes
  * start with 01 25, the bkey of "/#", is BergDB's: do not write it, and to read only the other
@@ -3065,17 +3065,19 @@ public class Db implements AutoCloseable {
         // whatever throws fails the database (bergdb 005-01).
         try {
             x.plan = plan;
-            if (plan != null) {
-                // The fields of the plan's record, set again at each execution, as a Trans
-                // may be executed again (its Javadoc); cleared after the record, below.
-                t.dirtiedNodes = 0;
-                t.dirtiedBytes = 0;
-                t.touch = plan.touchKeys != null;
-                t.touchCount = plan.touchCount;
-                t.touchOldBefore = plan.touchOldBefore;
-                t.maintainTakeTo = plan.takeTo;
-                t.recordCap = StoredTrans.recordCap();
-            }
+            // The fields of the record's plan, set at every execution, whatever the plan: a
+            // Trans may be executed again (its Javadoc), also after an execution that failed
+            // the database after this point, and its record is then the record of a new Trans
+            // with the same KVs at the same time (bergdb 031-06, review-main, R1). Until
+            // 2026-11-27 they were set only with a plan and cleared only after a record that
+            // worked, so a failed execution left them to the next.
+            t.dirtiedNodes = 0;
+            t.dirtiedBytes = 0;
+            t.touch = plan != null ? plan.touchKeys != null : t.testTouch;
+            t.touchCount = plan == null ? null : plan.touchCount;
+            t.touchOldBefore = plan == null ? 0 : plan.touchOldBefore;
+            t.maintainTakeTo = plan == null ? -1 : plan.takeTo;
+            t.recordCap = plan == null ? 0 : StoredTrans.recordCap();
             putKvs(plan == null ? kvs : merge(kvs, plan.kvs));
 
             // The synch statement below publishes the changes by the writer thread
@@ -3122,12 +3124,6 @@ public class Db implements AutoCloseable {
             // The synch statement guarantees that the writes are visible to all readers
             // assuming they also do [synchronized(readSync) {}] before they start reading.
             synchronized (readSync) {}
-            if (plan != null) {
-                t.touch = false;
-                t.touchCount = null;
-                t.maintainTakeTo = -1;
-                t.recordCap = 0;
-            }
             return plan;
         } catch (Throwable e) {
             throw fail(t, e);
@@ -3666,8 +3662,10 @@ public class Db implements AutoCloseable {
      * StoredTrans.takeRoom(): no later record, not even one with no KVs, could take the set
      * whole (TransSeq.take), and the startup pos would stay before it for good with nothing
      * failing (the review's RvLong). The counts before the go point keep a record's own nodes
-     * within StoredTrans.dirtyLimit() (checkDirtyNodes(), recordDirtyFits()), so this checks
-     * those counts and the margin left for the nodes kept dirty. After the go point: a Bug,
+     * within StoredTrans.dirtyLimit() (checkDirtyNodes(), recordDirtyFits()), and the take
+     * keeps the set within takeRoom() by the same count, every node it takes counted as kept
+     * dirty (TransSeq.SetRoom; since 2026-11-27, review-main, R2), so this checks the counts
+     * before the go point: a record's own nodes over takeRoom(). After the go point: a Bug,
      * which fails the database (010-01, P7); nothing of the record is written.
      */
     private void checkTakeable() {
@@ -3678,10 +3676,7 @@ public class Db implements AutoCloseable {
         if (set.size() * Math.max(topBytes, nodeBytes) <= room) {
             return;         // most records: a cheap test first
         }
-        long bytes = 0;
-        for (Node n : set) {
-            bytes += n.getType() == Node.TYPE_TOP_NODE ? topBytes : nodeBytes;
-        }
+        final long bytes = TransSeq.largestBytes(set, topBytes, nodeBytes);
         if (bytes > room) {
             throw new Bug("A record whose index nodes to write later, " + set.size()
                     + " of them, may take " + bytes + " bytes, more than a later record can "
@@ -3709,8 +3704,16 @@ public class Db implements AutoCloseable {
         // bergdb 031-06: a record that carries maintenance may take the step's room on top of
         // the transaction's (StoredTrans.recordCap).
         final long cap = x.trans.recordCap > 0 ? x.trans.recordCap : StoredTrans.recordLimit;
+        // The room of the record's got-dirty set (bergdb 031-06, review-main, R2): its own
+        // nodes and every node that its take adds, counted as checkTakeable() counts them,
+        // within StoredTrans.takeRoom() by the take itself.
+        final long topBytes = StoredTrans.TOP_BYTES / 2;
+        final long nodeBytes = dirtyNodeBytes();
+        final TransSeq.SetRoom room = new TransSeq.SetRoom(StoredTrans.takeRoom()
+                - TransSeq.largestBytes(x.transInfo.gotDirtyNodes, topBytes, nodeBytes),
+                topBytes, nodeBytes);
         newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
-                x.transNodes, cap - fixedBytes);
+                x.transNodes, cap - fixedBytes, room);
         if (x.trans.maintainTakeTo > newSp) {
             // The empty record of a maintain() call (bergdb 024-32, section 2.2, M4): more of
             // D after the share, oldest first, up to the position that reclaim waits for.
@@ -3722,7 +3725,7 @@ public class Db implements AutoCloseable {
                 bytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
             }
             newSp = transSeq.takeTo(newSp, x.trans.maintainTakeTo, 
-                    Reclaim.MAINTAIN_TAKE_BYTES, x.transNodes, cap - bytes);
+                    Reclaim.MAINTAIN_TAKE_BYTES, x.transNodes, cap - bytes, room);
         }
         x.trans.startupPos = newSp;
         

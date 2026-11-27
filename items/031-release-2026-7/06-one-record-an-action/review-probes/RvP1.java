@@ -43,7 +43,7 @@ public class RvP1 {
         clock.setTime(time);
         DbBuilder b = Db.builder().testSetup(new CutStream()).clock(clock);
         if (evict > 0) b.cacheSizeIndicator(evict);
-        if (Long.getLong("reserve", 0) > 0) b.reclaimStepReserve(Long.getLong("reserve"));
+        if (Long.getLong("reserve", 0) > 0) b.testStepReserve(Long.getLong("reserve"));
         Db db = b.start();
         db.setStartupDistance(100000);
         Random r = new Random(1);

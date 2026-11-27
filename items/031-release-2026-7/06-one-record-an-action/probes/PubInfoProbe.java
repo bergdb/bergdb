@@ -29,7 +29,7 @@ public class PubInfoProbe {
         long t = SEC;
         pc.setTime(bergdb.pub.Time.units(t));
         bergdb.stream.CutStream s = new bergdb.stream.CutStream();
-        Db db = TestNodeSize.builder(NODE == 0 ? 30 : NODE).testSetup(s).clock(pc).reclaimStepReserve(RESERVE).build();
+        Db db = TestNodeSize.builder(NODE == 0 ? 30 : NODE).testSetup(s).clock(pc).testStepReserve(RESERVE).build();
         Database d = start(db);
         db.setStartupDistance(SD);
         d.setRetainDuration(bergdb.pub.Duration.seconds(1));
@@ -49,7 +49,7 @@ public class PubInfoProbe {
                 if (i % 97 == 96) {
                     d.close();      // close() waits for the storage; stop() would not
                     s = s.copy();
-                    db = TestNodeSize.builder(NODE == 0 ? 30 : NODE).testSetup(s).clock(pc).reclaimStepReserve(RESERVE).build();
+                    db = TestNodeSize.builder(NODE == 0 ? 30 : NODE).testSetup(s).clock(pc).testStepReserve(RESERVE).build();
                     d = start(db);
                     c = d.connection();
                 }

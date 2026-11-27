@@ -1007,14 +1007,16 @@ def reclaimStepFailures (i : Nat) (s : SIS.Check.Tree.TStep) (prev : Option SIS.
 /-- STEP-action (bergdb 031-06), for every record of a trace with STEP lines: a record is
 its action's operations and the maintenance it carries, one operation a key. ops are its OP
 lines (true: a noop), copies the keys of its `OP C` lines, acts its ACT lines, the action as
-submitted (of two at one key the last), step whether it has a TOUCH line. The operations
-that are not copies are the action's, as submitted: each operation of the action is one of
-them (a put with its value, a delete as `OP D` or, if it deleted nothing, `OP N`), and every
-other is a put at a key of reclaim's reserved prefix (`reclaimReserved`: the row, the table),
-which no action writes. The copies are in a step's record only, and at no key of the
-action's (Java leaves such a copy out, Codex's E4). So the record's effect on the keys
-outside reclaim's prefix is its action's and its copies', and the copies put again the
-values the scan read (STEP-values). -/
+submitted (of two at one key the last), step whether it has a TOUCH line. The record's
+operations have distinct keys, as the contract's `MaintenanceOK` takes them in every record
+(since 2026-11-27, review-main, R7; until then STEP-ops tested it in a step's record only).
+The operations that are not copies are the action's, as submitted: each operation of the
+action is one of them (a put with its value, a delete as `OP D` or, if it deleted nothing,
+`OP N`), and every other is a put at a key of reclaim's reserved prefix (`reclaimReserved`:
+the row, the table), which no action writes. The copies are in a step's record only, and at
+no key of the action's (Java leaves such a copy out, Codex's E4). So the record's effect on
+the keys outside reclaim's prefix is its action's and its copies', and the copies put again
+the values the scan read (STEP-values). -/
 def actionFailures (ops : List (SIS.Tree.Op × Bool)) (copies : List SIS.Tree.Key)
     (acts : List SIS.Tree.Op) (step : Bool) : List String :=
   let acts := acts.foldl (fun m a => m.filter (·.key != a.key) ++ [a]) []
@@ -1028,6 +1030,8 @@ def actionFailures (ops : List (SIS.Tree.Op × Bool)) (copies : List SIS.Tree.Ke
     | .put k _ => !reclaimReserved k
     | .del _ => true)
   let atAction := copies.filter (fun k => acts.any (·.key == k))
+  let keys := ops.map (·.1.key)
+  (if keys.eraseDups.length == keys.length then [] else ["two operations of one key"]) ++
   (if missing.isEmpty then [] else
     [s!"{missing.length} operations of the action as submitted not in the record as given: {(missing.map reprStr).take 3}"]) ++
   (if notReserved.isEmpty then [] else
@@ -1111,6 +1115,13 @@ marked as a copy, or a copy in a record without a step, each fails. -/
 #guard (actionFailures [(.del [8], false), (.put [16] 5, false), (.put [24] 3, false),
   (.put reclaimRowKey 2, false)] [[16], [24]] [.del [8], .put [16] 5] true).length == 2
 #guard (actionFailures [(.put [24] 3, false)] [[24]] [] false).length == 1
+/- One operation a key in every record (review-main, R7; its Rm7.lean): a record without a
+step that holds its action's put and a second put, or a delete, at the same key fails; until
+2026-11-27 both passed STEP-action, and STEP-ops ran on a step's record only. -/
+#guard actionFailures [(.put [16] 5, false), (.put [16] 6, false)] [] [.put [16] 5] false ==
+  ["two operations of one key"]
+#guard actionFailures [(.put [16] 5, false), (.del [16], false)] [] [.put [16] 5] false ==
+  ["two operations of one key"]
 
 /-- STEP-resume (bergdb 030-31) for the RESUME line ρ after a restart after T(i): the row that
 the start read from the stream is the iteration's row as its last step left it (030-25: a

@@ -62,7 +62,8 @@ Checks, per transaction i (R(0) included):
        `/#i/dreclaim/`, since bergdb 030-39; until then the key of the trace's first
        step's row) (STEP-chain, STEP-c, STEP-range, STEP-puts, STEP-values, STEP-ops);
        every record against its action as submitted, its ACT lines (STEP-action, since
-       bergdb 031-06): the operations that are not copies are the action's, each with
+       bergdb 031-06): its operations have distinct keys (since 2026-11-27, in every
+       record), the operations that are not copies are the action's, each with
        its value, and puts of reclaim's at its reserved keys, no copy at a key the action
        writes, copies only in a step's record; a
        STEP line in every record with a TOUCH line and in no other (STEP-line); and per

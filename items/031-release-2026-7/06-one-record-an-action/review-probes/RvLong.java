@@ -14,8 +14,16 @@ import bergdb.stream.CutStream;
  * Usage: java -ea -cp OUT:JAR bergdb.core.RvLong SEGMENTS [NODE]
  *   -Dlimit=N: a lowered record limit (StoredTrans.recordLimit), to see what follows when a
  *   record's dirty set passes the room of every later record (F5's consequence).
+ *   -Dwhen=after (the default): the limit lowered after the key's record, as the review ran
+ *   it; before: in force from the start, as a limit is in production; plan: lowered after the
+ *   key's transaction is admitted, before its plan (031-06's landing, step 2: the key's
+ *   transaction is refused by 005-31 with before, and with plan its record is not written:
+ *   Db.checkTakeable fails the database).
  */
 public class RvLong {
+    static long s0(Db db) {
+        try { return db.getStreamLength(); } catch (Throwable e) { return -1; }
+    }
     public static void main(String[] args) throws Exception {
         final long SEC = Clock.UNITS_PER_SEC;
         int segments = Integer.parseInt(args[0]);
@@ -35,10 +43,38 @@ public class RvLong {
         Random r = new Random(1);
         byte[] v = new byte[100];
         r.nextBytes(v);
-        db.execute(db.trans().putLongKey(key, null, v, null).build());
+        final String when = System.getProperty("when", "after");
+        final long limit = Long.getLong("limit", 0);
+        if (limit > 0 && when.equals("before")) StoredTrans.recordLimit = limit;
+        if (limit > 0 && when.equals("plan")) {
+            Db.testHooks = new Db.TestHooks() {
+                public void beforePlan(Db.ExecuteData x) { StoredTrans.recordLimit = limit; }
+                public void transExecuted(Db.ExecuteData x) {}
+                public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                public void nodeTouched(bergdb.dag.Node node) {}
+                public void nodeReplaced(bergdb.dag.Node node) {}
+            };
+        }
+        final long length0 = db.getStreamLength();
+        try {
+            db.execute(db.trans().putLongKey(key, null, v, null).build());
+        } catch (Throwable e) {
+            Db.testHooks = null;
+            Throwable c = e;
+            while (c.getCause() != null) c = c.getCause();
+            System.out.println("RvLong: a key of " + key.length + " segments (" + Trans.keyBytes(key)
+                    + " bytes) under \"/#\", the record limit " + limit + " " + when + ": "
+                    + (e instanceof bergdb.pub.util.DbException ? "refused" : "failed") + ", "
+                    + e.getClass().getSimpleName() + (c != e ? " (" + c.getClass().getSimpleName() + ")" : "")
+                    + ": " + c.getMessage() + "; the stream's length " + length0 + " before, " + s0(db) + " after");
+            try { db.close(); } catch (Throwable x) {}
+            StoredTrans.recordLimit = saved;
+            return;
+        }
+        Db.testHooks = null;
         // The limit is lowered after the key is in the stream: its own transaction is
         // admitted by the release's limit, as a transaction near that limit would be.
-        if (Long.getLong("limit", 0) > 0) StoredTrans.recordLimit = Long.getLong("limit");
+        if (limit > 0 && when.equals("after")) StoredTrans.recordLimit = limit;
         Reclaim.Stats stats = db.internal().reclaim().enableStats();
         long copies = 0, maxRecord = 0, maxDirtied = 0;
         boolean copied = false;

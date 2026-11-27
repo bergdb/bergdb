@@ -45,6 +45,11 @@
 #   actval   that put with the value 12345: not the action as submitted (STEP-action)
 #   actdrop  that put left out of the record (STEP-action)
 #   copyuser an OP C line in TX 3, a commit's record without a step (STEP-action)
+# Since 2026-11-27 (bergdb 031-06, review-main, R7), one operation a key in every record:
+#   twice    in the first record of a user transaction, its first OP P line again with the
+#            value 12345: a second operation at a key of the action's in a record without a
+#            step (STEP-action; until then STEP-ops tested it in a step's record only, and
+#            the trace passed)
 # Since bergdb 030-31 also a second good trace, with restarts and crashes of run A, RESTART
 # and RESUME lines, which must pass with a crash and an iteration with a step before a
 # restart and the next after it, and its faults. Since bergdb 031-06 it is conformance.sh
@@ -149,6 +154,7 @@ fault mark STEP-action 'BEGIN {gsub(/_/, " ", l)} /^TX /{tx = $2} tx == t && $0 
 fault actval STEP-action 'BEGIN {gsub(/_/, " ", l)} /^TX /{tx = $2} tx == t && $0 == l && !d {$NF = "12345"; d = 1} {print}' "-v t=$T2 -v l=$(echo $L2 | tr ' ' '_')"
 fault actdrop STEP-action 'BEGIN {gsub(/_/, " ", l)} /^TX /{tx = $2} tx == t && $0 == l && !d {d = 1; next} {print}' "-v t=$T2 -v l=$(echo $L2 | tr ' ' '_')"
 fault copyuser STEP-action '{print} /^TX 3$/{getline; print; print "OP C 1 8 1"}'
+fault twice STEP-action '/^TX /{u = 0} /kind=user/ {u = 1} {print} u && !d && /^OP P / {$NF = "12345"; print; d = 1}'
 
 # Restarts and crashes (bergdb 030-31).
 PROPS="-Dn=400 -Dkeys=200 -Dmaxnode=8 -Dsd=500 -Dops=6 -Ddel=20 -Dvalsize=200 -Dretain=1 -Drestart=5 -Dcrash=3 -Dtree=1 -Dsteps=1"

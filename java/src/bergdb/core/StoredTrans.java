@@ -141,16 +141,23 @@ public class StoredTrans {
     
     /**
      * bergdb 031-06 (review F5): the most bytes of a record's got-dirty set, its nodes counted
-     * at their largest with their entries, that a later record with no KVs (an empty commit,
-     * a part's take, M4) can take whole: recordLimit less that record's header
-     * (TransSeq.ownBytes(0)) and TOP_BYTES. Db.store() fails the database before it appends a
-     * record whose set is over it, as no later take could take the set and the startup pos
-     * would stay before it for good. The set is the record's own nodes, within dirtyLimit()
-     * by the counts before the go point, and the nodes that its take keeps dirty
-     * (Db.handleStillDirtyNodes), which have the rest of the record limit.
+     * at their largest with their entries, that a later record with no KVs of an action can
+     * take whole: an empty commit with nothing due, whose limit is recordLimit, and the part
+     * of maintain() that takes D, M4 (Reclaim.planPart), whose limit is recordCap() and which
+     * holds the table: the smaller of the two limits, M4's less TABLE_ROOM, less the record's
+     * header (TransSeq.ownBytes(0)) and TOP_BYTES. Db.store() fails the database before it
+     * appends a record whose set is over it, as no later take could take the set and the
+     * startup pos would stay before it for good. The set is the record's own nodes, within
+     * dirtyLimit() by the counts before the go point, and the nodes that its take keeps dirty
+     * (Db.handleStillDirtyNodes), which the take keeps within the rest (TransSeq.SetRoom;
+     * bergdb 031-06, review-main, R2). Until 2026-11-27 M4's table was not counted (review-main,
+     * R5): at the release's limits, where recordCap() is recordLimit, a set within the table's
+     * bytes of the room was taken by an empty commit only. At a lowered limit recordCap() is
+     * recordLimit + stepRoom(), and stepRoom() holds TABLE_ROOM, so the room is as before.
      */
     static long takeRoom() {
-        return recordLimit - TransSeq.ownBytes(0) - TOP_BYTES;
+        return Math.min(recordLimit, recordCap() - TABLE_ROOM) - TransSeq.ownBytes(0)
+                - TOP_BYTES;
     }
     
     /**
@@ -158,6 +165,18 @@ public class StoredTrans {
      * for the row, the table and the scan's KVs but the last (Reclaim.MAX_STEP_SIZE).
      */
     static final long STEP_FIXED_ROOM = 256 * 1024L;
+    
+    /**
+     * bergdb 031-06 (review-main, R5): the bytes that the record of M4 holds besides those of
+     * a record with no KVs, which takeRoom() leaves it: the table's value node and the
+     * got-dirty entries of the index nodes on its key's path. STEP_FIXED_ROOM, where
+     * stepRoom() holds the row and the table: a table of a few rows and a path of a few
+     * hundred nodes, some kB, unless the rows' keys are among the longest the Core accepts.
+     * Assumed, not checked: a table over it leaves M4 less room than takeRoom(), and a set in
+     * D within the difference is taken by a later commit, not by M4 (a part then appends the
+     * table and does not move the startup pos).
+     */
+    static final long TABLE_ROOM = STEP_FIXED_ROOM;
     
     /**
      * bergdb 031-06: the largest value node that a user transaction can store, a value of

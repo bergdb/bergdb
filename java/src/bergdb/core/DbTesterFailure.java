@@ -319,6 +319,139 @@ public class DbTesterFailure {
         db.close();
     }
 
+    /**
+     * bergdb 031-06 (review-main, R1): a Trans whose execution failed the database after its
+     * go point, in a record that carried a step of reclaim, executed again on the restarted
+     * database, after another commit has taken the step that was due: its record is the
+     * record of a new Trans with the same KVs at the same time, byte for byte. Until
+     * 2026-11-27 the failed execution left the plan's fields on the Trans (Trans.touch,
+     * recordCap and the others), set only with a plan and cleared only after a record that
+     * worked, and the execution again, whose record carried no plan, ran a test's touch over
+     * the transaction's own keys: other got-dirty lists, another stream (the review's
+     * RmReuseProbe, 16 of 20 runs). Both points: the failure after the record's append, and
+     * before it, in the puts after the step's touch.
+     */
+    @Nano
+    public static void testTransExecutedAgainAfterAFailure() throws IOException {
+        for (final boolean afterAppend : new boolean[] {true, false}) {
+            transExecutedAgainAfterAFailure(afterAppend);
+        }
+    }
+    
+    private static void transExecutedAgainAfterAFailure(final boolean afterAppend)
+            throws IOException {
+        final long SEC = Clock.UNITS_PER_SEC;
+        final IllegalStateException thrown = new IllegalStateException("the test's failure");
+        final boolean[] armed = new boolean[1], touched = new boolean[1];
+        final Trans[] executed = new Trans[1];
+        final boolean[] planned = new boolean[1], touch = new boolean[1];
+        final Db.TestHooks hooks = new Db.TestHooks() {
+            public void beforePlan(Db.ExecuteData x) {
+                touched[0] = false;
+            }
+            public void nodeTouched(Node node) {
+                touched[0] = true;          // the record has a touch: it carries a step
+            }
+            public void kvApplied(long[] key, byte[] value) {
+                if (armed[0] && !afterAppend && touched[0]) {
+                    armed[0] = false;
+                    throw thrown;
+                }
+            }
+            public void beforeApply(Db.ExecuteData x) {
+                executed[0] = x.trans;
+                planned[0] = x.plan != null;
+                touch[0] = x.trans.touch;
+            }
+            public void transExecuted(Db.ExecuteData x) {
+                if (armed[0] && afterAppend && x.plan != null && x.trans.touch && !x.trans.part) {
+                    armed[0] = false;
+                    throw thrown;
+                }
+            }
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+            public void nodeReplaced(Node node) {}
+        };
+        final CutStream s = new CutStream();
+        final CoreTestClock clock = new CoreTestClock();
+        long time = SEC;
+        clock.setTime(time);
+        Db db = Db.builder().testSetup(s).clock(clock).maxNodeSize8().start();
+        db.setStartupDistance(2000);
+        db.setRetainDuration(SEC);
+        final java.util.Random r = new java.util.Random(1);
+        Trans failed = null;
+        byte[] failedValue = null;
+        int failedAt = -1;
+        Db.testHooks = hooks;
+        try {
+            for (int i = 0; i < 5000 && failed == null; i++) {
+                time += SEC / 100;
+                clock.setTime(time);
+                final byte[] v = new byte[100 + r.nextInt(400)];
+                r.nextBytes(v);
+                final Trans t = reusedTrans(db, i, v);
+                armed[0] = i >= 300;
+                try {
+                    db.execute(t);
+                } catch (DbFailedException e) {
+                    Assert.assertTrue("the cause", e.getCause() == thrown);
+                    failed = t;
+                    failedValue = v;
+                    failedAt = i;
+                }
+            }
+        } finally {
+            Db.testHooks = null;
+        }
+        Assert.assertTrue("a commit that carried a step failed the database", failed != null);
+        db.close();
+        
+        // On two copies of the stream: another commit, which carries the step that was due,
+        // then the action again, with the Trans that failed and with a new one of its KVs.
+        final byte[][] images = new byte[2][];
+        final long[] firstPos = new long[2];
+        boolean wrongTouch = false;
+        for (int run = 0; run < 2; run++) {
+            final CutStream c = s.copy();
+            final CoreTestClock clock2 = new CoreTestClock();
+            clock2.setTime(time);
+            final Db d = Db.builder().testSetup(c).clock(clock2).maxNodeSize8().start();
+            try {
+                clock2.setTime(time + SEC / 100);
+                d.execute(d.trans().put("/other", new byte[] {7}).build());
+                clock2.setTime(time + 2 * SEC / 100);
+                final Trans again = run == 0 ? failed : reusedTrans(d, failedAt, failedValue);
+                Db.testHooks = hooks;
+                try {
+                    d.execute(again);
+                } finally {
+                    Db.testHooks = null;
+                }
+                Assert.assertTrue("executed", executed[0] == again);
+                wrongTouch |= !planned[0] && touch[0];
+                clock2.setTime(time + 3 * SEC / 100);
+                d.execute(d.trans().put("/after", new byte[] {8}).build());
+            } finally {
+                d.close();
+            }
+            firstPos[run] = c.getFirstPos();
+            images[run] = new byte[(int) (c.getLength() - c.getFirstPos())];
+            c.read(c.getFirstPos(), images[run], 0, images[run].length);
+        }
+        final String at = ", the failure " + (afterAppend ? "after" : "before")
+                + " the append, at action " + failedAt;
+        Assert.assertEquals("the first position" + at, firstPos[0], firstPos[1]);
+        Assert.assertTrue("the same stream" + at, Arrays.equals(images[0], images[1]));
+        Assert.assertFalse("a touch in a record without a plan" + at, wrongTouch);
+    }
+    
+    /** The transaction of action i of transExecutedAgainAfterAFailure(). */
+    private static Trans reusedTrans(Db db, int i, byte[] v) {
+        return db.trans().put("/k" + (i % 150), v).put("/n/new" + i, new byte[] {1, 2, 3})
+                .delete("/missing/" + i).build();
+    }
+    
     // ======== A read or a sync that fails on the storage (bergdb 005-30) ========
 
     /**

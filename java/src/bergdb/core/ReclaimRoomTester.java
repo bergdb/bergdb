@@ -23,7 +23,8 @@ import bergdb.stream.CutStream;
  * Reclaim.plan); an action alone is admitted within StoredTrans.actionDirtyLimit(); and a
  * record whose index nodes no later record could take fails the database before it is
  * appended (Db.checkTakeable), where before nothing failed and the startup pos stood before
- * it for good. At lowered record limits (StoredTrans.recordLimit, a test hook), with actions
+ * it for good; the take keeps every record's set within the room that the check counts
+ * (TransSeq.SetRoom; review-main, R2). At lowered record limits (StoredTrans.recordLimit, a test hook), with actions
  * near their limit, long keys of BergDB's own prefix and the largest values: the startup pos
  * moves, cuts are decided, the stream kept stays bounded, and the values are right, also
  * after a restart.
@@ -263,9 +264,15 @@ public class ReclaimRoomTester {
         }
     }
 
+    /**
+     * Seed 3 since 2026-11-27: with the take bounded by the room of the record's set
+     * (TransSeq.SetRoom; review-main, R2) the run of seed 1 cut 252 steps to their first copy
+     * and left none out of a commit's record, which the run must show; seed 3 cuts 117 and
+     * leaves 2 out.
+     */
     @Nano("f")
     public static void testSustainedLargeActionsNode8() {
-        sustained(true, 100 * 1000, 1, 10, 80, 2000);
+        sustained(true, 100 * 1000, 3, 10, 80, 2000);
     }
 
     @Nano("f")
@@ -337,6 +344,66 @@ public class ReclaimRoomTester {
             run.db.execute(run.db.trans().putLongKey(k, null, new byte[] {2}, null).build());
             Assert.assertTrue("put after the restart", Arrays.equals(new byte[] {2},
                     run.db.getOne(Long.MAX_VALUE, k, run.db.newGetData())));
+        } finally {
+            Db.testHooks = null;
+            StoredTrans.recordLimit = saved;
+            run.db.close();
+        }
+    }
+
+    /**
+     * bergdb 031-06 (review-main, R2): at a lowered record limit, 100 kB at node size 8, with
+     * a startup distance above it, 2 MB, 3,000 commits of one put of 30 bytes among 2,000
+     * keys, then maintain() calls until they rest: the take of each record keeps its
+     * got-dirty set within StoredTrans.takeRoom() by the take itself (TransSeq.SetRoom), so no
+     * record fails the database at Db.checkTakeable(). Until 2026-11-27 the first call failed
+     * it: its record took 596 index nodes smaller than the largest, many of which it kept
+     * dirty, 119,552 bytes at the largest sizes against a room of 98,288 (the review's
+     * RmRoomProbe). Checked: the first call moves the startup pos, the calls rest, a cut is
+     * decided, every set is within takeRoom(), and the values are right, also after a restart.
+     */
+    @Nano
+    public static void testTakeWithinTheSetRoom() {
+        final long saved = StoredTrans.recordLimit;
+        StoredTrans.recordLimit = 100 * 1000;
+        final Seen seen = measure(8);
+        final Run run = new Run(true, 2000 * 1000);
+        try {
+            Assert.assertTrue("a startup distance above the record limit",
+                    run.db.getStartupDistance() > StoredTrans.recordLimit);
+            final Random r = new Random(1);
+            for (int i = 0; i < 3000; i++) {
+                run.tick(SEC / 50);
+                final int k = r.nextInt(2000);
+                final byte[] v = new byte[30];
+                r.nextBytes(v);
+                final String key = "/d" + (k % 37) + "/e" + (k % 1009) + "/f" + k;
+                final Map<String, byte[]> puts = new HashMap<String, byte[]>();
+                puts.put(key, v);
+                Assert.assertTrue("a commit", run.exec(run.db.trans().put(key, v), puts));
+            }
+            final long sp0 = run.db.internal().getStartupPosForEvict();
+            int calls = 0, rest = 0;
+            long sp1 = -1;
+            while (calls < 100 && rest < 5) {
+                run.tick(SEC / 2);
+                final long length = run.db.getStreamLength();
+                run.db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
+                if (calls == 0) sp1 = run.db.internal().getStartupPosForEvict();
+                calls++;
+                rest = run.db.getStreamLength() == length ? rest + 1 : 0;
+            }
+            final String at = "after " + calls + " calls";
+            Assert.assertTrue(at + ": the first call moves the startup pos, " + sp0 + " to "
+                    + sp1, sp1 > sp0);
+            Assert.assertTrue(at + ": they rest", rest == 5);
+            Assert.assertTrue(at + ": cuts " + run.stats.cuts.size(), run.stats.cuts.size() >= 1);
+            Assert.assertTrue(at + ": sets within takeRoom, " + seen.maxSetBytes,
+                    seen.maxSetBytes <= StoredTrans.takeRoom());
+            Assert.assertTrue(at + ": no record over its cap", seen.overCap == 0);
+            run.check(at);
+            run.restart();
+            run.check(at + ", after a restart");
         } finally {
             Db.testHooks = null;
             StoredTrans.recordLimit = saved;

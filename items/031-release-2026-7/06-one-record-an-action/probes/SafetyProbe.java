@@ -53,7 +53,7 @@ public class SafetyProbe {
     static long checks, histReads, walks, walksRefused, copiesFollowed, maxRatio1000, cutsSeen;
 
     static Db start(CutStream s) {
-        DbBuilder b = Db.builder().testSetup(s).clock(clock).reclaimStepReserve(RESERVE);
+        DbBuilder b = Db.builder().testSetup(s).clock(clock).testStepReserve(RESERVE);
         if (NODE == 8) b.maxNodeSize8();
         if (NODE == 30) b.maxNodeSize30();
         return b.start();

@@ -2359,7 +2359,7 @@ public class DbTester {
                 b.put("/k/" + getKey(i), "v" + i);
             }
             Trans t = b.build();
-            t.touch = true;
+            t.testTouch = true;
             clock.setTime(time++);
             db.execute(t);
         } finally {

@@ -90,15 +90,28 @@ public class Trans {
     boolean isInternal;
     
     /**
-     * For internal transactions of reclaim, its steps (2026-10-13): before the puts, the
-     * writer visits the index nodes on the path of each of the transaction's keys at the
-     * transaction time, as the put of the key will, so that each of them gets dirty and is
-     * counted (dirtiedNodes, dirtiedBytes) before the step's row is put, and stays dirty also
-     * if the puts then replace it (Db.touchPaths, Db.endOfTrans). Until bergdb 024-07 the
-     * touch visited a key range, touchFrom to touchTo.
+     * For a record that carries a step of reclaim (2026-10-13; since bergdb 031-06 a commit's
+     * or a part's record, Maintenance.Plan.touchKeys): before the puts, the writer visits the
+     * index nodes on the path of each of the step's keys at the transaction time, as the put
+     * of the key will, so that each of them gets dirty and is counted (dirtiedNodes,
+     * dirtiedBytes) before the step's row is put, and stays dirty also if the puts then
+     * replace it (Db.touchPaths, Db.endOfTrans). Until bergdb 024-07 the touch visited a key
+     * range, touchFrom to touchTo.
      * Not stored: startup rebuilds D from the stored got-dirty ids.
+     * 
+     * <p>This field, dirtiedNodes, dirtiedBytes, touchCount, touchOldBefore, maintainTakeTo
+     * and recordCap are the record's, not the caller's: Db sets every one of them at the go
+     * point of each execution, from the record's plan, or to its value without one, so that a
+     * Trans executed again, also after an execution that failed the database, writes the
+     * record of a new Trans with the same KVs (bergdb 031-06, review-main, R1).</p>
      */
     boolean touch;
+    
+    /**
+     * A test's touch (DbTester): the touch of the transaction's own keys (Db.touchPaths) when
+     * its record carries no plan. Set by a test only, never by BergDB.
+     */
+    boolean testTouch;
     
     /**
      * For a transaction with touch (2026-10-13, bergdb 011-04, "Level 3 cost"):
@@ -139,7 +152,7 @@ public class Trans {
     
     /**
      * bergdb 031-06: the most bytes the record may take, StoredTrans.recordCap() for a record
-     * that carries maintenance, else 0: StoredTrans.recordLimit. Set by Db.
+     * that carries maintenance, else 0: StoredTrans.recordLimit. Set by Db at each execution.
      */
     long recordCap;
 

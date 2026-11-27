@@ -176,16 +176,23 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * taken, also after the deadline. It matters for records near the record limit only
      * (StoredTrans.recordLimit).</p>
      * 
+     * <p>The taken nodes also stay within the room of the record's got-dirty set, 'room', if
+     * it is not null (bergdb 031-06, review-main, R2; SetRoom): every taken node counted as
+     * one that the take keeps dirty, at its largest. The first transaction that does not fit
+     * in it is not taken either, also after the deadline.</p>
+     * 
      * @param currentSp  Current startup pos (sp).
      * @param streamLength  The length of the stream before the record.
      * @param startupDistance  The startup distance's setting, sd.
      * @param recordOwnBytes  The record's own bytes, ownBytes().
      * @param transNodes  Output parameters; nodes are added to transNodes.
      * @param maxBytes  The most bytes that the taken nodes may add to the record.
+     * @param room  The room of the record's got-dirty set, which the take reduces; or null.
      * @return The new startup pos (sp).
      */
-    public long take(long currentSp, long streamLength, int startupDistance, 
-            long recordOwnBytes, final TransNodesForMe transNodes, final long maxBytes) {
+    long take(long currentSp, long streamLength, int startupDistance, 
+            long recordOwnBytes, final TransNodesForMe transNodes, final long maxBytes,
+            final SetRoom room) {
         long newSp = currentSp;
         
         if (isEmpty()) {
@@ -220,6 +227,9 @@ public class TransSeq implements PosOfTransBeforeFunction {
                 }
                 bytes += cost;
             }
+            if (room != null && !room.take(first)) {
+                break;
+            }
             
             newSp = first.tpos;
             
@@ -253,6 +263,13 @@ public class TransSeq implements PosOfTransBeforeFunction {
         return newSp;
     }
     
+    /** take() with no room of the record's set: the tests' and the stress tests' take. */
+    public long take(long currentSp, long streamLength, int startupDistance, 
+            long recordOwnBytes, final TransNodesForMe transNodes, final long maxBytes) {
+        return take(currentSp, streamLength, startupDistance, recordOwnBytes, transNodes,
+                maxBytes, null);
+    }
+    
     /**
      * The take of the empty record of a call of Db.maintain() (bergdb 024-32, section 2.2,
      * M4), after its share (take()): the oldest transactions, whole, as take() takes them,
@@ -260,21 +277,26 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * iteration's pEnd or pSafe, each the tpos of a transaction of the section), until the
      * taken nodes reach 'budget' bytes; the first transaction is taken whatever its size,
      * so that each call moves the startup pos. A node counts as in take(). The first
-     * transaction that does not fit in 'maxBytes', the room left in the record, is not
-     * taken. A take beyond the share is allowed by the model, whose take policy has the
-     * deadline and any pace (lean/SIS/Bound.lean, takePolicy; T3 holds for every pace).
+     * transaction that does not fit in 'maxBytes', the room left in the record, or in 'room',
+     * what the share's take left of the room of the record's got-dirty set (take(); bergdb
+     * 031-06, review-main, R2), is not taken. A take beyond the share is allowed by the
+     * model, whose take policy has the deadline and any pace (lean/SIS/Bound.lean,
+     * takePolicy; T3 holds for every pace).
      * 
      * @return The new startup pos, the tpos of the last transaction taken, or currentSp if
      *      none is taken.
      */
     long takeTo(long currentSp, long target, long budget, final TransNodesForMe transNodes,
-            long maxBytes) {
+            long maxBytes, final SetRoom room) {
         long newSp = currentSp;
         long bytes = 0;
         
         while (first != null && newSp < target) {
             final long cost = recordBytes(first);
             if (newSp != currentSp && bytes + cost > budget || bytes + cost > maxBytes) {
+                break;
+            }
+            if (room != null && !room.take(first)) {
                 break;
             }
             bytes += cost;
@@ -420,6 +442,60 @@ public class TransSeq implements PosOfTransBeforeFunction {
             }
         }
         return (q1 << 32) + q0;
+    }
+    
+    /**
+     * bergdb 031-06 (review-main, R2): the room of a record's got-dirty set for the nodes that
+     * its take adds (Db.store()), so that the set stays within StoredTrans.takeRoom() by the
+     * take itself and Db.checkTakeable() cannot fail by it. 'left' starts at takeRoom() less
+     * the record's own got-dirty nodes; each transaction that take() or takeTo() takes
+     * reduces it by its got-dirty nodes, every one counted as a node that the take keeps
+     * dirty (Db.handleStillDirtyNodes), at its largest with its entry, as checkTakeable()
+     * counts the set (largestBytes()). A transaction that does not fit is not taken. The
+     * counts are of the record's own nodes and of the transactions of D, so the take is a
+     * function of the stream and the action (010-01, P2). Until 2026-11-27 only the bytes
+     * of the taken nodes at their sizes then bounded the take (maxBytes), and a take of many
+     * nodes smaller than the largest, many of them kept dirty, gave a set over takeRoom() at
+     * lowered record limits: the database failed at checkTakeable() (the review's
+     * RmRoomProbe). At the release's limits takeRoom() is near 2 GB, about 3.9 million nodes
+     * at node size 30, and no take comes near it.
+     */
+    static final class SetRoom {
+        /** The bytes counted for a top node and for a key node, each with its entry. */
+        final long topBytes, nodeBytes;
+        
+        /** The room left, in bytes at the largest node sizes; below 0, none. */
+        long left;
+        
+        SetRoom(long left, long topBytes, long nodeBytes) {
+            this.left = left;
+            this.topBytes = topBytes;
+            this.nodeBytes = nodeBytes;
+        }
+        
+        /** Reduces the room by the transaction's got-dirty nodes and returns true, if they fit. */
+        boolean take(TransInfo info) {
+            final long bytes = largestBytes(info.gotDirtyNodes, topBytes, nodeBytes);
+            if (bytes > left) {
+                return false;
+            }
+            left -= bytes;
+            return true;
+        }
+    }
+    
+    /**
+     * The bytes of the index nodes 'nodes', each counted at its largest with its got-dirty
+     * entry: 'topBytes' a top node, 'nodeBytes' any other (Db.checkTakeable(), SetRoom).
+     */
+    static long largestBytes(java.util.List<Node> nodes, long topBytes, long nodeBytes) {
+        long top = 0;
+        for (Node node : nodes) {
+            if (node.getType() == Node.TYPE_TOP_NODE) {
+                top++;
+            }
+        }
+        return top * topBytes + (nodes.size() - top) * nodeBytes;
     }
     
     /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */

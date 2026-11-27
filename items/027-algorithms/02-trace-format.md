@@ -449,7 +449,10 @@ value before the record as the tree model reads it (its hash, as V's), and
 each copy of such a KV (STEP-values, STEP-ops). Until 031-06 the step was a
 record of its own, and STEP-ops required its operations to be those puts and
 the row's put, and no delete. Since 031-06 C-STEP checks every record against
-its action as submitted, its ACT lines (STEP-action, `actionFailures`): the
+its action as submitted, its ACT lines (STEP-action, `actionFailures`): its
+operations have distinct keys, one operation a key, as the contract's
+`MaintenanceOK` takes it of every record (since 2026-11-27, 031-06's
+review-main, R7; until then STEP-ops tested it in a step's record only); the
 operations that are not copies are the action's, each operation of the action
 among them with its value (a delete as `OP D` or, if it deleted nothing,
 `OP N`; of two operations of a key in the ACT lines, the last), and every other
