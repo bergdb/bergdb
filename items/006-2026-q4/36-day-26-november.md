@@ -239,3 +239,5 @@ Written 2026-11-27, 05:15, by lead-1126.
   `week.sh` and `timing.sh`.
 * 028-67's C1.
 * The date of 2026.7 after those.
+
+Closed 2026-11-27, 07:50: lead-1127 took over, with 028-60 part 2 (branch 028-60b), 028-66, 031-05, 031-04 and 028-67 open for Frans.
