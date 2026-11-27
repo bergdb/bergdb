@@ -135,6 +135,19 @@ starts the database. The change was therefore measured and kept out of
 
 ### 4. For Frans
 
+Frans's decision, 2026-11-27, 17:26, on option C as designed (on the
+branch `028-66c`, `e6900401`, section 5, not on `main`), as the lead
+recommended:
+
+1. A start deletes the files before a gap only if their first meta
+   block is this database's (028-67's check of the database's ID, C1),
+   and else refuses. C does not land before this rule is in.
+2. C replaces A for 2026.7, after a timing run on a quiet machine
+   against `main`, this rule and a review. So C lands after 031-06's
+   landing step 4, the format, which brings 028-67's ties.
+
+A stays on `main` until then.
+
 * **A. As it is.** A force per file. A writer of 100 MB/s or more keeps
   1.3 to 1.6 times its stream on disk, and with no limit writes about
   40 % slower than with the quarter (section 1).

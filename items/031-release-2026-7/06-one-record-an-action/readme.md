@@ -285,8 +285,12 @@ code and the decision:
 * **Assumed there**, as 024-17 assumes: the count with q holds (a
   statement checked by runs, not proved: TP26 restated); H rests on V1
   (TP30, not proved). And, here: the step's last KV has at most 60
-  segments (a user's key, L2, or an index entry of the Pub layer, its
-  levels within L6: about 400 bytes); the row and the table together are
+  segments (a user's key, L2, or an index entry of the Pub layer); the
+  longest index entry is 496 bytes, 71 segments (section 8, O1), which
+  gives 87.0 % in place of 86.9 % at node size 8, and BergDB's own keys
+  under "/#" are bounded only by L3 while the Core accepts them (O1);
+  by the Lean's count of nodes a level since 028-21 the figures are
+  higher (028-72); the row and the table together are
   at most 240 kB, which the code does not bound: the table's rows are
   removed at cuts, and the serializer's check fails the database if a
   record passes its cap (P7).
@@ -742,8 +746,43 @@ Q1 is answered by this. Q4 to Q6 are steps of the landing (section 9).
   and 2026.6, S4 (033), fixed by this item's landing.
 
 Open for Frans: O1, BergDB's own long keys under "/#" (`landing.md`,
-step 2, Options for Frans): (a) keep what the Core accepts, as built, or
-(b) a cap of about 1 KiB as a new limit in 024-17. Recommended: (a).
+step 2, Options for Frans). What they are, from an investigation by an
+agent of lead-1127 (2026-11-27, 17:20 to 17:28, reading and arithmetic,
+nothing built):
+
+* **The longest key BergDB writes itself** is a Pub index entry: 11 +
+  the index's name (at most 255) + 1 + 8 + the levels (L6, 111) + the
+  object's file part (L2 - 1, 110) = 496 bytes, 71 segments; in general
+  275 + L6 + L2 - 1. Next are a deletion marker (284 bytes) and a
+  definition (266). The Core's own keys (`putCore`) are within L2, and
+  reclaim's copies copy keys that exist. No production code writes a
+  longer key under "/#"; only tests do.
+* **(a) Keep what the Core accepts, as built.** An own key may reach L3
+  alone, 57,344 bytes, 8,193 segments; section 3's 60 segments for the
+  step's last KV stays an assumption, already short of the Pub's 71;
+  with a step that copies a key near L3 the mixed record of section 3 is
+  151 % of the record limit at node size 8, and only `recordDirtyFits`
+  and the failure before the append (`checkTakeable`) protect it.
+* **(b) A cap of 1,024 bytes (147 segments; 1 KiB is 147, not 146),**
+  a new limit L9 in 024-17. Checked at `putLongKey` and `deleteLongKey`
+  (`checkLongKey`, an `IllegalArgumentException`) and in
+  `Db.checkLimits` and `Db.transformKeys` (a `DbException`); not at
+  reclaim's copies or at a start, as databases of 2026.5 to 2026.7 may
+  hold longer keys. A rule with it: 275 + L6 + L2 - 1 <= the cap, for
+  any later raise of L2, L6 or the index name's 255 bytes (with 1,024,
+  L2 and L6 can each go to 375). No change to the Pub API, the stream
+  format or the proofs (they hold for keys up to 8,193 segments). About
+  six Java files and 150 to 250 lines, about 100 of them tests; the
+  Lean's `Limits.release.maxSegs` becomes 147, with the theorems
+  unchanged. One key's worst node count falls 56-fold (at node size 8,
+  from 1.39 GB to 25 MB), and section 3's record holds by a check,
+  87.6 % at node size 8.
+* **(c) Every key within L2.** Not possible without a new index format
+  and lower Pub limits on index names and L6.
+
+Recommended: (b), 1,024 bytes, in place of `landing.md`'s (a). It does
+not make the action's 7/8 provably sufficient: the worst action is set
+by L3's sum, not by one key (028-72).
 
 
 ## 9. The landing
@@ -804,7 +843,9 @@ that a later record with no KVs can take the record's index nodes. One
 consequence: 005-31 admits an action's index nodes up to 7/8 of the
 record limit, 15/16 before; at the release's limits that is 1.879 GB,
 and a transaction within L1 to L5 makes at most 1.47 GB dirty by
-024-17's count, so none is refused by it (`landing.md`, step 2).
+024-17's count, so none is refused by it (`landing.md`, step 2). By the
+Lean's count since 028-21 (19 nodes a level at node size 8) the worst is
+about 2.00 GB, 106 % of 7/8: which count holds is 028-72.
 
 **Next:** an independent review of the landed diff, before step 3 builds
 on it: the code on `main` since the prototype's review is gated, not
@@ -843,3 +884,9 @@ the record's room by a check, record format 9 and the step reserve a
 constant (028-68, B). Frans's decisions of 16:09 to 17:12 in section 8;
 O1 open. Next: an independent review of the landed diff, then steps 3
 to 6.
+
+2026-11-27. O1: BergDB's own long keys investigated (17:20 to 17:28;
+section 8): the longest that BergDB writes is a Pub index entry of 496
+bytes, 71 segments; a cap of 1,024 bytes is recommended, for Frans.
+Section 3's assumption of the step's last KV corrected. 028-72
+registered: the action's 7/8 against the Lean's count of nodes.

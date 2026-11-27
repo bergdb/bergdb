@@ -167,6 +167,16 @@ Frans, 2026-11-27:
   after 2026.7.
 * **RB-013** (17:12): 028-54's stop case is a released bug, S4, in
   2026.5 and 2026.6, fixed by 031-06; the crash case is not counted.
+* **The probes on `main`** (17:25): RB-007's, RB-010's and RB-006's
+  rest are run again on `main` after the timing run.
+* **028-66: C, with a rule** (17:26), as the lead recommended (028-66,
+  section 4; the design in section 5 on its branch): (1) a start deletes
+  the files before a gap only if their first meta block is this
+  database's (028-67's check of the ID, C1), and else refuses; C does
+  not land before that rule is in; (2) C replaces A for 2026.7, after a
+  timing run on a quiet machine against `main`, that rule and a review.
+  So C lands after the landing's step 4, the format, which brings
+  028-67's ties. A stays on `main` until then.
 
 Gone ahead by default:
 
@@ -406,8 +416,50 @@ The lead's overview (08:30), its conclusions:
   to 2 of 031-06; steps 3 to 6 follow on `main`. 028-68 done.
 * 17:10 Frans: 026-14 (section 2).
 * 17:12 Frans: RB-013 registered, S4 (section 2; 033); 028-54 done.
-* Tonight: `timing.sh` on `main` against 2026.6 when the 028-66 agent
-  has stopped; then `night.sh` on `main`.
+* 17:15 028-66's option C designed and built by an agent, on the branch
+  `028-66c` (`e6900401`) of a clone, not on `main`: `BEFORE COMMIT OK`,
+  `LEVEL 3 OK`, `KILL RESTART OK` (200 kills), the native flush order
+  and the backup gap probes OK; two questions for Frans (028-66,
+  section 5.10, on the branch).
+* 17:18 `timing.sh` started on `main` (`5b88cc80`) against 2026.6, in a
+  clone, alone on F53; it ends about 19:30.
+* 17:20 to 17:28 O1: BergDB's own long keys investigated by an agent,
+  reading and arithmetic only (031-06, section 8): the longest key
+  BergDB writes itself is a Pub index entry, 275 + L6 + L2 - 1 = 496
+  bytes, 71 segments; a cap of 1,024 bytes is safe and recommended, as
+  (b), for Frans (section 4). 028-72 registered from it: the action's
+  7/8 against the worst action by the Lean's count of nodes a level.
+* 17:24 RB-013 and the bookkeeping since 16:04 landed (`f3562aad`): 033
+  and its counts, the notes of 2026.5 and 2026.6, `releases/next.md`,
+  028-54 and 028-68 closed; the GitHub release pages of 2026.6 and
+  2026.5 set from the notes.
+* 17:25 Frans: the probes on `main` (section 2).
+* 17:26 Frans: 028-66, C with a rule (section 2).
+* Tonight, when the timing run ends: `night.sh` on `main`, and an agent
+  that runs the probes of RB-007, RB-010 and RB-006's rest on `main`
+  (033 and `releases/next.md` change only on their evidence);
+  a `news.md` entry with the timing's figures and the night's result.
+* The plan to Monday 07:00 (the lead, 17:24), each step gated before
+  the next:
+  1. An independent review, by an agent on Fable, of the diff landed at
+     `5b88cc80`, and its fixes.
+  2. 031-06's step 3, the pace: the after-row charge by the fixed-width
+     patch (its fallback, the charge one record later), a commit's step
+     sized by its allowance under large commits (028-71), a warm-up of
+     the step's scan before the lock, and P1 measured on a database
+     larger than memory.
+  3. 031-06's step 4, the format: 028-67's ties (a meta block's own
+     position and the database's ID checked; the record header's 24-bit
+     check; C1's refusal), then 028-66's C with its rule, with a timing
+     run; the clean-up of step 4 (the 1,024 kept times and ordinals, the
+     tests that depend on the stream's layout).
+  4. `week.sh` on `main`, once the code has been quiet.
+  5. 031-07's inventory of the stream's checksums, as a study for
+     Frans.
+* Not done without Frans: the release's scope, tag and theme; the cap
+  on own keys (O1); removing a checksum or changing 010; deletions other
+  than the lead's own run data; landing 028-66's C before its rule and
+  its review.
 
 ## 4. Waiting for Frans
 
@@ -419,18 +471,29 @@ with a time: none is open.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (17:12)
+### Open now (17:28)
 
-What is open for Frans after the decisions of 16:09 to 17:12 (section
+What is open for Frans after the decisions of 16:09 to 17:26 (section
 2). The text of sections 4.0 to 4.3 is left as it was written.
 
-* **O1. BergDB's own long keys under "/#"** (031-06's `landing.md`,
-  step 2, Options for Frans): (a) keep what the Core accepts, as built;
-  (b) a cap of about 1 KiB, a new limit in 024-17. Recommended: (a).
+* **O1. BergDB's own long keys under "/#"**, class 3 (a new limit;
+  031-06, section 8, with the investigation of 17:20 to 17:28). The
+  longest key BergDB writes itself is a Pub index entry of 496 bytes,
+  71 segments (275 + L6 + L2 - 1); only tests write longer own keys.
+  * (a) Keep what the Core accepts, as built: an own key up to L3,
+    57,344 bytes, 8,193 segments; the step's last KV in 031-06's
+    section 3 stays an assumption.
+  * (b) A cap of 1,024 bytes (147 segments), a new limit L9 in 024-17,
+    checked at the long-key calls, in `Db.checkLimits` and in
+    `Db.transformKeys`, not at reclaim's copies or at a start; with the
+    rule 275 + L6 + L2 - 1 <= the cap for any later raise; no change to
+    the Pub API, the stream format or the proofs; about 150 to 250
+    lines.
+  * (c) Every key within L2: not possible without a new index format.
+  * Recommended: (b), 1,024 bytes. Parked until Frans decides.
 * **The review of the landed diff** (031-06, section 9): an independent
   review of the code merged at `5b88cc80` before step 3 builds on it;
   the lead runs it this weekend unless Frans says otherwise.
-* **028-66's design of C**, when the agent reports (section 2, 16:15).
 * **031-07's review** of the stream's checksums.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
@@ -443,7 +506,7 @@ What is open for Frans after the decisions of 16:09 to 17:12 (section
 * Answered since 16:02: 028-68 (B), C2 (028-66: C to be designed), C4
   (028-54: RB-013), C5 (028-34), C6 (026-04), C7 (026-14), P2's wording
   (W2, W4, W5), Q3 (step 2: the record's room by a check) and Q5 (step
-  2: the record's format, 9).
+  2: the record's format, 9); 028-66 (C with a rule, 17:26).
 
 ### 4.0. After A1 = (e) (14:32)
 
