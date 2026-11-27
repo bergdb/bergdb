@@ -855,11 +855,11 @@ copy of the clone:
 
 ### After review 3 (2026-11-28)
 
-`review-3.md` (on `main` at `80f50c37`) found no fault of correctness in
-step 3, and three of low weight; each has its "Fixed" line there. The
+`review-3.md` (on `main` since `80f50c37`) found no fault of correctness
+in step 3, and three of low weight; each has its "Fixed" line there. The
 branch rebased onto `main` at `80f50c37` (review 3 and the AppRecord fix
-of the night), without a conflict; one commit of code and probes, and the
-item's text.
+of the night), then at `080c1f2f` (T1's fix, `b7f21db4`), without a
+conflict; one commit of code and probes, and the item's text.
 
 * **W2, maintain()'s rounds** (`Db.maintain`, `Reclaim.warmup`,
   `publishWarm`). What: a part's warm-up is given the row that the last
@@ -935,7 +935,27 @@ quiet machine; each was run once small to show that it works
 
 #### Gates after review 3
 
-GATES_PLACEHOLDER
+On F53, 2026-11-28, on the branch rebased onto `main` at `080c1f2f`,
+with other work on the machine; functional runs, at most two at a time,
+the sweep, the faults and `EvictChargeProbe` in a copy-on-write copy of
+the clone:
+
+* `java/before-commit.sh`: `BEFORE COMMIT OK (80 s)` (unit 1,745, f 96,
+  demos 14); before the second rebase `BEFORE COMMIT OK (94 s)`.
+* `java/stress/level3.sh`: `LEVEL 3 OK`; C-STEP's figures as at step 3,
+  one for one (0 of 23,127 transactions fail, 1,345 STEP lines, 1,032
+  iterations; the crash set 0 of 5,593, STEP-resume 916 restarts): the
+  fixes change what is in memory only. Also `LEVEL 3 OK` before the
+  second rebase.
+* The sweep (`probes/sweep.sh`): 27,741 interruptions, 0 different; 570
+  torn records, 0 different (569 before the second rebase).
+* `probes/faults.sh`: bad 0 in all 42 lines.
+* `review-3-probes/run.sh OUT evict` (`EvictChargeProbe`, nine runs of six
+  workloads at node sizes 8 and 30, with and without restarts): the same
+  stream with no eviction, with a cache budget, with every object evicted
+  after every transaction and without the warm-up, `EVICT CHARGE PROBE
+  OK` in nine of nine.
+* `lean/`: nothing changed.
 
 ### For the later steps
 
@@ -948,6 +968,22 @@ GATES_PLACEHOLDER
   parts' steps are `MAX_STEP_SIZE`, as before.
 
 ## State
+
+2026-11-28, 00:40, step 3 after review 3, for the lead.
+
+* **Done:** review 3's W1, W2 and D1 fixed on the branch `031-06-pace`,
+  rebased onto `main` at `080c1f2f` (step 3, "After review 3"; each
+  finding's "Fixed" line in `review-3.md`); two timing probes for the
+  lead, `probes/bigstep.sh` and `probes/bigtail.sh`, run once small on
+  this branch and on `main`. Gates on the rebased tree: `BEFORE COMMIT OK
+  (80 s)`, `LEVEL 3 OK`, the sweep 0 different, faults bad 0,
+  `EvictChargeProbe` OK in nine of nine.
+* **Not done:** the timing runs (the lead's, on a quiet machine:
+  `p1.sh OUT`, `bigstep.sh OUT` and `bigtail.sh OUT`, each on `main`'s jar
+  and this branch's); whether W1's extra warm-up scans cost throughput
+  with several writers (`review-3.md`, section 5, point 4); level2.sh,
+  level4.sh and apps.sh were not run again (the fixes change no record).
+* **Next:** the lead's timing run and landing of `031-06-pace`.
 
 2026-11-27, 22:30, step 3 (the pace), for the lead.
 

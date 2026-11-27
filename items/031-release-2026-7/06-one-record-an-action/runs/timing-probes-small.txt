@@ -1,0 +1,33 @@
+# bergdb 031-06, review 3, section 5, points 2 and 5 (2026-11-28): probes/bigstep.sh and bigtail.sh run once small on F53 with other work on the machine (functional: the probes run; the times are not a result). 'branch': 031-06-pace after review 3; 'main': main at 80f50c37.
+## bigstep.sh OUT small, branch
+BigStepProbe: 200000 keys of 20 to 30 bytes, a stream of 19 MB, cache budget 5 MB, loaded in 744 ms; 10000 commits, every 50th of 600000 bytes, retain 10 s, sd 2000000
+  10000 commits in 2028 ms; the stream kept 185 MB of 185 MB
+  with a step:    2492 commits; execute median 0.250, p99 3.005, p99.9 5.124, max 22.056 ms; under the lock median 0.104, p99 1.382, p99.9 2.691, max 11.530 ms
+  without a step: 7508 commits; execute median 0.011, p99 1.464, p99.9 3.048, max 4.207 ms; under the lock median 0.002, p99 1.000, p99.9 1.678, max 2.977 ms
+  copies a step: median 0, p99 931, most 932; the longest under the lock had 931 copies
+  the five longest commits (ms at uptime s): 22.06 at 0.9 7.19 at 0.9 5.12 at 1.0 5.02 at 2.2 4.44 at 1.5
+  P1 (20 ms): the longest under the lock 11.530 ms, the longest commit 22.056 ms
+  resident 3 MB, 345968 loads, 178 eviction steps, 520571 objects evicted, eviction time 160 ms in total, 2.004 ms at most
+BIG STEP PROBE DONE
+## JAR=main bigstep.sh OUT small
+BigStepProbe: 200000 keys of 20 to 30 bytes, a stream of 19 MB, cache budget 5 MB, loaded in 766 ms; 10000 commits, every 50th of 600000 bytes, retain 10 s, sd 2000000
+  10000 commits in 3508 ms; the stream kept 198 MB of 198 MB
+  with a step:    4845 commits; execute median 0.284, p99 1.183, p99.9 2.455, max 5.070 ms; under the lock median 0.273, p99 0.717, p99.9 2.245, max 5.061 ms
+  without a step: 5155 commits; execute median 0.011, p99 1.947, p99.9 3.556, max 4.686 ms; under the lock median 0.002, p99 1.173, p99.9 1.716, max 3.007 ms
+  copies a step: median 113, p99 114, most 115; the longest under the lock had 114 copies
+  the five longest commits (ms at uptime s): 5.07 at 0.9 4.77 at 0.9 4.69 at 1.0 3.82 at 1.0 3.67 at 1.1
+  P1 (20 ms): the longest under the lock 5.061 ms, the longest commit 5.070 ms
+  resident 3 MB, 480844 loads, 142 eviction steps, 394027 objects evicted, eviction time 144 ms in total, 2.009 ms at most
+BIG STEP PROBE DONE
+## bigtail.sh OUT small, branch
+BigTailProbe: 200000 keys of 20 bytes, made in 1677 ms; a stream of 48 MB, the last record 31.2 MB (under 100 MB: more keys)
+  start 1: 274.4 ms, the first get 3.964 ms
+  start 2: 166.3 ms, the first get 4.725 ms
+  start 3: 146.0 ms, the first get 3.400 ms
+BIG TAIL PROBE DONE
+## JAR=main bigtail.sh OUT small
+BigTailProbe: 200000 keys of 20 bytes, made in 1585 ms; a stream of 48 MB, the last record 31.2 MB (under 100 MB: more keys)
+  start 1: 248.2 ms, the first get 4.018 ms
+  start 2: 165.3 ms, the first get 4.845 ms
+  start 3: 154.5 ms, the first get 3.516 ms
+BIG TAIL PROBE DONE
