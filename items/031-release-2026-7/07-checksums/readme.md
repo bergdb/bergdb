@@ -40,6 +40,13 @@ Frans, 2026-11-27: the checksums of the stream are reviewed for release
 * What the got-dirty list and the meta block need.
 * The header check's width: 24 bits in the unused bytes, or 32 or 64
   bits at 8 more bytes a record (028-67).
+* The principle itself (Frans, 2026-11-27): "the storage owns the
+  integrity of the bytes; BergDB's detection of damaged bytes is a best
+  effort" is stated in no one place today (section 2 cites the two
+  statements it comes from). The review proposes its wording and where
+  it is written (a rule of 010-04, or a principle: Frans's), and says
+  for each check whether it follows from the principle, from the one
+  expected fault, or from neither.
 
 
 ## 4. Done when
@@ -56,3 +63,6 @@ First step: the inventory.
 
 2026-11-27. Created by Frans Lundberg, with 028-67's decision (registered
 by lead-1127).
+
+2026-11-27. The principle added to the questions (Frans): the review
+considers its wording and place, and each check against it.
