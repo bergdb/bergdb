@@ -245,18 +245,18 @@ public class BackToEmpty {
             clock.advanceMillis(ms);
             tclock.advanceMillis(ms);
             if (maintainOnly) {
-                for (int c = 0; c < 50 && db.maintain(); c++) afterCut();
+                { db.maintain(1000); afterCut(); }
                 afterCut();
-                for (int c = 0; c < 50 && twin.maintain(); c++) { }
+                twin.maintain(1000);
             } else {
                 Map<Common.K, byte[]> d = new LinkedHashMap<>();
                 d.put(DRIVE_KEY, v);
                 exec(d);
                 Common.exec(twin, new Common.Model(), d);
                 if (MAINTAIN) {                                   // -Dmaintain=true: maintain() after each drive transaction, both
-                    for (int c = 0; c < 50 && db.maintain(); c++) afterCut();
+                    { db.maintain(1000); afterCut(); }
                     afterCut();
-                    for (int c = 0; c < 50 && twin.maintain(); c++) { }
+                    twin.maintain(1000);
                 }
             }
             keptMain[i] = db.getStreamLength() - db.getFirstAvailablePos();

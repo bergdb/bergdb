@@ -1388,7 +1388,7 @@ public class TraceExport {
      */
     void maintain(Db db, int i) {
         if (maint > 0 && (i + 1) % maint == 0) {
-            db.maintain();
+            db.maintain(Reclaim.MAINTAIN_MIN_BUDGET);  // bergdb 031-04
         }
     }
 

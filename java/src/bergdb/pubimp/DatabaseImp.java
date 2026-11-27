@@ -233,8 +233,15 @@ public class DatabaseImp implements Database {
         return Duration.units(db.getRetainDuration());
     }
     
-    public boolean maintain() {
-        return db.maintain();
+    public void maintain(int budget) {
+        db.maintain(budget);
+    }
+    
+    public long getStreamSize() {
+        // The two reads are each exact; a commit between them can add its record to the
+        // length (bergdb 031-04).
+        final long first = db.getFirstAvailablePos();
+        return db.getStreamLength() - first;
     }
 
     public void setRetainDuration(Duration retainDuration) {

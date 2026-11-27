@@ -1204,6 +1204,11 @@ public class DbTesterFailure {
             clock.setTime(Clock.UNITS_PER_SEC);
             db.execute(db.trans().put("/a", value).build());
             db.sync(SyncLevel.ORDINARY);
+            // bergdb 031-06: the iteration begins in the record after /a's, at its position;
+            // an empty commit is that record, so that reclaim's cut is before /target's
+            // record, as main's begin record after /a's put it.
+            clock.setTime(3 * Clock.UNITS_PER_SEC / 2);
+            db.execute(db.trans().build());
             clock.setTime(2 * Clock.UNITS_PER_SEC);
             db.execute(db.trans().put("/target", value).build());
             db.sync(SyncLevel.ORDINARY);

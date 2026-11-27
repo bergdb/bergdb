@@ -50,7 +50,7 @@ public class SlowDrive {
             clock.addAndGet(dt * 10_000L);
             for (Db d : new Db[] {db, twin}) {
                 d.execute(d.trans().put(new byte[] {0x06, 0x01}, v).build());
-                if (maintain) for (int n = 0; n < 50 && d.maintain(); n++) { }
+                if (maintain) d.maintain(1000);
             }
             if (i % r == 0) System.out.println("  " + i / r + " R: kept " + (db.getStreamLength() - db.getFirstAvailablePos()) / 1000
                     + " kB, twin " + (twin.getStreamLength() - twin.getFirstAvailablePos()) / 1000 + " kB; the drive wrote "

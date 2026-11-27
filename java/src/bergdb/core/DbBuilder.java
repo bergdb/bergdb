@@ -226,6 +226,18 @@ public class DbBuilder {
     }
 
     /**
+     * bergdb 031-06, for tests: the empty maintenance (Maintenance.NONE), whose records carry
+     * none: no record of a commit or of a part of maintain() holds anything of reclaim's.
+     */
+    boolean maintenanceNone;
+    
+    /** bergdb 031-06: see the field maintenanceNone. For the Core's tests and probes only. */
+    DbBuilder maintenanceNone() {
+        this.maintenanceNone = true;
+        return this;
+    }
+    
+    /**
      * The reserve for a reclaim step's pinned bytes (Reclaim.setStepReserve; bergdb item 001,
      * WP J6). The default is Reclaim.DEFAULT_STEP_RESERVE, or the system property
      * stepreserve, so that the stress programs can split the steps. A setting for tests

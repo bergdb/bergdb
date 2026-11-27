@@ -104,6 +104,43 @@ public class StoredTrans {
         return recordLimit - recordLimit / 16;
     }
     
+    /**
+     * bergdb 031-06: the room of the step that a record carries besides its transaction's,
+     * for the row, the table and the scan's KVs but the last (Reclaim.MAX_STEP_SIZE).
+     */
+    static final long STEP_FIXED_ROOM = 256 * 1024L;
+    
+    /**
+     * bergdb 031-06: the largest value node that a user transaction can store, a value of
+     * Db.MAX_VALUE_BYTES (L4) at a key of Db.MAX_TRANS_KEY_BYTES (L3), within valueLimit().
+     */
+    static long maxValueNode() {
+        final long node = 12 + 8 + 4 + 4 + Db.MAX_VALUE_BYTES + 4
+                + 8L * (Db.MAX_TRANS_KEY_BYTES / 7 + 1);
+        return Math.min(valueLimit(), node + 3);
+    }
+    
+    /**
+     * bergdb 031-06: the room that the maintenance a record carries (Maintenance.Plan) has on
+     * top of its transaction's limits (valueLimit(), dirtyLimit()), so that the user's
+     * transaction never leaves the step too little (031-06, rule 4): its value nodes, at most
+     * one value node of the largest size and STEP_FIXED_ROOM; and a sixteenth of the record
+     * limit for its index nodes and their got-dirty entries.
+     */
+    static long stepRoom() {
+        return maxValueNode() + STEP_FIXED_ROOM + recordLimit / 16;
+    }
+    
+    /**
+     * bergdb 031-06: the most bytes of a record that carries maintenance: recordLimit and the
+     * step's room on top, at most MAX_RECORD_SIZE. At the release's limits it is
+     * MAX_RECORD_SIZE, as before; a transaction within L1 to L5 and its step stay below it
+     * by 024-17, section 5.3, with the step counted as a transaction of its KVs (5.5).
+     */
+    static long recordCap() {
+        return Math.min(MAX_RECORD_SIZE, recordLimit + stepRoom());
+    }
+    
     /** Transaction time. */
     public final long tt;
 
@@ -499,6 +536,9 @@ public class StoredTrans {
 
         /** Number of times serialize() has been called. */
         private long counter;
+        
+        /** bergdb 031-06: the record's limit, Trans.recordCap, set before serialize(); 0: recordLimit. */
+        long recordCap;
         private ArrayList<Node> gotDirtyNodes;
         
         /**
@@ -732,9 +772,10 @@ public class StoredTrans {
             extraZeros = computeZeroCount(size);
             size += extraZeros;
             
-            if (size > recordLimit) {
+            final long limit = recordCap > 0 ? recordCap : recordLimit;   // bergdb 031-06
+            if (size > limit) {
                 throw new DbException("The record of the transaction would take " + size 
-                        + " bytes, more than the limit, " + recordLimit + " (bergdb 005-17).");
+                        + " bytes, more than the limit, " + limit + " (bergdb 005-17).");
             }
             
             totalSize = (int) size;
@@ -820,7 +861,8 @@ public class StoredTrans {
             for (int i = 0; i < transNodes.valueCount; i++) {
                 ValueNode n = transNodes.valueNodes[i];
                 long[] skey = transNodes.keys[i];
-                offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset);
+                offset += StoredValueNode.toBytes(n, skey, byteBuffer, offset,
+                        transNodes.isCopy(skey));       // the copy mark, bergdb 031-06
             }
             return offset;
         }

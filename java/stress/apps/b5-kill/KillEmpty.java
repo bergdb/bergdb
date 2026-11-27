@@ -260,7 +260,7 @@ public class KillEmpty {
             for (long i = n + 1; i < end; i++) {
                 LinkedHashMap<Common.K, byte[]> ops = gen(i);
                 if (i % 7 == 3) poison(db, i);
-                if (phaseOf(i) == 2 && i % 5 == 0) for (int c = 0; c < 4 && db.maintain(); c++) { }
+                if (phaseOf(i) == 2 && i % 5 == 0) db.maintain(100);
                 Trans.Builder tb = db.trans();
                 for (Map.Entry<Common.K, byte[]> e : ops.entrySet()) {
                     if (e.getValue() == Common.DELETED) tb.delete(e.getKey().b);

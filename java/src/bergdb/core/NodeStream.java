@@ -160,6 +160,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      */
     void appendNodes(TransNodes nodes, Trans trans, ArrayList<Node> gotDirtyNodes, TopNode topNode) {
         long pos = getNextPos();
+        serializer.recordCap = trans.recordCap;         // bergdb 031-06
         serializer.serialize(nodes, trans.tt, pos, trans.startupPos, gotDirtyNodes, topNode);
         
         trans.tpos = pos;

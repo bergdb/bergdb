@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
 import bergdb.core.InternalDataException;
-import bergdb.core.Reclaim;
 import bergdb.core.StoredNode;
 import bergdb.core.StoredTrans;
 import bergdb.core.StoredValueNode;
@@ -224,9 +223,13 @@ class ConnectionImp implements Connection {
         // is not a committed transaction is damage (bergdb 021-27).
         StoredTrans stored = db.internal().getTrans(getData.tpos);
         
-        // A record of reclaim's is not the transaction that wrote the value: reclaim has
-        // rewritten the value, in a step of its own, so that the transaction that wrote it
-        // can be cut (Reclaim.step). Until 2026-10-25 this method gave the step's time and its
+        // A copy of reclaim's is not the write of the record's action: reclaim has
+        // rewritten the value, in a step, so that the transaction that wrote it can be cut
+        // (Reclaim.planStep). Since bergdb 031-06 a step is in a commit's record or a part
+        // of maintain()'s, beside the action's own writes, and its copies have the copy mark
+        // (StoredValueNode.isCopy): the value is followed back if its node is a copy, and
+        // the copies are left out of the KVs (Codex's E1 of 2026-11-27). Until 031-06 a
+        // record of reclaim's was one with a KV under its prefix, a step of its own. Until 2026-10-25 this method gave the step's time and its
         // row; then, until bergdb 021-17 (020-24-06, U6-1), it threw
         // LookupTimeNotAvailableException for every copy, from reclaim's first iteration on,
         // long before anything was cut. The copy is the value at the key just before the
@@ -236,16 +239,11 @@ class ConnectionImp implements Connection {
         // older copy, followed back in the same way; each time is smaller than the last.
         // A time before the first available lookup time is refused: the transaction that
         // wrote the value is before it then, and reclaim has cut it or is about to.
-        // A record that is no copy of reclaim's, though it holds a KV under reclaim's prefix,
-        // is malformed internal data, which only a write through the Core's Db makes (keys
-        // under /# are BergDB's, bergdb 020-22): refused with InternalDataException, and the
-        // database goes on (bergdb 021-17, R17-1). It was taken for a copy and followed back:
-        // with no value of the key before it, a Bug that failed the database; with one, a
-        // wrong transaction. So the value before must be the record's own, byte for byte,
-        // and stored before it. A Core write of the same bytes again with such a KV is still
-        // taken for a copy.
+        // A copy whose value before is not its own, byte for byte, stored before it, is
+        // malformed internal data: refused with InternalDataException, and the database goes
+        // on (bergdb 021-17, R17-1). Only reclaim writes the mark.
         GetData before = null;
-        while (isReclaims(stored)) {
+        while (isCopy(stored, infoKey)) {
             if (before == null) {
                 before = db.newGetData();
             }
@@ -291,7 +289,8 @@ class ConnectionImp implements Connection {
             
             if (storedNode instanceof StoredValueNode) {
                 final StoredValueNode storedValueNode = (StoredValueNode) storedNode;
-                if (Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, storedValueNode.getKey())) {
+                if (Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, storedValueNode.getKey())
+                        || storedValueNode.isCopy()) {      // reclaim's, bergdb 031-06
                     continue;
                 }
                 String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(storedValueNode.getKey()));
@@ -324,14 +323,15 @@ class ConnectionImp implements Connection {
     }
     
     /**
-     * True if 'stored' is one of reclaim's records, one with a KV under its prefix (bergdb
-     * 005-42): a record of a step, the only one of reclaim's with a value of the user.
+     * True if the value node of 'key' in 'stored' is one of reclaim's copies, by its copy
+     * mark (bergdb 031-06). Until 031-06: if 'stored' was one of reclaim's records, one with a
+     * KV under its prefix (bergdb 005-42).
      */
-    private static boolean isReclaims(StoredTrans stored) {
+    private static boolean isCopy(StoredTrans stored, long[] key) {
         for (StoredNode node : stored.nodes) {
             if (node instanceof StoredValueNode 
-                    && Keys.isPrefix(Reclaim.KEY_PREFIX_SKEY, ((StoredValueNode) node).getKey())) {
-                return true;
+                    && Arrays.equals(key, ((StoredValueNode) node).getKey())) {
+                return ((StoredValueNode) node).isCopy();
             }
         }
         return false;
@@ -349,15 +349,15 @@ class ConnectionImp implements Connection {
     }
     
     /**
-     * The refusal of a record with a KV under reclaim's prefix that is no copy of reclaim's
-     * of the value of infoKey (bergdb 021-17, R17-1): malformed internal data.
+     * The refusal of a value node with the copy mark that is no copy of reclaim's of the
+     * value of infoKey (bergdb 021-17, R17-1; 031-06): malformed internal data.
      */
     private InternalDataException notACopy(StoredTrans stored, String why) {
         String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(infoKey));
         String ukey = ikey == null ? null : PubKeys.i2uOrNull(ikey);
         return new InternalDataException("No available transaction info: the record at stream "
-                + "pos " + stored.tpos + " holds a KV under reclaim's prefix, but is no copy of "
-                + "reclaim's of the value at " + (ukey == null ? "the key" : ukey) + ": " + why
+                + "pos " + stored.tpos + " holds a value node with reclaim's copy mark, but it is "
+                + "no copy of the value at " + (ukey == null ? "the key" : ukey) + ": " + why
                 + ". Malformed internal data, which only a write through the Core's Db makes.");
     }
 
