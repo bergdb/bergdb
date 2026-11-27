@@ -133,8 +133,13 @@ to every action.
    action gets, only that the stream is a function of it. A `maintain()`
    call is not one action: what a call writes depends on the times its
    parts get. A cut can become due in the middle of a call.
-4. **The creation** of a database is not an action: its id is random and
-   it has a time. It is part of the stream as it is (031-05, Q5).
+4. **The creation.** A database begins with its primordial transaction
+   (the word of the code and of 027-03), which holds its id, its node
+   size and its creation time; nothing before it decides them. Everything
+   after it is a function of the stream as it is and the accepted
+   transactions. The creating start's second record, the startup
+   distance's, is a setter's transaction like any other (Frans,
+   2026-11-27, 16:38; 031-05, Q5).
 5. **Settings outside the stream that affect the bytes:**
    * the crypto key, until 2026-11-27. Encryption left the API in 2026.4
      (020-28), and its code was kept for a later design (017-10) and used
@@ -187,8 +192,8 @@ record" and "changes no byte", and gains the completion by the start.
   API.
 * **W3.** Answered (Frans, 2026-11-27): accepted, under the name of the
   fault, a partial append.
-* **W4.** Limit 4: the creation as part of the stream as it is (here), or
-  as action 0 with its id and time as inputs.
+* **W4.** Answered (Frans, 2026-11-27, 16:38): the creation is the
+  primordial transaction; all after it follows the principle.
 * **W5.** Whether the README's sentence ("The same transactions in the
   same order give the same bytes") is reworded with it.
 * **W6.** Answered (Frans, 2026-11-27): the crypto code is removed
