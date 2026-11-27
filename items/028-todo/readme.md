@@ -102,10 +102,12 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.6 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
-| [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 B1 to B3 | decision | open |
+| [028-60](60-zero-tail-over-meta-block.md) | Fix | RB-012: a zeroed tail after a kill; part 1 fixed, part 2 lands after 028-69 | none | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
+| [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve changes the bytes and is not in the stream: A to C | decision | open |
+| [028-69](69-remove-crypto-code.md) | Implement | Remove the internal crypto code (SalsaStream, CryptoKey); recorded in 017-10 | none | in progress |
 
 
 Closed
@@ -573,3 +575,12 @@ more, and slows a writer with no limit by about 40 % against the
 quarter; a batch delete with one force keeps 1.03 to 1.05 and the
 writer's speed, but breaks 011-07's order of deletes under the
 power-loss model. Not landed; options A to C for Frans.
+
+2026-11-27. 028-68 registered by lead-1127: the reclaim step reserve is
+a setting outside the stream that changes its bytes; options A to C for
+Frans (A recommended), decided with 031-06's landing.
+
+2026-11-27. 028-69 registered by lead-1127, in progress: the internal
+crypto code is removed (Frans); the record of the removal goes into
+017-10's log. 028-60's part 2 lands after it, without its opt-out for
+encrypted streams.

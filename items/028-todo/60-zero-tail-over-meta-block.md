@@ -2,8 +2,8 @@
 =========================================================================
 
 Status: open: part 1 done (a meta block of zeros is not valid; the branch
-`028-60`), part 2 for Frans's decision. Kind: Fix. Frans: decision (part
-2, section 4).
+`028-60`), part 2 lands after 028-69 (Frans, 2026-11-27; the log). Kind:
+Fix. Frans: none.
 Created 2026-11-25 by Frans Lundberg.
 
 What: 031-02's app hunt, finding F1 (section 5): three times in about
@@ -300,3 +300,8 @@ recommended (zeros from the 4 KiB boundary at or before P, the last
 file's length a multiple of 4,096, P in the last file, a run of at most
 8 MB); a new risk: on APFS disk images and RAM disks a cut write held a
 deleted file's bytes, not zeros, which no option covers (035-01).
+
+2026-11-27. Frans decided to remove the internal crypto code (028-69).
+Part 2's choice for encrypted streams (section 10 on the branch
+`028-60b`) falls away with it: the branch is rebased on 028-69 without
+its opt-out, looked at by Codex again, and landed.

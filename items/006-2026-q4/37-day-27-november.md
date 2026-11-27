@@ -87,6 +87,37 @@ Frans, 2026-11-27:
     boundary; as many records as accepted actions; Codex's three tests
     (section 3, 10:55: its report names them); a figure of the time of
     a commit that carries a step.
+* The finished prototype gets two independent reviews in parallel, by
+  an agent on Fable, high, and by Codex (11:22). Each gets the code, the
+  probes and the item, and neither the other's report nor the lead's
+  recommendation; each tries to break it, and says whether (e) as built
+  is simpler and safer than (c).
+* The next release's focus, 2026.7 (11:37): the algorithms in place,
+  `maintain()` and reclaim included; a bug hunt; clean-up; quality; the
+  documentation's update. The theme's wording is Frans's. 2026.8's
+  theme is left undecided (11:50).
+* For P2's wording (11:50):
+  * the unit is an action, a user action where precision is needed;
+  * the Pub layer's index jobs are user actions: the user starts them,
+    and to the Core their commits are transactions like any other;
+  * the storage's one expected fault is called a partial append: an
+    append written in part, which leaves part of a record or zeros at
+    the tail. After it, the stream as the start leaves it is what the
+    actions continue from: accepted;
+  * what is appended is a function of the stream as it is and of the
+    user actions that follow.
+* The stream is the bytes from reclaim's cut to the end. Bytes before
+  the cut that the storage still holds belong to the storage's
+  implementation of the stream, not to the stream (12:05).
+* No setting outside the stream is to affect the stream's bytes
+  (12:05). Two do in the code of today:
+  * the internal crypto key: the crypto code is removed (12:11;
+    028-69), and the removal is recorded in 017-10's log for the later
+    design. When encryption comes back, the key is the one exception:
+    the stored bytes depend on it, and it cannot be in the stream;
+  * the reclaim step reserve, a setting for tests: 028-68, decided
+    with 031-06's landing.
+* These answer C1 and B2, and A4 and B3 in part (section 4).
 
 Gone ahead by default:
 
@@ -238,6 +269,15 @@ The lead's overview (08:30), its conclusions:
   agent (Opus, xhigh) in a clone of 031-05's prototype, on a branch
   `031-06`, to stop at 17:00. Codex reviews the result before Frans
   decides A1.
+* 11:26 The usage is logged at each check-in, with each of its rows.
+  With the lead on Fable since 08:27: the week from 25 to 28 %, the
+  row of the Fable models at 14 %.
+* 11:35 A draft of P2's extended wording by the lead, for Frans,
+  written for (e); revised at 11:50 and 12:08 on his answers (section
+  2). It is outside the repository until 031-06 lands.
+* 12:13 028-68 and 028-69 registered. An agent (Opus, high) removes the
+  crypto code in a clone (028-69); the lead gates and lands it, then
+  028-60's part 2 on it.
 
 
 ## 4. Waiting for Frans
@@ -326,6 +366,13 @@ details are in the items, cited by ID and section.
     F3 and F11 (record boundaries and the torn record; what a call
     leaves, which is A1's; the settings as inputs); and what stays
     outside (B2, B3).
+  * Answered further by Frans's decisions of 11:50 and 12:05 (section
+    2): the word for the unit; the stream as it is, first in the
+    sentence; the partial append, accepted (F2); the stream from the
+    cut; no setting outside the stream (F11; 028-68, 028-69). The lead
+    drafted the wording for (e) on these (section 3, 11:35). Still
+    open: the text itself, which is Frans's; the setters as (a) or (b);
+    what a call leaves, with A1.
 * **A5. The Lean statement** (031-05, Q9): with the landing, or after.
   Default: **after, and not a condition of 2026.7** (the study, the
   reviewer, the lead): P2 with crashes is tested in 2026.7, as five of
@@ -346,9 +393,15 @@ Of 031-05 (section 10; the review, section 12):
   2026.7, which re-opens 028-26 (26 % less charged at node size 8).
 * **B2. The Pub's index jobs** (Q4): (a) outside the goal, named in the
   wording; (b) their steps inside actions. Default: **(a) now, (b) as
-  an item later** (the study, the reviewer).
+  an item later** (the study, the reviewer). Answered by Frans, 11:50
+  (section 2), with neither: the jobs' commits are user actions, and
+  when each comes among the others is part of the order, which is
+  given. Nothing of them is outside the goal at the Core.
 * **B3. The creating start** (Q5): (a) the creation is action 0, its id
-  and time inputs; (b) no random id. Default: **(a)** (both).
+  and time inputs; (b) no random id. Default: **(a)** (both). In the
+  lead's draft of the wording (section 3, 11:35) the creation is part
+  of the stream as it is, which the principle starts from (Frans,
+  11:50): no action 0 is needed. Open until Frans has the text.
 * **B4. The clock held while maintenance is due** (Q6): (a) held, (b)
   not. Default: **(a)** (both); with A1 (c) only inside calls.
   * Answered by Frans's decision of 11:16 (section 2) for `maintain()`:
@@ -428,6 +481,10 @@ setter's record too. 028-53's options A and B are replaced by A2.
     sound (Codex).
   * Default: **(a), and land the branch** (Codex: the safest and the
     simplest now). Frans's, as it sets the constraint aside.
+  * Answered by Frans, 12:11 (section 2), with none of the three: the
+    internal crypto code is removed (028-69), so no encrypted stream is
+    left to choose for. Part 2 is rebased on 028-69 without the
+    opt-out, looked at by Codex again, and landed.
 * **C2. 028-66: the cut's deletes** (section 4). Since 028-62 a writer
   with hard sync at full speed is about 40 % slower on F53, and above
   100 MB/s it keeps 1.3 to 1.6 times its stream on disk; up to 60 MB/s

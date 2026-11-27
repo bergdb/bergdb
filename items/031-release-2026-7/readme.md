@@ -90,3 +90,9 @@ discussion of 031-03 with Frans; 031-03's F1 to F5 wait for it.
 2026-11-26. 031-05 created: every write to the stream a function of the
 stream and the user actions (Frans); a study on 031-04's prototype, which
 answers 028-54.
+
+2026-11-27. The release's focus (Frans): the algorithms in place,
+`maintain()` and reclaim included; a bug hunt; clean-up; quality; the
+documentation's update. The theme's wording is Frans's and not set yet.
+031-06, a prototype of one record an action, is built (006-37); its
+files come with its landing.
