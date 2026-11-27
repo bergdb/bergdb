@@ -563,6 +563,25 @@ running (load 3.5 to 4.2). Indicative only.
 * Nothing was disabled.
 
 
+### 4.10. A timing check against 2026.6
+
+2026-11-27, 15:14 to 15:25: the prototype (`fa11d15f`) against release
+2026.6, `timing.sh core pauses` with MINIDLE=80. The machine was 80 to
+88 % idle (a process of the system held a core); a first run at the
+default of 90 % was stopped by the script after three runs.
+
+* TIMING OK.
+* CORE: the median 0.255 against 2026.6's 0.260 (ratio 0.981; smaller
+  is faster). The set figure 0.37 against 0.41 in each of the 4 runs of
+  each build; the reads level.
+* The pause probe: the longest get or commit 16.1 and 18.8 ms against
+  12.2 and 15.8 ms (the guide is 50 ms). Two runs each, so the
+  difference is not established.
+
+A sanity check, not release figures: the full `timing.sh`, with the 1M
+and 10M suite, runs on the ported branch.
+
+
 ## 5. What it costs
 
 * **Lines of code** (`git diff -w`, comments and blank lines excluded,
@@ -691,6 +710,13 @@ Frans, 2026-11-27:
 
 Q1 is answered by this. Q4 to Q6 are steps of the landing (section 9).
 
+* **A2** (14:36): `maintain(int budget)` replaces `maintain()` in the
+  Core and the Pub API in 2026.7.
+* **A3** (14:36): 2026.7 does not open a database of 2026.6: a new
+  format version, refused with a clear message; no upgrade path.
+* **028-67** (15:50 to 16:02): its C1 and C3 are built in this landing,
+  with the format's other changes (section 9, step 4).
+
 
 ## 9. The landing
 
@@ -713,8 +739,10 @@ began steps 0 and 1 in a clone on 2026-11-27, 14:32.
    commits (028-71); a warm-up of the step's scan before the lock; P1
    measured on a database larger than memory.
 4. **Clean-up:** the 1,024 kept times and top node ordinals (Q4); the
-   meta block's or the format's version for the copy mark (Q5); the
-   tests that depend on the stream's layout.
+   meta block's or the format's version for the copy mark (Q5), with
+   028-67's ties in the same format: a meta block's own position and its
+   database ID checked, and a record header's 24-bit check of the ID, its
+   position and its fields; the tests that depend on the stream's layout.
 5. **The documents:** 027, 027-02, 027-03, the Javadoc of
    `maintain(budget)`, the README's sentence on the same bytes; P2 in
    010, by Frans.
@@ -725,11 +753,9 @@ began steps 0 and 1 in a clone on 2026-11-27, 14:32.
 The branch is merged into `main` (`--no-ff`) when steps 0 to 2 are green;
 steps 3 to 6 are made on `main`.
 
-Two points wait for Frans's word before the merge (the public API and the
-stream format are his): that `maintain(int budget)` replaces `maintain()`
-in the Core and the Pub API in 2026.7 (006-37's A2), and that 2026.7 does
-not open a database of 2026.6: a new format version, refused with a clear
-message (A3). The lead asked him on 2026-11-27, 14:35.
+The two points that waited for Frans's word before the merge, A2 and A3
+(the public API and the stream format), were decided on 2026-11-27 at
+14:36 (section 8).
 
 
 ## Log
@@ -753,3 +779,7 @@ cost, margin and scope; (e) for `main` after three fixes. Codex's review
 was stopped by OpenAI's content filter, with no report. A1 is (e)
 (Frans; section 8). The item's files landed on `main` from the clones;
 the landing's plan is section 9, and its steps 0 and 1 began.
+
+2026-11-27. A2 and A3 decided by Frans (14:36; section 8). A timing check
+of the prototype against 2026.6 (section 4.10): TIMING OK, a sanity check.
+028-67's C1 and C3 join the landing's step 4 (Frans, 16:02).

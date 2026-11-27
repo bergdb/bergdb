@@ -1,7 +1,7 @@
 028-67. Fix: a deleted file's bytes in the last stream file after a kill
 =======================================================================
 
-Status: open. Kind: Fix. Frans: decision.
+Status: decided, open until built. Kind: Fix. Frans: decided.
 Created 2026-11-26 by Frans Lundberg.
 
 What: on APFS, a write cut by a kill of the process (or one that fails
@@ -75,7 +75,53 @@ First step: 035-02, sections 10 and 11; 028-60, sections 2 and 4;
 `fixLastTransactionIfNeeded`).
 
 
+Decision
+--------
+
+Frans, 2026-11-27 (15:50 to 16:02): **C1 and C3**, both in release
+2026.7, whose stream format changes anyway (031-06) and which does not
+open a database of 2026.6 (031-06, section 8, A3).
+
+* **C3, the meta block.** A meta block holds its own stream position, in
+  8 of the 81 bytes reserved at offset 46. A start takes a block as valid
+  only if that position is the one it was read at and its database ID
+  (16 bytes at offset 24, written in every block today and compared with
+  nothing) is this database's.
+* **C3, the record.** The record header's three unused bytes (5 to 7,
+  after the format byte; written zero today and not read) hold a check:
+  CRC-32C over the database's ID, the record's own stream position and
+  the header's other fields (the size, the time, the startup position,
+  the top position), truncated to 24 bits. The field ties the record to
+  its place and its database, and covers the header, which has no
+  checksum today (027-03, G12). It is computed when the record is
+  written and compared at each parse of a record (`StoredTrans.Parser`,
+  at a start and where a record is read). Neither structure grows. A
+  wider check (32 or 64 bits) would grow the 32-byte header by 8 bytes a
+  record: not taken; the width is reviewed with the stream's other
+  checksums (031-07).
+* **C1.** A tail that fails these checks is refused, with the cause and
+  the way out, before anything is written: no zero fill from a size
+  read out of such bytes.
+* **C2 is not decided**: such a tail left out at the open and cut at the
+  first append, as zeros are since 028-60's part 2 (old bytes at the
+  tail are a third face of a partial append). It is decided after C3 is
+  in and tested. **C4 is not taken.**
+
+Why three bytes suffice: a stale record is taken only if it begins
+exactly where a record of the stream ends, passes the 24-bit check (1 in
+16.7 million for bytes of another place or database) and then every
+check that exists today (the format byte, the sizes, the node checksums,
+the last byte, the meta block's).
+
+Where it is built: in 031-06's landing, with the format's other changes
+(031-06, section 9, step 4). Done when the checks are in, with the tests
+named above, and C2 is decided.
+
+
 Log
 ---
 
 2026-11-26. Registered by lead-1126, from 035-02, section 11.
+
+2026-11-27. Decided by Frans (15:50 to 16:02): C1 and C3 in 2026.7,
+built in 031-06's landing; C2 after C3 is in and tested; C4 not taken.

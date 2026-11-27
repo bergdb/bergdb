@@ -35,6 +35,10 @@ What 2026.6 does not finish comes here, unless Frans decides otherwise.
 * 028-49, the release scripts make the GitHub release's body with
   absolute links: needed before this release is made (from the review of
   2026.6, 2026-11-24); in 034's scripts since 2026-11-24.
+* 028-67, a stale tail at a start: C1 and C3 (Frans, 2026-11-27),
+  built in 031-06's landing, with the format's other changes.
+* 031-07, the stream's checksums reviewed, the new 3-byte check of
+  028-67 with them (Frans, 2026-11-27).
 
 
 Files
@@ -71,6 +75,9 @@ Files
   * `review-fable.md`, `review-probes/`: the independent review of the
     prototype and its probes;
   * `p2-draft.md`: a draft of P2's extended wording, a proposal.
+* [031-07](07-checksums/readme.md): the stream's checksums, a review: what
+  each check detects and costs, and whether the node checksums stay, go
+  or become one a record (Frans, 2026-11-27).
 
 
 Log
@@ -123,3 +130,9 @@ section 9. The internal crypto code left the tree the same day (028-69).
 2026-11-27. 031-06: `history.md` added, the history of reclaim's own
 records, with the passages of Frans's notes and logs that he approved
 for publishing.
+
+2026-11-27. A2 and A3 decided (Frans, 14:36; 031-06, section 8):
+`maintain(int budget)` replaces `maintain()` in the Core and the Pub API,
+and 2026.7 does not open a database of 2026.6. 028-67's C1 and C3 taken
+into 2026.7, built in 031-06's landing (Frans, 16:02). 031-07 created:
+the stream's checksums, a review.

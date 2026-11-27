@@ -104,7 +104,7 @@ Open
 | [028-54](54-p2-inside-maintenance.md) | Investigate | A stop or crash inside a commit's maintenance changes the stream (P2) | answers | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
-| [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
+| [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | open |
 | [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve changes the bytes and is not in the stream: A to C | decision | open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
@@ -614,3 +614,10 @@ times the live data under commits of 300 kB. 028-68: the same review ran
 the step reserve's effect at its default (F7). 028-54: A1 is (e), which
 leaves no record between a user's record and its maintenance; its
 question for 033 stays open.
+
+2026-11-27. 028-67 decided by Frans (15:50 to 16:02): C1 and C3, in
+2026.7, built in 031-06's landing: a meta block holds its position and is
+valid only with this database's ID; a record header holds a 24-bit
+CRC-32C of the ID, its position and its fields; a tail that fails is
+refused before anything is written. C2 after C3 is tested; C4 not taken.
+Open until built.

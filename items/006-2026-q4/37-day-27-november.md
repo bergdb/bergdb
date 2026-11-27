@@ -131,6 +131,18 @@ Frans, 2026-11-27:
   13:53 and the review's verdict of 14:30 (section 3): no probe broke
   the prototype, and (e) is the one for `main` after three fixes. The
   landing is 031-06's section 9. Section 4.0 says what this answers.
+* **A2 and A3** (14:36): `maintain(int budget)` replaces `maintain()` in
+  the Core and the Pub API in 2026.7. 2026.7 does not open a database of
+  2026.6: a new format version, refused with a clear message, with no
+  upgrade path (031-06, section 8).
+* **028-67: C1 and C3, in 2026.7** (15:50 to 16:02), built in 031-06's
+  landing: a meta block holds its own position and is valid only with
+  this database's ID; a record header holds, in its three unused bytes,
+  a CRC-32C of the ID, its position and its fields, truncated to 24
+  bits; a tail that fails is refused with the cause and the way out,
+  before anything is written. C2 after C3 is in and tested; C4 not
+  taken. The stream's checksums are reviewed for 2026.7, the new check
+  with them: 031-07.
 
 Gone ahead by default:
 
@@ -338,8 +350,20 @@ The lead's overview (08:30), its conclusions:
   36 times the live data), and 028-68 updated from F7.
 * 14:35 The lead asked Frans for A2 and A3 (section 4.0), needed before
   the branch is merged.
-* `night.sh` is due tonight on the day's `main`: its Java changed
-  (028-69, 028-60's part 2).
+* 14:36 Frans: A2 and A3 (section 2).
+* 14:42 to 15:26 A timing check of the prototype (`fa11d15f`) against
+  2026.6, `timing.sh core pauses` at MINIDLE=80 (031-06, section 4.10):
+  TIMING OK; CORE's median 0.255 against 0.260; the pause probe's
+  longest 16.1 and 18.8 ms against 12.2 and 15.8 ms, two runs each, not
+  established. A sanity check, not release figures.
+* 15:36 The history of reclaim's own records published as 031-06's
+  `history.md` (`a6a7d7a9`), with the passages of Frans's notes and logs
+  that he approved.
+* 15:50 to 16:02 Frans: 028-67 decided, C1 and C3 (section 2); 031-07
+  registered.
+* Tonight: the full `timing.sh` on the ported branch against 2026.6 when
+  the landing's agent has stopped; then `night.sh` on `main`, whose Java
+  changed today (028-69, 028-60's part 2).
 
 ## 4. Waiting for Frans
 
@@ -357,7 +381,7 @@ A1 is decided (section 2). What that does to the questions below; the
 text of sections 4.1 to 4.3 is left as it was written during the day.
 
 * **Asked at 14:35, needed before the landing's branch is merged**
-  (class 3):
+  (class 3); **both decided at 14:36** (section 2):
   * **A2:** `maintain(int budget)` replaces `maintain()` in the Core
     and the Pub API in 2026.7.
   * **A3:** 2026.7 does not open a database of 2026.6: a new format
@@ -391,12 +415,15 @@ text of sections 4.1 to 4.3 is left as it was written during the day.
   room (step 2; no formal bound is required, Frans, 14:09); 028-68, the
   step reserve (step 2; Frans's decision between A, B and C); Q4 and Q5
   (step 4); Q6 (a timing run).
-* **Still open, small and independent:** C2 (028-66), C3 (028-67), C4
+* **Still open, small and independent:** C2 (028-66), C3 (028-67;
+  decided at 16:02, section 2), C4
   (028-54's question for 033), C5 (028-34), C6 (026-04), C7 (026-14).
 * **For Frans, new:** whether the history of reclaim's records (an
   agent's file of 09:30, outside the repository) is published: it
   quotes passages of his notes of 2012 to 2014 that he has not approved
   for it; Codex's stop by the content filter (section 3, 14:24).
+  The history was published at 15:36, with the passages Frans approved
+  (section 3).
 
 ### 4.1. The direction, first
 
@@ -442,6 +469,7 @@ text of sections 4.1 to 4.3 is left as it was written during the day.
   replaces `maintain()` in `Db` and `Database` (031-04, C1), and it
   fixes RB-007, RB-010 and the rest of RB-006. Default: **yes** (the
   lead; Codex and the reviewer on Fable both say take the direction).
+  * **Decided, 14:36: yes** (section 2).
 * **A3. The streams of 2026.6** (class 3: the format; 031-04, Q8 and
   section 11; 031-05, F10). The internal format changes: `a` in the
   rows, a table without rows, the take's and the filler's records,
@@ -456,6 +484,9 @@ text of sections 4.1 to 4.3 is left as it was written during the day.
   * Frans, 09:38 (section 2): backwards compatibility of the stream
     does not count against a design. Whether 2026.7 opens a database
     of 2026.6 at all is still his to state.
+  * **Decided, 14:36:** 2026.7 does not open a database of 2026.6: a
+    new format version, refused with a clear message; no upgrade path
+    (section 2).
 * **A4. P2's wording** (class 3: 010 is Frans's; 031-05, Q1).
   * (a) the draft of 031-05, section 4.3, which names the setters.
   * (b) without the setters, which become `execute()` calls.
@@ -617,6 +648,8 @@ setter's record too. 028-53's options A and B are replaced by A2.
     and the database's ID (class 3: the format). C4: zero new files.
   * Default: **C1 now, C3 with the next change of the format (032)**
     (035-02).
+  * **Decided, 16:02: C1 and C3, both in 2026.7**, with 031-06's
+    format; C2 after C3 is tested; C4 not taken (section 2).
 * **C4. 028-54: a released bug or not.** On `main`, 2026.5 and 2026.6 a
   stop or a crash inside a commit's maintenance gives other bytes for
   the same transactions; the README says "The same transactions in the
