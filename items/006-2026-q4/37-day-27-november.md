@@ -486,9 +486,38 @@ The lead's overview (08:30), its conclusions:
   the stream's bytes are the same, 031-06 is not involved. 028-73
   registered, options for Frans (section 4); (b), a floor of 1 MB from
   4 MB kept, made and gated on a branch (`5731b6c9`), not on `main`.
-* 18:43 `night.sh` on `main` started (report `2026-11-27-1843`); the
-  agent for the probes of RB-007, RB-010 and RB-006's rest on `main`
-  follows it.
+* 18:43 `night.sh` on `main` started (report `2026-11-27-1843`).
+* 18:45 The agent for the probes of RB-007, RB-010 and RB-006's rest on
+  `main` started.
+* 18:52 RB-006's rest, RB-007 and RB-010 fixed on `main` (`17c7c7db`):
+  each probe, ported to `maintain(int)` in 033's `probes/`, still shows
+  its bug on 2026.6 and not on `main` (TwoStretchProbe 18,896 bytes
+  kept against 790,264; HoleProbe 71,368 against 4,804,384;
+  StopAtProbe: the filler never live on `main`, live after record 6 on
+  2026.6). `releases/next.md`: no known released bug.
+* 18:55 Two studies started, independent of the review: 031-07's
+  inventory of the stream's checks, and 028-72's count of index nodes a
+  level at node size 8.
+* 19:15 The independent review of the landed diff done and on `main`
+  (`4dc82fff` to `db92c882`, 031-06's `review-main.md`): no restart,
+  stop, failure before the append, torn record or eviction schedule
+  changed a byte (12,105 interruptions, 0 different). Its findings:
+  * R1, medium, the Core API: a `Trans` executed again after a failure
+    past the go point writes other bytes;
+  * R2, medium for the tests: `checkTakeable` fails databases at lowered
+    record limits with a larger startup distance; none found at the
+    release's limits;
+  * R3, not of this diff: a commit's time after a restart at or before a
+    time a reader was given; 028-74;
+  * R4, the cost of 031-04's rule: one small put, then `maintain()`
+    calls, rewrite the whole live data; 028-75;
+  * R5: `takeRoom()` counts a taker with no KVs, M4's record stores the
+    table;
+  * R6: the item's probes do not run on `main`;
+  * R7: the Lean's check of one operation a key in a step's record only.
+* 19:16 The fixes of R1, R2, R5, R6 and R7 (with `Db`'s stale Javadoc
+  on 2026.6's filler) started on a branch, `031-06-review-fixes`.
+  `night.sh` past its level 3: `LEVEL 2 OK`, `LEVEL 3 OK`.
 
 ## 4. Waiting for Frans
 
@@ -500,7 +529,7 @@ with a time: none is open.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (18:45)
+### Open now (19:20)
 
 What is open for Frans after the decisions of 16:09 to 17:26 (section
 2). The text of sections 4.0 to 4.3 is left as it was written.
@@ -537,9 +566,37 @@ What is open for Frans after the decisions of 16:09 to 17:26 (section
     RB-011's bound 5 MB for 20 to 50 MB kept.
   * (d) Back to the quarter, which undoes RB-011's fix.
   * Recommended: (b). Parked until Frans decides.
-* **The review of the landed diff** (031-06, section 9): an independent
-  review of the code merged at `5b88cc80` before step 3 builds on it;
-  running since 18:22 (section 3).
+* **028-74. A commit's time after a restart at or before a time a
+  reader was given** (the review's R3; the public API's promise of
+  `currentTime()`). A start does not rebuild the last time given to a
+  reader; with a clock that stands still or was set back, a read at that
+  time later sees a commit made after the start.
+  * (a) State the limit in `currentTime()`'s Javadoc and P2's draft: a
+    time given holds for the session that gave it.
+  * (b) `currentTime()` gives at most the last transaction's time, a
+    bound a start rebuilds from the stream; to be studied.
+  * (c) The times given kept in the stream; (d) a start waits for its
+    clock: not recommended.
+  * Recommended: (a) for 2026.7. Parked until Frans decides.
+* **028-75. One small put, then `maintain()` calls rewrite the whole
+  live data** (the review's R4; 031-04's rule, taken with A2). A put of
+  a byte led the calls to write 4.4 MB at 20,000 keys and 31.9 MB at
+  100,000.
+  * (a) Keep the rule and state the cost.
+  * (b) A threshold of released bytes again, 400 kB: brings back the
+    judgment that gave RB-006 and RB-007.
+  * (c) A pass only when the stream kept is more than k times the live
+    bytes (k about 1.5) and more than a floor over them (about 400 kB),
+    with the live bytes kept up to date by each record; designed and
+    measured in step 3.
+  * (d) A call's pass cutting at the iteration before's start: brings
+    back RB-007's cause.
+  * Recommended: (c). Parked until Frans decides; step 3 begins with
+    the review's fixes and the parts that do not depend on it.
+* **028-53. Idle rewrites by M1; RB-007** (in progress, Frans:
+  decision): RB-007 is fixed on `main` (18:52); the entry also covers
+  the idle rewrites, which 028-75 now holds. Whether 028-53 is done is
+  Frans's.
 * **031-07's review** of the stream's checksums.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to

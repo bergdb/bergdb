@@ -847,9 +847,32 @@ and a transaction within L1 to L5 makes at most 1.47 GB dirty by
 Lean's count since 028-21 (19 nodes a level at node size 8) the worst is
 about 2.00 GB, 106 % of 7/8: which count holds is 028-72.
 
-**Next:** an independent review of the landed diff, before step 3 builds
-on it: the code on `main` since the prototype's review is gated, not
-reviewed. Then steps 3 to 6 on `main`.
+**The review of the landed diff is done** (2026-11-27, 18:20 to 19:15,
+an agent on Fable; `review-main.md`, its probes in `review-main-probes/`,
+on `main` as `4dc82fff` to `db92c882`): no restart, stop, failure before
+the append, torn record or eviction schedule changed a byte (12,105
+interruptions, 2,142 torn records, 0 different); `BEFORE COMMIT OK` and
+`LEVEL 3 OK` on the merge's tree. Its findings:
+
+* R1, medium, the Core API: a `Trans` executed again after a failure
+  past the go point keeps the plan's fields and writes other bytes.
+* R2, medium for the tests: at lowered record limits with a startup
+  distance above the limit, `checkTakeable` fails the database; none
+  found at the release's limits.
+* R3, not of this diff: a commit's time after a restart can be at or
+  before a time a reader was given; 028-74.
+* R4, the cost of 031-04's rule: one small put, then `maintain()` calls,
+  rewrite the whole live data; 028-75, for step 3.
+* R5, by reading: `takeRoom()` counts a taker with no KVs, and M4's
+  record stores the table.
+* R6: the item's probes do not compile or run on `main`.
+* R7: the Lean's check of one operation a key in a step's record only.
+
+R1, R2, R5, R6 and R7, with the stale Javadoc of `Db` on 2026.6's
+filler, are being fixed on a branch (`031-06-review-fixes`), gated
+before they land.
+
+**Next:** the review's fixes, then steps 3 to 6 on `main`.
 
 
 ## Log
@@ -890,3 +913,8 @@ section 8): the longest that BergDB writes is a Pub index entry of 496
 bytes, 71 segments; a cap of 1,024 bytes is recommended, for Frans.
 Section 3's assumption of the step's last KV corrected. 028-72
 registered: the action's 7/8 against the Lean's count of nodes.
+
+2026-11-27. The independent review of the landed diff (18:20 to 19:15,
+`review-main.md`): R1 to R7, no byte changed by any interruption; R3
+and R4 registered as 028-74 and 028-75; the fixes of R1, R2, R5, R6 and
+R7 begun on a branch.
