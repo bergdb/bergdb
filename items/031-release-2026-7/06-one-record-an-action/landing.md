@@ -244,7 +244,7 @@ format version, refused with a clear message, no upgrade path).
   format 8 only and so refuses format 9; the tests and `CorruptStreamTester`
   that build records of format 8 by hand; the item's question Q5 then has
   its answer (the record's format, not the value node's or the meta
-  block's, unless Frans wants those too).
+  block's, unless Frans wants those too). Built in step 2 (below).
 
 ## For the later steps
 
@@ -283,6 +283,233 @@ kept times, the documents):
   refuses a 2026.6 database; the traces' format (`TRACE 3`) did not change, as
   `OP C` and `ACT` are new lines that the old checkers refuse or ignore
   (`tracecheck` filters ACT before its pinned parser).
+
+## Step 2: the record's room by a check, the format, the reserve
+
+2026-11-27, 16:05 to 19:30, on the same branch, rebased on `main` at
+`dd62fc27`. The review's F5, F6 and F7; the record format for Frans's
+decision of 14:36; the lock-handover test.
+
+### The record's room (F5)
+
+The rule, as built:
+
+* **What.** Every record's index nodes, those its action and its
+  maintenance make dirty or create together, are within
+  `StoredTrans.dirtyLimit()`, 15/16 of the record limit: the bound that
+  005-31 kept for a transaction, now for the record, so that a later
+  record takes them whole (`TransSeq.take` takes a record's set whole or
+  not at all). An action alone is admitted within
+  `StoredTrans.actionDirtyLimit()` = `dirtyLimit()` less
+  `stepDirtyRoom()` (a sixteenth of the record limit): 7/8 of it, so a run
+  of the largest actions leaves every step that room (Codex's E5).
+* **When, by whom.** (1) The admission, `Db.checkDirtyNodes` and
+  `checkDirtyNodesAfterKeyTransformations`, under the write lock before
+  the go point: the action against `actionDirtyLimit()`, refused as
+  before (`DbException`, 005-31). (2) The plan, `Reclaim.plan`, before the
+  go point: `Db.recordDirtyFits(action, plan)` counts the record's KVs
+  merged, as `countDirtyNodes` counts a transaction (the cheap test, a sum
+  over the KVs; the walk of all the record's keys, `Dag.dirtyNodeBound`,
+  if the cheap test is over). Over `dirtyLimit()`: the plan is made again
+  with a step of its first KV to copy only (015-50's rule: the next old
+  KV); still over, a commit's record carries no step (B, P and C as due),
+  and a later record whose action leaves more room carries it; a part's
+  step keeps its first KV, so that `maintain()` always moves the
+  iteration. (3) The check, `Db.checkTakeable`, in `store()` after the take
+  and the nodes it keeps dirty (`handleStillDirtyNodes`), before the
+  append: the record's got-dirty set, each node counted at its largest
+  with its entry, within `StoredTrans.takeRoom()` = the record limit less
+  a record header and two top nodes, the room of a later record with no
+  KVs (an empty commit, a part's take, M4). Over it: a `Bug`, which fails
+  the database (P7) with nothing of the record written. That is where a
+  set that no later take could take is detected; until now nothing
+  failed and the startup pos stood before it for good.
+* **Why this one.** The admission alone cannot count the step (it runs
+  before the plan); a lowered internal limit for the transaction alone
+  (Q3 (b)) leaves the step's own count unchecked, which F6's long key
+  passes; sizing the step by arithmetic needs a bound on the keys it
+  copies. Counting the record as one transaction reuses 005-31's count,
+  is from the actual keys, costs a sum over the KVs when it fits, and
+  keeps one rule for every record. The reserve of 1/16 is Q3 (b) for the
+  index nodes only: the record cap and the value limits are as in step 0.
+* **Checked.** `ReclaimRoomTester` (f-tests, about 3 s): two sustained
+  runs at lowered limits (100 kB at node size 8, 200 kB at node size 30),
+  with 3,000 cold keys, 20 cold keys of 60 segments under "/#" and a third
+  of the actions near or over the action's limit: no failure, the
+  startup pos moves in every window of 300 actions, 9 and 15 cuts, the
+  stream kept in the last third at most 1.3 times the middle third's,
+  the values the model's after a restart; the room made 238 and 122
+  plans again with the step's first copy, and left 2 and 4 of those steps
+  out of a commit's record; the
+  largest set 366 nodes, 70,912 bytes at the largest sizes (dirtyLimit
+  93,750) and 330 nodes, 179,808 bytes (187,500); no record's set over
+  dirtyLimit. `testUntakeableRecordFails` (unit): a key of 600 segments
+  refused by 005-31 at a limit of 100 kB, nothing appended; admitted at
+  the release's limit with the limit lowered at the plan, its record
+  fails the database at `checkTakeable` (the `Bug`'s message), nothing
+  appended, and a restart has the database as before.
+  `testLargestActionNextToLargestOldValue` (f): at 200 kB, two cold
+  values of 170,000 bytes (the value limit 175,000) and 250 actions of a
+  value of 160,000 bytes and 40 small puts: a step carries an old value
+  of the largest size beside such an action, every record within
+  `recordCap()`, cuts, the values right after a restart.
+* **Bytes.** At the release's limits the cheap test fits every record of
+  the stress workloads: StreamDigest quick on the commit of the rule
+  (format 8) against step 1's jar: `DIGESTS IDENTICAL (44 of 44)`.
+* Tests changed by the action's 7/8: `DbTesterDirtyCount`'s
+  `testRefusedAfterKeyTransformations` (the record limit 11,150 bytes for
+  its 42 nodes, 10,400 before) and `Reclaim.Tester`'s
+  `testLastStepWithinRecordLimit` (220 kB, 200 kB before: its actions
+  count up to 902 nodes, 175 kB, and 7/8 of 200 kB is 175,000).
+
+### What is derived and what is assumed
+
+* Derived, by checks in the code: a record's own nodes within
+  `dirtyLimit()` by the counts before the go point; no record appended
+  whose set, at the largest node sizes, passes `takeRoom()`; so every set
+  in D can be taken whole by a later record with no KVs. The step's count
+  is from the keys it copies, of any length the Core accepts.
+* Assumed, as 005-31 assumes: the counts bound the nodes a transaction
+  makes dirty (the walk is proved for puts, 030-29's
+  `pe_dirtyNodeBound_puts`, and tested for deletes; the cheap test's
+  height is from the stream's length, an argument); a node at a later
+  take is at most the largest size counted. Assumed, and checked by
+  `checkTakeable` (a failure if not): the nodes that a record's take keeps
+  dirty fit in the rest of the record limit (1/16 less 1,712 bytes); none
+  of the runs above came near. Assumed, as on `main`: a later record with
+  small own bytes comes; under only maximal records the take waits, not
+  for good. Assumed for progress: an old KV alone fits `dirtyLimit()`
+  when a step meets it (its own transaction was within the action's
+  7/8); if not, a part's record with it fails at `checkTakeable`, loudly.
+* Not formal (Frans, 14:00 to 14:09): no bound of the record's size is
+  derived beyond these checks.
+
+### Long keys (F6)
+
+* The step's count is from the actual keys (`recordDirtyFits`), so any key
+  the Core accepts is safe; at the release's limits the cheap test alone
+  covers a single key within L3 (8,192 segments: 3 x 42 x 8,192 + 3 nodes,
+  about 1.03 M, against 3.7 M at node size 30 and 10.5 M at 8).
+* `testLongKeyCopiedByAStep` (f): the review's case, a key of 6,000
+  segments under "/#" by `putLongKey` at the release's limits, node size
+  8: copied by a commit's step, whose record made more than 5,000 index
+  nodes dirty (5,154), within dirtyLimit; the original record cut away;
+  the value right after a restart.
+* The review's `RvLong` (adapted, appendix 2: `-Dwhen=before|plan|after`)
+  on the branch's jar: 3,000 and 7,000 segments at the release's limits,
+  the review's lines exactly (copied by a commit's step, 2,581 and 6,009
+  index nodes in one record, startup pos 4,240,120 and 7,173,472 of
+  4,246,808 and 7,180,160). With the limit of 100 kB from the start: the
+  key's transaction refused (005-31, "up to 6003" nodes, 1,154,240 bytes,
+  more than 87,500), nothing appended. Lowered at its plan: the database
+  fails at `checkTakeable` (5,999 nodes, 1,151,808 bytes, more than
+  98,288), nothing appended. Lowered after its record, as the review ran
+  it: the startup pos stays at 512, as before; the record was within the
+  limit when written, and the limit is a constant outside tests, so this
+  case cannot arise but by the test hook.
+* `putLongKey` (Trans.Builder, public, "Internal, not API"): BergDB's own
+  keys under "/#", longer than L2 up to L3 in a transaction; used by the
+  Pub layer's indexes (`IndexManager`, `RwEnvironmentImp`: entries,
+  definitions and markers, entries within L6, about 400 bytes) and
+  `FormatFuzzer`. Whether the Core bounds them is Frans's (below); the
+  Core's acceptance is unchanged.
+
+### The record format (Frans, 14:36)
+
+* `StoredTrans.RECORD_FORMAT` 9; `formatRefused` names release 2026.6 for
+  format 8, that this version does not open it and that there is no
+  upgrade path. Release 2026.6 refuses format 9 as a newer BergDB's (it
+  reads 8 only). Q5 is answered by the record's format; the value node's
+  format (5) and the meta block's version (155) are unchanged.
+* Tests: `NodeStreamTester.testStartRefusesFormat8` (a start on this
+  build's stream with every record's byte 4 set to 8: refused, the
+  message names 2026.6, nothing appended); `StoredTrans.testRefusesFormat6`
+  refuses 6, 7 and 8. No test built format 8 by hand but through
+  `RECORD_FORMAT`.
+* StreamDigest has no pinned digests in the code; run quick on the jars
+  before and after: all 44 digests change (11 configurations, 4 modes),
+  the lengths, first positions and first available positions and times
+  identical. The item's sweep reference (`runs/sweep.txt`): the digests
+  change, the rest the same (below).
+* 027-03: the numbers, and one paragraph on format 9. `releases/next.md`
+  has no lines on the format: not changed (step 5, the documents).
+
+### The step reserve (F7; 028-68, B, Frans 16:09)
+
+* `Reclaim.DEFAULT_STEP_RESERVE` for every database. Removed:
+  `DbBuilder.reclaimStepReserve` and the system property `stepreserve`.
+  The test hook: `DbBuilder.testStepReserve`, package-private as
+  `maxNodeSize8()`, given at every start of a test's database (its
+  Javadoc); `Reclaim.setStepReserve` package-private. Users in the code:
+  `Reclaim.Tester.testStepReserveSplitsSteps` (now at its start and its
+  restart) and `DbTesterJavadoc` (its refusal of 0 removed). No script
+  passed the property. New: `Reclaim.Tester.testStepReserveIsAConstant`.
+  028-68's entry and index row updated (decided, open until it lands).
+* The item's probes that set a reserve (`SafetyProbe`, `PubInfoProbe`,
+  the review's `RvP1`) call `reclaimStepReserve`: they need
+  `testStepReserve` when run again.
+
+### The lock-handover test
+
+`ReclaimMaintainTester.testCommitGoesBeforeTheNextPart` waits for a hook
+in the handover, `Db.TestHooks.givingWay()`, called on the call's thread
+when its wait for a waiting commit begins (`giveWayToWriters`), and no
+longer samples the threads' state, TIMED_WAITING, which a thread that
+parks for 20 us and then waits for a core shows only part of the time.
+The wait in the handover ends only when the commit has the lock, so the
+assertion (the first record after the lock is let go is the commit's)
+follows from the hook. The waits' limits (60 s) are hang guards. Run 60
+times, six at once: 60 passed.
+
+### Gates
+
+Running since 16:36 (filled in at the end of the step).
+
+### For the later steps
+
+* **The pace (F2, F3, F4).** At lowered limits the room cuts many steps
+  to their first copy beside large actions (238 of the run above); at the
+  release's limits none in the stress workloads. F3's fix (a commit's
+  step sized by its allowance, 028-71) makes steps larger, and the room's
+  trim is coarse (all, the first copy, none): a larger step that does not
+  fit falls to one copy; a trim to the largest prefix that fits (a few
+  walks) may be wanted then. F4: `recordDirtyFits` walks under the write
+  lock when the cheap test is over (near the action's limit; at lowered
+  limits most steps' records); the warm-up before the lock should cover
+  the step's paths, which are the walk's too. F2: the charge is of the
+  plan as made last, after a trim.
+* **The plan made again.** `Reclaim.plan` may run `plan(t, kvs, n)` up to
+  three times; each is a function of the stream and the action. The
+  exporter reads the final plan (`x.plan`); the statistics of the trims
+  (`Stats.roomFirstCopy`, `roomNoStep`) count at the plan, also for an
+  action a stop then refuses.
+* **028-67's checks** (decided for 2026.7, in the landing) use the
+  record header's bytes 5 to 7 under format 9: no conflict with this
+  step, which changed byte 4 only.
+
+### Options for Frans
+
+* **O1. BergDB's own long keys in the Core (F6).**
+  * (a) As built: the Core accepts them as today, keys under "/#" longer
+    than L2 through `Trans.Builder.putLongKey` and `deleteLongKey`, up to
+    L3 (56 KiB) in a transaction; the record's room counts them from the
+    actual keys. What the Core accepts does not change.
+  * (b) `putLongKey` and `deleteLongKey` refuse a key over a bound of
+    BergDB's own keys, for example 1 KiB (146 segments), well above the
+    Pub layer's largest (about 400 bytes, L6), with an
+    `IllegalArgumentException` as L2 does: a new public limit in 024-17.
+    The item's arithmetic for the step's last KV (section 3: 60 segments
+    assumed) would then hold by a check.
+  * Recommended: **(a)**. The record's safety no longer rests on the
+    keys' length; (b) changes what the Core API accepts for no case that
+    needs it now, and is worth it only if a formal bound of the record is
+    wanted later.
+* Not an option, a consequence of the reserve (Q3 (b), as the lead
+  framed it): 005-31 admits an action within 7/8 of the record limit, no
+  longer 15/16. At the release's limits that is 1.879 GB; a transaction
+  within L1 to L5 makes at most 1.47 GB dirty by 024-17's count (1.33 GB
+  at node size 62), so no transaction within the public limits is refused
+  by it (assumed as 024-17 assumes, TP26).
 
 ## State
 
@@ -457,4 +684,73 @@ gate of step 0 ran them:
          P2CrashProbe.Image b = P2CrashProbe.image(s2, decided2);
          String why = P2CrashProbe.compare(a, b);
          System.out.println("seed " + seed + ", " + seconds + " s, " + writers + " writers, node "
+```
+
+## Appendix 2: RvLong for step 2
+
+The change of the review's probe (`review-probes/RvLong.java` on `main`)
+that step 2 ran, with `-Dwhen=before|plan|after` for when the lowered
+record limit takes effect:
+
+```diff
+--- review-probes/RvLong.java
++++ review-probes/RvLong.java
+@@ -14,8 +14,16 @@
+  * Usage: java -ea -cp OUT:JAR bergdb.core.RvLong SEGMENTS [NODE]
+  *   -Dlimit=N: a lowered record limit (StoredTrans.recordLimit), to see what follows when a
+  *   record's dirty set passes the room of every later record (F5's consequence).
++ *   -Dwhen=after (the default): the limit lowered after the key's record, as the review ran
++ *   it; before: in force from the start, as a limit is in production; plan: lowered after the
++ *   key's transaction is admitted, before its plan (031-06's landing, step 2: the key's
++ *   transaction is refused by 005-31 with before, and with plan its record is not written:
++ *   Db.checkTakeable fails the database).
+  */
+ public class RvLong {
++    static long s0(Db db) {
++        try { return db.getStreamLength(); } catch (Throwable e) { return -1; }
++    }
+     public static void main(String[] args) throws Exception {
+         final long SEC = Clock.UNITS_PER_SEC;
+         int segments = Integer.parseInt(args[0]);
+@@ -35,10 +43,38 @@
+         Random r = new Random(1);
+         byte[] v = new byte[100];
+         r.nextBytes(v);
+-        db.execute(db.trans().putLongKey(key, null, v, null).build());
++        final String when = System.getProperty("when", "after");
++        final long limit = Long.getLong("limit", 0);
++        if (limit > 0 && when.equals("before")) StoredTrans.recordLimit = limit;
++        if (limit > 0 && when.equals("plan")) {
++            Db.testHooks = new Db.TestHooks() {
++                public void beforePlan(Db.ExecuteData x) { StoredTrans.recordLimit = limit; }
++                public void transExecuted(Db.ExecuteData x) {}
++                public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
++                public void nodeTouched(bergdb.dag.Node node) {}
++                public void nodeReplaced(bergdb.dag.Node node) {}
++            };
++        }
++        final long length0 = db.getStreamLength();
++        try {
++            db.execute(db.trans().putLongKey(key, null, v, null).build());
++        } catch (Throwable e) {
++            Db.testHooks = null;
++            Throwable c = e;
++            while (c.getCause() != null) c = c.getCause();
++            System.out.println("RvLong: a key of " + key.length + " segments (" + Trans.keyBytes(key)
++                    + " bytes) under \"/#\", the record limit " + limit + " " + when + ": "
++                    + (e instanceof bergdb.pub.util.DbException ? "refused" : "failed") + ", "
++                    + e.getClass().getSimpleName() + (c != e ? " (" + c.getClass().getSimpleName() + ")" : "")
++                    + ": " + c.getMessage() + "; the stream's length " + length0 + " before, " + s0(db) + " after");
++            try { db.close(); } catch (Throwable x) {}
++            StoredTrans.recordLimit = saved;
++            return;
++        }
++        Db.testHooks = null;
+         // The limit is lowered after the key is in the stream: its own transaction is
+         // admitted by the release's limit, as a transaction near that limit would be.
+-        if (Long.getLong("limit", 0) > 0) StoredTrans.recordLimit = Long.getLong("limit");
++        if (limit > 0 && when.equals("after")) StoredTrans.recordLimit = limit;
+         Reclaim.Stats stats = db.internal().reclaim().enableStats();
+         long copies = 0, maxRecord = 0, maxDirtied = 0;
+         boolean copied = false;
 ```
