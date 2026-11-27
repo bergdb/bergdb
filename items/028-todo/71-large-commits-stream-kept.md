@@ -1,7 +1,8 @@
 028-71. Investigate: under sustained large commits the stream kept grows far past the live data
 ==============================================================================================
 
-Status: open. Kind: Investigate. Frans: none.
+Status: open (built on a branch, 2026-11-27; done when it lands). Kind:
+Investigate. Frans: none.
 Created 2026-11-27 by Frans Lundberg.
 
 What: a commit allows at most one reclaim step, and a step copies at
@@ -41,8 +42,48 @@ First step: `Reclaim.planCommit` and `MAX_STEP_SIZE` on 031-06's branch;
 the review's `RvPace` (031-06, `review-probes/`).
 
 
+Built
+-----
+
+2026-11-27, in 031-06's landing, step 3, on the branch `031-06-pace`
+(031-06, `landing.md`, step 3):
+
+* What: a commit's step scans up to its allowance, at most the larger of
+  `MAX_STEP_SIZE` (16 kB) and twice the allowance that the application's
+  last record and the records after it added, `2 fractionOf(L0 - a)`
+  (`Reclaim.commitStepSize`, `STEP_GROWTH_FACTOR`). Until then at most
+  16 kB a commit. A commit after small records keeps 16 kB; a commit after
+  large ones carries a step of about their size times the fraction, so
+  the steps spend the allowance as it grows, with room to catch up. A
+  part's step stays at `MAX_STEP_SIZE`.
+* When, by whom: `Reclaim.planCommit`, in the plan before the go point;
+  the step reserve, 015-50's value limit and the record's room
+  (`Db.recordDirtyFits`) bound it as before.
+* Deterministic: L0 and a are the stream's before the record (a is read
+  off the stream at a start, 031-04's R3), so a restart plans the same.
+* Checked: `probes/PaceProbe.java` (the review's `RvPace`, with
+  `maintenanceNone()` called directly), the review's runs of F3 and two
+  with commits of many small puts at random keys:
+
+  | Commits | Kept x live, before | After | Share, before | After |
+  |---|---:|---:|---:|---:|
+  | one put of 20 kB      |  7.7 |  8.1 | 0.257 | 0.248 |
+  | one put of 100 kB     | 13.8 |  7.2 | 0.171 | 0.279 |
+  | one put of 300 kB     | 36.4 |  7.8 | 0.063 | 0.237 |
+  | 200 puts of 100 bytes | 21.9 | 10.7 | 0.100 | 0.238 |
+
+  "Kept" is the largest stream kept in the run's last third over the cold
+  live data; it was steady from the middle third to the last in each run
+  after the change. The figures after include step 3's charge (the
+  after-row charge in the record), which changes the share of small
+  commits too (0.305 to 0.281 at 200-byte values).
+
+
 Log
 ---
 
 2026-11-27. Registered by lead-1127, from the independent review of
 031-06's prototype (F3).
+
+2026-11-27. Built in 031-06's landing, step 3 (section Built), on a
+branch, gated there; open until it lands.

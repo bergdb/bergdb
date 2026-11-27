@@ -218,6 +218,19 @@ public class Reclaim implements Maintenance {
      * MAX_STEP_SIZE, as before.
      */
     static final long STEP_GROWTH_FACTOR = 2;
+    
+    /**
+     * The most bytes that a commit's step scans (commitStepSize; bergdb 031-06, landing step
+     * 3): half of the step's room for its KVs but the last, its row and its table
+     * (StoredTrans.STEP_FIXED_ROOM, 256 KiB, in StoredTrans.stepRoom()), so that a record
+     * that carries a step stays within StoredTrans.recordCap() as section 3 of 031-06 derives
+     * it: the scan's KVs but the last within 128 KiB, the last within one value node of the
+     * largest size, the row and the table within the other 128 KiB (assumed, as before: a
+     * table of a few rows is some kB). So commits of more than about 400 kB (at the default
+     * fraction) carry less than their allowance, and reclaim falls behind them again, by
+     * eight times less than with MAX_STEP_SIZE.
+     */
+    static final long MAX_COMMIT_STEP_SIZE = StoredTrans.STEP_FIXED_ROOM / 2;
 
     /**
      * The digits of a row's rewritten in its text (IterationInfo.serialize; bergdb 031-06,
@@ -717,15 +730,21 @@ public class Reclaim implements Maintenance {
      * The most bytes that a commit's step scans, besides its allowance (bergdb 031-06,
      * landing step 3; 028-71): MAX_STEP_SIZE, or STEP_GROWTH_FACTOR times the allowance that
      * the application's last record and the records after it added, fractionOf(l0 - a), if
-     * that is more. A function of the stream before the record: a (appA) and L0. Until
+     * that is more, at most MAX_COMMIT_STEP_SIZE. A function of the stream before the record:
+     * a (appA) and L0. Until
      * 031-06's landing, step 3, MAX_STEP_SIZE: a step of at most 16 kB a commit, whatever the
      * commit's size, so that under commits much larger than that reclaim fell behind its
      * fraction and the stream kept grew with the commits' size (review F3).
      */
     long commitStepSize(long l0) {
-        final long last = appA < 0 ? 0 : Math.max(0, l0 - appA);
-        return Math.max(MAX_STEP_SIZE,
-                STEP_GROWTH_FACTOR * fractionOf(last, internalFraction));
+        return commitStepSize(l0, appA, internalFraction);
+    }
+    
+    /** commitStepSize() for L0, a and the fraction, for the warm-up too. */
+    static long commitStepSize(long l0, long a, int fraction) {
+        final long last = a < 0 ? 0 : Math.max(0, l0 - a);
+        return Math.max(MAX_STEP_SIZE, Math.min(MAX_COMMIT_STEP_SIZE,
+                STEP_GROWTH_FACTOR * fractionOf(last, fraction)));
     }
 
     /**
@@ -1399,9 +1418,7 @@ public class Reclaim implements Maintenance {
             if (allowed <= MIN_STEP_SIZE) {
                 return;
             }
-            final long last = w.a < 0 ? 0 : Math.max(0, w.length - w.a);
-            writeSize = Math.min(allowed, Math.max(MAX_STEP_SIZE,
-                    STEP_GROWTH_FACTOR * fractionOf(last, internalFraction)));
+            writeSize = Math.min(allowed, commitStepSize(w.length, w.a, internalFraction));
         }
         if (it.endKey.length == 0
                 || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0)) {

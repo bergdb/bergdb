@@ -47,6 +47,12 @@ ready: F1 leaves `level2.sh`, `level3.sh` and `night.sh` red.
 * Consequence: the fraction 0.25 means 1.33. 031-05's jar in D2 wrote
   within 1.5 % of the same bytes. (c) can make the exact charge only with
   028-26's second row record, a crash window; (e) by an estimate (Q2).
+* Built (2026-11-27): the landing's step 3, the fixed-width patch
+  (Frans, 14:00 to 14:09): the row's `rewritten` at 19 digits, written
+  after the batch with the index nodes that the record makes dirty on the
+  step's paths (`Db.chargeStep`, `RecordPlan.charge`). A pass of parts
+  leaves 0.0 % uncharged (25.7 and 39.5 % before); in `RvPace`'s cases
+  the share is 0.281, 0.264, 0.283 and 0.275 (`landing.md`, step 3).
 
 **F3. Large commits: 16 kB of reclaim a commit, and the stated bound of
 the stream kept does not hold** (both, `main` too; ran, `RvPace`).
@@ -62,6 +68,12 @@ the stream kept does not hold** (both, `main` too; ran, `RvPace`).
   of their actions are large, and by its 2 x CAP, 4.3 GB at the
   release's limits. The step's room is its own now (rule 5), so (e) can
   size a commit's step by its allowance; F4 is the price.
+* Built (2026-11-27): the landing's step 3 (028-71): a commit's step scans
+  up to its allowance, at most the larger of 16 kB and twice the
+  allowance that the application's last record added
+  (`Reclaim.commitStepSize`). Commits of 20, 100 and 300 kB: the stream
+  kept 8.1, 7.2 and 7.8 x live, the share 0.248, 0.279 and 0.237
+  (`landing.md`, step 3).
 
 **F4. P1: a commit is not readable while its plan scans** ((e) only;
 ran, `RvP1`; figures, in memory).
@@ -77,6 +89,14 @@ ran, `RvP1`; figures, in memory).
   read of the storage on a database larger than memory (inferred). (c)
   and `main` hold the write lock as long, but the commit is readable
   first. The warm-up is not built.
+* Built (2026-11-27): the landing's step 3: the warm-up of a step's reads
+  before the write lock (`Maintenance.warmup`, `Reclaim.warmup`), for a
+  commit and a part. On databases larger than their cache budget the
+  records that carry a step read 0 to 0.01 versions a step from the
+  stream under the lock, against 15 to 32 without it, with the same
+  stream; P1 on a database larger than its cache budget is a probe for
+  the lead's timing run (`probes/P1Probe.java`, `p1.sh`; `landing.md`,
+  step 3).
 
 **F5. The admission of dirty nodes does not count the step's** ((e)
 only; read, inferred).
