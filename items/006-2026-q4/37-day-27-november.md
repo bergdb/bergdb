@@ -562,6 +562,74 @@ The lead's overview (08:30), its conclusions:
   OK` quick, `APPS OK` quick; being gated on the combined tree with
   `main`. `night.sh` so far: every step ok (through the night tests and
   the harness soak).
+* 21:50 Step 4 on `main` (`b0aac3a9`, `53ff486f`, `734f05a2`), gated on
+  the combined tree with the review's fixes: `BEFORE COMMIT OK`, `LEVEL 2
+  OK`, `LEVEL 3 OK` (C-STEP 0 of 23,127, C-CUT 0 of 869), 031-06's sweep
+  0 different in all 62 lines, `faults.sh` bad 0 in all 42.
+* 21:55 028-66's option C ported onto `main` with Frans's rule of 17:26,
+  on a branch (`028-66-c-rule`).
+* 22:18 `night.sh` 2026-11-27-1843 on `a20b0034`: `NIGHT FAILED` in one
+  step, `apptraces` (a2-1, a2q-1); every other step ok. The cause is the
+  harness's: since 031-06 a commit's record carries its maintenance's
+  KVs, and `AppRecord` recorded them as the application's operations, so
+  the replay put reclaim's table in a user's transaction, which the Core
+  refuses.
+* 22:21 Step 3 built on its branch: the after-row charge exact
+  (UndercountProbe's uncharged part from 25.7 and 39.5 % to 0.0 %;
+  reclaim's share under small commits 0.26 to 0.28); a commit's step up
+  to the larger of 16 kB and twice the allowance the application's last
+  record added, at most 128 KiB (028-71: under 1 MB commits the stream
+  kept 18.2 times the live data, steady, from 115.7 and growing); the
+  step's reads warmed before the lock (loads under the lock from 32 to
+  103 a step to 0.00 to 0.06). The sweep 27,741 interruptions and 570
+  torn records, 0 different; StreamDigest's reclaim configurations
+  differ, as the new widths, charge and step sizes make them.
+* 22:24 `AppRecord` fixed on `main` (`50c60f13`): a user's transaction
+  is recorded with its own operations only; and its comparison of
+  records leaves out the header's check, which 028-67 made differ in a
+  replay's database. `APPTRACES OK`, 11 of 11 `TRACECHECK OK`; `BEFORE
+  COMMIT OK`. `night.sh` started again at 22:25 on `50c60f13`.
+* 22:42 028-66's C with the rule built: every file before a gap is
+  checked before the tail walk and before anything is written; a file
+  that is not this database's is refused with the cause and the way out.
+  `BEFORE COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK` (77 gap images started
+  through the check), `LEVEL 4 OK` quick, the kill and power-loss
+  harnesses, the sweep 0 different, `faults.sh` bad 0.
+* 23:08 028-66's review: no reason not to land after the timing run;
+  R1 (low), the power-loss tester's expectation of a force at close; R2
+  (low), `created.txt` written before a refusal; R3 to R5, messages and
+  text. Its probe of a power loss inside the start's own batch (every
+  subset of a cut's files and of the batch, 2,060 starts): `NESTED GAP
+  OK`. 23:37 R1 to R5 fixed on the branch (`028-66-c-fixes`), with the
+  power-loss tester on 12 seeds at 3,000 transactions, `LEVEL 3 OK` and
+  `NESTED GAP OK`. C waits for its quiet timing run.
+* 23:10 Review 3 of step 3, the review's fixes and step 4 (`review-3.md`,
+  on `main` as `80f50c37`): T1 (high, on `main` since step 4), a start
+  refused the tail that recovery itself wrote for a record cut in its
+  header, when no commit came between the starts; W1 and W2 (low, costs
+  of the warm-up), D1 (text, section 3's bound for 128 KiB steps). Found
+  right: step 3's streams the same with and without eviction and
+  warm-up; R1, R2 and R5.
+* 2026-11-28 00:18 T1 fixed on `main` (`b7f21db4`, `b3f2f98b`, the note
+  in `review-3.md` `080c1f2f`): zeros at the end of a cut record count
+  as bytes not written; a cut record is taken if its header holds its
+  check, or if its bytes up to the last non-zero byte are fewer than 32,
+  begin a valid header and only zeros follow; recovery's completion
+  writes only zeros after a cut size field. The review's four probes
+  start every case. `BEFORE COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK`, the
+  sweep 0 different, `faults.sh` bad 0, `KILL RESTART OK` (1,000 kills).
+* 2026-11-28 00:38 Step 3 after review 3, on its branch on `080c1f2f`:
+  W2 fixed (a warm-up only when the row moved: scans a part from 2.29 to
+  1.34); W1 fixed with a cost (a commit's warm-up also reads for up to 4
+  commits queued ahead: scans that load under the lock from 14 to 44 %
+  to 0 to 13.5 %, at 1.9 to 6.4 scans a step); D1's texts. `BEFORE
+  COMMIT OK`, `LEVEL 3 OK`, the sweep 0 different, `faults.sh` bad 0.
+* 2026-11-28 00:42 The timing sequence queued after `night.sh`, on a
+  quiet F53: `timing.sh` on step 3 against 2026.6; P1 on a database
+  larger than its cache, a commit carrying a 128 KiB step of small
+  values, and a start whose last record is 100 MB or more, each on step
+  3 and on `main`; 028-66's comparison of reclaim's cost, `main` against
+  C. Step 3 and 028-66's C land after it if their figures are fine.
 
 ## 4. Waiting for Frans
 
@@ -573,10 +641,14 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (21:00)
+### Open now (2026-11-28 00:45)
 
 What is open for Frans after the decisions of 16:09 to 17:26 (section
-2). The text of sections 4.0 to 4.3 is left as it was written.
+2). The text of sections 4.0 to 4.3 is left as it was written. Nothing
+new for Frans since 21:00; two things the lead settles: whether the
+warm-up's reading ahead (review 3's W1) stays is decided from the
+timing run (class 1); T1's rule for a cut record's own bytes goes to
+the next review.
 
 * **O1. BergDB's own long keys under "/#"**, class 3 (a new limit;
   031-06, section 8, with the investigation of 17:20 to 17:28). The
