@@ -1,0 +1,33 @@
+# CstChecks, seed 20768, tallied by tally.py: stale-with-checksum (031-07, 2026-11-27)
+stale: another database, 12288 after; Z in a header (5): recovery walk: size 3; meta magic 1; 014-01: zero fill > 1 MB 1
+stale: another database, 12288 after; Z in the nodes (691): meta magic 389; 014-01: zero fill > 1 MB 160; recovery walk: size 66; record last byte 61; holds a prefix (as a cut) 13; record last byte (after a fill) 2
+stale: another database, 12288 after; Z in the record's end (10): 014-01: zero fill > 1 MB 7; recovery walk: size 3
+stale: another database, 200000 after; Z in a header (2): meta magic 1; recovery walk: size 1
+stale: another database, 200000 after; Z in the nodes (598): meta magic 389; recovery walk: size 148; record last byte 61
+stale: another database, 200000 after; Z in the record's end (1): recovery walk: size 1
+stale: another database, 4096 after; Z in a header (8): recovery walk: size 6; meta magic 1; 014-01: zero fill > 1 MB 1
+stale: another database, 4096 after; Z in the nodes (705): meta magic 389; recovery walk: size 186; record last byte 62; 014-01: zero fill > 1 MB 51; holds a prefix (as a cut) 10; record last byte (after a fill) 5; node CRC (after a fill) 2
+stale: another database, 4096 after; Z in the record's end (10): recovery walk: size 9; 014-01: zero fill > 1 MB 1
+stale: another database, the same positions; Z in a header (8): recovery walk: size 4; UNDETECTED (wrong values) 2; 014-01: zero fill > 1 MB 2
+stale: another database, the same positions; Z in the nodes (705): 014-01: zero fill > 1 MB 417; recovery walk: size 201; record last byte 63; holds a prefix (as a cut) 15; record last byte (after a fill) 8; node CRC (after a fill) 1
+stale: another database, the same positions; Z in the record's end (10): recovery walk: size 8; holds a prefix (as a cut) 1; 014-01: zero fill > 1 MB 1
+stale: its own bytes from 12288 before; Z in a header (5): recovery walk: size 3; meta magic 1; 014-01: zero fill > 1 MB 1
+stale: its own bytes from 12288 before; Z in the nodes (691): meta magic 389; 014-01: zero fill > 1 MB 164; recovery walk: size 64; record last byte 62; node CRC (after a fill) 6; record last byte (after a fill) 4; holds a prefix (as a cut) 2
+stale: its own bytes from 12288 before; Z in the record's end (10): recovery walk: size 8; 014-01: zero fill > 1 MB 2
+stale: its own bytes from 200000 before; Z in a header (2): recovery walk: size 1; 014-01: zero fill > 1 MB 1
+stale: its own bytes from 200000 before; Z in the nodes (598): recovery walk: size 471; 014-01: zero fill > 1 MB 66; record last byte 61
+stale: its own bytes from 200000 before; Z in the record's end (1): 014-01: zero fill > 1 MB 1
+stale: its own bytes from 4096 before; Z in a header (8): recovery walk: size 7; meta magic 1
+stale: its own bytes from 4096 before; Z in the nodes (705): meta magic 389; recovery walk: size 126; 014-01: zero fill > 1 MB 109; record last byte 62; holds a prefix (as a cut) 15; record format byte (after a fill) 2; node CRC (after a fill) 1; record last byte (after a fill) 1
+stale: its own bytes from 4096 before; Z in the record's end (10): recovery walk: size 6; 014-01: zero fill > 1 MB 4
+TOTAL 4783
+  1950	meta magic
+  1322	recovery walk: size
+  989	014-01: zero fill > 1 MB
+  432	record last byte
+  56	holds a prefix (as a cut)
+  20	record last byte (after a fill)
+  10	node CRC (after a fill)
+  2	UNDETECTED (wrong values)
+  2	record format byte (after a fill)
+

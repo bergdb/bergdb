@@ -1,0 +1,6 @@
+id, pos, header; low 24 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 7; least undetected weight found (data errors up to 3 bits) 4
+id, pos, header; high 24 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 6; least undetected weight found (data errors up to 3 bits) 5
+id, pos, header; all 32 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 11; least undetected weight found (data errors up to 3 bits) 8
+header, id, pos; low 24 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 6; least undetected weight found (data errors up to 3 bits) 4
+header, id, pos; high 24 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 4; least undetected weight found (data errors up to 3 bits) 4
+header, id, pos; all 32 bits: single errors undetected 0; equal syndromes (double errors undetected) 0; least syndrome weight 11; least undetected weight found (data errors up to 3 bits) 8

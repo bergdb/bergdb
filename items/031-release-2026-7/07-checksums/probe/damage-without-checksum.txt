@@ -1,0 +1,101 @@
+# CstChecks, seed 20768, tallied by tally.py: damage-without-checksum (031-07, 2026-11-27)
+cut out (2823): startupPos check 682; recovery walk: size 628; 014-01: zero fill > 1 MB 461; meta magic 365; holds a prefix (as a cut) 237; got-dirty check 171; record size (walk) 73; size beyond the stream 63; record last byte (after a fill) 60; record last byte 30; known 019-31 (undetected) 18; topPos check 15; value node parse 11; incomplete creation 4; record parse 2; record size (walk) (after a fill) 1; key node parse 1; node type 1
+flip meta block (802): holds all (harmless) 684; meta fields (checkFormat) 49; meta magic 24; meta version 24; meta node size 12; no valid meta block 6; meta lastTrans range 3
+flip node delete: body (1396): holds all (harmless) 777; value node parse 424; got-dirty check 111; UNDETECTED (wrong values) 50; rerun key order 34
+flip node delete: bytes 6-7 (94): value node parse 71; holds all (harmless) 23
+flip node delete: checksum (184): holds all (harmless) 184
+flip node delete: format (46): node format byte 46
+flip node delete: size (184): record parse: node size 180; record parse 3; holds all (harmless) 1
+flip node delete: type (46): node type 46
+flip node key: body (36858): holds all (harmless) 25681; UNDETECTED (wrong values) 4066; read failed: read beyond the stream 2691; key node parse 2209; section order 793; got-dirty check 388; stream pointers 375; read failed: pointer value 220; read beyond the stream 97; read failed: node size 93; read failed: size beyond the stream 67; read failed: node type 65; sd KV 54; read failed: pointee type 20; pointee type 17; node type 8; pointer value 6; read failed: key node parse 3; node size 2; read failed: pointee id 1; key node invariant 1; topPos check 1
+flip node key: bytes 6-7 (248): holds all (harmless) 248
+flip node key: checksum (500): holds all (harmless) 500
+flip node key: format (130): node format byte 124; read failed: node format byte 4; holds all (harmless) 2
+flip node key: size (502): record parse: node size 325; key node parse 172; read failed: key node parse 2; record parse 2; size beyond the stream 1
+flip node key: type (126): node type 124; holds all (harmless) 2
+flip node top: body (6102): holds all (harmless) 3496; top node parse 1317; UNDETECTED (wrong values) 535; read failed: read beyond the stream 325; read beyond the stream 148; got-dirty check 94; read failed: pointee id 47; super root 39; stream pointers 36; read failed: node type 25; read failed: pointer value 22; node type 14; read failed: pointee type 2; pointee type 1; topPos check 1
+flip node top: bytes 6-7 (184): holds all (harmless) 184
+flip node top: checksum (368): holds all (harmless) 368
+flip node top: format (90): node format byte 90
+flip node top: size (366): record parse: node size 233; top node parse 127; holds all (harmless) 4; read failed: top node parse 2
+flip node top: type (92): node type 90; holds all (harmless) 2
+flip node value: body (94272): UNDETECTED (wrong values) 54944; holds all (harmless) 30905; value node parse 7557; got-dirty check 606; rerun key order 190; read failed: value node parse 41; holds a prefix (as a cut) 26; sd KV 3
+flip node value: bytes 6-7 (1208): value node parse 898; holds all (harmless) 302; read failed: value node parse 8
+flip node value: checksum (2416): holds all (harmless) 2416
+flip node value: format (600): node format byte 596; read failed: node format byte 4
+flip node value: size (2410): record parse: node size 2186; value node parse 100; holds all (harmless) 91; record parse 21; read failed: size beyond the stream 5; read failed: node size 3; record parse (015-72) 2; UNDETECTED (wrong values) 1; got-dirty check 1
+flip node value: type (598): node type 594; read failed: node type 4
+flip record: format (278): record format byte 278
+flip record: got-dirty count (1134): record parse 1106; holds all (harmless) 16; record parse (015-72) 12
+flip record: got-dirty list (4342): holds all (harmless) 3816; got-dirty check 526
+flip record: last byte (284): record last byte 280; holds all (harmless) 4
+flip record: node end marker (1136): record parse: node size 1118; holds all (harmless) 18
+flip record: padding (1286): holds all (harmless) 1286
+flip record: size (1124): 014-01: zero fill > 1 MB 526; holds a prefix (as a cut) 304; recovery walk: size 257; record last byte (after a fill) 16; incomplete creation 12; holds all (harmless) 8; record parse (015-72) 1
+flip record: startupPos (2264): startupPos check 2103; holds all (harmless) 158; size beyond the stream 1; record last byte 1; record size (walk) 1
+flip record: time (2260): holds all (harmless) 1520; section order 657; known 019-30 (undetected) 78; super root 4; got-dirty check 1
+flip record: topPos (2274): holds all (harmless) 2226; read beyond the stream 36; topPos check 10; node type 2
+flip record: unused (852): holds all (harmless) 852
+set got-dirty count (860): record parse 687; holds all (harmless) 110; record parse (015-72) 63
+set got-dirty id (942): holds all (harmless) 757; got-dirty check 185
+set got-dirty position (24900): holds all (harmless) 24900
+set size (6793): record parse (015-72) 3339; recovery walk: size 1212; holds all (harmless) 1042; 014-01: zero fill > 1 MB 924; holds a prefix (as a cut) 174; record size (walk) (after a fill) 64; record last byte (after a fill) 27; incomplete creation 9; record size (walk) 2
+set startupPos (16968): holds all (harmless) 8466; startupPos check 8178; record last byte 151; super root 114; got-dirty check 34; record size (walk) 16; sd KV 3; read failed: pointee id 2; known 015-73 (undetected) 1; size beyond the stream 1; pointee id 1; stream pointers 1
+set time (1892): holds all (harmless) 1380; section order 444; known 019-30 (undetected) 59; super root 7; got-dirty check 2
+set topPos (32935): holds all (harmless) 32220; topPos check 484; node type 187; known 019-30 (undetected) 34; got-dirty check 5; read beyond the stream 4; sd KV 1
+TOTAL 255169
+  144649	holds all (harmless)
+  59596	UNDETECTED (wrong values)
+  10963	startupPos check
+  9061	value node parse
+  4042	record parse: node size
+  3417	record parse (015-72)
+  3016	read failed: read beyond the stream
+  2382	key node parse
+  2124	got-dirty check
+  2097	recovery walk: size
+  1911	014-01: zero fill > 1 MB
+  1894	section order
+  1821	record parse
+  1444	top node parse
+  1066	node type
+  856	node format byte
+  741	holds a prefix (as a cut)
+  511	topPos check
+  462	record last byte
+  412	stream pointers
+  389	meta magic
+  285	read beyond the stream
+  278	record format byte
+  242	read failed: pointer value
+  224	rerun key order
+  171	known 019-30 (undetected)
+  164	super root
+  103	record last byte (after a fill)
+  96	read failed: node size
+  94	read failed: node type
+  92	record size (walk)
+  72	read failed: size beyond the stream
+  66	size beyond the stream
+  65	record size (walk) (after a fill)
+  61	sd KV
+  50	read failed: pointee id
+  49	meta fields (checkFormat)
+  49	read failed: value node parse
+  25	incomplete creation
+  24	meta version
+  22	read failed: pointee type
+  18	known 019-31 (undetected)
+  18	pointee type
+  12	meta node size
+  8	read failed: node format byte
+  6	no valid meta block
+  6	pointer value
+  5	read failed: key node parse
+  3	meta lastTrans range
+  2	node size
+  2	read failed: top node parse
+  1	key node invariant
+  1	known 015-73 (undetected)
+  1	pointee id
+

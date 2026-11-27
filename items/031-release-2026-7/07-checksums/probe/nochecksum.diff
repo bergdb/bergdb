@@ -1,0 +1,21 @@
+--- java/src/bergdb/core/NodeStream.java	2026-11-27 18:52:45
++++ java/src/bergdb/core/NodeStream.java	2026-11-27 19:02:27
+@@ -362,6 +362,8 @@
+ 
+         return stored;
+     }
++
++    static final boolean NO_CHECKSUM = Boolean.getBoolean("probe.nochecksum");
+ 
+     private static void checkChecksum(long spos, byte[] buffer, int offset, int size, byte nodeType) {
+         // A node holds at least its header, with the checksum (bergdb 024-25).
+@@ -369,6 +371,9 @@
+             throw new StreamFormatException("Bad node size, " + size + ", at spos " + spos
+                     + ": less than a node's header.");
+         }
++        if (NO_CHECKSUM) {
++            return;     // probe 031-07: the node checksum not checked
++        }
+         int computedSum = NodeChecksum.sum(buffer, offset, size);
+         int storedSum = NodeChecksum.stored(buffer, offset);
+         

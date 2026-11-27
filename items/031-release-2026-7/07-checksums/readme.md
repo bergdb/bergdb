@@ -59,6 +59,17 @@ format.
 First step: the inventory.
 
 
+## Files
+
+* [inventory.md](inventory.md): the inventory of the stream's checks on
+  `main` at `17c7c7db`, what each serves, the options for section 3's
+  questions with a recommendation each, and the Lean's side (2026-11-27).
+* `probe/`: the probe of the inventory's section 4.5 (CorruptStreamTester's
+  damage and stale tails, with and without the node checksum) and of its
+  section 5.3 (the header check's Hamming distance), with the tallied
+  outputs.
+
+
 ## Log
 
 2026-11-27. Created by Frans Lundberg, with 028-67's decision (registered
@@ -66,3 +77,9 @@ by lead-1127).
 
 2026-11-27. The principle added to the questions (Frans): the review
 considers its wording and place, and each check against it.
+
+2026-11-27. The inventory (`inventory.md`), by an agent of lead-1127:
+44 checks; recommended: the node checksums stay (N1), nothing new for
+the got-dirty list and the meta block beyond C3 (GD1, M1), the header
+check 24 bits as decided (W24), the principle as a rule of 010-04 (R6).
+For Frans's decision.
