@@ -16,7 +16,6 @@ public class Pack implements IPack {
         NullOutputStream.class,
         Pack.class,
         Pair.class,
-        Salsa.class,
         SeedGenerator.class,
         StringMap.class,
         StringUtil.class,

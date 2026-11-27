@@ -366,10 +366,7 @@ public class DbBuilder {
     
     /**
      * If called, the database will (of possible) create a created.txt file in the
-     * database directory. Its line "crypto key:" says "none (not encrypted)", or, for a main
-     * stream that is a SalsaStream, internal since 2026.4, its key's name (bergdb 020-28:
-     * until then this method took the key's line as a second argument; release 2026.4 has no
-     * encryption in its API).
+     * database directory. It has no line "crypto key:" since 2026-11-27 (bergdb 028-69).
      * 
      * @param dir  The directory to create the file in.
      * @throws IllegalArgumentException  If dir is null (bergdb 020-27, Q2: it was taken, as no

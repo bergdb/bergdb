@@ -340,7 +340,7 @@ whole stream" until 028-11.
   topPos (`testOlderTopPosRefused`).
 * **A refused start writes nothing** (R1): gated for the magic, the
   version, the node size and an incomplete creation
-  (`testRecoverWithWrongKeyWritesNothing`,
+  (`testRecoverUnreadableWritesNothing`,
   `testRecoverOtherVersionWritesNothing`, `testOtherNodeSizeRefused`,
   `testIsIncompleteCreation`); not so for a refusal after recovery's
   fill, as of another record format (027-03, G18 and Q15).

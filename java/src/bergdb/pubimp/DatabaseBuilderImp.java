@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.nanotest.Assert;
@@ -19,7 +18,6 @@ import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
-import bergdb.stream.SalsaStream;
 
 /**
  * This class is used to build a Database instance.
@@ -30,7 +28,6 @@ import bergdb.stream.SalsaStream;
  */
 public class DatabaseBuilderImp implements DatabaseBuilder {
     private final DbBuilder dbBuilder;
-    private CryptoKey cryptoKey = null;
     private int cacheSizeInMb;         // cache size indicator from user
     
     /** The directory of create() or open(), opened by start() (bergdb 005-66), or null. */
@@ -41,18 +38,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     /**
      * The database of this builder's last start on a stream of memory() or mainStream(), and
-     * that stream as the database got it (the SalsaStream, with a crypto key), or null; for
-     * refuseStreamInUse() (bergdb 015-65).
+     * that stream, or null; for refuseStreamInUse() (bergdb 015-65).
      */
     private Db streamDb = null;
     private AppendOnlyStream streamDbStream = null;
-    
-    /**
-     * The SalsaStream that the last start with a crypto key made around the main stream and
-     * gave to the DbBuilder as its main stream, or null; a later start takes the stream under
-     * it again (handleCryptoKeyAndCreatedTxt; bergdb 020-24-07, U7-5).
-     */
-    private SalsaStream salsaMade = null;
     
     
     public DatabaseBuilderImp() {
@@ -88,22 +77,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder.mainStream(new MemoryStream());
         this.dir = null;
         this.mustExist = false;
-        return this;
-    }
-    
-    /**
-     * Sets the crypto key: start() encrypts the stream with it (SalsaStream). Internal, for
-     * BergDB's tests, and package-private: release 2026.4 has no encryption in its API (bergdb
-     * 020-28); until 2026.3 this was DatabaseBuilder.cryptoKey(). It is kept for a later
-     * design (bergdb 017-10). CryptoKey.NULL removes a key given before (bergdb 015-44);
-     * until 015-44 it was ignored, and the database was encrypted with the earlier key.
-     */
-    DatabaseBuilderImp cryptoKey(CryptoKey cryptoKey) {
-        if (cryptoKey == null) {
-            throw new IllegalArgumentException("cryptoKey == null not allowed, "
-                    + "use CryptoKey.NULL for no encryption");
-        }
-        this.cryptoKey = cryptoKey.isNull() ? null : cryptoKey;
         return this;
     }
     
@@ -204,12 +177,9 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         // refused after the open, in Db.start before the creation's first write (a clock out
         // of range, bergdb 005-18), leaves the lock file, never deleted (bergdb 005-63), and
         // no stream file: the first append creates the first (2026-11-06, bergdb 015-06).
-        checkCryptoKey();
         if (dir != null) {
             refuseMissingStream(dir);
-            if (cryptoKey == null) {
-                refuseEncrypted(dir);
-            }
+            refuseEncrypted(dir);
             if (mustExist) {
                 refuseNoDatabase(dir);
             }
@@ -219,7 +189,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         List<FileStream> opened = new ArrayList<FileStream>();
         try {
             openDirs(opened);
-            handleCryptoKeyAndCreatedTxt();
+            handleCreatedTxt();
             db = dbBuilder.build();
         } catch (RuntimeException | Error e) {
             // A start that throws closes the streams that it opened (2026-10-24, bergdb
@@ -245,7 +215,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      * 015-65), as start() refuses a directory that a database has (bergdb 005-63). Until
      * 015-65 a second start gave the running database's stream to a second database: both
      * appended to it, each missed the other's puts, and the close of one closed the stream
-     * of the other; with a crypto key, the start wrapped the first's SalsaStream again.
+     * of the other.
      * memory() and mainStream() give the builder another stream, which is not refused.
      */
     private void refuseStreamInUse() {
@@ -292,27 +262,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Refuses a crypto key of another algorithm than salsa, or with key data of another
-     * length than 40 bytes; before the directories are opened (2026-11-03, bergdb 015-06).
-     * Before, the start opened the directory first, and a refused start left it, its lock
-     * file and an empty first stream file, which breaks the restore in place of a database
-     * whose first file has another name (FileStream's check of the files' positions).
-     */
-    private void checkCryptoKey() {
-        if (cryptoKey == null) {
-            return;
-        }
-        String algo = cryptoKey.getAlgo();
-        if (!algo.equals("salsa")) {
-            throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
-        }
-        byte[] keyData = cryptoKey.getKeyData();
-        if (keyData.length != 40) {
-            throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
-        }
-    }
-    
-    /**
      * Refuses a directory that held a database and has no stream byte (2026-11-03, bergdb
      * 015-01): it has created.txt, which a creation writes once its records are durable
      * (Db.startInner; bergdb 028-18), and no *.bergdb file with a byte
@@ -341,13 +290,13 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      * 020-28): release 2026.4 has no encryption in its API, and such a stream does not read
      * without its key. Its created.txt names the key, its data masked, on the line "crypto
      * key:", as every release with encryption wrote it, at the creation and at a start that
-     * found the file missing; a database without encryption has "none (not encrypted)" there.
+     * found the file missing; a database without encryption has "none (not encrypted)" there,
+     * and one created since 2026-11-27 has no such line (bergdb 028-69).
      * Before the directory is opened, so that the start opens, creates and writes nothing;
      * it only reads created.txt, so the lock is not needed. A directory without created.txt,
      * or without that line, is not refused here: a stream that an earlier release encrypted
      * is then refused by its magic bytes (Db.startInner), with a StreamFormatException whose
-     * message names this case among others. Not called with the internal crypto key
-     * (cryptoKey()), which starts such a database.
+     * message names this case among others.
      *
      * @throws VersioningStreamException
      * @throws StreamIoException  if created.txt cannot be read
@@ -444,7 +393,8 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
     }
 
-    private void handleCryptoKeyAndCreatedTxt() {
+    /** A directory's database, whose main stream is a FileStream, has created.txt. */
+    private void handleCreatedTxt() {
         // Note, that we do not handle buffer size, buffer time. Using defaults.
         // This is fine now (July 2015) since those parameters are not yet exposed to Pub API.
         
@@ -453,45 +403,9 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
         
         AppendOnlyStream aos = dbBuilder.getMainStream();
-        
-        // The stream of memory() or mainStream() as given, not the SalsaStream that an
-        // earlier start of this builder made around it (2026-11-09, bergdb 020-24-07, U7-5).
-        // Each start wrapped the main stream again, also a refused one: a restart on the
-        // closed stream of memory() read it through two layers of one keystream, which
-        // cancel, and was refused with BadCryptoKey, every other time; and after a start
-        // with a key, a start without one on a stream without encryption was refused too.
-        // A directory's start opens a new FileStream, so it never meets salsaMade.
-        if (salsaMade != null && aos == salsaMade) {
-            aos = salsaMade.getUnderlyingStream();
-            dbBuilder.mainStream(aos);
-        }
-        salsaMade = null;
-        
-        if (this.cryptoKey == null) {
-            if (aos instanceof FileStream) {
-                FileStream fileStream = (FileStream) aos;
-                dbBuilder.createdTxt(fileStream.getDir());
-            }
-        } else {
-            byte[] keyData = cryptoKey.getKeyData();     // checked by checkCryptoKey()
-            
-            SalsaStream salsa;
-            
-            try {
-                byte[] nonce = Util.subarray(keyData, 0, 8);
-                byte[] key = Util.subarray(keyData, 8, 32);
-                salsa = new SalsaStream(aos, nonce, key, cryptoKey.toStringWithMaskedKey());
-            } catch (IOException e) {
-                throw new StreamIoException(e);
-            }
-            
-            if (aos instanceof FileStream) {
-                FileStream fileStream = (FileStream) aos;
-                dbBuilder.createdTxt(fileStream.getDir());
-            }
-            
-            dbBuilder.mainStream(salsa);
-            salsaMade = salsa;
+        if (aos instanceof FileStream) {
+            FileStream fileStream = (FileStream) aos;
+            dbBuilder.createdTxt(fileStream.getDir());
         }
     }
     
@@ -527,42 +441,8 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * bergdb 015-44: cryptoKey(CryptoKey.NULL) means no encryption, also after a key: the
-     * stream then starts with the plain magic bytes "berg". Before 015-44, NULL was ignored
-     * and the database was encrypted with the earlier key.
-     */
-    @Nano private static void testCryptoKeyNullAfterKey() throws IOException {
-        MemoryStream m = new MemoryStream();
-        DatabaseBuilderImp b = new DatabaseBuilderImp();
-        b.mainStream(m);
-        b.cryptoKey(CryptoKey.generate()).cryptoKey(CryptoKey.NULL);
-        Database database = b.start();
-        try {
-            database.connection().put("/a.txt", "v");
-        } finally {
-            database.close();
-        }
-        
-        byte[] magic = new byte[4];
-        m.read(0, magic, 0, 4);
-        Assert.assertEquals("the stream's first bytes, plain without encryption", "berg",
-                new String(magic, java.nio.charset.StandardCharsets.ISO_8859_1));
-    }
-    
-    /** bergdb 015-44: cryptoKey(null) is refused, as create(null) and open(null) are. */
-    @Nano private static void testCryptoKeyNullRefused() {
-        IllegalArgumentException e = null;
-        try {
-            new DatabaseBuilderImp().cryptoKey(null);
-        } catch (IllegalArgumentException e1) {
-            e = e1;
-        }
-        Assert.assertTrue("IllegalArgumentException for cryptoKey(null)", e != null);
-    }
-    
-    /**
-     * bergdb 019-44: clock(null) is refused, as cryptoKey(null) is; before, it was taken and
-     * start() threw after it had made the directory and bergdb.lock.
+     * bergdb 019-44: clock(null) is refused, as create(null) and open(null) are; before, it
+     * was taken and start() threw after it had made the directory and bergdb.lock.
      */
     @Nano private static void testClockNullRefused() {
         IllegalArgumentException e = null;

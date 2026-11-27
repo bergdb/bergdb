@@ -690,6 +690,7 @@ public class DbTesterStream {
         }
     }
 
+    /** created.txt names the database's ID, and no crypto key since bergdb 028-69. */
     @Nano
     private static void testCreatedTxt(TestEnvironment env) throws IOException {
         if (Util.runsAndroid()) {
@@ -710,7 +711,8 @@ public class DbTesterStream {
         Assert.assertTrue(file.exists());
         
         String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
-        Assert.assertTrue(s.toLowerCase().contains("crypto key"));
+        Assert.assertTrue(s, s.contains("database ID:   "));
+        Assert.assertFalse(s, s.toLowerCase().contains("crypto key"));
     }
     
     public static void testOverwriteAndRestart() {

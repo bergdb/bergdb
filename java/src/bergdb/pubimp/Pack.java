@@ -16,7 +16,6 @@ public class Pack implements IPack {
     
     private static Class<?>[] classes = new Class<?>[] {
         ConnectionImp.class,
-        CryptoKey.class,
         DatabaseBuilderImp.class,
         DatabaseImp.class,
         DataObjectsTester.class,

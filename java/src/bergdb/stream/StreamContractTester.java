@@ -14,8 +14,8 @@ import bergdb.stream.StrictStream.Kind;
 
 /**
  * The stream contract (2026-11-05, bergdb 018-02) on the streams of this package:
- * StreamContract's checks on FileStream, MemoryStream, OneFileStream, CutStream and
- * SalsaStream; FileStream's file-size limit; and StrictStream's own checks. DummyStream and
+ * StreamContract's checks on FileStream, MemoryStream, OneFileStream and CutStream;
+ * FileStream's file-size limit; and StrictStream's own checks. DummyStream and
  * ReadOnlyStream are left out: they do not keep the contract by design (DummyStream keeps
  * only its first 10,000 bytes; ReadOnlyStream refuses appends and cuts).
  */
@@ -66,12 +66,6 @@ public class StreamContractTester {
     @Nano
     public static void testCutStream(TestEnvironment c) {
         check(c, new StreamContract.Impl("CutStream", () -> new CutStream()));
-    }
-
-    @Nano
-    public static void testSalsaStream(TestEnvironment c) {
-        check(c, new StreamContract.Impl("SalsaStream",
-                () -> new SalsaStream(new MemoryStream(), new byte[8], new byte[32])));
     }
 
     // ======== StrictStream ========

@@ -12,7 +12,6 @@ public class Pack implements IPack {
         OneFileStream.class,
         Pack.class,
         ReadOnlyStream.class,
-        SalsaStream.class,
         StreamContractTester.class
     };
    

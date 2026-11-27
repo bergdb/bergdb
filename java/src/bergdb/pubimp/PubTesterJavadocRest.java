@@ -35,8 +35,8 @@ import bergdb.stream.MemoryStream;
  * The Pub API's Javadoc checked against its behaviour, promise by promise, for the classes
  * that bergdb 020-19 left (bergdb 020-25): WBuilder, RwEnvironment, ReadInterface, Action,
  * Transaction, Factory, DatabaseBuilder, Time, Duration, TestClock, Clock and the
- * exceptions; CryptoKey's tests are internal since 2026.4, which has no encryption in its
- * API (bergdb 020-28). Each test names the class and the promise it shows; the promises that other
+ * exceptions; BergDB has no encryption since 2026.4 (bergdb 020-28, 028-69). Each test
+ * names the class and the promise it shows; the promises that other
  * testers show are listed in 020-25, section 3.
  *
  * @author Frans Lundberg
@@ -593,7 +593,7 @@ public class PubTesterJavadocRest {
      * DatabaseBuilder.start(): a stream that does not begin as a BergDB stream, here 100 bytes
      * of 'x', is refused with a StreamFormatException whose message names the likely causes,
      * among them a stream that an earlier release encrypted, and the start writes nothing
-     * (bergdb 020-28; BadCryptoKey until 2026.4, with a crypto key and without one).
+     * (bergdb 020-28; BadCryptoKey until 2026.4).
      */
     @Nano
     public static void testForeignStreamRefused() throws java.io.IOException {
@@ -613,7 +613,7 @@ public class PubTesterJavadocRest {
     /**
      * BergDB has no encryption in its API since release 2026.4 (bergdb 020-28): DatabaseBuilder
      * has no cryptoKey(), and neither bergdb.pub.CryptoKey nor bergdb.pub.util.BadCryptoKey
-     * exists.
+     * exists; nor, since 2026-11-27, the internal crypto code (bergdb 028-69).
      */
     @Nano
     public static void testNoEncryptionInTheApi() {
@@ -622,7 +622,8 @@ public class PubTesterJavadocRest {
                     method.getName().toLowerCase(java.util.Locale.ROOT).contains("crypt"));
         }
         for (String name : new String[] {"bergdb.pub.CryptoKey", 
-                "bergdb.pub.util.BadCryptoKey"}) {
+                "bergdb.pub.util.BadCryptoKey", "bergdb.pubimp.CryptoKey",
+                "bergdb.stream.SalsaStream", "bergdb.common.Salsa"}) {
             try {
                 Class.forName(name);
                 throw new AssertionError(name + " exists");

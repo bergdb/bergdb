@@ -60,7 +60,6 @@ public final class StreamContract {
         {"BufferedStream",  "an empty stream",                  "015-83"},
         {"StorageManager",  "an empty stream",                  "015-83"},
         {"OneFileStream",   "a negative append",                "019-02"},
-        {"SalsaStream",     "a negative append",                "019-02"},
         {"*",               "an append longer than its array",  "019-02"},
         {"*",               "a negative read",                  "019-02"},
         {"*",               "a read longer than its array",     "019-02"},

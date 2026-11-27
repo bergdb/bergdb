@@ -133,7 +133,7 @@ version number. From the bottom up:
 | Layer                            | Code                                     | Section | Version  |
 |---|---|---|---|
 | The files of a directory         | `stream/FileStream`                      | 4       | none     |
-| Encryption (not in 2026.4's API) | `stream/SalsaStream`                     | 16      | none     |
+| Encryption (none since 028-69)   | none                                     | 16      | none     |
 | The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 155 |
 | The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 8 |
 | The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 3, 3, 5  |
@@ -194,8 +194,9 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
   :156), never changed; the lock is an exclusive OS lock on one byte at
   2^62 (`LOCK_POS`, :153). `created.txt` is the Pub API's, outside the
   stream (`Db.writeCreatedTxt`, `core/Db.java`:1397): the creation date,
-  the version that created it, the database id, and a crypto key line for
-  an encrypted stream (16).
+  the version that created it and the database id; until 2026-11-27
+  (028-69) also a crypto key line, which named the key of an encrypted
+  stream (16).
 * The cut: `pretruncate` (:554) takes off every file that ends before
   reclaim's decided cut; the first position becomes a file boundary, a
   multiple of 100,000, at or before the cut; it always keeps the last
@@ -1309,21 +1310,26 @@ open question (PA9).**
 how a reader tells that a stream is encrypted, which bytes are encrypted,
 how the keystream is derived, and how integrity is checked.
 
-**Today.** Encryption left 2026.4's API (020-28); the code stays, public
-but internal (`stream/SalsaStream.java`, :16 to :21), reachable through
-`DbBuilder.mainStream` (`core/DbBuilder.java`:295):
+**Today.** BergDB has no encryption. It left 2026.4's API (020-28), and
+the internal code kept for a later design (`stream/SalsaStream`,
+`common/Salsa`, `pubimp/CryptoKey`, `DatabaseBuilderImp.cryptoKey()`)
+was removed on 2026-11-27 (028-69; 017-10's log names the last commit
+that has it). What that code did, as the databases of 2026.3 and before
+hold it:
 
-* `SalsaStream` sits under `RecoverableStream`, over `FileStream`
-  (`pubimp/DatabaseBuilderImp.java`:499 to :504): it encrypts every byte
-  of the files from position 0, meta blocks and magic included.
-* The keystream is Salsa20/20 (`common/Salsa.java`): the key data's 40
-  bytes give the nonce (bytes 0 to 7) and the key (8 to 39); the block
-  counter is pos / 64; byte p is plain XOR keystream(p / 64)[p % 64]
-  (`SalsaStream.read`, :143; `append`, :178). The nonce is fixed per key,
-  not per database or start (U7-1, keystream reuse). No MAC (U7-3).
+* `SalsaStream` sat under `RecoverableStream`, over `FileStream`: it
+  encrypted every byte of the files from position 0, meta blocks and
+  magic included.
+* The keystream was Salsa20/20 (`common/Salsa`): the key data's 40 bytes
+  gave the nonce (bytes 0 to 7) and the key (8 to 39); the block counter
+  was pos / 64; byte p was plain XOR keystream(p / 64)[p % 64]. The nonce
+  was fixed per key, not per database or start (U7-1, keystream reuse).
+  No MAC (U7-3).
 * Nothing in the stream says it is encrypted: only `created.txt`'s
-  "crypto key" line, outside it. A wrong or missing key shows as bad magic
-  bytes (`Db.startInner`, :898 to :918).
+  "crypto key" line, outside it. The Pub API's start refuses a directory
+  whose line names a key (`DatabaseBuilderImp.refuseEncrypted`); without
+  `created.txt`, such a stream is refused for its magic bytes
+  (`Db.startInner`).
 * The C clone has no encryption (`c/readme.md`, section 11).
 
 **For the specification.** Format 6's specification covers the plain
@@ -1431,7 +1437,7 @@ where the result depends on Java rather than on the bytes.
 | G17 | a user's puts under `/#`                     | 15      | `Trans.Builder` (CA3)     |
 | G18 | a refusing start may write recovery's fill   | 7       | `Db.startInner`, :888     |
 | G19 | the node size given by the start             | 6       | `refuseOtherNodeSize`     |
-| G20 | nothing marks an encrypted stream            | 16      | `SalsaStream`             |
+| G20 | nothing marks an encrypted stream            | 16      | 2026.3's streams          |
 | G21 | no Pub format version in the stream          | 17      | the Pub layer             |
 | J1  | a row's line order is `HashMap`'s            | 15      | `StringMap.serialize`     |
 | J2  | `Long.toString` and `Long.parseLong` texts   | 4, 15   | `StringMap`, `FileStream` |
@@ -1551,9 +1557,9 @@ found here:
   the same rule (21.3).
 * **Q11, PA9** (6.9; 017-10). The feature is not for 2026.5, but its
   place is: a marker outside the encrypted bytes, a nonce per database
-  stored in clear, and room for a MAC per record or per page. Today's
-  `SalsaStream` encrypts the meta blocks too, so the marker cannot be in
-  them. Decide the place before the freeze.
+  stored in clear, and room for a MAC per record or per page. 2026.3's
+  `SalsaStream` encrypted the meta blocks too, so a marker in them must
+  stay in clear. Decide the place before the freeze.
 * **Q12** (017-08). A checksum of the record's header and got-dirty list
   (019-07: in bytes 5 to 7), a link from each record to the one before, a
   checksum of the meta block, a stronger node checksum. Each uses bytes

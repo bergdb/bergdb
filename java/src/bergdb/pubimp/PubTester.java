@@ -55,7 +55,6 @@ import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
-import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
@@ -67,7 +66,6 @@ import bergdb.stream.DirectoryInUseException;
 import bergdb.stream.FileStream;
 import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
-import bergdb.stream.SalsaStream;
 import bergdb.stream.StrictStream;
 
 /**
@@ -655,81 +653,55 @@ public class PubTester {
     
     /**
      * Regression test for bergdb 015-65: a second start() of a memory() builder whose
-     * database runs is refused, without and with a crypto key, and the running database runs
-     * on as before; memory() again gives the builder a new stream, and a new database. Until
-     * 015-65 the second start gave the first database's MemoryStream to a second database
-     * (with a key, it wrapped the first's SalsaStream again): both appended to it, each missed
-     * the other's puts, and the close of one closed the stream of the other.
+     * database runs is refused, and the running database runs on as before; memory() again
+     * gives the builder a new stream, and a new database. Until 015-65 the second start gave
+     * the first database's MemoryStream to a second database: both appended to it, each
+     * missed the other's puts, and the close of one closed the stream of the other.
      */
     @Nano
     public static void testSecondStartOfMemoryBuilder() {
-        for (boolean crypto : new boolean[] {false, true}) {
-            String what = crypto ? "with a crypto key" : "without a crypto key";
-            DatabaseBuilder builder = Factory.database().memory();
-            if (crypto) {
-                withKey(builder, CryptoKey.generate());
-            }
-            Database d = builder.start();
-            d.connection().put("/a", "a0");
+        DatabaseBuilder builder = Factory.database().memory();
+        Database d = builder.start();
+        d.connection().put("/a", "a0");
             
-            Database second;
-            try {
-                second = builder.start();
-            } catch (IllegalStateException e) {
-                second = null;
-            }
-            if (second != null) {
-                closeQuietly(second);
-                closeQuietly(d);
-                throw new AssertionError("the second start returned, " + what);
-            }
-            
-            d.connection().put("/b", "b0");
-            d.sync();
-            Assert.assertEquals("a0", d.connection().get("/a", String.class));
-            Assert.assertEquals("b0", d.connection().get("/b", String.class));
-            
-            Database other = builder.memory().start();
-            Assert.assertTrue("a new database, " + what,
-                    other.connection().get("/a", String.class) == null);
-            other.close();
-            d.close();
+        Database second;
+        try {
+            second = builder.start();
+        } catch (IllegalStateException e) {
+            second = null;
         }
+        if (second != null) {
+            closeQuietly(second);
+            closeQuietly(d);
+            throw new AssertionError("the second start returned");
+        }
+            
+        d.connection().put("/b", "b0");
+        d.sync();
+        Assert.assertEquals("a0", d.connection().get("/a", String.class));
+        Assert.assertEquals("b0", d.connection().get("/b", String.class));
+            
+        Database other = builder.memory().start();
+        Assert.assertTrue("a new database",
+                other.connection().get("/a", String.class) == null);
+        other.close();
+        d.close();
     }
     
     /**
-     * Regression test for bergdb 020-24-07, U7-5: a builder of memory() with a crypto key
-     * starts a database on its closed stream again and again, and each start reads the data;
-     * a start refused for its key leaves the builder as it was, so that the next start with
-     * the right key, or with none on a stream without encryption, starts. Until U7-5 each
-     * start wrapped the builder's stream in another SalsaStream, around the one of the start
-     * before: every other start was refused with BadCryptoKey, as two layers of one keystream
-     * cancel; and the layer of a refused start stayed, so that a start without a key on a
-     * stream without encryption was refused after a start with one.
+     * A builder of memory() starts a database on its closed stream again and again, and each
+     * start reads the data (bergdb 020-24-07, U7-5; until 2026-11-27 also with the internal
+     * crypto key, removed by bergdb 028-69).
      */
     @Nano
-    public static void testRestartsOfMemoryBuilderWithCryptoKey() {
-        CryptoKey key = CryptoKey.generate();
-        DatabaseBuilderImp b = withKey(Factory.database().memory(), key);
-        Database d = b.start();
-        d.connection().put("/a", "secret");
-        d.close();
-        for (int i = 2; i <= 4; i++) {
-            assertStartReads("start " + i + " with the key", b, "secret");
-        }
-        assertBadCryptoKey("another key", b.cryptoKey(CryptoKey.generate()));
-        assertBadCryptoKey("no key", b.cryptoKey(CryptoKey.NULL));
-        assertStartReads("the key after another and none", b.cryptoKey(key), "secret");
-        assertStartReads("the key again", b, "secret");
-        
-        DatabaseBuilderImp p = (DatabaseBuilderImp) Factory.database().memory();
-        d = p.start();
+    public static void testRestartsOfMemoryBuilder() {
+        DatabaseBuilder p = Factory.database().memory();
+        Database d = p.start();
         d.connection().put("/a", "plain");
         d.close();
-        assertStartReads("no key", p, "plain");
-        assertBadCryptoKey("a key, no encryption", p.cryptoKey(key));
-        assertStartReads("no key after a key", p.cryptoKey(CryptoKey.NULL), "plain");
-        assertStartReads("no key again", p, "plain");
+        for (int i = 2; i <= 4; i++) {
+            assertStartReads("start " + i, p, "plain");
+        }
     }
     
     /** A start of the builder reads 'expected' at /a; the database is closed. U7-5. */
@@ -745,23 +717,6 @@ public class PubTester {
         } finally {
             d.close();
         }
-    }
-    
-    /**
-     * A start of the builder is refused for the magic bytes, as a wrong key is (a
-     * StreamFormatException, until 2026.4 the Pub API's BadCryptoKey; bergdb 020-28). U7-5.
-     */
-    private static void assertBadCryptoKey(String what, DatabaseBuilder b) {
-        Database d;
-        try {
-            d = b.start();
-        } catch (StreamFormatException e) {
-            Assert.assertTrue(what + ": " + e.getMessage(),
-                    e.getMessage().startsWith("Invalid magic bytes in stream"));
-            return;
-        }
-        d.close();
-        throw new AssertionError(what + ": started");
     }
     
     /**
@@ -3097,121 +3052,18 @@ public class PubTester {
         database.stop();
     }
     
-    @Nano
-    public static void testEncrypted1() throws IOException {
-        // Creates an encrypted database, makes sure beginning of encrypted bytes not
-        // same as unencrypted bytes.
-        
-        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        
-        Database database = withKey(Factory.database().memory(), cryptoKey).start();
-        
-        DatabaseImp imp = (DatabaseImp) database;
-        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
-        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
-        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
-        
-        Connection c = database.connection();
-        c.put("/s1", "Hej!");
-        c.sync();
-        
-        byte[] firstEncryptedBytes = new byte[8];
-        memory.read(0, firstEncryptedBytes, 0, firstEncryptedBytes.length);
-        
-        byte[] firstUnencryptedBytes = new byte[8];
-        salsa.read(0, firstUnencryptedBytes, 0, firstUnencryptedBytes.length);
-        
-        String magic = new String(firstUnencryptedBytes, 0, 4, "UTF-8");
-        
-        Assert.assertEquals("berg", magic);
-        Assert.assertFalse(Util.areEqual(firstUnencryptedBytes, firstEncryptedBytes));
-        database.stop();
-    }
-    
-    @Nano
-    public static void testEncrypted2() throws IOException {
-        // Creates an encrypted database, writes to it, closes it, and reopens it.
-        
-        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        
-        Database database = withKey(Factory.database().memory(), cryptoKey).start();
-        
-        DatabaseImp imp = (DatabaseImp) database;
-        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
-        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
-        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
-        
-        Connection c = database.connection();
-        c.put("/s1", "Hej!");
-        c.sync();
-        
-        database.stop();
-        
-        // --- Re-opens database
-        
-        MemoryStream m = memory.copy();
-        DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
-        builder.stream("main", m);
-        withKey(builder, CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c"));
-        Database database2 = builder.start();
-        
-        String s = database2.connection().get("/s1", String.class);
-        
-        Assert.assertEquals("Hej!", s);
-        database2.stop();
-    }
-    
-    @Nano
-    public static void testEncrypted3() throws IOException {
-        // Creates an encrypted database, writes to it, closes it, and reopens it
-        // with the wrong crypto key. A StreamFormatException should be thrown (BadCryptoKey
-        // until 2026.4, bergdb 020-28).
-        
-        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        
-        Database database = withKey(Factory.database().memory(), cryptoKey).start();
-        
-        DatabaseImp imp = (DatabaseImp) database;
-        BufferedStream buffered = (BufferedStream) imp.getDb().internal().getMainStream();
-        SalsaStream salsa = (SalsaStream) buffered.getUnderlyingStream();
-        MemoryStream memory = (MemoryStream) salsa.getUnderlyingStream();
-        
-        Connection c = database.connection();
-        c.put("/s1", "Hej!");
-        c.sync();
-        
-        database.stop();
-        
-        // --- Re-opens database
-        
-        MemoryStream m = memory.copy();
-        DatabaseBuilderImp builder = (DatabaseBuilderImp) Factory.database();
-        builder.stream("main", m);
-        withKey(builder, CryptoKey.parse("8184a9f2-salsa-222222b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c"));
-        
-        StreamFormatException ex = null;
-        
-        try { 
-            builder.start();
-        } catch (StreamFormatException e) {
-            ex = e;
-        }
-        
-        Assert.assertTrue(ex != null);
-        Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("wrong crypto key"));
-    }
-    
     /**
-     * Regression test for bergdb 005-40: a start with a wrong crypto key, or with none, on a
-     * database whose stream a crash had cut where a meta block starts, filled out that meta
-     * block through the key before it found the key wrong; the right key then read garbage
-     * there, and the database never started again. Now such a start writes nothing.
+     * Regression test for bergdb 005-40: a start on a database whose stream a crash had cut
+     * where a meta block starts, and whose bytes it cannot read (as a wrong crypto key read
+     * them), filled out that meta block before it found the magic bytes wrong; the stream's
+     * own bytes then had garbage there, and the database never started again. Now such a
+     * start writes nothing. The bytes here are flipped; until 2026-11-27 the test read them
+     * with a wrong internal crypto key, and with none (bergdb 028-69).
      */
     @Nano
-    private static void testWrongKeyAfterCrashAtMetaBlock() {
-        CryptoKey right = CryptoKey.generate();
+    private static void testUnreadableStreamAfterCrashAtMetaBlock() throws IOException {
         MemoryStream m = new MemoryStream();
-        Database d = builderOn(m, right).start();
+        Database d = builderOn(m).start();
         Connection c = d.connection();
         String big = new String(new char[100 * 1000]).replace('\0', 'b');
         for (int i = 0; i < 3; i++) {
@@ -3225,73 +3077,79 @@ public class PubTester {
         MemoryStream crashed = m.copy();
         crashed.truncate(cut);              // A crash just before the meta block (005-27).
         
-        for (CryptoKey wrong : new CryptoKey[] {CryptoKey.generate(), null}) {
-            MemoryStream m2 = crashed.copy();
-            try {
-                builderOn(m2, wrong).start();
-                throw new AssertionError("started with a wrong key");
-            } catch (StreamFormatException e) {
-                Assert.assertTrue(e.getMessage(),
-                        e.getMessage().startsWith("Invalid magic bytes in stream"));
-            }
-            Assert.assertEquals("the stream as it was", cut, m2.getLength());
-            
-            Database d2 = builderOn(m2.copy(), right).start();
-            Assert.assertEquals(big, d2.connection().get("/k0", String.class));
-            ((DatabaseImp) d2).getDb().close();
+        MemoryStream m2 = flipped(crashed);
+        try {
+            builderOn(m2).start();
+            throw new AssertionError("started on a stream it cannot read");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(),
+                    e.getMessage().startsWith("Invalid magic bytes in stream"));
         }
+        Assert.assertEquals("the stream as it was", cut, m2.getLength());
+            
+        Database d2 = builderOn(flipped(m2)).start();
+        Assert.assertEquals(big, d2.connection().get("/k0", String.class));
+        ((DatabaseImp) d2).getDb().close();
+    }
+    
+    /** A new stream with the bytes of m, every bit flipped (bergdb 028-69). */
+    private static MemoryStream flipped(MemoryStream m) throws IOException {
+        byte[] bytes = new byte[(int) m.getLength()];
+        m.read(0, bytes, 0, bytes.length);
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] ^= (byte) 0xff;
+        }
+        MemoryStream result = new MemoryStream();
+        result.append(bytes, 0, bytes.length);
+        return result;
     }
     
     /**
-     * Bergdb 005-33: a crash while the database is created, through the Pub API, with and
-     * without a crypto key. At each cut of the creation the start throws a
-     * DatabaseNotCreatedException and writes nothing; the whole creation starts. Since
-     * bergdb 028-18 (option C) also at the primordial record alone and at a cut in the
-     * creation's second record, the startup distance's. A stream of
-     * zero bytes, as a power loss can leave, gives a StreamFormatException (BadCryptoKey until
-     * 2026.4, bergdb 020-28) whose message names a wrong key only when a key is used; until
-     * 2026-10-25, also without one.
+     * Bergdb 005-33: a crash while the database is created, through the Pub API. At each cut
+     * of the creation the start throws a DatabaseNotCreatedException and writes nothing; the
+     * whole creation starts. Since bergdb 028-18 (option C) also at the primordial record
+     * alone and at a cut in the creation's second record, the startup distance's. A stream of
+     * zero bytes, as a power loss can leave, gives a StreamFormatException (bergdb 020-28).
+     * Until 2026-11-27 each case ran with the internal crypto key too, and the message named
+     * a wrong key only with one (bergdb 028-69).
      */
     @Nano
     private static void testCrashInCreation() throws IOException {
-        for (CryptoKey key : new CryptoKey[] {null, CryptoKey.generate()}) {
-            MemoryStream m = new MemoryStream();
-            ((DatabaseImp) builderOn(m, key).start()).getDb().close();
-            // The creation's first record, Db.CREATION_LENGTH: the first meta block and the
-            // primordial record; the creating start's record of the startup distance follows
-            // (bergdb 028-15), and a cut anywhere before its end is refused (bergdb 028-18).
-            final long length = 272;
-            final long whole = m.getLength();
-            Assert.assertTrue("the creating start's record", whole > length + 8);
+        MemoryStream m = new MemoryStream();
+        ((DatabaseImp) builderOn(m).start()).getDb().close();
+        // The creation's first record, Db.CREATION_LENGTH: the first meta block and the
+        // primordial record; the creating start's record of the startup distance follows
+        // (bergdb 028-15), and a cut anywhere before its end is refused (bergdb 028-18).
+        final long length = 272;
+        final long whole = m.getLength();
+        Assert.assertTrue("the creating start's record", whole > length + 8);
             
-            for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1, length,
-                    length + 1, length + 8, whole - 1}) {
-                MemoryStream m2 = m.copy();
-                m2.truncate(cut);
-                try {
-                    builderOn(m2, key).start();
-                    throw new AssertionError("started, cut at " + cut);
-                } catch (DatabaseNotCreatedException e) {
-                    // Expected.
-                }
-                Assert.assertEquals("cut at " + cut, cut, m2.getLength());
-            }
-            
-            MemoryStream zeros = new MemoryStream();
-            zeros.append(new byte[128], 0, 128);
+        for (long cut : new long[] {1, 64, 127, 128, 129, 132, 200, length - 1, length,
+                length + 1, length + 8, whole - 1}) {
+            MemoryStream m2 = m.copy();
+            m2.truncate(cut);
             try {
-                builderOn(zeros, key).start();
-                throw new AssertionError("started on zero bytes");
-            } catch (StreamFormatException e) {
-                Assert.assertTrue(e.getMessage(),
-                        e.getMessage().contains("wrong crypto key") == (key != null));
+                builderOn(m2).start();
+                throw new AssertionError("started, cut at " + cut);
+            } catch (DatabaseNotCreatedException e) {
+                // Expected.
             }
-            
-            Database d = builderOn(m.copy(), key).start();
-            d.connection().put("/k", "v");
-            Assert.assertEquals("v", d.connection().get("/k", String.class));
-            ((DatabaseImp) d).getDb().close();
+            Assert.assertEquals("cut at " + cut, cut, m2.getLength());
         }
+            
+        MemoryStream zeros = new MemoryStream();
+        zeros.append(new byte[128], 0, 128);
+        try {
+            builderOn(zeros).start();
+            throw new AssertionError("started on zero bytes");
+        } catch (StreamFormatException e) {
+            // Expected.
+        }
+            
+        Database d = builderOn(m.copy()).start();
+        d.connection().put("/k", "v");
+        Assert.assertEquals("v", d.connection().get("/k", String.class));
+        ((DatabaseImp) d).getDb().close();
     }
     
     /**
@@ -3308,7 +3166,7 @@ public class PubTester {
         db.close();
         final long length = m.getLength();
         try {
-            builderOn(m, null).start();
+            builderOn(m).start();
             throw new AssertionError("started with node size 30, created with 8");
         } catch (StreamFormatException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains(
@@ -3318,19 +3176,17 @@ public class PubTester {
     }
     
     /**
-     * Regression test for bergdb 020-24-07, U7-7: with the right crypto key, a stream damaged
-     * where the start reads it first, the magic bytes of its last meta block (in a small
-     * database its first bytes), gives a StreamFormatException (BadCryptoKey until 2026.4,
-     * bergdb 020-28) whose message names a damaged stream
-     * too, not only a wrong key: it said "Likely, the wrong crypto key was used.", and a user
-     * then took the key for wrong or lost. The start writes nothing; the undamaged stream
-     * starts with the key.
+     * Regression test for bergdb 020-24-07, U7-7: a stream damaged where the start reads it
+     * first, the magic bytes of its last meta block (in a small database its first bytes),
+     * gives a StreamFormatException (bergdb 020-28) whose message names a damaged stream.
+     * The start writes nothing; the undamaged stream starts. Until 2026-11-27 the test used
+     * the internal crypto key, whose message named only a wrong key until U7-7 (bergdb
+     * 028-69).
      */
     @Nano
-    private static void testDamagedStreamWithTheRightKey() throws IOException {
-        CryptoKey key = CryptoKey.generate();
+    private static void testDamagedStreamRefused() throws IOException {
         MemoryStream m = new MemoryStream();
-        Database d = builderOn(m, key).start();
+        Database d = builderOn(m).start();
         d.connection().put("/a", "v");
         d.close();
         byte[] bytes = new byte[(int) m.getLength()];
@@ -3339,42 +3195,30 @@ public class PubTester {
         MemoryStream damaged = new MemoryStream();
         damaged.append(bytes, 0, bytes.length);
         try {
-            builderOn(damaged, key).start().close();
+            builderOn(damaged).start().close();
             throw new AssertionError("started on a damaged stream");
         } catch (StreamFormatException e) {
             String message = e.getMessage();
-            Assert.assertTrue(message, message.contains("wrong crypto key"));
-            Assert.assertTrue(message, message.contains("the stream is damaged"));
+            Assert.assertTrue(message, message.contains("it is damaged"));
         }
         Assert.assertEquals("the stream as it was", bytes.length, damaged.getLength());
         
-        Database again = builderOn(m.copy(), key).start();
+        Database again = builderOn(m.copy()).start();
         Assert.assertEquals("v", again.connection().get("/a", String.class));
         again.close();
     }
     
-    /**
-     * The builder b with the internal crypto key (DatabaseBuilderImp.cryptoKey): release
-     * 2026.4 has no encryption in its API, and BergDB's tests of the encryption, kept for a
-     * later design, give the key so (bergdb 020-28, 017-10).
-     */
-    static DatabaseBuilderImp withKey(DatabaseBuilder b, CryptoKey key) {
-        return ((DatabaseBuilderImp) b).cryptoKey(key);
-    }
-    
-    /**
-     * A builder of a database on the stream m, with the internal crypto key unless it is null
-     * (bergdb 020-28).
-     */
-    private static DatabaseBuilder builderOn(MemoryStream m, CryptoKey key) {
+    /** A builder of a database on the stream m. */
+    private static DatabaseBuilder builderOn(MemoryStream m) {
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
         b.mainStream(m);
-        if (key != null) {
-            b.cryptoKey(key);
-        }
         return b;
     }
     
+    /**
+     * A database of create() has created.txt, which names its ID, and no crypto key since
+     * 2026-11-27 (bergdb 028-69).
+     */
     @Nano
     private static void testCreatedTxt1(TestEnvironment env) throws IOException {
         if (Util.runsAndroid()) {
@@ -3382,27 +3226,29 @@ public class PubTester {
         }
         
         File dir = env.createTempDir();
-        CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        
-        Database database = withKey(Factory.database().create(dir.getPath()), cryptoKey).start();
+        Database database = Factory.database().create(dir.getPath()).start();
         database.stop();
         
         File file = new File(dir, "created.txt");
         Assert.assertTrue(file.exists());
         
         String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
-        Assert.assertTrue(s.contains("8184a9f2"));
+        Assert.assertTrue(s, s.contains("database ID:"));
+        Assert.assertTrue("no crypto key line",
+                DatabaseBuilderImp.createdTxtKeyInfo(dir) == null);
     }
     
     /**
-     * Bergdb 020-28: release 2026.4 has no encryption in its API, and a start without a key
-     * refuses a database that an earlier release encrypted, made here with the internal key,
-     * which writes the stream's bytes and created.txt as 2026.3 did. With its created.txt,
-     * which names the key, create() and open() throw a VersioningStreamException that says
-     * so, before the directory is opened; without it, the stream's magic bytes refuse it,
-     * with a StreamFormatException whose message names this case. Each refusal leaves the
-     * files as they were: their names and bytes. The internal key still starts it, and writes
-     * created.txt again with the key's name.
+     * Bergdb 020-28: release 2026.4 has no encryption in its API, and a start refuses a
+     * database that an earlier release encrypted. Such a database is made here as 2026.3
+     * left it, in its effect: its created.txt names the key on the line "crypto key:", and
+     * its stream's bytes do not read as a BergDB stream, here with every bit flipped (until
+     * 2026-11-27 it was made with the internal crypto key, removed by bergdb 028-69). With
+     * its created.txt, create() and open() throw a VersioningStreamException that says so,
+     * before the directory is opened; without it, the stream's magic bytes refuse it, with a
+     * StreamFormatException whose message names this case. Each refusal leaves the files as
+     * they were: their names and bytes. A created.txt of 2026.4 to 2026.6, "none (not
+     * encrypted)" on that line, is not refused.
      */
     @Nano
     private static void testEncryptedByAnEarlierReleaseRefused(TestEnvironment env) 
@@ -3411,12 +3257,13 @@ public class PubTester {
             return;
         }
         File dir = env.createTempDir();
-        CryptoKey key = CryptoKey.generate();
-        Database d = withKey(Factory.database().create(dir.getPath()), key).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         d.connection().put("/a.txt", "secret");
         d.close();
-        Assert.assertEquals(key.toStringWithMaskedKey(), 
-                DatabaseBuilderImp.createdTxtKeyInfo(dir));
+        final String keyName = "8184a9f2-salsa-****";
+        addCryptoKeyLine(dir, keyName);
+        flipStreamFiles(dir);
+        Assert.assertEquals(keyName, DatabaseBuilderImp.createdTxtKeyInfo(dir));
         java.util.Map<String, String> files = fileHashes(dir);
         
         for (boolean open : new boolean[] {false, true}) {
@@ -3428,7 +3275,7 @@ public class PubTester {
             } catch (VersioningStreamException e) {
                 String message = e.getMessage();
                 Assert.assertTrue(message, message.contains("is encrypted"));
-                Assert.assertTrue(message, message.contains(key.toStringWithMaskedKey()));
+                Assert.assertTrue(message, message.contains(keyName));
                 Assert.assertTrue(message, message.contains("2026.4 has no encryption"));
                 Assert.assertTrue(message, message.contains("opened, created and written "
                         + "nothing"));
@@ -3451,22 +3298,51 @@ public class PubTester {
         }
         Assert.assertEquals("the files without created.txt", files, fileHashes(dir));
         
-        d = withKey(Factory.database().open(dir.getPath()), key).start();
+        flipStreamFiles(dir);
+        d = Factory.database().open(dir.getPath()).start();
         Assert.assertEquals("secret", d.connection().get("/a.txt", String.class));
         d.close();
-        Assert.assertEquals("created.txt written again", key.toStringWithMaskedKey(), 
-                DatabaseBuilderImp.createdTxtKeyInfo(dir));
-        try {
-            Factory.database().create(dir.getPath()).start().close();
-            throw new AssertionError("started");
-        } catch (VersioningStreamException e) {
-            // Expected.
-        }
+        Assert.assertTrue("created.txt written again", createdTxt.isFile());
+        Assert.assertTrue("no crypto key line",
+                DatabaseBuilderImp.createdTxtKeyInfo(dir) == null);
         
         File plain = env.createTempDir();
         Factory.database().create(plain.getPath()).start().close();
+        addCryptoKeyLine(plain, "none (not encrypted)");
         Assert.assertEquals("none (not encrypted)", DatabaseBuilderImp.createdTxtKeyInfo(plain));
         Factory.database().open(plain.getPath()).start().close();
+    }
+    
+    /**
+     * Adds the line "crypto key:" with 'value' after the line "database ID:" of the
+     * directory's created.txt, as the releases until 2026.6 wrote it (bergdb 028-69).
+     */
+    private static void addCryptoKeyLine(File dir, String value) throws IOException {
+        java.nio.file.Path path = new File(dir, "created.txt").toPath();
+        String text = new String(java.nio.file.Files.readAllBytes(path), 
+                java.nio.charset.StandardCharsets.UTF_8);
+        int id = text.indexOf("database ID:");
+        Assert.assertTrue(text, id >= 0);
+        int end = text.indexOf('\n', id) + 1;
+        text = text.substring(0, end) + "crypto key:    " + value + "\n" + text.substring(end);
+        java.nio.file.Files.write(path, text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+    
+    /**
+     * Flips every bit of the directory's stream files (*.bergdb) in place: their bytes then
+     * do not read as a BergDB stream, as those of a database that an earlier release
+     * encrypted; flipped again, they are as before (bergdb 028-69).
+     */
+    private static void flipStreamFiles(File dir) throws IOException {
+        for (File f : dir.listFiles()) {
+            if (f.getName().endsWith(".bergdb")) {
+                byte[] bytes = java.nio.file.Files.readAllBytes(f.toPath());
+                for (int i = 0; i < bytes.length; i++) {
+                    bytes[i] ^= (byte) 0xff;
+                }
+                java.nio.file.Files.write(f.toPath(), bytes);
+            }
+        }
     }
     
     /** The files of dir, by name, each with its length and the hash of its bytes. */
@@ -3703,32 +3579,6 @@ public class PubTester {
     }
     
     /**
-     * A start refused for its crypto key, of an unknown algorithm, creates nothing (bergdb
-     * 015-06): an empty directory stays empty, and a missing one is not created. Before, the start opened the directory first, which created it, its lock
-     * file and an empty first stream file, and left them.
-     */
-    @Nano
-    private static void testRefusedStartCreatesNothing(TestEnvironment env) throws IOException {
-        if (Util.runsAndroid()) {
-            return;
-        }
-        File empty = env.createTempDir();
-        File missing = new File(env.createTempDir(), "db");
-        CryptoKey other = CryptoKey.parse("8184a9f2-other-75ac20b68ccdbf95b9999287bc4da0caf67b4c8e"
-                + "dc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        for (File dir : new File[] {empty, missing}) {
-            try {
-                withKey(Factory.database().create(dir.getPath()), other).start();
-                throw new AssertionError("started");
-            } catch (IllegalStateException e) {
-                Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
-            }
-        }
-        Assert.assertEquals("the empty directory: " + listing(empty), 0, empty.list().length);
-        Assert.assertTrue("the missing directory", !missing.exists());
-    }
-    
-    /**
      * A start refused after the open creates no stream file (bergdb 015-06): its clock is out
      * of range at the creation (bergdb 005-18), on an empty directory and on a missing one.
      * Only bergdb.lock is left, which is never deleted (bergdb 005-63), and a start then
@@ -3950,23 +3800,6 @@ public class PubTester {
             Assert.assertEquals("v", d2.connection().get("/k", String.class));
             d2.close();
         }
-    }
-    
-    /** bergdb 015-05: open() of an encrypted database, with its key, opens it. */
-    @Nano
-    private static void testOpenEncrypted(TestEnvironment env) throws IOException {
-        if (Util.runsAndroid()) {
-            return;
-        }
-        File dir = new File(env.createTempDir(), "db");
-        CryptoKey key = CryptoKey.generate();
-        Database d = withKey(Factory.database().create(dir.getPath()), key).start();
-        d.connection().put("/k", "secret");
-        d.close();
-        
-        Database d2 = withKey(Factory.database().open(dir.getPath()), key).start();
-        Assert.assertEquals("secret", d2.connection().get("/k", String.class));
-        d2.close();
     }
     
     /**
@@ -4518,10 +4351,11 @@ public class PubTester {
     }
     
     /**
-     * Regression test for bergdb 005-32: a start through the Pub API that throws, here with a
-     * wrong crypto key, left its storage's thread and open file until the garbage collector
-     * finalized the Db. Now ten such starts leave none, counted at once; then the right key
-     * starts.
+     * Regression test for bergdb 005-32: a start through the Pub API that throws, here on a
+     * stream it cannot read (its bits flipped, as a wrong crypto key read it; until
+     * 2026-11-27 with a wrong internal crypto key, bergdb 028-69), left its storage's thread
+     * and open file until the garbage collector finalized the Db. Now ten such starts leave
+     * none, counted at once; then the stream's own bytes start.
      */
     @Nano
     private static void testFailedStartsLeaveNothing(TestEnvironment env) throws IOException {
@@ -4529,20 +4363,21 @@ public class PubTester {
             return;
         }
         File dir = env.createTempDir();
-        CryptoKey right = CryptoKey.generate();
-        Database d = withKey(Factory.database().create(dir.getPath()), right).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         d.connection().put("/k", "v");
         d.sync();
         ((DatabaseImp) d).getDb().close();
+        flipStreamFiles(dir);
         
         Set<Thread> before = DbTesterFailure.storageThreads();
         long files = openFiles();
         for (int i = 0; i < 10; i++) {
             try {
-                withKey(Factory.database().create(dir.getPath()), CryptoKey.generate()).start();
-                throw new AssertionError("started with a wrong key");
+                Factory.database().create(dir.getPath()).start();
+                throw new AssertionError("started on a stream it cannot read");
             } catch (StreamFormatException e) {
-                Assert.assertTrue(e.getMessage(), e.getMessage().contains("wrong crypto key"));
+                Assert.assertTrue(e.getMessage(),
+                        e.getMessage().startsWith("Invalid magic bytes in stream"));
             }
         }
         DbTesterFailure.assertNoNewStorageThreads(before);
@@ -4551,7 +4386,8 @@ public class PubTester {
                     openFiles() <= files);
         }
         
-        Database d2 = withKey(Factory.database().create(dir.getPath()), right).start();
+        flipStreamFiles(dir);
+        Database d2 = Factory.database().create(dir.getPath()).start();
         Assert.assertEquals("v", d2.connection().get("/k", String.class));
         ((DatabaseImp) d2).getDb().close();
     }
@@ -4699,34 +4535,6 @@ public class PubTester {
             return new AssertionError("a second start of one Db returned");
         } catch (RuntimeException e) {
             return e;
-        }
-    }
-    
-    /**
-     * bergdb 005-32: a start that throws before the Db is built, here for a crypto key of an
-     * unknown algorithm, closes the file that dir() opened.
-     */
-    @Nano
-    private static void testUnknownCryptoAlgorithmClosesFile(TestEnvironment env) 
-            throws IOException {
-        if (Util.runsAndroid()) {
-            return;
-        }
-        File dir = env.createTempDir();
-        CryptoKey key = CryptoKey.parse("8184a9f2-other-75ac20b68ccdbf95b9999287bc4da0caf67b4c8e"
-                + "dc40d7615bebf1beae3578b800cfc3dfbaad319c");
-        long files = openFiles();
-        for (int i = 0; i < 3; i++) {
-            try {
-                withKey(Factory.database().create(dir.getPath()), key).start();
-                throw new AssertionError("started");
-            } catch (IllegalStateException e) {
-                Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
-            }
-        }
-        if (files >= 0) {
-            Assert.assertTrue("open files " + openFiles() + ", before " + files, 
-                    openFiles() <= files);
         }
     }
     

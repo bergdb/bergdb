@@ -43,7 +43,6 @@ import bergdb.storage.StreamIoException;
 import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadBelowFirstPosException;
-import bergdb.stream.SalsaStream;
 
 /**
  * <p><b>The Core API</b> (bergdb 020-27, Q1; Frans, 2026-11-09). The Pub API (bergdb.pub and
@@ -507,15 +506,7 @@ public class Db implements AutoCloseable {
     private final TransactionListener reclaimTransactionListener;
     private final Internal internal;
     private File createdTxtDir;
-    private String createdTxtCryptoKeyInfo;
     private Cache3 cache;
-
-    /**
-     * Whether the main stream is encrypted: a SalsaStream, as DatabaseBuilderImp makes for its
-     * internal crypto key; for the message of a start refused for the magic bytes (bergdb
-     * 005-33). BergDB has no encryption in its API since release 2026.4 (bergdb 020-28).
-     */
-    private final boolean encrypted;
     
     /**
      * The length of a new database's stream, what a creation writes (2026-10-25, bergdb
@@ -616,12 +607,6 @@ public class Db implements AutoCloseable {
         this.databaseIdFromBuilder = b.id;
         
         this.createdTxtDir = b.createdTxtDir;
-        // The key's line of created.txt comes from the SalsaStream, not from the builder
-        // (2026-11-09, bergdb 020-28): DbBuilder.createdTxt took it until the encryption
-        // left the API.
-        this.encrypted = b.getMainStream() instanceof SalsaStream;
-        this.createdTxtCryptoKeyInfo = encrypted
-                ? ((SalsaStream) b.getMainStream()).getKeyInfo() : null;
         
         //
         // Synch note: Synchronized blocks make sure the writes in constructor are
@@ -1227,22 +1212,13 @@ public class Db implements AutoCloseable {
             refuseOtherNodeSize();
             nodeStream.recover();
         } catch (BadMagicBytes e) {
-            // 2026-10-25 (bergdb 005-33): without a crypto key, the message said that the
-            // wrong key was used too, also for a stream of zero bytes, as a power loss can
-            // leave one.
-            // 2026-11-09 (bergdb 020-24-07, U7-7): with a key, the message named only a
-            // wrong key, and a damaged stream gives it with the right key too.
             // 2026-11-09 (bergdb 020-28): a StreamFormatException, with the BadMagicBytes as
-            // its cause; it was the Pub API's BadCryptoKey, removed with the encryption from
-            // 2026.4's API. Without a key, the message names a stream that an earlier release
-            // encrypted, which this one does not read; the Pub API refuses such a database by
-            // its created.txt before (DatabaseBuilderImp.refuseEncrypted).
-            throw new StreamFormatException(encrypted
-                    ? "Invalid magic bytes in stream, read with the crypto key given: likely, "
-                    + "the wrong crypto key was used, or the database is not encrypted; else "
-                    + "the stream is damaged, or it is not a BergDB stream. The start has "
-                    + "written nothing."
-                    : "Invalid magic bytes in stream: the stream is not a BergDB stream, or it "
+            // its cause. The message names a stream that an earlier release encrypted, which
+            // this one does not read; the Pub API refuses such a database by its created.txt
+            // before (DatabaseBuilderImp.refuseEncrypted). The message of a start with the
+            // internal crypto key went with that code (2026-11-27, bergdb 028-69).
+            throw new StreamFormatException(
+                    "Invalid magic bytes in stream: the stream is not a BergDB stream, or it "
                     + "is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted "
                     + "it, and this release cannot read it: it has no encryption (bergdb "
                     + "020-28). The start has written nothing.", e);
@@ -1816,16 +1792,12 @@ public class Db implements AutoCloseable {
             return;
         }
         
-        String keyInfo = createdTxtCryptoKeyInfo == null ? 
-                "none (not encrypted)" : createdTxtCryptoKeyInfo;
-        
         StringBuilder b = new StringBuilder();
         b.append("This directory contains a BergDB database.\n");
         b.append("\n");
         b.append("creation date: " + creationDate + "\n");
         b.append("created with:  BergDB " + BuildInfo.RELEASE + "\n");
         b.append("database ID:   " + id.idToString() + "\n");
-        b.append("crypto key:    " + keyInfo + "\n");
         b.append("\n");
         
         try {

@@ -12,7 +12,6 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadBelowFirstPosException;
-import bergdb.stream.SalsaStream;
 
 /**
  * <p>This class adds transactional support to an underlying AppendOnlyStream.
@@ -121,8 +120,9 @@ public class RecoverableStream {
      * is appended to an existing underlying stream.
      *
      * <p>It reads before it writes (2026-10-25, bergdb 005-40): a stream whose meta blocks
-     * it cannot read, as their magic bytes or their version are not this code's (a wrong
-     * crypto key, or a stream of another version of BergDB), is refused as it is.</p>
+     * it cannot read, as their magic bytes or their version are not this code's (a stream
+     * that an earlier release encrypted, or a stream of another version of BergDB), is
+     * refused as it is.</p>
      *
      * <p>A tail of zeros within the stream's length, as a kill of the process during an
      * append can leave (bergdb 028-60; 031-02, F1), is a cut tail where its zeros begin
@@ -221,7 +221,7 @@ public class RecoverableStream {
         byte[] block = new byte[(int) Math.min(length, META_BLOCK_SIZE)];
         readRaw(0, block);
         if (!MetaBlock.beginsAsBlock(block)) {
-            return false;   // Not a BergDB stream, a wrong crypto key, or another version.
+            return false;   // Not a BergDB stream, an encrypted one, or another version.
         }
         if (length < META_BLOCK_SIZE) {
             return true;
@@ -1457,72 +1457,66 @@ public class RecoverableStream {
         }
 
         /**
-         * Regression test for bergdb 005-40: a recovery that cannot read the meta blocks, with
-         * a wrong crypto key, with none on an encrypted stream, or with one on a stream that is
-         * not encrypted, writes nothing, also when a crash has cut the stream at or in a meta
-         * block. Until 2026-10-25 it filled out that meta block through the key first, and
-         * the right key then read garbage there (at 0, 3 and 5 bytes into the block, its magic
-         * bytes or its version), so that no recovery succeeded again.
+         * Regression test for bergdb 005-40: a recovery that cannot read the meta blocks, here
+         * of a stream whose every byte is changed, as an earlier release's encryption or a
+         * wrong key left it, writes nothing, also when a crash has cut the stream at or in a
+         * meta block. Until 2026-10-25 it filled out that meta block first, and the stream's
+         * own bytes then had garbage there (at 0, 3 and 5 bytes into the block, its magic
+         * bytes or its version), so that no recovery succeeded again. Until 2026-11-27 (bergdb
+         * 028-69) the test changed the bytes with the internal encryption.
          */
         @Nano
-        public static void testRecoverWithWrongKeyWritesNothing() throws IOException {
-            byte[] keyA = new byte[32];
-            byte[] keyB = new byte[32];
-            java.util.Arrays.fill(keyA, (byte) 1);
-            java.util.Arrays.fill(keyB, (byte) 2);
+        public static void testRecoverUnreadableWritesNothing() throws IOException {
             MemoryStream plain = new MemoryStream();
             long[] starts = appendNamedTransactions(new RecoverableStream(plain, new MetaBlock()), 
                     250);
-            MemoryStream encrypted = new MemoryStream();
-            new SalsaStream(encrypted, new byte[8], keyA).append(bytesOf(plain), 0, 
-                    (int) plain.getLength());
+            MemoryStream changed = new MemoryStream();
+            byte[] all = flipped(bytesOf(plain));
+            changed.append(all, 0, all.length);
             int complete = 0;           // Those that end before the meta block at 200,000.
             for (long start : starts) {
                 complete += getSpos(start, 1000) <= META_BLOCK_DISTANCE ? 1 : 0;
             }
             
-            // The stream, the key of the wrong recovery, the key of the right one.
-            Object[][] cases = {{encrypted, keyB, keyA}, {encrypted, null, keyA}, 
-                    {plain, keyA, null}};
             for (int x : new int[] {0, 3, 5, 50}) {
-                for (int c = 0; c < cases.length; c++) {
-                    MemoryStream m = ((MemoryStream) cases[c][0]).copy();
-                    m.truncate(META_BLOCK_DISTANCE + x);
-                    String what = "case " + c + ", cut " + x + " bytes into the meta block";
-                    AppendOnlyStream wrong = cases[c][1] == null ? m 
-                            : new SalsaStream(m, new byte[8], (byte[]) cases[c][1]);
-                    try {
-                        new RecoverableStream(wrong, new MetaBlock()).recover();
-                        throw new AssertionError(what + ": recovered with the wrong key");
-                    } catch (BadMagicBytes e) {
-                        // Expected.
-                    }
-                    Assert.assertEquals(what, META_BLOCK_DISTANCE + x, m.getLength());
-                    
-                    // The stream as the right key reads it recovers as before the cut.
-                    MemoryStream right = new MemoryStream();
-                    byte[] bytes = bytesOf(m);
-                    if (cases[c][2] != null) {
-                        new SalsaStream(m, new byte[8], (byte[]) cases[c][2]).read(0, bytes, 0, 
-                                bytes.length);
-                    }
-                    right.append(bytes, 0, bytes.length);
-                    RecoverableStream r = new RecoverableStream(right, new MetaBlock());
-                    r.recover();
-                    Assert.assertEquals(what, 0, r.readLastValidMetaBlock().getPos());
-                    Iterator iter = new Iterator(r, 0);
-                    int n = 0;
-                    while (iter.next()) {
-                        n++;
-                    }
-                    Assert.assertEquals(what, complete, n);
+                MemoryStream m = changed.copy();
+                m.truncate(META_BLOCK_DISTANCE + x);
+                String what = "cut " + x + " bytes into the meta block";
+                try {
+                    new RecoverableStream(m, new MetaBlock()).recover();
+                    throw new AssertionError(what + ": recovered a stream it cannot read");
+                } catch (BadMagicBytes e) {
+                    // Expected.
                 }
+                Assert.assertEquals(what, META_BLOCK_DISTANCE + x, m.getLength());
+                    
+                // The stream's own bytes recover as before the cut.
+                MemoryStream right = new MemoryStream();
+                byte[] bytes = flipped(bytesOf(m));
+                right.append(bytes, 0, bytes.length);
+                RecoverableStream r = new RecoverableStream(right, new MetaBlock());
+                r.recover();
+                Assert.assertEquals(what, 0, r.readLastValidMetaBlock().getPos());
+                Iterator iter = new Iterator(r, 0);
+                int n = 0;
+                while (iter.next()) {
+                    n++;
+                }
+                Assert.assertEquals(what, complete, n);
             }
         }
         
         private static byte[] bytesOf(MemoryStream m) throws IOException {
             byte[] bytes = new byte[(int) m.getLength()];
             m.read(0, bytes, 0, bytes.length);
+            return bytes;
+        }
+        
+        /** The bytes with every bit flipped, in place; flipped again, they are as before. */
+        private static byte[] flipped(byte[] bytes) {
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] ^= (byte) 0xff;
+            }
             return bytes;
         }
         
