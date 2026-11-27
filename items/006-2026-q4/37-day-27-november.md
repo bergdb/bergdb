@@ -1,0 +1,249 @@
+# 006-37 Day work, 27 November 2026
+
+Created 2026-11-27 by Frans Lundberg. Status: open. The plan for the
+lead's day of 2026-11-27 (lead-1127), a Friday, and the weekend to
+Monday 07:00: the decisions, the progress and the outcome. The way of
+working is 013-04's (the lead).
+
+
+## 1. The request
+
+* lead-1127 took over from lead-1126 at 07:49 (006-36 closed,
+  `ce458202`). Nothing ran. The week's usage: 25 %, the limit 70 %.
+* Open from 006-36, all for Frans: 028-60's part 2 (the branch
+  `028-60b`), 028-66, 031-05 with its review, 031-04, 028-67, 028-54.
+* An overview of the week for Frans (08:27): where the code's stability
+  stands, why the core is not done, and what is left that is hard.
+* The open questions on one page, each with a default (section 4).
+
+
+## 2. Decisions
+
+Frans, 2026-11-27:
+
+* The redesign of `maintain()` (031-04, 031-05) is worth its cost: it
+  is simpler than `main`'s, and the design to build on (08:36).
+* The principle of a deterministic stream extended to every write
+  (031-05) is wanted (08:36).
+
+The lead's overview (08:30), its conclusions:
+
+* **The released bugs of the week**, RB-004 to RB-012 (033), nine:
+  * six in code new in 2026.5: `maintain()` (RB-006, RB-007, RB-010,
+    RB-011, all S4) and `Db.getTrans` (RB-008 and RB-009, S3, fixed);
+  * one at the boundary to the operating system: RB-012, S2, zeros
+    after a kill on APFS (part 1 fixed; part 2 on a branch);
+  * two possible in theory only: RB-004 and RB-005, S4.
+* None is S1: no value lost or wrong. None is in the proved part, the
+  writer and reclaim's cuts, under 031-02's about 9,500 kills, its 11
+  apps, `week.sh` and Codex's review of the Java changed since 2026.6.
+* **Why the core is not done:** the register (2026-11-20), its rule
+  that faults possible in theory count (2026-11-24), the app hunt and
+  `week.sh`'s soak found what the earlier tests did not; and RB-007's
+  fix became a redesign of maintenance (031-03, then 031-04 and
+  031-05), a choice of scope, not a need of the bugs.
+* **What is left that is large:** one task, landing 031-04 with 031-05
+  as one design. The others are small: 028-60's part 2, 028-66, 028-67.
+* **The lead's proposal, not decided by Frans:** D2 with Q2 (c)
+  (031-05); landed in Java with its tests in 2026.7; the Lean statement
+  of the extended P2 after the release; no new study until it is in.
+  The lead's estimate: about a week with the reviews and the runs, and
+  an app hunt on it, as it is new code.
+
+
+## 3. Progress
+
+* 07:49 lead-1127 started; lead-1126 closed (006-36, `ce458202`).
+  Nothing ran; `main` clean. The run data that lead-1126 listed as
+  landed was not deleted (the session's permission mode refused it;
+  407 GB free).
+* 08:30 The overview for Frans (section 2).
+* 08:36 Frans: the redesign and the principle (section 2). This plan
+  made, with the page of section 4.
+
+
+## 4. Waiting for Frans
+
+Every open question, each with a default: whose it is, and why. No
+default has a time: nothing goes ahead before Frans has read the page.
+"Class 3" marks what only Frans decides (013-04: the stream format, the
+public API, a release's scope, the principles, an item closed). The
+details are in the items, cited by ID and section.
+
+### 4.1. The direction, first
+
+* **A1. When maintenance is written** (031-05, Q2 and section 12, F5
+  and F6).
+  * (a) D1: by the next call.
+  * (b) D2: in the call that made it due, and by the next call after a
+    crash or a stop.
+  * (c) D2, and a start writes what a crash or a stop left due.
+  * Default: **(c)** (the reviewer on Fable, the lead; the study
+    recommends (b)). Every call and every start then leaves nothing
+    due: the clock is never held between calls (with (b), after about
+    10 % of the crash points), a call's first record is its own, and 80
+    to 100 of the prototype's 231 lines go. The cost: a start after a
+    crash appends up to one commit's maintenance; a read-only start
+    does not.
+* **A2. In 2026.7** (class 3: the scope and the Pub API). The design
+  lands in Java with its tests in 2026.7: `maintain(int budget)`
+  replaces `maintain()` in `Db` and `Database` (031-04, C1), and it
+  fixes RB-007, RB-010 and the rest of RB-006. Default: **yes** (the
+  lead; Codex and the reviewer on Fable both say take the direction).
+* **A3. The streams of 2026.6** (class 3: the format; 031-04, Q8 and
+  section 11; 031-05, F10). The internal format changes: `a` in the
+  rows, a table without rows, the take's and the filler's records,
+  pCut = pStart, a done row first in the current row.
+  * (a) a one-way upgrade: 2026.7 reads and continues a stream of
+    2026.6; 2026.6 is refused on a stream that 2026.7 wrote.
+  * (b) (a) with a rule that reads mixed rows, as the prototype does.
+  * (c) an old filler deleted once at the upgrade.
+  * Default: **(a) with an explicit refusal of old writers, and (c)**
+    (Codex). The sources differ: the study recommends (b) and (c);
+    Codex found (b) unsafe for a writable downgrade (finding 2).
+* **A4. P2's wording** (class 3: 010 is Frans's; 031-05, Q1).
+  * (a) the draft of 031-05, section 4.3, which names the setters.
+  * (b) without the setters, which become `execute()` calls.
+  * (c) commits only, `maintain()` as today.
+  * Default: **(a), corrected as the review says** (section 12, F2 to
+    F4 and F11): it holds at record boundaries; a torn record is an
+    input; the unit of `maintain()` is a part; the settings are inputs.
+    The text goes into 010 after the design has landed, by Frans.
+* **A5. The Lean statement** (031-05, Q9): with the landing, or after.
+  Default: **after, and not a condition of 2026.7** (the study, the
+  reviewer, the lead): P2 with crashes is tested in 2026.7, as five of
+  030-38's guarantees are; the reviewer puts the proof at 600 to 1,100
+  lines, most of it from `T2_restart` and T12.
+* **A6. No new study until the design is on `main`.** Default: **yes**
+  (the lead): a finding becomes a 028 entry, not a new direction.
+
+### 4.2. What follows; the defaults settle these
+
+Of 031-05 (section 10; the review, section 12):
+
+* **B1. The after-row charge** (Q3, F8): (a) not charged, (b) an
+  estimate stored in the step's row, (c) charge the records' bytes,
+  (d) keep 028-26's second record, or F8's row patched at a fixed
+  width. Default: **(b) or F8's, measured with G1 to G4, before the
+  landing** (the reviewer). The sources differ: the study takes (a) for
+  2026.7, which re-opens 028-26 (26 % less charged at node size 8).
+* **B2. The Pub's index jobs** (Q4): (a) outside the goal, named in the
+  wording; (b) their steps inside actions. Default: **(a) now, (b) as
+  an item later** (the study, the reviewer).
+* **B3. The creating start** (Q5): (a) the creation is action 0, its id
+  and time inputs; (b) no random id. Default: **(a)** (both).
+* **B4. The clock held while maintenance is due** (Q6): (a) held, (b)
+  not. Default: **(a)** (both); with A1 (c) only inside calls.
+* **B5. One record a part in `maintain()`** (Q7). Default: **yes**
+  (both), and the part as the unit of the wording (F4).
+* **B6. A refused call that writes the maintenance due** (Q8). With A1
+  (c) the case is gone: a refused call writes nothing. Under (b):
+  accept (the study).
+* **B7. A setter that makes a cut due** (F1): the setter cuts in its
+  own call, and `testRestartWithOtherRetention` changes; or nothing is
+  due after a settings record. Default: **it cuts in its own call**
+  (the lead; A1 (c)'s rule, every call leaves nothing due).
+
+Of 031-04 (section 9; Codex, section 11); Q9 is decided (the handoff,
+2026-11-26):
+
+* **B8. The getter of the stream kept** (class 3: the Pub API; Q1):
+  `getStreamSize()`, `getStreamKept()`, `getStreamBytes()`,
+  `getStorageSize()`. Default: **`getStreamSize()`** (the study,
+  Codex), its Javadoc with the files' slack.
+* **B9. The live bytes as a figure** (Q2): (a) none, (b) summed by a
+  pass into its row, (c) from the last pass's `rewritten`. Default:
+  **(a)** (both).
+* **B10. The cache's part in a call** (Q3): (a) a batch of the dead
+  hand a part, (b) one a call, (c) eviction too, later. Default:
+  **(a)**, (c) as its own design (both).
+* **B11. A commit's iteration after a pass** (Q4): (a) as `main`; (b)
+  an iteration whose pCut is at or before the first position ends at
+  its begin, with no scan; (c) commits cut at their own start. Default:
+  **(b), as its own 028 entry**, gated by StreamDigest and G1 to G4
+  (both); it changes the bytes of commit-only streams.
+* **B12. The budget** (class 3: the Pub API; Q5): the range 100 to
+  100,000 units of 1 kB; an overload `maintain()` or none. Default:
+  **the range, no overload** (both); the Javadoc suggests 1,000 for an
+  idle loop and says that a budget is not a limit of time.
+* **B13. The take before a pass** (the format, with A3; Q6): (a) kept,
+  (b) dropped, and RB-007's case keeps 873 kB of index nodes, (c) kept
+  but not before the first pass. Default: **(a)** (both).
+* **B14. The read charge** (Q7): (a) reads at a quarter, (b) lighter,
+  (c) none. Default: **(a)** (both), and the Javadoc gives a measured
+  range of calls for a pass, not a factor (Codex, finding 3: 2.8 to 31
+  times kept / budget in its small case).
+
+Of 031-03 (section 10.2), answered by the direction: F1 (031-04 with
+031-05 in place of O-1), F2 (A3), F4 (no drain and no MIN_RELEASE), F5
+(the Javadoc is 031-04's, B12 and B14), F6 (decided 2026-11-26). F3
+stands as recommended there and by Codex: every record that is not
+reclaim's own is the application's writing, an empty transaction and a
+setter's record too. 028-53's options A and B are replaced by A2.
+
+### 4.3. Small and independent
+
+* **C1. 028-60, part 2: encrypted streams** (028-60, section 10 on the
+  branch `028-60b`, `043bf11c`; gated, reviewed twice by Codex).
+  `FileStream` leaves a tail of zeros out at open and cuts it at the
+  first append. A committed encrypted record ends in a zero byte in 1
+  stream of 256, so the rule is unsafe for ciphertext.
+  * (a) the builder switches the repair off when the internal key is
+    set: one line above `FileStream`, against the constraint of
+    2026-11-26; an encrypted stream with such a tail is refused, as
+    after part 1.
+  * (b) a repair at the record level, above `FileStream`, which
+    validates the key and the records before it cuts: also for
+    encrypted streams, more work.
+  * (c) `FileStream` tells plaintext from ciphertext by its bytes: not
+    sound (Codex).
+  * Default: **(a), and land the branch** (Codex: the safest and the
+    simplest now). Frans's, as it sets the constraint aside.
+* **C2. 028-66: the cut's deletes** (section 4). Since 028-62 a writer
+  with hard sync at full speed is about 40 % slower on F53, and above
+  100 MB/s it keeps 1.3 to 1.6 times its stream on disk; up to 60 MB/s
+  1.15 at most.
+  * A: as it is, a directory force per deleted file.
+  * B: a batch with one force; the disk at 1.03 to 1.05; 011-07's rule
+    changes, and a power loss on a file system that does not order
+    unlinks can leave a directory that a start refuses.
+  * C: a batch with a forced record of the first position; not designed.
+  * Back towards a quarter (028-62's tenth undone in part).
+  * Default: **A for 2026.7, C as a 028 entry** (the lead; the entry
+    recommends none): the cost shows at 100 MB/s of stream and more,
+    and B gives up 011-07's ordered deletes for it; `timing.sh` against
+    2026.6 shows the cost before the release. B is Frans's if wanted:
+    it changes 011-07.
+* **C3. 028-67: bytes of a deleted file in a start's tail** (APFS
+  images and RAM disks; not seen on F53's SSD).
+  * C1: refuse with the cause and the way out, and no fill of up to
+    2 GB before the check; about 80 lines, no format change.
+  * C2: cut such a tail. C3: meta blocks and records hold their place
+    and the database's ID (class 3: the format). C4: zero new files.
+  * Default: **C1 now, C3 with the next change of the format (032)**
+    (035-02).
+* **C4. 028-54: a released bug or not.** On `main`, 2026.5 and 2026.6 a
+  stop or a crash inside a commit's maintenance gives other bytes for
+  the same transactions; the README says "The same transactions in the
+  same order give the same bytes" (031-05, section 4.5). Default:
+  **yes, a new entry in 033, S4, fixed by A2** (the lead; 033 counts
+  faults in theory). 028-54 closes when A2 is decided (class 3).
+* **C5. 028-34: `transactionInfo()`** (class 3: the Pub API): kept in
+  the Pub API with more tests, or the walk moved to the Core. Default:
+  **as it is in 2026.7** (the lead; Frans's choice for 2026.6,
+  2026-11-22).
+* **C6. 026-04: three recommended fractions and a default for
+  reclaim** (class 3: the scope). Default: **1/4 kept in 2026.7, the
+  choice moved to 2026.8 (032)** (the lead): B1 and B11 change what
+  reclaim writes, so figures measured before the landing would be
+  measured again.
+* **C7. 026-14: the Lean model's three additions** (class 3: the
+  scope): reclaim as a whole, the format as bytes, the conflict check.
+  Default: **none in 2026.7** (the lead): the first after the landing,
+  with A5's statement; the second with the stable format; the third
+  when transactions next change.
+
+Not asked: 028-65 (no decision in it); 026-03 and 031-01's F1, one
+maintenance path for a commit and a call, which the landing's design
+item answers; G4's M5 at 1.933 of 2.0 (031-05, F9) and `catchUp()`
+inside the code that fails the database (F7), both work of the landing.

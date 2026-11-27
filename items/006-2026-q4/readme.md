@@ -50,6 +50,7 @@ The list
 | [006-34](34-day-24-november.md) | 2026-11-24 | Day work of 24 November (a Tuesday) and its night, with the lead lead-1124: the release 2026.6, the plan, the progress and the outcome |
 | [006-35](35-day-25-november.md) | 2026-11-25 | Day work of 25 November (a Wednesday) and its night, with the lead lead-1125: the plan, the progress and the outcome |
 | [006-36](36-day-26-november.md) | 2026-11-26 | Day work of 26 November (a Thursday) and its night, with the lead lead-1126: the plan, the progress and the outcome |
+| [006-37](37-day-27-november.md) | 2026-11-27 | Day work of 27 November (a Friday) and the weekend, with the lead lead-1127: the questions for Frans on one page, the plan, the progress and the outcome |
 
 
 Files
