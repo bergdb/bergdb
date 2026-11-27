@@ -56,8 +56,9 @@ An entry value is one of (011-11, 2.4):
     ERROR text                   a problem the exporter found (counts as a failure)
     END i                        ends transaction i
     DONE n                       last line: the last record, R(n) (n transactions
-                                 after R(0); with reclaim, user transactions and
-                                 reclaim's records)
+                                 after R(0); with reclaim, the records of the user
+                                 transactions, of the setters and of the parts of
+                                 maintain())
 
 Since bergdb 028-15 the start that creates a database commits a record after
 the primordial one: an internal transaction that puts the startup distance's
@@ -88,18 +89,31 @@ still reads format 1) adds, from the item's plan (001-01, 8.2):
                                  startup time
 
 With reclaim (the exporter's `retain=S`, since 2026-10-17, bergdb item 001,
-WP R2; 001-07, 2.7), every executed transaction is a record:
-the user transactions, and reclaim's steps and table stores, each an ordinary
-`TX` block, with `kind=user`, `step` or `table` in its comment line. Since
-bergdb 015-87 the exporter's call of `setRetainDuration`, before the first
-user transaction, commits reclaim's settings (`/#i/dreclaim/-settings.txt`)
-in a record of their own, R(2) (R(1) until bergdb 028-15), internal and
-marked `kind=table`; its calls
-after a restart write nothing. Format 2 then also has:
+WP R2; 001-07, 2.7), every executed transaction is a record, each an ordinary
+`TX` block. Since bergdb 031-06 (one record an action, 2026-11-27) every
+accepted action appends exactly one record: a commit's record holds its
+transaction and the maintenance that reclaim owes, decided from the stream
+before the record (an iteration's begin, a step, the safe positions, a cut's
+decision: the step's copies, reclaim's row `-current.txt` and its table
+`-table.txt` under `/#i/dreclaim/`); a part of `maintain()` is a record of its
+own, an empty internal transaction that carries the part's maintenance; a
+setter's record carries none. Until 031-06 reclaim's steps and table stores were
+internal records of their own after the user transaction's. The comment line of
+a `TX` block gives `kind=step` (a record that carries a step of reclaim: a
+commit's or a part's), `user` (a commit without a step), `part` (a part
+without a step) or `table` (BergDB's own internal records: the settings, the
+creating start's startup distance), and `copies=N`, the copies among its puts.
+Since bergdb 015-87 the exporter's call of `setRetainDuration`, before the
+first user transaction, commits reclaim's settings
+(`/#i/dreclaim/-settings.txt`) in a record of their own, R(2) (R(1) until
+bergdb 028-15), internal and marked `kind=table`; its calls after a restart
+write nothing. Format 2 then also has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
                                  T(i)'s touch visited (Db.touchPaths: the paths
-                                 of its keys; a key range until 024-07), sorted
+                                 of its step's copies and of reclaim's row, since
+                                 031-06; of all its keys, the copies and the row,
+                                 until then; a key range until 024-07), sorted
     FA t                         in TX i, when it changes: fa(i), the first
                                  available time, as a model time
     CUT c t                      in TX i: Java decided a cut at R(i): records
@@ -314,9 +328,26 @@ values (`Keys.toSegments`); `-` stands for no key.
                                  batch, in strictly increasing key order,
                                  Dag.putKvs): a put of the key, v the
                                  value's hash (as V's, section 1)
+    OP C key v                   a copy (since bergdb 031-06): a put of a step
+                                 of reclaim, the value that its scan read put
+                                 again, whose value node has the copy mark (byte
+                                 6, 027-03); the exporter reads the mark from the
+                                 record's bytes (StoredValueNode.isCopy) and
+                                 checks that the marked keys are the plan's
+                                 copies (Maintenance.Plan.copyKeys). To the
+                                 tree model and the contract's writer a put
     OP D key                     a delete that deleted
     OP N key                     a delete that changed nothing (not in the
                                  record)
+    ACT P key v                  with `steps=1` (since bergdb 031-06), in TX i,
+    ACT D key                    after the OP lines: the operations of the
+                                 record's action as submitted, a put with its
+                                 value's hash or a delete, in the order given:
+                                 a user transaction's as the exporter's workload
+                                 built it, before Db sees it; the Trans of
+                                 BergDB's own actions as Db executed it (a
+                                 setter's, the creating start's); none for a part
+                                 of `maintain()`, whose action is empty
     KN x l n k1 ... kn           in TX i, after the ADD lines: key node x after
                                  T(i), for each key node that T(i) made or whose
                                  klongs it changed in any way, a diff of the
@@ -342,6 +373,10 @@ values (`Keys.toSegments`); `-` stands for no key.
                                  (GetMany.GetN); start and end are keys or `-`;
                                  r results follow, each a key and its value's
                                  hash
+
+The `OP C` lines are in the grammar that the contract's checkers read; the ACT
+lines are not (`lineKinds`), so their traces (`treeconf.sh`) have none, as they
+have no STEP lines.
 
 The writer's contract is checked on format 3 too (`lake exe contractcheck`
 in `lean/contract/`, `lean/contract/check.sh`; bergdb 030-04, 030-05 and
@@ -371,10 +406,14 @@ reads a trace only if it is whole in the same way. The contract checker's
 root at each time.
 
 A transaction with a TOUCH line (a step of reclaim; section 2) touches the
-paths of all the keys of its OP lines (Db.touchPaths, since bergdb 024-07):
-the tree model's `touchOf` of those keys must give the TOUCH line. (Until
-024-07 the touch was a key range, and format 3 had its bounds as RANGEF and
-RANGET lines, on 2026-11-11 only.)
+paths of the keys of its copies (`OP C`) and of reclaim's row (Db.touchPaths,
+Maintenance.Plan.touchKeys; since bergdb 031-06, when a step came to ride in a
+commit's record beside the action's operations, whose paths it does not touch;
+from 024-07 to 031-06 the paths of all the keys of its OP lines, its copies and
+its row): the tree model's `touchOf` of those keys must give the TOUCH line
+(`treecheck`'s C-T5), and the tree model's own run (C-T9) touches the same
+keys. (Until 024-07 the touch was a key range, and format 3 had its bounds as
+RANGEF and RANGET lines, on 2026-11-11 only.)
 
 Since bergdb 030-27 (2026-11-19) the exporter's property `steps=1`, with
 reclaim and `tree=1`, adds one line to each step of reclaim, from its
@@ -389,20 +428,36 @@ iteration's row in Java's memory (`Reclaim.IterationInfo`):
                                  it, keys or `-` for none; eod 1 if the
                                  step's scan passed the end and ended the
                                  iteration (the row done, its tEnd the
-                                 step's time), else 0
+                                 step's time), else 0. Since bergdb 031-06 L
+                                 is read from the row before the record
+                                 (Db.TestHooks.beforeApply), L' and eod from
+                                 the row that the record holds (the plan's)
 
 `tracecheck`'s C-STEP checks them against the model of the steps (bergdb
 030-25, `StepsOK`), on the tree model's reads (lean/Check/Steps.lean,
-`stepCheck`): per STEP line, at the step's state, L is the L' of the
+`stepCheck`): per STEP line, at the step's state (after T(i - 1), the state
+before the record, which the step's scan reads), L is the L' of the
 iteration's step before (none for its first), c ≤ t0 + 1, L' is L or a key
 of the range (the live keys after L up to E, the greatest key live after
-T(t0)), with eod the range's last key, the step puts again (OP P) every KV
-of the range up to L' whose value node was made before c, and its
-operations have distinct keys and a put; since bergdb 030-34 (2026-11-20)
-each of those puts with the value that the scan read, the key's value
-before the step as the tree model reads it (its hash, as V's), and the
-step's operations are those puts and the row's put, and no delete
-(STEP-values, STEP-ops). The row's key is the model's, `reclaimRow`:
+T(t0)), with eod the range's last key, and the record writes every KV of the
+range up to L' whose value node was made before c (STEP-puts): a copy (OP C),
+or, since bergdb 031-06, an operation of the action at its key, its put or
+delete (Java leaves out a copy at a key that the action writes), or reclaim's
+put of its row or table there; its operations have distinct keys; since bergdb
+030-34 (2026-11-20) each copy with the value that the scan read, the key's
+value before the record as the tree model reads it (its hash, as V's), and
+each copy of such a KV (STEP-values, STEP-ops). Until 031-06 the step was a
+record of its own, and STEP-ops required its operations to be those puts and
+the row's put, and no delete. Since 031-06 C-STEP checks every record against
+its action as submitted, its ACT lines (STEP-action, `actionFailures`): the
+operations that are not copies are the action's, each operation of the action
+among them with its value (a delete as `OP D` or, if it deleted nothing,
+`OP N`; of two operations of a key in the ACT lines, the last), and every other
+is a put at a key of reclaim's reserved prefix `/#i/dreclaim/` (the row, the
+table); no copy is at a key that the action writes, and copies are in a step's
+record only. So a record's effect on the keys outside reclaim's prefix is its
+action's and its copies', and its copies put again the values the scan read.
+The row's key is the model's, `reclaimRow`:
 Java's `-current.txt` under `/#i/dreclaim/` (bergdb 030-39, F1; from
 2026-11-20 to 2026-11-23 C-STEP took it from the trace's first step, the
 key of its one put that was not such a rewrite), and every step must put
@@ -416,8 +471,9 @@ line is not part of the grammar that the contract's checkers read
 Since bergdb 030-31 (2026-11-20) run A may restart its database: the
 exporter's `restart=K` (a sync, `stop()` and a start from a copy of the
 stream after every K-th user transaction's call), `crash=K` (the database
-fails right after the K-th step's record is durable, inside the step's
-call, and starts again from a copy of the stream) and a recorded
+fails right after the K-th step's record is durable, inside its call, and
+starts again from a copy of the stream; since bergdb 031-06 the step's record
+is a commit's or a part's, and its STEP line is made at its record) and a recorded
 application's restarts (`workload=F`). The start appends no record; the
 last record before it gets the lines:
 
@@ -431,8 +487,10 @@ last record before it gets the lines:
                                  endKey, the greatest key live at tStart (`-`
                                  for none); `-` alone for no iteration
 
-A step that the crash ended has its STEP line from the row that the start
-read, the row the step committed (its L' and eod). C-STEP's STEP-resume
+Until bergdb 031-06 a step that the crash ended had its STEP line from the row
+that the start read, the row the step committed (its L' and eod); since then a
+step's record holds its row, and the STEP line is made at the record. C-STEP's
+STEP-resume
 checks each RESUME line: the row is the iteration's row as its last step
 left it (the same c, lastKey that step's L', the iteration not ended by a
 step with eod), or, for an iteration without a step yet, lastKey none

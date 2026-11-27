@@ -41,13 +41,15 @@ def toRecordM (mk : Std.HashMap NodeId Nat) (lv : List (NodeId × Nat × Bool)) 
 /-- The transactions of a trace for the tree's `exec`, by record index: the
 operations that changed the tree (a noop is not part of a transaction), the
 first id, and for a transaction with a TOUCH line (a reclaim step) the keys
-whose paths it touches: all its keys. -/
+whose paths it touches: its copies' and reclaim's row (`stepTouchKeys`; since
+bergdb 031-06, when a step came to ride in a commit's record; until then all its
+keys). The copies are puts here: the copy mark changes no node of the tree. -/
 def txsOf (recs : Array TRec) (tt : TTrace) : Array Tx :=
   tt.txs.map (fun x =>
     { base := x.base.getD 0,
       ops := (x.ops.toList.filter (fun q => !q.2)).map (·.1),
       touch := if (recs.getD x.idx default).touch.isEmpty then []
-        else x.ops.toList.map (·.1.key) })
+        else stepTouchKeys x })
 
 /-- The whole run: the failures, each with its transaction, and the number of
 records compared. -/

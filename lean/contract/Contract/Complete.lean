@@ -176,6 +176,10 @@ def lineFault (toks : List String) : Option String :=
     | "OP" :: "P" :: r => match keyRest r with
       | some [v] => isNum v
       | _ => false
+    -- A copy of reclaim's step, a put with the copy mark (bergdb 031-06; 027-02, section 4).
+    | "OP" :: "C" :: r => match keyRest r with
+      | some [v] => isNum v
+      | _ => false
     | "OP" :: "D" :: r => keyRest r == some []
     | "OP" :: "N" :: r => keyRest r == some []
     | ["NEW", x, l, k] => isNum x && isNum l && (k == "I" || k == "D")

@@ -16,10 +16,11 @@
 #   from the cut stream); a trace without a cut fails. Since bergdb 030-27 its traces
 #   are of format 3 with STEP lines (TraceExport's tree=1 and steps=1), and the
 #   checker's C-STEP checks each step of reclaim against the model of the steps
-#   (030-25; since 030-34 also the values it writes back and that it writes nothing
-#   else than them and its row) and each cut against its iteration's last step; a
-#   trace without a STEP
-#   line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
+#   (030-25; since 030-34 also the values it writes back; since 031-06, one record
+#   an action, a step rides in a commit's or a part's record, its copies are OP C
+#   lines, and every record is checked against its action as submitted, its ACT
+#   lines: STEP-action) and each cut against its iteration's last step; a trace
+#   without a STEP line fails. crash (bergdb 030-31): the reclaim set's kind of runs, with run A
 #   restarted after every K-th call and crashed right after every K-th step of reclaim
 #   (TraceExport's restart and crash), RESTART and RESUME lines, and C-STEP's
 #   STEP-resume: an iteration across a restart goes on from the row its last step

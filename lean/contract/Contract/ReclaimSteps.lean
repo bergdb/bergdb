@@ -15,15 +15,23 @@ each with its value node; at each KV it may stop before it (the value limit:
 the KV is the next step's first) or after it (the split, the size), as a stop
 rule says. The model quantifies over the stop rules: Java's byte and node
 counts decide where a step stops, not which keys are rewritten. lastKey becomes
-the last key met. The step's transaction puts again each KV met whose value node
-is old (made before c) and puts the row, one operation a key. The last step's
-scan passed E or the last key without a stop (Java's `eod`). Between the steps
-run any transactions: the user's, reclaim's table stores, the row stored again.
-Restarts need nothing more: a step commits its row, with lastKey, E and pCut,
-in its own transaction, and a start resumes from the row, so the steps of a run
-with restarts are such steps in the history of its commits; a last step whose
-end was lost in a crash is an ordinary step, and the next one ends the
-iteration (bergdb 030-25, section 2).
+the last key met. The step's record writes each KV met whose value node is old
+(made before c) and puts the row, one operation a key. Since bergdb 031-06 (one
+record an action) a step rides in the record of a commit or of a part of
+maintain(), decided from the stream before the record: its scan reads the state
+after the record before, and the record holds the action's operations beside the
+step's copies, its row and maybe its table. An old KV met is written by its copy,
+or by the action's put or delete at its key (Java leaves out a copy at a key that
+the action writes), or by reclaim's row or table there. What a copy is (a put of
+an old KV met with the value immediately before the record) is stated with the
+copy mark in Contract/ReclaimValues.lean (`StepOpOK`); the cut's safety needs only
+that the record writes the key. The last step's scan passed E or the last key
+without a stop (Java's `eod`). Between the steps run any transactions: the
+user's, the parts' records, the table stored again. Restarts need nothing more: a
+step's record holds its row, with lastKey, E and pCut, and a start resumes from
+the row, so the steps of a run with restarts are such steps in the history of its
+commits; a last step whose end was lost in a crash is an ordinary step, and the
+next one ends the iteration (bergdb 030-25, section 2).
 
 The theorem (`iterationOK_of_stepsOK`): with VAL-NEW, such a history meets
 `IterationOK` from every s with t0 < s up to the first step, to the last step
@@ -121,26 +129,16 @@ theorem reclaimRow_reserved : reclaimKey reclaimRow = true := by decide
 reclaim's reserved prefix. Other internal namespaces are protected too. -/
 def userKey (k : Key) : Bool := !reclaimKey k
 
-/-- A step operation is its row put, or a put of an old key met with the
-value the key had immediately before the step. -/
-def StepOpOK (h : BHist) (c j : Nat) (out : ScanOut) : Op → Prop
-  | .put k v => k = reclaimRow ∨
-      (∃ kv ∈ out.met, kv.1 = k ∧ oldNode h c kv.2 = true) ∧
-      refGet (contents ((h.tree j).at j)) k = some v
-  | .del _ => False
-
-instance (h : BHist) (c j : Nat) (out : ScanOut) (op : Op) :
-    Decidable (StepOpOK h c j out op) := by
-  cases op <;> unfold StepOpOK <;> infer_instance
-
-/-- A step's transaction, scanning the state after j (bergdb 030-35): a put
-of every old KV met, a put of its current row, and one operation a key.
-Besides its row, it puts only old KVs met, with their values immediately
-before the step. It deletes no key. The row may replace its own rewrite. -/
+/-- A step's record, scanning the state after j (bergdb 030-35; bergdb 031-06): it
+writes every old KV met (a copy, or an operation of the action at its key, a put
+or a delete, or reclaim's row or table there), it puts its current row, and it has
+one operation a key. Until bergdb 031-06 the step was a transaction of its own,
+which put every old KV met again and its row and nothing else, and deleted no key
+(the conjunct `StepOpOK` of every operation, now of the copies only, in
+Contract/ReclaimValues.lean). -/
 def StepTx (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) : Prop :=
-  (∀ kv ∈ out.met, oldNode h c kv.2 = true → kv.1 ∈ putKeys ops) ∧
-  reclaimRow ∈ putKeys ops ∧ (ops.map Op.key).Nodup ∧
-  ∀ op ∈ ops, StepOpOK h c j out op
+  (∀ kv ∈ out.met, oldNode h c kv.2 = true → kv.1 ∈ ops.map Op.key) ∧
+  reclaimRow ∈ putKeys ops ∧ (ops.map Op.key).Nodup
 
 /-- The steps from lastKey L on, the first after transaction `prev`: each is a
 transaction of the history after the one before, each scans from the lastKey
@@ -395,10 +393,6 @@ theorem step_covers (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hv : ValNew h) {c
     (∀ l, nextKey L (stepScan h E L st).met = some l → keyLt l k = false →
       WrittenIn h k a (st.j + 1)) ∧
     ((stepScan h E L st).eod = true → WrittenIn h k a (st.j + 1)) := by
-  have hself : k ∈ putKeys h.txs[st.j].ops → WrittenIn h k a (st.j + 1) := by
-    intro hk
-    obtain ⟨v, hv'⟩ := mem_putKeys.mp hk
-    exact ⟨st.j, hj, ha, by omega, List.mem_map.mpr ⟨_, hv', rfl⟩⟩
   by_cases hw : WrittenIn h k a st.j
   · have := hw.mono (by omega : st.j ≤ st.j + 1)
     exact ⟨fun _ _ _ => this, fun _ => this⟩
@@ -419,8 +413,9 @@ theorem step_covers (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hv : ValNew h) {c
     have hin : (k, y) ∈ scanRange ((h.tree st.j).at st.j) L E := by
       unfold scanRange
       exact List.mem_filter.mpr ⟨hmem, by simp [hL, hE]⟩
+    -- The record writes it (bergdb 031-06: a copy, or the action's put or delete).
     have hput : (k, y) ∈ (stepScan h E L st).met → WrittenIn h k a (st.j + 1) :=
-      fun hm' => hself (hT.1 (k, y) hm' hold)
+      fun hm' => ⟨st.j, hj, ha, by omega, hT.1 (k, y) hm' hold⟩
     refine ⟨fun l hl hle => ?_, fun he => ?_⟩
     · obtain ⟨m, hm1, hm2⟩ := scanWalk_met st.rule (scanRange ((h.tree st.j).at st.j) L E) []
       rw [List.nil_append] at hm1
@@ -580,7 +575,7 @@ theorem stepsOK_live (hm : MeetsFull p h top) {it : Iteration} (hst : StepsOK h 
     contents ((h.tree it.last).at it.last) ≠ [] := by
   obtain ⟨-, stl, -, hlast, -, hl, -, -, -⟩ := hst.ends
   obtain ⟨-, -, hS⟩ := hst
-  obtain ⟨L', hj, -, hrow, hnd, -⟩ := stepsFrom_lastTx _ _ _ hS stl hl
+  obtain ⟨L', hj, -, hrow, hnd⟩ := stepsFrom_lastTx _ _ _ hS stl hl
   obtain ⟨v, hput⟩ := mem_putKeys.mp hrow
   have hc := (hm.step stl.j hj).1.1
   simp only [contractOk, Bool.and_eq_true, beq_iff_eq, Nat.add_sub_cancel] at hc
@@ -649,8 +644,9 @@ for every history PE writes, with Java's still-dirty test and the marking,
 policies that read no cut stream, and cuts whose iterations' steps follow the
 model of reclaim's steps (`StepsOK`: each step's scan, at its own time, from
 the last key the step before met up to the end key, meets a prefix of the live
-keys, puts again those whose value node was made before the cut, and puts its
-row; the last step's scan passed the end), with the last step at most the
+keys, and its record writes those whose value node was made before the cut,
+by a copy or an operation of the action at the key (bergdb 031-06), and puts
+its row; the last step's scan passed the end), with the last step at most the
 first available time and Java's two waits, Java's get and scan after the run
 with handles, evictions and restarts from the cut streams are right at every
 time from the first available time on. -/

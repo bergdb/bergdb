@@ -4504,10 +4504,11 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Test-only hooks (bergdb item 001, WP R2), for java/stress/TraceExport.java: called for
-     * every executed transaction, the internal ones (reclaim's steps and table stores)
+     * Test-only hooks (bergdb item 001, WP R2), for java/stress/TraceExport.java and the
+     * tests: called for every executed transaction, the internal ones (the settings' records,
+     * the parts of maintain(); bergdb 031-06: a commit's record carries reclaim's maintenance)
      * included, so that a trace can have a record for each. null, the default, does nothing.
-     * All calls come from the thread that holds the write lock.
+     * All calls but maintainMaxParts() come from the thread that holds the write lock.
      */
     public static interface TestHooks {
         /** The record of x.trans has been appended and D updated (after store()). */
