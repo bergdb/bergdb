@@ -80,27 +80,13 @@ theorem mapPut_existing {k : Key} {v : Nat} : ∀ {m : List (Key × Nat)},
     · have hlt : k' < k := (List.pairwise_cons.mp hs).1 _ hm
       rw [mapPut_cons_gt hlt, mapPut_existing (List.pairwise_cons.mp hs).2 hm]
 
-/-- A pair stays when a put at another key is applied. -/
-theorem mem_mapPut_of_ne {k : Key} {v : Nat} {e : Key × Nat} (hne : e.1 ≠ k) :
-    ∀ {m : List (Key × Nat)}, e ∈ m → e ∈ mapPut k v m
-  | [], h => by simp at h
-  | (k', v') :: r, h => by
-    unfold mapPut
-    split_ifs with h1 h2
-    · exact List.mem_cons_of_mem _ h
-    · exact List.mem_cons_of_mem _ ((List.mem_cons.mp h).resolve_left
-        (fun he => hne (by rw [he]; exact h2.symm)))
-    · rcases List.mem_cons.mp h with he | he
-      · rw [he]
-        exact List.mem_cons_self
-      · exact List.mem_cons_of_mem _ (mem_mapPut_of_ne hne he)
-
-/-- A pair stays when an operation at another key is applied. -/
-theorem mem_step_of_ne {m : List (Key × Nat)} {op : Op} {e : Key × Nat}
-    (hne : e.1 ≠ op.key) (h : e ∈ m) : e ∈ step m op := by
+/-- A pair stays when an operation at another key is applied (`mem_mapPut_of_ne`,
+Contract/ReclaimTree.lean). -/
+theorem mem_step_of_ne {m : List (Key × Nat)} {op : Op} {k : Key} {v : Nat}
+    (hne : k ≠ op.key) (h : (k, v) ∈ m) : (k, v) ∈ step m op := by
   cases op with
-  | put k v => exact mem_mapPut_of_ne hne h
-  | del k =>
+  | put k' v' => exact mem_mapPut_of_ne hne h
+  | del k' =>
     simp only [step, mapDel]
     exact List.mem_filter.mpr ⟨h, by simpa [Op.key] using hne⟩
 
@@ -128,9 +114,9 @@ theorem applyOps_drop_copies (mk : Op → Bool) : ∀ (ops : List Op) (m : List 
       obtain ⟨k, v, rfl, hkv⟩ := hc op' (List.mem_cons_of_mem _ hop') hm'
       refine ⟨k, v, rfl, mem_step_of_ne ?_ hkv⟩
       intro he
-      apply hnd.1
       have : (Op.put k v).key ∈ ops.map Op.key := List.mem_map_of_mem hop'
-      simpa [Op.key, he] using this
+      rw [show (Op.put k v).key = op.key from he] at this
+      exact hnd.1 this
 
 /-- **A record's effect on the user keys is its action's** (bergdb 031-06): with
 one operation a key, and its copies puts of the values that their keys hold before

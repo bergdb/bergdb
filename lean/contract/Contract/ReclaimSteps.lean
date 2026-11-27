@@ -129,14 +129,15 @@ theorem reclaimRow_reserved : reclaimKey reclaimRow = true := by decide
 reclaim's reserved prefix. Other internal namespaces are protected too. -/
 def userKey (k : Key) : Bool := !reclaimKey k
 
-/-- A step's record, scanning the state after j (bergdb 030-35; bergdb 031-06): it
-writes every old KV met (a copy, or an operation of the action at its key, a put
+/-- A step's record, whose scan `out` met the KVs of the state before it (bergdb
+030-35; bergdb 031-06): it writes every old KV met (a copy, or an operation of the action at its key, a put
 or a delete, or reclaim's row or table there), it puts its current row, and it has
 one operation a key. Until bergdb 031-06 the step was a transaction of its own,
 which put every old KV met again and its row and nothing else, and deleted no key
 (the conjunct `StepOpOK` of every operation, now of the copies only, in
-Contract/ReclaimValues.lean). -/
-def StepTx (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) : Prop :=
+Contract/ReclaimValues.lean; with it the step's index j, which the scan's state
+was, left StepTx). -/
+def StepTx (h : BHist) (c : Nat) (out : ScanOut) (ops : List Op) : Prop :=
   (∀ kv ∈ out.met, oldNode h c kv.2 = true → kv.1 ∈ ops.map Op.key) ∧
   reclaimRow ∈ putKeys ops ∧ (ops.map Op.key).Nodup
 
@@ -147,7 +148,7 @@ def StepsFrom (h : BHist) (c : Nat) (E : Option Key) : Nat → Option Key → Li
   | _, _, [] => True
   | prev, L, st :: rest =>
     prev ≤ st.j ∧
-    (∃ hj : st.j < h.txs.length, StepTx h c st.j (stepScan h E L st) h.txs[st.j].ops) ∧
+    (∃ hj : st.j < h.txs.length, StepTx h c (stepScan h E L st) h.txs[st.j].ops) ∧
     (rest = [] → (stepScan h E L st).eod = true) ∧
     StepsFrom h c E (st.j + 1) (nextKey L (stepScan h E L st).met) rest
 
@@ -385,7 +386,7 @@ after the step, it is written from a on if it is at or before the new lastKey,
 and if the step was the last. -/
 theorem step_covers (hm : MeetsFull p h top) (hM : 1 ≤ p.M) (hv : ValNew h) {c : Nat}
     {E L : Option Key} {st : IterStep} (hj : st.j < h.txs.length)
-    (hT : StepTx h c st.j (stepScan h E L st) h.txs[st.j].ops)
+    (hT : StepTx h c (stepScan h E L st) h.txs[st.j].ops)
     {k : Key} {y : NodeId} {a prev : Nat} (ha : a ≤ st.j) (hprev : prev ≤ st.j + 1)
     (hy : (idContents ((h.tree a).at a)).lookup k = some y) (hold : oldNode h c y = true)
     (hE : upToKey E k = true)
@@ -492,7 +493,7 @@ theorem stepsFrom_bounds {c : Nat} {E : Option Key} : ∀ (steps : List IterStep
 theorem stepsFrom_lastTx {c : Nat} {E : Option Key} : ∀ (steps : List IterStep) (prev : Nat)
     (L : Option Key), StepsFrom h c E prev L steps →
       ∀ st, steps.getLast? = some st →
-        ∃ L', ∃ hj : st.j < h.txs.length, StepTx h c st.j (stepScan h E L' st) h.txs[st.j].ops
+        ∃ L', ∃ hj : st.j < h.txs.length, StepTx h c (stepScan h E L' st) h.txs[st.j].ops
   | [], _, _, _, st, hl => by simp at hl
   | st0 :: rest, prev, L, hS, st, hl => by
     obtain ⟨-, ⟨hj, hT⟩, -, hrest⟩ := hS

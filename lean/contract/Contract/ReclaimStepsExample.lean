@@ -53,8 +53,8 @@ def itS : Iteration :=
   { c := 2, t0 := 1,
     steps := [⟨2, fun met _ => (false, met.length == 1)⟩, ⟨4, fun _ _ => (false, false)⟩] }
 
-instance (h : BHist) (c j : Nat) (out : ScanOut) (ops : List Op) :
-    Decidable (StepTx h c j out ops) := by
+instance (h : BHist) (c : Nat) (out : ScanOut) (ops : List Op) :
+    Decidable (StepTx h c out ops) := by
   unfold StepTx
   infer_instance
 

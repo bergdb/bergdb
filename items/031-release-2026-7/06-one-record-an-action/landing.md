@@ -23,16 +23,9 @@ lands the item's text; this file does not replace the item's `readme.md`.
     reflection: now the test hook `Db.TestHooks.maintainMaxParts()`, read
     once at a call's start (default: no limit). The probes `P2CrashProbe`,
     `FaultProbe` and `ConcProbe` need a small change for it (a field
-    `maxParts` and the hook in place of the reflective call); the adapted
-    copies that the gate below ran are in the scratch directory of the
-    session, not in this branch: the item's `probes/` land with the item.
-    The change, for `P2CrashProbe`: `static volatile int maxParts =
-    Integer.MAX_VALUE;`, `public int maintainMaxParts() { return maxParts; }`
-    in its hooks, and `maxParts = -a.arg - 1; try { d.maintain(B); }
-    finally { maxParts = Integer.MAX_VALUE; }` in place of
-    `maintainParts.invoke(d, B, -a.arg - 1)` (and the two reflection catch
-    clauses go); `FaultProbe` returns `P2CrashProbe.maxParts` from its hook;
-    `ConcProbe`'s replay sets a hook that returns 1.
+    `maxParts` and the hook in place of the reflective call). The item's
+    `probes/` land with the item, not in this branch; the change that the
+    gate below ran is the appendix's diff.
   * `DbBuilder.maintenanceNone()` is package-private: for the Core's tests
     and probes, not in the API.
   * Two comments that named "031-05's prototype" name 031-05 and 031-06.
@@ -50,7 +43,71 @@ lands the item's text; this file does not replace the item's `readme.md`.
 
 ## Step 1: the conformance (review, F1)
 
-(Filled in as the work goes; see State.)
+The checks of a record that carries a step, as they are now. A mixed record:
+a commit's record (or a part's) that holds its action's operations, a step's
+copies, reclaim's row and maybe its table, one operation a key.
+
+* **The trace format** (027-02, updated with the code): a copy is an `OP C
+  key v` line, a put whose value node has the copy mark; the exporter reads
+  the mark from the record's bytes (`StoredValueNode.isCopy`) and fails the
+  trace (an `ERROR` line) unless the marked keys are the plan's copies
+  (`Maintenance.Plan.copyKeys`). With `steps=1` every record has its action
+  as submitted, `ACT P key v` and `ACT D key` lines, after its OP lines: a
+  user transaction's as the exporter's workload built it, before Db sees it;
+  BergDB's own actions (a setter's, the creating start's) from the Trans that
+  Db executed; none for a part. `OP C` is in the grammar of the contract's
+  checkers; `ACT` is not (as `STEP`, only in `steps=1` traces, which those
+  checkers do not read). The comment line of a TX gives `kind=step|user|part|
+  table` and `copies=N`. The trace's version stays 3.
+* **TraceExport:** the OP C and ACT lines; the STEP line made in the step's
+  own record, with lastKey before the step from the row before the record
+  (`Db.TestHooks.beforeApply`, the hook kept from the prototype) and L' and
+  eod from the plan's row (`Reclaim.RecordPlan.next`, `eod`), checked
+  against the row after the record; `crash=K` after the K-th step's record
+  of any kind (commit or part), and no deferred STEP line after a crash.
+  `tracecheck` filters the ACT lines before its pinned parser
+  (lean/Check/Trace.lean), as it does RESTART and RESUME.
+* **C-STEP** (lean/Check/Steps.lean, `reclaimStepFailures`), per STEP line,
+  at the state before the record (after T(i - 1), which the scan reads):
+  STEP-chain, STEP-c and STEP-range as before; STEP-puts: every old KV of
+  the range up to L' is written by the record, by a copy, or by an operation
+  of the action at its key (a put or a delete), or by reclaim's row or table
+  there; STEP-values: every copy writes the value the scan read; STEP-ops:
+  one operation a key, the row put (not as a copy), every copy of an old KV
+  met. **STEP-action** (new, `actionFailures`), for every record of the
+  trace, against its ACT lines: the operations that are not copies are the
+  action's, each operation of the action among them as submitted (a put with
+  its value, a delete as `OP D` or `OP N`), and every other one is a put at
+  a key of reclaim's reserved prefix `/#i/dreclaim/` (`reclaimReserved`, the
+  contract's `reclaimKey`); no copy at a key the action writes; copies only
+  in a record with a TOUCH line. So on a mixed record C-STEP verifies that
+  the record's effect outside reclaim's keys is its action's, as submitted,
+  plus copies that put back the values the scan read, and that every old KV
+  met is written.
+* **C-STEP's fault test** (lean/test-traces/step-faults.sh): the 18 faults
+  of before, adapted (the copies are OP C lines; `del` and `put` now fail by
+  STEP-action, not STEP-ops), and 5 new ones: `unmark` (a copy without the
+  mark), `mark` (an action's put marked as a copy), `actval` (an action's
+  put with another value), `actdrop` (an action's put left out), `copyuser`
+  (a copy in a record without a step); the good trace must have a step in a
+  commit's record with an action. The second good trace (restarts and
+  crashes) is now conformance.sh crash's c-vals: with one record an action,
+  the old small configuration ends every iteration in one step, so no
+  iteration spanned a restart. `STEP FAULTS OK`: the good trace has 16 STEP
+  lines in 11 iterations, 310 old KVs met, 301 copies, 303 records checked
+  against their actions (1,300 operations); the second, 31 STEP lines, 88
+  restarts (10 crashes), 14 iterations with a step before a restart and the
+  next after it.
+* **The tree model** (lean/Check/Tree.lean, TreeRun.lean): `OP C` is a put,
+  and its key is a copy (`TTx.copies`); a step's touch keys are its copies'
+  and reclaim's row (`stepTouchKeys`, Java's `Plan.touchKeys`): C-T5 compares
+  `touchOf` of those with the TOUCH line, C-T9 runs the model with them. The
+  other checks take the copies as puts, as the writer does. `treeconf.sh
+  reclaim 1`: TREECONF OK, 105 touches, C-T5 and C-T9 0 failures.
+* **The contract checkers** (`contractcheck`, `bridgecheck`; Contract/Trace.lean
+  and Contract/Complete.lean): `OP C` read as a put, in the grammar.
+
+(The gates' lines and the contract's proofs: below, as they ran.)
 
 ## What depends on Frans's two answers
 

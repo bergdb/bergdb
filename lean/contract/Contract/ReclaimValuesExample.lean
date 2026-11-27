@@ -22,6 +22,12 @@ The second step (zero-based 4) has none: the action deletes the old KV it meets.
 def maintenance (j : Nat) (op : Op) : Bool :=
   j == 2 && (op == .put [72] 5 || op == .put [80] 6)
 
+/-- The marked operations of the first step are copies of its scan. -/
+theorem copies_ok : ∀ op ∈ (hS.txs[2]'(by decide +kernel)).ops, maintenance 2 op = true →
+    StepOpOK hS 2 2 (stepScan hS (endKey ((hS.tree 1).at 1)) none
+      ⟨2, fun met _ => (false, met.length == 1)⟩) op := by
+  decide +kernel
+
 theorem maintenanceOK : MaintenanceOK hS maintenance := by
   intro j hj
   refine ⟨by decide +kernel +revert, ?_⟩
@@ -30,8 +36,8 @@ theorem maintenanceOK : MaintenanceOK hS maintenance := by
     simp only [maintenance, Bool.and_eq_true, beq_iff_eq] at hm
     exact hm.1
   subst hj2
-  refine ⟨2, endKey ((hS.tree 1).at 1), none, fun met _ => (false, met.length == 1), ?_⟩
-  decide +kernel +revert
+  exact ⟨2, endKey ((hS.tree 1).at 1), none, fun met _ => (false, met.length == 1),
+    copies_ok op hop hm⟩
 
 /-- The users-only reference: no operation at the namespace store and at the first
 step; the users' value change and delete remain, and the action of the second
@@ -69,19 +75,19 @@ theorem unmet_copy_rejected : ¬ StepOpOK hS 2 2 firstScan (.put [88] 7) := by
 theorem delete_copy_rejected : ¬ StepOpOK hS 2 2 firstScan (.del [88]) := by
   decide +kernel
 
-theorem missing_row_rejected : ¬ StepTx hS 2 2 firstScan
+theorem missing_row_rejected : ¬ StepTx hS 2 firstScan
     [.put [72] 5, .put [80] 6] := by
   decide +kernel
 
 /-- A step's record that writes neither a copy nor an action's operation at an
 old KV met ([80]) is rejected. -/
-theorem unwritten_rejected : ¬ StepTx hS 2 2 firstScan
+theorem unwritten_rejected : ¬ StepTx hS 2 firstScan
     [.put [72] 5, .put reclaimRow 2] := by
   decide +kernel
 
 /-- The second step's record, a commit's, meets `StepTx`: the old KV [96] that
 its scan meets is written by the action's delete (bergdb 031-06). -/
-theorem mixed_step : StepTx hS 2 4
+theorem mixed_step : StepTx hS 2
     (stepScan hS (endKey ((hS.tree 1).at 1)) (some [80]) ⟨4, fun _ _ => (false, false)⟩)
     [.del [96], .put [100] 11, .put reclaimRow 3] := by
   decide +kernel
