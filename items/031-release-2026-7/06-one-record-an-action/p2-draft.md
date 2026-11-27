@@ -15,21 +15,23 @@ for every write, 08:36).
 ## 1. The principle, short
 
 > **P2. A deterministic stream.** What is appended to the stream is a
-> function of the stream as it is and of the accepted user actions that
+> function of the stream as it is and of the accepted transactions that
 > follow, their contents, their times and their order, and of nothing
-> else. A user action is a transaction, a setting, or a part of a
-> `maintain()` call; each accepted action appends one record, decided from
-> the stream before it and from the action. The database appends nothing
-> else, by itself or in between. So the stream alone determines what
-> follows, with no memory of how it was written: a restart, a stop or a
-> crash between any two records changes no byte.
+> else. Each accepted transaction appends one record, decided from the
+> stream before it and from the transaction. The database appends
+> nothing else, by itself or in between. So the stream alone determines
+> what follows, with no memory of how it was written: a restart, a stop
+> or a crash between any two records changes no byte.
 
 Second version, 2026-11-27 11:50, after Frans's answers: the stream as it
 is comes first, and the user actions that follow it, as Frans asked;
 "user action" is the precise word for the unit (W1); a partial append is
 the name of the storage's one expected fault (W3). Third version, 12:08:
 the stream is from the cut to the end, and no setting outside the stream
-affects the bytes (section 2).
+affects the bytes (section 2). Fourth version, 16:26: the unit is the
+transaction, P2's own word (Frans): a setter and a part of a `maintain()`
+call commit transactions too, so the principle needs no list of kinds;
+"user action" stays as the word that explains what a transaction is here.
 
 
 ## 2. The terms
@@ -39,18 +41,22 @@ affects the bytes (section 2).
   the stream begins is in the stream too. Bytes before the cut that the
   storage still holds, and when it removes them, belong to the storage's
   implementation of the stream, not to the stream: nothing reads them.
-* **A user action**, an action for short, is a call of the Core's `Db`
-  that may append:
-  * a transaction: `execute()`;
-  * a setting that commits: `setStartupDistance`, `setRetainDuration`,
-    `setReclaimInternalFraction`;
-  * a part of a `maintain(budget)` call. A call does the parts that fit
-    its budget; each part is an action of its own.
+* **A transaction** is what one accepted user action commits, through
+  the Core's one commit path, as one record:
+  * a call of `execute()`: the application's writes, and the maintenance
+    that reclaim adds within its allowance;
+  * a setter (`setStartupDistance`, `setRetainDuration`,
+    `setReclaimInternalFraction`): one reserved key, and no maintenance;
+  * a part of a `maintain(budget)` call: nothing of the application's,
+    and the maintenance that is due next. A call does the parts that fit
+    its budget; each part is a transaction of its own.
+  * Which of the three it is belongs to the transaction's contents, as
+    its writes do.
   * The Pub layer's index jobs (the build of a new index, the cleanup of
-    a deleted one) are user actions too (Frans, 2026-11-27): the user
-    starts them, and to the Core their commits are transactions like any
-    other. When each of them comes among the other actions is part of the
-    order, which is given.
+    a deleted one) commit transactions like any other (Frans,
+    2026-11-27): the user starts them. When each of them comes among the
+    others is part of the order, which is given.
+  * Below, "action" means such a transaction.
 * **Its time** is the database time the action gets when it begins, taken
   from the clock as a transaction's time is. It is an input, as the
   action's contents are.
@@ -172,10 +178,13 @@ record" and "changes no byte", and gains the completion by the start.
 
 ## 7. Open for Frans
 
-* **W1.** Answered (Frans, 2026-11-27): "action", or "user action" where
-  precision is needed; the index jobs' commits are user actions.
-* **W2.** Whether the setters stay actions of their own (as here) or
-  become `execute()` calls in the API (031-05, Q1 (b)).
+* **W1.** Answered (Frans, 2026-11-27, 11:50 and 16:26): the unit is the
+  transaction; "user action" explains it; the index jobs' commits are
+  transactions like any other.
+* **W2.** Answered (Frans, 2026-11-27, 16:26): the setters and a part of
+  `maintain()` are transactions (each already commits one through the
+  Core's commit path), so the principle lists no kinds. No change of the
+  API.
 * **W3.** Answered (Frans, 2026-11-27): accepted, under the name of the
   fault, a partial append.
 * **W4.** Limit 4: the creation as part of the stream as it is (here), or
