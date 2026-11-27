@@ -1,0 +1,21 @@
+== -Dpause=200000 11 8 2 0
+seed 11, 8 s, 2 writers, node 0: 85988 commits, 25537 maintain() calls, 333 setter calls, 5897610 reads; 86400 records (85988 commits, 169 parts, 243 setters'), stream 299784136, decided cut 251496152; replayed: the same stream
+== -Dpause=200000 12 8 3 8
+seed 12, 8 s, 3 writers, node 8: 118916 commits, 23446 maintain() calls, 333 setter calls, 6336069 reads; 119361 records (118916 commits, 191 parts, 254 setters'), stream 408473368, decided cut 369627520; replayed: the same stream
+== -Dpause=100000 13 8 4 30
+seed 13, 8 s, 4 writers, node 30: 221290 commits, 18080 maintain() calls, 345 setter calls, 5452474 reads; 221644 records (221290 commits, 111 parts, 243 setters'), stream 780925216, decided cut 730225736; replayed: the same stream
+== -Dpause=1000000 14 8 2 8
+seed 14, 8 s, 2 writers, node 8: 20442 commits, 23994 maintain() calls, 326 setter calls, 5581228 reads; 20801 records (20442 commits, 109 parts, 250 setters'), stream 69622104, decided cut 45320264; replayed: the same stream
+== -Dpause=0 15 5 3 0
+seed 15, 5 s, 3 writers, node 0: 212066 commits, 2 maintain() calls, 219 setter calls, 3255746 reads; 212229 records (212066 commits, 1 parts, 162 setters'), stream 749230480, decided cut 693275328; replayed: the same stream
+== -Dpause=500000 16 8 4 0
+seed 16, 8 s, 4 writers, node 0: 79463 commits, 24733 maintain() calls, 333 setter calls, 6173720 reads; 79893 records (79463 commits, 170 parts, 260 setters'), stream 278563304, decided cut 241653424; replayed: the same stream
+== -Dpause=200000 17 8 3 30
+seed 17, 8 s, 3 writers, node 30: 129971 commits, 25184 maintain() calls, 343 setter calls, 5776590 reads; 130454 records (129971 commits, 212 parts, 271 setters'), stream 454630624, decided cut 412505824; replayed: the same stream
+== -Dpause=2000000 18 8 2 0
+seed 18, 8 s, 2 writers, node 0: 10991 commits, 24667 maintain() calls, 325 setter calls, 6163626 reads; 11331 records (10991 commits, 102 parts, 238 setters'), stream 38979768, decided cut 23885560; replayed: the same stream
+== -Dpause=50000 19 8 4 8
+seed 19, 8 s, 4 writers, node 8: 282489 commits, 7430 maintain() calls, 358 setter calls, 5847662 reads; 282769 records (282489 commits, 16 parts, 264 setters'), stream 972314832, decided cut 925656272; replayed: the same stream
+== -Dpause=300000 20 8 3 0
+seed 20, 8 s, 3 writers, node 0: 92206 commits, 25027 maintain() calls, 345 setter calls, 5860599 reads; 92621 records (92206 commits, 168 parts, 247 setters'), stream 322779112, decided cut 270431528; replayed: the same stream
+CONC DONE

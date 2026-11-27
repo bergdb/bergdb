@@ -87,6 +87,14 @@ run. On F53, functional runs, other work on the machine.
   them at every execution, whatever the plan. The first removes four
   fields from `Trans` and the "set again, cleared after" pair; a test's
   touch (`DbTester`) then needs its own switch.
+* **Fixed (2026-11-27):** the second fix above. `Db.executeLocked` sets
+  the seven fields at the go point of every execution, from the plan or to
+  their values without one, and no longer clears them after the record; a
+  test's touch is `Trans.testTouch`. `RmReuseProbe`: the same stream in 20
+  of 20 (`runs/reuse-fix.txt`). `DbTesterFailure.
+  testTransExecutedAgainAfterAFailure` (unit, both points, seed 1, node size
+  8) fails without the fix, at action 302, and passes with it. Commit
+  `97954827`, branch `031-06-review-fixes`.
 
 ### R2. The check before the append fails databases at lowered limits (medium for the tests, none found at the release's limits)
 
@@ -144,6 +152,37 @@ run. On F53, functional runs, other work on the machine.
   no effect at the release's limits; M4's 256 KiB and `recordCap()` then
   cannot pass it either, and every set in D stays within `takeRoom()` by
   the take itself.
+* **Fixed (2026-11-27):** the fix above. `TransSeq.SetRoom`: the room of
+  the record's set, `takeRoom()` less the record's own nodes, which
+  `take()` and then M4's `takeTo()` reduce by each transaction they take,
+  its nodes counted as kept dirty, each at its largest with its entry
+  (`TransSeq.largestBytes`, which `checkTakeable` counts with too); a
+  transaction that does not fit is not taken, also after the deadline.
+  `checkTakeable` can then fail only by a record's own nodes. Counts of the
+  record's own nodes and of D's transactions: a function of the stream and
+  the action. `RmRoomProbe`: the nine cases of `run.sh room` without a
+  failure, the three that failed included (`runs/room-fix.txt`); the case at
+  1 MB gives the review's figures. At the release's limits: StreamDigest
+  quick against the jar of `db92c882`, `DIGESTS IDENTICAL (44 of 44)`.
+  `ReclaimRoomTester.testTakeWithinTheSetRoom` (unit: 100 kB, node size 8,
+  startup distance 2 MB, 3,000 commits of one put, then `maintain()` calls
+  until they rest) fails without the fix, at the first call (596 nodes,
+  119,552 bytes against 98,288), and passes with it: the startup pos moves,
+  a cut is decided, the values right after a restart. The bound changes the
+  bytes at lowered limits: `testSustainedLargeActionsNode8` takes seed 3,
+  as seed 1 left no step out of a commit's record (252 cut to their first
+  copy, 0 left out; seed 3: 117 and 2). The review's sweep (`run.sh
+  sweep`, its twelve configurations, eleven at lowered limits;
+  `runs/sweep-rm-fix.txt`): 12,105 interruptions, 0 different, and 2,142
+  torn records, 0 different, as in section 4.1; the bound changed the
+  stream of one configuration (seed 31, 100 kB, node size 8: 5,471,184
+  bytes against 5,472,648), the others have the review's lengths and
+  decided cuts. Assumed, as the landing assumes a
+  later record with small own bytes: a set in D is taken by a later record
+  whose own nodes leave it the room; an empty commit with nothing due has
+  none, and a part of M4 few, of its table's path, most of which is in D
+  already (in a probe, M4 records whose whole sets, their own nodes
+  included, were 0 to 32 nodes). Commit `97954827`.
 
 ### R3. A commit's time after a restart can be at or before a time a reader was given (low to medium; not of this diff)
 
@@ -215,6 +254,13 @@ run. On F53, functional runs, other work on the machine.
   and not move the startup pos, as many as a call's budget pays for.
   The window is a few kB in 2 GB; no run comes near. With R2's fix the
   count can use M4's room.
+* **Fixed (2026-11-27):** `takeRoom()` is the smaller of `recordLimit` and
+  `recordCap()` less `StoredTrans.TABLE_ROOM`, less the header and
+  `TOP_BYTES`. `TABLE_ROOM` is `STEP_FIXED_ROOM`, 256 KiB, where
+  `stepRoom()` holds the row and the table: at the release's limits the room
+  is 256 KiB less than before, at lowered limits, where `recordCap()` holds
+  `stepRoom()`, as before. That M4's table and the entries of its path fit in
+  `TABLE_ROOM` is assumed, not checked (its Javadoc). Commit `97954827`.
 
 ### R6. The item's probes do not run on main (low: the evidence cannot be run again as committed)
 
@@ -226,6 +272,21 @@ run. On F53, functional runs, other work on the machine.
   reflection, gone in step 0). The change is `landing.md`'s appendix,
   not applied to the files. `review-main-probes/P2CrashProbe.java` is the
   item's with that appendix applied and this review's variants.
+* **Fixed (2026-11-27):** `landing.md`'s appendix 1 applied to
+  `probes/P2CrashProbe.java`, `FaultProbe.java` and `ConcProbe.java`, its
+  appendix 2 to `review-probes/RvLong.java`, and
+  `DbBuilder.testStepReserve` for `reclaimStepReserve` in `SafetyProbe`,
+  `PubInfoProbe` and `RvP1`; what they check is unchanged. Every probe of
+  `probes/`, `review-probes/` and `review-main-probes/` compiles on the
+  branch. `probes/sweep.sh` on the branch's jar (`runs/sweep-fix.txt`):
+  its 23 configurations, 16,634 records, each the record of an accepted
+  action; 27,720 interruptions, 0 different, the start's memory the
+  running one's at all; 567 torn records continued the same, 0 different;
+  the lengths, records and decided cuts of `runs/sweep.txt`, the digests
+  other by record format 9, as at step 2. `probes/faults.sh`:
+  `runs/faults.txt` line for line but the digests, bad 0 in all 42 lines
+  (`runs/faults-fix.txt`); `probes/conc.sh`: the replay gave the same
+  stream in all ten runs (`runs/conc-fix.txt`). Commit `97954827`.
 
 ### R7. One operation a key is tested in a step's record only (low)
 
@@ -243,6 +304,16 @@ run. On F53, functional runs, other work on the machine.
   `lean/` after its build): `actionFailures` of a record without a step
   with the action's put and a second put, or a delete, at the same key
   gives no failure, `[]`, for both.
+* **Fixed (2026-11-27):** `actionFailures` tests that the record's
+  operations have distinct keys, in every record ("two operations of one
+  key", STEP-action); STEP-ops still tests it in a step's record. `Rm7.lean`
+  now prints that failure for both records; two `#guard`s of them in
+  `lean/Check/Steps.lean`. `lean/test-traces/step-faults.sh`'s new fault
+  `twice`, a second put at a key of the action's in a user transaction's
+  record, fails by STEP-action (24 faults found, `STEP FAULTS OK`); the
+  checker before the fix passed that trace whole (`TRACECHECK OK`).
+  027-02, section 4, and `lean/TraceCheck.lean`'s header say it. Commit
+  `97954827`.
 
 
 ## 3. The record-room arithmetic

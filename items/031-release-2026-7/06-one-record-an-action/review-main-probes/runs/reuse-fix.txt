@@ -1,0 +1,140 @@
+== seed 1 node8 0 after
+action 308: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=9
+the Trans that failed, again: its record carried no plan, touch=false; stream length 582904, first pos 90984
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 582904, first pos 90984
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 582904, first pos 90984
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (491920 bytes)
+== seed 1 node8 0 before
+action 308: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=5
+the Trans that failed, again: its record carried no plan, touch=false; stream length 586304, first pos 90984
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 586304, first pos 90984
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 586304, first pos 90984
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (495320 bytes)
+== seed 1 node8 1 after
+action 302: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=45
+the Trans that failed, again: its record carried no plan, touch=false; stream length 710840, first pos 90208
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 710840, first pos 90208
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 710840, first pos 90208
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (620632 bytes)
+== seed 1 node8 1 before
+action 302: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=27
+the Trans that failed, again: its record carried no plan, touch=false; stream length 708800, first pos 90208
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 708800, first pos 90208
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 708800, first pos 90208
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (618592 bytes)
+== seed 2 node8 0 after
+action 310: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=10
+the Trans that failed, again: its record carried no plan, touch=false; stream length 574480, first pos 92224
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 574480, first pos 92224
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 574480, first pos 92224
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (482256 bytes)
+== seed 2 node8 0 before
+action 310: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=7
+the Trans that failed, again: its record carried no plan, touch=false; stream length 572776, first pos 92224
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 572776, first pos 92224
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 572776, first pos 92224
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (480552 bytes)
+== seed 2 node8 1 after
+action 314: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=34
+the Trans that failed, again: its record carried no plan, touch=false; stream length 726936, first pos 91096
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 726936, first pos 91096
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 726936, first pos 91096
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (635840 bytes)
+== seed 2 node8 1 before
+action 314: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=18
+the Trans that failed, again: its record carried no plan, touch=false; stream length 725272, first pos 91096
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 725272, first pos 91096
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 725272, first pos 91096
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (634176 bytes)
+== seed 3 node8 0 after
+action 302: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=28
+the Trans that failed, again: its record carried no plan, touch=false; stream length 544952, first pos 49256
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 544952, first pos 49256
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 544952, first pos 49256
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (495696 bytes)
+== seed 3 node8 0 before
+action 302: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=24
+the Trans that failed, again: its record carried no plan, touch=false; stream length 552152, first pos 49256
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 552152, first pos 49256
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 552152, first pos 49256
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (502896 bytes)
+== seed 3 node8 1 after
+action 316: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=27
+the Trans that failed, again: its record carried no plan, touch=false; stream length 732000, first pos 92928
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 732000, first pos 92928
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 732000, first pos 92928
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (639072 bytes)
+== seed 3 node8 1 before
+action 316: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=16
+the Trans that failed, again: its record carried no plan, touch=false; stream length 732680, first pos 92928
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 732680, first pos 92928
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 732680, first pos 92928
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (639752 bytes)
+== seed 4 node8 0 after
+action 307: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=10
+the Trans that failed, again: its record carried no plan, touch=false; stream length 568808, first pos 95208
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 568808, first pos 95208
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 568808, first pos 95208
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (473600 bytes)
+== seed 4 node8 0 before
+action 307: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=7
+the Trans that failed, again: its record carried no plan, touch=false; stream length 567264, first pos 95208
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 567264, first pos 95208
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 567264, first pos 95208
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (472056 bytes)
+== seed 4 node8 1 after
+action 311: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=35
+the Trans that failed, again: its record carried no plan, touch=false; stream length 717128, first pos 93424
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 717128, first pos 93424
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 717128, first pos 93424
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (623704 bytes)
+== seed 4 node8 1 before
+action 311: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=24
+the Trans that failed, again: its record carried no plan, touch=false; stream length 717752, first pos 93424
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 717752, first pos 93424
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 717752, first pos 93424
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (624328 bytes)
+== seed 5 node8 0 after
+action 308: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=12
+the Trans that failed, again: its record carried no plan, touch=false; stream length 575768, first pos 92064
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 575768, first pos 92064
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 575768, first pos 92064
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (483704 bytes)
+== seed 5 node8 0 before
+action 308: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=7
+the Trans that failed, again: its record carried no plan, touch=false; stream length 574184, first pos 92064
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 574184, first pos 92064
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 574184, first pos 92064
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (482120 bytes)
+== seed 5 node8 1 after
+action 316: the database failed after the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=27
+the Trans that failed, again: its record carried no plan, touch=false; stream length 733552, first pos 92496
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 733552, first pos 92496
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 733552, first pos 92496
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (641056 bytes)
+== seed 5 node8 1 before
+action 316: the database failed before the record of a commit that carried a step (DbFailedException); the Trans keeps touch=true, recordCap=2147483639, dirtiedNodes=16
+the Trans that failed, again: its record carried no plan, touch=false; stream length 734408, first pos 92496
+a new Trans, the same KVs  : its record carried no plan, touch=false; stream length 734408, first pos 92496
+the failed one, fields cleared: its record carried no plan, touch=false; stream length 734408, first pos 92496
+control (the failed Trans with its plan's fields cleared, against a new Trans): the same stream
+SAME STREAM (641912 bytes)

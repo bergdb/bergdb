@@ -559,7 +559,37 @@ did not meet; load up to 25 while they ran together. Functional runs.
 
 ## State
 
-2026-11-27, 17:05.
+2026-11-27, 20:30, after the review of the landed diff (`review-main.md`).
+
+* **Done:** its R1, R2 with R5, R6 and R7 fixed on the branch
+  `031-06-review-fixes`, from `main` at `db92c882`, commit `97954827`
+  (each finding's "Fixed" line says how and with what evidence): a `Trans`
+  executed again writes the record of a new one with its KVs (R1); the
+  take keeps the record's got-dirty set within `takeRoom()` by the count
+  that `checkTakeable` uses (R2), and `takeRoom()` counts M4's table (R5);
+  the item's probes compile and run on `main`, appendices 1 and 2 applied
+  (R6); C-STEP's STEP-action tests one operation a key in every record
+  (R7); Db's class comment no longer names 2026.6's filler. Gates on the
+  branch, F53, functional runs with other work on the machine:
+  before-commit.sh `BEFORE COMMIT OK (71 s)`; level2.sh `LEVEL 2 OK`
+  (16 min; treeconf and pecmp's figures of step 2); level3.sh
+  `LEVEL 3 OK` (15 min; C-STEP's figures of step 2 one for one, its fault
+  test 24 faults, `twice` new); StreamDigest quick against `db92c882`'s
+  jar `DIGESTS IDENTICAL (44 of 44)`; `probes/sweep.sh` 27,720
+  interruptions, 0 different, 567 torn records, 0 different; `faults.sh`
+  and `conc.sh` as at step 2; the review's `RmReuseProbe` 20 of 20 the
+  same, `RmRoomProbe` 9 of 9 without a failure, its sweep at lowered
+  limits 12,105 interruptions and 2,142 torn records, 0 different.
+  `lean/contract/` unchanged: `gate.sh` not run.
+* **Not done:** R3 and R4 (the lead's to register); F2 to F4 (step 3); the
+  kept times (Q4); 028-67's checks (C1, C3); the documents (step 5: 027,
+  027-02 beyond STEP-action's one operation a key, 027-13's C-STEP rules,
+  the full description of format 9, the Javadoc of `maintain(budget)`);
+  night.sh, week.sh, level4.sh, timing.sh on the branch.
+* **For Frans:** O1, in step 2's options, as at 17:05.
+* **Next:** the lead's review and landing of `031-06-review-fixes`.
+
+Earlier, 2026-11-27, 17:05.
 
 * **Done:** steps 0 and 1 (above), and step 2: the record's room by a
   check (F5) with the step's count from the actual keys (F6), record

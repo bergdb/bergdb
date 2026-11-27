@@ -1,0 +1,18 @@
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 20000, 20000 keys, values of 30 bytes, maintain(100000) every 30000 actions
+  NO FAILURE in 30000 actions: 30067 records, the largest got-dirty set 202 nodes, 40064 bytes at the largest sizes, the largest record 52848 bytes, at most 402 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, no maintain() call
+  NO FAILURE in 30000 actions: 30003 records, the largest got-dirty set 234 nodes, 44928 bytes at the largest sizes, the largest record 45064 bytes, at most 286 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, maintain(100000) every 30000 actions
+  NO FAILURE in 30000 actions: 30075 records, the largest got-dirty set 239 nodes, 47168 bytes at the largest sizes, the largest record 70144 bytes, at most 510 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, every 200th of 80000, no maintain() call
+  NO FAILURE in 30000 actions: 30003 records, the largest got-dirty set 326 nodes, 64512 bytes at the largest sizes, the largest record 148216 bytes, at most 509 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 2000000, 20000 keys, values of 30 bytes, every 50th of 60000, no maintain() call
+  NO FAILURE in 30000 actions: 30003 records, the largest got-dirty set 241 nodes, 46272 bytes at the largest sizes, the largest record 100360 bytes, at most 277 key nodes written in a record
+record limit 100000 (dirtyLimit 93750, takeRoom 98288, recordCap 455894), node size 8, startup distance 1000000, 20000 keys, values of 30 bytes, maintain(100000) every 20000 actions
+  NO FAILURE in 40000 actions: 40243 records, the largest got-dirty set 285 nodes, 55360 bytes at the largest sizes, the largest record 63848 bytes, at most 511 key nodes written in a record
+record limit 200000 (dirtyLimit 187500, takeRoom 198288, recordCap 649644), node size 8, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  NO FAILURE in 40000 actions: 40235 records, the largest got-dirty set 408 nodes, 80512 bytes at the largest sizes, the largest record 143768 bytes, at most 1032 key nodes written in a record
+record limit 200000 (dirtyLimit 187500, takeRoom 198288, recordCap 649644), node size 30, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  NO FAILURE in 40000 actions: 40164 records, the largest got-dirty set 128 nodes, 69632 bytes at the largest sizes, the largest record 123832 bytes, at most 364 key nodes written in a record
+record limit 1000000 (dirtyLimit 937500, takeRoom 998288, recordCap 2199644), node size 8, startup distance 4000000, 20000 keys, values of 30 bytes, maintain(100000) every 40000 actions
+  NO FAILURE in 40000 actions: 40205 records, the largest got-dirty set 862 nodes, 169344 bytes at the largest sizes, the largest record 324328 bytes, at most 2272 key nodes written in a record
