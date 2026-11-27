@@ -52,7 +52,9 @@ import bergdb.stream.MemoryStream;
  * its own pStart).</li>
  * <li>Each external transaction allows a step when the allowance, internalFraction of the
  * stream growth since pStart (fractionOf) less the bytes rewritten so far, is above
- * MIN_STEP_SIZE; the step's size is min(allowance, MAX_STEP_SIZE). A step scans the KVs at
+ * MIN_STEP_SIZE; the step's size is min(allowance, MAX_STEP_SIZE), since bergdb 031-06's
+ * landing, step 3, the allowance up to the larger of MAX_STEP_SIZE and twice the allowance
+ * that the application's last record added (commitStepSize). A step scans the KVs at
  * its own time, the latest state, after lastKey and up to endKey, the last key live at tStart
  * (found when the iteration starts, and kept in its row), and rewrites each live value stored
  * before pCut: a put of the same
@@ -79,7 +81,10 @@ import bergdb.stream.MemoryStream;
  * of every step's row.</li>
  * <li>A step makes dirty the index nodes on the paths of its own puts only (Trans.touch,
  * Db.touchPaths), so what it pins and what a later record writes for it follow the 16 kB
- * of its scan, not the size of the database (024-07). From 2026-10-13 until 024-07 a step
+ * of its scan, not the size of the database (024-07). The row charges the step with its
+ * copies' bytes and the index nodes that the record makes dirty on the step's paths, as
+ * the batch leaves them (Db.chargeStep, RecordPlan.charge; since 031-06's landing, step 3).
+ * From 2026-10-13 until 024-07 a step
  * also visited every index node of its scan's key range at the step's time, and the last
  * step every node from the scan's last key to the end of the key space, to write again the
  * nodes that held deleted keys only; with keys put in time order that was every node made
@@ -201,6 +206,34 @@ public class Reclaim implements Maintenance {
      * commit later wrote up to 1100 index nodes.
      */
     private static final long MAX_STEP_SIZE = 16 * 1000L;
+
+    /**
+     * A commit's step may scan up to its allowance, at most the larger of MAX_STEP_SIZE and
+     * this many times the allowance that the application's last record added,
+     * fractionOf(L0 - a) (planCommit; bergdb 031-06, landing step 3; 028-71). The allowance
+     * grows by the internal fraction of each record, and a step of at most 16 kB a commit
+     * fell behind it when the commits were larger than that (031-06, review F3: the stream
+     * kept 36 times the live data with commits of 300 kB). With twice the allowance of the
+     * last record a commit's step can catch up; a commit that follows small records keeps
+     * MAX_STEP_SIZE, as before.
+     */
+    static final long STEP_GROWTH_FACTOR = 2;
+
+    /**
+     * The digits of a row's rewritten in its text (IterationInfo.serialize; bergdb 031-06,
+     * landing step 3): a fixed width, so that the record of a step stores its exact charge.
+     * The row and the table are made by value transformations before the batch
+     * (Db.putKvs), with REWRITTEN_DUE in place of the step's row's number; after the batch,
+     * when the index nodes that the step makes dirty are known, Db charges the step
+     * (Maintenance.Plan.charge) and the number is written over REWRITTEN_DUE, the same
+     * length, before the record is appended: one record, the exact charge (Frans,
+     * 2026-11-27, 14:00 to 14:09; 031-05's review, F8). Until then the bytes that the batch
+     * made dirty after the row were not charged (031-06, rule 12).
+     */
+    static final int REWRITTEN_DIGITS = 19;
+
+    /** Nineteen nines: no long, so a row's text holds it only while its charge is due. */
+    static final String REWRITTEN_DUE = "9999999999999999999";
     
     /**
      * Bytes of a value node besides its key and value: StoredValueNode's, so that a change of
@@ -517,14 +550,22 @@ public class Reclaim implements Maintenance {
         /** The running iteration's row after the step, or null for no step. */
         IterationInfo next;
 
-        /** The row's rewritten before the touch's charge, and that charge once known. */
-        long stepBase, touchCharge;
+        /**
+         * The row's rewritten before the charge of the step's index nodes, and that charge
+         * once known (charge()): the touch's and the batch's on the step's paths; and all
+         * the index bytes that the record makes dirty (for the statistics).
+         */
+        long stepBase, touchCharge = -1, madeCharge, recordDirty;
+
+        /**
+         * The row's text and the table's as the record stores them, and where in each the
+         * step's row's rewritten is (REWRITTEN_DUE until charge()), or -1.
+         */
+        byte[] rowBytes, tableBytes;
+        int rowAt = -1, tableAt = -1;
 
         /** The step's scan reached its end: next is done, its tEnd tt, its pEnd l0. */
         boolean eod;
-
-        /** The record's transaction: its touch's bytes (Trans.dirtiedBytes). */
-        Trans trans;
 
         /** The row that the record's cut decision marks (in 'rows'), or null. */
         IterationInfo cut;
@@ -535,17 +576,52 @@ public class Reclaim implements Maintenance {
         long loads, loadBytes, valueLoads;
 
         /**
-         * Sets the row's charge from the touch (Trans.dirtiedBytes), once: the row's and the
-         * table's value transformations call it in Db.putKvs, after the touch and before the
-         * batch (bergdb 011-04, "Level 3 cost"; the bytes the batch makes dirty after the row,
-         * 028-26's after-row charge, are not charged: 031-06, rule 12).
+         * The charge of the step's index nodes (Maintenance.Plan.charge; bergdb 031-06,
+         * landing step 3): Db calls it once, after the batch and before the record is
+         * appended, with the bytes of the index nodes that the record makes dirty on the
+         * step's paths, those of its touch and those the batch made (Db.chargeStep). The
+         * row's rewritten becomes stepBase and them (bergdb 011-04, "Level 3 cost"; 028-26),
+         * in memory and, over REWRITTEN_DUE, in the row's text and the table's: the same
+         * width, so no node of the record changes its size.
          */
-        void finish() {
-            if (next != null && touchCharge == -1) {
-                touchCharge = trans.dirtiedBytes;
-                next.rewritten = stepBase + touchCharge;
+        void charge(long touchBytes, long madeBytes, long recordBytes) {
+            if (next == null || touchCharge != -1) {
+                throw new Bug("A step's charge without a step, or twice.");
+            }
+            touchCharge = touchBytes;
+            madeCharge = madeBytes;
+            recordDirty = recordBytes;
+            next.rewritten = stepBase + touchBytes + madeBytes;
+            next.chargeDue = false;
+            final byte[] digits = StringUtil.toBytes(IterationInfo.fixedDigits(next.rewritten));
+            if (rowBytes == null || rowAt < 0) {
+                throw new Bug("A step's row without its charge's place.");
+            }
+            System.arraycopy(digits, 0, rowBytes, rowAt, REWRITTEN_DIGITS);
+            if (tableBytes != null) {
+                if (tableAt < 0) {
+                    throw new Bug("A step's table without its charge's place.");
+                }
+                System.arraycopy(digits, 0, tableBytes, tableAt, REWRITTEN_DIGITS);
             }
         }
+    }
+
+    /** Where the step's row's rewritten, REWRITTEN_DUE, is in a row's or a table's text. */
+    private static int dueAt(byte[] text) {
+        final byte[] due = StringUtil.toBytes("rewritten=" + REWRITTEN_DUE + "\n");
+        int at = -1;
+        for (int i = 0; i + due.length <= text.length; i++) {
+            int j = 0;
+            while (j < due.length && text[i + j] == due[j]) j++;
+            if (j == due.length) {
+                if (at != -1) {
+                    throw new Bug("Two rows of a record with a charge due.");
+                }
+                at = i + "rewritten=".length();
+            }
+        }
+        return at;
     }
     
     /**
@@ -590,8 +666,6 @@ public class Reclaim implements Maintenance {
         final RecordPlan p = new RecordPlan();
         p.part = t.part;
         p.tt = t.tt;
-        p.trans = t;
-        p.touchCharge = -1;
         p.l0 = db.getStreamLength();
         p.a = t.part ? appA : p.l0;
         p.rows = new ArrayList<IterationInfo>(table.rows.size() + 1);
@@ -631,11 +705,27 @@ public class Reclaim implements Maintenance {
             final long allowed = fractionOf(p.l0 - current.pStart, internalFraction)
                     - current.rewritten;
             if (allowed > MIN_STEP_SIZE && maxCopies > 0) {
-                planStep(p, current, Math.min(allowed, MAX_STEP_SIZE), kvs, maxCopies); // S
+                planStep(p, current, Math.min(allowed, commitStepSize(p.l0)), kvs,
+                        maxCopies);                                     // S
             }
         }
         planSafe(p);                                                // P
         planCut(p, p.tt);                                           // C
+    }
+
+    /**
+     * The most bytes that a commit's step scans, besides its allowance (bergdb 031-06,
+     * landing step 3; 028-71): MAX_STEP_SIZE, or STEP_GROWTH_FACTOR times the allowance that
+     * the application's last record and the records after it added, fractionOf(l0 - a), if
+     * that is more. A function of the stream before the record: a (appA) and L0. Until
+     * 031-06's landing, step 3, MAX_STEP_SIZE: a step of at most 16 kB a commit, whatever the
+     * commit's size, so that under commits much larger than that reclaim fell behind its
+     * fraction and the stream kept grew with the commits' size (review F3).
+     */
+    long commitStepSize(long l0) {
+        final long last = appA < 0 ? 0 : Math.max(0, l0 - appA);
+        return Math.max(MAX_STEP_SIZE,
+                STEP_GROWTH_FACTOR * fractionOf(last, internalFraction));
     }
 
     /**
@@ -657,10 +747,13 @@ public class Reclaim implements Maintenance {
         }
         if (p.next != null) {
             final RecordPlan q = p;
+            // The step's charge is due until the batch is made (charge(); REWRITTEN_DUE).
+            p.next.chargeDue = true;
             final Kv row = new Kv(currentKey, new byte[0], null, new ValueTransformation() {
                 public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
-                    q.finish();
-                    return StringUtil.toBytes(q.next.serialize(q.a));
+                    q.rowBytes = StringUtil.toBytes(q.next.serialize(q.a));
+                    q.rowAt = dueAt(q.rowBytes);
+                    return q.rowBytes;
                 }
             });
             row.coreWrite = true;
@@ -672,11 +765,14 @@ public class Reclaim implements Maintenance {
             final RecordPlan q = p;
             final Kv t = new Kv(tableKey, new byte[0], null, new ValueTransformation() {
                 public byte[] transform(long transTime, byte[] inputValue, byte[] previous) {
-                    q.finish();
                     byte[] b = StringUtil.toBytes(serializeTable(q.rows, q.a));
                     if (q.pad > 0) {
                         b = Arrays.copyOf(b, b.length + q.pad);
                         Arrays.fill(b, b.length - q.pad, b.length, (byte) ' ');
+                    }
+                    if (q.next != null) {
+                        q.tableBytes = b;           // the step's row in it: charge()
+                        q.tableAt = dueAt(b);
                     }
                     return b;
                 }
@@ -732,7 +828,7 @@ public class Reclaim implements Maintenance {
         final RecordPlan p = (RecordPlan) plan;
         if (p != null) {
             assert p.l0 == t.tpos : p.l0 + " " + t.tpos;
-            p.finish();
+            assert p.next == null || !p.next.chargeDue : "the step's charge not made";
             table.rows.clear();
             table.rows.addAll(p.rows);
             if (p.next != null && stats != null) {
@@ -745,6 +841,7 @@ public class Reclaim implements Maintenance {
                 applyCut(p);
             }
         }
+        publishWarm(t.nextPos);
         cutIfDurable();
     }
     
@@ -760,7 +857,11 @@ public class Reclaim implements Maintenance {
         st.dirtiedNodes += t.dirtiedNodes;
         st.dirtiedStored += t.dirtiedBytes;
         st.dirtiedBytes += t.dirtiedBytes;
-        st.dirtiedAfterRow += t.dirtiedBytes - p.touchCharge;
+        // bergdb 031-06, landing step 3: the index bytes that the record made dirty and its
+        // step is not charged (its action's, the record's top node, the table's path).
+        st.dirtiedAfterRow += p.recordDirty - p.touchCharge - p.madeCharge;
+        st.charged += p.touchCharge + p.madeCharge;
+        st.madeCharged += p.madeCharge;
         st.maxStepDirtied = Math.max(st.maxStepDirtied, t.dirtiedNodes);
         st.loads += p.loads;
         st.loadBytes += p.loadBytes;
@@ -1236,6 +1337,119 @@ public class Reclaim implements Maintenance {
         p.valueLoads = maintenance.valueLoads();
     }
         
+    /**
+     * What a warm-up before the write lock reads of reclaim's memory (bergdb 031-06, landing
+     * step 3): the running iteration's row after the last record, a copy that no one
+     * changes, the stream's length after that record, and a then. Published by apply() and
+     * initFromDb() under the write lock; read without it.
+     */
+    private static final class Warm {
+        final IterationInfo row;
+        final long length, a;
+
+        Warm(IterationInfo row, long length, long a) {
+            this.row = row;
+            this.length = length;
+            this.a = a;
+        }
+    }
+
+    private volatile Warm warm;
+
+    private void publishWarm(long length) {
+        final IterationInfo it = currentIteration();
+        warm = it == null ? null : new Warm(it.copy(), length, appA);
+    }
+
+    /**
+     * The warm-up of a step's scan (Maintenance.warmup; bergdb 031-06, landing step 3; the
+     * review's F4), before the write lock, for a commit 't' or, with t null, a part of
+     * maintain(): if an iteration runs and, for a commit, its allowance as the last record
+     * left it is above MIN_STEP_SIZE, the KVs that the next step's scan would meet (planStep)
+     * are read as a reader reads them, at the latest time, with the node table's follower, so
+     * that the index nodes and the values that the scan follows are in memory when it runs
+     * under the lock; the scan's maintenance follower takes an object in memory as it is
+     * (NodeCollection.MaintenanceFollower). The warm-up decides nothing: what the plan
+     * scans, copies and charges does not depend on what is in memory (the step's counts are
+     * of the KVs and the index nodes met, resident or not). Another record may come between
+     * the warm-up and the lock, so it may warm what the plan then does not read. It stops,
+     * as the scan does, after writeSize bytes of KVs stored before pStart, at the iteration's
+     * endKey or at the step reserve's index nodes. A read that a cut overtakes ends it, as the
+     * transaction's own warm-up (Db.warmup). What it costs: a second scan of the step's
+     * range, by the committing thread outside the lock, and the step's nodes in memory
+     * until the eviction takes them (until 2026-10-17 every step left them there, bergdb item
+     * 001, WP R8, M28).
+     */
+    public void warmup(Trans t) {
+        final Warm w = warm;
+        if (w == null) {
+            return;
+        }
+        final Db.TestHooks hooks = Db.testHooks;
+        if (hooks != null && !hooks.stepWarmup()) {
+            return;
+        }
+        final IterationInfo it = w.row;
+        final long writeSize;
+        if (t == null) {
+            writeSize = MAX_STEP_SIZE;
+        } else {
+            final long allowed = fractionOf(w.length - it.pStart, internalFraction)
+                    - it.rewritten;
+            if (allowed <= MIN_STEP_SIZE) {
+                return;
+            }
+            final long last = w.a < 0 ? 0 : Math.max(0, w.length - w.a);
+            writeSize = Math.min(allowed, Math.max(MAX_STEP_SIZE,
+                    STEP_GROWTH_FACTOR * fractionOf(last, internalFraction)));
+        }
+        if (it.endKey.length == 0
+                || (it.lastKey != null && Keys.compareKeys(it.lastKey, it.endKey) >= 0)) {
+            return;
+        }
+        final long maxNodes = Math.max(1, stepReserve / stepNodeBytes());
+        final GetMany g = db.newGetMany();
+        final bergdb.dag.PointerFollower follower = g.gd.pointerFollower;
+        final Set<Node> nodes = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        g.gd.pointerFollower = new bergdb.dag.PointerFollower() {
+            public Node followPointer(Node predecessor, int pointerIndex,
+                    bergdb.dag.OpData op) {
+                final Node n = follower.followPointer(predecessor, pointerIndex, op);
+                if (n != null && n.isIndexNode()) nodes.add(n);
+                return n;
+            }
+
+            public RuntimeException cycle(String message) {
+                return follower.cycle(message);
+            }
+        };
+        g.startKey = it.lastKey;
+        g.inclusive = false;
+        g.lookupTime = Long.MAX_VALUE;
+        g.endKey = it.endKey;
+        g.valuesBefore = it.pCut;
+        g.stopCondition = new GetMany.StopCondition() {
+            private long size = 0;
+
+            public int handleKvt(Kvt kvt) {
+                final boolean stored = Spos.isValid(kvt.spos) && !Spos.isVpos(kvt.spos);
+                if (stored && kvt.spos < it.pStart) {
+                    size += kvt.key.length * 8 + (kvt.spos < it.pCut ? kvt.value.length : 0)
+                            + 100;
+                }
+                return size > writeSize || nodes.size() > maxNodes ? STOP : CONTINUE;
+            }
+
+            public void eod() {
+            }
+        };
+        try {
+            db.getMany(g);
+        } catch (bergdb.pub.util.LookupTimeNotAvailableException e) {
+            // A cut overtook the read (Db.warmup): the plan reads again under the lock.
+        }
+    }
+
     /** Whether the action's KVs 'kvs', in key order, have one at 'key'. */
     private static boolean writtenBy(Kv[] kvs, long[] key) {
         int lo = 0, hi = kvs.length - 1;
@@ -1362,6 +1576,7 @@ public class Reclaim implements Maintenance {
         // own position for a commit's (Codex's E2: a key of reclaim's, not a copy, is the
         // witness; an empty commit has none and tells by its position).
         appA = storedA == Long.MIN_VALUE || !isOwnRecord(last) ? last.tpos : storedA;
+        publishWarm(db.getStreamLength());
     }
     
     /**
@@ -1610,8 +1825,12 @@ public class Reclaim implements Maintenance {
             long dirtiedBytes;          // Their size in the stream then.
             long maxStepDirtied;        // Most index nodes one step made dirty.
             long dirtiedStored;         // Bytes of them counted in the allowance.
-            long dirtiedAfterRow;       // Of dirtiedBytes, those made dirty after the row
-                                        // was made: PE's new nodes (bergdb 028-26).
+            long dirtiedAfterRow;       // The index bytes that the steps' records made dirty
+                                        // and the steps were not charged (bergdb 028-26;
+                                        // since 031-06's landing, step 3: the actions', the
+                                        // top nodes, the table's path; at the batch's end).
+            long charged;               // The index bytes charged (RecordPlan.charge).
+            long madeCharged;           // Of them, the nodes the batches made (028-26).
             long rowRecords;            // The rows stored again for them (028-26).
             long droppedCopies;         // Copies at a key of the action's (bergdb 031-06).
             long loads;                 // Versions the steps loaded from the stream (WP J6).
@@ -1731,6 +1950,13 @@ public class Reclaim implements Maintenance {
         boolean done;
         boolean cut;        // The stream was cut at pCut (2026-10-13).
         long rewritten;     // Approximate bytes rewritten so far (2026-10-13).
+        
+        /**
+         * The row is the step's of a record whose charge is not yet made (RecordPlan.charge;
+         * bergdb 031-06, landing step 3): serialize() writes REWRITTEN_DUE for rewritten. Not
+         * copied by copy() or set().
+         */
+        boolean chargeDue;
         long pEnd = -1;     // Position of the last step, when done (2026-10-13).
         long pSafe = -1;    // See the class comment; -1 until known (2026-10-13).
         long a = Long.MIN_VALUE;    // "a" as read, Long.MIN_VALUE if none (bergdb 031-04).
@@ -1798,7 +2024,9 @@ public class Reclaim implements Maintenance {
             
             m.put("done", done ? "true" : "false");
             m.put("cut", cut ? "true" : "false");
-            m.put("rewritten", "" + rewritten);
+            // A fixed width (REWRITTEN_DIGITS; bergdb 031-06, landing step 3), so that the
+            // step's charge can be written into the record after its batch.
+            m.put("rewritten", chargeDue ? REWRITTEN_DUE : fixedDigits(rewritten));
             m.put("pEnd", "" + pEnd);
             m.put("pSafe", "" + pSafe);
             
@@ -1879,11 +2107,27 @@ public class Reclaim implements Maintenance {
             
             // Missing before 2026-10-13:
             cut = "true".equals(m.get("cut"));
-            rewritten = m.hasLong("rewritten") ? m.getLong("rewritten") : 0;
+            // Refused if not a long (bergdb 031-06, landing step 3): REWRITTEN_DUE, a charge
+            // never made, is none.
+            rewritten = m.get("rewritten") == null ? 0 : getLong(m, "rewritten");
             pEnd = m.hasLong("pEnd") ? m.getLong("pEnd") : pStart;
             pSafe = m.hasLong("pSafe") ? m.getLong("pSafe") : -1;
             pCut = m.hasLong("pCut") ? m.getLong("pCut") : pStart;     // Since 2026-10-13.
             a = m.hasLong("a") ? m.getLong("a") : Long.MIN_VALUE;      // bergdb 031-04
+        }
+        
+        /**
+         * A row's rewritten as stored: REWRITTEN_DIGITS decimal digits, zeros first (bergdb
+         * 031-06, landing step 3). A negative charge or one of more digits is a Bug.
+         */
+        static String fixedDigits(long v) {
+            final String s = Long.toString(v);
+            if (v < 0 || s.length() > REWRITTEN_DIGITS) {
+                throw new Bug("A row's rewritten out of range: " + v + ".");
+            }
+            final StringBuilder b = new StringBuilder(REWRITTEN_DIGITS);
+            for (int i = s.length(); i < REWRITTEN_DIGITS; i++) b.append('0');
+            return b.append(s).toString();
         }
         
         /** A key as endKey is stored: its segments, decimal, one space between (026-05). */
@@ -3193,10 +3437,11 @@ public class Reclaim implements Maintenance {
             Assert.assertEquals(row.pStart, st.pStart);
             Assert.assertTrue("steps " + st.steps, st.steps >= 2);
             Assert.assertTrue("index bytes " + st.dirtiedStored, st.dirtiedStored > 0);
-            // bergdb 031-05, 031-06: the bytes made dirty after the row are not charged
-            // (028-26's after-row charge is not made).
-            Assert.assertEquals(st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedStored
-                    - st.dirtiedAfterRow, row.rewritten);
+            // bergdb 031-06, landing step 3: the index nodes that the steps' records made dirty
+            // on their paths, as the batches left them (RecordPlan.charge).
+            Assert.assertTrue("charged " + st.charged, st.charged > 0);
+            Assert.assertEquals(st.valueBytes + VALUE_NODE_BYTES * st.values + st.charged,
+                    row.rewritten);
             db.stop();
         }
         
@@ -3212,6 +3457,13 @@ public class Reclaim implements Maintenance {
          * few at node size 8, 49,824 of 211,520 at node size 30. Now the charge, in memory
          * after each user transaction, in the row stored then, and in the row stored done,
          * is every byte that the steps made dirty.
+         * 
+         * <p>bergdb 031-06, landing step 3: 031-06 made the step a part of the commit's
+         * record and dropped 028-26's second record of the row (rule 12); the charge is now
+         * made after the batch, in the record (RecordPlan.charge, the fixed-width patch): the
+         * steps' charge holds nodes that the batches made, and the index bytes of the
+         * records that the steps are not charged are the commits' own (one put each, off
+         * the steps' paths), at most a third of what the steps are charged.</p>
          */
         @Nano
         public static void testAllowanceCountsNodesMadeAfterTheRow() {
@@ -3253,11 +3505,9 @@ public class Reclaim implements Maintenance {
                             continue;       // no step yet
                         }
                         Stats.Iteration st = stats.iterations.get(0);
-                        // bergdb 031-05, 031-06: the bytes made dirty after the row are
-                        // not charged (028-26's after-row charge is not made).
                         Assert.assertEquals("M=" + nodeSize + ", charged in memory",
-                                st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes
-                                - st.dirtiedAfterRow, cur.rewritten);
+                                st.valueBytes + VALUE_NODE_BYTES * st.values + st.charged,
+                                cur.rewritten);
                         byte[] stored = db.getOne(Long.MAX_VALUE, currentKey, db.newGetData());
                         // a as the row was stored, at its step: a commit without a step
                         // moves a on (bergdb 031-04).
@@ -3272,11 +3522,13 @@ public class Reclaim implements Maintenance {
                     IterationInfo row = reclaim.lastDoneRow();
                     Stats.Iteration st = stats.iterations.get(0);
                     Assert.assertTrue("M=" + nodeSize + ", steps " + st.steps, st.steps >= 2);
-                    Assert.assertTrue("M=" + nodeSize + ", no node made after a row",
-                            st.dirtiedAfterRow > 0);
+                    Assert.assertTrue("M=" + nodeSize + ", no node made after a row charged",
+                            st.madeCharged > 0);
+                    Assert.assertTrue("M=" + nodeSize + ", not charged " + st.dirtiedAfterRow
+                            + " of " + st.charged, 3 * st.dirtiedAfterRow <= st.charged);
                     Assert.assertEquals("M=" + nodeSize + ", the row stored done",
-                            st.valueBytes + VALUE_NODE_BYTES * st.values + st.dirtiedBytes
-                            - st.dirtiedAfterRow, row.rewritten);
+                            st.valueBytes + VALUE_NODE_BYTES * st.values + st.charged,
+                            row.rewritten);
                 } finally {
                     db.stop();
                 }
@@ -3543,10 +3795,38 @@ public class Reclaim implements Maintenance {
          * iterations still end and cut, the same KVs are kept, and the lookups from the first
          * available time on are right, also after a restart from the cut stream. With the
          * default reserve no step is split. Reclaim's loads are counted: after eviction the
-         * steps read from the stream.
+         * steps read from the stream. Without the warm-up of a step's reads before the lock
+         * (bergdb 031-06, landing step 3), which would have them in memory.
          */
         @Nano
         public static void testStepReserveSplitsSteps() {
+            final Db.TestHooks saved = Db.testHooks;
+            Db.testHooks = noStepWarmup();
+            try {
+                stepReserveSplitsSteps();
+            } finally {
+                Db.testHooks = saved;
+            }
+        }
+        
+        /**
+         * Test hooks that turn the warm-up of a step's reads before the write lock off
+         * (Db.TestHooks.stepWarmup; bergdb 031-06, landing step 3), for the tests of what a
+         * step's scan loads under the lock.
+         */
+        static Db.TestHooks noStepWarmup() {
+            return new Db.TestHooks() {
+                public boolean stepWarmup() {
+                    return false;
+                }
+                public void transExecuted(Db.ExecuteData x) {}
+                public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                public void nodeTouched(Node node) {}
+                public void nodeReplaced(Node node) {}
+            };
+        }
+        
+        private static void stepReserveSplitsSteps() {
             long[] steps = new long[2];
             long[] maxNodes = new long[2];
             for (int pass = 0; pass < 2; pass++) {
@@ -3661,10 +3941,90 @@ public class Reclaim implements Maintenance {
          * scans walk KVs stored at pCut or later (put since the iteration began, or in the
          * iteration before) and load none of their values, and they load at most the values
          * they rewrite. Before 026-09 they loaded such values for their length (the test
-         * failed: the first iteration loaded 69 values and rewrote 15).
+         * failed: the first iteration loaded 69 values and rewrote 15). Without the warm-up
+         * of a step's reads before the lock (bergdb 031-06, landing step 3), which would have
+         * them in memory; testWarmupBeforeTheLock has it.
          */
         @Nano
         public static void testScanLoadsOnlyValuesToRewrite() {
+            final Db.TestHooks saved = Db.testHooks;
+            Db.testHooks = noStepWarmup();
+            try {
+                scanLoadsOnlyValuesToRewrite();
+            } finally {
+                Db.testHooks = saved;
+            }
+        }
+        
+        /**
+         * bergdb 031-06, landing step 3 (the review's F4): the warm-up of a step's reads before
+         * the write lock (Maintenance.warmup). With every object evicted after every
+         * transaction, single puts of 1 to 30 bytes on 200 random keys, and maintain() calls,
+         * once without the warm-up and once with it: the same stream, byte for byte, and the
+         * same steps; without it the steps' scans load versions from the stream under the
+         * lock, with it at most a tenth as many.
+         */
+        @Nano
+        public static void testWarmupBeforeTheLock() {
+            final Db.TestHooks saved = Db.testHooks;
+            final CutStream[] streams = new CutStream[2];
+            final long[] loads = new long[2], steps = new long[2], values = new long[2];
+            try {
+                for (int pass = 0; pass < 2; pass++) {
+                    Db.testHooks = pass == 0 ? noStepWarmup() : null;
+                    CoreTestClock clock = new CoreTestClock();
+                    long time = Clock.UNITS_PER_SEC;
+                    clock.setTime(time);
+                    streams[pass] = new CutStream();
+                    Db db = Db.builder().testSetup(streams[pass]).clock(clock).maxNodeSize8()
+                            .evictionSchedule(Eviction.Schedule.EVERY, 1).start();
+                    try {
+                        db.setStartupDistance(2000);
+                        db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                        Stats stats = db.internal().reclaim().enableStats();
+                        java.util.Random r = new java.util.Random(26);
+                        for (int i = 0; i < 3000; i++) {
+                            time += Clock.UNITS_PER_SEC / 20;
+                            clock.setTime(time);
+                            byte[] v = new byte[1 + r.nextInt(30)];
+                            r.nextBytes(v);
+                            db.execute(db.trans().put("/k/" + r.nextInt(200), v).build());
+                            if (i % 97 == 0) {
+                                db.maintain(200);
+                            }
+                        }
+                        db.sync(SyncLevel.ORDINARY);
+                        for (Stats.Iteration st : stats.iterations) {
+                            loads[pass] += st.loads;
+                            steps[pass] += st.steps;
+                            values[pass] += st.values;
+                        }
+                    } finally {
+                        db.stop();
+                    }
+                }
+            } finally {
+                Db.testHooks = saved;
+            }
+            Assert.assertEquals(streams[0].getLength(), streams[1].getLength());
+            Assert.assertEquals(streams[0].getFirstPos(), streams[1].getFirstPos());
+            final int n = (int) (streams[0].getLength() - streams[0].getFirstPos());
+            final byte[] b0 = new byte[n], b1 = new byte[n];
+            try {
+                streams[0].read(streams[0].getFirstPos(), b0, 0, n);
+                streams[1].read(streams[1].getFirstPos(), b1, 0, n);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            Assert.assertTrue("the same bytes", Arrays.equals(b0, b1));
+            Assert.assertEquals(steps[0], steps[1]);
+            Assert.assertEquals(values[0], values[1]);
+            Assert.assertTrue("steps " + steps[0], steps[0] > 10);
+            Assert.assertTrue("loads without the warm-up " + loads[0] + ", with it " + loads[1],
+                    loads[0] > 0 && 10 * loads[1] <= loads[0]);
+        }
+        
+        private static void scanLoadsOnlyValuesToRewrite() {
             CoreTestClock clock = new CoreTestClock();
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);

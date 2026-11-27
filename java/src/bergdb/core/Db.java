@@ -910,6 +910,9 @@ public class Db implements AutoCloseable {
         while (spent < limit) {
             long cost = 0, durableAt = -1;
             if (giveWay) giveWayToWriters();
+            if (!reclaimDone) {
+                warmupStep(null);
+            }
             synchronized (writeLock) {
                 assertDbStateIsActive("maintain");
                 if (giveWay && writersWaiting.get() > 0) {
@@ -2978,6 +2981,9 @@ public class Db implements AutoCloseable {
         }
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
+        if (!t.isInternal() && !t.noMaintenance) {
+            warmupStep(t);
+        }
         final Before before = new Before(t.tt);     // a refusal gives it back (giveBack)
         
         writersWaiting.incrementAndGet();
@@ -3850,6 +3856,25 @@ public class Db implements AutoCloseable {
     }
 
     /**
+     * The reads of the step that the record of 't' (a commit) or of the next part of
+     * maintain() (t null) may carry, before the write lock (Maintenance.warmup; bergdb 031-06,
+     * landing step 3; the review's F4): only what is in memory changes, so that the plan's
+     * scan under the lock meets its nodes there. On a database that is not active it reads
+     * nothing, and a stop or a failure that comes during it ends it: the lock's check then
+     * refuses the action as before (executeLocked()).
+     */
+    private void warmupStep(Trans t) {
+        if (state != DbState.ACTIVE) {
+            return;
+        }
+        try {
+            maintenance.warmup(t);
+        } catch (IllegalDbStateException e) {    // also a DbStoppingException, DbFailedException
+            // Refused or failed under the lock (assertDbStateIsActive("execute")).
+        }
+    }
+    
+    /**
      * Sets the KVs directly to the in-memory data structure. This method runs with exclusive 
      * write access to the data structure (synchronized (writeLock)). However, there may be
      * concurrent readers that read with a lookup time strictly less than the transaction time
@@ -3895,10 +3920,10 @@ public class Db implements AutoCloseable {
         // tt, which is the value before the transaction, as the transaction has one operation
         // a key. Since record format 8 the Dag gets the transaction's operations as one batch
         // (Dag.putKvs, the writer PE; bergdb 026-25), so a value transformation runs before any
-        // operation is applied: a reclaim step's row stores the bytes that the step's touch made
-        // dirty (Trans.dirtiedBytes); Reclaim.step adds those of the nodes that the batch makes
-        // dirty after it once the step has committed, and stores the row again (bergdb
-        // 028-26).
+        // operation is applied: a reclaim step's row is made with its charge due, at a fixed
+        // width, and chargeStep() writes the bytes of the index nodes that the record made
+        // dirty on the step's paths into it after the batch (bergdb 031-06, landing step 3;
+        // 028-26 stored the row again in a record of its own, which 031-06 dropped).
         // The record holds the KVs put, and the startup's rerun gives them to the Dag in their
         // stored order, this order, and does not sort.
         final long[][] keys = new long[kvs.length][];
@@ -3923,7 +3948,11 @@ public class Db implements AutoCloseable {
         endOfOp(false);
         x.putData.clearFast();
         
+        final int touched = touchMarks;     // endOfTrans() clears it
         endOfTrans();
+        if (x.trans.touch && x.plan != null && x.plan.touchKeys != null) {
+            chargeStep(touched);            // bergdb 031-06, landing step 3
+        }
         if (transCheck != null) transCheck.end(dag.getTopDs().getSuperRoot(), kvs);
         x.putData.clear();
     }
@@ -4111,9 +4140,9 @@ public class Db implements AutoCloseable {
      * the stream is the same.
      * 
      * <p>Not for reclaim's internal transactions, whose transformations run in putKvs(): the
-     * row of a reclaim step stores the bytes of the index nodes that the step's touch made
-     * dirty (Reclaim.step, Trans.dirtiedBytes), known only there; a step keeps its
-     * values within the limits itself.</p>
+     * row of a reclaim step is made after the touch, and its charge is written into it after
+     * the batch (chargeStep(); bergdb 031-06, landing step 3); a step keeps its values within
+     * the limits itself.</p>
      * 
      * <p>A transformation that throws a RuntimeException, a value over MAX_VALUE_BYTES (L4),
      * keys and values of more than MAX_TRANS_BYTES (L5), or value nodes of more than
@@ -4300,6 +4329,63 @@ public class Db implements AutoCloseable {
         if (counter != null) {
             counter.finish();
         }
+    }
+
+    /**
+     * The charge of a step's index nodes (bergdb 031-06, landing step 3; 028-26), after the
+     * record's batch and before its record is appended: the index nodes that the record makes
+     * dirty on the step's paths, those of its copies' keys and its row's (Plan.touchKeys), each
+     * at its size now, as Trans.dirtiedBytes counts a node: the nodes that its touch made dirty
+     * (the first 'touched' of the got-dirty nodes, which stay dirty also if the batch replaced
+     * them), and the key nodes that the batch made dirty that are on those paths after it, the
+     * new nodes in place of those it replaced (PE's replacements, cuts and joins). Not charged:
+     * the record's top node, which every record makes, whatever it carries, and the nodes off
+     * the step's paths, its action's and its table's. The plan writes the charge into the row
+     * (Plan.charge). A function of the record's KVs and the state before it: the touch and the
+     * batch are, and the paths are walked in the order of the keys. Until step 3 the row held
+     * the touch's bytes as counted before the batch, and the bytes the batch made dirty were
+     * charged nowhere (031-06, rule 12; 25 to 40 % of the charge, section 4.6).
+     */
+    private void chargeStep(int touched) {
+        final java.util.ArrayList<Node> set = x.transInfo.gotDirtyNodes;
+        long touchBytes = 0, recordBytes = 0;
+        final Set<Node> made = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
+        for (int i = 0; i < set.size(); i++) {
+            final Node n = set.get(i);
+            final long b = dirtyBytes(n);
+            recordBytes += b;
+            if (i < touched) {
+                touchBytes += b;
+            } else if (!n.isTopNode()) {
+                made.add(n);
+            }
+        }
+        final long[] madeBytes = new long[1];
+        if (!made.isEmpty()) {
+            final GetData gd = dag.newGetData();
+            gd.pointerFollower = x.putData.pointerFollower;
+            gd.accessData = x.putData.accessData;
+            gd.pointerListener = new Dag.PointerListener() {
+                public void superRootAccessed(TopNode superRoot) {}
+
+                public void pointerFollowed(Node predecessor, int pointerIndex, Node result,
+                        int pointerType) {
+                    if (result != null && made.remove(result)) {
+                        madeBytes[0] += dirtyBytes(result);
+                    }
+                }
+            };
+            for (long[] key : x.plan.touchKeys) {
+                dag.followPath(x.trans.tt, key, gd);
+            }
+        }
+        x.plan.charge(touchBytes, madeBytes[0], recordBytes);
+    }
+
+    /** An index node's size as Trans.dirtiedBytes counts it (makeDirtyIfNeeded()). */
+    private static long dirtyBytes(Node node) {
+        return node.isTopNode() ? StoredTopNode.getByteSize((TopNode) node)
+                : StoredKeyNode.getByteSize((KeyNode) node);
     }
 
     /**
@@ -4649,6 +4735,16 @@ public class Db implements AutoCloseable {
          * thread's state until then, a sample that a loaded machine could keep RUNNABLE.
          */
         public default void givingWay() {}
+        
+        /**
+         * bergdb 031-06, landing step 3: whether a commit or a part of maintain() warms the
+         * reads of the step that its record may carry before the write lock
+         * (Maintenance.warmup). True, the default; false for probes that count the reads
+         * under the lock without it.
+         */
+        public default boolean stepWarmup() {
+            return true;
+        }
 
         /** The transaction being executed created a value node. */
         public void valueNodeCreated(ValueNode node, long[] key);

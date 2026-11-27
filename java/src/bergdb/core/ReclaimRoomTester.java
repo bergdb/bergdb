@@ -268,16 +268,22 @@ public class ReclaimRoomTester {
      * Seed 3 since 2026-11-27: with the take bounded by the room of the record's set
      * (TransSeq.SetRoom; review-main, R2) the run of seed 1 cut 252 steps to their first copy
      * and left none out of a commit's record, which the run must show; seed 3 cuts 117 and
-     * leaves 2 out.
+     * leaves 2 out. Seed 2 since 031-06's landing, step 3 (the charge after the batch, a
+     * commit's step up to twice the last record's allowance): seed 3 cut 93 and left none
+     * out; seed 2 cuts 66 and leaves 2 out.
      */
     @Nano("f")
     public static void testSustainedLargeActionsNode8() {
-        sustained(true, 100 * 1000, 3, 10, 80, 2000);
+        sustained(true, 100 * 1000, 2, 10, 80, 2000);
     }
 
+    /**
+     * Seed 6 since 031-06's landing, step 3: seed 2 cut 94 steps to their first copy and left
+     * none out; seed 6 cuts 96 and leaves 5 out.
+     */
     @Nano("f")
     public static void testSustainedLargeActionsNode30() {
-        sustained(false, 200 * 1000, 2, 60, 250, 20000);
+        sustained(false, 200 * 1000, 6, 60, 250, 20000);
     }
 
     /**

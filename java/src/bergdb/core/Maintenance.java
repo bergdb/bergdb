@@ -41,6 +41,17 @@ interface Maintenance {
     void apply(Plan plan, Trans t);
 
     /**
+     * Before the write lock, for a commit (a user transaction that is not a setter's) or, with
+     * t null, a part of maintain() (bergdb 031-06, landing step 3; the review's F4): reads, as
+     * a reader does, what the plan of the next record is likely to read, so that it is in
+     * memory when the plan reads it under the lock. It changes only what is in memory, never
+     * what plan() decides or what a record holds; it may read nothing, or what no plan then
+     * reads. Does nothing by default.
+     */
+    default void warmup(Trans t) {
+    }
+
+    /**
      * The KVs a record carries besides its action's, and what Db needs to write them. Made
      * by plan(), read by Db, given back to apply().
      */
@@ -73,6 +84,16 @@ interface Maintenance {
 
         /** The bytes the plan's scan read, by deterministic counts (a part's cost). */
         long readBytes;
+
+        /**
+         * After the batch and before the record is appended, for a plan with a touch (a
+         * step): the bytes of the index nodes that the record makes dirty on the step's paths,
+         * by its touch and by its batch, and of all those that it makes dirty (bergdb 031-06,
+         * landing step 3; Db.chargeStep). The plan writes the step's charge into the KVs it
+         * made, at their fixed width, so that the record stores it.
+         */
+        void charge(long touchBytes, long madeBytes, long recordBytes) {
+        }
     }
 
     /** The empty maintenance: no record carries any (bergdb 031-06). */
