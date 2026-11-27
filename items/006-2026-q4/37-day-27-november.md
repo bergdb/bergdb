@@ -135,6 +135,40 @@ The lead's overview (08:30), its conclusions:
   feasibility of (d) and of (e), each in a clone of 031-05's
   prototype. Their reports become a subitem of 031 if Frans takes one
   of the two.
+* 09:53 to 10:40 Frans's questions on the code, answered in the
+  session. `Db.execute()` and `Db.maintain()` meet in `Reclaim`, whose
+  writes are internal transactions through `Db.execute()`. The Pub layer
+  adds a transaction's index entries before the Core's `execute()`, with
+  the Core API only (`RwEnvironmentImp.indexEntries`). By the code, (e)
+  holds the write lock no longer than `main`; a commit that carries a
+  step becomes readable later, by the time that the step's planning
+  takes. To be measured in a prototype.
+* 10:05 The study of (e), one record, done: feasible, with three warts.
+  * A copy flag in the value-node header.
+  * 028-26's after-row charge stays dropped.
+  * A larger rework than (c): reclaim plans KVs for the commit's
+    record; the trace format, C-STEP and the contract's `StepTx`
+    change.
+  * A lag of one record for the decisions that need a record's own
+    length.
+  * `T1_crash`, `T2_restart` and `T12_restartCut` apply as they are.
+* 10:17 The study of (d), the compound unit, done: it works, with three
+  warts.
+  * It needs the mark as the record's last byte, appended last, and a
+    cut of the void tail (the start decides it, the first append cuts):
+    new code in the storage.
+  * On the prototype a stop right after a user record returned from
+    `execute()` in 30 of 30 runs with no maintenance written; under (d)
+    that would be an acknowledged commit dropped at the next start.
+  * No change in Lean is required.
+* 10:20 Neither (d) nor (e) is built or gated. The lead recommends (e)
+  to Frans: it leaves the storage and the recovery as they are, has one
+  rule (an accepted action appends one record) and the smallest proof
+  work; (d) is the second choice. The two reports are outside the
+  repository until Frans chooses; they become subitems of 031 with his
+  choice.
+* 10:45 Codex reviews the two studies against the code, for a second
+  opinion on (c), (d) and (e).
 
 
 ## 4. Waiting for Frans
@@ -158,20 +192,27 @@ details are in the items, cited by ID and section.
   * (d) The user's record and its maintenance records as one compound
     unit, marked in the user's record; a start drops an incomplete
     unit as it drops a torn record (Frans, 09:28). No call and no
-    start writes for another; the format changes. Feasibility studied
-    today.
+    start writes for another; the format changes. Studied today
+    (10:17): it works, with three warts. It needs the mark as the
+    record's last byte, appended last, and a cut of the void tail (the
+    start decides it, the first append cuts): new code in the storage.
+    No change in Lean is required.
   * (e) The maintenance inside the user's record: one record a commit
-    (Frans, 09:15). The record limit and a step's put of a key that
-    the transaction writes are to be solved. Feasibility studied today.
-  * The day's focus (Frans, 09:38; section 2): no default goes ahead
-    until (d) and (e) are studied.
-  * Default until then: **(c)** (the reviewer on Fable, the lead; the
-    study recommends (b)). Every call and every start then leaves nothing
-    due: the clock is never held between calls (with (b), after about
-    10 % of the crash points), a call's first record is its own, and 80
-    to 100 of the prototype's 231 lines go. The cost: a start after a
-    crash appends up to one commit's maintenance; a read-only start
-    does not.
+    (Frans, 09:15). Studied today (10:05): feasible, with three warts
+    (a copy flag in the value-node header; 028-26's after-row charge
+    stays dropped; a larger rework than (c)). The step is sized to the
+    room that the transaction leaves, a copy of a key that the
+    transaction writes is dropped, and a decision that needs a record's
+    own length is made in the next record. The storage and the recovery
+    stay as they are.
+  * The day's focus (Frans, 09:38; section 2). Neither (d) nor (e) is
+    built or gated (section 3, 10:05 and 10:17).
+  * Default: **(e)**, the lead's recommendation; Frans decides (the
+    stream format changes: class 3). (d) is the second choice. (c), the
+    default until the studies (the reviewer on Fable; 031-05's study
+    recommends (b)), stays the fallback: every call and every start
+    then leaves nothing due, and a start after a crash appends up to
+    one commit's maintenance.
 * **A2. In 2026.7** (class 3: the scope and the Pub API). The design
   lands in Java with its tests in 2026.7: `maintain(int budget)`
   replaces `maintain()` in `Db` and `Database` (031-04, C1), and it
