@@ -35,7 +35,16 @@ Frans, 2026-11-27:
   operations) and the note of July 2012 (reclaim piggyback on the
   transactions, which allows a deterministic stream and no load when
   the database is not used; no background threads). Where they go:
-  section 4.4.
+  below.
+
+Gone ahead by default:
+
+* 09:15, where the notes of 2012 go (class 2; proposed by the lead at
+  08:41, section 4.4's D1 until then): a section "The origin" in
+  031-05 (its section 13) with the two notes quoted and dated, and one
+  sentence in `AGENTS.md`'s rule on Frans's notes: a passage may be
+  quoted, with its date, when Frans approves it. P2's text in 010 is
+  not touched: it waits for Frans (A4).
 
 The lead's overview (08:30), its conclusions:
 
@@ -75,14 +84,19 @@ The lead's overview (08:30), its conclusions:
   documents after), and the notes of 2012 may be quoted (section 2).
   The lead's proposal for where they go: section 4.4, by default at
   09:15.
+* 09:15 By default: D1 carried out (section 2): 031-05's section 13
+  and the sentence in `AGENTS.md`.
+* 09:19 Frans asked why reclaim's writes are records of their own and
+  not part of the user's record. An agent (Opus, xhigh, reading only)
+  searches the history for the reason.
 
 
 ## 4. Waiting for Frans
 
 Every open question, each with a default: whose it is, and why. The
 defaults of sections 4.1 to 4.3 have no time: nothing of them goes
-ahead before Frans has read the page. Section 4.4 has the one default
-with a time.
+ahead before Frans has read the page. Section 4.4 has the defaults
+with a time: none is open.
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
@@ -268,16 +282,5 @@ inside the code that fails the database (F7), both work of the landing.
 
 ### 4.4. By default, with a time
 
-* **D1. Where the notes of 2012 go** (class 2; proposed by the lead,
-  08:41). Frans allowed their quoting (section 2).
-  * A short section "The origin" in 031-05, with the two notes quoted
-    and dated: the deterministic stream of May 2012, and reclaim on
-    the transactions of July 2012.
-  * One line in `AGENTS.md`'s rule on Frans's notes: a passage may be
-    quoted, with its date, when Frans approves it (Frans, 2026-11-27,
-    for the two notes of 2012).
-  * P2's text in 010 is not touched: it waits for Frans (A4).
-  * **By default at 09:15**, unless Frans says otherwise. Why: the
-    origin of the principle is on record where the principle is
-    studied, and the rule on the notes states when a passage may be
-    quoted.
+None open. D1, where the notes of 2012 go, went ahead at 09:15
+(section 2).

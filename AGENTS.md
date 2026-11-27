@@ -129,4 +129,6 @@ a snapshot of the former `docs/` of 2026-11-12.
 - Frans's private notes are kept outside this repository and are never
   cited; `frans/` at the root is ignored by Git. Their IDs (F1-007,
   F1-008) appear in older items and comments as a record
-  (items/readme.md); do not add new citations.
+  (items/readme.md); do not add new citations. A passage of the notes
+  may still be quoted, with its date, when Frans approves it (Frans,
+  2026-11-27).

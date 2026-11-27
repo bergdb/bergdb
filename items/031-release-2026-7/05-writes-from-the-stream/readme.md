@@ -793,6 +793,37 @@ By an agent on Fable, high, at Frans's request (2026-11-26, 14:09 to
 * **F9.** G4's M5 at 1.933 of 2.0, unexplained.
 
 
+## 13. The origin
+
+The goal is older than P2's wording. Two of Frans's notes of 2012,
+quoted with his approval (2026-11-27; one spelling slip corrected):
+
+* Frans's notes of May 2012, a task marked as done, "Deterministic
+  stream":
+
+  > Given a number of SET operations, make sure stream contents is
+  > deterministic. This is good for testing and a nice "feel-good" :-).
+  > Also, it allows us to easy compute a secure hash for a sequence of
+  > database operations (at least a sequence from the very beginning of
+  > the db existence).
+
+* Frans's notes of July 2012 on reclaiming the stream's space, among
+  the variations of the algorithm:
+
+  > The algo could run "piggyback" on existing transactions. This allows
+  > a deterministic stream (good for testing) and guaranteed zero CPU
+  > load when DB not used. Having no background threads is a tempting
+  > proposal.
+
+So the deterministic stream was a goal for the SET operations in May
+2012, and in July 2012 the plan was that reclaim rides on the
+transactions, so that the stream stays deterministic. P2 (010-01) was
+later worded for the transactions, and nothing tested it inside a
+commit's maintenance or a `maintain()` call (028-54; section 4.5). This
+study takes the idea up again for everything that writes, and adds what
+the notes do not state: crashes and stops at record boundaries.
+
+
 ## Log
 
 2026-11-26. Created by lead-1126 from Frans's decision of the same day:
@@ -813,3 +844,7 @@ questions for Frans. Sections 4 to 11, `prototype.diff`,
 2026-11-26. The independent review by an agent on Fable, high, at
 Frans's request: take the direction as D2; nine findings (section 12,
 review-fable.md).
+
+2026-11-27. Section 13, the origin: Frans's notes of May and July 2012
+on the deterministic stream, quoted with his approval of the same day
+(006-37).
