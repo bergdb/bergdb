@@ -20,8 +20,9 @@ for every write, 08:36).
 > else. Each accepted transaction appends one record, decided from the
 > stream before it and from the transaction. The database appends
 > nothing else, by itself or in between. So the stream alone determines
-> what follows, with no memory of how it was written: a restart, a stop
-> or a crash between any two records changes no byte.
+> what follows, with no memory of how it was written: a restart or a
+> stop changes no byte. A crash can leave a partial append; the stream as
+> the next start leaves it is then the stream as it is.
 
 Second version, 2026-11-27 11:50, after Frans's answers: the stream as it
 is comes first, and the user actions that follow it, as Frans asked;
@@ -194,8 +195,13 @@ record" and "changes no byte", and gains the completion by the start.
   fault, a partial append.
 * **W4.** Answered (Frans, 2026-11-27, 16:38): the creation is the
   primordial transaction; all after it follows the principle.
-* **W5.** Whether the README's sentence ("The same transactions in the
-  same order give the same bytes") is reworded with it.
+* **W5.** Answered (Frans, 2026-11-27, 16:41): the README's sentence is
+  reworded with 2026.7, in the landing's step of the documents, without
+  "a crash", so that it does not promise more than holds (a crash may
+  leave a partial append): "One stream: what is appended is decided by
+  the stream so far and the transactions that follow, with their times
+  and order, and by nothing else. A restart or a stop changes no byte."
+  The short text of section 1 says the same of a crash.
 * **W6.** Answered (Frans, 2026-11-27): the crypto code is removed
   (028-69); on its return the key is the one exception.
 * **W7.** The step reserve: 028-68 (a constant, a value stored at the
