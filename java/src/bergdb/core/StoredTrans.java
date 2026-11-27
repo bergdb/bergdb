@@ -149,9 +149,12 @@ public class StoredTrans {
      * The Core's check of a record for the start's recovery (RecoverableStream.recover(),
      * bergdb 028-67, C1), which knows a record's size and last byte only: a whole header is
      * one if it holds its check (headerCheck()) for its position and the database's ID; a
-     * header that the end of the stream cuts (fewer than 32 bytes) is one as far as it goes
-     * if its size is one the writer writes (48 or more, a multiple of 8, at most
-     * MAX_RECORD_SIZE) and its format byte, if there, is RECORD_FORMAT; the first record of
+     * header that the end of the stream cuts, or after which the record holds zeros only
+     * (fewer than 32 bytes), is one as far as it goes if its size is one the writer writes
+     * (48 or more, a multiple of 8, at most MAX_RECORD_SIZE), or, of a size field cut
+     * short, its first byte a multiple of 8, and its format byte, if there, is RECORD_FORMAT
+     * (since 2026-11-28, bergdb 028-67, T1: before, 4 bytes or more, and the walk asked it only
+     * of a header that the end of the stream cut within its 32 bytes); the first record of
      * the walk is refused for another format as NodeStream refuses it (formatRefused()); and a
      * whole record is one if it parses.
      */
@@ -165,6 +168,11 @@ public class StoredTrans {
         }
 
         public boolean tornHeaderFits(long pos, byte[] bytes, int length) {
+            if (length < 4) {
+                // The size's other bytes can make it one; recovery completes them so
+                // (RecoverableStream.MIN_TRANS_SIZE, MIN_RECORD_SIZE).
+                return (bytes[0] & (RecoverableStream.TRANS_ALIGNMENT - 1)) == 0;
+            }
             final int size = Bytes.bytesToIntLE(bytes, 0);
             return size >= MIN_RECORD_SIZE && size <= MAX_RECORD_SIZE
                     && size % RecoverableStream.TRANS_ALIGNMENT == 0
@@ -1710,8 +1718,10 @@ public class StoredTrans {
      * Bergdb 028-67, C1: RECORD_CHECK, the Core's check of a header for the start's
      * recovery. A whole header checks for its own position and ID only; a header that the end
      * of the stream cuts fits if its size is one the writer writes (48 or more, a multiple of
-     * 8, at most MAX_RECORD_SIZE) and its format byte, if there, is RECORD_FORMAT; another
-     * format is refused (checkFormat()) as NodeStream refuses it.
+     * 8, at most MAX_RECORD_SIZE), of a size field cut short if its first byte is a multiple
+     * of 8 (T1), and its format byte, if there, is RECORD_FORMAT; another format is refused
+     * (checkFormat()) as NodeStream refuses it. The least size that recovery completes a size
+     * field to is the least record (T1).
      */
     @Nano
     private static void testRecordCheck() {
@@ -1728,8 +1738,16 @@ public class StoredTrans {
         Assert.assertTrue(c.recordProblem(4096, record, TEST_ID) == null);
         Assert.assertTrue(c.recordProblem(4104, record, TEST_ID) != null);
         
-        for (int length = 4; length < 32; length++) {
+        for (int length = 1; length < 32; length++) {
             Assert.assertTrue("length " + length, c.tornHeaderFits(4096, header, length));
+        }
+        assertEquals(MIN_RECORD_SIZE, RecoverableStream.MIN_TRANS_SIZE);
+        for (int length = 1; length < 4; length++) {
+            byte[] h = header.clone();
+            h[0] = (byte) 0xf9;
+            assertFalse("length " + length, c.tornHeaderFits(4096, h, length));
+            h[0] = 0;
+            Assert.assertTrue("length " + length, c.tornHeaderFits(4096, h, length));
         }
         for (int size : new int[] {-8, 0, 40, 49, 52, Integer.MAX_VALUE}) {
             byte[] h = header.clone();

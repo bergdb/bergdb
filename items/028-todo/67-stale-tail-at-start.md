@@ -1,8 +1,8 @@
 028-67. Fix: a deleted file's bytes in the last stream file after a kill
 =======================================================================
 
-Status: decided; C1 and C3 built (2026-11-27, below), open: C2. Kind:
-Fix. Frans: decided.
+Status: decided; C1 and C3 built (2026-11-27, below), T1 of 031-06's
+review 3 fixed (2026-11-28, below), open: C2. Kind: Fix. Frans: decided.
 Created 2026-11-26 by Frans Lundberg.
 
 What: on APFS, a write cut by a kill of the process (or one that fails
@@ -271,6 +271,79 @@ step 4. C1 and C3 as decided; C2 not built, C4 not taken.
   031-06's `probes/sweep.sh`, which runs again since the review's R6 was
   fixed: 0 different in all 62 result lines; `probes/faults.sh`: bad 0
   in all 42 lines.
+* **Fixed (2026-11-28): T1 of 031-06's review 3** (high): a start
+  refused the tail that the recovery of an earlier start had written
+  when it completed a record that a crash cut in its header. The walk
+  took a record that the end of the stream cuts only if its first 32
+  bytes held the header's check, or if the end cut it within them (a
+  size the writer writes and the format byte 9 as far as they went); the
+  completion wrote the filler 4 at byte 4 after a cut at 1 to 4 bytes,
+  zeros after a longer one, and completed a size field to 17 or more. So
+  every later start refused, with a `BadTailException`, nothing written:
+  (a) on a file database, a cut 1 to 4 bytes into the last record, a
+  start, a stop with no commit, as `FileStream`'s open leaves the
+  completion's zeros out (028-60, part 2); (b) the same for a cut at up
+  to 24 bytes when the completion crossed a meta block; (c) a kill
+  during the completion, on any storage; (d) zeros from header bytes 4
+  to 31 on a storage that keeps them (for `FileStream` a run of more
+  than 8 MB). `b0aac3a9`'s parent started every one. The review's probes
+  (`review-3-probes/`, `run.sh OUT tail`) on `main` at `50c60f13`:
+  `S4RestartAfterTornSizeProbe` start 2 refused after cuts 1 to 4,
+  `S4TornSweepFileProbe` 58 of 1,016 refused, `S4TornFillProbe` 216 of
+  308, `S4TornFillFileProbe` 24 of 109.
+  * **The rule** (027-03, section 7, "A cut record" and "The
+    completion"; 027-11, section 1.3): zeros at the end of a cut record
+    are bytes not written, as `FileStream`'s open takes a run of zeros
+    at the end of the last file. The walk takes a record that the end
+    cuts if its header holds its check, or if its bytes up to the last
+    that is not zero (its size field's at least) are fewer than 32, begin
+    a header as far as they go (a size the writer writes, or of a size
+    field cut short a first byte that is a multiple of 8; the format byte
+    9 if there), and are followed by zeros only to the end of the stream
+    (`RecoverableStream.tornRecordIsOwn`; `RECORD_CHECK.tornHeaderFits`
+    from 1 byte on). The completion writes zeros only after a cut size
+    field's missing bytes, the first of them 1 if zeros give less than
+    48 (`MIN_TRANS_SIZE`, 17 before, now the Core's least record;
+    `TORN_HEADER_FILLER` gone), so every part of it that a later start
+    finds is again such a record and is completed to the same bytes. The
+    other choice, a completion that writes a header holding its check,
+    was not taken: it cannot be made for a cut after byte 7, whose check
+    bytes are written, and it leaves case (d) open, whose zeros no start
+    wrote. What C1 refuses stays refused: a header of 32 bytes that does
+    not hold its check and has bytes that are not zero after its zeros or
+    from byte 31 on, another format byte, a size the writer does not
+    write, and, new, a cut size field whose first byte is not a multiple
+    of 8 (refused at the first start: its completion would give a size
+    that a later start refuses). A foreign tail of a fitting header's
+    begin and zeros only is completed and aborted, as a cut header was
+    before; no record of it is taken.
+  * **Tests.** `DbTesterTail.testCompletionTakenLater` (MemoryStream)
+    and `testCompletionTakenLaterFiles` (a file database), the last
+    record after "a" alone and over a meta block, cut at each of its
+    first 40 bytes: start 1, then a start after a stop (on files two),
+    each holding "a" and not the record's key, the stream byte for byte
+    start 1's; the completion cut by a kill at each byte to the
+    record's 40th and at later positions, around the meta block too,
+    then started, the stream start 1's but for a meta block that the
+    kill cut (completed as an invalid block); zeros from each header
+    byte 4 to 31, two starts. Their `Full` forms (night tests) kill
+    after every cut; `testLongZeroRunInHeader` (night) has zeros from
+    header bytes 4 to 31 over 9 MB, the meta blocks in them zeros too.
+    `testTornRecordHeaderChecked` also refuses a cut size field of an
+    odd first byte and a header of zeros followed by other bytes;
+    `StoredTrans.testRecordCheck` the fit from 1 byte and
+    `MIN_TRANS_SIZE` the least record; `RecoverableStream`'s
+    `testTransHeaderFixBytes2` and `crashInTransactionSize` the size of
+    48. The new tests fail on `main` before the fix.
+  * **Probes after the fix**: `S4RestartAfterTornSizeProbe` every cut 1
+    to 8 three starts ok; `S4TornSweepFileProbe` ok 1,016, bad 0;
+    `S4TornFillProbe` ok 308, refused 0; `S4TornFillFileProbe` ok 109,
+    not ok 0. (`S4TornSweepProbe`'s 2 bad, at 369 and 466, are as on
+    `main`: its first position, 272, is read before the creation's
+    second record and the record of "a" (416 to 512) reach the stream,
+    so the cut at 369 is in the creation's second record, refused as a
+    creation that did not complete (028-18), and the cut at 466 in the
+    record of "a"; not T1.)
 
 
 Log
@@ -283,3 +356,6 @@ built in 031-06's landing; C2 after C3 is in and tested; C4 not taken.
 
 2026-11-27. C1 and C3 built by an agent of lead-1127 on the branch
 `028-67-c3` (section Built); not landed; C2 open.
+
+2026-11-28. T1 of 031-06's review 3 fixed by an agent of lead-1127 on
+the branch `028-67-t1` (section Built).

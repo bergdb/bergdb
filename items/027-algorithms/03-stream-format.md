@@ -489,8 +489,8 @@ for a failed one, made only by recovery's fill.
 
 **Today's checks** (2026.4):
 
-* The walk (`NodeStream.TransIterator.next`, :395 to :425): a size below
-  17 (`RecoverableStream.MIN_TRANS_SIZE`, :69) is an SFE;
+* The walk (`NodeStream.TransIterator.next`, :395 to :425): a size of 16
+  or below (`NodeStream.readRecordHeader`) is an SFE;
   `NodeStream.checkReadSize` (:245; 005-74, 021-14) refuses a size below 8
   and a record that does not end inside the stream; a last byte other than
   0 or 10 is an SFE ("Bad lastByte"); a record with last byte 0 is
@@ -500,8 +500,8 @@ for a failed one, made only by recovery's fill.
   :170); a cut meta block completed from `FILL_OUT_TEMPLATE`, or with
   zeros if its bytes are zero as far as they go (028-60)
   (`fixMetaBlockIfNeeded`, :425); a cut record completed
-  (`fixLastTransactionIfNeeded`, :256; `transHeaderFixBytes`, :296, with
-  `TORN_HEADER_FILLER` 4, :81) and filled with zeros, its last byte 0.
+  (`fixLastTransactionIfNeeded`; `transHeaderFixBytes`) and filled with
+  zeros, its last byte 0: **the completion** below.
 * **The walk before the writes** (028-67, C1; Frans, 2026-11-27):
   `RecoverableStream.walkTail` reads the records from the one the last
   valid block names to the end before recovery writes anything; the cut
@@ -510,9 +510,8 @@ for a failed one, made only by recovery's fill.
   Core's check (`StoredTrans.RECORD_CHECK`, a hook, as this layer knows a
   record's size and last byte only), each committed record's header must
   hold its check (section 8.1), and so must the header of a record that
-  the end of the stream cuts, before its fill; a header that the end cuts
-  within its 32 bytes is checked as far as it goes: a size the writer
-  writes (48 or more, a multiple of 8) and the format byte 9 if there. An
+  the end of the stream cuts, before its fill, unless the record is the
+  begin of one followed by zeros (**a cut record**, below). An
   aborted record whose header does not hold its check, as a fill after a
   cut header leaves it, is walked over and not taken as a record that is
   one. The stream's last record, if committed, and the committed record
@@ -530,6 +529,43 @@ for a failed one, made only by recovery's fill.
   size in db stream, 0, spos P. Stream length: L." So a size read from
   another file's bytes no longer makes the start append up to 2 GB of
   zeros before it refuses (035-02, section 10.2, step 3).
+* **A cut record** (028-67, C1; since 2026-11-28 with T1 of 031-06's
+  review 3), the record that the end of the stream cuts after r of its
+  bytes, z its size if r is 4 or more: it is taken, and completed, if its
+  header holds its check (r of 32 or more), or else if its bytes up to
+  the last that is not zero, w of them (at least min(r, 4): the size
+  field's bytes in the stream all count), are fewer than 32 and begin a
+  header as far as they go, and the record's bytes after them to the end
+  of the stream are zeros (`RecoverableStream.tornRecordIsOwn`). A
+  header's begin: a size the writer writes (48 or more, a multiple of 8,
+  at most the record limit), or of a size field cut short (r below 4) a
+  first byte that is a multiple of 8; and the format byte 9 if w is 5 or
+  more (`StoredTrans.RECORD_CHECK.tornHeaderFits`). Else it is refused
+  at P. The rule takes zeros at the end of a cut record as bytes not
+  written, as `FileStream`'s open takes a run of zeros at the end of the
+  last file (section 6; 028-60; 027-14): a kill can leave them within the
+  stream's length, and the completion writes nothing else after a size
+  field. The zeros after the header are read only when the header does
+  not hold its check, at most to the record's end. Until 2026-11-28 a cut
+  record was taken only if its first 32 bytes held the check, or if the
+  end of the stream cut it within them (a size the writer writes and the
+  format byte 9 as far as they went): a start refused what an earlier
+  start's completion had written, when the end cut it again (T1).
+* **The completion** (the fill; since 2026-11-28, T1): of a size field
+  that the end cuts (r below 4), its missing bytes, zeros, but the first,
+  which is 1 if zeros give a size below 48 (`MIN_TRANS_SIZE`, the least
+  record the Core writes, `StoredTrans.MIN_RECORD_SIZE`); then zeros to z
+  bytes, byte 4 among them, with the meta blocks in between as appends
+  write them (the last byte 0, a failed record). It is a function of the
+  record's bytes in the stream, and the same from every part of itself:
+  a start that finds a part of it, after a kill during it or with its
+  zeros left out by `FileStream`'s open (028-60), takes that part (a cut
+  record, above) and appends the same bytes, but for a meta block that
+  the kill cut, which it completes as an invalid block. Until 2026-11-28
+  the completion of a cut at 1 to 4 bytes wrote 4 at byte 4
+  (`TORN_HEADER_FILLER`, since 2016) and the least size was 17: a later
+  start that found that byte, or a size of 24 to 40, in a cut record
+  refused it.
 * An incomplete creation, at most 272 bytes (`Db.CREATION_LENGTH`, :385;
   264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
@@ -544,7 +580,13 @@ for a failed one, made only by recovery's fill.
 
 **Tests.** UT: `RecoverableStream` (`testTransHeaderFixBytes*`,
 `crashAtMetaBlockPosition`), `DbTester.testCrash8InCreation` (:1403, the
-length of the creation, cut at every byte). CST: truncation at every byte
+length of the creation, cut at every byte), `DbTesterTail`
+(`testTornRecordHeaderChecked`; since T1 `testCompletionTakenLater` and
+`testCompletionTakenLaterFiles`, a cut at each of a record's first 40
+bytes, alone and over a meta block, a start, a stop and starts after it,
+kills during the completion and zeros from each header byte 4 to 31; their
+`Full` forms and `testLongZeroRunInHeader` in the night tests,
+`StoredTrans.testRecordCheck`). CST: truncation at every byte
 (its hard rule). C: `recover.c`, `t_recover.c`, `power.sh`, crash cuts in
 `cross.sh`.
 
@@ -1952,3 +1994,11 @@ position and the header (8.1); the start's recovery walks the records
 before it writes and refuses a tail that is not the stream's records
 with the cause, P and the way out (7); sections 3, 19, 20 and 21.1 to
 match. By an agent of lead-1127, on the branch `028-67-c3`.
+
+2026-11-28. 028-67, T1 of 031-06's review 3: a cut record is taken if its
+header holds its check, or if its bytes up to the last that is not zero
+begin a header and zeros follow them to the end; the completion writes
+zeros only after a size field's missing bytes, and completes a size to 48
+or more (section 7, "A cut record" and "The completion"). A start no
+longer refuses what an earlier start's completion wrote. By an agent of
+lead-1127, on the branch `028-67-t1`.

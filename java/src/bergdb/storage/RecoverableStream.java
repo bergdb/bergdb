@@ -67,25 +67,19 @@ public class RecoverableStream {
     public static final int META_BLOCK_DISTANCE = 200*1000;
     
     /** 
-     * The least record size that recovery's completion of a torn transaction header gives
-     * (transHeaderFixBytes), retained from the 16-byte header format: the start's walk
-     * refuses 16 and below (NodeStream.readRecordHeader); recovery's own walk refuses sizes
-     * below 5 only. The current record header is 32 bytes; recovery does not parse it, but
-     * checks it through the layer above's RecordCheck before it fills (bergdb 028-67).
+     * The least record size that recovery's completion of a size field that the end of the
+     * stream cuts gives (transHeaderFixBytes): 48 since 2026-11-28, the least record that the
+     * Core writes (StoredTrans.MIN_RECORD_SIZE), so that every size that the completion
+     * writes is one that the Core's check takes at a later start (RecordCheck.tornHeaderFits;
+     * bergdb 028-67, T1); 17 until then, retained from the 16-byte header format. The start's
+     * walk refuses 16 and below (NodeStream.readRecordHeader); recovery's own walk refuses
+     * sizes below 5 only. The current record header is 32 bytes; recovery does not parse
+     * it, but checks it through the layer above's RecordCheck before it fills (bergdb 028-67).
      */
-    public static final int MIN_TRANS_SIZE = 16 + 1;
+    public static final int MIN_TRANS_SIZE = 48;
     
     /** If check enabled, append sizes must be a multiple of this value. */
     public static final int TRANS_ALIGNMENT = 8;
-    
-    /**
-     * The byte that recovery writes at offset 4 of a torn transaction header, which it
-     * completes (transHeaderFixBytes): 4, as since 2016. Any value would do: the transaction
-     * is failed, and the layer above parses no failed transaction. Until 2026-10-25 (bergdb
-     * 005-40) it was StoredTrans.CURRENT_FORMAT_VERSION, which was never the format of a
-     * stored transaction, and this package's only reference to bergdb.core.
-     */
-    static final byte TORN_HEADER_FILLER = 4;
     
     private static final byte[] zeros = new byte[10*1000];
     private static final int MAX_TRANS_SIZE = Integer.MAX_VALUE;
@@ -152,7 +146,10 @@ public class RecoverableStream {
      * Javadoc says how to start). A meta block that the end of the stream cuts was completed
      * before the sizes were read, so the refusal could append its missing bytes, until
      * bergdb 028-67 (below). A size field that the end cuts (1 to 3 zero bytes) is completed
-     * as a torn record's is, and that record recovered as an aborted one.</p>
+     * as a torn record's is, and that record recovered as an aborted one. Zeros that begin
+     * inside the header of the last record, which the end cuts, are taken as its bytes not
+     * written, as the zeros of the recovery's own completion are (walkTail(), since 2026-11-28,
+     * bergdb 028-67, T1).</p>
      * 
      * <p>Since 2026-11-27 (bergdb 028-67, C1 and C3): a meta block is valid only if it holds
      * the position it is read at and the database ID of the stream's first block
@@ -162,10 +159,11 @@ public class RecoverableStream {
      * from the one that the last valid block names to the end, reading only (walkTail()):
      * each record's size and last byte, and with 'check', the layer above's, each record's
      * header, so that it completes a torn last record with zeros only after its header is
-     * found to be one. A tail that is not the stream's own records, zeros past a record's end
-     * or other bytes, is refused with a BadTailException that names P, the end of the last
-     * record that is one, and the way out, a cut of the stream at P: a size from such bytes
-     * no longer makes the recovery append up to 2 GB of zeros first.</p>
+     * found to be one, or the begin of one followed by zeros (a partial append, or a part of
+     * an earlier start's completion of one). A tail that is not the stream's own records,
+     * zeros past a record's end or other bytes, is refused with a BadTailException that names
+     * P, the end of the last record that is one, and the way out, a cut of the stream at P: a
+     * size from such bytes no longer makes the recovery append up to 2 GB of zeros first.</p>
      *
      * @param check  The layer above's check of a record's header, or null.
      * @throws StreamIoException
@@ -226,9 +224,11 @@ public class RecoverableStream {
         boolean headerChecks(long pos, byte[] header, byte[] id);
 
         /**
-         * Whether 'bytes', the first 'length' bytes of the record at 'pos', 4 or more and
-         * fewer than headerSize(), which the end of the stream cuts, can begin a record's
-         * header, as far as they go.
+         * Whether 'bytes', the first 'length' bytes of the record at 'pos', 1 or more and
+         * fewer than headerSize(), after which the record holds zeros only to the end of the
+         * stream, which cuts it, can begin a record's header, as far as they go. Every size
+         * that transHeaderFixBytes() completes from bytes that fit must fit (since 2026-11-28,
+         * bergdb 028-67, T1): a later start can find the completion cut again.
          */
         boolean tornHeaderFits(long pos, byte[] bytes, int length);
 
@@ -253,9 +253,10 @@ public class RecoverableStream {
      * last record ends at the end. Each record's size must be 5 or more, and a whole record's
      * last byte 0 or LAST_BYTE. With 'check', also each record's header, 'id' the stream's
      * database ID: a committed record's header must check; so must the header of the record
-     * that the end cuts, as far as the stream holds it, before recover() fills it; an aborted
-     * record's that does not check, as the recovery of a record that a crash cut in its
-     * header leaves it, is walked over, not taken as one. The first record, if committed, is
+     * that the end cuts, before recover() fills it, or be the begin of one as far as the
+     * stream holds bytes of it that are not zero (tornRecordIsOwn()); an aborted record's
+     * that does not check, as the recovery of a record that a crash cut in its header leaves
+     * it, is walked over, not taken as one. The first record, if committed, is
      * refused first for another record format (check.checkFormat()), as a start refused it
      * before (bergdb 005-40): a valid block names a record that this database wrote.
      *
@@ -293,11 +294,18 @@ public class RecoverableStream {
                 }
                 return -1;
             }
-            if (remaining < 4) {
-                return spos;    // A torn size field, completed as before (transHeaderFixBytes).
-            }
             final byte[] header = new byte[(int) Math.min(remaining, headerSize)];
             read(spos, header, 0, header.length);
+            if (remaining < 4) {
+                // A torn size field, completed by transHeaderFixBytes().
+                if (check != null && !tornRecordIsOwn(check, spos, header, remaining, id)) {
+                    throw badTail("The record at " + spos + ", whose size field the end of "
+                            + "the stream cuts, begins with a byte that does not begin the "
+                            + "size of one of this database's records (bergdb 028-67, C1).",
+                            verified, committed, committedSize, check, id, length);
+                }
+                return spos;
+            }
             final int size = Bytes.bytesToIntLE(header, 0);
             if (size < (4 + 1)) {
                 throw badTail("Bad transaction size in db stream, " + size + ", spos " + spos
@@ -306,9 +314,7 @@ public class RecoverableStream {
             }
 
             if (remaining < size) {
-                if (check != null && !(header.length == headerSize
-                        ? check.headerChecks(spos, header, id)
-                        : check.tornHeaderFits(spos, header, header.length))) {
+                if (check != null && !tornRecordIsOwn(check, spos, header, remaining, id)) {
                     throw badTail("The record at " + spos + ", of size " + size + ", which the "
                             + "end of the stream cuts, has a header that is not one of this "
                             + "database's records at its place (bergdb 028-67, C3).", verified,
@@ -349,6 +355,55 @@ public class RecoverableStream {
             }
             spos = next;
         }
+    }
+
+    /**
+     * Whether the record at 'spos', which the end of the stream cuts after 'remaining' of its
+     * record bytes, 'header' the first of them (up to check.headerSize()), is a partial append
+     * of this database's records, as a kill leaves it, or the recovery's completion of one
+     * (bergdb 028-67, C1; T1, 2026-11-28): its header holds its check; or its bytes up to the last
+     * that is not zero, its size field's at least as far as the stream holds it, begin a
+     * header as far as they go (check.tornHeaderFits()), and the record's bytes after them to
+     * the end of the stream are zeros. Zeros at the end of a cut record are taken as bytes not
+     * written: a kill during an append can leave them within the stream's length (bergdb
+     * 028-60), and the recovery's completion writes zeros only, but for the missing bytes of
+     * a size field that the end cuts (fixLastTransactionIfNeeded()). So every later start
+     * takes what a start's completion wrote, whatever part of it the stream holds: after a
+     * kill during it, after FileStream's open has left its zeros out (028-60, part 2), or
+     * with a meta block that it wrote inside the record. Until 2026-11-28 the walk took a header
+     * of 32 bytes only if it held its check, and fewer only if they ended the stream, so it
+     * refused all of these when the record's first 32 bytes were in the stream, or when the
+     * completion had written its byte 4, the filler 4 (031-06, review 3, T1). The bytes after
+     * the header are read, at most to the record's end, only if the header does not hold its
+     * check and its bytes before fit.
+     */
+    private boolean tornRecordIsOwn(RecordCheck check, long spos, byte[] header,
+            long remaining, byte[] id) {
+        final int headerSize = check.headerSize();
+        if (header.length == headerSize && check.headerChecks(spos, header, id)) {
+            return true;
+        }
+        int written = header.length;
+        while (written > 4 && header[written - 1] == 0) {
+            written--;
+        }
+        return written < headerSize && check.tornHeaderFits(spos, header, written)
+                && (remaining <= headerSize || recordBytesZero(spos, headerSize, remaining));
+    }
+
+    /** Whether the record bytes 'from' to 'to' of the record at 'spos' are all zero. */
+    private boolean recordBytesZero(long spos, long from, long to) {
+        final byte[] buffer = new byte[(int) Math.min(to - from, 64 * 1024)];
+        for (long at = from; at < to; at += buffer.length) {
+            final int n = (int) Math.min(to - at, buffer.length);
+            read(getSpos(spos, at), buffer, 0, n);
+            for (int i = 0; i < n; i++) {
+                if (buffer[i] != 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -549,7 +604,12 @@ public class RecoverableStream {
      * Handles the case when the stream crashed while writing the last transaction.
      * The last transaction needs to be "filled out" with zero bytes. Since bergdb 028-67
      * 'spos' is the record that walkTail() found the end of the stream to cut, after its
-     * checks; the loop is the walk as before, and it reads that record only.
+     * checks; the loop is the walk as before, and it reads that record only. A size field
+     * that the end cuts is completed first (transHeaderFixBytes()); all the other bytes that
+     * the completion appends are zeros (since 2026-11-28, bergdb 028-67, T1), so that the record
+     * that a later start finds, after a kill during the completion or with its zeros left out
+     * by FileStream's open (028-60), is again a record's begin followed by zeros, which
+     * walkTail() takes, and whose completion appends the same bytes.
      * 
      * @param spos  The stream position of a transaction in the stream.
      */
@@ -563,8 +623,8 @@ public class RecoverableStream {
             
             assert remaining > 0 : "remaining = " + remaining;
             
-            if (remaining < 5) {
-                // Special case, transaction header not completely written.
+            if (remaining < 4) {
+                // Special case, the size field not completely written.
                 
                 byte[] existingBytes = new byte[(int) remaining];
                 read(spos, existingBytes, 0, existingBytes.length);
@@ -593,38 +653,30 @@ public class RecoverableStream {
         }
     }
 
+    /**
+     * The bytes that complete a size field of which 'existingBytes', 1 to 3 bytes, are in the
+     * stream: zeros, but the first, which is 1 if zeros give a size below MIN_TRANS_SIZE. The
+     * record's bytes from its byte 4 on are zeros (fixLastTransactionIfNeeded()). Until
+     * 2026-11-28 (bergdb 028-67, T1) the completion went on to byte 4, also after a cut of 4
+     * bytes, and wrote there TORN_HEADER_FILLER, 4 (since 2016; until 2026-10-25, bergdb
+     * 005-40, StoredTrans.CURRENT_FORMAT_VERSION), and the least size was 17: a later start
+     * that found the record cut again, after a kill during its completion or with its zeros
+     * left out by FileStream's open (028-60), refused it for that byte or that size.
+     */
     private static byte[] transHeaderFixBytes(byte[] existingBytes) {
-        // If existing bytes (zero-filled) is large enough, zero-fill it.
-        // If not, add 1 and then zeros.
         // 2026-10-13 (CrashTest): "large enough" was 6, so a cut after one size
         // byte of 6 to 16 gave a transaction that NodeStream rejected at startup
-        // ("Bad transaction size"). Now it is MIN_TRANS_SIZE.
-        
-        byte[] fixBytes;
-        int bytesToAdd = 5 - existingBytes.length;
-        
-        if (existingBytes.length < 1 || existingBytes.length >= 5) {
+        // ("Bad transaction size"). Then MIN_TRANS_SIZE, 17; 48 since 2026-11-28.
+        if (existingBytes.length < 1 || existingBytes.length >= 4) {
             throw new IllegalArgumentException("existingBytes: " + StringUtil.toHex(existingBytes));
         }
         
-        byte[] buffer = new byte[5];
+        byte[] buffer = new byte[4];
         System.arraycopy(existingBytes, 0, buffer, 0, existingBytes.length);
-        
-        int sizeFromBuffer = Bytes.bytesToIntLE(buffer, 0);
-        
-        boolean existingSizeTooSmall = sizeFromBuffer < MIN_TRANS_SIZE;
-        
-        fixBytes = new byte[bytesToAdd];
-        fixBytes[fixBytes.length - 1] = TORN_HEADER_FILLER;
-        
-        for (int i = 0; i < bytesToAdd - 1; i++) {
-            if (existingSizeTooSmall) {
-                fixBytes[i] = (i == 0) ? (byte) 1 :  (byte) 0;
-            } else {
-                fixBytes[i] = 0;
-            }
+        byte[] fixBytes = new byte[4 - existingBytes.length];
+        if (Bytes.bytesToIntLE(buffer, 0) < MIN_TRANS_SIZE) {
+            fixBytes[0] = 1;
         }
-        
         return fixBytes;
     }
 
@@ -1503,8 +1555,9 @@ public class RecoverableStream {
             MemoryStream mstream = new MemoryStream();
             RecoverableStream r1 = new RecoverableStream(mstream, new MetaBlock());
             
-            byte[] transBytes = new byte[20];
-            Bytes.intToBytesLE(20, transBytes, 0);
+            // 56 since 2026-11-28, when MIN_TRANS_SIZE became 48 (bergdb 028-67, T1); 20 before.
+            byte[] transBytes = new byte[56];
+            Bytes.intToBytesLE(56, transBytes, 0);
             transBytes[transBytes.length - 1] = LAST_BYTE;
             r1.append(transBytes, 0, 2, false, -1);
                 // Only first 2 bytes of trans (trans byte size incomplete).
@@ -1512,10 +1565,10 @@ public class RecoverableStream {
             RecoverableStream r2 = new RecoverableStream(mstream, new MetaBlock());
             r2.recover();
             
-            Assert.assertEquals(RecoverableStream.META_BLOCK_SIZE + 20, mstream.getLength());
+            Assert.assertEquals(RecoverableStream.META_BLOCK_SIZE + 56, mstream.getLength());
             
             byte[] buffer = new byte[1];
-            mstream.read(RecoverableStream.META_BLOCK_SIZE + 20 - 1, buffer, 0, 1);
+            mstream.read(RecoverableStream.META_BLOCK_SIZE + 56 - 1, buffer, 0, 1);
                     // Reads last byte
             
             Assert.assertEquals(0, buffer[0]);
@@ -2093,15 +2146,19 @@ public class RecoverableStream {
         
         @Nano
         public static void testTransHeaderFixBytes2() {
-            // Test with one existing byte that is large enough.
+            // Test with one existing byte that is large enough. 40 was until 2026-11-28, when
+            // MIN_TRANS_SIZE became 48 (bergdb 028-67, T1); the completion of 40 is 296.
             
-            byte[] existing = new byte[]{40};
+            byte[] existing = new byte[]{48};
             byte[] fix = transHeaderFixBytes(existing);
             
             byte[] total = Util.concat(existing, fix);
             int size = Bytes.bytesToIntLE(total, 0);
             
-            Assert.assertEquals(40, size);
+            Assert.assertEquals(48, size);
+            Assert.assertEquals(3, fix.length);
+            Assert.assertEquals(256 + 40, Bytes.bytesToIntLE(
+                    Util.concat(new byte[] {40}, transHeaderFixBytes(new byte[] {40})), 0));
         }
         
         @Nano

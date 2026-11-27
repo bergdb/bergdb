@@ -101,12 +101,12 @@ C1; Frans, 2026-11-27), then the writes:
     p := B.lastTrans, or 128 if −1;  P := p
     walk:                                              (walkTail)
         r := the record bytes from p to the end; if r = 0: go to end
-        if r < 4: the torn record is at p; go to write
-        h := the first min(r, 32) bytes at p;  z := h's size
+        h := the first min(r, 32) bytes at p
+        if r < 4: the record is torn; refuse at P unless it is own;
+            the torn record is at p; go to write
+        z := h's size
         if z < 5: refuse at P
-        if r < z: the record is torn; refuse at P unless h holds its
-            check (32 bytes) or, cut within it, its size is 48 or more,
-            a multiple of 8, and its format byte, if there, 9;
+        if r < z: the record is torn; refuse at P unless it is own;
             the torn record is at p; go to write
         refuse at P unless the last byte is 0 or 10
         if it is the first record and committed: refuse another
@@ -122,8 +122,17 @@ C1; Frans, 2026-11-27), then the writes:
         all zero if its bytes are zero so far                (028-60)
     the meta block in memory := B, whole, its reserved bytes too
     if a torn record is at p:
-        if r < 5: complete the size field and byte 4    (027-03, 7)
+        if r < 4: complete the size field: zeros, the first
+            of them 1 if zeros give z < 48          (027-03, 7)
         append z − r zeros                          (last byte 0)
+
+A torn record is own (028-67; T1 of 031-06's review 3, 2026-11-28) if h
+holds its check (r of 32 or more); or if, w the number of its bytes up to
+the last that is not zero, at least min(r, 4), w is below 32, its first w
+bytes begin a header (if w < 4: the first byte a multiple of 8; else z of
+48 or more and a multiple of 8, and if w > 4 the format byte 9), and its
+bytes from w to r are zeros (`RecoverableStream.tornRecordIsOwn`; the
+zeros after h are read only if h does not hold its check).
 
 "h holds its check": bytes 5 to 7 of the header are the check of the
 database id, p and the header's other bytes (027-03, 8.1), the Core's
@@ -143,6 +152,23 @@ is 014-01's contract (section 7; Frans, 2026-11-05): the storage keeps a
 prefix of what was appended, a start recovers only a truncated tail, and
 other damage is refused as far as the checks see it.
 
+Every later start takes what a start's completion wrote (028-67, T1;
+2026-11-28). The completion appends zeros only, after the missing bytes
+of a cut size field, and a torn record that is own is the begin of a
+header followed by zeros: so the record that a later start finds cut
+again, after a kill during the completion, with the completion's zeros
+left out by `FileStream`'s open (below), or with a meta block that the
+completion wrote inside the record, is own, and its completion appends
+the same bytes (but for a meta block that the kill cut, completed as an
+invalid block). Until then a torn record was own only if h held its
+check or the end of the stream cut it within its 32 bytes (z and the
+format byte as far as they went), the completion wrote 4 at byte 4, and
+a size field was completed to 17 or more: a start after such a
+completion, a stop with no commit between, refused the stream
+(`BadTailException`), on a file database after a cut at 1 to 4 bytes of
+a record, or up to 24 when the completion crossed a meta block, and on
+any storage after a kill during the completion (031-06, review 3, T1).
+
 A tail of zeros within the stream's length, which a kill of the process
 during an append left on macOS (031-02, F1), is left out of the stream
 before the start reads it, when it is a run of at most 8 MB at the end
@@ -150,8 +176,9 @@ of the last file: `FileStream`'s open ends the stream where the run
 starts, and its first append truncates the file there (027-14; 028-60,
 part 2, 2026-11-26); the recovery above sees a cut tail. A longer run, or one on another storage, is recovered
 as a cut where its zeros begin inside the last record: z, read before
-them, reaches to or past the end, and the zeros are not read; blocks of
-zeros among them are not valid (1.2, step 3). Zeros that cover a whole
+them, reaches to or past the end, and the zeros are read only if they
+begin in its header (h does not hold its check), to see that they are
+zeros; blocks of zeros among them are not valid (1.2, step 3). Zeros that cover a whole
 size field at a record's start, where they begin or past the end of the
 record they begin in, give z = 0 there: refused, "Bad transaction size
 in db stream, 0, spos P. Stream length: L." and the way out (028-60;
@@ -167,8 +194,8 @@ way, before anything is written: their meta blocks are not valid (1.2,
 step 3), and their records do not hold the check of this database's id
 at their position; a size read from them no longer makes the recovery
 append up to 2 GB of zeros first (035-02, section 10.2). Such bytes inside
-the last record, which the end of the stream cuts, are not read, as
-zeros there are not: the record is completed and aborted.
+the last record, which the end of the stream cuts, after a header that
+holds its check, are not read: the record is completed and aborted.
 
 ### 1.4. The startup pos and the section
 
@@ -688,3 +715,10 @@ header's check of the id, its position and its fields, and refuses a
 tail that is not the stream's records with the cause, P and the way out
 (1.3); the parse checks the header (1.4). By an agent of lead-1127, on
 the branch `028-67-c3`.
+
+2026-11-28. 028-67, T1 of 031-06's review 3: a torn record is own if h
+holds its check, or if its bytes up to the last that is not zero begin a
+header and zeros follow them; the completion writes zeros only after a
+cut size field's missing bytes, and completes a size to 48 or more; so
+every later start takes what a start's completion wrote (1.3). By an
+agent of lead-1127, on the branch `028-67-t1`.

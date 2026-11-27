@@ -15,6 +15,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.BadTailException;
 import bergdb.storage.RecoverableStream;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 
@@ -309,6 +310,360 @@ public class DbTesterTail {
                 Assert.assertEquals("nothing written", last + cutIn, m.getLength());
             }
         }
+
+        // Since T1's fix (028-67), bytes that are not zero: a size field cut short whose first
+        // byte begins no size the writer writes (not a multiple of 8), and a header that fits
+        // up to its zeros but is followed by bytes that are not zero, are refused, nothing
+        // written.
+        for (int cutIn = 1; cutIn < 4; cutIn++) {
+            m = s.copy();
+            m.truncate(last + cutIn);
+            MemoryStream.TestAccess.write(m, new byte[] {(byte) (bytes(s, last, 1)[0] | 1)},
+                    last);
+            try {
+                Db.builder().testSetup(m).clock(clock).start().close();
+                throw new AssertionError("started with an odd size, cut " + cutIn);
+            } catch (BadTailException e) {
+                Assert.assertEquals(e.getMessage(), last, e.getCutPos());
+            }
+            Assert.assertEquals("nothing written", last + cutIn, m.getLength());
+        }
+        m = s.copy();
+        m.truncate(last + 1000);
+        MemoryStream.TestAccess.write(m, new byte[500], last + 10);
+        MemoryStream.TestAccess.write(m, new byte[] {1}, last + 700);
+        try {
+            Db.builder().testSetup(m).clock(clock).start().close();
+            throw new AssertionError("started with a header of zeros and bytes after");
+        } catch (BadTailException e) {
+            Assert.assertEquals(e.getMessage(), last, e.getCutPos());
+        }
+        Assert.assertEquals("nothing written", last + 1000, m.getLength());
+    }
+
+    // ======== Later starts after a start's completion (028-67, T1) ========
+
+    /**
+     * T1 of 031-06's review 3 (bergdb 028-67): every later start takes what a start's
+     * recovery wrote when it completed a record that a crash cut, and what a kill during that
+     * completion left. Until the fix a start refused a cut record whose first 32 bytes in the
+     * stream did not hold its header's check, as the completion's zeros leave them, and the
+     * completion's byte 4, 4. On a MemoryStream, the last record (of "b", 100 kB of random
+     * bytes), after "a" alone and after records up to a meta block that it crosses, cut at
+     * each of its first 40 bytes: start 1 completes and aborts it, and start 2 writes nothing;
+     * the completed stream cut at each byte from the cut to the record's 40th and at positions
+     * up to its end, around the meta block too (a kill during the completion), starts, and
+     * its completion is start 1's, byte for byte, but where the kill cut the meta block that
+     * the completion wrote (then completed as an invalid block). Zeros in place of the
+     * stream's bytes from each of the record's header bytes 4 to 31 to an end within the
+     * record, as a kill of the process on APFS leaves them (bergdb 028-60), start, twice.
+     * Each start holds "a" and not "b". Here the kills after some of the cuts and one end of
+     * the zeros; testCompletionTakenLaterFull() all.
+     */
+    @Nano
+    private static void testCompletionTakenLater() throws IOException {
+        completionTakenLater(false);
+    }
+
+    /** testCompletionTakenLater() with a kill after every cut and three ends of the zeros. */
+    @Nano("night")
+    private static void testCompletionTakenLaterFull() throws IOException {
+        completionTakenLater(true);
+    }
+
+    private static void completionTakenLater(boolean full) throws IOException {
+        for (boolean overBlock : new boolean[] {false, true}) {
+            final CoreTestClock clock = new CoreTestClock();
+            final MemoryStream s = new MemoryStream();
+            final long last;
+            try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+                last = writeT1(db, clock, overBlock);
+            }
+            final long end = s.getLength();
+            final String layout = overBlock ? "over a block, " : "";
+            Assert.assertEquals("over a block", overBlock, overBlock(last, end));
+            for (int cutIn = 1; cutIn <= 40; cutIn++) {
+                final String what = layout + "cut " + cutIn;
+                final MemoryStream m = s.copy();
+                m.truncate(last + cutIn);
+                startT1(m, clock, what);
+                final byte[] completed = bytes(m, 0, (int) m.getLength());
+                startT1(m, clock, what + ", start 2");
+                Assert.assertEquals(what + ", start 2 wrote", completed.length, m.getLength());
+                if (!full && !sampled(cutIn)) {
+                    continue;
+                }
+                for (long kill : killPositions(last, cutIn, completed.length)) {
+                    final MemoryStream k = m.copy();
+                    k.truncate(kill);
+                    startT1(k, clock, what + ", a kill at " + kill);
+                    checkCompleted(completed, bytes(k, 0, (int) k.getLength()), kill,
+                            what + ", a kill at " + kill);
+                }
+            }
+            for (int k = 4; k < StoredTrans.HEADER_SIZE; k++) {
+                for (long to : full ? new long[] {last + 40, last + 5000, end - 1}
+                        : new long[] {last + 5000}) {
+                    final String what = layout + "zeros from header byte " + k + " to " + to;
+                    final MemoryStream m = s.copy();
+                    m.truncate(to);
+                    MemoryStream.TestAccess.write(m, new byte[(int) (to - last - k)], last + k);
+                    startT1(m, clock, what);
+                    final long length = m.getLength();
+                    startT1(m, clock, what + ", start 2");
+                    Assert.assertEquals(what + ", start 2 wrote", length, m.getLength());
+                }
+            }
+        }
+    }
+
+    /** The cuts of T1's tests that the unit tests also kill during their completion. */
+    private static boolean sampled(int cutIn) {
+        return cutIn <= 5 || cutIn % 8 == 0;
+    }
+
+    /**
+     * As testCompletionTakenLater(), on a file database, whose FileStream leaves a run of
+     * zeros at the end of the last file out of the stream at its open (bergdb 028-60, part
+     * 2), and so the completion's zeros, which the next start's recovery appends again: the
+     * last record, alone and over a meta block (the first of the second file), cut at some of
+     * its first 40 bytes, three starts, each after a stop; and the stream after start 1 cut
+     * where a kill during its completion can cut it, then started. After every start the
+     * stream's files are start 1's, byte for byte (but for a meta block that the kill cut),
+     * and hold "a" and not "b". Until the fix start 2 refused a cut at 1 to 4 bytes, and
+     * over a block at 1 to 24. testCompletionTakenLaterFilesFull() cuts at each of the 40.
+     */
+    @Nano
+    private static void testCompletionTakenLaterFiles(TestEnvironment env) throws IOException {
+        completionTakenLaterFiles(env, false);
+    }
+
+    /** testCompletionTakenLaterFiles() at each of the 40 cuts, and more kills. */
+    @Nano("night")
+    private static void testCompletionTakenLaterFilesFull(TestEnvironment env)
+            throws IOException {
+        completionTakenLaterFiles(env, true);
+    }
+
+    private static void completionTakenLaterFiles(TestEnvironment env, boolean full)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        for (boolean overBlock : new boolean[] {false, true}) {
+            final CoreTestClock clock = new CoreTestClock();
+            final File orig = env.createTempDir();
+            final long last;
+            try (Db db = Db.builder().testSetup(new FileStream(orig, false)).clock(clock)
+                    .start()) {
+                last = writeT1(db, clock, overBlock);
+            }
+            final long end = fileBytes(orig).length;
+            final String layout = overBlock ? "over a block, " : "";
+            Assert.assertEquals("over a block", overBlock, overBlock(last, end));
+            for (int cutIn = 1; cutIn <= 40; cutIn++) {
+                if (!full && cutIn > 5 && cutIn != 8 && cutIn != 24 && cutIn != 32) {
+                    continue;
+                }
+                final String what = layout + "cut " + cutIn;
+                final File d = copyDir(env, orig);
+                cutStream(d, last + cutIn);
+                startT1(new FileStream(d, false), clock, what);
+                final byte[] completed = fileBytes(d);
+                for (int start = 2; start <= 3; start++) {
+                    startT1(new FileStream(d, false), clock, what + ", start " + start);
+                    Assert.assertArrayEquals(what + ", start " + start, completed,
+                            fileBytes(d));
+                }
+                if (full ? !sampled(cutIn) : cutIn != 2 && cutIn != 4 && cutIn != 24) {
+                    continue;
+                }
+                final long block = RecoverableStream.META_BLOCK_DISTANCE;
+                final long[] kills = full ? new long[] {last + 4, last + 5, last + 8, last + 31,
+                        last + 32, last + 33, last + 41, block - 1, block, block + 64,
+                        block + 129, completed.length - 1}
+                        : new long[] {last + 5, last + 32, block, block + 64, block + 129,
+                        completed.length - 1};
+                for (long kill : kills) {
+                    if (kill <= last + cutIn || kill >= completed.length) {
+                        continue;
+                    }
+                    final File k = copyDir(env, d);
+                    cutStream(k, kill);
+                    startT1(new FileStream(k, false), clock, what + ", a kill at " + kill);
+                    checkCompleted(completed, fileBytes(k), kill, what + ", a kill at " + kill);
+                }
+            }
+        }
+    }
+
+    /**
+     * Zeros from some of the last record's header bytes 4 to 31 to near the end of the
+     * record, of 9 MB (two values of 4.5 MB), on a MemoryStream, the meta blocks in it zeros
+     * too: a run as a kill can leave it on a storage that keeps it, for FileStream a run of
+     * more than 8 MB in the last file (bergdb 028-60, part 2; T1's case d). Each starts,
+     * twice, with "a" and not "b", and the second writes nothing; the walk reads the zeros
+     * after the header (RecoverableStream.tornRecordIsOwn()). Until T1's fix (028-67) all
+     * were refused but those from byte 4, whose start 2 was.
+     */
+    @Nano("night")
+    private static void testLongZeroRunInHeader() throws IOException {
+        final CoreTestClock clock = new CoreTestClock();
+        final MemoryStream s = new MemoryStream();
+        final long last;
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("a", "a-value"));
+            byte[] v = new byte[4500 * 1000];
+            byte[] v2 = new byte[4500 * 1000];
+            new Random(9).nextBytes(v);
+            new Random(10).nextBytes(v2);
+            clock.setTime(100);
+            Trans t = db.trans().put("b", v).put("b2", v2).build();
+            db.execute(t);
+            last = t.tpos;
+        }
+        final long to = s.getLength() - 1000;
+        for (int k : new int[] {4, 5, 6, 8, 16, 24, 31}) {
+            final String what = "zeros from header byte " + k;
+            final MemoryStream m = s.copy();
+            m.truncate(to);
+            MemoryStream.TestAccess.write(m, new byte[(int) (to - last - k)], last + k);
+            startT1(m, clock, what);
+            final long length = m.getLength();
+            startT1(m, clock, what + ", start 2");
+            Assert.assertEquals(what + ", start 2 wrote", length, m.getLength());
+        }
+    }
+
+    /**
+     * Writes T1's records to 'db': "a", then, if 'overBlock', values of 10 kB while the
+     * stream is shorter than 185,000, and last the record of "b", 100 kB of random bytes,
+     * which then crosses the meta block at 200,000. Returns that record's position.
+     */
+    private static long writeT1(Db db, CoreTestClock clock, boolean overBlock) {
+        clock.setTime(10);
+        db.execute(db.trans().put("a", "a-value"));
+        for (int i = 0; overBlock && db.getStreamLength() < 185 * 1000; i++) {
+            clock.setTime(11 + i);
+            db.execute(db.trans().put("c" + i, new byte[10 * 1000]));
+        }
+        byte[] v = new byte[100 * 1000];
+        new Random(7).nextBytes(v);
+        clock.setTime(1000);
+        Trans t = db.trans().put("b", v).build();
+        db.execute(t);
+        return t.tpos;
+    }
+
+    /** Whether T1's last record, at 'last' to 'end', crosses a block after its 40th byte. */
+    private static boolean overBlock(long last, long end) {
+        final long block = RecoverableStream.META_BLOCK_DISTANCE;
+        return last + 40 < block && end > block + RecoverableStream.META_BLOCK_SIZE;
+    }
+
+    /**
+     * The positions of T1's kills during the completion of the record at 'last', cut at
+     * 'cutIn' bytes, to 'length': each byte from the cut to the 40th, then later ones, the
+     * meta block's among them, within the completion.
+     */
+    private static List<Long> killPositions(long last, int cutIn, long length) {
+        List<Long> kills = new ArrayList<Long>();
+        for (long p = last + cutIn + 1; p <= last + 40; p++) {
+            kills.add(p);
+        }
+        final long block = RecoverableStream.META_BLOCK_DISTANCE;
+        for (long p : new long[] {last + 100, last + 1000, last + 10000, block - 1, block,
+                block + 1, block + 64, block + 127, block + 128, block + 129, length - 1}) {
+            if (p > last + 40 && p < length && !kills.contains(p)) {
+                kills.add(p);
+            }
+        }
+        return kills;
+    }
+
+    /**
+     * Checks that 'after', the stream after a start on 'completed' cut at 'kill', is
+     * 'completed' byte for byte; if 'kill' cut a meta block, or ended at one, but for that
+     * block, which the start completed as an invalid one (RecoverableStream).
+     */
+    private static void checkCompleted(byte[] completed, byte[] after, long kill, String what) {
+        Assert.assertEquals(what + ": the length", completed.length, after.length);
+        final long block = kill / RecoverableStream.META_BLOCK_DISTANCE
+                * RecoverableStream.META_BLOCK_DISTANCE;
+        final boolean inBlock = block > 0 && kill < block + RecoverableStream.META_BLOCK_SIZE;
+        for (int i = 0; i < completed.length; i++) {
+            if (inBlock && i >= block && i < block + RecoverableStream.META_BLOCK_SIZE) {
+                continue;
+            }
+            if (completed[i] != after[i]) {
+                throw new AssertionError(what + ": byte " + i + ", " + after[i] + ", not "
+                        + completed[i]);
+            }
+        }
+    }
+
+    /** Starts the stream 's' and checks that it holds "a" and not "b". */
+    private static void startT1(AppendOnlyStream s, CoreTestClock clock, String what) {
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            Assert.assertTrue(what + ": a", DbUtil.get(db, Long.MAX_VALUE, "a") != null);
+            Assert.assertTrue(what + ": b", DbUtil.get(db, Long.MAX_VALUE, "b") == null);
+        } catch (BadTailException e) {
+            throw new AssertionError(what + ": refused, " + e.getMessage(), e);
+        }
+    }
+
+    /** 'n' bytes of 's' from 'pos'. */
+    private static byte[] bytes(MemoryStream s, long pos, int n) throws IOException {
+        byte[] b = new byte[n];
+        s.read(pos, b, 0, n);
+        return b;
+    }
+
+    /** The stream files in 'dir', in the order of their positions. */
+    private static File[] streamFiles(File dir) {
+        File[] files = dir.listFiles((d, n) -> n.endsWith(".bergdb"));
+        Arrays.sort(files);
+        return files;
+    }
+
+    /** The first stream position of stream file 'f': the number in its name times 100,000. */
+    private static long fileStart(File f) {
+        final String name = f.getName();
+        return Long.parseLong(name.substring(0, name.length() - 7)) * 100000;
+    }
+
+    /** The stream in 'dir' from position 0: its files' bytes, one after the other. */
+    private static byte[] fileBytes(File dir) throws IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        for (File f : streamFiles(dir)) {
+            Assert.assertEquals("the start of " + f, out.size(), fileStart(f));
+            out.write(java.nio.file.Files.readAllBytes(f.toPath()));
+        }
+        return out.toByteArray();
+    }
+
+    /** Cuts the stream in 'dir' at 'pos', as a kill can: its files from there on removed. */
+    private static void cutStream(File dir, long pos) throws IOException {
+        for (File f : streamFiles(dir)) {
+            final long start = fileStart(f);
+            if (start >= pos) {
+                Assert.assertTrue(f.toString(), f.delete());
+            } else if (start + f.length() > pos) {
+                try (RandomAccessFile r = new RandomAccessFile(f, "rw")) {
+                    r.setLength(pos - start);
+                }
+            }
+        }
+    }
+
+    /** A new temporary directory with a copy of the files of 'dir'. */
+    private static File copyDir(TestEnvironment env, File dir) throws IOException {
+        final File copy = env.createTempDir();
+        for (File f : dir.listFiles()) {
+            java.nio.file.Files.copy(f.toPath(), new File(copy, f.getName()).toPath());
+        }
+        return copy;
     }
 
     private static byte[] le4(int v) {
