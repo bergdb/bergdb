@@ -107,7 +107,7 @@ Open
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; batch measured: A to C | decision | open |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 to C4 | decision | open |
 | [028-68](68-step-reserve-outside-stream.md) | Decide | The reclaim step reserve changes the bytes and is not in the stream: A to C | decision | open |
-| [028-69](69-remove-crypto-code.md) | Implement | Remove the internal crypto code (SalsaStream, CryptoKey); recorded in 017-10 | none | in progress |
+| [028-69](69-remove-crypto-code.md) | Implement | The internal crypto code removed (`1809e04c`); open until 028-60's part 2 is rebased | none | in progress |
 
 
 Closed
@@ -584,3 +584,8 @@ Frans (A recommended), decided with 031-06's landing.
 crypto code is removed (Frans); the record of the removal goes into
 017-10's log. 028-60's part 2 lands after it, without its opt-out for
 encrypted streams.
+
+2026-11-27. 028-69: the internal crypto code removed on `main`
+(`1809e04c`; `BEFORE COMMIT OK`), recorded in 017-10's log. New
+databases' `created.txt` has no line "crypto key:". A database that an
+earlier release encrypted is still refused, by its `created.txt`.

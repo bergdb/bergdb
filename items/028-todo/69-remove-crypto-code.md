@@ -1,9 +1,8 @@
 028-69. Implement: remove the internal crypto code
 ==================================================
 
-Status: in progress: the removal is made and gated in the branch
-`028-69` (2026-11-27); it lands with the lead, and 028-60's part 2 is
-then rebased on it. Kind: Implement. Frans: none (decided).
+Status: in progress: the removal is on `main` (`1809e04c`, 2026-11-27,
+`BEFORE COMMIT OK`); open until 028-60's part 2 is rebased on it. Kind: Implement. Frans: none (decided).
 Created 2026-11-27 by Frans Lundberg.
 
 What: encryption left the API in release 2026.4 (020-28), and its code
