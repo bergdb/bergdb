@@ -1,6 +1,6 @@
 # 006-36 Day work, 26 November 2026
 
-Created 2026-11-26 by Frans Lundberg. Status: active. The plan for the
+Created 2026-11-26 by Frans Lundberg. Status: done (2026-11-27). The plan for the
 lead's day of 2026-11-26 (lead-1126), a Thursday, and its night to
 Friday 07:00: the progress and the outcome. The way of working is
 013-04's (the lead).
@@ -176,4 +176,66 @@ The lead, 2026-11-26:
 
 ## 5. Outcome
 
-(At the end of the day.)
+Written 2026-11-27, 05:15, by lead-1126.
+
+**Done.**
+
+* `week.sh` in three lanes (028-64): the large reclaim run and the large
+  conformance set beside the other steps, each in a clone of its own,
+  no coverage cut, no whole-run hang guard (Frans). Its first full run,
+  on `2a321805`: WEEK OK in 565 minutes, under the day's heavy load.
+* RB-011 fixed for 2026.7 (028-62): a new stream file gets a tenth of
+  the stream kept; no disk promise in the Pub API; `FileStream`'s
+  Javadoc states the slack and the backup by a copy in name order.
+  RetainChurn's emptied database from 10,400 to 400 kB on disk.
+* `maintain(int budget)` studied (031-04): passes that end by
+  construction, no drain, no MIN_RELEASE; Codex's review (simpler and
+  sounder than O-1); Q9's handoff (with ZGC the longest commit during
+  calls at a budget of 100,000 from about 1.1 s to 36 to 66 ms) and
+  Codex's upgrade defect fixed in its prototype.
+* Every write a function of the stream and the user actions studied
+  (031-05; Frans's goal, extending P2): 15,625 crashes and 15,625 stops
+  at every record boundary continue to the uninterrupted stream; the
+  independent review by Fable (section 12): take the direction as D2.
+* 035 created, the environments BergDB runs in: 035-01 (zeros within
+  a file's length after a kill come from APFS only, a failed piece of a
+  write; ext4 leaves clean prefixes) and 035-02 (a deleted file's bytes
+  on APFS images and RAM disks, not seen on F53's SSD).
+* Registered: 028-65 (an idle database keeps several times its live
+  values), 028-66 (the cut's deletes lag), 028-67 (stale bytes in a
+  start's tail). 031-03's F6 answered (RB-006's rest and RB-010 S4).
+* `night.sh` on `8ad6599b`: NIGHT OK in 180 minutes.
+* The usage limit 70 % (Frans).
+
+**Went ahead by default.** Nothing: no class 2 default was used.
+
+**Waiting for Frans**, each with the recommendation:
+
+* 028-60, part 2 (RB-012's rest): on the branch `028-60b`
+  (`043bf11c`), gated and reviewed twice by Codex; the zero tail left
+  out at open and cut at the first append. Waits for the encryption
+  choice: keep the builder's opt-out (Codex: the safest and simplest
+  now) or a repair at the record level.
+* 028-66: since 028-62, a hard-sync writer at full speed is about 40 %
+  slower (a directory force per deleted file). Options: A as is, B a
+  batch of deletes with 011-07's rule changed, C a forced record (not
+  designed), or back towards a quarter.
+* 031-05 with its Fable review: take the direction as D2, with Q2 (c),
+  a start that writes what is due (the reviewer's recommendation), and
+  the wording corrected to record boundaries; Q1 to Q9.
+* 031-04: Q1 to Q8 and the direction, together with 031-05.
+* 028-67: C1 now (clear refusals, no fill before the check), C3 with
+  the next stream-format change.
+* 028-54: answered by 031-05's direction; closed when Frans takes it.
+* 028-34: for a later release.
+
+**Proposed next.**
+
+* Land 028-60's part 2 after the encryption choice.
+* Decide 028-66 before 2026.7: a performance regression on `main`
+  since 028-62.
+* 031-04 and 031-05 as one design for 2026.7, built by an agent with
+  Codex's and Fable's findings; then the conformance, `night.sh`,
+  `week.sh` and `timing.sh`.
+* 028-67's C1.
+* The date of 2026.7 after those.
