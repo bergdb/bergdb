@@ -216,6 +216,8 @@ machine; functional runs):
   RUNNABLE (a thread that waits for a core); it is the prototype's test, not
   changed here (later steps).
 * `java/before-commit.sh` at the end: `BEFORE COMMIT OK (65 s)`.
+* `java/stress/level4.sh quick` (not required; 1:54 min): `LEVEL 4 OK`, its
+  conformance with eviction 18 traces, TRACECHECK OK 18.
 
 ## What depends on Frans's two answers
 
@@ -295,8 +297,7 @@ kept times, the documents):
   (the lead's; the probes need the appendix's change); F2 to F7; the kept
   times; `RECORD_FORMAT` 9 for Frans's decision of 14:36; the documents
   beyond 027-02 (027-13 describes how Java's steps are checked and names
-  C-STEP's old rules); night.sh, week.sh; level4.sh (its conformance with
-  eviction reads the same traces' kinds; not run here).
+  C-STEP's old rules); night.sh, week.sh; level4.sh in full (quick: OK).
 * **Next:** the lead's review of the branch `031-06-landing`; the landing's
   later steps.
 
