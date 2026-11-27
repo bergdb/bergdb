@@ -117,7 +117,12 @@ Released bugs fixed
   stream as a cut tail, with every transaction that a sync returned
   for. `Database`'s Javadoc, "What a crash keeps",
   says so. A longer run of zeros past a record's end, or other bytes, is
-  refused as before.
+  refused, since 028-67 (2026-11-27) before the start writes anything and
+  with a message that names the cause and the position to cut the stream
+  at; meta blocks and records of another file or place, such as an older
+  stream file's bytes that a kill can leave in the last file on APFS, are
+  not taken (a meta block holds its own position and the database's ID, a
+  record's header a check of them; meta version 156).
 * **RB-013, S4. A stop between a transaction's record and reclaim's
   records after it changed the stream's bytes** (bergdb 033; 031-06,
   2026-11-27). After a `stop()` from another thread that came between a

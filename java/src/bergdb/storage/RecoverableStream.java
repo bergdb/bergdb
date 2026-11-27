@@ -149,10 +149,10 @@ public class RecoverableStream {
      * them are not valid (readMetaBlock()). Zeros that cover a whole size field at a
      * record's start, where they begin or past the end of the record they begin in, give the
      * size 0 there, refused: "Bad transaction size in db stream, 0, spos P" (Database's
-     * Javadoc says how to start). A meta block that the end of the stream cuts is completed
-     * before the sizes are read, so the refusal may append its missing bytes. A size field
-     * that the end cuts (1 to 3 zero bytes) is completed as a torn record's is, and that
-     * record recovered as an aborted one.</p>
+     * Javadoc says how to start). A meta block that the end of the stream cuts was completed
+     * before the sizes were read, so the refusal could append its missing bytes, until
+     * bergdb 028-67 (below). A size field that the end cuts (1 to 3 zero bytes) is completed
+     * as a torn record's is, and that record recovered as an aborted one.</p>
      * 
      * <p>Since 2026-11-27 (bergdb 028-67, C1 and C3): a meta block is valid only if it holds
      * the position it is read at and the database ID of the stream's first block

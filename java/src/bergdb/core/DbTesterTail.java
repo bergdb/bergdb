@@ -322,10 +322,10 @@ public class DbTesterTail {
      * another, as a block of an older stream file of the same database at the same offset in
      * a new file) is not valid (028-67, C3): the start passes over it to the block before,
      * as over a block that a crash cut. Here the stream's last block, of four, is replaced by
-     * such blocks: the start takes the stream whole, its records all checked from the block
-     * before. Before 028-67 the block of another place was taken, and the one of the older
-     * file, which names a record before the stream's first position, refused the start
-     * (019-34's check; 035-02, section 10.2).
+     * such blocks (the last: one of an older file at the same offset, which names a record of
+     * that file): the start takes the stream whole, its records all checked from the block
+     * before, and writes nothing. Before 028-67 the start took each of them as the last valid
+     * block (035-02, section 10.2).
      */
     @Nano
     private static void testOtherBlocksPassedOver() throws IOException {
@@ -347,8 +347,8 @@ public class DbTesterTail {
         byte[] otherPlace = own.clone();
         Bytes.longToBytesLE(block - RecoverableStream.META_BLOCK_DISTANCE, otherPlace, 46);
         byte[] olderFile = own.clone();
-        Bytes.longToBytesLE(block - 5 * RecoverableStream.META_BLOCK_DISTANCE, olderFile, 46);
-        Bytes.longToBytesLE(block - 5 * RecoverableStream.META_BLOCK_DISTANCE - 40000,
+        Bytes.longToBytesLE(block - 2 * RecoverableStream.META_BLOCK_DISTANCE, olderFile, 46);
+        Bytes.longToBytesLE(block - 2 * RecoverableStream.META_BLOCK_DISTANCE - 50000,
                 olderFile, 16);
         for (byte[] b : new byte[][] {otherId, otherPlace, olderFile}) {
             MemoryStream m = s.copy();
