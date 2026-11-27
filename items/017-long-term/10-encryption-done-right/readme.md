@@ -228,7 +228,9 @@ behaviour when it does not match (refuse, or start and report).
 
 ## 6. The code that remains
 
-Internal since 2026.4, not API, with its tests in the unit tests (020-28):
+Removed on 2026-11-27 by 028-69 (section 8, the log names the last commit
+that has it). Until then it was internal since 2026.4, not API, with its
+tests in the unit tests (020-28):
 
 * `bergdb.common.Salsa`: Salsa20.
 * `bergdb.stream.SalsaStream`: the encrypting stream, with U7-2's fix (one
@@ -283,3 +285,19 @@ of a later design.
 removal of the encryption from 2026.4's API: what 2026.3 had, why it was
 removed (020-24-07's U7-1 and U7-3), e07's options written out, what a
 design must be tested against, and the code that stays.
+
+2026-11-27. The crypto code removed by 028-69 (Frans, 2026-11-27): the
+key is a setting outside the stream that changes the stream's bytes.
+The last commit with the code: `0edd2a2f` on main. The removal's
+commit: `1809e04c` in the branch 028-69. The files removed:
+`java/src/bergdb/common/Salsa.java`, `java/src/bergdb/stream/SalsaStream.java`
+and `java/src/bergdb/pubimp/CryptoKey.java`; and, in files that stay,
+`DatabaseBuilderImp.cryptoKey()` with `checkCryptoKey()`, `salsaMade`
+and the encryption half of `handleCryptoKeyAndCreatedTxt()`, `Db`'s
+`encrypted`, `created.txt`'s line "crypto key:",
+`StreamContractTester.testSalsaStream`, and the tests that used the key
+(028-69's log lists them, the dropped ones and the rewritten ones). The
+refusal of a database that 2026.3 encrypted stays (section 6). The rule
+for its return: the key is the one exception to "no setting outside the
+stream affects the bytes": the stored bytes depend on it, and it cannot
+be in the stream (Frans, 2026-11-27).

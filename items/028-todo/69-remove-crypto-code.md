@@ -137,7 +137,12 @@ at `0edd2a2f`:
   Javadoc of `refuseEncrypted()` (344, 349 to 350),
   `handleCryptoKeyAndCreatedTxt()` (447, 456 to 494) and the tests (530
   to 565).
-* Gate: `java/before-commit.sh` in the clone, 2026-11-27:
-  `Unit: SUCCESS, 1720 successful tests in 46.3 s.`,
-  `F:    SUCCESS, 90 successful tests in 55.9 s.`,
-  `Demos: DEMOS OK, 14 runs in 4 s.`, `BEFORE COMMIT OK (69 s)`.
+* Gate: `java/before-commit.sh` in the clone on the removal's commit,
+  2026-11-27: `Unit: SUCCESS, 1720 successful tests in 43.6 s.`,
+  `F:    SUCCESS, 90 successful tests in 51.3 s.`,
+  `Demos: DEMOS OK, 14 runs in 4 s.`, `BEFORE COMMIT OK (63 s)`.
+
+2026-11-27. 017-10's log has the record of the removal: the last commit
+with the code, `0edd2a2f` on main; the removal's commit: `1809e04c` in
+the branch 028-69 (main's hash replaces it at landing); the files
+removed; and the rule for the key's return.
