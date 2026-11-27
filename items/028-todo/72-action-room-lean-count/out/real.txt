@@ -1,0 +1,19 @@
+B=8 built: 179,452 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [9, 9, 9, 9, 9, 9]
+  one delete of K: Java 691 (11.52 a level), the worst tree of the same heights 770 (12.83 a level); one put of K: Java 58 (0.97 a level)
+  500 deletes at random, K among them: Java 154,774 (8.12 a level), key nodes marked 2,466 (Java's count 62.8 times them)
+B=8 thinned: 71,840 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [9, 9, 9, 9, 9, 9]
+  one delete of K: Java 697 (11.62 a level), the worst tree of the same heights 770 (12.83 a level); one put of K: Java 54 (0.90 a level)
+  500 deletes at random, K among them: Java 148,148 (8.15 a level), key nodes marked 2,475 (Java's count 59.9 times them)
+B=14 built: 179,463 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [6, 6, 6, 6, 6, 6]
+  one delete of K: Java 312 (7.43 a level), the worst tree of the same heights 348 (8.29 a level); one put of K: Java 36 (0.86 a level)
+  500 deletes at random, K among them: Java 66,308 (5.34 a level), key nodes marked 1,715 (Java's count 38.7 times them)
+B=14 thinned: 71,570 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [7, 7, 7, 7, 7, 7]
+  one delete of K: Java 337 (7.02 a level), the worst tree of the same heights 401 (8.35 a level); one put of K: Java 44 (0.92 a level)
+  500 deletes at random, K among them: Java 78,838 (5.31 a level), key nodes marked 1,641 (Java's count 48.0 times them)
+B=30 built: 179,447 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [4, 4, 4, 4, 4, 4]
+  one delete of K: Java 174 (5.80 a level), the worst tree of the same heights 206 (6.87 a level); one put of K: Java 24 (0.80 a level)
+  500 deletes at random, K among them: Java 38,747 (4.13 a level), key nodes marked 992 (Java's count 39.1 times them)
+B=30 thinned: 71,814 live keys, V1, V2, V4 hold; K's trees, key nodes on the path: [4, 4, 4, 4, 4, 4]
+  one delete of K: Java 163 (5.43 a level), the worst tree of the same heights 206 (6.87 a level); one put of K: Java 24 (0.80 a level)
+  500 deletes at random, K among them: Java 39,373 (4.12 a level), key nodes marked 885 (Java's count 44.5 times them)
+END

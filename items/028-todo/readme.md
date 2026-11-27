@@ -106,7 +106,7 @@ Open
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
-| [028-72](72-action-room-lean-count.md) | Investigate | The action's 7/8 against the worst action by the Lean's node count | none | open |
+| [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given | decision | open |
 | [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data | decision | open |
@@ -648,6 +648,12 @@ BergDB's own long keys (031-06, section 8, O1).
 2026-11-27. 028-73 registered by lead-1127, from the timing run on
 `main` (the pause probe's load phase) and its bisection to `05fc573c`
 (028-62); options (a) to (d) for Frans, (b) recommended.
+
+2026-11-27. 028-72 investigated by an agent of lead-1127: no transaction
+within L1 to L5 is refused by the action's 7/8 by Java's count (76.5 % at
+worst, node size 8); the Lean's 19 a level is a looser bound of that
+count; options A to G for Frans, A recommended. The entry became a
+directory with its probes.
 
 2026-11-27. 028-74 and 028-75 registered by lead-1127, from the
 independent review of 031-06's landed diff (`review-main.md`, R3 and
