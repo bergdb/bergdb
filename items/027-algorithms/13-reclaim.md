@@ -249,10 +249,10 @@ before it (028-66). If it is above fp, the stream lacks the database's
 bytes from fp to it, and the start refuses (a `StreamIoException`, the
 cause a `ReadBelowFirstPosException`, with what the storage says;
 028-66, 2026-11-27; before, the start went on, and reads of those bytes
-failed the database); so does a start that reads below
-the first position, which it does only then (027-11, section 1.10).
-Nothing is deleted before the refusal. Nothing else is
-kept, so a restart does not change what reclaim writes (INV-RESTART).
+failed the database); so does a start that reads below the first
+position, which it does only then (027-11, section 1.10). Nothing is
+deleted before the refusal. Nothing else is kept, so a restart does not
+change what reclaim writes (INV-RESTART).
 Startup on a cut stream is part 7's.
 
 ### 1.10. maintain()
@@ -453,17 +453,21 @@ pending, M1's condition holds, or the dead hand has more.
   thread; since 005-46 a thread of the storage's own deletes them, from
   005-46 to 028-66 one at a time with the directory forced after each,
   since 028-66 (2026-11-27) a batch at a time with one force. With one
-  force a file, a fast writer was ahead of the deletes: in `ReclaimCost` (about 120 MB of stream a
-  second, F53 loaded) the files that end before fp and are not yet
-  deleted, most of them taken off by the storage's cut and waiting for
-  its thread, the rest for the cut, which waits for durability, are 24
-  to 44 percent of the stream kept with the quarter, 50 to 55 with the
-  tenth, which makes about three times as many files (16 to 23 against
-  56 to 60 on average); the disk 1.28 to 1.48 times the stream kept with
-  the quarter, 1.49 to 1.56 with the tenth: measured. An emptied
-  database (031-02's RetainChurn): 400 kB on disk for 61 kB of stream in
-  seed 5 (10,400 kB with the quarter); 200, 600 and 800 kB in seed 1's
-  rounds 1 to 3 (200, 2,600 and 3,800): measured.
+  force a file, a fast writer was ahead of the deletes: in `ReclaimCost`
+  (about 120 MB of stream a second, F53 loaded) the files that end
+  before fp and are not yet deleted, most of them taken off by the
+  storage's cut and waiting for its thread, the rest for the cut, which
+  waits for durability, are 24 to 44 percent of the stream kept with the
+  quarter, 50 to 55 with the tenth, which makes about three times as
+  many files (16 to 23 against 56 to 60 on average); the disk 1.28 to
+  1.48 times the stream kept with the quarter, 1.49 to 1.56 with the
+  tenth: measured. With a batch and one force (028-66, one run on F53,
+  loaded): 110,000 transactions a second against 63,000 to 68,000, the
+  disk 1.13 times the stream kept, the files that wait for the storage's
+  thread 0.013 of it: measured. An emptied database (031-02's
+  RetainChurn): 400 kB on disk for 61 kB of stream in seed 5 (10,400 kB
+  with the quarter); 200, 600 and 800 kB in seed 1's rounds 1 to 3 (200,
+  2,600 and 3,800): measured.
 
 
 ## 5. In the model

@@ -115,8 +115,8 @@ import bergdb.pub.util.BadFormatException;
  * loss that the deletes can leave, and the database's start, which reads its cut from the
  * stream, finds the cut at or after the first position and cuts there (Reclaim,
  * initFromDb); a stream whose first position is after its cut lacks bytes of the database,
- * and the start refuses it before it deletes anything (bergdb 028-66; Db, start()). Not
- * refused, as before 2026-11-27: files before the gap that are not a cut's leftovers, such
+ * and the start refuses it before it deletes anything (bergdb 028-66; Db, start()). Taken
+ * now, refused until 2026-11-27: files before the gap that are not a cut's leftovers, such
  * as another database's put into the directory by hand; the start of the stream after the
  * gap deletes them if it finds its cut at or after the gap's end. Still refused
  * (BadDirStateException): a bad name, a file that begins before the end of the one before

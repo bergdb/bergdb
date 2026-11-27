@@ -660,3 +660,10 @@ independent review of 031-06's landed diff (`review-main.md`, R3 and
 R4): a commit's time after a restart against a time given to a reader;
 the whole live data rewritten after one small put. Options for Frans;
 (a) and (c) recommended.
+
+2026-11-27. 028-66, option C designed and built (branch `028-66c`, not
+pushed), from Frans's principle of the day: the cut's deletes a batch
+with one directory force; a gap in `FileStream`'s files is taken at the
+open, and a start refuses a stream whose first position is after
+reclaim's cut, else its cut deletes the files before the gap. Sound;
+the writer as fast as with the batch; for Frans: land C (028-66, 5.10).
