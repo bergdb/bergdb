@@ -21,8 +21,10 @@ run. On F53, functional runs, other work on the machine.
 * **The bytes.** No restart, stop, failure, torn record or eviction
   schedule that the probes tried changed a byte against the same actions
   run without it, also where the record's room plans a step again
-  (section 4). One thing outside the stream and the action does change
-  the bytes: fields that a failed execution leaves on a `Trans` (R1).
+  (section 4). Two things outside the stream and the action do change
+  the bytes: fields that a failed execution leaves on a `Trans` (R1),
+  and, through the action's time, the last time given to a reader, which
+  a start does not rebuild (R3; `DbClock`, not of this diff).
 * **The record's room.** The check before the append
   (`Db.checkTakeable`) fails databases at lowered record limits under
   plain workloads, in a commit of one small put and in a part of
@@ -37,7 +39,7 @@ run. On F53, functional runs, other work on the machine.
 
 ## 2. Findings, ranked
 
-### R1. A Trans executed again after a failure writes other bytes (medium)
+### R1. A Trans executed again after a failure writes other bytes (medium; the Core API only)
 
 * **Where.** `Db.executeLocked`, `java/src/bergdb/core/Db.java`, lines
   3068 to 3078 and 3125 to 3130. The fields of the plan's record
@@ -70,8 +72,12 @@ run. On F53, functional runs, other work on the machine.
   the action again, with the `Trans` that failed and with a new one of
   the same KVs. 20 runs (5 seeds, node sizes 8 and 30, both points): **16
   gave different streams**, 4 the same; the control, the failed `Trans`
-  with the five fields cleared by hand, gave the new `Trans`'s stream in
-  all 20 (`runs/reuse.txt`).
+  with the plan's fields cleared by hand, gave the new `Trans`'s stream
+  in all 20 (`runs/reuse.txt`).
+* **Reach.** The Core API, where a caller keeps a `Trans`. The Pub layer
+  makes a `Trans` for every execution (`WTransaction.execute`,
+  `RwTransaction.executeRw`: `env.createTrans`), so no call of the Pub
+  API meets it. The values read are right either way; the bytes differ.
 * **Why the probes of the item did not meet it.** `P2CrashProbe` and
   `FaultProbe` build a new `Trans` for every execution.
 * **A fix.** These fields are the record's, not the transaction's: keep
@@ -101,8 +107,8 @@ run. On F53, functional runs, other work on the machine.
   record that carries maintenance has `recordCap()`, 455,894 bytes at a
   limit of 100,000, as its take's room; and M4's take adds 256 KiB
   whatever the limit.
-* **Shown.** `review-main-probes/RmRoomProbe.java`, `room.sh`
-  (`runs/room.txt`): single puts of 30 bytes at random among 20,000 keys
+* **Shown.** `review-main-probes/RmRoomProbe.java` (`run.sh OUT room`,
+  `runs/room.txt`): single puts of 30 bytes at random among 20,000 keys
   of three segments, R = 1 s.
   * Record limit 100 kB, node size 8, startup distance 2 MB, one
     `maintain(100000)` after 30,000 commits: the database fails in a part
@@ -134,11 +140,50 @@ run. On F53, functional runs, other work on the machine.
   check cannot fail by it: stop the take (`TransSeq.take` and `takeTo`)
   before the transaction whose nodes, each at the largest size with its
   entry, would bring the record's got-dirty set over `takeRoom()`,
-  counting every taken node as kept dirty. A deterministic count, no
-  effect at the release's limits. And at a lowered limit give M4's take
-  and `recordCap()` no more than the record limit allows a set to be.
+  counting every taken node as kept dirty. A deterministic count, with
+  no effect at the release's limits; M4's 256 KiB and `recordCap()` then
+  cannot pass it either, and every set in D stays within `takeRoom()` by
+  the take itself.
 
-### R3. One small put, then maintain(): the whole live data again (low: the cost of a decided rule)
+### R3. A commit's time after a restart can be at or before a time a reader was given (low to medium; not of this diff)
+
+* **Where.** `DbClock.transactionBegin` (`java/src/bergdb/core/
+  DbClock.java`): a transaction's time is the clock's, raised above the
+  last transaction's time and above `lastReadTime`, the last time that
+  `currentTime()` gave. A start sets the first from the stream
+  (`setLastTransTime`); `lastReadTime` begins at 0. The merge did not
+  change `DbClock`.
+* **What happens.** A reader is given a time R by `currentTime()`; the
+  database is started again; the clock at the next commit is at R or
+  before it (it stands still, or it went back). Without the restart the
+  commit's time is R + 1; with it, the clock's.
+  * The bytes differ for the same calls at the same clock values. By
+    the draft of P2 the time is an input of the action (`p2-draft.md`,
+    "Its time"), so this is outside the principle as worded; it is still
+    memory that a start does not rebuild and that decides bytes.
+  * A read at R after the commit gives the commit's value, where the
+    reader was given the state without it. `Db.currentTime()`'s Javadoc
+    says that a read at the time given "reads the same state whenever it
+    runs"; 020-23's Z1 keeps that when the clock goes back within one
+    session, not across a start.
+* **Shown.** `review-main-probes/RmClockProbe.java` (`runs/clock.txt`):
+  a put, `currentTime()` at a later clock, then a put with the clock
+  standing still, and with it gone back, each with and without a restart
+  before the second put: other times (R + 1 against R, and against the
+  clock's earlier time), different streams, and the read of the second
+  key at R gives no value without the restart and the commit's value
+  with it.
+* **Reach.** A clock that does not pass R across a restart: a test's
+  clock, or a system clock set back. `P2CrashProbe`'s `-Dreader=1` calls
+  `currentTime()` before every action, in the continuation too, so its
+  restarts never come between a reader's time and the next record.
+* **What can be done.** The times given to readers are not in the
+  stream, so a start cannot rebuild `lastReadTime` from it. The limit
+  can be stated, in `currentTime()`'s Javadoc and beside P2's "Its
+  time": a time that `currentTime()` gave holds for the session that
+  gave it. A todo of 028, not a step of this landing.
+
+### R4. One small put, then maintain(): the whole live data again (low: the cost of a decided rule)
 
 * **Where.** `Reclaim.passDue` (`Reclaim.java`, line 903), M1 of
   `planPart`: a pass begins when the stream kept holds a record of the
@@ -147,16 +192,18 @@ run. On F53, functional runs, other work on the machine.
 * **Measured.** `review-main-probes/RmPassProbe.java` (`runs/pass.txt`),
   at the release's limits: a database brought to rest by `maintain()`
   calls, one put of 1 byte, calls until five in a row write nothing.
-  20,000 keys of 100 bytes: the put's record 568 bytes, the calls then
-  wrote 4.43 MB; the stream kept 4.36 MB before and 4.38 MB after.
-  100,000 keys of 200 bytes: 31.9 MB written for a record of 576 bytes.
+  20,000 keys of 100 bytes, three rounds: the put's record 568 to 624
+  bytes, the calls then wrote 4.40 to 4.43 MB; the stream kept 4.36 MB
+  before and 4.35 to 4.38 MB after. 100,000 keys of 200 bytes: 31.9 MB
+  written for a record of 576 to 648 bytes, the stream kept 32.0 MB
+  before and 31.6 to 31.7 MB after.
   Until this merge a call began an iteration only if its cut released
   400 kB (028-51, 028-62).
 * Not a fault of one record an action. For the pace (step 3): an
   application that writes a little and calls `maintain(budget)` when
   idle rewrites its live data once a retain duration.
 
-### R4. takeRoom() counts a taker with no KVs; M4's record has one (low, by reading)
+### R5. takeRoom() counts a taker with no KVs; M4's record has one (low, by reading)
 
 * `StoredTrans.takeRoom()`'s Javadoc names "an empty commit, a part's
   take, M4" as records with no KVs. M4's record stores the table
@@ -169,7 +216,7 @@ run. On F53, functional runs, other work on the machine.
   The window is a few kB in 2 GB; no run comes near. With R2's fix the
   count can use M4's room.
 
-### R5. The item's probes do not run on main (low: the evidence cannot be run again as committed)
+### R6. The item's probes do not run on main (low: the evidence cannot be run again as committed)
 
 * `probes/SafetyProbe.java`, `probes/PubInfoProbe.java` and
   `review-probes/RvP1.java` do not compile on `5b88cc80`
@@ -180,7 +227,7 @@ run. On F53, functional runs, other work on the machine.
   not applied to the files. `review-main-probes/P2CrashProbe.java` is the
   item's with that appendix applied and this review's variants.
 
-### R6. One operation a key is tested in a step's record only (low)
+### R7. One operation a key is tested in a step's record only (low)
 
 * The contract's `MaintenanceOK` (`lean/contract/Contract/
   ReclaimValues.lean`, line 47) takes one operation a key in every
@@ -267,11 +314,37 @@ run. On F53, functional runs, other work on the machine.
   met written by the record) is what Java does: the action's put makes
   a value node after pCut, its delete leaves none. No gate of `lean/`
   was run again here: the merge's `lean/` is the branch's, which the
-  landing gated. One gap is R6.
+  landing gated. One gap is R7.
 
 ### 4.1. The sweep's results
 
-(Filled in from `runs/sweep-rm.txt`.)
+`runs/sweep-rm.txt` and `runs/sweep-rm2.txt` (`run.sh OUT sweep`), on the
+jar of `5b88cc80`:
+
+* **Nine configurations with a crash, a failure before `apply` and a
+  stop** at every second to fifth record, five of them with a restart
+  every 2 to 5 actions of the continuation: record limits of 24 kB to
+  200 kB in eight and the release's in one, node sizes 8 and 30, step
+  reserves of 3,000 and 20,000 bytes, eviction at every transaction, a
+  reader's time before each action with the clock going back. Their
+  reference runs: 9,992 records = accepted actions; 1,041 puts refused
+  by the lowered limit, with no record; 3,968 plans made again with the
+  step's first copy and 15 steps left out of a commit's record
+  (`Reclaim.Stats.roomFirstCopy`, `roomNoStep`); 4,282 value
+  transformations.
+  * **12,105 interruptions (4,035 of each kind), all continued to the
+    uninterrupted stream, 0 different**; every stream ended at the
+    record; 10,879 came after a physical cut.
+  * **The start's memory was the running database's at all 12,105.**
+* **Torn records**, three configurations, every record or every second,
+  of commits, parts and setters: 2,142 torn records (714 records, each
+  cut after 1 byte, at half and before its last byte; the probe's line
+  says "commits"), each continued the same with and without restarts,
+  0 different, the bytes before it the reference's.
+* The reference runs had reclaim's statistics on and the continued runs
+  had them off: the same streams, so the statistics change no byte.
+* `java/stress/level3.sh`, whole, on a copy of the clone at `5b88cc80`:
+  see `runs/level3.txt`.
 
 
 ## 5. Simplicity and clean-up
@@ -294,16 +367,23 @@ run. On F53, functional runs, other work on the machine.
   again after it"); `Trans.touch`'s Javadoc ("For internal transactions
   of reclaim, its steps"); `Reclaim`'s class comment of 2013
   (`transactionCompleted`); `Reclaim.recordWritten` (line 1501) counts a
-  part's step by `t.touch`; `StoredTrans.takeRoom()`'s "M4" (R4).
+  part's step by `t.touch`; `StoredTrans.takeRoom()`'s "M4" (R5).
 * Which records carry maintenance is told by three flags of `Trans`
   (`isInternal`, `part`, `noMaintenance`; `Db.planMaintenance`, line
   3148): one kind (a commit, a setter, a part, BergDB's own) would say
   it. `Maintenance.Plan` holds reclaim's statistics types
   (`Reclaim.TouchCount`, `touchOldBefore`), which the boundary need not
   know.
+* Record format 9 opens no stream of an earlier release (A3), so what
+  reads their rows is dead: a row or a table without a
+  (`IterationInfo.a` as `Long.MIN_VALUE`, `initFromDb`'s cases for "a
+  stream of 2026.6"), the defaults of `IterationInfo.deserialize` for
+  fields "missing before 2026-10-13", `isOwnKey`'s filler of 2026.6 and
+  Db's class comment on it. Strict parsing (a row without a field is
+  refused) is less code and a check more.
 * `Reclaim.cutIfDurableNow()` only calls `cutIfDurable()`;
   `IterationTable.serialize()` has no caller.
-* The probes of the item (R5).
+* The probes of the item (R6).
 
 
 ## 6. Not done
@@ -321,7 +401,7 @@ run. On F53, functional runs, other work on the machine.
 after sections 1 to 6 were written and committed (`44bc504f` of the
 review's branch).
 
-* **New here, all six.**
+* **New here, all seven.**
   * R1: that review ran "a Trans executed again" among `RvFront`'s
     actions and compared the values read, on a database that did not
     fail; the fields left by a failed execution, and the bytes, are new.
@@ -330,15 +410,18 @@ review's branch).
     check fails where the take, not the counts before the go point, fills
     the set. The stall of F5 is not reached silently any more: a set
     within `takeRoom()` is taken by a record with no KVs.
-  * R3 is of 031-04's rule, which the prototype had; that review measured
+  * R3 is of `DbClock`, which neither the prototype nor the landing
+    changed; that review's runs, as the item's, gave a reader its time
+    in the continuation too.
+  * R4 is of 031-04's rule, which the prototype had; that review measured
     the pace of commits (F2, F3), not a call after one put.
-  * R4, R5 and R6 are of code and files that came with the landing.
+  * R5, R6 and R7 are of code and files that came with the landing.
 * **Its findings, as the landed diff has them** (read; F1 and F7 also
   ran in the landing's gates, not again here):
-  * F1, the conformance: built (step 1). R6 is a gap in what it tests.
+  * F1, the conformance: built (step 1). R7 is a gap in what it tests.
   * F2, F3, F4, the pace and P1: not built (step 3); nothing here.
   * F5, the admission: built as a count of the record and a check before
-    the append (step 2); R2 and R4.
+    the append (step 2); R2 and R5.
   * F6, long keys: the count is from the actual keys
     (`Db.recordDirtyFits`); O1 is open.
   * F7, the step reserve: a constant with a test hook (028-68, B); no

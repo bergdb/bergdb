@@ -1,7 +1,7 @@
 #!/bin/sh
 # bergdb 031-06, the probes of the review of the landed diff (review-main.md): how each was
 # run, from the repository's root, after java/build.sh. OUT is a directory for the classes.
-# Usage: sh items/031-release-2026-7/06-one-record-an-action/review-main-probes/run.sh OUT [reuse|room|pass|sweep]
+# Usage: sh items/031-release-2026-7/06-one-record-an-action/review-main-probes/run.sh OUT [reuse|room|clock|pass|sweep]
 # Kind: functional.
 OUT=${1:?out dir}
 WHAT=${2:-all}
@@ -34,7 +34,14 @@ if [ $WHAT = all ] || [ $WHAT = room ]; then
     room 1000000 4000000 20000 40000 40000 3 1 30
 fi
 
-# R3: one small put, then maintain() calls until they rest (runs/pass.txt).
+# R3: a commit's time after a reader's currentTime(), with and without a restart
+# (runs/clock.txt).
+if [ $WHAT = all ] || [ $WHAT = clock ]; then
+    echo "== still"; java -ea -cp $C bergdb.core.RmClockProbe still
+    echo "== back"; java -ea -cp $C bergdb.core.RmClockProbe back
+fi
+
+# R4: one small put, then maintain() calls until they rest (runs/pass.txt).
 if [ $WHAT = all ] || [ $WHAT = pass ]; then
     java -ea -cp $C bergdb.core.RmPassProbe 20000 100 1000
     java -ea -cp $C bergdb.core.RmPassProbe 100000 200 100000

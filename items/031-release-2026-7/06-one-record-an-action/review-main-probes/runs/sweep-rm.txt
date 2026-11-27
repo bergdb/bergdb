@@ -1,0 +1,45 @@
+== -Dmaint=15 -Dmaxv=100 -Dnode=8 -Dkeys=2000 -Dlimit=60000 -Dbig=20 -Dstride=2 24 500 1000 all
+seed 24, actions 503 (71 calls of 100), sd 1000: records 1004 = accepted actions 1004 (395 commits, 41 carrying maintenance; 9 setters; 600 parts), length 3075576, cut 1878024, decided 1878024, digest 474c0657a2dc97cd; record limit 60000, refused by it 27; room: first copy 477, no step 0
+crash: 502 the same, 0 different; 502 ended at the record, 451 after a physical cut; the start's memory the running one's at 502, other at 0
+pre: 502 the same, 0 different; 502 ended at the record, 451 after a physical cut; the start's memory the running one's at 502, other at 0
+stop: 502 the same, 0 different; 502 ended at the record, 451 after a physical cut; the start's memory the running one's at 502, other at 0
+== -Dmaint=5 -Dmaxv=100 -Dnode=8 -Dkeys=2000 -Dlimit=40000 -Dbig=30 -Dstride=2 -Drestart=3 25 600 2000 all
+seed 25, actions 603 (31 calls of 100), sd 2000, restart every 3: records 1383 = accepted actions 1383 (472 commits, 28 carrying maintenance; 11 setters; 900 parts), length 2433304, cut 1081592, decided 1081592, digest dd9f5faf86eb5c0c; record limit 40000, refused by it 84; room: first copy 877, no step 0
+crash: 692 the same, 0 different; 692 ended at the record, 652 after a physical cut; the start's memory the running one's at 692, other at 0
+pre: 692 the same, 0 different; 692 ended at the record, 652 after a physical cut; the start's memory the running one's at 692, other at 0
+stop: 692 the same, 0 different; 692 ended at the record, 652 after a physical cut; the start's memory the running one's at 692, other at 0
+== -Dmaint=2 -Dmaxv=100 -Dnode=8 -Dkeys=4000 -Dlimit=40000 -Dbig=50 -Dbigkeys=70 -Dstride=3 -Drestart=5 29 900 4000 all
+seed 29, actions 903 (18 calls of 100), sd 4000, restart every 5: records 1202 = accepted actions 1202 (618 commits, 333 carrying maintenance; 14 setters; 570 parts), length 2405832, cut 745320, decided 745320, digest bcfe98294ac9a888; record limit 40000, refused by it 251; room: first copy 863, no step 6
+crash: 401 the same, 0 different; 401 ended at the record, 336 after a physical cut; the start's memory the running one's at 401, other at 0
+pre: 401 the same, 0 different; 401 ended at the record, 336 after a physical cut; the start's memory the running one's at 401, other at 0
+stop: 401 the same, 0 different; 401 ended at the record, 336 after a physical cut; the start's memory the running one's at 401, other at 0
+== -Dmaint=10 -Dmaxv=300 -Dnode=8 -Dkeys=1500 -Dreserve=3000 -Dstride=2 -Dxform=1 -Ddeep=1 -Drestart=2 27 500 1500 all
+seed 27, actions 503 (52 calls of 100), sd 1500, restart every 2: records 1901 = accepted actions 1901 (442 commits, 36 carrying maintenance; 8 setters; 1451 parts), length 3006464, cut 1138448, decided 1534088, digest 4e436acca5bc4f2f; value transformations 141; room: first copy 0, no step 0
+crash: 951 the same, 0 different; 951 ended at the record, 858 after a physical cut; the start's memory the running one's at 951, other at 0
+pre: 951 the same, 0 different; 951 ended at the record, 858 after a physical cut; the start's memory the running one's at 951, other at 0
+stop: 951 the same, 0 different; 951 ended at the record, 858 after a physical cut; the start's memory the running one's at 951, other at 0
+== -Dmaint=10 -Dmaxv=300 -Dkeys=1500 -Dreserve=20000 -Dstride=2 -Dxform=1 -Devict=1 -Dlimit=80000 -Dbig=20 28 500 1500 all
+seed 28, actions 503 (51 calls of 100), sd 1500, eviction at every transaction: records 564 = accepted actions 564 (398 commits, 51 carrying maintenance; 7 setters; 159 parts), length 1552280, cut 966984, decided 966984, digest 38fb287447bfcbb0; record limit 80000, refused by it 46; value transformations 810; room: first copy 0, no step 0
+crash: 282 the same, 0 different; 282 ended at the record, 252 after a physical cut; the start's memory the running one's at 282, other at 0
+pre: 282 the same, 0 different; 282 ended at the record, 251 after a physical cut; the start's memory the running one's at 282, other at 0
+stop: 282 the same, 0 different; 282 ended at the record, 252 after a physical cut; the start's memory the running one's at 282, other at 0
+== -Dmaint=8 -Dmaxv=2000 -Dnode=30 -Dkeys=800 -Dlimit=200000 -Dbig=25 -Dbigkeys=200 -Dstride=3 -Dxform=1 -Dreader=1 -Dclock=back 30 600 5000 all
+seed 30, actions 603 (52 calls of 100), sd 5000, a reader's time before each, clock back: records 711 = accepted actions 711 (466 commits, 48 carrying maintenance; 12 setters; 233 parts), length 4172560, cut 2895504, decided 3116920, digest c2f3815f06abeaac; record limit 200000, refused by it 71; value transformations 3331; room: first copy 0, no step 0
+crash: 237 the same, 0 different; 237 ended at the record, 219 after a physical cut; the start's memory the running one's at 237, other at 0
+pre: 237 the same, 0 different; 237 ended at the record, 218 after a physical cut; the start's memory the running one's at 237, other at 0
+stop: 237 the same, 0 different; 237 ended at the record, 218 after a physical cut; the start's memory the running one's at 237, other at 0
+== -Dmaint=8 -Dmaxv=500 -Dnode=8 -Dkeys=5000 -Dlimit=100000 -Dbig=25 -Dbigkeys=100 -Dstride=5 -Ddeep=1 -Devict=1 -Drestart=4 31 800 20000 all
+seed 31, actions 803 (65 calls of 100), sd 20000, restart every 4, eviction at every transaction: records 800 = accepted actions 800 (639 commits, 35 carrying maintenance; 12 setters; 149 parts), length 5472648, cut 3031096, decided 3031096, digest 88a5ae4432187c1f; record limit 100000, refused by it 85; room: first copy 1, no step 0
+crash: 160 the same, 0 different; 160 ended at the record, 147 after a physical cut; the start's memory the running one's at 160, other at 0
+pre: 160 the same, 0 different; 160 ended at the record, 147 after a physical cut; the start's memory the running one's at 160, other at 0
+stop: 160 the same, 0 different; 160 ended at the record, 147 after a physical cut; the start's memory the running one's at 160, other at 0
+== -Dmaint=30 -Dmaxv=100 -Dnode=8 -Dkeys=2000 -Dlimit=40000 -Dbig=30 -Dtorn=2 -Dxform=1 -Dtornall=true 25 400 2000 torn
+seed 25, actions 403 (132 calls of 100), sd 2000: records 455 = accepted actions 455 (214 commits, 17 carrying maintenance; 4 setters; 237 parts), length 805664, cut 308008, decided 308008, digest 91e227d8cdb0e986; record limit 40000, refused by it 51; value transformations 648; room: first copy 180, no step 0
+torn: 681 torn records (commits): 681 continued the same with and without a restart, 0 different; 681 with the action not accepted; 681 with the reference's bytes before it
+== -Dmaint=40 -Dmaxv=3000 -Dnode=8 -Dkeys=300 -Dtorn=2 -Dtornall=true -Dbudget=1000 21 400 2000 torn
+seed 21, actions 403 (144 calls of 1000), sd 2000: records 438 = accepted actions 438 (250 commits, 33 carrying maintenance; 8 setters; 180 parts), length 2534816, cut 1548736, decided 1548736, digest 3113f2afa36bbeeb; room: first copy 0, no step 0
+torn: 657 torn records (commits): 657 continued the same with and without a restart, 0 different; 657 with the action not accepted; 657 with the reference's bytes before it
+== -Dmaxv=100 -Dkeys=30 -Dnode=8 -Dmaint=50 -Dtorn=1 -Dtornall=true 41 300 200 torn
+seed 41, actions 303 (150 calls of 100), sd 200: records 269 = accepted actions 269 (148 commits, 30 carrying maintenance; 5 setters; 116 parts), length 882336, cut 686304, decided 686304, digest 201232414b7b5e1d; room: first copy 0, no step 0
+torn: 804 torn records (commits): 804 continued the same with and without a restart, 0 different; 804 with the action not accepted; 804 with the reference's bytes before it
+SWEEP-RM DONE

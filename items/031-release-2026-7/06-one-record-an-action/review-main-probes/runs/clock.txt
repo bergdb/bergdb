@@ -1,0 +1,12 @@
+== still
+  a read of /b at the time given, 200000000, after the commit: no value (the state the reader was given)
+without a restart: the reader was given 200000000, the clock at the commit 200000000, the commit's time 200000001, stream length 592
+  a read of /b at the time given, 200000000, after the commit: the commit's value
+with a restart   : the reader was given 200000000, the clock at the commit 200000000, the commit's time 200000000, stream length 592
+DIFFERENT STREAMS
+== back
+  a read of /b at the time given, 200000000, after the commit: no value (the state the reader was given)
+without a restart: the reader was given 200000000, the clock at the commit 150000000, the commit's time 200000001, stream length 592
+  a read of /b at the time given, 200000000, after the commit: the commit's value
+with a restart   : the reader was given 200000000, the clock at the commit 150000000, the commit's time 150000000, stream length 592
+DIFFERENT STREAMS
