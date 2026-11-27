@@ -121,6 +121,16 @@ machine; no time was measured.
   (028-60), so a start that changes no byte still writes; the bytes are
   the same.
 
+* **Fixed (2026-11-28)** in `b7f21db4`: zeros at the end of a cut record
+  count as bytes not written; a cut record is taken if its header holds
+  its check, or if its bytes up to the last non-zero byte are fewer
+  than 32, begin a valid header and only zeros follow; recovery's
+  completion writes only zeros after a cut size field (the filler at
+  byte 4 gone, the smallest completed record 48 bytes). The four probes
+  start every case; `DbTesterTail` restarts after a cut at each of a
+  record's first 40 bytes, alone and over a meta block, and after a
+  kill during the completion (028-67, Built).
+
 ### W1. The warm-up with several writers misses some steps (low; step 3; measured)
 
 * **Where.** `Reclaim.warmup` (`Reclaim.java`, line 1402) reads the row
