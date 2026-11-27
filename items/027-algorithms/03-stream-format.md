@@ -609,7 +609,11 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
 * The checks before the go point (`Db.checkSize`, user transactions only;
   `Db.checkDirtyNodes` with `Dag.dirtyNodeBound`): value nodes at most 7/8
   of the limit (`valueLimit`, :76), index nodes at most 15/16
-  (`dirtyLimit`, :86). `dirtyNodeBound` was argued for the writer of
+  (`dirtyLimit`, :86); since 031-06 that is a record's, its action's and
+  its maintenance's together (`Db.recordDirtyFits`), an action's alone at
+  most 7/8 (`actionDirtyLimit`), and `Db.checkTakeable` fails the database
+  before it appends a record whose index nodes a later record could not
+  take (`takeRoom`). `dirtyNodeBound` was argued for the writer of
   formats 6 and 7; for PE it is proved for transactions of puts since
   030-29 (given the fill rules), and argued in its Javadoc since 028-21,
   which found the old count short for PE in three ways and added them: a
