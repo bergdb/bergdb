@@ -72,13 +72,20 @@ refusal has written nothing:
    failed that ends the stream (`RecoverableStream.holdsFirstTransactionAlone`).
 3. **The last valid meta block** B: of the blocks complete in the
    stream, from the last down to the first at or after the first
-   position, the first whose last byte is 10. Each block read must have
-   the magic and the version 155 (154 until 028-15, whose streams, of
-   2026.5 and before, are refused with a message that names 2026.5): else
-   a `StreamFormatException` (SFE) that names the causes (020-28), or a
-   `VersioningStreamException` (005-40); but a block of 128 zero bytes
-   is read as not valid, as a zeroed tail leaves it (028-60). B's time
-   must not be negative. None valid: an SFE.
+   position, the first that is valid: its last byte 10, its own position
+   at offset 46 the one it is read at, and its database id that of the
+   stream's first block (028-67, C3; Frans, 2026-11-27). The first block
+   must have the magic and the version 156 (155 until 028-67, whose
+   streams, of 2026.6 and of builds of 2026.7 before 028-67, are refused
+   with a message that names them; 154 until 028-15, 2026.5's and
+   before): else a `StreamFormatException` (SFE) that names the causes
+   (020-28), or a `VersioningStreamException` (005-40); and it must be
+   valid itself, else none is. After it, a block of 128 zero bytes (as a
+   zeroed tail leaves it, 028-60), of other bytes or another version, or
+   of another place or database (as an older stream file's or another
+   database's bytes in the last file after a kill leave it, 035-02) is
+   not valid and passed over. B's time must not be negative. None valid:
+   an SFE.
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
@@ -88,19 +95,48 @@ refusal has written nothing:
 ### 1.3. Recovery
 
 With L the stream's length and n(p, z) the position after a record of z
-bytes at p, meta blocks skipped:
+bytes at p, meta blocks skipped; first the walk, which reads only (028-67,
+C1; Frans, 2026-11-27), then the writes:
 
+    p := B.lastTrans, or 128 if −1;  P := p
+    walk:                                              (walkTail)
+        r := the record bytes from p to the end; if r = 0: go to end
+        if r < 4: the torn record is at p; go to write
+        h := the first min(r, 32) bytes at p;  z := h's size
+        if z < 5: refuse at P
+        if r < z: the record is torn; refuse at P unless h holds its
+            check (32 bytes) or, cut within it, its size is 48 or more,
+            a multiple of 8, and its format byte, if there, 9;
+            the torn record is at p; go to write
+        refuse at P unless the last byte is 0 or 10
+        if it is the first record and committed: refuse another
+            format (a VersioningStreamException)
+        if committed: refuse at P unless h holds its check; P := n(p, z)
+        if aborted and h holds its check: P := n(p, z)
+        p := n(p, z)
+    end: refuse at its start if the last record is committed, ended
+        at P, and does not parse
+    write:
     if L > 0 and L mod MD < M: append the rest of the block, zero but
         the magic and the version: an invalid block          (005-27);
         all zero if its bytes are zero so far                (028-60)
     the meta block in memory := B, whole, its reserved bytes too
-    p := B.lastTrans, or 128 if −1
-    loop:
-        r := the record bytes from p to the end; if r = 0: done
+    if a torn record is at p:
         if r < 5: complete the size field and byte 4    (027-03, 7)
-        z := the size at p; if z < 5: an SFE
-        if r < z: append z − r zeros; done          (last byte 0)
-        p := n(p, z)
+        append z − r zeros                          (last byte 0)
+
+"h holds its check": bytes 5 to 7 of the header are the check of the
+database id, p and the header's other bytes (027-03, 8.1), the Core's
+check (`StoredTrans.RECORD_CHECK`), which the storage layer's recovery
+takes as a hook. "Refuse at P": a `BadTailException`, an SFE, before
+anything is written, whose message gives the cause, P and the way out
+(keep a copy of the files and cut the stream at P); P is the end of the
+last record found to be one, or the start of the committed record that
+ends there if that record does not parse whole (another file's bytes can
+begin inside a record, after its own header). An aborted record whose
+header does not hold its check, as a fill after a cut header leaves it,
+is walked over and not counted. The walk ends at a meta block too: L
+can be at or in the block after a record that ends at its position.
 
 A torn last record becomes an aborted one, which every walk skips. That
 is 014-01's contract (section 7; Frans, 2026-11-05): the storage keeps a
@@ -117,13 +153,22 @@ as a cut where its zeros begin inside the last record: z, read before
 them, reaches to or past the end, and the zeros are not read; blocks of
 zeros among them are not valid (1.2, step 3). Zeros that cover a whole
 size field at a record's start, where they begin or past the end of the
-record they begin in, give z = 0 there: an SFE, "Bad transaction size
-in db stream, 0, spos P" (028-60). Before it reads the sizes, the
-recovery completes a meta block that the end of the stream cut, so the
-refusal may append that block's missing bytes; it writes nothing else. A
-size field that the end of the stream cuts, 1 to 3 zero bytes, is
-completed as any torn record's and recovered as an aborted record
-(Codex's review of 028-60, 2026-11-25).
+record they begin in, give z = 0 there: refused, "Bad transaction size
+in db stream, 0, spos P. Stream length: L." and the way out (028-60;
+since 028-67 the message goes on with P and the cut, and the refusal
+comes before the recovery completes a meta block that the end of the
+stream cut: it writes nothing). A size field that the end of the stream
+cuts, 1 to 3 zero bytes, is completed as any torn record's and recovered
+as an aborted record (Codex's review of 028-60, 2026-11-25).
+
+Another file's bytes in the last file within its length, which a kill
+during an append can leave on APFS (035-02), are refused in the same
+way, before anything is written: their meta blocks are not valid (1.2,
+step 3), and their records do not hold the check of this database's id
+at their position; a size read from them no longer makes the recovery
+append up to 2 GB of zeros first (035-02, section 10.2). Such bytes inside
+the last record, which the end of the stream cuts, are not read, as
+zeros there are not: the record is completed and aborted.
 
 ### 1.4. The startup pos and the section
 
@@ -133,7 +178,7 @@ completed as any torn record's and recovered as an aborted record
             record limit, its last byte is 0 or 10, and, if 10, its
             format byte is 7 (else a VersioningStreamException)
         the first R must be committed; skip R if not committed
-        parse R whole
+        parse R whole, its header's check too        (028-67)
         refuse unless 0 <= R.startupPos < R's position, a multiple
             of 8, and 0 or at least 128     (015-75; R's own position,
             which the take never writes, since 028-09)
@@ -496,7 +541,11 @@ cycle check (027-03, 14.2).
   write nothing); `MetaBlock` (4); `NodeCollection`'s `testFollowRuleR`
   and five `testLinkToCanonical*`; `DbTester.testCrash8InCreation`;
   CorruptStreamTester's sample and six `testFound*`; rule 4's `-ea`
-  check at every start.
+  check at every start; `DbTesterTail` (028-67: stale tails, zeros,
+  another database's bytes and an older stream file's, each started or
+  refused before a write and started after the cut at P; its f-tests on
+  every 512 bytes and on a file database's last file); `StoredTrans`'s
+  `testHeaderCheck` and `testRecordCheck`.
 * **In the night**: `level2.sh` (RestartStress, RestartInvariance,
   CrashTest, C-L); `level3.sh` (with reclaim; PowerLossTest);
   `level4.sh` (with eviction); CorruptStreamTester's full set;
@@ -631,3 +680,11 @@ lead-1125, on the branch `028-60`.
 2026-11-26. 028-60, part 2: `FileStream`'s open leaves a tail of zeros
 of at most 8 MB at the end of the last file out of the stream before
 the start reads it, and its first append cuts them (1.3). By an agent of lead-1126, on the branch `028-60b`.
+
+2026-11-27. 028-67, C1 and C3 (Frans, 2026-11-27): a meta block is valid
+only with its own position and the first block's database id (1.2, step
+3); the recovery walks the records before it writes, checks each
+header's check of the id, its position and its fields, and refuses a
+tail that is not the stream's records with the cause, P and the way out
+(1.3); the parse checks the header (1.4). By an agent of lead-1127, on
+the branch `028-67-c3`.

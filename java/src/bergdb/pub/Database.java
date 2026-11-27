@@ -77,11 +77,18 @@ import bergdb.pub.util.SyncLevel;
  * stream, and recovers the stream as a cut tail; the file storage cuts the zeros from the
  * file at its first write, so a start refused before it writes leaves the files as they
  * were. No committed transaction is among such zeros: each committed transaction's record
- * and each valid meta block of the stream ends in the byte 10. A longer run of zeros that
- * reaches past a transaction's end, or other bytes
- * after the last transaction, as a file system that writes a file's length before its data
- * can leave, is refused: start() throws a StreamFormatException, "Bad transaction size in
- * db stream, S, spos P. Stream length: L." (U8-3). To start the
+ * and each valid meta block of the stream ends in the byte 10. A kill during an append on
+ * APFS can also leave there the bytes of a file deleted before, such as an older stream
+ * file of the database or another database's file (bergdb 035-02, 028-67): each meta block
+ * holds its own position and the database's ID, and each transaction's record a check of
+ * the ID, its position and its header, so a start takes no meta block or record of another
+ * file or place. A tail that is not the stream's own records, such as those bytes, a longer
+ * run of zeros that reaches past a transaction's end, or other bytes after the last
+ * transaction, as a file system that writes a file's length before its data can leave, is
+ * refused before the start writes anything: start() throws a StreamFormatException whose
+ * message names the cause and P, the position where the stream's own records end ("The
+ * stream's records end at stream position P"), for example "Bad transaction size in db
+ * stream, S, spos P. Stream length: L. ..." for zeros (U8-3). To start the
  * database, keep a copy of its files, then cut the stream at P: cut the stream file that
  * holds P to P less the file's first position, which is the number in its name times
  * 100,000 (00000000000300.bergdb begins at 30,000,000), and remove the later stream files,

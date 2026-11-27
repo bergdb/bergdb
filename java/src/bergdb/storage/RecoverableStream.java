@@ -49,6 +49,9 @@ import bergdb.stream.ReadBelowFirstPosException;
  * those bytes and continue writing the transaction data right after it.
  * MetaBlocks are written *eagerly*. If the transaction size == distance to meta block, then the 
  * meta block will be written too. It will be the last part of the stream.
+ * Each meta block holds its own stream position and the database ID (bergdb 028-67, C3): a
+ * block that holds another position than the one it is read at, or another ID than the
+ * stream's first block, is not valid, as a block that a crash cut is not.
  * </pre>
  * 
  * @see AppendOnlyStream
@@ -67,7 +70,8 @@ public class RecoverableStream {
      * The least record size that recovery's completion of a torn transaction header gives
      * (transHeaderFixBytes), retained from the 16-byte header format: the start's walk
      * refuses 16 and below (NodeStream.readRecordHeader); recovery's own walk refuses sizes
-     * below 5 only. The current record header is 32 bytes; recovery does not parse it.
+     * below 5 only. The current record header is 32 bytes; recovery does not parse it, but
+     * checks it through the layer above's RecordCheck before it fills (bergdb 028-67).
      */
     public static final int MIN_TRANS_SIZE = 16 + 1;
     
@@ -91,6 +95,8 @@ public class RecoverableStream {
     private long posOfLastValidMetaBlock;
     private long lastTransSposOfLastValidMetaBlock = -1;
         // The transaction that recovery starts from (2026-10-13).
+    private volatile byte[] streamId;
+        // The database ID of the stream's first meta block, set by recover() (bergdb 028-67).
     
     /**
      * Creates a new instance from an append-only stream.
@@ -115,6 +121,18 @@ public class RecoverableStream {
     }
     
     /**
+     * As recover(RecordCheck) with no check of the records' headers: this layer's own
+     * checks only, the records' sizes and last bytes.
+     *
+     * @throws StreamIoException
+     * @throws StreamFormatException  among them BadMagicBytes, VersioningStreamException and
+     *      BadTailException, thrown before anything is written
+     */
+    public void recover() {
+        recover(null);
+    }
+
+    /**
      * Recovers the stream: reads the last valid meta block, then fills out a meta block and
      * a last transaction that a crash has cut. This method must be called before any data
      * is appended to an existing underlying stream.
@@ -136,11 +154,25 @@ public class RecoverableStream {
      * that the end cuts (1 to 3 zero bytes) is completed as a torn record's is, and that
      * record recovered as an aborted one.</p>
      * 
+     * <p>Since 2026-11-27 (bergdb 028-67, C1 and C3): a meta block is valid only if it holds
+     * the position it is read at and the database ID of the stream's first block
+     * (readLastValidMetaBlock()); a block of another place or database, as an older stream
+     * file's bytes at the same offsets in a new file leave it, or of other bytes, is passed
+     * over as a block of zeros is. Before it writes anything, the recovery walks the records
+     * from the one that the last valid block names to the end, reading only (walkTail()):
+     * each record's size and last byte, and with 'check', the layer above's, each record's
+     * header, so that it completes a torn last record with zeros only after its header is
+     * found to be one. A tail that is not the stream's own records, zeros past a record's end
+     * or other bytes, is refused with a BadTailException that names P, the end of the last
+     * record that is one, and the way out, a cut of the stream at P: a size from such bytes
+     * no longer makes the recovery append up to 2 GB of zeros first.</p>
+     *
+     * @param check  The layer above's check of a record's header, or null.
      * @throws StreamIoException
-     * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,
-     *      thrown before anything is written
+     * @throws StreamFormatException  among them BadMagicBytes, VersioningStreamException and
+     *      BadTailException, thrown before anything is written
      */
-    public void recover() {
+    public void recover(RecordCheck check) {
         // 2026-10-25 (bergdb 005-40): fixMetaBlockIfNeeded() came first. With a wrong crypto
         // key, or none, it filled out a meta block that a crash had cut, through that key,
         // and only then did readLastValidMetaBlock() find the magic bytes wrong; the right key
@@ -155,10 +187,6 @@ public class RecoverableStream {
         }
         checkLastTransSpos(lastBlock);
         
-        fixMetaBlockIfNeeded();
-        
-        metaBlock.setFromOtherMetaBlock(lastBlock);
-        
         long spos;
         if (lastBlock.getLastTransSpos() == Constants.SposNULL) {
             spos = RecoverableStream.META_BLOCK_SIZE;
@@ -166,7 +194,204 @@ public class RecoverableStream {
             spos = lastBlock.getLastTransSpos();
         }
         
-        fixLastTransactionIfNeeded(spos);
+        // 2026-11-27 (bergdb 028-67, C1): the walk reads before anything is written; until
+        // then fixMetaBlockIfNeeded() came first, and the walk zero-filled a size read from
+        // any bytes, up to 2 GB, before a later check refused the stream.
+        final byte[] id = lastBlock.getId();
+        final long torn = walkTail(spos, check, id);
+
+        fixMetaBlockIfNeeded();
+
+        metaBlock.setFromOtherMetaBlock(lastBlock);
+        streamId = id;
+
+        if (torn >= 0) {
+            fixLastTransactionIfNeeded(torn);
+        }
+    }
+
+    /**
+     * The layer above's check of a record, which recover(RecordCheck) uses before it writes
+     * (bergdb 028-67, C1): this layer knows a record's size field and last byte only. The
+     * Core's is StoredTrans.RECORD_CHECK.
+     */
+    public interface RecordCheck {
+        /** The size of a record's header: the bytes at its start that headerChecks() reads. */
+        int headerSize();
+
+        /**
+         * Whether 'header', the first headerSize() bytes of the record at 'pos', is the header
+         * of a record that the database of ID 'id' wrote at 'pos'.
+         */
+        boolean headerChecks(long pos, byte[] header, byte[] id);
+
+        /**
+         * Whether 'bytes', the first 'length' bytes of the record at 'pos', 4 or more and
+         * fewer than headerSize(), which the end of the stream cuts, can begin a record's
+         * header, as far as they go.
+         */
+        boolean tornHeaderFits(long pos, byte[] bytes, int length);
+
+        /**
+         * Throws a VersioningStreamException if 'header', the first headerSize() bytes of a
+         * committed record at 'pos', or fewer if the record is shorter, is of another record
+         * format than the layer above reads; else returns.
+         */
+        void checkFormat(long pos, byte[] header);
+
+        /**
+         * null if 'record', the whole committed record at 'pos', is a record of the database of
+         * ID 'id' at 'pos', as a start parses it; else what is wrong.
+         */
+        String recordProblem(long pos, byte[] record, byte[] id);
+    }
+
+    /**
+     * Walks the records from 'start', the record that the last valid meta block names, to
+     * the end of the stream, reading only (bergdb 028-67, C1), and returns the position of
+     * the record that the end of the stream cuts, which recover() completes, or -1 if the
+     * last record ends at the end. Each record's size must be 5 or more, and a whole record's
+     * last byte 0 or LAST_BYTE. With 'check', also each record's header, 'id' the stream's
+     * database ID: a committed record's header must check; so must the header of the record
+     * that the end cuts, as far as the stream holds it, before recover() fills it; an aborted
+     * record's that does not check, as the recovery of a record that a crash cut in its
+     * header leaves it, is walked over, not taken as one. The first record, if committed, is
+     * refused first for another record format (check.checkFormat()), as a start refused it
+     * before (bergdb 005-40): a valid block names a record that this database wrote.
+     *
+     * @throws BadTailException  for a tail that is not the stream's records, with P, the end of
+     *      the last record found to be one; or that record's start, if it is a committed
+     *      record that does not parse (check.recordProblem()), as when the tail's other bytes
+     *      begin inside it; so also for the stream's last record, if committed, which is
+     *      parsed whole for that (it is read twice at a start: the start parses it again)
+     * @throws VersioningStreamException  as check.checkFormat() throws it
+     * @throws StreamIoException
+     */
+    private long walkTail(final long start, RecordCheck check, byte[] id) {
+        final long length = aos.getLength();
+        final int headerSize = check == null ? 4 : check.headerSize();
+        long spos = start;
+        long verified = start;      // P: the end of the last record found to be one
+        long committed = -1;        // the committed record that ends at 'verified', if any
+        int committedSize = 0;
+
+        while (true) {
+            // The end is at or in the meta block after a record's end (spos >= length), or
+            // at a record's end.
+            final long remaining = spos >= length ? 0 : getRemainingTransBytes(spos, length);
+            if (remaining == 0) {
+                // The last record, if committed, is parsed whole: the tail's other bytes can
+                // begin inside it, after its header, and no record after it is there to be
+                // refused; until 028-67 a start refused such a record after its recovery.
+                if (check != null && committed >= 0 && verified == spos) {
+                    final String problem = recordProblem(check, committed, committedSize, id);
+                    if (problem != null) {
+                        throw tailRefusal("The record at " + committed + ", the last of the "
+                                + "stream, is not one of this database's records: " + problem,
+                                committed, length);
+                    }
+                }
+                return -1;
+            }
+            if (remaining < 4) {
+                return spos;    // A torn size field, completed as before (transHeaderFixBytes).
+            }
+            final byte[] header = new byte[(int) Math.min(remaining, headerSize)];
+            read(spos, header, 0, header.length);
+            final int size = Bytes.bytesToIntLE(header, 0);
+            if (size < (4 + 1)) {
+                throw badTail("Bad transaction size in db stream, " + size + ", spos " + spos
+                        + ". Stream length: " + length + ".", verified, committed,
+                        committedSize, check, id, length);
+            }
+
+            if (remaining < size) {
+                if (check != null && !(header.length == headerSize
+                        ? check.headerChecks(spos, header, id)
+                        : check.tornHeaderFits(spos, header, header.length))) {
+                    throw badTail("The record at " + spos + ", of size " + size + ", which the "
+                            + "end of the stream cuts, has a header that is not one of this "
+                            + "database's records at its place (bergdb 028-67, C3).", verified,
+                            committed, committedSize, check, id, length);
+                }
+                return spos;
+            }
+
+            final byte[] last = new byte[1];
+            read(getSpos(spos, size - 1), last, 0, 1);
+            if (last[0] != 0 && last[0] != LAST_BYTE) {
+                throw badTail("Bad lastByte, " + last[0] + ", of the record at " + spos
+                        + ", of size " + size + ".", verified, committed, committedSize, check,
+                        id, length);
+            }
+            final long next = getSpos(spos, size);
+            if (check == null) {
+                verified = next;
+            } else {
+                if (spos == start && last[0] == LAST_BYTE) {
+                    check.checkFormat(spos, header);
+                }
+                final boolean checks = size >= headerSize && header.length == headerSize
+                        && check.headerChecks(spos, header, id);
+                if (last[0] == LAST_BYTE) {
+                    if (!checks) {
+                        throw badTail("The header of the record at " + spos + " is not one of "
+                                + "this database's records at its place (bergdb 028-67, C3).",
+                                verified, committed, committedSize, check, id, length);
+                    }
+                    verified = next;
+                    committed = spos;
+                    committedSize = size;
+                } else if (checks) {
+                    verified = next;
+                    committed = -1;
+                }
+            }
+            spos = next;
+        }
+    }
+
+    /**
+     * The refusal of a tail that is not the stream's own records (bergdb 028-67, C1): 'cause',
+     * then P and the way out. P is 'verified', the end of the last record found to be one,
+     * or the start of 'committed', the committed record that ends there, if it does not parse
+     * (with 'check'): the tail's other bytes can begin inside it, after its header.
+     */
+    private BadTailException badTail(String cause, long verified, long committed,
+            int committedSize, RecordCheck check, byte[] id, long length) {
+        long cut = verified;
+        if (check != null && committed >= 0) {
+            String problem = recordProblem(check, committed, committedSize, id);
+            if (problem != null) {
+                cut = committed;
+                cause += " The record before it, at " + committed + ", is not one either: "
+                        + problem;
+            }
+        }
+        return tailRefusal(cause, cut, length);
+    }
+
+    /** check.recordProblem() for the record of 'size' bytes at 'pos', read whole. */
+    private String recordProblem(RecordCheck check, long pos, int size, byte[] id) {
+        byte[] record = new byte[size];
+        read(pos, record, 0, size);
+        return check.recordProblem(pos, record, id);
+    }
+
+    /** The BadTailException for 'cause', a tail from 'cut' on, and the way out. */
+    private static BadTailException tailRefusal(String cause, long cut, long length) {
+        return new BadTailException(cause + " The stream's records end at stream position "
+                + cut + ": from there to the stream's end, " + length + ", it holds bytes "
+                + "that are not its records. A kill of the process during an append can leave "
+                + "such bytes in the last stream file, within its length: zeros, or the bytes "
+                + "of a file deleted before, such as an older stream file or another "
+                + "database's, as on macOS (APFS; bergdb 028-67, 035-02); so can a storage "
+                + "that loses or damages bytes. The start has written nothing. To start the "
+                + "database, keep a copy of its files, then cut the stream at " + cut
+                + ": cut the stream file that holds it to " + cut + " less the file's first "
+                + "position, which is the number in its name times 100,000, and remove the "
+                + "later stream files, if any; the stream's bytes from there on are lost.",
+                cut);
     }
     
     /**
@@ -322,7 +547,9 @@ public class RecoverableStream {
 
     /**
      * Handles the case when the stream crashed while writing the last transaction.
-     * The last transaction needs to be "filled out" with zero bytes.
+     * The last transaction needs to be "filled out" with zero bytes. Since bergdb 028-67
+     * 'spos' is the record that walkTail() found the end of the stream to cut, after its
+     * checks; the loop is the walk as before, and it reads that record only.
      * 
      * @param spos  The stream position of a transaction in the stream.
      */
@@ -649,6 +876,7 @@ public class RecoverableStream {
 
     private void writeMetaBlock() throws IOException {
         long metaPos = aos.getLength();
+        metaBlock.setStoredPos(metaPos);        // bergdb 028-67, C3
         aos.append(metaBlock.getBlock(), 0, RecoverableStream.META_BLOCK_SIZE);
         this.posOfLastValidMetaBlock = metaPos;
         this.lastTransSposOfLastValidMetaBlock = metaBlock.getLastTransSpos();
@@ -659,16 +887,25 @@ public class RecoverableStream {
     
     /**
      * Returns the last valid meta block, or null if no such block exists. A block of zero
-     * bytes is not valid (bergdb 028-60; readMetaBlock()).
+     * bytes is not valid (bergdb 028-60; readMetaBlock()). Since 2026-11-27 (bergdb 028-67,
+     * C3) a block is valid only if it holds the position it is read at and the database ID
+     * of the stream's first block (readFirstMetaBlock()); a block of other bytes or of
+     * another version after the first is passed over too, as stale bytes at a meta position
+     * are. None is valid if the first block is not.
      * 
      * @throws StreamIoException
-     * @throws StreamFormatException
+     * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,
+     *      for the stream's first block
      */
     public MetaBlock readLastValidMetaBlock() {
+        MetaBlock first = readFirstMetaBlock();
+        if (first == null) {
+            return null;
+        }
         long length = aos.getLength();
         long spos = length - META_BLOCK_SIZE;
         spos = spos < 0 ? 0 : spos;        
-        MetaBlock block = readAValidMetaBlock(aos, spos);
+        MetaBlock block = readAValidMetaBlock(aos, spos, 0, first.getId());
         if (block == null) {
             return null;
         }
@@ -678,6 +915,49 @@ public class RecoverableStream {
         return block;
     }
     
+    /**
+     * The stream's first meta block, the first at or after its first position, if it is
+     * complete in the stream, valid, and holds its own position; else null (bergdb 028-67,
+     * C3). Its database ID is the stream's: another block is valid only if it holds it. The
+     * stream's other bytes are cut only from its end, and another file's bytes after a kill
+     * are in the last file, from a page boundary on, so the first block is the stream's own.
+     * A block of other bytes or of another version throws here, as readMetaBlock() does: the
+     * stream is not one of this version of BergDB, or an earlier release encrypted it.
+     *
+     * @throws StreamIoException
+     * @throws BadMagicBytes
+     * @throws VersioningStreamException
+     */
+    private MetaBlock readFirstMetaBlock() {
+        final long firstIndex = (aos.getFirstPos() + META_BLOCK_DISTANCE - 1)
+                / META_BLOCK_DISTANCE;
+        final long pos = firstIndex * META_BLOCK_DISTANCE;
+        if (pos + META_BLOCK_SIZE > aos.getLength()) {
+            // A stream shorter than its first block: its first 8 bytes, if there, are refused
+            // as readMetaBlock() refuses them, as the search for the last block read them
+            // before bergdb 028-67; zeros, or the magic bytes and the version, are not.
+            if (aos.getLength() - pos >= 8) {
+                byte[] header = new byte[8];
+                readRaw(pos, header);
+                if (!isZeros(header)) {
+                    checkBlockHeader(header);
+                }
+            }
+            return null;
+        }
+        MetaBlock first = readMetaBlock(aos, pos);
+        return first.isOwn(null) ? first : null;
+    }
+
+    /**
+     * The database ID of the stream: the one recover() read in the stream's first meta block,
+     * or before recover(), the in-memory block's (bergdb 028-67).
+     */
+    private byte[] ownId() {
+        final byte[] id = streamId;
+        return id != null ? id : metaBlock.getId();
+    }
+
     public MetaBlock getMetaBlock() {
         return metaBlock;
     }
@@ -726,13 +1006,14 @@ public class RecoverableStream {
         // searched for one that names a transaction after the cut.
         
         final long firstPos = aos.getFirstPos();
-        MetaBlock meta = readAValidMetaBlock(aos, spos);
+        final byte[] id = ownId();
+        MetaBlock meta = readAValidMetaBlock(aos, spos, 0, id);
         long blockPos = meta != null ? meta.getPos()
                 : (firstPos + META_BLOCK_DISTANCE - 1) / META_BLOCK_DISTANCE * META_BLOCK_DISTANCE;
         
         for (; blockPos + META_BLOCK_SIZE <= aos.getLength(); blockPos += META_BLOCK_DISTANCE) {
-            meta = readMetaBlock(aos, blockPos);
-            if (!meta.isValid()) {
+            meta = readOwnMetaBlock(aos, blockPos, id);
+            if (meta == null) {
                 continue;
             }
             meta.checkFormat();
@@ -794,7 +1075,8 @@ public class RecoverableStream {
                     + "reclaim's cut, " + cutPos + "; the first position is " + firstPos + "."));
         }
         final long first = Math.max(firstPos, cutPos);
-        MetaBlock meta = readAValidMetaBlock(aos, spos, first / META_BLOCK_DISTANCE + 1);
+        MetaBlock meta = readAValidMetaBlock(aos, spos, first / META_BLOCK_DISTANCE + 1,
+                ownId());
         if (meta != null) {
             long named = meta.getLastTransSpos();
             if (named != Constants.SposNULL && named >= first) {
@@ -806,21 +1088,17 @@ public class RecoverableStream {
     }
     
     /**
-     * Reads and returns the last valid meta block that starts before or at
-     * 'spos'. If no such meta block exists, null is returned.
+     * Reads and returns the last valid meta block that starts before or at 'spos', of the
+     * blocks of index 'fromIndex' and after only (2026-11-25, bergdb 028-56). If no such
+     * meta block exists, null is returned. Since 2026-11-27 (bergdb 028-67, C3) a valid block
+     * is one of this stream's: it holds its own position and the database ID 'id'
+     * (readOwnMetaBlock()).
      * 
      * @throws StreamIoException
-     */
-    static MetaBlock readAValidMetaBlock(AppendOnlyStream aos, long spos) {
-        return readAValidMetaBlock(aos, spos, 0);
-    }
-
-    /**
-     * As readAValidMetaBlock(aos, spos), with the blocks of index 'fromIndex' and after only
-     * (2026-11-25, bergdb 028-56).
+     * @throws StreamFormatException  if a block of this stream is malformed (checkFormat())
      */
     private static MetaBlock readAValidMetaBlock(AppendOnlyStream aos, long spos,
-            long fromIndex) {
+            long fromIndex, byte[] id) {
         long metaIndex;
         MetaBlock result = null;
         
@@ -834,16 +1112,34 @@ public class RecoverableStream {
         
         for (long i = metaIndex; i >= firstIndex; i--) {
         	long blockPos = i * META_BLOCK_DISTANCE;
-            result = readMetaBlock(aos, blockPos);
-            if (result.isValid()) {
+            result = readOwnMetaBlock(aos, blockPos, id);
+            if (result != null) {
                 result.checkFormat();
                 break;
-            } else {
-                result = null;
             }
         }
         
         return result;
+    }
+
+    /**
+     * The meta block at 'blockPos' if it is one of this stream's (MetaBlock.isOwn(id)): valid,
+     * holding 'blockPos' and the database ID 'id'; else null (bergdb 028-67, C3). A block
+     * of other bytes or of another version than this one's (readMetaBlock() throws for it) is
+     * not one either: after the stream's first block, which readFirstMetaBlock() reads, such
+     * bytes at a meta position are another file's at the stream's tail, or damage, and the
+     * walk of the records refuses them where they matter (walkTail()).
+     *
+     * @throws StreamIoException
+     */
+    private static MetaBlock readOwnMetaBlock(AppendOnlyStream aos, long blockPos, byte[] id) {
+        final MetaBlock block;
+        try {
+            block = readMetaBlock(aos, blockPos);
+        } catch (BadMagicBytes | VersioningStreamException e) {
+            return null;
+        }
+        return block.isOwn(id) ? block : null;
     }
     
     /**
@@ -887,15 +1183,8 @@ public class RecoverableStream {
                     return new MetaBlock(block, blockPos);      // Not valid: its last byte is 0.
                 }
             }
-            throw new BadMagicBytes("Expected magic bytes: " 
-                    + StringUtil.toHex(expectedMagic) + ", got: " + StringUtil.toHex(actualMagic));
         }
-        
-        int version = Bytes.bytesToIntLE(header, 4);    // An int, bergdb 019-01.
-        
-        if (version != MetaBlock.CURRENT_VERSION) {
-            throw new VersioningStreamException(versionRefused(version));
-        }
+        checkBlockHeader(header);
         
         byte[] metaBytes = new byte[RecoverableStream.META_BLOCK_SIZE];
         
@@ -908,6 +1197,25 @@ public class RecoverableStream {
         return new MetaBlock(metaBytes, blockPos);
     }
     
+    /**
+     * Refuses the first 8 bytes of a meta block, 'header', unless they are the magic bytes
+     * and this version: BadMagicBytes, or a VersioningStreamException (versionRefused()).
+     */
+    private static void checkBlockHeader(byte[] header) {
+        byte[] expectedMagic = MetaBlock.MAGIC;
+        byte[] actualMagic = Util.subarray(header, 0, 4);
+        if (!Util.areEqual(expectedMagic, actualMagic)) {
+            throw new BadMagicBytes("Expected magic bytes: "
+                    + StringUtil.toHex(expectedMagic) + ", got: " + StringUtil.toHex(actualMagic));
+        }
+
+        int version = Bytes.bytesToIntLE(header, 4);    // An int, bergdb 019-01.
+
+        if (version != MetaBlock.CURRENT_VERSION) {
+            throw new VersioningStreamException(versionRefused(version));
+        }
+    }
+
     /** Whether every byte of 'bytes' is 0 (bergdb 028-60). */
     private static boolean isZeros(byte[] bytes) {
         for (byte b : bytes) {
@@ -937,6 +1245,13 @@ public class RecoverableStream {
                     + "earlier) and put the data into a new database with this release, for "
                     + "example with two programs, one on each release's jar. The start has "
                     + "written nothing.";
+        }
+        if (version == MetaBlock.VERSION_155) {
+            return s + "Version 155 is a database written by BergDB release 2026.6, which this "
+                    + "release does not open: there is no upgrade path, and release 2026.6 "
+                    + "still opens it (bergdb 031-06); or by a development build of 2026.7 "
+                    + "before 2026-11-27, whose meta blocks do not hold their own positions "
+                    + "(bergdb 028-67). The start has written nothing.";
         }
         if (version > MetaBlock.CURRENT_VERSION) {
             return s + "A larger number is a database written by a newer version of BergDB. "
@@ -1531,7 +1846,7 @@ public class RecoverableStream {
             appendNamedTransactions(new RecoverableStream(mstream, new MetaBlock()), 250);
             for (long pos = 0; pos + META_BLOCK_SIZE <= mstream.getLength();
                     pos += META_BLOCK_DISTANCE) {
-                MemoryStream.TestAccess.write(mstream, new byte[]{(byte) 156, 0}, pos + 4);
+                MemoryStream.TestAccess.write(mstream, new byte[]{(byte) 157, 0}, pos + 4);
             }
             
             for (int x : new int[] {0, 3, 50}) {
@@ -1541,7 +1856,7 @@ public class RecoverableStream {
                     new RecoverableStream(m, new MetaBlock()).recover();
                     throw new AssertionError("recovered, " + x + " bytes into the meta block");
                 } catch (VersioningStreamException e) {
-                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("156"));
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("157"));
                 }
                 Assert.assertEquals("cut " + x + " bytes into the meta block",
                         META_BLOCK_DISTANCE + x, m.getLength());
@@ -2108,7 +2423,7 @@ public class RecoverableStream {
         
         @Nano
         public static void testReadMetaBlock3() throws IOException {
-            // Version 155 should work (154 until bergdb 028-15).
+            // Version 156 should work (155 until bergdb 028-67, 154 until bergdb 028-15).
             
             MemoryStream mstream = new MemoryStream();
             MetaBlock meta = new MetaBlock();            
@@ -2119,7 +2434,7 @@ public class RecoverableStream {
             mstream.close();
             
             MemoryStream m = mstream.copy();
-            MemoryStream.TestAccess.write(m, new byte[]{(byte) 155, 0}, 4);
+            MemoryStream.TestAccess.write(m, new byte[]{(byte) 156, 0}, 4);
             
             RecoverableStream.readMetaBlock(m, 0);
         }
@@ -2128,7 +2443,8 @@ public class RecoverableStream {
          * Bergdb 028-15 (option A): a meta block of version 154, as every release until
          * 2026.5 wrote, is refused with a message that names release 2026.5 and what a user
          * does, reading it with the release that wrote it (bergdb 028-30); a newer version
-         * with one that says so.
+         * with one that says so. Since bergdb 028-67, 155, release 2026.6's and that of builds
+         * of 2026.7 before 2026-11-27, with a message that names both.
          */
         @Nano
         public static void testReadMetaBlockVersion154Refused() throws IOException {
@@ -2138,7 +2454,7 @@ public class RecoverableStream {
             r1.append(bytes, 0, bytes.length, false, 1234L);
             mstream.close();
             
-            for (int version : new int[] {154, 156}) {
+            for (int version : new int[] {154, 155, 157}) {
                 MemoryStream m = mstream.copy();
                 MemoryStream.TestAccess.write(m, new byte[]{(byte) version, 0}, 4);
                 try {
@@ -2147,8 +2463,10 @@ public class RecoverableStream {
                 } catch (VersioningStreamException e) {
                     String s = e.getMessage();
                     Assert.assertTrue(s, s.contains("version " + version));
-                    Assert.assertTrue(s, s.contains(version == 154 ? "release 2026.5" : "newer"));
+                    Assert.assertTrue(s, s.contains(version == 154 ? "release 2026.5"
+                            : version == 155 ? "release 2026.6" : "newer"));
                     Assert.assertTrue(s, version != 154 || s.contains("the release that wrote it"));
+                    Assert.assertTrue(s, version != 155 || s.contains("028-67"));
                 }
             }
         }

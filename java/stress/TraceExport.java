@@ -680,7 +680,7 @@ public class TraceExport {
     /** Parses R(i) into versions; updates the position map first. */
     void parseRecord(Db db, Rec rec) {
         NodeStream ns = db.internal().nodeStream();
-        StoredTrans st = StoredTrans.parse(rec.tpos, ns.readTransBytes(rec.tpos));
+        StoredTrans st = StoredTrans.parse(rec.tpos, ns.readTransBytes(rec.tpos), ns.databaseId());
         if (st.tt != rec.tt) error("R(" + rec.index + "): stored time " + st.tt + " != " + rec.tt);
         for (StoredNode sn : st.nodes) {
             Node x = sn.getNode();
@@ -1048,7 +1048,7 @@ public class TraceExport {
         r0.index = 0;
         r0.kind = "init";
         r0.tpos = RecoverableStream.META_BLOCK_SIZE;
-        StoredTrans st0 = StoredTrans.parse(r0.tpos, ns.readTransBytes(r0.tpos));
+        StoredTrans st0 = StoredTrans.parse(r0.tpos, ns.readTransBytes(r0.tpos), ns.databaseId());
         r0.tt = st0.tt;
         idxByTt.put(r0.tt, 0);
         idxByTpos.put(r0.tpos, 0);

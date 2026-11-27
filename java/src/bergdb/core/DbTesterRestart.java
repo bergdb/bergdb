@@ -30,6 +30,7 @@ import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.VersioningStreamException;
@@ -44,6 +45,9 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class DbTesterRestart {
+
+    /** The database ID of testSetup()'s databases (DbBuilder.testId()), for StoredTrans.parse. */
+    private static final byte[] TEST_ID = DatabaseId.TEST_ID.getBytes();
 
     /** A corrupt record time must refuse startup before replay, with or without -ea. */
     @Nano
@@ -73,7 +77,7 @@ public class DbTesterRestart {
             MemoryStream corrupt = stream.copy();
             byte[] timeBytes = new byte[8];
             Bytes.longToBytesLE(b[1], timeBytes, 0);
-            MemoryStream.TestAccess.write(corrupt, timeBytes, b[0] + 8);
+            writeHeaderField(corrupt, b[0], 8, timeBytes);
             try (Db ignored = Db.builder().testSetup(corrupt).clock(clock)
                     .start()) {
                 throw new AssertionError("started with corrupt record time " + b[1]);
@@ -112,7 +116,7 @@ public class DbTesterRestart {
         MemoryStream corrupt = stream.copy();
         byte[] size = new byte[4];
         Bytes.intToBytesLE((int) (c - a), size, 0);     // A's size + B's: B's last byte
-        MemoryStream.TestAccess.write(corrupt, size, a);
+        writeHeaderField(corrupt, a, 0, size);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
                 .start()) {
             throw new AssertionError("started with A's size over B; /b = " 
@@ -148,7 +152,7 @@ public class DbTesterRestart {
             MemoryStream corrupt = stream.copy();
             byte[] bytes = new byte[8];
             Bytes.longToBytesLE(sp, bytes, 0);
-            MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
+            writeHeaderField(corrupt, c, 16, bytes);
             try (Db db = Db.builder().testSetup(corrupt).clock(clock)
                     .start()) {
                 throw new AssertionError("started with startupPos " + sp);
@@ -186,7 +190,7 @@ public class DbTesterRestart {
         // whose position is a node written before, at the creation.
         a = Db.CREATION_LENGTH;
         byte[] record = readRecord(stream, a);
-        long[] dirty = StoredTrans.parse(a, record).gotDirtyIdsAndSpos;
+        long[] dirty = StoredTrans.parse(a, record, TEST_ID).gotDirtyIdsAndSpos;
         int entry = -1;
         for (int i = 0; i < dirty.length / 2 && entry < 0; i++) {
             if (bergdb.dag.Spos.isValid(dirty[2 * i + 1]) 
@@ -241,12 +245,12 @@ public class DbTesterRestart {
             }
         }
         long last = tposes.get(tposes.size() - 1);
-        StoredTrans lastTrans = StoredTrans.parse(last, readRecord(stream, last));
+        StoredTrans lastTrans = StoredTrans.parse(last, readRecord(stream, last), TEST_ID);
         long topPos = lastTrans.topPos;
         long id = -1;
         long older = -1;
         for (long tpos : tposes) {
-            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos)).nodes) {
+            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos), TEST_ID).nodes) {
                 Node node = n.getNode();
                 if (node.getType() == Node.TYPE_TOP_NODE && node.getSpos() == topPos) {
                     id = node.getId();
@@ -254,7 +258,7 @@ public class DbTesterRestart {
             }
         }
         for (long tpos : tposes) {
-            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos)).nodes) {
+            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos), TEST_ID).nodes) {
                 Node node = n.getNode();
                 if (node.getType() == Node.TYPE_TOP_NODE && node.getId() == id 
                         && node.getSpos() < topPos) {
@@ -267,7 +271,7 @@ public class DbTesterRestart {
         MemoryStream corrupt = stream.copy();
         byte[] bytes = new byte[8];
         Bytes.longToBytesLE(older, bytes, 0);
-        MemoryStream.TestAccess.write(corrupt, bytes, last + 24);
+        writeHeaderField(corrupt, last, 24, bytes);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
                 .start()) {
             throw new AssertionError("started with topPos " + older + ", not " + topPos);
@@ -616,7 +620,7 @@ public class DbTesterRestart {
         MemoryStream corrupt = stream.copy();
         byte[] bytes = new byte[8];
         Bytes.longToBytesLE(c, bytes, 0);
-        MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
+        writeHeaderField(corrupt, c, 16, bytes);
         try (Db db = Db.builder().testSetup(corrupt).clock(clock)
                 .start()) {
             throw new AssertionError("started with startupPos " + c + ", its own; /k1 = " 
@@ -625,6 +629,21 @@ public class DbTesterRestart {
             Assert.assertTrue(expected.getMessage(), 
                     expected.getMessage().contains("startupPos " + c));
         }
+    }
+
+    /**
+     * Writes 'bytes' at 'offset' of the header of the record at 'tpos' and sets the header's
+     * check again (bergdb 028-67, C3), so that the start's own check of the field refuses it,
+     * as before 028-67; with the check left as it was, the start's recovery refuses the
+     * header first (DbTesterTail). No meta block lies in the header.
+     */
+    static void writeHeaderField(MemoryStream m, long tpos, int offset, byte[] bytes)
+            throws IOException {
+        MemoryStream.TestAccess.write(m, bytes, tpos + offset);
+        byte[] header = new byte[StoredTrans.HEADER_SIZE];
+        m.read(tpos, header, 0, header.length);
+        StoredTrans.setHeaderCheck(TEST_ID, tpos, header, 0);
+        MemoryStream.TestAccess.write(m, Arrays.copyOfRange(header, 5, 8), tpos + 5);
     }
 
     private static byte[] readRecord(MemoryStream stream, long tpos) throws IOException {
@@ -1389,8 +1408,8 @@ public class DbTesterRestart {
     /**
      * Bergdb 019-01: the version at offset 4 of a meta block is an int, and a block whose
      * bytes 6 or 7 are not 0 is refused with a VersioningStreamException, as a block of
-     * another version is, and the start writes nothing. Every BergDB writes its version, 155
-     * since bergdb 028-15, as an int there; until 2026-11-05 the version was read as 2 bytes,
+     * another version is, and the start writes nothing. Every BergDB writes its version, 156
+     * since bergdb 028-67 (155 since 028-15), as an int there; until 2026-11-05 the version was read as 2 bytes,
      * and such a block was taken as version 154 (016-06, R6-F3).
      */
     @Nano
@@ -1407,7 +1426,7 @@ public class DbTesterRestart {
         for (int offset : new int[] {6, 7}) {
             MemoryStream m = s.copy();
             MemoryStream.TestAccess.write(m, new byte[] {1}, offset);
-            int version = 155 + (1 << (8 * (offset - 4)));
+            int version = MetaBlock.VERSION_156 + (1 << (8 * (offset - 4)));
             try {
                 Db.builder().testSetup(m).clock(clock).start().close();
                 throw new AssertionError("started a database whose meta block has version "

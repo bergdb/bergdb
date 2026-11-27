@@ -12,17 +12,19 @@ import bergdb.nanotest.Nano;
  * Little-endian-first byte order is used.
  *
  * <pre>
- * FORMAT OF A META BLOCK, v155
+ * FORMAT OF A META BLOCK, v156
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       4       Version of BergDB stream format, an int (155 for this version; 154 until
- *                 release 2026.5, bergdb 028-15). Until 2026-11-05 it was read as an
- *                 unsigned short, so bytes 6 and 7 were not checked; every version of BergDB
- *                 writes 0 there (bergdb 019-01).
+ * 4       4       Version of BergDB stream format, an int (156 for this version, since
+ *                 bergdb 028-67; 155 in release 2026.6; 154 until release 2026.5, bergdb
+ *                 028-15). Until 2026-11-05 it was read as an unsigned short, so bytes 6 and
+ *                 7 were not checked; every version of BergDB writes 0 there (bergdb 019-01).
  * 8       8       time, the creation's time as a long, set once (Db.writePrimordialTransaction).
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
- * 24     16       Database ID. 128 random bits, used as unique database ID.
+ * 24     16       Database ID. 128 random bits, used as unique database ID. A start takes a
+ *                 block as valid only if it holds the ID of the stream's first block
+ *                 (bergdb 028-67, C3).
  * 40      4       Reserved, written zero and not read. The startup distance until version
  *                 155; since then an internal KV of the Core (bergdb 028-15, Db.SD_KEY).
  * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short:
@@ -30,7 +32,10 @@ import bergdb.nanotest.Nano;
  *                 that BergDB's own tests make; a start with another size is refused, and
  *                 so is 0, a damaged block (bergdb 005-50; every block of version 155 has
  *                 the size).
- * 46     81       Reserved, must be set to zero.
+ * 46      8       pos, the block's own stream position, a long, since version 156 (bergdb
+ *                 028-67, C3): RecoverableStream writes it with each block, and a block that
+ *                 holds another position than the one it is read at is not valid.
+ * 54     73       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE, 10. It indicates that the block is valid.
  * </pre>
  */
@@ -41,9 +46,18 @@ public class MetaBlock {
     /** The version of release 2026.5 and earlier: the startup distance at offset 40. */
     public static final int VERSION_154 = Util.identity(154);
     
-    /** The version since release 2026.6 (bergdb 028-15): offset 40 reserved. */
+    /** The version of release 2026.6 (bergdb 028-15): offset 40 reserved. */
     public static final int VERSION_155 = Util.identity(155);
     
+    /**
+     * The version since 2026-11-27 (bergdb 028-67, C3), for release 2026.7: a block holds its
+     * own stream position at offset 46.
+     */
+    public static final int VERSION_156 = Util.identity(156);
+
+    /** The offset of the block's own stream position (bergdb 028-67, C3). */
+    static final int POS_OFFSET = 46;
+
     /**
      * The version of the stream's framing, which RecoverableStream reads and writes: the meta
      * blocks (their size, distance and layout) and a record's size field and last byte. A
@@ -57,9 +71,14 @@ public class MetaBlock {
      * 2026-11-18 (bergdb 028-15, option A): the startup distance left the block for an
      * internal KV of the Core, which an older version does not read; 2026.6 refuses 154,
      * which every release until 2026.5 wrote, and 2026.5 refuses 155, both before they
-     * write (the rule of bergdb 026-12, SF3).
+     * write (the rule of bergdb 026-12, SF3). 156 since 2026-11-27 (bergdb 028-67, C3): a
+     * block holds its own stream position at offset 46, and a start takes a block as valid
+     * only if that position is the one it is read at and its database ID is the one of the
+     * stream's first block; a block of version 155 has no position there, and so a stream of
+     * 155, of release 2026.6 or of a build of 2026.7 before 028-67, is refused by its first
+     * block before anything is written, as 2026.6 refuses 156.
      */
-    static final int CURRENT_VERSION = VERSION_155;
+    static final int CURRENT_VERSION = VERSION_156;
     
     /** Bytes to fill-out meta block in case of a stream crash in meta block. */
     static final byte[] FILL_OUT_TEMPLATE = new byte[RecoverableStream.META_BLOCK_SIZE];
@@ -204,6 +223,45 @@ public class MetaBlock {
         System.arraycopy(block, 24, id, 0, id.length);
         return id;
     }
+
+    /** Copies the database ID, 16 bytes, to 'dest' at 'offset' (bergdb 028-67). */
+    public void copyId(byte[] dest, int offset) {
+        System.arraycopy(block, 24, dest, offset, 16);
+    }
+
+    /** Whether the block holds the database ID 'id', 16 bytes (bergdb 028-67, C3). */
+    boolean hasId(byte[] id) {
+        for (int i = 0; i < 16; i++) {
+            if (block[24 + i] != id[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The stream position that the block holds, at offset 46 (bergdb 028-67, C3): the one it
+     * was written at, by RecoverableStream.
+     */
+    public long getStoredPos() {
+        return Bytes.bytesToLongLE(block, POS_OFFSET);
+    }
+
+    /** Sets the stream position that the block holds (bergdb 028-67, C3). */
+    void setStoredPos(long pos) {
+        Bytes.longToBytesLE(pos, block, POS_OFFSET);
+    }
+
+    /**
+     * Whether this block, read at its position (getPos()), is one of the stream whose first
+     * block holds the ID 'id' (bergdb 028-67, C3): it is valid (its last byte), it holds the
+     * position it was read at, and it holds 'id'; 'id' null: any ID. A block of another
+     * place, as an older stream file of the same database leaves at the same offset in a new
+     * file, or of another database, is not one, as a block that a crash cut is not.
+     */
+    boolean isOwn(byte[] id) {
+        return isValid() && pos >= 0 && getStoredPos() == pos && (id == null || hasId(id));
+    }
     
     /**
      * Returns the spos of the last completed and valid transaction written to the stream
@@ -291,7 +349,37 @@ public class MetaBlock {
         @Nano
         public static void version() {
             MetaBlock b = new MetaBlock();
-            Assert.assertEquals(155, b.getVersion());
+            Assert.assertEquals(156, b.getVersion());
+        }
+
+        /**
+         * Bergdb 028-67, C3: a block holds its own position at offset 46, 8 bytes, and is
+         * this stream's only if it is read where it was written and holds the stream's ID.
+         */
+        @Nano
+        public static void storedPosAndId() {
+            MetaBlock b = new MetaBlock();
+            byte[] id = new byte[16];
+            for (int i = 0; i < 16; i++) {
+                id[i] = (byte) (i + 1);
+            }
+            b.setId(id);
+            b.setStoredPos(1234567L * 200000);
+            Assert.assertEquals(1234567L * 200000, b.getStoredPos());
+            Assert.assertEquals(1234567L * 200000, Bytes.bytesToLongLE(b.getBlock(), 46));
+            for (int i = 54; i < RecoverableStream.META_BLOCK_SIZE - 1; i++) {
+                Assert.assertEquals("byte " + i, 0, b.getBlock()[i]);
+            }
+            MetaBlock read = new MetaBlock(b.getBlock(), 1234567L * 200000);
+            Assert.assertTrue(read.isOwn(id));
+            Assert.assertTrue(read.isOwn(null));
+            Assert.assertFalse(new MetaBlock(b.getBlock(), 1234566L * 200000).isOwn(id));
+            byte[] other = id.clone();
+            other[15] ^= 1;
+            Assert.assertFalse(read.isOwn(other));
+            byte[] cut = b.getBlock().clone();
+            cut[RecoverableStream.META_BLOCK_SIZE - 1] = 0;
+            Assert.assertFalse(new MetaBlock(cut, 1234567L * 200000).isOwn(id));
         }
         
         /** Bergdb 028-15: bytes 40 to 43, the startup distance until version 155, zero. */
@@ -314,6 +402,7 @@ public class MetaBlock {
             Assert.assertEquals(62, b.getMaxNodeSize());
             Assert.assertEquals(62, b.getBlock()[44]);
             for (int i = 45; i < RecoverableStream.META_BLOCK_SIZE - 1; i++) {
+                // 46 to 53, the position, are 0 until RecoverableStream writes the block.
                 Assert.assertEquals("byte " + i, 0, b.getBlock()[i]);
             }
             b.setMaxNodeSize(65535);

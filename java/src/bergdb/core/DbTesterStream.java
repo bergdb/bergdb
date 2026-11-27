@@ -769,12 +769,12 @@ public class DbTesterStream {
             f.seek(4);
             version = f.read();
             f.seek(4);
-            f.write(156);
+            f.write(157);
             f.setLength(f.length() + 4096);
         }
         before = java.nio.file.Files.readAllBytes(file.toPath());
         try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
-            throw new AssertionError("started with version 156");
+            throw new AssertionError("started with version 157");
         } catch (VersioningStreamException e) {
             // Expected (bergdb 005-40).
         }

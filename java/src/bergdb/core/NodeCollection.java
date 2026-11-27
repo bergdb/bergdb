@@ -1411,7 +1411,7 @@ public class NodeCollection implements PointerFollower {
         StoredTrans.Serializer serializer = new StoredTrans.Serializer();
         serializer.serialize(transNodes, 30, 1024, 0, new java.util.ArrayList<Node>());
         StoredTrans.Parser parser = new StoredTrans.Parser();
-        parser.parse(1024, serializer.getTransBuffer());
+        parser.parse(1024, serializer.getTransBuffer(), new byte[16]);
         
         long written = -1;
         for (StoredNode stored : parser.nodes) {

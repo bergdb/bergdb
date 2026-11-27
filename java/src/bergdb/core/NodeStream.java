@@ -63,16 +63,19 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     /**
      * Recovers the stream by adding zero bytes at end if needed
-     * and reads the last valid meta block.
+     * and reads the last valid meta block. With the Core's check of the records' headers
+     * (StoredTrans.RECORD_CHECK; bergdb 028-67, C1): a tail that is not the stream's records
+     * is refused with a BadTailException before anything is written, and a torn last record
+     * is completed only after its header is found to be one.
      * 
-     * @see RecoverableStream#recover()
+     * @see RecoverableStream#recover(RecoverableStream.RecordCheck)
      * @throws StreamIoException
      * @throws StreamFormatException
      */
     public void recover() {
         assert Thread.holdsLock(writeLock);
         
-        rstream.recover();
+        rstream.recover(StoredTrans.RECORD_CHECK);
         appendedEnd = rstream.getLength();      // Whole records only, after the recovery.
     }
     
@@ -131,6 +134,15 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.getMetaBlock();
     }
 
+    /**
+     * The database's ID, 16 bytes, of the in-memory meta block: the stream's after recover()
+     * or the creation. A record's header holds a check of it (bergdb 028-67, C3), so a parse
+     * of a record needs it (StoredTrans.parse()). Any thread may call it.
+     */
+    public byte[] databaseId() {
+        return rstream.getMetaBlock().getId();
+    }
+
     public final long getLastTransPosOfLastValidMetaBlock() {
         return rstream.getLastTransSposOfLastValidMetaBlock();
     }
@@ -161,6 +173,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     void appendNodes(TransNodes nodes, Trans trans, ArrayList<Node> gotDirtyNodes, TopNode topNode) {
         long pos = getNextPos();
         serializer.recordCap = trans.recordCap;         // bergdb 031-06
+        rstream.getMetaBlock().copyId(serializer.databaseId, 0);       // bergdb 028-67
         serializer.serialize(nodes, trans.tt, pos, trans.startupPos, gotDirtyNodes, topNode);
         
         trans.tpos = pos;
@@ -588,7 +601,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         }
 
         public StoredTrans getStoredTrans() {
-            return StoredTrans.parse(tpos, transBuffer);
+            return StoredTrans.parse(tpos, transBuffer, databaseId());
         }
     }
 }

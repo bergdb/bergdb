@@ -134,7 +134,7 @@ version number. From the bottom up:
 |---|---|---|---|
 | The files of a directory         | `stream/FileStream`                      | 4       | none     |
 | Encryption (none since 028-69)   | none                                     | 16      | none     |
-| The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 155 |
+| The meta blocks, framing         | `storage/RecoverableStream`, `MetaBlock` | 6, 7    | meta 156 |
 | The records                      | `core/StoredTrans`, `NodeStream`         | 8       | record 9 |
 | The nodes                        | `core/Stored*Node`, `NodeChecksum`       | 9 to 12 | 3, 3, 5  |
 | The tree a record means          | `dag/PeWriter`, `dag/Dag`, `DbStarter`   | 11, 14  | record 9 |
@@ -148,7 +148,7 @@ tag's, section 2):
 
 | Number             | Value | Where in the bytes       | Defined by                       |
 |---|---|---|---|
-| Meta block version | 155 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`     |
+| Meta block version | 156 | meta bytes 4 to 7, `i32` | `MetaBlock.CURRENT_VERSION`     |
 | Record format      | 9   | record byte 4 (`u8`)     | `StoredTrans.RECORD_FORMAT`, :59 |
 | Top node format    | 3   | node byte 5              | `StoredTopNode.toLongs`, :203    |
 | Key node format    | 3   | node byte 5              | `StoredKeyNode.toLongs`, :55     |
@@ -169,9 +169,18 @@ there and skipped it), and the value node's own format stays 5. A start
 refuses a record of format 8 with a `VersioningStreamException` that
 names release 2026.6 (`StoredTrans.formatRefused`); release 2026.6
 refuses format 9 as a newer one's. No release has written format 9, so
-its meaning may still change before 2026.7 ships (028-67's checks of the
-record header are planned for it); its full description is a later step
-of 031-06's landing.
+its meaning may still change before 2026.7 ships; its full description is
+a later step of 031-06's landing.
+
+028-67's ties (Frans, 2026-11-27, C3; built on 2026-11-27) changed format
+9's header without a new number and the meta block with one: bytes 5 to
+7 of a record's header hold its check (section 8.1), and a meta block
+holds its own position (section 6), version 156. A stream of a build of
+2026.7 before them has meta blocks of version 155, refused by the first
+block before anything is written, with a message that names release
+2026.6 and those builds (`RecoverableStream.versionRefused`); so is a
+database of release 2026.6, whose records of format 8 a start no longer
+reaches. Release 2026.6 refuses version 156 as a newer one's.
 
 
 ## 4. The stream's files
@@ -307,14 +316,29 @@ bytes long (`RecoverableStream.META_BLOCK_SIZE`, :59;
 | Off | Size | Type  | Field         | Value and range                                |
 |---|---|---|---|---|
 | 0   | 4  | bytes | magic         | `62 65 72 67`, "berg" (`MetaBlock.MAGIC`, :36) |
-| 4   | 4  | `i32` | version       | 155 (154 until 2026.5; 028-15)                 |
+| 4   | 4  | `i32` | version       | 156 (155 in 2026.6, 154 until 2026.5)          |
 | 8   | 8  | `i64` | time          | the creation's time, in every block            |
 | 16  | 8  | `i64` | lastTrans     | the last record appended before it, or −1      |
 | 24  | 16 | bytes | database id   | 16 bytes, random (`DatabaseId`)                |
 | 40  | 4  | zero  | reserved      | zero, not read (the startup distance until 155)|
 | 44  | 2  | `u16` | max node size | 30 (026-08); 8, 14 or 62 only in tests         |
-| 46  | 81 | zero  | reserved      | zero                                           |
+| 46  | 8  | `i64` | pos           | the block's own stream position (028-67)       |
+| 54  | 73 | zero  | reserved      | zero                                           |
 | 127 | 1  | `u8`  | last byte     | 10: the block is valid                         |
+
+**The block's position and the database id** (028-67, C3; Frans,
+2026-11-27; version 156). Bytes 46 to 53 hold the stream position the
+block was written at, and a start takes a block as valid only if it
+holds the position it is read at and the database id of the stream's
+first block, the first at or after the first position. Every stream
+file begins at a multiple of 200,000, so a block of an older stream file
+of the database lies at the same offsets in a new file, and on APFS a
+kill during the first write of a new file can leave the older file's
+bytes there (035-02, sections 7 and 10): its position is another, and
+another database's block has another id, so neither is valid, as a block
+that a crash cut is not. The first block is the stream's own: a stream's
+bytes are cut only from its end, and a kill's other bytes are in the last
+file, from a page boundary on.
 
 **The node size** (B, field 44; Frans, 2026-11-12, 024-19, Q1 and Q6;
 made in 024-27; fixed at 30 by 026-08, Frans, 2026-11-13, 09:21). B,
@@ -361,8 +385,9 @@ it writes, and 2026.6 refuses 2026.5's (section 21).
 **Written by.** `MetaBlock.initBlock`: magic, version, last byte,
 lastTrans −1. `Db.writePrimordialTransaction`: id, node size, time.
 `NodeStream.appendNodes`: lastTrans after each record.
-`RecoverableStream.append` writes the in-memory block, as it is, when the
-record bytes reach a multiple of D (012-02, section 4.2). At a start,
+`RecoverableStream.append` writes the in-memory block when the record
+bytes reach a multiple of D (012-02, section 4.2), with its position at
+46 (`writeMetaBlock`; 028-67). At a start,
 recovery copies the last valid block whole, reserved bytes included
 (`MetaBlock.setFromOtherMetaBlock`, :95).
 
@@ -370,13 +395,20 @@ recovery copies the last valid block whole, reserved bytes included
 
 * `RecoverableStream.readMetaBlock`, for every block it reads,
   valid or not: the magic (`BadMagicBytes`, an SFE); the version as an
-  `i32` (bytes 6 and 7 checked since 019-01), not 155 a
+  `i32` (bytes 6 and 7 checked since 019-01), not 156 a
   `VersioningStreamException` (`versionRefused`): 154 with a message that
   names release 2026.5 and says to make the database again: read it with
   the release that wrote it (2026.5 opens a database of 2026.5, not one of
-  2026.4 or earlier) and put it with this release (028-30); a larger
-  number as a newer BergDB's. It writes nothing before these checks
-  (005-40). A block of 128 zero bytes is read as not valid, without
+  2026.4 or earlier) and put it with this release (028-30); 155 with one
+  that names release 2026.6 and the builds of 2026.7 before 028-67; a
+  larger number as a newer BergDB's. It writes nothing before these checks
+  (005-40). Since 028-67 these refusals come from the stream's first
+  block (`readFirstMetaBlock`, which also reads the first 8 bytes of a
+  stream shorter than a block); after it, a block of other bytes or of
+  another version is not valid and passed over (`readOwnMetaBlock`), as
+  another file's bytes at the tail can put there, and the walk of the
+  records refuses such a tail where it matters (section 7).
+  A block of 128 zero bytes is read as not valid, without
   them (028-60): a tail of zeros within the stream's length, which a
   kill of the process during an append left on macOS (031-02, F1), can
   cover a block's position; until 2026-11-25 it was a `BadMagicBytes`,
@@ -384,6 +416,11 @@ recovery copies the last valid block whole, reserved bytes included
   open leaves such a tail out of the stream first, a run of at most 8
   MB at the end of the last file (027-14; 028-60, part 2); the reader
   still passes over zero blocks of a longer run or of another storage.
+* `MetaBlock.isOwn` (028-67, C3), for every block a reader takes, at a
+  start and after (`readAValidMetaBlock`, `getPosOfTransCompletedBefore`):
+  valid, its position at 46 the one it is read at, and its id the stream's
+  (the first block's at a start, the in-memory block's after); else not
+  valid, passed over.
 * `MetaBlock.checkFormat` (:116), for a valid block: lastTrans below 0 and
   not −1, and a time below 0, are SFEs.
 * `RecoverableStream.checkLastTransSpos` (:170, 019-34): lastTrans must
@@ -404,12 +441,13 @@ recovery copies the last valid block whole, reserved bytes included
 43 zero in every block). CST's META workload. C: `meta.c`, `rstream.c`,
 `t_rstream.c` (version 154, the C clone follows a release).
 
-**Unused and reserved.** Bytes 40 to 43 and 46 to 126, written zero, not
+**Unused and reserved.** Bytes 40 to 43 and 54 to 126, written zero, not
 checked, and copied whole into the next blocks: the place where 005-50
 added the node size without a new version (`MetaBlock.CURRENT_VERSION`'s
 comment). A rule of extension already: an older reader ignores and passes
 on a field added there. Bytes 40 to 43 are zero in every stream of
-version 155.
+version 155 and 156. The position at 46 took a new version (156), as a
+reader of 155 would neither write nor check it.
 
 **Gaps.**
 
@@ -419,15 +457,17 @@ version 155.
 * G8. A last byte other than 10 makes the block invalid, silently
   (`MetaBlock.isValid`, :252): 255 values mean "invalid", and only 0 is
   ever written (by recovery's fill, section 7).
-* G9. The time is checked only to be 0 or more; the database id not at
-  all. (Until 028-15 the startup distance too was not range-checked on
+* G9. The time is checked only to be 0 or more; the database id is
+  compared with the first block's since 028-67, not checked otherwise.
+  (Until 028-15 the startup distance too was not range-checked on
   reading, 012-02's doubt D9; its KV is: 10 to 10^9, section 15.)
 * G19. The maximum node size is given by the start and compared with the
   block's, not taken from it: 30 at every start but a test's (026-08;
   a test's `DbBuilder.maxNodeSize8()` to `maxNodeSize62()`). A reader of
   the format could take it from the stream (Q19, dropped by 026-08).
 * The meta block has no checksum (017-08). Its validity is its last
-  byte.
+  byte, its position and its id (028-67; 031-07 recommends nothing more,
+  M1).
 
 
 ## 7. The framing and recovery
@@ -462,6 +502,34 @@ for a failed one, made only by recovery's fill.
   (`fixMetaBlockIfNeeded`, :425); a cut record completed
   (`fixLastTransactionIfNeeded`, :256; `transHeaderFixBytes`, :296, with
   `TORN_HEADER_FILLER` 4, :81) and filled with zeros, its last byte 0.
+* **The walk before the writes** (028-67, C1; Frans, 2026-11-27):
+  `RecoverableStream.walkTail` reads the records from the one the last
+  valid block names to the end before recovery writes anything; the cut
+  meta block's completion and the fill come after it. Each record's size
+  must be 5 or more and a whole record's last byte 0 or 10; and with the
+  Core's check (`StoredTrans.RECORD_CHECK`, a hook, as this layer knows a
+  record's size and last byte only), each committed record's header must
+  hold its check (section 8.1), and so must the header of a record that
+  the end of the stream cuts, before its fill; a header that the end cuts
+  within its 32 bytes is checked as far as it goes: a size the writer
+  writes (48 or more, a multiple of 8) and the format byte 9 if there. An
+  aborted record whose header does not hold its check, as a fill after a
+  cut header leaves it, is walked over and not taken as a record that is
+  one. The stream's last record, if committed, and the committed record
+  before the first that fails are parsed whole, as another file's bytes
+  can begin inside a record, after its own header. The first record, the
+  one the block names, is refused first for another record format
+  (`VersioningStreamException`), as before. A tail that fails is refused
+  with a `BadTailException` (an SFE), its message the cause, then P, the
+  end of the last record that is one (or the start of the record parsed
+  whole, if it does not parse), and the way out: "The stream's records
+  end at stream position P: ... A kill of the process during an append
+  can leave such bytes ... The start has written nothing. To start the
+  database, keep a copy of its files, then cut the stream at P: ...". Zeros
+  past a record's end keep the message's first sentence, "Bad transaction
+  size in db stream, 0, spos P. Stream length: L." So a size read from
+  another file's bytes no longer makes the start append up to 2 GB of
+  zeros before it refuses (035-02, section 10.2, step 3).
 * An incomplete creation, at most 272 bytes (`Db.CREATION_LENGTH`, :385;
   264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
@@ -481,15 +549,19 @@ length of the creation, cut at every byte). CST: truncation at every byte
 `cross.sh`.
 
 **Unused and reserved.** A failed record's content is not read: any
-bytes between its size field and its last byte 0 are accepted.
+bytes between its size field and its last byte 0 are accepted, and its
+header's check only decides whether the walk takes it as a record that
+is one (028-67).
 
 **Gaps.**
 
-* G18. Recovery writes its fill before the record format is read: a start
-  that refuses a stream of another record format may first have appended
-  the fill of a torn tail (`StoredTrans.RECORD_FORMAT`'s Javadoc, :37 to
-  :58). The refusals of the meta version and the node size write nothing.
-  The specification should say whether a refusing start may write (Q15).
+* G18. Recovery writes its fill before the records are parsed: a start
+  that refuses a stream later, by a node checksum or a check of a record
+  before the walk's first, may first have appended the fill of a torn
+  tail (`StoredTrans.RECORD_FORMAT`'s Javadoc, :37 to :58). Since 028-67
+  the walk's refusals, the record format of the first record walked, the
+  meta version and the node size write nothing. The specification should
+  say whether a refusing start may write (Q15).
 * A size field of 5 to 16 with all four bytes present (damage) is filled
   as 012-02, section 4.4, says, and then refused by the walk: the fill is
   defined for bytes no writer writes. To be written as such.
@@ -513,8 +585,8 @@ A record at a position that is a multiple of 8; offsets in record bytes
 | Off | Size | Type  | Field           | Value and range                           |
 |---|---|---|---|---|
 | 0   | 4    | `i32` | size            | record bytes, a multiple of 8, 48 or more |
-| 4   | 1    | `u8`  | format          | 8                                         |
-| 5   | 3    | zero  | (unused)        | the upper bytes of the `i32` at 4         |
+| 4   | 1    | `u8`  | format          | 9                                         |
+| 5   | 3    | `u24` | check           | of the id, the position, the header       |
 | 8   | 8    | `i64` | time            | the transaction's time tt, 0 to 2^56 − 1  |
 | 16  | 8    | `i64` | startupPos      | 0, or a record's position at or before it |
 | 24  | 8    | `i64` | topPos          | the newest written top node's position    |
@@ -529,13 +601,32 @@ The padding is `computeZeroCount(n) = (8 − n % 8) % 8` (:274), n the
 bytes up to and including the last byte. An empty record (no nodes, no
 pairs) is 41 bytes and 7 zeros: 48.
 
+**The header's check** (028-67, C3; Frans, 2026-11-27; 031-07, W24):
+the low 24 bits of CRC-32C over 53 bytes, the database id (16, the meta
+block's), the record's own position (8, `i64` little-endian) and the
+header's bytes 0 to 4 and 8 to 31 as stored, written little-endian in
+bytes 5 to 7 (`StoredTrans.headerCheck`; set in
+`Serializer.serializeToBuffer`, after the header's bytes are copied).
+Bytes 5 to 7 were written zero and not read until then (the upper bytes
+of the `i32` at 4). It ties a record to its place and its database: a
+record of another file or position, as an older stream file's or another
+database's bytes in the last file after a kill leave it (035-02), does
+not hold it, but once in 2^24; and it covers the header, which had no
+checksum (G12): every error of 1 to 3 bits in the header's 32 bytes
+changes it (031-07, section 5.3). It does not cover the nodes: a record
+whose header is its own and whose later nodes are another file's at the
+same offsets, with their own node checksums, passes it (028-67, Built).
+
 **Checked on reading** (`StoredTrans.Parser.parse`, :314 to :417; `next`,
 :423):
 
 * tpos a multiple of 8 and 0 or more: else `IllegalArgumentException`,
   not an SFE (:324, :328).
 * size 41 or more and within the buffer (:339); the format byte (:347,
-  `formatRefused`, :236); room for the count and the last byte (:376);
+  `formatRefused`, :236); the header's check for the record's position
+  and the database id (028-67; `StoredTrans.parse` and `Parser.parse`
+  take the id, `NodeStream.databaseId()`), an SFE; room for the count and
+  the last byte (:376);
   the count from 0 to (size − offset − 1) / 16 (:383); room for the
   padding (:401); a node size from 12 to what is left (:438); an end
   marker present (:425); and the content fills the size exactly (:410,
@@ -662,16 +753,18 @@ refusals of header fields), `NodeStreamTester`. CST: header fields and
 got-dirty entries. SD: every byte. C: `serial.c`, `strans.c`,
 `t_records.c` with `records.txt` (359 one-change refusals, format 5).
 
-**Unused and reserved.** Bytes 5 to 7, written zero, skipped (`offset +=
-3`, :350). The padding, written zero, not read.
+**Unused and reserved.** The padding, written zero, not read. Bytes 5 to
+7 since 028-67 hold the header's check; written zero and skipped until
+then.
 
 **Gaps.**
 
-* G7 (record). Bytes 5 to 7 and the padding are not checked to be zero.
-  017-08 and 019-07 propose a header checksum in bytes 5 to 7.
-* G12. No checksum covers the 32-byte header or the got-dirty list
-  (`Db.checkStartupPos`'s Javadoc; 017-08); the node checksums cover only
-  the nodes. The parser accepts the nodes in any order of types (to check
+* G7 (record). The padding is not checked to be zero. Bytes 5 to 7 hold
+  the header's check since 028-67 (017-08 and 019-07 proposed one there).
+* G12. Since 028-67 the header's check covers the 32-byte header; no
+  checksum covers the got-dirty list (`Db.checkStartupPos`'s Javadoc;
+  017-08; 031-07 recommends none, GD1), and the node checksums cover only
+  the nodes, not their position. The parser accepts the nodes in any order of types (to check
   whether a start depends on the order); two value nodes of one key in one
   record are not refused by the parser, but since format 8 by the start's
   rerun of the startup section, as KVs out of key order (section 8.4;
@@ -1448,16 +1541,16 @@ where the result depends on Java rather than on the bytes.
 | G6  | a first klong that is not a time klong       | 11      | `KeyNode.addToEnd`        |
 | G7  | non-zero reserved bytes and padding          | 6 to 12 | the parsers' skips        |
 | G8  | a meta last byte other than 0 and 10         | 6       | `MetaBlock.isValid`       |
-| G9  | any database id (sd checked since 028-15)    | 6       | `MetaBlock.checkFormat`   |
+| G9  | the id the first block's only (028-67)       | 6       | `MetaBlock.isOwn`         |
 | G10 | top node skip times; −2 as a set pointer     | 10      | `StoredTopNode.parse`     |
 | G11 | value node: extra bytes, its stored offset   | 12      | `StoredValueNode.parse`   |
-| G12 | no header checksum; node order; startupPos   | 8, 14   | `StoredTrans.Parser`      |
+| G12 | node order; startupPos (header: 028-67)      | 8, 14   | `StoredTrans.Parser`      |
 | G13 | closed by CRC32C (024-25)                    | 9       | `NodeChecksum`            |
 | G14 | rule 4's checks only with -ea, as asserts    | 14      | `checkLinkById`, :829     |
 | G15 | file names with `+`, other digits, zeros     | 4       | `stringToIndex`, :1163    |
 | G16 | reclaim's row: any order, unknown names      | 15      | `StringMap.parse`, :33    |
 | G17 | a user's puts under `/#`                     | 15      | `Trans.Builder` (CA3)     |
-| G18 | a refusing start may write recovery's fill   | 7       | `Db.startInner`, :888     |
+| G18 | a refusing start may write recovery's fill   | 7       | `Db.startInner` (028-67)  |
 | G19 | the node size given by the start             | 6       | `refuseOtherNodeSize`     |
 | G20 | nothing marks an encrypted stream            | 16      | 2026.3's streams          |
 | G21 | no Pub format version in the stream          | 17      | the Pub layer             |
@@ -1586,11 +1679,14 @@ found here:
   (019-07: in bytes 5 to 7), a link from each record to the one before, a
   checksum of the meta block, a stronger node checksum. Each uses bytes
   that the freeze fixes: before the freeze, or reserve the bytes for it.
+  The header's part is in since 028-67 (bytes 5 to 7, with the id and the
+  position), and the meta block's own position and id; 031-07 reviews the
+  rest.
 * **Q13.** Refusals of bits that must be zero (G1 to G4, G11's padding and
   extra bytes). No writer writes them, so a refusal breaks no database
   that a writer wrote: later and additive, if those bits are declared
   "must be zero" now and not kept for later fields (Q14).
-* **Q14.** For each reserved range (meta 46 to 126, record 5 to 7, top
+* **Q14.** For each reserved range (meta 54 to 126, top
   node bytes 6 and 7, 12 to 15 and 17, key node 6, 7 and 15, value node 6
   and 7, paddings): "ignored and copied", which
   lets a later release add a field without a new number (005-50's way), or
@@ -1642,9 +1738,9 @@ not focus on this for this release.").**
 
 | Number or mark       | Covers                             | Refused by, and when           |
 |---|---|---|
-| meta version 155     | the framing; sd's place (028-15)   | `readMetaBlock`; before writes |
+| meta version 156     | framing; sd; the block's position  | the first block; before writes |
 | meta node size ≠ 0   | a block not damaged (028-15)       | `refuseOtherNodeSize`; before  |
-| record format 8      | header, nodes, the rerun's meaning | `Parser.parse`; after recovery |
+| record format 9      | header, nodes, the rerun's meaning | the walk's first; before writes|
 | node formats 3, 3, 5 | each node's layout                 | each parser, at a parse        |
 | object header 0x82   | the Pub layer's objects (020-07)   | `ObjectFormat`, at a read      |
 | index def. version=1 | an index definition (020-10)       | `IndexManager.start`           |
@@ -1665,9 +1761,10 @@ not focus on this for this release.").**
   already refuses 2026.5's format 7, but a record's format byte names the
   rerun's meaning, so that a release that reads several formats, 21.3's
   V-B or V-C, can tell them apart; and a database of a build of 2026.6
-  before 026-25 is refused, not rerun into another tree); meta 154 from
-  2015 to 2026-11-18, 155 since
-  (028-15); the node size since 2026-10-27. Each change has refused all
+  before 026-25 is refused, not rerun into another tree), 9 since
+  2026-11-27 (031-06; its header's check since 028-67); meta 154 from
+  2015 to 2026-11-18, 155 to 2026-11-27 (028-15), 156 since (028-67, the
+  block's position); the node size since 2026-10-27. Each change has refused all
   older databases ("new databases only", F1-008-11's Q5). 2026.4 refuses
   2026.1 to 2026.3 (023-02, F9 (a)); 2026.5 need not open 2026.4's
   (Frans, 2026-11-10, 19:49); 2026.6 refuses 2026.5's and older, by the
@@ -1846,3 +1943,12 @@ with zeros (section 7). By an agent of lead-1125, on the branch
 leaves a tail of zeros of at most 8 MB at the end of the last file out
 of the stream before the reads (027-14). By an agent of lead-1126, on the branch
 `028-60b`.
+
+2026-11-27. 028-67, C1 and C3 (Frans, 2026-11-27, 15:50 to 16:02): a
+meta block holds its own position at 46, version 156, and is valid only
+with that position and the first block's database id (section 6); bytes
+5 to 7 of a record's header hold its check, CRC-32C over the id, the
+position and the header (8.1); the start's recovery walks the records
+before it writes and refuses a tail that is not the stream's records
+with the cause, P and the way out (7); sections 3, 19, 20 and 21.1 to
+match. By an agent of lead-1127, on the branch `028-67-c3`.

@@ -530,7 +530,8 @@ public class RestartInvariance {
     static void printNodeAt(String name, Run r, long tpos, long pos) {
         if (tpos < 0) return;
         try {
-            StoredTrans t = StoredTrans.parse(tpos, r.db.internal().nodeStream().readTransBytes(tpos));
+            StoredTrans t = StoredTrans.parse(tpos, r.db.internal().nodeStream().readTransBytes(tpos),
+                    r.db.internal().nodeStream().databaseId());
             long best = -1;
             for (StoredNode sn : t.nodes) {
                 long spos = sn.getNode().getSpos();
@@ -570,7 +571,8 @@ public class RestartInvariance {
     static String normalized(Run r, long tpos) {
         String s;
         try {
-            StoredTrans t = StoredTrans.parse(tpos, r.db.internal().nodeStream().readTransBytes(tpos));
+            StoredTrans t = StoredTrans.parse(tpos, r.db.internal().nodeStream().readTransBytes(tpos),
+                    r.db.internal().nodeStream().databaseId());
             s = t.print();
             // Node contents too: klongs and pointer positions of each stored node.
             StringBuilder nodes = new StringBuilder();
@@ -599,7 +601,8 @@ public class RestartInvariance {
     static void printTrans(String name, Run r, long tpos) {
         try {
             byte[] bytes = r.db.internal().nodeStream().readTransBytes(tpos);
-            String s = StoredTrans.parse(tpos, bytes).print();
+            String s = StoredTrans.parse(tpos, bytes,
+                    r.db.internal().nodeStream().databaseId()).print();
             String[] lines = s.split("\n");
             System.out.println("---- transaction in run " + name + " ----");
             for (int i = 0; i < Math.min(lines.length, 40); i++) {

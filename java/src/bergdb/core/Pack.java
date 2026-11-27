@@ -23,6 +23,7 @@ public class Pack implements IPack {
         DbTesterMerge.class,
         DbTesterRestart.class,
         DbTesterStream.class,
+        DbTesterTail.class,
         DbUtil.class,
         CapacityTester.class,
         CorruptStreamTester.class,

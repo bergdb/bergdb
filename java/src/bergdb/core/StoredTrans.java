@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.CRC32C;
 import bergdb.common.AssertStatus;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -42,7 +43,11 @@ public class StoredTrans {
      * reclaim's copies, row and table beside the action's KVs, and a copy's value node has the
      * copy mark (StoredValueNode, byte 6), which format 8 had as zero; a stream of format 8 is
      * of release 2026.6, refused at the start with a message that names it (formatRefused()).
-     * No release has written format 9: its meaning may still change before 2026.7.
+     * No release has written format 9: its meaning may still change before 2026.7. It
+     * changed on 2026-11-27 (bergdb 028-67, C3): bytes 5 to 7 of the header, written zero and
+     * not read before, hold the header's check (headerCheck()), which every parse compares; a
+     * stream of a build of 2026.7 before that has meta blocks of version 155, which a start
+     * refuses first, so the number stays.
      * 8 since 2026-11-19 (bergdb 026-25), for release 2026.6: format 7's layout, and a
      * record's KVs are rerun as one batch by the writer PE, "plan, then emit" (Dag.putKvs,
      * PeWriter; bergdb 030-21 proves it in the model), which writes each node once, so a
@@ -73,14 +78,114 @@ public class StoredTrans {
      * that the last valid meta block names. A node's own format byte changes with its
      * layout too. A change of RecoverableStream's framing (a record's size field or last
      * byte, the meta blocks) changes MetaBlock's version instead, which recovery checks
-     * before it writes; the zero fill of a torn record, before its format is read, uses
-     * only the framing (2026-10-25, bergdb 005-40). MetaBlock's version is 155 since
-     * 2026-11-18, when the startup distance left the meta block (bergdb 028-15): a change
-     * that an older release cannot read, so that the older release refuses the stream before
-     * it writes (the rule proposed in bergdb 026-12, SF3); a stream of version 154, of
+     * before it writes; the zero fill of a torn record uses only the framing (2026-10-25,
+     * bergdb 005-40), and since bergdb 028-67 comes after the record's header is checked
+     * (RECORD_CHECK). MetaBlock's version is 156 since 2026-11-27 (bergdb 028-67: a block
+     * holds its own position), 155 from 2026-11-18, when the startup distance left the meta
+     * block (bergdb 028-15): each a change that an older release cannot read, so that the
+     * older release refuses the stream before it writes (the rule proposed in bergdb 026-12,
+     * SF3); a stream of version 154, of
      * release 2026.5 or earlier, is refused by its meta block, before a record is read.</p>
      */
     public final static byte RECORD_FORMAT = 9;
+
+    /** The size of a record's header: the size, the format, the check, tt, startupPos, topPos. */
+    static final int HEADER_SIZE = 32;
+
+    /** The smallest record the writer writes: an empty one, 41 bytes and 7 of padding. */
+    static final int MIN_RECORD_SIZE = 48;
+
+    /**
+     * The record header's check (bergdb 028-67, C3; Frans, 2026-11-27; 031-07, W24): the low
+     * 24 bits of CRC-32C over the database's ID 'id' (16 bytes), the record's own stream
+     * position 'tpos' (8 bytes, little-endian) and the header's other fields as stored, its
+     * bytes 0 to 4 (the size and the format) and 8 to 31 (tt, startupPos, topPos): 53 bytes.
+     * The header at 'offset' of 'header' holds it in bytes 5 to 7, little-endian, which were
+     * written zero and not read until then. It ties a record to its place and its database,
+     * so that a record of another file or position, as an older stream file's bytes in the
+     * last file after a kill, is not taken as one (bergdb 035-02), and it covers the header,
+     * which had no checksum (027-03, G12): every error of 1 to 3 bits in the header's 32
+     * bytes changes it (031-07, section 5.3), and other bytes pass it once in 2^24.
+     */
+    static int headerCheck(byte[] id, long tpos, byte[] header, int offset) {
+        return headerCheck(new CRC32C(), new byte[53], id, tpos, header, offset);
+    }
+
+    /** headerCheck() with the caller's CRC-32C and 53 bytes of scratch (the serializer's). */
+    private static int headerCheck(CRC32C crc, byte[] scratch, byte[] id, long tpos,
+            byte[] header, int offset) {
+        System.arraycopy(id, 0, scratch, 0, 16);
+        Bytes.longToBytesLE(tpos, scratch, 16);
+        System.arraycopy(header, offset, scratch, 24, 5);
+        System.arraycopy(header, offset + 8, scratch, 29, 24);
+        crc.reset();
+        crc.update(scratch, 0, 53);
+        return (int) crc.getValue() & 0xffffff;
+    }
+
+    /** Whether the header at 'offset' of 'header' holds its check (headerCheck()). */
+    static boolean headerChecks(byte[] id, long tpos, byte[] header, int offset) {
+        final int stored = (header[offset + 5] & 0xff) | (header[offset + 6] & 0xff) << 8
+                | (header[offset + 7] & 0xff) << 16;
+        return stored == headerCheck(id, tpos, header, offset);
+    }
+
+    /**
+     * Sets bytes 5 to 7 of the header at 'offset' of 'header' to its check (headerCheck()),
+     * for the record at 'tpos' of the database of ID 'id'. For the serializer, and for tests
+     * and tools that make or change a record's header.
+     */
+    static void setHeaderCheck(byte[] id, long tpos, byte[] header, int offset) {
+        setCheckBytes(headerCheck(id, tpos, header, offset), header, offset);
+    }
+
+    private static void setCheckBytes(int check, byte[] header, int offset) {
+        header[offset + 5] = (byte) check;
+        header[offset + 6] = (byte) (check >>> 8);
+        header[offset + 7] = (byte) (check >>> 16);
+    }
+
+    /**
+     * The Core's check of a record for the start's recovery (RecoverableStream.recover(),
+     * bergdb 028-67, C1), which knows a record's size and last byte only: a whole header is
+     * one if it holds its check (headerCheck()) for its position and the database's ID; a
+     * header that the end of the stream cuts (fewer than 32 bytes) is one as far as it goes
+     * if its size is one the writer writes (48 or more, a multiple of 8, at most
+     * MAX_RECORD_SIZE) and its format byte, if there, is RECORD_FORMAT; the first record of
+     * the walk is refused for another format as NodeStream refuses it (formatRefused()); and a
+     * whole record is one if it parses.
+     */
+    static final RecoverableStream.RecordCheck RECORD_CHECK = new RecoverableStream.RecordCheck() {
+        public int headerSize() {
+            return HEADER_SIZE;
+        }
+
+        public boolean headerChecks(long pos, byte[] header, byte[] id) {
+            return StoredTrans.headerChecks(id, pos, header, 0);
+        }
+
+        public boolean tornHeaderFits(long pos, byte[] bytes, int length) {
+            final int size = Bytes.bytesToIntLE(bytes, 0);
+            return size >= MIN_RECORD_SIZE && size <= MAX_RECORD_SIZE
+                    && size % RecoverableStream.TRANS_ALIGNMENT == 0
+                    && (length < 5 || bytes[4] == RECORD_FORMAT);
+        }
+
+        public void checkFormat(long pos, byte[] header) {
+            if (header.length > 4 && header[4] != RECORD_FORMAT) {
+                throw new VersioningStreamException(formatRefused(header[4]));
+            }
+        }
+
+        public String recordProblem(long pos, byte[] record, byte[] id) {
+            try {
+                parse(pos, record, id);
+                return null;
+            } catch (RuntimeException e) {
+                return e.getMessage() != null ? e.getMessage() : e.toString();
+            }
+        }
+    };
     
     /**
      * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
@@ -340,14 +445,16 @@ public class StoredTrans {
     }
 
     /**
-     * Creates a StoredTrans by parsing the data in a the byte buffer.
+     * Creates a StoredTrans by parsing the data in a the byte buffer: the record at
+     * 'transPos' of the database of ID 'id', whose header must hold its check (bergdb 028-67,
+     * headerCheck(); NodeStream.databaseId() gives a stream's ID).
      * 
      * @throws IllegalArgumentException
      * @throws StreamFormatException
      */
-    public static StoredTrans parse(long transPos, byte[] buffer) {
+    public static StoredTrans parse(long transPos, byte[] buffer, byte[] id) {
         Parser p = new Parser();
-        p.parse(transPos, buffer);
+        p.parse(transPos, buffer, id);
         return new StoredTrans(p);
     }
 
@@ -441,12 +548,17 @@ public class StoredTrans {
         int byteSize;
 
         /**
-         * Parses a transaction starting at buffer[0].
+         * Parses a transaction starting at buffer[0]: the record at 'tpos' of the database of
+         * ID 'id', 16 bytes, whose header must hold its check (bergdb 028-67, C3).
          * buffer.length may be longer than required to store the transaction.
          */
-        void parse(long tpos, byte[] buffer) {
+        void parse(long tpos, byte[] buffer, byte[] id) {
             if (buffer == null) {
                 throw new IllegalArgumentException("buffer == null not allowed");
+            }
+
+            if (id == null || id.length != 16) {
+                throw new IllegalArgumentException("a database ID of 16 bytes is required");
             }
 
             if (buffer.length < 16 + 1) {
@@ -480,7 +592,15 @@ public class StoredTrans {
                 throw new VersioningStreamException(formatRefused(version));
             }
 
-            offset += 3;     // three unused bytes
+            // Bytes 5 to 7, the header's check (bergdb 028-67, C3), after the format: a
+            // stream of another format is refused as that (VersioningStreamException).
+            if (!headerChecks(id, tpos, buffer, 0)) {
+                throw new StreamFormatException("The header of the record at " + tpos
+                        + " does not hold its check (bergdb 028-67, C3): the record was "
+                        + "written at another position or by another database, or its header "
+                        + "is damaged.");
+            }
+            offset += 3;
             
             transactionTime = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
@@ -616,6 +736,15 @@ public class StoredTrans {
         
         /** bergdb 031-06: the record's limit, Trans.recordCap, set before serialize(); 0: recordLimit. */
         long recordCap;
+
+        /**
+         * The database's ID, for the header's check (bergdb 028-67, C3): NodeStream sets it
+         * before serialize(); 16 zero bytes until then, as in tests that use a Serializer
+         * alone.
+         */
+        final byte[] databaseId = new byte[16];
+        private final CRC32C crc = new CRC32C();
+        private final byte[] checkScratch = new byte[53];
         private ArrayList<Node> gotDirtyNodes;
         
         /**
@@ -882,6 +1011,10 @@ public class StoredTrans {
             byteOffset = serializeNodes(longOffset);
             byteOffset = serializeEnd(byteOffset);
 
+            // The header's check, over its bytes as copied (bergdb 028-67, C3).
+            setCheckBytes(headerCheck(crc, checkScratch, databaseId, transStartPos, byteBuffer,
+                    0), byteBuffer, 0);
+
             assert byteOffset == totalSize;
             assert totalSize % 8 == 0;
         }
@@ -1071,12 +1204,15 @@ public class StoredTrans {
     
     // ======== Testing ========
 
+    /** The database ID of a Serializer that no NodeStream gave one: 16 zero bytes. */
+    private static final byte[] TEST_ID = new byte[16];
+    
     /** bergdb 005-74, F2: this record used to loop between its two delete nodes. */
     @Nano
     private static void testNegativeNodeSize() {
         byte[] buffer = recordWithBadNodeSize(-32);
         try {
-            parse(128, buffer);
+            parse(128, buffer, TEST_ID);
             throw new AssertionError("negative node size was accepted");
         } catch (StreamFormatException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
@@ -1091,7 +1227,7 @@ public class StoredTrans {
     private static void testNodeSizeOutsideRecord() {
         for (int size : new int[] {1, 6, 7, 8, 11, Integer.MAX_VALUE}) {
             try {
-                parse(128, recordWithBadNodeSize(size));
+                parse(128, recordWithBadNodeSize(size), TEST_ID);
                 throw new AssertionError("bad node size was accepted: " + size);
             } catch (StreamFormatException e) {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
@@ -1099,8 +1235,9 @@ public class StoredTrans {
         }
         byte[] buffer = recordWithBadNodeSize(36);
         Bytes.intToBytesLE(80, buffer, 0);    // The array is longer than the record.
+        setHeaderCheck(TEST_ID, 128, buffer, 0);
         try {
-            parse(128, buffer);
+            parse(128, buffer, TEST_ID);
             throw new AssertionError("node beyond the declared record was accepted");
         } catch (StreamFormatException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
@@ -1124,6 +1261,7 @@ public class StoredTrans {
         }
         NodeChecksum.set(buffer, 32, 36);
         buffer[buffer.length - 1] = RecoverableStream.LAST_BYTE;
+        setHeaderCheck(TEST_ID, 128, buffer, 0);        // bergdb 028-67
         return buffer;
     }
 
@@ -1136,7 +1274,7 @@ public class StoredTrans {
             byte[] buffer = serializer.getTransBuffer().clone();
             Bytes.intToBytesLE(size, buffer, 0);
             try {
-                parse(200, buffer);
+                parse(200, buffer, TEST_ID);
                 throw new AssertionError("bad record size was accepted: " + size);
             } catch (StreamFormatException e) {
                 // Refused before a header, node or list is read outside the record.
@@ -1151,7 +1289,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer().clone();
         Bytes.intToBytesLE(1, buffer, 36);
         try {
-            parse(200, buffer);
+            parse(200, buffer, TEST_ID);
             throw new AssertionError("got-dirty list beyond the record was accepted");
         } catch (StreamFormatException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("gotDirtyCount"));
@@ -1176,7 +1314,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer().clone();
         Bytes.intToBytesLE(Integer.MAX_VALUE, buffer, 36);     // after the header and the end marker
         try {
-            new Parser().parse(200, buffer);
+            new Parser().parse(200, buffer, TEST_ID);
             throw new AssertionError("no exception");
         } catch (StreamFormatException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("gotDirtyCount"));
@@ -1212,7 +1350,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(0, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
@@ -1243,7 +1381,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(4, parser.nodes.length);
         assertEquals(100, parser.transactionTime);
@@ -1270,7 +1408,7 @@ public class StoredTrans {
         serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>(), top);
         
         Parser parser = new Parser();
-        parser.parse(200, serializer.getTransBuffer());
+        parser.parse(200, serializer.getTransBuffer(), TEST_ID);
         
         assertEquals(top.getSpos(), parser.topPos);
         assertEquals(parser.nodes[0].getNode().getSpos(), parser.topPos);
@@ -1285,7 +1423,7 @@ public class StoredTrans {
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>(), top);
         
         Parser parser = new Parser();
-        parser.parse(200, serializer.getTransBuffer());
+        parser.parse(200, serializer.getTransBuffer(), TEST_ID);
         
         assertEquals(128, parser.topPos);
         assertEquals(0, parser.nodes.length);
@@ -1308,7 +1446,7 @@ public class StoredTrans {
             buffer[4] = (byte) format;
             
             try {
-                new Parser().parse(200, buffer);
+                new Parser().parse(200, buffer, TEST_ID);
                 throw new AssertionError("no exception for format " + format);
             } catch (VersioningStreamException e) {
                 String m = e.getMessage();
@@ -1336,7 +1474,7 @@ public class StoredTrans {
             assertEquals(RECORD_FORMAT, buffer[4]);
             buffer[4] = (byte) format;
             try {
-                new Parser().parse(200, buffer);
+                new Parser().parse(200, buffer, TEST_ID);
                 throw new AssertionError("no exception for format " + format);
             } catch (VersioningStreamException e) {
                 String m = e.getMessage();
@@ -1358,7 +1496,7 @@ public class StoredTrans {
             byte[] buffer = serializer.getTransBuffer().clone();
             buffer[4] = (byte) format;
             try {
-                new Parser().parse(200, buffer);
+                new Parser().parse(200, buffer, TEST_ID);
                 throw new AssertionError("no exception for format " + format);
             } catch (VersioningStreamException e) {
                 String m = e.getMessage();
@@ -1387,7 +1525,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(4, parser.gotDirtyIdsAndSpos.length);
         assertEquals(1000L, parser.gotDirtyIdsAndSpos[0]);
@@ -1403,7 +1541,7 @@ public class StoredTrans {
         byte[] buffer = s.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         StoredNode[] stored = parser.nodes;
         assertEquals(1, stored.length);
@@ -1418,7 +1556,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(12345, parser.startupPos);
     }
@@ -1431,7 +1569,7 @@ public class StoredTrans {
         byte[] buffer = serializer.getTransBuffer();
         
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(-1, parser.startupPos);
         assertFalse(parser.hasNewStartupPos());
@@ -1453,7 +1591,7 @@ public class StoredTrans {
         serializer.serialize(transNodes, 100, 200, -1, new ArrayList<Node>());
         byte[] buffer = serializer.getTransBuffer();
         Parser parser = new Parser();
-        parser.parse(200, buffer);
+        parser.parse(200, buffer, TEST_ID);
         
         assertEquals(2, parser.nodes.length);
         assertEquals(Node.TYPE_VALUE, parser.nodes[1].getNode().getType());
@@ -1473,7 +1611,7 @@ public class StoredTrans {
                 // where no transaction starts and no value node is (bergdb 005-34)
         serializer.serialize(transNodes, time, transPos, -1, new ArrayList<Node>());
         Parser parser = new Parser();
-        parser.parse(transPos, serializer.getTransBuffer());
+        parser.parse(transPos, serializer.getTransBuffer(), TEST_ID);
         
         assertEquals(1, parser.nodes.length);
         assertEquals(Node.TYPE_VALUE, parser.nodes[0].getNode().getType());
@@ -1507,6 +1645,110 @@ public class StoredTrans {
         assertArrayEquals(a, b);
     }
 
+    /**
+     * Bergdb 028-67, C3: bytes 5 to 7 of a record's header hold the low 24 bits of CRC-32C
+     * over the database's ID, the record's position and the header's bytes 0 to 4 and 8 to
+     * 31, little-endian; a parse refuses the record at another position or of another
+     * database, and with any one bit of its header flipped (a flip of the format byte as
+     * another format, VersioningStreamException, as before).
+     */
+    @Nano
+    private static void testHeaderCheck() {
+        final byte[] id = new byte[16];
+        for (int i = 0; i < id.length; i++) {
+            id[i] = (byte) (31 * i + 7);
+        }
+        Serializer serializer = new Serializer();
+        System.arraycopy(id, 0, serializer.databaseId, 0, 16);
+        serializer.serialize(transWithValue(new byte[] {1, 2, 3}), 100, 2048, 128,
+                new ArrayList<Node>());
+        final byte[] buffer = java.util.Arrays.copyOf(serializer.getTransBuffer(),
+                serializer.getOutputTransSize());
+        
+        CRC32C crc = new CRC32C();
+        crc.update(id, 0, 16);
+        byte[] pos = new byte[8];
+        Bytes.longToBytesLE(2048, pos, 0);
+        crc.update(pos, 0, 8);
+        crc.update(buffer, 0, 5);
+        crc.update(buffer, 8, 24);
+        assertEquals((int) crc.getValue() & 0xffffff, (buffer[5] & 0xff)
+                | (buffer[6] & 0xff) << 8 | (buffer[7] & 0xff) << 16);
+        assertEquals(100, parse(2048, buffer, id).tt);
+        
+        byte[] otherId = id.clone();
+        otherId[15] ^= 1;
+        for (Object[] c : new Object[][] {{2040L, id}, {2056L, id}, {2048L + 200000, id},
+                {2048L, otherId}, {2048L, TEST_ID}}) {
+            try {
+                parse((Long) c[0], buffer, (byte[]) c[1]);
+                throw new AssertionError("parsed at " + c[0]);
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("does not hold its "
+                        + "check (bergdb 028-67, C3)"));
+            }
+        }
+        
+        for (int i = 0; i < HEADER_SIZE; i++) {
+            for (int bit = 0; bit < 8; bit++) {
+                byte[] b = buffer.clone();
+                b[i] ^= (byte) (1 << bit);
+                try {
+                    parse(2048, b, id);
+                    throw new AssertionError("parsed with bit " + bit + " of byte " + i
+                            + " flipped");
+                } catch (VersioningStreamException e) {
+                    assertEquals(4, i);
+                } catch (StreamFormatException e) {
+                    Assert.assertTrue("byte " + i, i != 4);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Bergdb 028-67, C1: RECORD_CHECK, the Core's check of a header for the start's
+     * recovery. A whole header checks for its own position and ID only; a header that the end
+     * of the stream cuts fits if its size is one the writer writes (48 or more, a multiple of
+     * 8, at most MAX_RECORD_SIZE) and its format byte, if there, is RECORD_FORMAT; another
+     * format is refused (checkFormat()) as NodeStream refuses it.
+     */
+    @Nano
+    private static void testRecordCheck() {
+        final RecoverableStream.RecordCheck c = RECORD_CHECK;
+        assertEquals(32, c.headerSize());
+        Serializer serializer = new Serializer();
+        serializer.serialize(transWithValue(new byte[] {1}), 100, 4096, 128,
+                new ArrayList<Node>());
+        final byte[] record = java.util.Arrays.copyOf(serializer.getTransBuffer(),
+                serializer.getOutputTransSize());
+        final byte[] header = java.util.Arrays.copyOf(record, 32);
+        Assert.assertTrue(c.headerChecks(4096, header, TEST_ID));
+        assertFalse(c.headerChecks(4104, header, TEST_ID));
+        Assert.assertTrue(c.recordProblem(4096, record, TEST_ID) == null);
+        Assert.assertTrue(c.recordProblem(4104, record, TEST_ID) != null);
+        
+        for (int length = 4; length < 32; length++) {
+            Assert.assertTrue("length " + length, c.tornHeaderFits(4096, header, length));
+        }
+        for (int size : new int[] {-8, 0, 40, 49, 52, Integer.MAX_VALUE}) {
+            byte[] h = header.clone();
+            Bytes.intToBytesLE(size, h, 0);
+            assertFalse("size " + size, c.tornHeaderFits(4096, h, 20));
+        }
+        byte[] h = header.clone();
+        h[4] = 8;
+        assertFalse(c.tornHeaderFits(4096, h, 5));
+        Assert.assertTrue(c.tornHeaderFits(4096, h, 4));
+        try {
+            c.checkFormat(4096, h);
+            throw new AssertionError("format 8 passed");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 8;"));
+        }
+        c.checkFormat(4096, header);
+    }
+    
     private static TransNodes transWithValue(byte[] value) {
         ValueNode node = new ValueNode(value);
         node.setId(1001);

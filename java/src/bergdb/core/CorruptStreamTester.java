@@ -73,20 +73,22 @@ public class CorruptStreamTester {
      * 6.1): counted, not failed. BergDB assumes correct storage; its checksums and checks of
      * damage other than a cut tail are a best effort (checksums in the stream: bergdb 017-08).
      * <ul>
-     * <li>015-73 (2026-11-05, 15:35, option (a)): a record's startupPos set to the start of
-     * another record, which the take never reached.</li>
      * <li>014-01 (005-83's case, moved to 014-01): a start that refuses a corrupt record size
      * after recovery's zero fill has written.</li>
-     * <li>019-30 (2026-11-06, 10:42, option (a)): a record's time or topPos set, or a byte of
-     * them flipped, to a value that passes the start's checks.</li>
-     * <li>019-31 (2026-11-06, 10:42, option (a)): a range cut out of the stream's middle,
-     * such as whole records: the stream left is a valid stream of fewer transactions.</li>
      * </ul>
+     * Since bergdb 028-67 (C1 and C3, 2026-11-27) a record's header holds a check of the
+     * database's ID, its position and its fields, and the start's recovery checks the headers
+     * before it fills: 015-73 (a record's startupPos set to the start of another record, which
+     * the take never reached), 019-30 (a record's time or topPos set, or a byte of them
+     * flipped, to a value that passes the start's checks) and 019-31 (a range cut out of the
+     * stream's middle, such as whole records) are refused, and gone from this list: in the
+     * full set on seed 20768 none passed undetected, and 014-01's zero fill of a damaged size
+     * no longer came (a fill needs a header that checks, or one that the end cuts).
      * 019-33 (2026-11-06, 10:42, option (a)), a node byte flipped by 0xff, between 0x00 and
      * 0xff, which Fletcher-16 modulo 255 did not see, is gone since the node checksum is
      * CRC32C (bergdb 024-25): such a flip passing undetected is a failure.
      */
-    static final String[] KNOWN = {"015-73", "014-01", "019-30", "019-31"};
+    static final String[] KNOWN = {"014-01"};
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
@@ -260,6 +262,14 @@ public class CorruptStreamTester {
 
     /** Runs the workload and returns its stream and states. */
     static Original write(Config c, long seed) {
+        return write(c, seed, DatabaseId.TEST_ID);
+    }
+    
+    /**
+     * As write(c, seed), for a database of ID 'id' (bergdb 028-67: another database's stream,
+     * as testSetup()'s ID, DatabaseId.TEST_ID, is every test database's).
+     */
+    static Original write(Config c, long seed, DatabaseId id) {
         Original o = new Original(c, seed);
         Random r = new Random(seed);
         MemoryStream s = new MemoryStream();
@@ -269,7 +279,7 @@ public class CorruptStreamTester {
         o.lastPos = new long[o.n + 1];
         TreeMap<String, byte[]> state = new TreeMap<String, byte[]>();
         o.states.add(new TreeMap<String, byte[]>(state));
-        try (Db db = Db.builder().testSetup(s).clock(clock)
+        try (Db db = Db.builder().testSetup(s).clock(clock).id(id)
                 .start()) {
             db.setStartupDistance(c.startupDistance);
             for (int i = 1; i <= o.n; i++) {
@@ -799,13 +809,11 @@ public class CorruptStreamTester {
 
     /**
      * The entry of KNOWN that a byte flipped by 'mask' at 'where' (a region) belongs to if
-     * it passes undetected, or null: 019-30 in a record's time or topPos. (019-33, by 0xff in
-     * a node, until bergdb 024-25.)
+     * it passes undetected, or null: none since bergdb 028-67, whose header check refuses a
+     * flip in a record's time or topPos (019-30's until then; 019-33, by 0xff in a node,
+     * until bergdb 024-25).
      */
     static String flipKnown(String where, int mask) {
-        if (where.endsWith(": time") || where.endsWith(": topPos")) {
-            return "019-30";
-        }
         return null;
     }
 
@@ -851,7 +859,7 @@ public class CorruptStreamTester {
         String in = "record at " + rec.tpos + ", offset " + off + ": ";
         if (off < 4) return in + "size";
         if (off < 5) return in + "format";
-        if (off < 8) return in + "unused";
+        if (off < 8) return in + "check";     // the header's check (bergdb 028-67)
         if (off < 16) return in + "time";
         if (off < 24) return in + "startupPos";
         if (off < 32) return in + "topPos";
@@ -929,9 +937,9 @@ public class CorruptStreamTester {
         for (long t : new long[] {tt - 1, tt + 1, tt - TIME_STEP, tt + TIME_STEP, 0, -1,
                 Klong.MAX_TIME, Klong.MAX_TIME + 1, Long.MAX_VALUE, Long.MIN_VALUE,
                 tt ^ (1L << 40)}) {
-            // 019-30: a time that passes the start's checks is taken.
+            // 019-30's until bergdb 028-67: a time that passed the start's checks was taken.
             out.add(patched(o, "header", "time " + t + " (was " + tt + ") of the record at "
-                    + rec.tpos, rec, 8, le8(t), "019-30"));
+                    + rec.tpos, rec, 8, le8(t), null));
         }
 
         long sp = rec.startupPos();
@@ -946,14 +954,10 @@ public class CorruptStreamTester {
         }
         sps.remove(sp);
         for (long x : sps) {
-            // 015-73: the start of another record, which the take never reached, passes.
-            boolean recordStart = false;
-            for (Record other : recs) {
-                recordStart |= other.tpos == x;
-            }
+            // 015-73's until bergdb 028-67: the start of another record, which the take
+            // never reached, passed.
             out.add(patched(o, "header", "startupPos " + x + " (was " + sp
-                    + ") of the record at " + rec.tpos, rec, 16, le8(x),
-                    recordStart && x > sp ? "015-73" : null));
+                    + ") of the record at " + rec.tpos, rec, 16, le8(x), null));
         }
 
         long top = rec.topPos();
@@ -969,10 +973,10 @@ public class CorruptStreamTester {
         }
         tops.remove(top);
         for (long x : tops) {
-            // 019-30: a topPos that passes the start's checks, such as an older version of
-            // the top node before the startup section, is taken.
+            // 019-30's until bergdb 028-67: a topPos that passed the start's checks, such as
+            // an older version of the top node before the startup section, was taken.
             out.add(patched(o, "header", "topPos " + x + " (was " + top + ") of the record at "
-                    + rec.tpos, rec, 24, le8(x), "019-30"));
+                    + rec.tpos, rec, 24, le8(x), null));
         }
 
         int list = rec.endMarker + 8;
@@ -1049,8 +1053,9 @@ public class CorruptStreamTester {
     }
 
     /**
-     * The bytes from 'from' to 'to' cut out of the stream. If it passes undetected, it is
-     * 019-31's: nothing links a record to the one before it.
+     * The bytes from 'from' to 'to' cut out of the stream. Until bergdb 028-67 one that
+     * passed undetected was 019-31's: nothing linked a record to the one before it; since
+     * then the records after the range are at other positions than their headers' checks.
      */
     static Copy cutOut(Original o, int from, int to) {
         return new Copy("cut out", "bytes " + from + " to " + to + " cut out", () -> {
@@ -1058,7 +1063,7 @@ public class CorruptStreamTester {
             System.arraycopy(o.bytes, 0, b, 0, from);
             System.arraycopy(o.bytes, to, b, from, o.bytes.length - to);
             return b;
-        }, -1, -1, "019-31");
+        }, -1, -1, null);
     }
 
     /** Ranges cut out: whole records (pairs of record starts), and 'random' ranges. */
