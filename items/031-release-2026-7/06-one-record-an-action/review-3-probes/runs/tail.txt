@@ -1,0 +1,311 @@
+# bergdb 031-06, review 3: run.sh OUT tail, on the branch 031-06-pace at f32fc321, which holds main's b0aac3a9 and 53ff486f (028-67). Functional. The same probes on b0aac3a9's parent, b0cb561c: every start ok (S4RestartAfterTornSizeProbe; S4TornSweepFileProbe ok 1016, bad 0; S4TornFillProbe ok 308, refused 0; S4TornFillFileProbe ok 109, not ok 0).
+== -cp OUT/classes:JAR bergdb.core.S4RestartAfterTornSizeProbe OUT/rs
+cut 1 bytes into the record at 512: start 1 ok (a true); start 2 BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its p
+cut 2 bytes into the record at 512: start 1 ok (a true); start 2 BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its
+cut 3 bytes into the record at 512: start 1 ok (a true); start 2 BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at it
+cut 4 bytes into the record at 512: start 1 ok (a true); start 2 BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at it
+cut 5 bytes into the record at 512: start 1 ok (a true); start 2 ok (a true); start 3 ok (a true);
+cut 6 bytes into the record at 512: start 1 ok (a true); start 2 ok (a true); start 3 ok (a true);
+cut 7 bytes into the record at 512: start 1 ok (a true); start 2 ok (a true); start 3 ok (a true);
+cut 8 bytes into the record at 512: start 1 ok (a true); start 2 ok (a true); start 3 ok (a true);
+== -cp OUT/classes:JAR bergdb.core.S4TornSweepFileProbe OUT/sw
+cut at 513: start 2 BadTailException: The record at 512, of size 232, which the end of the stream cuts, has a header that is not one of this databas
+cut at 514: start 2 BadTailException: The record at 512, of size 24552, which the end of the stream cuts, has a header that is not one of this datab
+cut at 515: start 2 BadTailException: The record at 512, of size 90088, which the end of the stream cuts, has a header that is not one of this datab
+cut at 516: start 2 BadTailException: The record at 512, of size 90088, which the end of the stream cuts, has a header that is not one of this datab
+cut at 90601: start 2 BadTailException: The record at 90600, of size 240, which the end of the stream cuts, has a header that is not one of this datab
+cut at 90602: start 2 BadTailException: The record at 90600, of size 24560, which the end of the stream cuts, has a header that is not one of this dat
+cut at 90603: start 2 BadTailException: The record at 90600, of size 90096, which the end of the stream cuts, has a header that is not one of this dat
+cut at 90604: start 2 BadTailException: The record at 90600, of size 90096, which the end of the stream cuts, has a header that is not one of this dat
+cut at 180697: start 2 BadTailException: The record at 180696, of size 248, which the end of the stream cuts, has a header that is not one of this data
+cut at 180698: start 2 BadTailException: The record at 180696, of size 24568, which the end of the stream cuts, has a header that is not one of this da
+cut at 180699: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180700: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180701: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180702: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180703: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180704: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180705: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180706: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180707: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180708: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180709: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180710: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180711: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180712: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180713: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180714: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180715: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180716: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180717: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180718: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180719: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 180720: start 2 BadTailException: The record at 180696, of size 90104, which the end of the stream cuts, has a header that is not one of this da
+cut at 270930: start 2 BadTailException: The record at 270928, of size 24576, which the end of the stream cuts, has a header that is not one of this da
+cut at 270931: start 2 BadTailException: The record at 270928, of size 90112, which the end of the stream cuts, has a header that is not one of this da
+cut at 270932: start 2 BadTailException: The record at 270928, of size 90112, which the end of the stream cuts, has a header that is not one of this da
+cut at 361042: start 2 BadTailException: The record at 361040, of size 24576, which the end of the stream cuts, has a header that is not one of this da
+cut at 361043: start 2 BadTailException: The record at 361040, of size 90112, which the end of the stream cuts, has a header that is not one of this da
+cut at 361044: start 2 BadTailException: The record at 361040, of size 90112, which the end of the stream cuts, has a header that is not one of this da
+cut at 361045: start 2 BadTailException: The record at 361040, of size 90112, which the end of the stream cuts, has a header that is not one of this da
+record starts [512, 90600, 180696, 270928, 361040]; ok 958, bad 58
+== -cp OUT/classes:JAR bergdb.core.S4TornFillProbe
+last record at 512, size about 100088, stream length 100600
+A cutIn 1, fill cut at 5: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 1, fill cut at 8: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 1, fill cut at 31: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 1, fill cut at 32: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 1, fill cut at 33: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 1, fill cut at 40: BadTail written=0: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67,
+A cutIn 2, fill cut at 5: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 8: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 31: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 32: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 33: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 40: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 1000: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 10000: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 2, fill cut at 20000: BadTail written=0: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-6
+A cutIn 3, fill cut at 5: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 8: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 31: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 3, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 5: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 8: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 31: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 4, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 5, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 6, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 7, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 8, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 9, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 10, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 11, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 12, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 13, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 14, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 15, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 16, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 17, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 18, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 19, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 20, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 21, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 22, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 23, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 32: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 33: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 10000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+A cutIn 24, fill cut at 20000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 4, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 4, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 4, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 5, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 5, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 5, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 6, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 6, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 6, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 7, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 7, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 7, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 8, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 8, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 8, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 9, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 9, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 9, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 10, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 10, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 10, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 11, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 11, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 11, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 12, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 12, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 12, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 13, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 13, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 13, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 14, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 14, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 14, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 15, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 15, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 15, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 16, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 16, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 16, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 17, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 17, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 17, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 18, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 18, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 18, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 19, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 19, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 19, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 20, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 20, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 20, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 21, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 21, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 21, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 22, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 22, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 22, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 23, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 23, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 23, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 24, length 40: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 24, length 1000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+B zeros from header byte 24, length 5000: BadTail written=0: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-
+ok 92, refused 216, other 0
+== -cp OUT/classes:JAR bergdb.core.S4TornFillFileProbe OUT/fs 100000 5,6,8,40,1000,50000
+value 100000, last record at 512
+cutIn 1, fill cut at 5: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 1, fill cut at 6: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 1, fill cut at 8: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 1, fill cut at 40: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 1, fill cut at 1000: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 1, fill cut at 50000: BadTailException: The record at 512, of size 248, which the end of the stream cuts, has a header that is not one of this database's records at its place (berg
+cutIn 2, fill cut at 5: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 2, fill cut at 6: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 2, fill cut at 8: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 2, fill cut at 40: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 2, fill cut at 1000: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 2, fill cut at 50000: BadTailException: The record at 512, of size 34552, which the end of the stream cuts, has a header that is not one of this database's records at its place (be
+cutIn 3, fill cut at 5: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 3, fill cut at 6: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 3, fill cut at 8: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 3, fill cut at 40: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 3, fill cut at 1000: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 3, fill cut at 50000: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 5: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 6: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 8: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 40: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 1000: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+cutIn 4, fill cut at 50000: BadTailException: The record at 512, of size 100088, which the end of the stream cuts, has a header that is not one of this database's records at its place (b
+ok 85, not ok 24
+== -cp OUT/classes:JAR bergdb.core.S4TornSweepProbe
+cut at 369: start 1 DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 369, hold
+cut at 466: no a at start 1
+cuts from 272 to 451280: ok 5835, bad 2
+== -cp OUT/classes:JAR bergdb.core.S4Version155Probe
+8: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+100: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+128: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+200: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+300: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+600: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+200100: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+360896: VersioningStreamException, written 0: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database
+RUN DONE tail

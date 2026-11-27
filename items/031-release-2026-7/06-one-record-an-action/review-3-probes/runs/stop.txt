@@ -1,0 +1,7 @@
+# bergdb 031-06, review 3: run.sh OUT stop, on the branch 031-06-pace at f32fc321. Functional (counts).
+== -cp OUT/classes:JAR bergdb.core.StopWarmProbe 300
+without the warm-up: 300 rounds, 8785 commits before the stops; execute() threw:
+  1200 x bergdb.core.DbStoppingException: Cannot call execute() while DB is stopping.
+with the warm-up: 300 rounds, 9156 commits before the stops; execute() threw:
+  1200 x bergdb.core.DbStoppingException: Cannot call execute() while DB is stopping.
+RUN DONE stop

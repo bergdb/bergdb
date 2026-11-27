@@ -1,0 +1,56 @@
+# bergdb 031-06, review 3: run.sh OUT evict, on the branch 031-06-pace at f32fc321 (main 734f05a2). Functional (bytes).
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 20000 1000 600 300000 200 5000000 30 0
+  none: length 177545400, first 109052200, sha256 2cc038633f05511a; steps 933, copies 40713, largest step's copies 119888 bytes
+  budget: length 177545400, first 109052200, sha256 2cc038633f05511a; steps 933, copies 40713, largest step's copies 119888 bytes
+  every1: length 177545400, first 109052200, sha256 2cc038633f05511a; steps 933, copies 40713, largest step's copies 119888 bytes
+  budget-nowarm: length 177545400, first 109052200, sha256 2cc038633f05511a; steps 933, copies 40713, largest step's copies 119888 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 20000 1000 600 300000 200 5000000 8 0
+  none: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  budget: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  every1: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  budget-nowarm: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 20000 1000 600 300000 200 5000000 8 97
+  none: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  budget: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  every1: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+  budget-nowarm: length 177771232, first 80032984, sha256 72e229ea0e3e8a4e; steps 883, copies 39127, largest step's copies 119888 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 100000 30 3000 2000 50 3000000 30 0
+  none: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  budget: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  every1: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  budget-nowarm: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 100000 30 3000 2000 50 3000000 30 211
+  none: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  budget: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  every1: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+  budget-nowarm: length 94859432, first 30449104, sha256 3c88e745559e2161; steps 2786, copies 138819, largest step's copies 9982 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 100000 30 3000 400000 100 3000000 8 0
+  none: length 976291272, first 880673200, sha256 f79fc6fd97965d88; steps 4435, copies 1065343, largest step's copies 41262 bytes
+  budget: length 976291272, first 880673200, sha256 f79fc6fd97965d88; steps 4435, copies 1065343, largest step's copies 41262 bytes
+  every1: length 976291272, first 880673200, sha256 f79fc6fd97965d88; steps 4435, copies 1065343, largest step's copies 41262 bytes
+  budget-nowarm: length 976291272, first 880673200, sha256 f79fc6fd97965d88; steps 4435, copies 1065343, largest step's copies 41262 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 50000 100 4000 600000 100 4000000 8 0
+  none: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  budget: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  every1: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  budget-nowarm: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 50000 100 4000 600000 100 4000000 8 53
+  none: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  budget: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  every1: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+  budget-nowarm: length 1806747672, first 1733347432, sha256 2a4e7b92abab8c2d; steps 5377, copies 1315909, largest step's copies 602472 bytes
+EVICT CHARGE PROBE OK
+== -cp OUT/classes:JAR bergdb.core.EvictChargeProbe 30000 200 1500 1000000 200 5000000 30 0
+  none: length 1000367048, first 923009072, sha256 3af2ca32286d3257; steps 2216, copies 381160, largest step's copies 89640 bytes
+  budget: length 1000367048, first 923009072, sha256 3af2ca32286d3257; steps 2216, copies 381160, largest step's copies 89640 bytes
+  every1: length 1000367048, first 923009072, sha256 3af2ca32286d3257; steps 2216, copies 381160, largest step's copies 89640 bytes
+  budget-nowarm: length 1000367048, first 923009072, sha256 3af2ca32286d3257; steps 2216, copies 381160, largest step's copies 89640 bytes
+EVICT CHARGE PROBE OK
+RUN DONE evict
