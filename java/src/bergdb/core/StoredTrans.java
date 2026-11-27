@@ -36,6 +36,13 @@ import bergdb.storage.VersioningStreamException;
 public class StoredTrans {
     /**
      * The format byte of a stored transaction, written by Serializer and checked by Parser.
+     * 9 since 2026-11-27 (bergdb 031-06), for release 2026.7, which does not open a database
+     * of 2026.6 (Frans, 2026-11-27: a new format, refused with a clear message, no upgrade
+     * path): one record an action, a commit's record and a part's of maintain() hold
+     * reclaim's copies, row and table beside the action's KVs, and a copy's value node has the
+     * copy mark (StoredValueNode, byte 6), which format 8 had as zero; a stream of format 8 is
+     * of release 2026.6, refused at the start with a message that names it (formatRefused()).
+     * No release has written format 9: its meaning may still change before 2026.7.
      * 8 since 2026-11-19 (bergdb 026-25), for release 2026.6: format 7's layout, and a
      * record's KVs are rerun as one batch by the writer PE, "plan, then emit" (Dag.putKvs,
      * PeWriter; bergdb 030-21 proves it in the model), which writes each node once, so a
@@ -73,7 +80,7 @@ public class StoredTrans {
      * it writes (the rule proposed in bergdb 026-12, SF3); a stream of version 154, of
      * release 2026.5 or earlier, is refused by its meta block, before a record is read.</p>
      */
-    public final static byte RECORD_FORMAT = 8;
+    public final static byte RECORD_FORMAT = 9;
     
     /**
      * The largest record, in bytes (2026-10-21, bergdb 005-17): the record's size field is an
@@ -329,6 +336,8 @@ public class StoredTrans {
      * The message of a VersioningStreamException for a record whose format byte is not
      * RECORD_FORMAT: it says whether the stream was written by an older or a newer BergDB
      * (2026-10-25, bergdb 005-40). Before, every other format got the message of format 2.
+     * Format 8 names release 2026.6, which wrote it, and that this version does not read it
+     * (bergdb 031-06).
      */
     static String formatRefused(byte version) {
         int v = version & 0xff;
@@ -336,6 +345,12 @@ public class StoredTrans {
                 + "of BergDB reads format " + RECORD_FORMAT + " only. ";
         if (v > RECORD_FORMAT) {
             return s + "A larger number is a database written by a newer version of BergDB.";
+        }
+        if (v == 8) {
+            return s + "Format 8 is a database written by release 2026.6, an older version of "
+                    + "BergDB, which this version does not open: there is no upgrade path, and "
+                    + "release 2026.6 still opens it (bergdb 031-06). It is also a database of "
+                    + "a development build of 2026.7 before one record an action.";
         }
         return s + "A smaller number is a database written by an older version of BergDB, "
                 + "which this version cannot open; or the stream is damaged, as the meta "
@@ -1297,9 +1312,9 @@ public class StoredTrans {
     private static void testRefusesFormat6() {
         Serializer serializer = new Serializer();
         serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
-        for (int format : new int[] {6, 7}) {
+        for (int format : new int[] {6, 7, 8}) {
             byte[] buffer = serializer.getTransBuffer().clone();
-            assertEquals(8, buffer[4]);
+            assertEquals(RECORD_FORMAT, buffer[4]);
             buffer[4] = (byte) format;
             try {
                 new Parser().parse(200, buffer);
