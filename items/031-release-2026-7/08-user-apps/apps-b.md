@@ -607,44 +607,100 @@ their runs to 10:26 on `main` at `ee8a8165`, the findings UB-1 to UB-6.
 Runs on s1 (Linux)
 ==================
 
-2026-11-28, 13:29 to 13:45, by an agent of the lead: the kill apps on
-s1 (Linux, ext4, a virtual private server), for the zero tail after a
-kill (028-60, 035-01) that F53 (macOS, APFS) shows. Ended early: the
-agent's session ended its run at 13:45, so the runs were stopped and
-the directory on s1 removed; nothing of them is left there.
+2026-11-28, 13:29 to 17:52, by an agent of the lead: the kill and file
+apps on s1 (Linux, ext4, a virtual private server), as a bug hunt, for
+the zero tail after a kill (028-60, 035-01) that F53 (macOS, APFS)
+shows. Functional runs only; every app's own oracle decides.
 
 * **Environment**: Ubuntu 26.04 LTS, kernel 7.0.0-30-generic, x86_64,
   2 virtual CPUs, 3.8 GB; ext4 (`rw,relatime,discard,commit=30`) on a
-  virtual disk; OpenJDK 27 (build 27+35-2325). Nothing else ran (load
-  below 0.1 before); every JVM with `nice -n 10`, two apps at a time.
-* **Build**: the release jar of `main` at `01232710`, built on F53 with
-  `java/build.sh`, copied to s1 with the apps' sources and compiled
+  virtual disk; OpenJDK 27 (build 27+35-2325). No other session's java
+  or timing run during the runs (a watchdog checked every 15 s); every
+  JVM with `nice -n 10`, two apps at a time (load 4 to 6), heaps of the
+  parents 1 to 1.8 GB; memory was tight (down to 145 MB available, swap
+  in use) while an `-Df1.big=true` f2 ran beside e4, with no process
+  killed for memory.
+* **Build**: the release jar of `main`, built on F53 with
+  `java/build.sh`, copied to s1 with `java/stress/apps/` and compiled
   there with `javac --release 17` as `apps.sh` does (not `apps.sh`
-  itself). 031-02's KillWriter does not compile on `main` (`maintain()`
-  takes a budget since 031-04): in the copy on s1 only, its `while
-  (db.maintain()) { }` became up to 20 calls of `maintain(100000)`
-  until a call leaves `getStreamSize()` unchanged; not committed.
-* **f2 KillBytes**, `KillBytes SEED ACTIONS DIR 250`: seed 101 (800
-  actions) and 102 (1,200), OK: 500 SIGKILLs (349 between actions, 151
-  at random), 452 starts at an action's end, 36 starts that completed a
-  torn end (36 K4 checks, 108 K5 checks after 203 kills during the
-  completion, no meta block completed as an invalid one), 7 chains with
-  all actions equal to the ref's files. Seed 103 (600 actions) passed 6
-  chains before the stop. The 6 "zero tails" of the counts are 2 to 6
-  zero bytes at the end of a file that ends at its full length (a file
-  boundary), bytes of the stream itself; no run of zeros of a page or
-  more after any kill (F53: 39 kills of 3,570 with zeros).
-* **g KillWriter** (031-02), `-DnoSd=true KillWriter parent DIR 163
-  400` (031-02's reproduction of F1 with a new seed): 370 kills, about
-  43,300 transactions, 661 older states checked, every recovery right;
-  no zeroed tail (21 notes of zeros, all "there before the child ran
-  (a start's fill)"). Stopped before kill 400.
-* **Not run** (the stop): e4 KillMaintain, e7 PubKill, a4 Kill and b5
-  KillEmpty, f4 FileHandling, f5 LiveCopy, f1 SameBytes, which were
-  queued with seeds 121 and 122 (e4), 131 to 133 (e7), 1103 (a4), 1101
-  (b5), 101 to 103 (f4, f5, f1). Note for f4 on s1: as root, read-only
-  files and directories stay writable, so its read-only cases do not
-  test there what they test on F53.
-* **Result**: no FAIL, no refused start, no zero tail and no other
-  file's bytes after 870 kills on ext4, as 035-01, section 8 found with
-  its probe.
+  itself). First at `01232710` (13:29 to 13:45: f2 seeds 101 and 102,
+  250 kills each, OK; 031-02's KillWriter seed 163 from the item, with
+  its `while (db.maintain())` replaced in the copy on s1 by calls of
+  `maintain(100000)`, 370 kills, OK; then stopped). From 13:47 at
+  `67d12ae3`, with 031-02's apps in `java/stress/apps/` as g1 to g11
+  (g4 KillWriter on `maintain(budget)`); all runs below are on it.
+* **f2 KillBytes** (`KillBytes SEED ACTIONS DIR 250`; 120 kills with
+  `-Df1.big=true`): seeds 103 to 111, 113 to 118 and 123 to 136 (400 to
+  1,200 actions) and 120 to 122 with `-Df1.big=true` (180 to 220
+  actions), 32 runs OK: 7,610 SIGKILLs (5,052 between actions, 2,558
+  at random times), 6,839 starts at an action's end, 622 starts that
+  completed a torn end with their K4 checks, 1,866 K5 checks after
+  3,509 kills during the completion, no meta block completed as an
+  invalid one. With the first session, 8,110 kills. 76 kills left zero
+  bytes at the end of the last file, 1 to 8 bytes each: the stream's
+  own bytes at the end of a file of full length, not the kernel's zero
+  pages (on F53, runs of whole 16 KiB pages). Seed 112 FAILED at chain
+  6, the app's: "the start holds 144 actions, the child reported 142".
+  The ref's lengths after actions 142 and 143 are equal (8,574,904:
+  action 143 appends nothing), the stream ends there, and the child
+  was killed after action 142's records and before its progress line;
+  the app counts every action whose records end at or before the cut
+  and allows one action beyond the reported, so an action that appends
+  nothing right after the one in flight fails it. The start's state
+  was checked first and was right.
+* **g4 KillWriter**: seeds 164, 165 and 166 (`-DnoSd=true`, 300 kills
+  each), 167 (`-DnoSd=true`, 250) and 161 (`-DearlyKill=true`, 300),
+  OK: 1,450 kills, 116,478 transactions, 2,328 older states read;
+  "zeroed tails 0" in every run (the notes of zeros were all "there
+  before the child ran (a start's fill)"). Seeds 181 (`-DearlyKill=true
+  -Didle=true`) and 162 (`-DearlyKill=true`) FAILED at kill 0, the
+  app's: the kill came 50 to 750 ms after the spawn, before the
+  creation's first byte (no directory in 181, only `bergdb.lock` in
+  162), and the start's DatabaseMissingException, which
+  `DatabaseBuilder.open()` documents, is not one that KillWriter
+  expects (it takes only DatabaseNotCreatedException); in 181 it then
+  ends with a NullPointerException on the missing directory. The JVM
+  starts slower on s1 than on F53.
+* **e4 KillMaintain** (`parent SEED DIR KILLS`): seeds 121 and 122 (200
+  kills each) and 123 (150), OK: 550 kills (262 in a `maintain()`
+  call, 43 in a start), 33 databases, 567 recoveries checked. **e7
+  PubKill**: seeds 131 to 134, 300 kills each, OK: 1,200 kills (310 in
+  a `maintain()` call, 148 in a start), 68 databases, 1,185 recoveries
+  checked.
+* **a4 Kill** and **b5 KillEmpty**, as `apps.sh kill 11` runs them:
+  `Kill parent 1103 DIR 300 10 2500` OK (300 kills, 37 aimed at the
+  start, 295 recoveries checked); `KillEmpty parent 1101 DIR 250 10
+  2500` OK (250 kills, 247 recoveries checked).
+* **f4 FileHandling**: seeds 101 to 106, OK: 468 cases, 266 accepted
+  and 202 refused as the documents say, 5 accepted with another
+  database's values (UB-4's NOTE), 16,859 older states read. The two
+  read-only cases of each seed were accepted (every transaction held):
+  as root, files without write permission stay writable, so on s1 they
+  test nothing (12 of the 266 accepted cases).
+* **f5 LiveCopy**: seed 101 FAILED, the app's: GNU `cp -R DIR/ COPY/`
+  copies the directory into the copy (macOS's copies its contents), so
+  the copy held a directory, and the app's snapshot of its files threw
+  IOException ("Is a directory") in its main thread; the run was stopped
+  by hand (its first two copies, by FileStream's procedure and by `cp
+  DIR/*.bergdb`, were accepted). Seeds 102 to 105 with the ways `doc,glob`
+  only: 160 copies, all accepted with the state after k transactions in
+  the allowed range, none refused.
+* **f1 SameBytes** (`SameBytes SEED ACTIONS DIR all`): seeds 101 to 109,
+  600 to 1,200 actions, 7,500 in all, each list run eleven ways, OK:
+  every run's stream the ref's, byte for byte; 25 NOTEs of other files
+  for the same stream (UB-1).
+* **Result**: no product bug. No FAIL of a product check, no refused
+  start, no zero tail and no other file's bytes after about 12,200
+  SIGKILLs on ext4 (f2 8,110, g4 1,820, e4 550, e7 1,200, a4 300, b5
+  250), as 035-01, section 8 found with its probe. The four FAILEDs are
+  the apps': f2's count of an action that appends nothing (seed 112),
+  KillWriter's kill before the creation's first byte (seeds 181 and
+  162), and f5's `cp -R` on GNU cp (seed 101). For the apps: f2's K2
+  check should allow the actions that append nothing after the
+  reported one; KillWriter should take DatabaseMissingException at a
+  kill before any stream byte as it takes DatabaseNotCreatedException;
+  f5's `cpr` should copy `DIR/.` (or use `cp -R DIR/* COPY/`) to mean
+  the same on both systems; f4's read-only cases need a user other than
+  root.
+* **Kept**: the data and logs of the four FAILEDs on s1, in the run's
+  directory, about 35 MB; nothing else of the runs is left there.
