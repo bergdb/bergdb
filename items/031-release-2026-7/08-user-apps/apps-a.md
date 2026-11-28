@@ -367,7 +367,14 @@ the seeds and outcomes below.
   passed; seed 101, whose FAIL came at a restart with no build running,
   passed at 08:58 and six more times at 10:15, 54 restarts each, none
   with a time that moved: the case of its FAIL was not met again, and
-  which background commit moved its time is not shown. e5 seeds 101 to
+  which background commit moved its time is not shown here. Shown on
+  2026-11-28 by 028-83: the removal of a deleted index's entries, on its
+  own thread (`IndexManager.startCleanup`), committed between the app's
+  read of the first available time and `close()`, and that commit's
+  record carried a reclaim step that decided a cut; the start moves
+  nothing (it reads the cut row that the cut set). The app's mistake,
+  with a Javadoc that did not say that the index jobs' commits move the
+  time; `CleanupCutProbe` (028-83) sets the order. e5 seeds 101 to
   104 (60 s): 104 ran out of heap (the app's oracle kept every version;
   since then it keeps versions
   from the readers' oldest time on), the others OK. e6 seeds 101 to 104
@@ -461,6 +468,10 @@ of severity S4 (026-26's scale: S1 data lost or wrong, S2 a database
 that fails or cannot start, S3 a call refused wrongly, S4 minor or
 documentation). Read after each result that disagreed: the code named
 under "Why".
+
+Where they went (2026-11-28): UA-9, UA-10, UA-2 and UA-8 are 028-83's,
+UA-4 to UA-7 028-84's, UA-1 028-82's (with part B's UB-1); UA-3 is on
+Frans's list (006-37).
 
 * **UA-1 (document). The files of a decided cut stay on disk until the
   next commit or `maintain()` call.**

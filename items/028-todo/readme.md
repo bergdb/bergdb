@@ -110,9 +110,7 @@ Open
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
-| [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | built on a branch, reviewed; two shapes fixed, to land |
-| [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | open (built on a branch, to land) |
-| [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() spins when interrupted (UA-9); writes at a stop throw StreamIoException (UA-10, UA-2); e3 seed 101 | none | open (built and gated on a branch, to land) |
+| [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | fix (1) and two shapes on main; E open (a branch) |
 
 
 Closed
@@ -120,6 +118,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() no longer spins when interrupted; a write at a stop throws the documented exception; e3 seed 101 explained | none | done | 2026-11-28 |
+| [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | done | 2026-11-28 |
 | [028-85](85-recreated-directory-test-under-load.md) | Fix | A test deleted a stopped database's directory before close(): now after it; the window a test | none | done | 2026-11-28 |
 | [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros now refused as one (RB-014); the zero tail's bound for every buffer | none | done | 2026-11-28 |
 | [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | done | 2026-11-28 |
@@ -779,3 +779,10 @@ carries, a change of the record format, Frans's; the options (c1) to
 (c3) and (c0), (c1) recommended (the live bytes in each record's
 header, with M2', k = 2 and a floor of 400 kB), measured with a
 prototype. Not built. The entry is a directory since.
+
+2026-11-28. 028-83, 028-84 and 028-85 done: on `main` (028-83
+`bf949633` to `67d12ae3`; 028-84 `e1438691`, `04307225`; 028-85
+`7642c84a`, `3a57aea7`). 028-79's fix (1) and the review's two shapes on
+`main` (`2d4d178a`, `b9624ea1`, `01232710`); the second review's
+residual (E) open, its fix on the branch `028-79-e`. Moved to Closed:
+028-83, 028-84.

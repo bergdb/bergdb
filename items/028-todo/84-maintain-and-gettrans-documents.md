@@ -1,7 +1,7 @@
 028-84. Fix: the documents of a maintain() call's work and wait, a commit's getTrans(), and an emptied database's stream
 ========================================================================================================================
 
-Status: open (built on a branch, to land).
+Status: done (2026-11-28): on `main` (`e1438691`, `04307225`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -123,3 +123,7 @@ Log
 031-02's N1; taken by an agent of lead-1127, on the branch `docs-1128`.
 
 2026-11-28. Built: the Javadoc and the items.
+
+2026-11-28. Landed on `main` (`e1438691`, `04307225`; the notes for
+users in `releases/next.md`, `4df94bc1`), gated on the combined tree:
+BEFORE COMMIT OK (102 s), LEVEL 3 OK, APPS OK. Done.

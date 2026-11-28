@@ -910,18 +910,79 @@ The lead's overview (08:30), its conclusions:
   the head, `LEVEL 3 OK`, `APPS OK`, the power-loss tester and f4 on the
   tree before a change of the Javadoc. `level3.sh`'s first run failed
   once under load in a test of a deleted directory: 028-85.
+* 2026-11-28 11:46 `week.sh` of 03:30 on `8a0897cf` ended (476
+  minutes): WEEK FAILED only at apps-kill-cc, explained and fixed at
+  05:55 (028-76); its 13 other steps passed, the large reclaim run
+  among them (100,082,238 transactions at 10M keys, 152 cuts, three
+  restarts) and the large conformance set. `night.sh` started on `main`
+  at `16c64d9a`.
+* 2026-11-28 12:12 031-02's apps brought up to date (Frans's request of
+  09:47): eleven of the twelve, on `maintain(int budget)`, moved into
+  `java/stress/apps/` as g1 to g11 (ZeroTailProbe, a test of the
+  system, stays in the item); `apps.sh` runs them and 031-08's e1 to e8
+  and f1 to f5 in its three modes (quick about 15 minutes, soak about
+  105, kill about 95; `week.sh` about 7.2 hours at most). Every run
+  passed, with the results of 2026-11-25; RetainChurn's seed 5 kept 2.8
+  MB on disk (10.4 MB on 2026-11-25), within RB-011's bound.
+* 2026-11-28 12:51 O1 landed (`0c9d95c3`, `7aca35f1`, `9afba859`): the
+  failure of `level2.sh` was a race in the test (the stream's length
+  read without a sync, since 031-06), fixed in the test. On the combined
+  tree `BEFORE COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK`, `APPS OK`.
+* 2026-11-28 12:57 028-72's A landed (`860206f7`, `d75dec96`): 024-17's
+  count at node size 14 is 10 a level; 024-17's counts of one delete of
+  format 7's model corrected; `DagTester.testDirtyNodeBoundOfTheWorstPath`
+  checks Java's count on the worst path; the action's 7/8 at worst 76.5
+  %. B waits for the next change of `Bound.lean`.
+* 2026-11-28 13:16 `night.sh` on `16c64d9a`: count-gates failed, G4's
+  M5 (dead key klongs over the twin's) 34 / 13, 2.615 over the limit of
+  2.0, where every earlier night gave 1.19 or 1.43; levels 1 to 4 and
+  the Lean tests passed. Bisected by 028-86 (an agent): deterministic,
+  moved at `96daa4bb` (031-06's step 3, whose charge moves reclaim's
+  steps to other transactions); no regression: the count is the sum of
+  seven leaves' sawtooths, no node over its 7 dead klongs, and the
+  ratio swung 0.47 to 1.80 before the change and 0.66 to 3.30 after;
+  024-30's factor came from a single sample. The limit becomes G5's
+  rule (Frans's for G5, 026-09, 2026-11-14) by default at 15:00
+  (section 4.4).
+* 2026-11-28 13:20 028-79 landed after its second review (`2d4d178a`,
+  `b9624ea1`, `01232710`; `BEFORE COMMIT OK`, `LEVEL 3 OK` on the
+  combined tree): the review's two shapes fixed; its residual (E), an
+  S4, in work on a branch.
+* 2026-11-28 13:25 028-75's (c) designed, not built: it needs the live
+  bytes in each record, a change of the record format, Frans's (section
+  4); measured with a prototype.
+* 2026-11-28 13:47 Landed together (`BEFORE COMMIT OK`, `LEVEL 3 OK`,
+  `APPS OK` with every app on the combined tree): the apps in `apps.sh`
+  (`fb707f20` to `52e963d9`); 028-84, the documents of 031-08's UA-4 to
+  UA-7 and 031-02's N1 (`e1438691`, `04307225`), and `releases/next.md`
+  with 031-06's changes for users (`4df94bc1`); 028-83 (`bf949633` to
+  `67d12ae3`): e3 seed 101's cause shown (a deleted index's removal
+  committed and cut between the app's read and `close()`; no product
+  bug; the Javadoc says it), `maintain()` with its interrupt flag set no
+  longer spins, a write at a stop throws the documented exception, and
+  UA-8 stated (`maintain()`'s filler to the next meta block).
+* 2026-11-28 13:55 The kill apps on s1 (Linux, ext4): 870 kills (f2's
+  chains and 031-02's KillWriter), no failure, no refused start and no
+  tail of zeros (on F53 39 of 3,570 kills left one), as 035-01 found; the
+  rest of the runs go on until 18:30.
+* 2026-11-28 14:15 028-85 landed (`7642c84a`, `3a57aea7`): the test
+  deleted a stopped database's directory before `close()`, against
+  `stop()`'s Javadoc; shown with a delay in the window, fixed in the
+  test, the window in a test of its own. 028-75's design landed with it
+  (`e3f06688`). On the combined tree `BEFORE COMMIT OK`, `LEVEL 3 OK`.
 
 ## 4. Waiting for Frans
 
 Every open question, each with a default: whose it is, and why. The
 defaults of sections 4.1 to 4.3 have no time: nothing of them goes
 ahead before Frans has read the page. Section 4.4 has the defaults
-with a time: one is open, 028-72's A.
+with a time: open on 2026-11-28 14:15, 028-86's at 15:00 (028-72's A
+and 028-79's went ahead at 10:00 and 10:30).
 "Class 3" marks what only Frans decides (013-04: the stream format, the
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 11:40)
+### Open now (2026-11-28 14:15)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
 17:26, and of 2026-11-28, 06:05 to 07:30 (section 2). The text of
@@ -959,6 +1020,26 @@ run. New at 08:00, from the review of the start path (section 3,
     2026-11-27 for its cost).
   * Recommended: taken with 028-77; (a) meanwhile, as the state of the
     code.
+* **028-75: (c) needs the live bytes in each record** (class 3: the
+  stream format; designed 2026-11-28, 028-75's section "Design of (c)").
+  Nothing in the stream gives the live bytes (key nodes name value
+  nodes by position, no node holds a size, a start reads the startup
+  section only), and a sum kept in memory would break P2.
+  * (c1) The exact live bytes in each record's header: record format 10,
+    8 bytes a record, a read of 4 bytes for each replaced or deleted
+    value not in memory, a start does no more work.
+  * (c2) As (c1) without the reads, 16 bytes a record: it drifts where
+    a key's value changes size.
+  * (c3) Counts only, 16 bytes a record: blind to the key nodes'
+    garbage.
+  * (c0) No format change: the calls begin no pass once commits run
+    iterations (measured: 82.7 MB kept after every key overwritten,
+    `main` 32.7 MB).
+  * Recommended: (c1) with M2' (the calls step a commit's iteration
+    only within its allowance; no format change), k = 2 and a floor of
+    400 kB, in 2026.7, since no release has format 9 (no migration).
+    With them a put of a byte cost 0 bytes of the calls' writes, against
+    4.40 MB at 20,000 keys and 31.9 MB at 100,000 on `main`.
 * **UB-2: the README's "One stream" sentence** (031-08, part B; the
   sentence is Frans's). It does not name the Pub API's index jobs, which
   commit on a thread of their own after `deleteIndex()` and during a
@@ -1309,5 +1390,12 @@ inside the code that fails the database (F7), both work of the landing.
   is not this database's, with the ID from a source that other bytes
   cannot give) is left to 028-77. An agent prepares the fix on a branch
   before then; it lands after 10:30.
+* **028-86, G4's M5 limit, by default Saturday 15:00** (the lead's,
+  class 2: a gate's limit): the limit of G4's M5 in `count-gates.sh`
+  becomes G5's, the larger of twice the twin's and the twin's plus 70,
+  as Frans chose for G5 (026-09, Q2, 2026-11-14); built on a branch,
+  `COUNT GATES OK` twice. Options (b) at most 7 dead klongs a reachable
+  key node, with no twin; (c) twice the twin's most in the last R, as
+  M1 does.
 
 D1, where the notes of 2012 go, went ahead at 09:15 (section 2).

@@ -1,7 +1,8 @@
 028-83. Fix: maintain() spins with the interrupt flag set; a write at a stop throws StreamIoException; e3 seed 101's restart changed the first available time
 ==========================================================================================================================================================
 
-Status: open (built and gated on the branch `028-83`, to land).
+Status: done (2026-11-28): on `main` (`bf949633`, `1611f299`,
+`7dab95e3`, `dd872b3f`, `8ccaeb13`, `507ed13a`, `1934070c`, `67d12ae3`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -305,3 +306,7 @@ changes Db.java elsewhere), without a conflict: before-commit.sh, BEFORE
 COMMIT OK (139 s); level3.sh, LEVEL 3 OK (InterruptStress "60 s,
 132464779 calls, 63217 of them with an interrupt, the flag kept by
 all"); apps.sh quick, APPS OK. To land.
+
+2026-11-28. Landed on `main` (`bf949633` to `67d12ae3`) with 031-02's
+apps and 028-84, gated on the combined tree: BEFORE COMMIT OK (102 s),
+LEVEL 3 OK, APPS OK (quick, every app). Done.

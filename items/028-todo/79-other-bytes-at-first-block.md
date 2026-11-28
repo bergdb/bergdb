@@ -1,10 +1,11 @@
 028-79. Fix: other bytes at a meta block's position, once taken, refuse a later start
 =====================================================================================
 
-Status: fix (1) built on the branch `start-fixes` (2026-11-28) and
-reviewed; the review's two shapes fixed; to land (by default after 10:30
-unless Frans says otherwise); the gates below. Kind: Fix. Frans: none; the smaller fix
-goes ahead by default at 10:30 on 2026-11-28.
+Status: fix (1) and the review's two shapes on `main` (2026-11-28:
+`2d4d178a`, `b9624ea1`, `01232710`); E, the second review's residual,
+open: its fix in work by an agent of lead-1127, branch `028-79-e`.
+Kind: Fix. Frans: none; the smaller fix went ahead by default at 10:30
+on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
 
 What: another file's bytes at a stream file's first meta block can be
@@ -293,6 +294,27 @@ Notes of the review, not fixed:
   before the fix took is now refused with P before later records; no
   release has version 156.
 
+The second review, of the fix of (A) and (B) (2026-11-28, by the same
+agent of lead-1127): land as it is. `OwnPrefixProbe` refused at the
+record's start; `CutBlockZerosProbe` 20 of 20 shapes start twice;
+`SameBytesProbe`, 12,520 cases, the bytes after each start identical
+with the parent's wherever both start (8 lines, refused by both, with P
+400000 instead of 400128); `StartChain` 3,000 starts plain, 1,000 with
+`-Dforce=off` and 6,000 with other bytes, no failure (C twice). P at
+the block moves only the P of a start that is refused anyway, to the
+block after the record before it. One residual, open:
+
+* **(E)** S4, a residual of (A). `rawZeros` reads the zeros after a
+  block of the database's first 1 to 4 bytes only up to the next meta
+  block: such a block followed by zeros past the next block and then
+  other bytes is still taken, and a later start from that block is
+  refused (BadMagicBytes, or VersioningStreamException for 4 bytes).
+  The review's `LongZerosProbe` shows it with zeros to 204,096 bytes
+  past the block; with zeros to 4,096 bytes the same shapes are refused.
+  It needs a kill 1 to 4 bytes into a block followed by at least about
+  200 kB of zeros. The fix: the zeros read to the record's or the
+  stream's end, passing over block positions.
+
 
 Log
 ---
@@ -307,3 +329,8 @@ lead-1127, after 028-80, with the aborted record as a third place.
 (B) fixed on the branch, its notes (C) and (D) recorded (Review).
 
 2026-11-28. The gates after the review's fix passed (Review).
+
+2026-11-28. Fix (1) and the review's two shapes on `main`
+(`2d4d178a`, `b9624ea1`, `01232710`), gated on the combined tree:
+BEFORE COMMIT OK (138 s), LEVEL 3 OK. The second review's residual (E)
+open, its fix in work by an agent of lead-1127 (branch `028-79-e`).

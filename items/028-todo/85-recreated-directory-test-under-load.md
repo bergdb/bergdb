@@ -2,7 +2,8 @@
 ================================================================================================
 
 Status: done (2026-11-28): the test deletes the directory after
-`close()`, as `stop()`'s Javadoc says; the window in a test of its own.
+`close()`, as `stop()`'s Javadoc says; the window in a test of its own;
+on `main` (`7642c84a`, `3a57aea7`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -122,3 +123,6 @@ Gates, on the tree of the commit before this log's gate line, on main's
 `d75dec96` (2026-11-28, load average about 20 from other runs on F53):
 `BEFORE COMMIT OK (121 s)` (13:10 to 13:12); `LEVEL 3 OK` (13:12 to
 13:28; unit tests 1,771).
+
+2026-11-28. Landed on `main` (`7642c84a`, `3a57aea7`), gated on the
+combined tree: BEFORE COMMIT OK (84 s), LEVEL 3 OK.

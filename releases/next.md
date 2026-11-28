@@ -188,6 +188,14 @@ maintain(int budget) and reclaim
   return until they pause: call it when the application is idle.
   `Database.maintain(int)`'s Javadoc says what a caller can rely on
   (bergdb 028-84).
+* **Calls at a stop throw the documented exception; an interrupted
+  `maintain()` waits** (bergdb 028-83, 2026-11-28). A put, a commit or a
+  `maintain(int budget)` call that a stop refuses throws
+  `IllegalDbStateException`, as the Javadoc says, where it could throw a
+  `StreamIoException` when the stop closed the storage during the call's
+  reads; nothing is written in either case. A `maintain(int budget)` call
+  whose thread has its interrupt flag set waits for the commits it gives
+  way to, where it kept a core busy, and keeps the flag set.
 * **Every accepted action appends one record, and reclaim's work rides
   in the commits' records** (bergdb 031-06, one record an action;
   Frans, 2026-11-27). A transaction, a change of a setting that the
@@ -278,6 +286,29 @@ The stream and the start
   writes and deletes nothing. So it refuses too, rarely, when that block
   is the fill that recovery writes at a meta block's position after a
   kill (bergdb 028-76, option (a); Frans, 2026-11-28).
+* **Another file's bytes at a meta block's position are refused at
+  once** (bergdb 028-79, 2026-11-28). Where a kill left another file's
+  bytes at a meta block's position in the stream's end, a start could
+  take them inside the last record, and a later start, once reclaim's
+  cut had made that file the stream's first, refused the database with
+  no way out. A start now refuses such bytes when it first meets them,
+  with the position where the stream's own records end and how to cut
+  the stream there; zeros, the fill that recovery writes and a block
+  that a kill cut are taken as before.
+* **A user's handling of the files: the messages name the files and a
+  way out** (bergdb 028-82, 2026-11-28). A start refused for a stream
+  file of a wrong size, a file put under another name, a stray file
+  after the last, a missing first file, or a lock file or a last file
+  that cannot be written names the file and says what to do (restore
+  it from a backup, or move a file that was put there out of the
+  directory); none of these starts changes a file. A start needs write
+  access to the directory (for `bergdb.lock`) and to the last stream
+  file, also for a database that is only read, as `DatabaseBuilder`'s
+  Javadoc now says. `Database`'s Javadoc says how to back up a running
+  database: copy its stream files in the order of their names, the last
+  one last, after a transaction and a sync; a start recovers such a copy
+  as after a kill, or refuses one that missed a file a cut deleted, and
+  writes nothing then.
 
 
 Times
