@@ -564,7 +564,12 @@ public interface Database extends AutoCloseable {
      * 020-24-06, U6-7). It moves only when reclaim decides a cut, which it does at a commit
      * when the retain duration is finite (setRetainDuration() says when): without commits it
      * stays, also over a restart, and states older than the retain duration stay readable
-     * meanwhile.
+     * meanwhile. The commits include the database's own for the user indexes, which run in
+     * the background: the steps of an index's build (IndexBuilder) and of the removal of a
+     * deleted index's entries (deleteIndex()), which a stop ends and the next start resumes
+     * if they had not ended (bergdb 028-83). While such a job runs, the time can move with
+     * no commit of the application's: between a read of it and a close(), and right after a
+     * start.
      * </p>
      *
      * <p>
@@ -573,7 +578,8 @@ public interface Database extends AutoCloseable {
      * the stream only when the record of that decision is durable; a crash before then can
      * lose that record, and the stream is then as it was: the restart gives the time before
      * the decision, and every state from it is readable and right. A restart after stop() or
-     * close() keeps the time.
+     * close() keeps the time: the start gives the time that the getters give after close(),
+     * and an index job that the start resumes may then move it, as above.
      * </p>
      *
      * <p>
@@ -679,7 +685,9 @@ public interface Database extends AutoCloseable {
 
     /**
      * Deletes the index in one transaction: when this returns, the index is gone at every
-     * later lookup time and its name is free; its entries are removed in the background. A
+     * later lookup time and its name is free; its entries are removed in the background, in
+     * transactions of the database's own, which a stop ends and the next start resumes; as
+     * any commit, they may let reclaim cut (getFirstAvailableLookupTime()). A
      * build of the index ends, FAILED with the reason "deleted": its job's join() throws
      * IndexBuildException. A scan at a lookup time when the index was active still works,
      * until reclaim's cut passes that time. Like any transaction, the deletion is written to

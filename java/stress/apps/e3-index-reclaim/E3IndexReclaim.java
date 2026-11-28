@@ -72,7 +72,9 @@ public class E3IndexReclaim {
     Connection c;
     long lastFirst, scans, txs, builds, deletes, maintains, restarts, refusedScans, deletedWhileBuilding, buildDoneBeforeDelete, movedAtClose,
             movedAfterStart;
-    boolean deletedSinceRestart;
+    // An index was deleted: its entries' removal, transactions of the database's own, may still run, and a start
+    // resumes it; the Pub API does not tell when it has ended (Database.deleteIndex(); 028-83)
+    boolean deletedOnce;
     final Map<String, Job> running = new HashMap<>();
     final Map<String, Integer> runningDef = new HashMap<>();
 
@@ -361,13 +363,14 @@ public class E3IndexReclaim {
         start(false);
         restarts++;
         long after = db.getFirstAvailableLookupTime().units();
-        // a build that the start resumed commits at once, and its record may cut: a later time then, never an earlier one
-        boolean background = !running.isEmpty() || deletedSinceRestart;
+        // a build or a deleted index's removal that the start resumed commits at once, and its record may cut: a later
+        // time then, never an earlier one (getFirstAvailableLookupTime(); 028-83's CleanupCutProbe sets that order). A
+        // removal can run past the next restart too, so a deletion allows it at every later restart.
+        boolean background = !running.isEmpty() || deletedOnce;
         if (after > first && background) movedAfterStart++;
         else EOracle.check(after == first, what + ": the restart changed the first available time " + first + " (after close()) to " + after
                 + (after < first ? ", an earlier time" : ", a later time") + "; " + before + " before close(); builds running "
-                + running.keySet() + ", an index deleted since the last restart " + deletedSinceRestart);
-        deletedSinceRestart = false;
+                + running.keySet() + ", an index deleted before " + deletedOnce);
         // builds that ran are taken again by the start
         for (String name : new ArrayList<>(running.keySet())) running.put(name, db.indexJob(name));
     }
@@ -393,7 +396,7 @@ public class E3IndexReclaim {
                 boolean exists = es != null && !es.isEmpty() && es.get(es.size() - 1).def >= 0;
                 if (exists) {
                     db.deleteIndex(name);
-                    deletedSinceRestart = true;
+                    deletedOnce = true;
                     long t = now();
                     eras.get(name).add(new Era(t, -1, false));
                     deletes++;
@@ -413,7 +416,7 @@ public class E3IndexReclaim {
                         Job j = running.remove(name);
                         runningDef.remove(name);
                         db.deleteIndex(name);
-                        deletedSinceRestart = true;
+                        deletedOnce = true;
                         long t = now();
                         eras.get(name).add(new Era(t, -1, false));
                         deletes++;
