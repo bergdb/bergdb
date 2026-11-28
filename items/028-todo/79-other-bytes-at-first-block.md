@@ -453,6 +453,30 @@ Tests, each failing before (2026-11-28):
   first byte and zeros: the start refused: ... Invalid magic bytes in
   stream".
 
+Probes and gates after the fix of F and G (2026-11-28, on F53 beside
+other sessions' runs, on `main` with E):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (99 s).
+* The review's probes, against `main`'s build with E: `SameBytesProbe
+  12520`, the same 12,520 lines; `LongZerosProbe`, `OwnPrefixProbe` and
+  `CutBlockZerosProbe`, the same lines. The probes of F, G and (B):
+  each later start from the block, refused on `main` in 8, 12 and 6
+  cases, starts.
+* 033's probes: `CreationZerosProbe`, 25 `DatabaseNotCreatedException`,
+  as on `main`; `StaleFirstBlockProbe`, start 2 ok in every variant but
+  `sameid exact` (F1, 028-78); `StartChain 70000 70099 20 2 30 1 0`,
+  2,000 starts, 22 of 028-76's decided case, no failure; `StartChain
+  60000 60099 20 2 30 1 25`, 2,000 starts, of 185 tails of other bytes
+  103 refused with P and started after the cut, 72 taken, 33 of the
+  decided case, no failure and no later refusal of F2.
+* The night tests of `DbTesterTail` and `CorruptStreamTester`: SUCCESS,
+  5 tests.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* 031-06's probes: `faults.sh`, bad 0 in each of its 42 lines;
+  `sweep.sh`, 0 different in each of its 63 lines.
+* `java/stress/level3.sh`: LEVEL 3 OK.
+
 
 Log
 ---
@@ -478,4 +502,4 @@ branch `028-79-e`; the gates passed; (F) and (G) found (Review).
 
 2026-11-28. (F) and (G) fixed by an agent of lead-1127 on the branch
 `028-79-fg`: a first block whose every byte is the fill's or 0 is passed
-over (Review).
+over; the gates passed (Review).
