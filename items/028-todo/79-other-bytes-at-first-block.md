@@ -1,10 +1,10 @@
 028-79. Fix: other bytes at a meta block's position, once taken, refuse a later start
 =====================================================================================
 
-Status: fix (1) and the review's two shapes on `main` (2026-11-28:
-`2d4d178a`, `b9624ea1`, `01232710`); E, the second review's residual,
-on `main` (2026-11-28); (F) and (G), found with it, fixed on the branch
-`028-79-fg` (2026-11-28), to land (Review).
+Status: done (2026-11-28): fix (1) and the review's two shapes on
+`main` (`2d4d178a`, `b9624ea1`, `01232710`); E, the second review's
+residual (`a40a39c6`); (F) and (G), found with it (`6ef2c7dd`,
+`3560f331`).
 Kind: Fix. Frans: none; the smaller fix went ahead by default at 10:30
 on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
@@ -503,3 +503,7 @@ branch `028-79-e`; the gates passed; (F) and (G) found (Review).
 2026-11-28. (F) and (G) fixed by an agent of lead-1127 on the branch
 `028-79-fg`: a first block whose every byte is the fill's or 0 is passed
 over; the gates passed (Review).
+
+2026-11-28. Done: E (`a40a39c6`), (F) and (G) (`6ef2c7dd`, `3560f331`)
+on `main`. The second review of the start path on `main` at `2b3755ab`
+(033, reviews/2026-11-28-start-2.md) found no S1, S2 or S3 in it.

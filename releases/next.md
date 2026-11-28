@@ -294,7 +294,22 @@ The stream and the start
   no way out. A start now refuses such bytes when it first meets them,
   with the position where the stream's own records end and how to cut
   the stream there; zeros, the fill that recovery writes and a block
-  that a kill cut are taken as before.
+  that a kill cut are taken as before. A start also passes over a first
+  meta block that a kill left as a part of the database's own block
+  followed by zeros, as it passes over the fill, where a later start
+  refused the database before (the reviews' E, F and G, 2026-11-28).
+* **A database whose stream lost its data is not taken for one never
+  created** (bergdb 028-88, 2026-11-28). Where `created.txt` shows that
+  the database was created and its stream holds no data (zeros, or a
+  part of the creation's records), a start throws
+  `DatabaseMissingException` with the advice to restore the files from
+  a backup and keep the files that are there, where it threw
+  `DatabaseNotCreatedException`, whose advice is to remove the files and
+  start again, which would make a new, empty database in place of the
+  lost one. `created.txt` is written durably and written again by a
+  start that finds it missing or without the database's ID, after the
+  start's last check. The refusals for a stream that lacks bytes name
+  the way out, as the others do.
 * **A user's handling of the files: the messages name the files and a
   way out** (bergdb 028-82, 2026-11-28). A start refused for a stream
   file of a wrong size, a file put under another name, a stray file

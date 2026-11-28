@@ -1,8 +1,7 @@
 028-88. Fix: with created.txt, a stream that lost its bytes is refused as a creation; two refusals name no way out; a cut created.txt is not written again
 ==========================================================================================================================================================
 
-Status: in progress (2026-11-28): built and gated on the branch `028-88`;
-to land.
+Status: done (2026-11-28): on `main` (`c2b1c826`, `d5bf7ba0`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -238,3 +237,5 @@ by an agent of lead-1127, on the branch `028-88`.
 2026-11-28. The gates passed (above), on the branch on `main` at
 `3726bb18`; rebased onto `main` at `f5f22893` (items only), where
 `java/before-commit.sh` ran again; to land.
+
+2026-11-28. Landed on `main` (`c2b1c826`, `d5bf7ba0`). Done.

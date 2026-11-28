@@ -107,8 +107,6 @@ Open
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
-| [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | fix (1) and two shapes on main; E open (a branch) |
-| [028-88](88-created-txt-lost-stream-and-ways-out.md) | Fix | created.txt beside a stream that lost bytes; two refusals without a way out | none | built, to land |
 
 
 Closed
@@ -116,6 +114,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start; E, F and G | none; by default 10:30 | done | 2026-11-28 |
+| [028-88](88-created-txt-lost-stream-and-ways-out.md) | Fix | created.txt beside a stream that lost bytes; two refusals without a way out | none | done | 2026-11-28 |
 | [028-87](87-g5-st6-slots-vary.md) | Investigate | G5's ST6 varies by run with eviction's timing; its pass does not | none | done | 2026-11-28 |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule on `main` | decided | done | 2026-11-28 |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) on `main` | decided | done | 2026-11-28 |
@@ -805,3 +805,7 @@ residual (E) open, its fix on the branch `028-79-e`. Moved to Closed:
 2026-11-28. 028-66 (C with the rule, e848c58f..5f867e08, 8a0897cf),
 028-73 ((b), 68a26a38) and 028-74 ((a), 1a136a9c) done: on `main`.
 Moved to Closed.
+
+2026-11-28. 028-79 done: E (`a40a39c6`), (F) and (G) (`6ef2c7dd`,
+`3560f331`) on `main`. 028-88 done (`c2b1c826`, `d5bf7ba0`): the second
+review of the start path's three S4. Moved to Closed.

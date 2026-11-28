@@ -970,6 +970,66 @@ The lead's overview (08:30), its conclusions:
   `stop()`'s Javadoc; shown with a delay in the window, fixed in the
   test, the window in a test of its own. 028-75's design landed with it
   (`e3f06688`). On the combined tree `BEFORE COMMIT OK`, `LEVEL 3 OK`.
+* 2026-11-28 14:35 028-79's residual E landed (`a40a39c6`): the zeros
+  after a block of the database's first bytes are checked to the end of
+  the record or of the stream, past the next meta block. Two more shapes
+  of the same block were found with it, (F) in a whole aborted record and
+  (G) with zeros only to the stream's end, on `main` too: a later start
+  refused a sound database.
+* 2026-11-28 15:15 (F) and (G) landed (`6ef2c7dd`, `3560f331`): a start
+  passes over a first meta block whose every byte is the fill's or 0, as
+  it passes over the fill since 028-76; the rule for files before a gap
+  is unchanged (028-76, (a)). The tests failed before; the bytes written
+  the same as before in 12,520 cases; `StartChain` 4,000 starts, 0
+  failures; `BEFORE COMMIT OK`, `LEVEL 3 OK`, `POWERLOSS OK`, the sweep
+  and the faults as before. 028-79 done.
+* 2026-11-28 15:17 028-86 went ahead by default at 15:00 and landed
+  (`df593e8d`, `a5541854`): G4's M5 takes G5's limit; `BEFORE COMMIT
+  OK`, `COUNT GATES OK` (G4's M5 0.410 of its limit).
+* 2026-11-28 15:25 028-87 landed (`8a08e608`..`2b3755ab`): G5's ST6
+  varies from run to run with eviction's timing during the load (94
+  runs: 0.894 to 0.900 of its limit); it can fail only with fewer than 9
+  maps without a table, against 408 or more in every run; the gate
+  prints both counts. The measure and its limit unchanged.
+* 2026-11-28 15:46 `night.sh` of 11:44 on `16c64d9a` ended `NIGHT
+  FAILED: count-gates` (227 minutes), the failure that 028-86 explained;
+  every other step passed. A second `night.sh` started at 15:43 on
+  `2b3755ab`, with every landing of the day.
+* 2026-11-28 15:46 A second review of the start and recovery path by
+  Fable 5.2 at effort high (the lead's, by default at 15:45), on `main`
+  at `2b3755ab`, after the day's changes to it.
+* 2026-11-28 16:15 The pace for the usage limit of 90 % (Frans,
+  06:10) until Monday: at most two agents from now, no further Fable
+  agent this weekend; the runs go on.
+* 2026-11-28 17:15 The second review of the start path (033,
+  reviews/2026-11-28-start-2.md, `3726bb18`): no S1, S2 or S3; three S4
+  (with `created.txt`, a stream that lost its data refused as a creation
+  that did not complete; two refusals without a way out; `created.txt`
+  not written durably and not written again when empty). Checked and
+  found right: no refused start changed a file; `StartChain` 29,000
+  starts of the morning's kinds and 66,980 of new ones (faults of
+  `created.txt`, kills inside a start, other bytes, forcing off, files of
+  200 kB, 1 MB and 5 MB), 0 failures but 028-76's decided case and
+  028-79's note C; the bytes the same as at `ee8a8165` in 59,518 images
+  that both builds start, 384 refused only by `main` (028-79's cost),
+  none taken only by it; 28,000 starts on `MemoryStream`; a creation cut
+  at every byte, 1,668 images. 028-88 registered for the three S4.
+* 2026-11-28 17:47 `apps.sh kill 29` and `apps.sh soak 29` on
+  `3560f331`, every app of the items 024-26, 026-13, 026-26, 031-08 and
+  031-02, new seeds: `APPS OK` both (75 and 73 minutes).
+* 2026-11-28 17:57 The runs on s1 (Linux, ext4) ended: about 12,200
+  kills (the apps f2, e4, e7, a4, b5 and 031-02's KillWriter), f4's file
+  handling, f5's copies of a running database and f1: no failure of a
+  product check, no refused start, no tail of zeros, no other file's
+  bytes, as 035-01 found on ext4. Four failures were the apps' own (031-08,
+  apps-b.md); fixed and landed at 18:43 (`c1c7c909`, `e2b9b441`).
+* 2026-11-28 18:00 028-88 landed (`c2b1c826`, `d5bf7ba0`): with
+  `created.txt`, a stream that holds no data is refused with
+  `DatabaseMissingException` and the advice to restore from a backup;
+  `created.txt` is written durably and written again when missing or
+  empty; the refusals for missing bytes name the way out. `BEFORE COMMIT
+  OK`, `LEVEL 3 OK`, `APPS OK`, `POWERLOSS OK`, `StartChain2` 2,000
+  starts, 0 failures.
 
 ## 4. Waiting for Frans
 
@@ -982,7 +1042,7 @@ and 028-79's went ahead at 10:00 and 10:30).
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 14:15)
+### Open now (2026-11-28 18:45)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
 17:26, and of 2026-11-28, 06:05 to 07:30 (section 2). The text of
@@ -995,6 +1055,12 @@ moved to 028-77's review, and 028-71 and 028-53 closed. Settled by the
 lead: the warm-up's reading ahead (review 3's W1) stays, from the timing
 run. New at 08:00, from the review of the start path (section 3,
 07:58): 028-78.
+
+For Frans to know, not to decide: since 028-88 (2026-11-28, 18:00) a
+start whose `created.txt` shows that the database was created, and
+whose stream holds no data, throws `DatabaseMissingException`, where it
+threw `DatabaseNotCreatedException`, whose advice to remove the files
+would have made a new, empty database in place of the lost one.
 
 * **028-77: strict append-only storage, or tail rewrites at a start**
   (class 3: the storage contract; not for today). Three tails after a
@@ -1390,7 +1456,8 @@ inside the code that fails the database (F7), both work of the landing.
   is not this database's, with the ID from a source that other bytes
   cannot give) is left to 028-77. An agent prepares the fix on a branch
   before then; it lands after 10:30.
-* **028-86, G4's M5 limit, by default Saturday 15:00** (the lead's,
+* **028-86, G4's M5 limit, by default Saturday 15:00**, went ahead and
+  landed (`a5541854`) (the lead's,
   class 2: a gate's limit): the limit of G4's M5 in `count-gates.sh`
   becomes G5's, the larger of twice the twin's and the twin's plus 70,
   as Frans chose for G5 (026-09, Q2, 2026-11-14); built on a branch,
