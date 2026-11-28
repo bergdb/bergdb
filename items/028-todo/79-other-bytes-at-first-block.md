@@ -253,6 +253,31 @@ block's first 8 bytes, the magic and the version, fixed on the branch:
   after the block, and after a whole record; (B) at 1 to 3 bytes with
   zeros to 2 to 4, in a record and after one, taken at the second start.
 
+Gates after the review's fix (2026-11-28, on F53 beside other sessions'
+runs, on `main` with 028-80, 028-81 and 028-82):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (141 s).
+* The review's probes: `OwnPrefixProbe`, the block of 1 to 4 of the
+  database's bytes and zeros with other bytes after it refused at start
+  1, with P the record's start, and no later start refused (k of 0, a
+  block of zeros, is note (C)); `CutBlockZerosProbe`, start 2 ok in all
+  20 cases; `SameBytesProbe 12520`, the parent's bytes wherever both
+  start, and 8 lines differing, each refused by both: a block of the
+  database's first 1 to 4 bytes and zeros after a record that ends at
+  it, with zeros past it, now with P at the block, 400000, not 400128.
+* 033's probes: `CreationZerosProbe`, 25 `DatabaseNotCreatedException`;
+  `StaleFirstBlockProbe`, start 2 ok in every variant but `sameid exact`
+  (F1, 028-78); `StartChain 70000 70099 20 2 30 1 0`, 2,000 starts, 22
+  of 028-76's decided case, no failure; `StartChain 60000 60099 20 2 30
+  1 25`, 2,000 starts, of 174 tails of other bytes 101 refused with P and
+  started after the cut, 69 taken, 37 of the decided case, no failure
+  and no later refusal of F2.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* 031-06's probes: `faults.sh`, bad 0 in each of its 42 lines;
+  `sweep.sh`, 0 different in each of its 63 lines.
+* `java/stress/level3.sh`: LEVEL 3 OK.
+
 Notes of the review, not fixed:
 
 * **(C)** S3, not a regression. A block of zeros at a file's first
@@ -280,3 +305,5 @@ lead-1127, after 028-80, with the aborted record as a third place.
 
 2026-11-28. Reviewed by a second agent of lead-1127; its shapes (A) and
 (B) fixed on the branch, its notes (C) and (D) recorded (Review).
+
+2026-11-28. The gates after the review's fix passed (Review).
