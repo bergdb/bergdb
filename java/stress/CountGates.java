@@ -711,7 +711,7 @@ public class CountGates {
      * eviction thread, when the writer waits for the write lock; so which handles leave a
      * map when, and so which maps are left with no table (0 slots, a shrink to no entries)
      * rather than an empty one of 16, depends on the timing: G5's emptied database 58,576
-     * to 59,008 slots in 72 runs on 2026-11-28 (408 to 435 maps without a table), 63,072
+     * to 59,008 slots in 94 runs on 2026-11-28 (408 to 435 maps without a table), 63,072
      * in each run with that eviction off (-Devictbudget=10^12; 154 maps without a table).
      * A table is over Table.MIN_CAPACITY slots only while its map holds at least 1/8 of
      * them (shrinkIfSparse after every removal), but for HashMap's rare doubling of a

@@ -28,8 +28,8 @@ and `Cache3.Table`'s shrink; runs of `CountGates g5`.
 Result
 ------
 
-Done 2026-11-28 by an agent of lead-1127, in a clone of `main`, rebased
-onto 67d12ae3 before the gates. The count varies with the timing of
+Done 2026-11-28 by an agent of lead-1127, in a clone of `main` at
+01232710, rebased onto main twice. The count varies with the timing of
 eviction's batches; whether ST6 passes does not, by a bound of the
 shrink's rule. The measure and its limit are unchanged; the gate prints
 the two figures of that bound, and its header and `slotGate`'s comment
@@ -48,7 +48,7 @@ a table, and what varies is how many maps were left with no table:
     G5 g5-emptied slots by table length: 0: 420 maps, 0 entries, 420 empty; 16: 3676 maps, 9 entries, 3667 empty;
 
 The other six gate lines of G5, other than the heap's, were the same in
-all 50 runs of section 3.
+every run of a base in section 3.
 
 ### 2. The cause: eviction's batches by time
 
@@ -66,19 +66,20 @@ Shown by runs of `CountGates g5`:
   runs; the eviction thread's batches remain.
 * `-Devictbudget=1000000000000` (no budget eviction; the dead hand of
   023-05 runs as before, with its own 2 ms bound): 63,072 slots, 154
-  maps without a table, in each of 8 runs (4 before and 4 after the
-  rebase). So the dead hand's and `maintain()`'s time bounds do not
+  maps without a table, in each of 8 runs (4 on 01232710 and 4 on
+  67d12ae3). So the dead hand's and `maintain()`'s time bounds do not
   change the count here; the budget's eviction does.
 
 ### 3. The range
 
-72 runs of `CountGates g5`, two at a time beside other heavy runs (load
-average 12 to 20): 50 before the rebase, 22 after it.
+94 runs of `CountGates g5`, two at a time beside other heavy runs (load
+average 12 to 20), on three bases of `main`.
 
 * Slots 58,576 to 59,008 (value 0.894 to 0.900, margin 1.11 to 1.12),
-  408 to 435 maps without a table; every run passed.
-* 50 runs before the rebase: 58,608 to 59,008; 22 after: 58,576 to
-  58,992.
+  408 to 435 maps without a table, no slot above 16 a map; every run
+  passed.
+* 50 runs on 01232710: 58,608 to 59,008; 22 on 67d12ae3: 58,576 to
+  58,992; 22 on a40a39c6: 58,688 to 58,928.
 
 ### 4. Why it cannot fail by chance
 

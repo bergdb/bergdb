@@ -33,7 +33,7 @@
 # load: its gates are counts (bytes, nodes, objects, the heap), and the heap is measured
 # after the write buffer's shrink, waited for up to 60 s more on a loaded machine. One count
 # varies by run, the cache's table slots (ST6), with the timing of eviction's batches during
-# the fill: G5's 58,576 to 59,008 of the floor's 65,536 in 72 runs (2026-11-28). Its pass does
+# the fill: G5's 58,576 to 59,008 of the floor's 65,536 in 94 runs (2026-11-28). Its pass does
 # not: G5's ST6 can fail only with fewer than 9 of the 4,096 maps without a table, against
 # 408 or more in every run (CountGates.slotGate; bergdb 028-87).
 
