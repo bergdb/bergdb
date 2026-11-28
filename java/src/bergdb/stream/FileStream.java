@@ -58,8 +58,10 @@ import bergdb.pub.util.BadFormatException;
  * directory forced once after it: runCuts, bergdb 028-66). This holds also after the stream
  * has shrunk: a database emptied after a large stream keeps the file that its first position
  * lies in until appends fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed
- * 5, 10,400 kB of a 20 MB file on disk for 61 kB of stream with the quarter, 400 kB with
- * the tenth). A start accepts files of any of the sizes beside each other, those of the
+ * 5, 10,400 kB of a 20 MB file on disk for 61 kB of stream with the quarter, 2026-11-25;
+ * with the tenth and since 031-06's maintain(budget), 2,777 kB of a 5 MB file for 256 kB
+ * of stream, and in its other emptied rounds 322 to 5,217 kB on disk for 104 to 689 kB of
+ * stream, each within about one file more than the stream, 2026-11-28). A start accepts files of any of the sizes beside each other, those of the
  * quarter beside those of the tenth: it checks that each file begins where the one before
  * ends, or after a gap (below, "A gap in the files"), and that every file but the last is a
  * multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).

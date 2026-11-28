@@ -96,12 +96,17 @@ Released bugs fixed
   stream kept when that file was made (031-02's RetainChurn: 10,400 kB
   on disk for 61 kB of stream), though the Javadoc of
   `Database.maintain()` said within about 400 kB of a fresh database's
-  size. The Javadoc now says the 400 kB of the stream, as `Db.maintain()`
-  does, and nothing of files. `FileStream` gives a new file about a
-  tenth of the stream that its files hold, not a quarter (RetainChurn's
-  case: 400 kB on disk); its Javadoc states that the disk can hold up to
-  about one file more than the stream, and that the files, copied in
-  the order of their names, are a backup. Files made by the quarter open
+  size. The Javadoc of `maintain(int budget)` names no size: the calls
+  rewrite the live data once, and the space comes back once the retain
+  duration has passed since; an emptied database then keeps at most
+  about 1 MB of stream: twice a fresh database's under the same calls,
+  about 200 kB, and 600 kB more (bergdb 027-13, section 4, G5; in
+  RetainChurn on `main`, 104 to 689 kB). `FileStream` gives a new file
+  about a tenth of the stream that its files hold, not a quarter
+  (RetainChurn's emptied rounds: 0.3 to 5.2 MB on disk); its Javadoc
+  states that the disk can hold up to about one file more than the
+  stream, and that the files, copied in the order of their names, are a
+  backup. Files made by the quarter open
   beside new ones. The stream's bytes are the same; a stream has about
   three times as many files. A new file is at least 1 MB once 4 MB of
   stream are kept, as with the quarter, so a new database's first 10 MB

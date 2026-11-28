@@ -650,7 +650,17 @@ not active it reads nothing.
 * **Back to empty** (G4): kept, key nodes, heap and the rest at most 2
   times the twin's, the lag at most 2 R (2,000 transactions in G4's
   workload, 026-11): gated; the lag 1,265 to 1,286 transactions at 1M to
-  10M keys and every f: measured (026-05). G5, by `maintain()`: gated.
+  10M keys and every f: measured (026-05). G5, by `maintain()` alone:
+  kept at most 2 times the twin's plus 600 kB (3 META), the twin under
+  the same calls; gated (`count-gates.sh`, ReclaimMaintainTester). The
+  twin, with no live key, keeps about META under the calls: the pass that
+  a call begins while a record of the application's is kept (the
+  settings' records count) waits for a meta block, and M5 pads the table
+  to it (031-08, UA-8: 199,728 bytes). No figure is promised in the
+  Javadoc since 031-06 (until then the Core's `maintain()` said within
+  about 400 kB of a fresh stream, and the Pub's too since 028-62). Emptied databases on `main` (031-02,
+  section 9.3, RetainChurn, 2026-11-28): 104 to 689 kB of stream kept,
+  above 400 kB in 3 of 9 rounds, within the gate's bound: measured.
 * **The largest record** with reclaim on (G1, BD1): at most the larger
   of 1 MB and 5 times the mean; gated. **A part of `maintain()`**: one
   record, with one of: a begin, a step of MAX_STEP, the table, the table
@@ -696,9 +706,14 @@ not active it reads nothing.
   times the stream kept against 1.62, the files not yet deleted 0.12 of
   it against 0.65, those that wait for the storage's thread 0.011
   against 0.549, 27 files against 63: measured. An emptied database (031-02's
-  RetainChurn): 400 kB on disk for 61 kB of stream in seed 5 (10,400 kB
-  with the quarter); 200, 600 and 800 kB in seed 1's rounds 1 to 3 (200,
-  2,600 and 3,800): measured.
+  RetainChurn), before 031-06's `maintain(int budget)` (2026-11-26): 400
+  kB on disk for 61 kB of stream in seed 5 (10,400 kB with the quarter);
+  200, 600 and 800 kB in seed 1's rounds 1 to 3 (200, 2,600 and 3,800):
+  measured. On `main` since (031-02, section 9.3, 2026-11-28), where the
+  pass's cut falls elsewhere in the files: seed 5's round 0 2,777 kB on
+  disk, one file of 5 MB, for 256 kB of stream; the other emptied rounds
+  322 to 5,217 kB on disk for 104 to 689 kB of stream, each within about
+  one file more than the stream: measured.
 
 
 ## 5. In the model
@@ -1011,3 +1026,7 @@ its budget by its last part, whose step copies its last KV whole, up to
 a value of 8 MiB (031-08, UA-5), and it waits as long as commits come
 without a pause (031-08, UA-7). By an agent of lead-1127, on the branch
 `docs-1128`.
+
+2026-11-28. 028-84: 4: G5's bound and the twin's padded table (031-08,
+UA-8); RetainChurn's figures on `main` since 031-06 (031-02, section
+9.3, N1). By an agent of lead-1127, on the branch `docs-1128`.

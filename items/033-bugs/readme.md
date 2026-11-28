@@ -382,7 +382,18 @@ RB-011. An emptied file database keeps its last stream file under maintain()
   2026-11-28 (028-73, Frans's option (b)) a new file is at least 1 MB
   once 4 MB of stream are kept: the bound on the disk is a tenth of the
   stream kept when the file was made, or 1 MB while 4 to 10 MB are
-  kept.
+  kept. Added 2026-11-28 (028-84; 031-02, section 9, N1): since
+  2026-11-27 (031-06's merge, `maintain(int budget)`) no Javadoc names
+  the 400 kB above: the Pub's and the Core's `maintain()` say that the
+  calls rewrite the live data once and that the space comes back once
+  the retain duration has passed since that pass ended, with no figure.
+  What holds: an emptied database under the calls alone keeps a stream
+  of at most twice a fresh twin's under the same calls plus 600 kB,
+  gated (027-13, section 4, G5), the twin about 200 kB, a meta block's
+  distance (031-08, UA-8); the disk up to about one file more.
+  RetainChurn on `main` (2026-11-28): 104 to 689 kB of stream kept,
+  above 400 kB in 3 of 9 emptied rounds, and 322 to 5,217 kB on disk
+  (seed 5: 2,777 kB for 256 kB), each within the bound on the disk.
 
 
 RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
@@ -628,3 +639,8 @@ a `StreamFormatException`, not as a creation that did not complete, in
 (`reviews/2026-11-28-start.md`, F3). Named in the section "After the
 release" of 2026.6's and 2026.5's notes and in `releases/next.md`;
 counts updated.
+
+2026-11-28. RB-011's Fix: an addition (028-84; 031-02, section 9, N1):
+the 400 kB that it cites is no Javadoc's promise since 031-06; what
+holds is G5's bound, and RetainChurn's figures on `main` are within it.
+The text above the addition is as it was. The counts are unchanged.

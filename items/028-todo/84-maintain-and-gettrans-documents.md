@@ -27,6 +27,12 @@ of 031-02 (`items/031-release-2026-7/02-app-hunt/readme.md`, section
   it gives way to every commit that waits, so beside 8 threads that
   commit without a pause no call of `maintain(100)` returned in 10 s
   (`probes/MaintainWaits.java`).
+* **N1.** RetainChurn's emptied databases kept 417 to 689 kB of stream
+  in 3 of 9 rounds, above the 400 kB that 033's RB-011 "Fix" quotes as
+  the Javadoc's promise, which no Javadoc has made since 031-06; 027-13
+  and `FileStream`'s Javadoc cite RetainChurn's figures of before
+  031-06; `releases/next.md`'s RB-011 says that the Javadoc "now says
+  the 400 kB of the stream".
 
 Not in this entry: UA-2 and UA-10 (the exception of a call at a stop),
 in 028-83; UA-1, done by 028-82 (UB-1); UA-3 and UA-8 (questions for
@@ -39,8 +45,8 @@ database needs the document to say what the code does.
 Frans: none.
 
 Done when: the Javadoc of `Database.maintain(int)`, `Db.maintain(int)`,
-`Db.getTrans()` and `StoredTrans.getValueNodes()`, 027-13 and 027-03
-say what the code does; `java/before-commit.sh`
+`Db.getTrans()`, `StoredTrans.getValueNodes()` and `FileStream`, 027-13,
+027-03 and 033's RB-011 say what the code does; `java/before-commit.sh`
 prints `BEFORE COMMIT OK`.
 
 First step: `Db.maintain()`, `Db.giveWayToWriters()`, `Reclaim.planPart`
@@ -95,6 +101,19 @@ with the copy mark.
   while it waits); call it when idle, not beside writers that commit
   without a pause, nor inside an `rw()` action. `Db.maintain()` and
   027-13, 1.10, the same.
+* **N1.** The bound that holds for an emptied database's stream kept,
+  under `maintain()` calls alone: at most twice a fresh twin's under the
+  same calls plus 600 kB, 3 meta block distances, gated by
+  `count-gates.sh` (G5) and `ReclaimMaintainTester`; the twin keeps
+  about a meta block's distance, the table padded to it (UA-8). 027-13,
+  section 4 ("Back to empty" and "The disk"), with RetainChurn's figures
+  on `main` (031-02, section 9.3: 104 to 689 kB of stream, 322 to 5,217
+  kB on disk) beside those of before 031-06; `FileStream`'s Javadoc the
+  same; 033's RB-011, a dated addition to its Fix, its text before it
+  kept; `releases/next.md`'s RB-011. RetainChurn seed 11, run again on
+  `main` at `16c64d9a` with the stream kept printed every 5 calls: 417
+  kB kept from its sixth call to the loop's end, the disk 493 kB, also
+  after 200 more calls and a restart.
 
 
 Log
