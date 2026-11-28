@@ -287,11 +287,14 @@ public class SameBytes {
         List<long[]> at = new ArrayList<>();      // each chunk's position
         List<byte[]> chunks = new ArrayList<>();
         long gapBytes;                            // bytes cut before the tap read them (not the ref's)
+        List<Integer> lens = new ArrayList<>();      // each chunk's length, kept after all()
         byte[] all(long len) {
             byte[] out = new byte[(int) len];
             for (int i = 0; i < chunks.size(); i++) {
                 byte[] c = chunks.get(i);
                 System.arraycopy(c, 0, out, (int) at.get(i)[0], c.length);
+                lens.add(c.length);
+                chunks.set(i, null);                  // the stream holds the bytes now
             }
             return out;
         }
@@ -789,9 +792,9 @@ public class SameBytes {
         // Every byte appended (the taps), from 0 to the end of the shorter run.
         long diffAt = -1;
         long compared = 0;
-        for (int c = 0; c < r.tap.chunks.size() && diffAt < 0; c++) {
+        for (int c = 0; c < r.tap.lens.size() && diffAt < 0; c++) {
             int a0 = (int) r.tap.at.get(c)[0];
-            int m = (int) Math.min(r.tap.chunks.get(c).length, Math.min(end, ref.stream.length) - a0);
+            int m = (int) Math.min(r.tap.lens.get(c), Math.min(end, ref.stream.length) - a0);
             if (m <= 0) continue;
             int mm = Arrays.mismatch(r.stream, a0, a0 + m, ref.stream, a0, a0 + m);
             if (mm >= 0) diffAt = a0 + mm;
@@ -821,12 +824,12 @@ public class SameBytes {
             }
             System.out.println("  bytes that differ in the action's records: " + nd + " of " + (recEnd - diffAt));
             int chunk = -1;
-            for (int c = 0; c < r.tap.chunks.size(); c++) {
+            for (int c = 0; c < r.tap.lens.size(); c++) {
                 long at = r.tap.at.get(c)[0];
-                if (at <= diffAt && diffAt < at + r.tap.chunks.get(c).length) chunk = c;
+                if (at <= diffAt && diffAt < at + r.tap.lens.get(c)) chunk = c;
             }
             if (chunk >= 0) System.out.println("  the tap's chunk " + chunk + " from " + r.tap.at.get(chunk)[0] + ", "
-                    + r.tap.chunks.get(chunk).length + " bytes");
+                    + r.tap.lens.get(chunk) + " bytes");
         }
         // The files, for file runs of the whole list: their split and the files kept after a cut
         // follow the timing of the writes (UB-1, 031-08 apps-b.md), so a difference is a NOTE.

@@ -36,7 +36,7 @@ Findings are UB-1, UB-2, ...
 
 ## 1. In short
 
-Written WRITTEN-AT; section 5 has the state.
+Written 10:30; section 5 has the state.
 
 * **Five applications** (about 3,000 lines of Java), f1 to f5 in
   `java/stress/apps/`, and a probe in this item's `probes/`, on the
@@ -64,7 +64,13 @@ Written WRITTEN-AT; section 5 has the state.
   files cannot be opened, and refusals that name no way out or no file
   (UB-5); the Pub API does not say how to back up a running database,
   which FileStream's procedure does well (UB-6).
-* **The runs** (section 3): RUNS-SUMMARY.
+* **The runs** (section 3), 06:23 to 10:26: f1 22,106 actions of its
+  final version, each run eleven ways, with 17,215 stops and starts; f2
+  3,570 SIGKILLs and the starts after them, 1,215 checks of a start
+  killed during its completion of a torn end; f3 13,700 Pub actions run
+  six ways; f4 1,407 cases of a user's handling of the files; f5 970
+  copies of a running database. The app's own bugs that runs found were
+  fixed and the seeds run again.
 
 
 ## 2. The applications
@@ -89,7 +95,10 @@ action list and file helpers.
   `maintain(budget)` (100 to 5,100); each action at a time of a clock that
   the app sets before it (`DbBuilder.clock()`), the same times in every
   run, with steps of 0 (the next unit) to 3.5 s (past the retain
-  duration). Every run makes a new database with the same `DatabaseId`
+  duration); with `-Df1.big=true` also one transaction in 25 of 1 to 6
+  values of 1 to 8 MiB, up to 30 MB, near the limits (8 MiB a value, 32
+  MiB a transaction), whose records cross many meta blocks and files.
+  Every run makes a new database with the same `DatabaseId`
   (`DbBuilder.id()`, which Db's Javadoc names the Pub API's; without it
   two creations differ in every meta block, UB-2) and runs the list:
   * `ref`: one start, a file stream that forces each append, a sync after
@@ -276,24 +285,24 @@ repository; the counts below are from them.
 Every run below passed but those named; a FAILED of an app's own bug
 was fixed and the seed run again. Times are F53's, from `date`.
 
-* **f1 SameBytes**, 06:23 to 09:10. The final version (all nine runs a
+* **f1 SameBytes**, 06:23 to 10:26. The final version (all nine runs a
   seed: `restart`, `cache`, `nosync`, `stoptx`, `quiet` against
-  `quietbig`, `stopmid`, `copy`, `memory`, `every`): seeds 30 to 41, 707
-  to 1,830 actions each, 15,086 in all, each list run eleven times (the
-  ref, `quietbig` and the nine; `every` its first 400), 11,930 stops and
-  starts,
-  273,528 checked reads of the reader threads, 1,407 transactions
-  committed at a `stoptx` stop and 3,051 refused by it and executed
-  again: every run's stream the ref's, byte for byte. Earlier versions
-  (without `stoptx` and `stopmid`): seeds 1 to 12, 600 to 2,179 actions,
-  the same; seed 2's first FAILED was the first version's file check
-  (UB-1, then made a NOTE). `stoptx` alone on seed 22 (700 actions) and
-  `stopmid` alone on seed 21 (800). With `-Df1.big=true` (one
-  transaction in 25 of 1 to 8 MiB values, up to 30 MB): seed 50 (300
-  actions, five runs) BIGF1; seeds 51 and 52 ended with the app's
-  `OutOfMemoryError` (the app keeps three runs' streams of 400 to 490 MB
-  in a heap of 1.5 GB), not run again at that size. 44 runs ended with
-  other files than the ref's for the same stream (UB-1's NOTE).
+  `quietbig`, `stopmid`, `copy`, `memory`, `every`): seeds 30 to 46, 707
+  to 1,973 actions each, 22,106 in all, each list run eleven times (the
+  ref, `quietbig` and the nine; `every` its first 400), 17,215 stops and
+  starts, 372,118 checked reads of the reader threads, 2,112
+  transactions committed at a `stoptx` stop and 4,425 refused by it and
+  executed again: every run's stream the ref's, byte for byte. Earlier
+  versions (without `stoptx` and `stopmid`): seeds 1 to 12, 600 to 2,179
+  actions, the same; seed 2's first FAILED was the first version's file
+  check (UB-1, then made a NOTE). `stoptx` alone on seed 22 (700
+  actions) and `stopmid` alone on seed 21 (800). With `-Df1.big=true`:
+  seeds 50, 53 and 54 (200 to 300 actions, streams of 170 to 290 MB) the
+  same; seeds 51, 52 and 55 ended with the app's `OutOfMemoryError` (the
+  app keeps the runs' whole streams, 290 to 490 MB each, in a heap of
+  1.5 GB), seed 55 after its `restart`, `cache`, `nosync` and `stoptx`
+  runs had passed. 56 runs ended with other files than the ref's for the
+  same stream (UB-1's NOTE).
 * **f2 KillBytes**, 07:08 to 10:00. Seeds 2 to 15 (400 to 1,200
   actions, 200 or 250 kills each; K5 from seed 7 on; and a 60-kill run of
   seed 3), and seeds 20 to 22 with `-Df1.big=true` (180 to 240 actions,
@@ -310,38 +319,43 @@ was fixed and the seed run again. Times are F53's, from `date`.
   then read from a progress file the child writes; an empty file after a
   kill during the creation; K5's first version, which did not allow the
   invalid meta block that 027-11 describes).
-* **f3 PubSameBytes**, 06:45 to F3END. Seeds 1 to 11 (600 to 1,500
-  actions; seed 1 by hand, the others in lanes), five runs each (`fast`,
-  `slow`, `restart`, `cache`, `copy`): every stream the ref's; NOTEs of
-  UB-1 in seeds 1, 3 and 9. With the option `delete`: seeds 1 and 7
-  FAILED as UB-2 says, at the first action after a `deleteIndex()`
-  (seed 1: action 306 after 305; seed 7: action 38 after 37), and seed 1
+* **f3 PubSameBytes**, 06:45 to 10:22. Seeds 1 to 14 but 7 (600 to
+  1,500 actions, 13,700 in all; seed 1 by hand, the others in lanes),
+  five runs each (`fast`, `slow`, `restart`, `cache`, `copy`): every
+  stream the ref's; NOTEs of UB-1 in seeds 1, 3, 9 and 14. With the
+  option `delete`: seeds 1 and 7 FAILED as UB-2 says, at the first action
+  after a `deleteIndex()` (seed 1: action 306 after 305; seed 7: action
+  38 after 37, which follows the index's creation at 36), and seed 1
   again at 08:17 with another size (17,027,120 bytes, the ref's
   17,043,264): the bytes follow the cleanup thread's timing.
-* **f4 FileHandling**, 06:50 to F4END. Final version: seeds 7 to 18,
-  66 to 93 cases each; earlier versions seeds 1 to 3. F4CASES cases,
-  F4ACC accepted and F4REF refused as the documents say; F4OLD older
-  states read and checked; every refused start changed no file, every
-  accepted start held exactly the oracle's state, also at a second
-  start, and every directory whose cause was removed started with every
-  transaction. Another database's file in the middle: accepted with
-  another database's values in seeds 2, 7, 14 and 15 (UB-4), reads that
-  failed with a node checksum in the others. Seed 2's FAILED (that case)
-  is UB-4, made a NOTE; seed 8's two FAILEDs were the app's (an old
-  copy's partial last file taken as a leftover; a run of zeros longer
-  than 8 MB expected to be taken, UB-5 (e)). The 2026.6 database: refused
-  in every seed that had it, its files unchanged, and 2026.6's jar opens
-  it after (151 keys and the marker).
-* **f5 LiveCopy**, 07:02 to F5END. Seeds 1 to 8, 30 to 100 copies each:
-  F5COPIES copies of a running database written to at about 250
-  transactions a second (F5TX transactions in all); by FileStream's
-  procedure DOCACC accepted and DOCREF refused (a cut had deleted a
-  listed file); by `cp DIR/*.bergdb` GLOBACC accepted and GLOBREF
-  refused; by `cp -R` CPRACC accepted and CPRREF refused, all for a
-  missing listed file; every accepted copy held exactly the state after
-  k transactions, k at least the last synced before the copy and at most
-  the last committed when it ended (up to 417 committed transactions not
-  in a copy). WROTEN of the refusals wrote the completion of a torn last
+* **f4 FileHandling**, 06:50 to 10:24. Seeds 7 to 22 (the last cases
+  added by seed 8), 66 to 93 cases each; earlier versions seeds 1 to 3:
+  1,407 cases in the
+  runs that passed, 793 accepted and 614 refused as the documents say;
+  44,629 older states read and checked; every refused start changed no
+  file, every accepted start held exactly the oracle's state, also at a
+  second start, and every directory whose cause was removed started with
+  every transaction. Another database's file in the middle: accepted
+  with another database's values in seeds 2, 7, 14, 15, 19, 20 and 21
+  (UB-4), reads that failed with a node checksum in others. Seed 2's
+  FAILED (that case) is UB-4, made a NOTE; seed 8's two FAILEDs were the
+  app's (an old copy's partial last file taken as a leftover; a run of
+  zeros longer than 8 MB expected to be taken, UB-5 (e)). The 2026.6
+  database: refused in every seed that had it, with "Version 155 is a
+  database written by BergDB release 2026.6, which this release does not
+  open: there is no upgrade path, and release 2026.6 still opens it",
+  its files unchanged, and 2026.6's jar opens it after (151 keys and the
+  marker).
+* **f5 LiveCopy**, 07:02 to 10:20. Seeds 1 to 11, 30 to 100 copies
+  each: 970 copies of a running database written to at about 250
+  transactions a second (309,386 transactions in all); by FileStream's
+  procedure 598 accepted and 1 refused (a cut had deleted a listed file
+  during the copy); by `cp DIR/*.bergdb` 235 accepted and 1 refused; by
+  `cp -R` 124 accepted and 11 refused, all for a missing listed file;
+  every accepted copy held exactly the state after k transactions, k at
+  least one past the last synced before the copy and at most one past the
+  last committed when it ended (up to 470 committed transactions not in
+  a copy). 10 of the 13 refusals wrote the completion of a torn last
   record (UB-6).
 * **Probes**: `ForeignFileProbe first` and `middle` (08:40), as UB-3 and
   UB-4 say; the jar of `release-2026.6` built from the tag, and a
@@ -538,11 +552,11 @@ refusal whose diagnosis and way out are wrong (UB-3).
   recovers it, or refuses a copy that missed a file a cut deleted ("take
   the copy again"). What happened (f5): every copy by that procedure was
   accepted, with every transaction synced before the copy began and none
-  committed after it ended (COPIES-DOC copies; DOC-REFUSED refused
-  because a cut had deleted a listed file during the copy, as the Javadoc
-  allows); `cp DIR/*.bergdb` and `cp -R` copies were accepted or refused
-  as the Javadoc allows when a cut had deleted a listed file (REFUSED-CP
-  of COPIES-CP). Of the REFUSED-ALL refusals, WROTE-N wrote a file: the
+  committed after it ended (598 copies; 1 refused because a cut had
+  deleted a listed file during the copy, as the Javadoc allows); `cp
+  DIR/*.bergdb` and `cp -R` copies were accepted or refused as the
+  Javadoc allows when a cut had deleted a listed file (12 of 371). Of the
+  13 refusals, 10 wrote a file: the
   copy's last file ended where a file begins, and the start completed
   the torn last record into a new file before it refused (Db.start(),
   "writes nothing but what recovery writes to complete a torn end of the
@@ -555,4 +569,36 @@ refusal whose diagnosis and way out are wrong (UB-3).
 
 ## 5. State
 
-STATE-PLACEHOLDER
+Written 10:30.
+
+* **Done**: the apps f1 to f5 in `java/stress/apps/`, the probe
+  `probes/ForeignFileProbe.java`, the runs of section 3, the findings
+  UB-1 to UB-6. No product bug that the documents do not allow; nothing in
+  `java/src` or in the existing apps and tests changed; `apps.sh` not
+  changed (the apps join it later).
+* **For the lead**: UB-3 is the one product finding (low severity, a
+  refusal's message); UB-1, UB-2 and UB-6 are document changes (UB-2 as
+  031-05's Q4 (a) recommended); UB-4 is a suggestion for 031-07; UB-5 is
+  messages and a sentence. None is filed as a 028 entry.
+* **To join apps.sh**: quick: `SameBytes 1 300 DIR all`, `KillBytes 1
+  300 DIR 30`, `PubSameBytes 1 300 DIR`, `FileHandling 1 DIR`,
+  `LiveCopy 1 DIR 20` (about 5 minutes in all); soak N: f1 at four seeds
+  of 700 to 1,800 actions, f3 at three of 900 to 1,500, f4 at four seeds
+  (with a 2026.6 database, built as `apps.sh` builds 2026.4's), f5 at two
+  of 100 copies; kill N: f2 at three seeds of 250 kills and one with
+  `-Df1.big=true` at 200 actions and 120 kills. f1 and f2 keep the whole
+  stream in the heap: at most about 300 MB of stream (200 actions with
+  `-Df1.big=true`) in 2 GB.
+* **Next**: the same runs on Linux (s1), where a kill leaves no zeros and
+  `cp -R` lists in another order; f2's chains continued past a start
+  that completed a torn end, against a second ref made from that point;
+  a Pub API kill app with f2's checks of the bytes (the Pub layer's start,
+  its index jobs excluded); UB-3's case with `created.txt`'s ID, if the
+  start comes to read it.
+
+
+Log
+===
+
+2026-11-28. Created (06:16, an agent of the lead): the apps f1 to f5,
+their runs to 10:26 on `main` at `ee8a8165`, the findings UB-1 to UB-6.
