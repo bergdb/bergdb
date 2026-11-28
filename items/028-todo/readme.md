@@ -106,7 +106,7 @@ Open
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count 76.5 % at worst; A: the text, 10 a level at 14, a test | A | A done; B open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (built and gated on a branch, to land) |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc written; P2's draft, not in the repository) |
-| [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decided | open (to design and build) |
+| [028-75](75-small-put-full-pass/readme.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decision | open (designed: a record format change) |
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
@@ -773,3 +773,9 @@ land): the failure was 021-24's window, shown with a delay in
 `close()`, as `stop()`'s Javadoc says, and
 `testDirectoryReplacedInTheWindowAfterStop` holds the old database in
 the window and checks the documented outcome. Moved to Closed.
+
+2026-11-28. 028-75 designed: (c) needs live bytes that each record
+carries, a change of the record format, Frans's; the options (c1) to
+(c3) and (c0), (c1) recommended (the live bytes in each record's
+header, with M2', k = 2 and a floor of 400 kB), measured with a
+prototype. Not built. The entry is a directory since.

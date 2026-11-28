@@ -1,0 +1,217 @@
+diff --git a/java/src/bergdb/core/Reclaim.java b/java/src/bergdb/core/Reclaim.java
+index 3b32ec74..2254e013 100644
+--- a/java/src/bergdb/core/Reclaim.java
++++ b/java/src/bergdb/core/Reclaim.java
+@@ -709,7 +709,7 @@ public class Reclaim implements Maintenance {
+     private void planCommit(RecordPlan p, long lastTime, Kv[] kvs, int maxCopies) {
+         final IterationInfo current = currentIteration(p.rows);
+         if (current == null && retainDuration != Long.MAX_VALUE
+-                && p.l0 > lastPStart() + 2L * db.getStartupDistance()
++                && p.l0 - (protoB ? lastRewrittenForB() : 0) > lastPStart() + 2L * db.getStartupDistance()
+                 && lastTime - lastTStart() >= retainDuration / ITERATION_DIVISOR) {
+             final IterationInfo it = new IterationInfo();          // B
+             it.pStart = p.l0;
+@@ -848,6 +848,7 @@ public class Reclaim implements Maintenance {
+         if (!t.part) {
+             appA = t.tpos;
+         }
++        if (protoF) simCount(plan, t);
+         final RecordPlan p = (RecordPlan) plan;
+         if (p != null) {
+             assert p.l0 == t.tpos : p.l0 + " " + t.tpos;
+@@ -987,8 +988,8 @@ public class Reclaim implements Maintenance {
+             it.endKey = lastKeyAt(lastTime);
+             p.rows.add(it);
+             p.tableStored = true;
+-        } else if (currentIteration(p.rows) != null) {                            // M2
+-            planStep(p, currentIteration(p.rows), MAX_STEP_SIZE, kvs, maxCopies);
++        } else if (currentIteration(p.rows) != null && m2Size(p) > 0) {           // M2
++            planStep(p, currentIteration(p.rows), m2Size(p), kvs, maxCopies);
+         } else if (planSafe(p)) {                                                  // M3
+             // The table stored.
+         } else if (maintainTakeTarget() != -1) {                                   // M4
+@@ -1024,8 +1025,23 @@ public class Reclaim implements Maintenance {
+      * (the startup pos at or after appA); until then M4 takes to appA, so that those nodes
+      * are written before the pass's pStart and its cut drops them with the rest.
+      */
++    // PROTOTYPE 028-75: -Dproto.m=true, the calls step a commit's iteration (pCut before
++    // pStart) within its allowance only, and a pass may begin over it.
++    static boolean protoM = Boolean.getBoolean("proto.m");
++
++    private long m2Size(RecordPlan p) {
++        final IterationInfo cur = currentIteration(p.rows);
++        if (!protoM || cur.pCut == cur.pStart) {
++            return MAX_STEP_SIZE;
++        }
++        final long allowed = fractionOf(p.l0 - cur.pStart, internalFraction) - cur.rewritten;
++        return allowed > MIN_STEP_SIZE ? Math.min(allowed, MAX_STEP_SIZE) : 0;
++    }
++
+     private boolean passDue() {
+-        if (retainDuration == Long.MAX_VALUE || currentIteration() != null) {
++        final IterationInfo cur = currentIteration();
++        if (retainDuration == Long.MAX_VALUE
++                || cur != null && !(protoM && cur.pCut != cur.pStart)) {
+             return false;
+         }
+         for (IterationInfo row : table.rows) {
+@@ -1033,7 +1049,145 @@ public class Reclaim implements Maintenance {
+                 return false;
+             }
+         }
+-        return appA >= firstAvailablePos;
++        return appA >= firstAvailablePos && shareDue();
++    }
++
++    // PROTOTYPE 028-75 (c), no format change.
++    static final long PASS_FLOOR = 2L * RecoverableStream.META_BLOCK_DISTANCE;
++    static final int PASS_K_NUM = Integer.getInteger("proto.knum", 3), PASS_K_DEN = Integer.getInteger("proto.kden", 2);
++    private long liveMemoAt = -1, liveMemo;
++    static boolean protoOff = Boolean.getBoolean("proto.off");
++
++    // Simulation of the format-change design (F): two counts that each record would carry,
++    // kept here in memory (no restart in the probes): C, the value nodes written, and N, the
++    // KVs live after the record; cAt, C before the record at each record's position.
++    static boolean protoF = Boolean.getBoolean("proto.f");
++    long simC, simN;
++    final java.util.TreeMap<Long, Long> cAt = new java.util.TreeMap<Long, Long>();
++
++    private void simCount(Maintenance.Plan plan, Trans t) {
++        cAt.put(t.tpos, simC);
++        final List<Kv> all = new ArrayList<Kv>();
++        if (t.kvs != null) all.addAll(Arrays.asList(t.kvs));
++        if (plan != null && plan.kvs != null) all.addAll(Arrays.asList(plan.kvs));
++        final long tb = Math.max(t.tt - 1, firstAvailableLookupTime);
++        for (Kv kv : all) {
++            final long[] key = kv.getKey();
++            final boolean before = t.tt - 1 >= firstAvailableLookupTime
++                    && db.getOne(tb, key, db.newGetData()) != null;
++            final boolean after = db.getOne(t.tt, key, db.newGetData()) != null;
++            if (after) simC++;
++            simN += (after ? 1 : 0) - (before ? 1 : 0);
++        }
++    }
++
++    private boolean shareDueF() {
++        final long kept = db.getStreamLength() - firstAvailablePos;
++        final java.util.Map.Entry<Long, Long> e = cAt.floorEntry(firstAvailablePos);
++        final long cKept = simC - (e == null ? 0 : e.getValue());
++        if (cKept <= 0) return false;
++        final long liveEst = (long) ((double) kept * simN / cKept);
++        final boolean due = cKept * PASS_K_DEN > simN * PASS_K_NUM && kept - liveEst > PASS_FLOOR;
++        if (Boolean.getBoolean("proto.trace")) System.err.println("F: kept " + kept + " cKept " + cKept + " N " + simN + " liveEst " + liveEst + " due " + due);
++        return due;
++    }
++
++    // Simulation of (F1): the exact live stream bytes, the latest state's value and key nodes,
++    // by a full scan at each decision (memoized by the stream's length).
++    static boolean protoX = Boolean.getBoolean("proto.x");
++    private long exactMemoAt = -1, exactMemo;
++
++    long exactLive() {
++        final long l0 = db.getStreamLength();
++        if (exactMemoAt == l0) return exactMemo;
++        final GetMany g = db.newGetMany();
++        final bergdb.dag.PointerFollower f0 = db.internal().nodeCollection().maintenance();
++        final Set<Node> nodes = Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>());
++        g.gd.pointerFollower = new bergdb.dag.PointerFollower() {
++            public Node followPointer(Node predecessor, int pointerIndex, bergdb.dag.OpData op) {
++                final Node n = f0.followPointer(predecessor, pointerIndex, op);
++                if (n != null && n.isIndexNode()) nodes.add(n);
++                return n;
++            }
++            public RuntimeException cycle(String message) {
++                return f0.cycle(message);
++            }
++        };
++        g.lookupTime = Long.MAX_VALUE;
++        final long[] sum = new long[1];
++        g.stopCondition = new GetMany.StopCondition() {
++            public int handleKvt(Kvt kvt) {
++                sum[0] += StoredValueNode.getByteSizeLong(kvt.value, kvt.key);
++                return CONTINUE;
++            }
++            public void eod() {
++            }
++        };
++        db.getMany(g);
++        long index = 0;
++        for (Node n : nodes) {
++            if (n instanceof bergdb.dag.KeyNode) index += 32 + 16L * ((bergdb.dag.KeyNode) n).size;
++        }
++        exactMemo = sum[0] + index;
++        exactMemoAt = l0;
++        if (Boolean.getBoolean("proto.trace")) System.err.println("X: values " + sum[0] + " index " + index + " nodes " + nodes.size());
++        return exactMemo;
++    }
++
++    private boolean shareDueX() {
++        final long kept = db.getStreamLength() - firstAvailablePos;
++        final long v = exactLive();
++        final boolean due = over(kept, v);
++        if (Boolean.getBoolean("proto.trace")) System.err.println("X: kept " + kept + " live " + v + " due " + due);
++        return due;
++    }
++
++    private boolean shareDue() {
++        if (protoOff) return true;
++        if (protoF) return shareDueF();
++        if (protoX) return shareDueX();
++        final long kept = db.getStreamLength() - firstAvailablePos;
++        final IterationInfo row = lastDoneRow();
++        if (row == null) {
++            return true;
++        }
++        final long v = row.pCut == row.pStart ? row.rewritten
++                : (row.pSafe == -1 ? row.pEnd : row.pSafe) - row.pCut;
++        if (over(kept, v)) {
++            return true;
++        }
++        final long small = liveBelow(PASS_FLOOR);
++        return small >= 0 && over(kept, small);
++    }
++
++    private static boolean over(long kept, long v) {
++        return kept - v > PASS_FLOOR && kept * PASS_K_DEN > v * PASS_K_NUM;
++    }
++
++    private long liveBelow(final long limit) {
++        final long l0 = db.getStreamLength();
++        if (liveMemoAt == l0) {
++            return liveMemo;
++        }
++        final GetMany g = db.newGetMany();
++        g.gd.pointerFollower = db.internal().nodeCollection().maintenance();
++        g.lookupTime = Long.MAX_VALUE;
++        final long[] sum = new long[1];
++        final boolean[] eod = new boolean[1];
++        g.stopCondition = new GetMany.StopCondition() {
++            public int handleKvt(Kvt kvt) {
++                sum[0] += kvt.key.length * 8 + kvt.value.length + VALUE_NODE_BYTES;
++                return sum[0] > limit ? STOP : CONTINUE;
++            }
++            public void eod() {
++                eod[0] = true;
++            }
++        };
++        db.getMany(g);
++        liveMemo = eod[0] ? sum[0] : -1;
++        liveMemoAt = l0;
++        if (Boolean.getBoolean("proto.trace")) System.err.println("liveBelow at " + l0 + ": " + liveMemo);
++        return liveMemo;
+     }
+     
+     /**
+@@ -1135,6 +1289,12 @@ public class Reclaim implements Maintenance {
+         return last.done ? null : last;
+     }
+     
++    static boolean protoB = Boolean.getBoolean("proto.b");
++    private long lastRewrittenForB() {
++        int size = table.rows.size();
++        return size == 0 ? 0 : table.rows.get(size - 1).rewritten;
++    }
++
+     /** pStart of the last iteration started, or 0. */
+     private long lastPStart() {
+         int size = table.rows.size();

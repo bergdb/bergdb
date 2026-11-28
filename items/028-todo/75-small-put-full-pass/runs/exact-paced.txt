@@ -1,0 +1,146 @@
+bergdb 028-75: the prototype (probes/prototype.diff) on main (16c64d9a), 2026-11-28, -Dproto.x=true
+-Dproto.m=true: the exact live stream bytes V as in exact.txt, B1 off, and the calls step a
+commit's iteration (pCut before pStart) within its allowance only (the commits' own: the internal
+fraction of the growth since its pStart, less its rewritten), and M1 may begin a pass while such an
+iteration runs (M2'); k = 1.5 (-Dproto.knum=3, the default) or 2 (-Dproto.knum=4), F = 400 kB.
+Bytes only.
+
+== exact, M2', k 1.5: LiveProbe 20000 100 1000 1000000, 20000 100 1000 50000000, 20000 1000 1000 1000000, 100000 200 100000 1000000, 200000 20 10000 1000000, 2000 100 1000 1000000
+20000x100 sd 1000000 filled, to rest: kept before 5188608, calls 13 wrote 6590200, kept 4400512, live 2959920, live stream bytes 3532232 (kept/that 1.25)
+one put of a byte: kept before 4400512, calls 0 wrote 0, kept 4401168, live 2959920, live stream bytes 3532540 (kept/that 1.25)
+overwrites of 0.1 of the keys (kept after them 4982272): kept before 4401168, calls 2 wrote 38720, kept 5020992, live 2959920, live stream bytes 3595472 (kept/that 1.40)
+overwrites of 0.3 of the keys (kept after them 6664296): kept before 5020992, calls 10 wrote 5264952, kept 4672184, live 2959920, live stream bytes 3572188 (kept/that 1.31)
+overwrites of 1.0 of the keys (kept after them 13254512): kept before 4672184, calls 10 wrote 5481352, kept 4840600, live 2959920, live stream bytes 3610876 (kept/that 1.34)
+deletes of 90 % (kept after them 7096312): kept before 4840600, calls 4 wrote 1626400, kept 703520, live 296000, live stream bytes 358056 (kept/that 1.96)
+deletes of all but 50 (kept after them 801832): kept before 703520, calls 3 wrote 249368, kept 70600, live 7400, live stream bytes 16380 (kept/that 4.31)
+20000x100 sd 50000000 filled, to rest: kept before 3100080, calls 0 wrote 0, kept 3100080, live 2959920, live stream bytes 3602644 (kept/that 0.86); no row
+one put of a byte: kept before 3100080, calls 0 wrote 0, kept 3100200, live 2959920, live stream bytes 3602624 (kept/that 0.86); no row
+overwrites of 0.1 of the keys (kept after them 3396960): kept before 3100200, calls 0 wrote 0, kept 3396960, live 2959920, live stream bytes 3662768 (kept/that 0.93); no row
+overwrites of 0.3 of the keys (kept after them 4295264): kept before 3396960, calls 0 wrote 0, kept 4295264, live 2959920, live stream bytes 3707232 (kept/that 1.16); no row
+overwrites of 1.0 of the keys (kept after them 7396264): kept before 4295264, calls 11 wrote 7666648, kept 4912328, live 2959920, live stream bytes 3547080 (kept/that 1.38)
+deletes of 90 % (kept after them 5795800): kept before 4912328, calls 5 wrote 2488488, kept 854744, live 296000, live stream bytes 358104 (kept/that 2.39)
+deletes of all but 50 (kept after them 952832): kept before 854744, calls 3 wrote 268056, kept 90984, live 7400, live stream bytes 16684 (kept/that 5.45)
+20000x1000 sd 1000000 filled, to rest: kept before 29219152, calls 1 wrote 45288, kept 29264440, live 20959920, live stream bytes 21618820 (kept/that 1.35)
+one put of a byte: kept before 29264440, calls 0 wrote 0, kept 29264528, live 20959920, live stream bytes 21618896 (kept/that 1.35)
+overwrites of 0.1 of the keys (kept after them 33126808): kept before 29264528, calls 34 wrote 23440400, kept 23183296, live 20959920, live stream bytes 21566844 (kept/that 1.07)
+overwrites of 0.3 of the keys (kept after them 33036368): kept before 23183296, calls 34 wrote 23504016, kept 23273344, live 20959920, live stream bytes 21601148 (kept/that 1.08)
+overwrites of 1.0 of the keys (kept after them 62479480): kept before 23273344, calls 34 wrote 23663016, kept 23363944, live 20959920, live stream bytes 21650340 (kept/that 1.08)
+deletes of 90 % (kept after them 26592552): kept before 23363944, calls 6 wrote 2998208, kept 2429400, live 2096000, live stream bytes 2160884 (kept/that 1.12)
+deletes of all but 50 (kept after them 2529968): kept before 2429400, calls 3 wrote 278272, kept 103712, live 52400, live stream bytes 62132 (kept/that 1.67)
+100000x200 sd 1000000 filled, to rest: kept before 44506896, calls 3 wrote 32424248, kept 32073664, live 24799920, live stream bytes 27152800 (kept/that 1.18)
+one put of a byte: kept before 32073664, calls 0 wrote 0, kept 32074328, live 24799920, live stream bytes 27153112 (kept/that 1.18)
+overwrites of 0.1 of the keys (kept after them 38408272): kept before 32074328, calls 1 wrote 277672, kept 38685944, live 24799920, live stream bytes 27468728 (kept/that 1.41)
+overwrites of 0.3 of the keys (kept after them 71205176): kept before 38685944, calls 3 wrote 33221800, kept 32694024, live 24799920, live stream bytes 27194484 (kept/that 1.20)
+overwrites of 1.0 of the keys (kept after them 137201088): kept before 32694024, calls 3 wrote 34221696, kept 33227336, live 24799920, live stream bytes 27211716 (kept/that 1.22)
+deletes of 90 % (kept after them 53685920): kept before 33227336, calls 3 wrote 3974536, kept 3372288, live 2480000, live stream bytes 2725060 (kept/that 1.24)
+deletes of all but 50 (kept after them 4281432): kept before 3372288, calls 3 wrote 730992, kept 111016, live 12400, live stream bytes 21820 (kept/that 5.09)
+200000x20 sd 1000000 filled, to rest: kept before 42723928, calls 7 wrote 27014056, kept 26320160, live 13599920, live stream bytes 18245728 (kept/that 1.44)
+one put of a byte: kept before 26320160, calls 0 wrote 0, kept 26320824, live 13599920, live stream bytes 18246040 (kept/that 1.44)
+overwrites of 0.1 of the keys (kept after them 35889880): kept before 26320824, calls 8 wrote 27624904, kept 26441816, live 13599920, live stream bytes 18253360 (kept/that 1.45)
+overwrites of 0.3 of the keys (kept after them 60650128): kept before 26441816, calls 7 wrote 28386800, kept 27533760, live 13599920, live stream bytes 18280148 (kept/that 1.51)
+overwrites of 1.0 of the keys (kept after them 135260544): kept before 27533760, calls 7 wrote 28949400, kept 28124664, live 13599920, live stream bytes 18312004 (kept/that 1.54)
+deletes of 90 % (kept after them 72047664): kept before 28124664, calls 3 wrote 3560464, kept 2854800, live 1360000, live stream bytes 1853992 (kept/that 1.54)
+deletes of all but 50 (kept after them 5264184): kept before 2854800, calls 3 wrote 1015728, kept 47560, live 3400, live stream bytes 23100 (kept/that 2.06)
+2000x100 sd 1000000 filled, to rest: kept before 328256, calls 0 wrote 0, kept 328256, live 295920, live stream bytes 412580 (kept/that 0.80); no row
+one put of a byte: kept before 328256, calls 0 wrote 0, kept 328344, live 295920, live stream bytes 412656 (kept/that 0.80); no row
+overwrites of 0.1 of the keys (kept after them 357904): kept before 328344, calls 0 wrote 0, kept 357904, live 295920, live stream bytes 418656 (kept/that 0.85); no row
+overwrites of 0.3 of the keys (kept after them 515016): kept before 357904, calls 0 wrote 0, kept 515016, live 295920, live stream bytes 423568 (kept/that 1.22); no row
+overwrites of 1.0 of the keys (kept after them 848976): kept before 515016, calls 0 wrote 0, kept 848976, live 295920, live stream bytes 455232 (kept/that 1.86); no row
+deletes of 90 % (kept after them 933440): kept before 848976, calls 3 wrote 467360, kept 146256, live 29600, live stream bytes 56108 (kept/that 2.61)
+deletes of all but 50 (kept after them 154552): kept before 146256, calls 0 wrote 0, kept 154552, live 7400, live stream bytes 19508 (kept/that 7.92)
+
+== exact, M2', k 2: LiveProbe 20000 100 1000 1000000, 20000 1000 1000 1000000, 100000 200 100000 1000000, 200000 20 10000 1000000
+20000x100 sd 1000000 filled, to rest: kept before 5188608, calls 5 wrote 2189688, kept 5364024, live 2959920, live stream bytes 3554260 (kept/that 1.51)
+one put of a byte: kept before 5364024, calls 0 wrote 0, kept 5364672, live 2959920, live stream bytes 3554568 (kept/that 1.51)
+overwrites of 0.1 of the keys (kept after them 5696760): kept before 5364672, calls 2 wrote 39832, kept 5736592, live 2959920, live stream bytes 3609896 (kept/that 1.59)
+overwrites of 0.3 of the keys (kept after them 7343232): kept before 5736592, calls 0 wrote 0, kept 7343232, live 2959920, live stream bytes 3731436 (kept/that 1.97)
+overwrites of 1.0 of the keys (kept after them 18639936): kept before 7343232, calls 11 wrote 5581680, kept 4583152, live 2959920, live stream bytes 3580828 (kept/that 1.28)
+deletes of 90 % (kept after them 6301056): kept before 4583152, calls 4 wrote 1707688, kept 728536, live 296000, live stream bytes 358120 (kept/that 2.03)
+deletes of all but 50 (kept after them 826816): kept before 728536, calls 3 wrote 241352, kept 62664, live 7400, live stream bytes 16732 (kept/that 3.75)
+20000x1000 sd 1000000 filled, to rest: kept before 29219152, calls 1 wrote 45288, kept 29264440, live 20959920, live stream bytes 21618820 (kept/that 1.35)
+one put of a byte: kept before 29264440, calls 0 wrote 0, kept 29264528, live 20959920, live stream bytes 21618896 (kept/that 1.35)
+overwrites of 0.1 of the keys (kept after them 33126808): kept before 29264528, calls 1 wrote 45384, kept 33172192, live 20959920, live stream bytes 21655824 (kept/that 1.53)
+overwrites of 0.3 of the keys (kept after them 45364656): kept before 33172192, calls 1 wrote 144608, kept 37019984, live 20959920, live stream bytes 21706864 (kept/that 1.71)
+overwrites of 1.0 of the keys (kept after them 76562408): kept before 37019984, calls 34 wrote 23676856, kept 23323008, live 20959920, live stream bytes 21616364 (kept/that 1.08)
+deletes of 90 % (kept after them 26407088): kept before 23323008, calls 6 wrote 3006704, kept 2451544, live 2096000, live stream bytes 2161988 (kept/that 1.13)
+deletes of all but 50 (kept after them 2551944): kept before 2451544, calls 3 wrote 253232, kept 77456, live 52400, live stream bytes 62012 (kept/that 1.25)
+100000x200 sd 1000000 filled, to rest: kept before 44506896, calls 0 wrote 0, kept 44506896, live 24799920, live stream bytes 27420760 (kept/that 1.62)
+one put of a byte: kept before 44506896, calls 0 wrote 0, kept 44506984, live 24799920, live stream bytes 27420836 (kept/that 1.62)
+overwrites of 0.1 of the keys (kept after them 54128248): kept before 44506984, calls 1 wrote 1225264, kept 46027736, live 24799920, live stream bytes 27696964 (kept/that 1.66)
+overwrites of 0.3 of the keys (kept after them 71556056): kept before 46027736, calls 3 wrote 33428352, kept 32835096, live 24799920, live stream bytes 27209152 (kept/that 1.21)
+overwrites of 1.0 of the keys (kept after them 138659176): kept before 32835096, calls 3 wrote 34137848, kept 33198184, live 24799920, live stream bytes 27212644 (kept/that 1.22)
+deletes of 90 % (kept after them 54195600): kept before 33198184, calls 3 wrote 3997872, kept 3448752, live 2480000, live stream bytes 2725636 (kept/that 1.27)
+deletes of all but 50 (kept after them 4248912): kept before 3448752, calls 3 wrote 902624, kept 214464, live 12400, live stream bytes 21468 (kept/that 9.99)
+200000x20 sd 1000000 filled, to rest: kept before 42723928, calls 7 wrote 27014056, kept 26320160, live 13599920, live stream bytes 18245728 (kept/that 1.44)
+one put of a byte: kept before 26320160, calls 0 wrote 0, kept 26320824, live 13599920, live stream bytes 18246040 (kept/that 1.44)
+overwrites of 0.1 of the keys (kept after them 35889880): kept before 26320824, calls 2 wrote 1241752, kept 37131632, live 13599920, live stream bytes 18881640 (kept/that 1.97)
+overwrites of 0.3 of the keys (kept after them 90632144): kept before 37131632, calls 7 wrote 27933000, kept 27183936, live 13599920, live stream bytes 18264164 (kept/that 1.49)
+overwrites of 1.0 of the keys (kept after them 134631304): kept before 27183936, calls 7 wrote 29054696, kept 28167032, live 13599920, live stream bytes 18309636 (kept/that 1.54)
+deletes of 90 % (kept after them 71854880): kept before 28167032, calls 3 wrote 3513688, kept 2835688, live 1360000, live stream bytes 1855176 (kept/that 1.53)
+deletes of all but 50 (kept after them 5914584): kept before 2835688, calls 3 wrote 634808, kept 92048, live 3400, live stream bytes 17548 (kept/that 5.25)
+
+== exact, M2': PassRoundsProbe 200000 20 10000 4 1000000 at k 1.5 and 2
+== k 3/2
+200000 keys of 20 bytes (about 7200 kB live); to rest: 7 calls of maintain(10000) wrote 27014056 bytes; stream kept 26320160
+one put of 1 byte (its record 664 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26320824
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26320912
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26321000
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26321088
+== k 4/2
+200000 keys of 20 bytes (about 7200 kB live); to rest: 7 calls of maintain(10000) wrote 27014056 bytes; stream kept 26320160
+one put of 1 byte (its record 664 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26320824
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26320912
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26321000
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 26321088
+
+== exact, M2': 033's probes and PassRoundsProbe 20000 100 1000 3 1000000, 100000 200 100000 4 1000000, at k 1.5 and 2
+=== k 3/2, exact, paced
+== HoleProbe 4000 20000
+after 10 R of calls: kept 208584, the twin's 29000; last call with work 1605 of 10000; fp 6592920
+== HoleProbe 20000 20000
+after 10 R of calls: kept 152272, the twin's 113608; last call with work 1605 of 10000; fp 10849144
+== TwoStretch
+fresh kept 704; emptied kept - fresh kept = 18000
+== TwoStretch after
+fresh kept 704; emptied kept - fresh kept = 22352
+== PassRounds
+20000 keys of 100 bytes (about 2320 kB live); to rest: 13 calls of maintain(1000) wrote 6590200 bytes; stream kept 4400512
+one put of 1 byte (its record 656 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 4401168
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 4401256
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 4401344
+100000 keys of 200 bytes (about 21600 kB live); to rest: 3 calls of maintain(100000) wrote 32424248 bytes; stream kept 32073664
+one put of 1 byte (its record 664 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 32074328
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 32074416
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 32074504
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 32074592
+=== k 4/2, exact, paced
+== HoleProbe 4000 20000
+after 10 R of calls: kept 208584, the twin's 29000; last call with work 1605 of 10000; fp 6592920
+== HoleProbe 20000 20000
+after 10 R of calls: kept 152272, the twin's 113608; last call with work 1605 of 10000; fp 10849144
+== TwoStretch
+fresh kept 704; emptied kept - fresh kept = 18000
+== TwoStretch after
+fresh kept 704; emptied kept - fresh kept = 22352
+== PassRounds
+20000 keys of 100 bytes (about 2320 kB live); to rest: 5 calls of maintain(1000) wrote 2189688 bytes; stream kept 5364024
+one put of 1 byte (its record 648 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 5364672
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 5364760
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 5364848
+100000 keys of 200 bytes (about 21600 kB live); to rest: 0 calls of maintain(100000) wrote 0 bytes; stream kept 44506896
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 44506984
+one put of 1 byte (its record 104 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 44507088
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 44507176
+one put of 1 byte (its record 88 bytes), then to rest: 0 calls wrote 0 bytes; stream kept 44507264
+
+== exact, M2': the unit tests -c '.*Reclaim.*' at k 1.5 and 2 (the same four as in exact.txt)
+bergdb.core.Reclaim$Tester ...................FAILED! bergdb.core.Reclaim.Tester.testMaintainBeginsWithEndKey
+bergdb.core.ReclaimMaintainTester ...FAILED! bergdb.core.ReclaimMaintainTester.testLiveDatabaseQuiet
+bergdb.core.ReclaimRoomTester FAILED! bergdb.core.ReclaimRoomTester.testTakeWithinTheSetRoom
+bergdb.dev.NanotestForBergDB FAILED! bergdb.dev.NanotestForBergDB.databasesStopped
+FAILURE, total: 56, failed: 4. Time: 34.9 s.
+bergdb.core.Reclaim$Tester ...................FAILED! bergdb.core.Reclaim.Tester.testMaintainBeginsWithEndKey
+bergdb.core.ReclaimMaintainTester ...FAILED! bergdb.core.ReclaimMaintainTester.testLiveDatabaseQuiet
+bergdb.core.ReclaimRoomTester FAILED! bergdb.core.ReclaimRoomTester.testTakeWithinTheSetRoom
+bergdb.dev.NanotestForBergDB FAILED! bergdb.dev.NanotestForBergDB.databasesStopped
+FAILURE, total: 56, failed: 4. Time: 33.8 s.

@@ -1,0 +1,42 @@
+bergdb 028-75: LiveProbe on main (16c64d9a), 2026-11-28: every phase ends with a pass that the
+calls begin (Reclaim.passDue). args: keys valueBytes budget startupDistance; the row is the table's
+last done one. Bytes only.
+
+== LiveProbe 20000 100 1000 1000000
+20000x100 sd 1000000 filled, to rest: kept before 5188608, calls 13 wrote 6590200, kept 4400512, live 2959920; row pStart 7378296 pCut 7378296 rewritten 4036291 kvCount 20004 pEnd-pCut 4091776 pSafe-pCut 4388248 cut true
+one put of a byte: kept before 4400512, calls 10 wrote 4402392, kept 4348776, live 2959920; row pStart 11833080 pCut 11833080 rewritten 4013308 kvCount 20005 pEnd-pCut 4049168 pSafe-pCut 4340176 cut true
+overwrites of 0.1 of the keys (kept after them 4773736): kept before 4348776, calls 11 wrote 4890768, kept 4492320, live 2959920; row pStart 17005264 pCut 17005264 rewritten 4107708 kvCount 20005 pEnd-pCut 4177808 pSafe-pCut 4482104 cut true
+overwrites of 0.3 of the keys (kept after them 5878928): kept before 4492320, calls 10 wrote 5204216, kept 4657600, live 2959920; row pStart 23430808 pCut 23430808 rewritten 4228796 kvCount 20005 pEnd-pCut 4347936 pSafe-pCut 4648600 cut true
+overwrites of 1.0 of the keys (kept after them 12999192): kept before 4657600, calls 12 wrote 5995712, kept 4604704, live 2959920; row pStart 37821008 pCut 37821008 rewritten 4251484 kvCount 20005 pEnd-pCut 4270184 pSafe-pCut 4594824 cut true
+deletes of 90 % (kept after them 7452872): kept before 4604704, calls 5 wrote 1522648, kept 437488, live 296000; row pStart 46359040 pCut 46359040 rewritten 407356 kvCount 2005 pEnd-pCut 317640 pSafe-pCut 433824 cut true
+deletes of all but 50 (kept after them 535976): kept before 437488, calls 3 wrote 306104, kept 127864, live 7400; row pStart 47073256 pCut 47073256 rewritten 24228 kvCount 55 pEnd-pCut 520 pSafe-pCut 36296 cut true
+
+== LiveProbe 100000 200 100000 1000000, 20000 1000 1000 1000000, 200000 20 10000 1000000, 20000 100 1000 50000000
+100000x200 sd 1000000 filled, to rest: kept before 44506896, calls 5 wrote 33976936, kept 31948984, live 24799920; row pStart 48542080 pCut 48542080 rewritten 29883459 kvCount 100004 pEnd-pCut 31748648 pSafe-pCut 31942520 cut true
+one put of a byte: kept before 31948984, calls 3 wrote 31903960, kept 31642472, live 24799920; row pStart 80753232 pCut 80753232 rewritten 29584236 kvCount 100005 pEnd-pCut 31441808 pSafe-pCut 31635600 cut true
+overwrites of 0.1 of the keys (kept after them 37787192): kept before 31642472, calls 3 wrote 32832120, kept 32072128, live 24799920; row pStart 119300416 pCut 119300416 rewritten 29887260 kvCount 100005 pEnd-pCut 31860008 pSafe-pCut 32066024 cut true
+overwrites of 0.3 of the keys (kept after them 53556456): kept before 32072128, calls 5 wrote 57559416, kept 31749528, live 24799920; row pStart 198666760 pCut 198666760 rewritten 29641532 kvCount 100005 pEnd-pCut 31549600 pSafe-pCut 31742576 cut true
+overwrites of 1.0 of the keys (kept after them 135291296): kept before 31749528, calls 5 wrote 38040712, kept 32743704, live 24799920; row pStart 339255064 pCut 339255064 rewritten 30543868 kvCount 100005 pEnd-pCut 32522784 pSafe-pCut 32738032 cut true
+deletes of 90 % (kept after them 53476104): kept before 32743704, calls 5 wrote 5960968, kept 3174928, live 2480000; row pStart 395517208 pCut 395517208 rewritten 2979692 kvCount 10005 pEnd-pCut 2992760 pSafe-pCut 3170168 cut true
+deletes of all but 50 (kept after them 4048760): kept before 3174928, calls 3 wrote 738192, kept 116408, live 12400; row pStart 400187752 pCut 400187752 rewritten 22332 kvCount 55 pEnd-pCut 82024 pSafe-pCut 103904 cut true
+20000x1000 sd 1000000 filled, to rest: kept before 29219152, calls 41 wrote 27290264, kept 23141160, live 20959920; row pStart 35370528 pCut 35370528 rewritten 22141155 kvCount 20004 pEnd-pCut 23055928 pSafe-pCut 23135992 cut true
+one put of a byte: kept before 23141160, calls 35 wrote 23110424, kept 23055920, live 20959920; row pStart 58566848 pCut 58566848 rewritten 22094668 kvCount 20005 pEnd-pCut 22967992 pSafe-pCut 23050360 cut true
+overwrites of 0.1 of the keys (kept after them 25597568): kept before 23055920, calls 35 wrote 23424392, kept 23190016, live 20959920; row pStart 84398792 pCut 84398792 rewritten 22199852 kvCount 20005 pEnd-pCut 23107352 pSafe-pCut 23185832 cut true
+overwrites of 0.3 of the keys (kept after them 32930600): kept before 23190016, calls 58 wrote 39640296, kept 23124496, live 20959920; row pStart 133845192 pCut 133845192 rewritten 22168860 kvCount 20005 pEnd-pCut 23041336 pSafe-pCut 23119960 cut true
+overwrites of 1.0 of the keys (kept after them 62551824): kept before 23124496, calls 39 wrote 26220352, kept 23334272, live 20959920; row pStart 199283096 pCut 199283096 rewritten 22312572 kvCount 20005 pEnd-pCut 23240568 pSafe-pCut 23329176 cut true
+deletes of 90 % (kept after them 25112288): kept before 23334272, calls 7 wrote 3687176, kept 2640424, live 2096000; row pStart 225442136 pCut 225442136 rewritten 2226204 kvCount 2005 pEnd-pCut 2547640 pSafe-pCut 2624944 cut true
+deletes of all but 50 (kept after them 2741064): kept before 2640424, calls 3 wrote 259272, kept 84696, live 52400; row pStart 228357776 pCut 228357776 rewritten 63228 kvCount 55 pEnd-pCut 53952 pSafe-pCut 77808 cut true
+200000x20 sd 1000000 filled, to rest: kept before 42723928, calls 9 wrote 30627112, kept 26085728, live 13599920; row pStart 49291008 pCut 49291008 rewritten 23487635 kvCount 200004 pEnd-pCut 25619632 pSafe-pCut 26073136 cut true
+one put of a byte: kept before 26085728, calls 8 wrote 26175520, kept 25640296, live 13599920; row pStart 75912624 pCut 75912624 rewritten 22996828 kvCount 200005 pEnd-pCut 25201344 pSafe-pCut 25627632 cut true
+overwrites of 0.1 of the keys (kept after them 34986728): kept before 25640296, calls 8 wrote 27656384, kept 26454480, live 13599920; row pStart 112101256 pCut 112101256 rewritten 23626636 kvCount 200005 pEnd-pCut 25987432 pSafe-pCut 26439448 cut true
+overwrites of 0.3 of the keys (kept after them 60843328): kept before 26454480, calls 7 wrote 28418944, kept 27601720, live 13599920; row pStart 173761808 pCut 173761808 rewritten 24822812 kvCount 200005 pEnd-pCut 27131104 pSafe-pCut 27589824 cut true
+overwrites of 1.0 of the keys (kept after them 133482688): kept before 27601720, calls 11 wrote 44207776, kept 26261104, live 13599920; row pStart 390375464 pCut 390375464 rewritten 23657804 kvCount 200005 pEnd-pCut 25803176 pSafe-pCut 26246400 cut true
+deletes of 90 % (kept after them 70240264): kept before 26261104, calls 5 wrote 3584752, kept 2584936, live 1360000; row pStart 461615544 pCut 461615544 rewritten 2352396 kvCount 20005 pEnd-pCut 2135472 pSafe-pCut 2578960 cut true
+deletes of all but 50 (kept after them 5683176): kept before 2584936, calls 3 wrote 702416, kept 147464, live 3400; row pStart 467853672 pCut 467853672 rewritten 18996 kvCount 55 pEnd-pCut 536 pSafe-pCut 23448 cut true
+20000x100 sd 50000000 filled, to rest: kept before 3100080, calls 9 wrote 5672416, kept 4475888, live 2959920; row pStart 4296608 pCut 4296608 rewritten 4063939 kvCount 20003 pEnd-pCut 3251568 pSafe-pCut 4439448 cut true
+one put of a byte: kept before 4475888, calls 8 wrote 4200944, kept 4198392, live 2959920; row pStart 8775168 pCut 8775168 rewritten 3984332 kvCount 20005 pEnd-pCut 3142208 pSafe-pCut 4186968 cut true
+overwrites of 0.1 of the keys (kept after them 4518400): kept before 4198392, calls 8 wrote 4757544, kept 4354696, live 2959920; row pStart 13696416 pCut 13696416 rewritten 4014012 kvCount 20005 pEnd-pCut 3115784 pSafe-pCut 4274848 cut true
+overwrites of 0.3 of the keys (kept after them 5281016): kept before 4354696, calls 8 wrote 5219112, kept 4523808, live 2959920; row pStart 19672736 pCut 19672736 rewritten 4151324 kvCount 20005 pEnd-pCut 3116968 pSafe-pCut 4431752 cut true
+overwrites of 1.0 of the keys (kept after them 7682552): kept before 4523808, calls 9 wrote 6316616, kept 4731808, live 2959920; row pStart 28940096 pCut 28940096 rewritten 4219260 kvCount 20005 pEnd-pCut 3236744 pSafe-pCut 4640056 cut true
+deletes of 90 % (kept after them 5677488): kept before 4731808, calls 5 wrote 2355888, kept 724200, live 296000; row pStart 36249272 pCut 36249272 rewritten 418028 kvCount 2005 pEnd-pCut 382008 pSafe-pCut 683032 cut true
+deletes of all but 50 (kept after them 821168): kept before 724200, calls 3 wrote 330672, kept 152464, live 7400; row pStart 37248648 pCut 37248648 rewritten 24452 kvCount 55 pEnd-pCut 616 pSafe-pCut 28616 cut true
