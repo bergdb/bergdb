@@ -70,9 +70,9 @@ is a commit: since 031-06 its record carries reclaim's maintenance, and
 it decides a cut when one is due. The app had moved its test clock by up
 to R/3 at the round's start, so the cleanup's next commit found a done
 iteration older than the retain duration and cut: the time moved with no
-commit of the application's, between its read and `close()`. `IndexBuilderImp`'s build steps
-commit the same way (seed 105's FAIL, a restart during a build; the app's
-fix of `04f69f6d`).
+commit of the application's, between its read and `close()`.
+`IndexBuilderImp`'s build steps commit the same way (seed 105's FAIL, a
+restart during a build; the app's fix of `04f69f6d`).
 
 **The start moves nothing.** `Reclaim.initFromDb` takes the first
 available time from the row marked cut in the table that the deciding
@@ -114,11 +114,12 @@ the time, or on a start resuming them.
   resumed a build or followed a deletion since the last restart. A
   removal that a start resumed can run past the next restart too (it
   ends only when its marker is deleted; the Pub API does not tell when),
-  and its commit at that start could cut: e3 then failed wrongly. Since
-  028-83 a deletion allows a later time at every later restart
-  (`deletedOnce`); an earlier time is a FAIL at every restart, and the
-  time after `close()` must equal the time before the start's jobs, as
-  `CleanupCutProbe` checks.
+  and its commit at that start can cut: e3 would then fail wrongly (not
+  seen in the runs). Since 028-83 a deletion allows a later time at
+  every later restart (`deletedOnce`); an earlier time is a FAIL at
+  every restart. That the start itself gives the time that `close()`
+  left, before any job resumes, is what `CleanupCutProbe` checks, which
+  the Pub API alone cannot.
 
 
 2. UA-9: the handover's wait parks with the flag cleared
