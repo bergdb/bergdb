@@ -115,9 +115,25 @@ against 64,624 slots in the night of 2026-11-28 (margin 1.87).
 
 ### 6. Gates
 
-On the branch's commit of this entry, rebased onto 67d12ae3:
-`java/before-commit.sh` and `java/stress/count-gates.sh` twice (the
-lines in the log).
+On the branch rebased onto a5541854 (028-86 on `main`), the code as it
+lands (only this section added after):
+
+    BEFORE COMMIT OK (83 s)
+    COUNT GATES OK
+    COUNT GATES OK
+
+`count-gates.sh` took 128 and 149 s; G5's ST6 in its two runs:
+
+    G5 ST6 cache table slots over the larger of 2.0 times the twin's and the tables' floor 65536 (58832 / 128) value 0.898 limit 1.000 margin 1.11 PASS
+    G5 ST6 cache table slots over the larger of 2.0 times the twin's and the tables' floor 65536 (58560 / 128) value 0.894 limit 1.000 margin 1.12 PASS
+
+with 419 and 436 maps without a table, 0 slots above 16 (the second
+just outside the 94 runs' range of section 3); G4's ST6 64,528 and
+64,608 slots, margin 1.87.
+
+Before, on 67d12ae3, `count-gates.sh` failed twice on G4's M5 (34 /
+13 against 2), night.sh's failure that 028-86 explained and that its
+limit, on `main` since a5541854, passes; ST6 passed in both.
 
 
 Log
@@ -126,4 +142,5 @@ Log
 2026-11-28. Registered by lead-1127 from 028-86's finding; taken by an
 agent of lead-1127 (Investigate).
 
-2026-11-28. Done by that agent: sections 1 to 6.
+2026-11-28. Done by that agent: sections 1 to 6; the gates on the
+branch rebased onto a5541854.
