@@ -115,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-87](87-g5-st6-slots-vary.md) | Investigate | G5's ST6 varies by run with eviction's timing; its pass does not | none | done | 2026-11-28 |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule on `main` | decided | done | 2026-11-28 |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) on `main` | decided | done | 2026-11-28 |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) on `main` | decided | done | 2026-11-28 |

@@ -707,17 +707,19 @@ public class CountGates {
      *
      * <p>The count varies by run, the pass does not (bergdb 028-87). The capacity
      * controller's eviction during the fill (the resident bytes over the default budget of
-     * 200 MB) runs in batches that end after 2 ms (Eviction.BATCH_NANOS), or, on the eviction
-     * thread, when the writer waits for the write lock; so which handles leave a map when,
-     * and so which maps are left with no table (0 slots, a shrink to no entries) rather than
-     * an empty one of 16, depends on the timing: G5's emptied database 58,608 to 59,008
-     * slots in 50 runs on 2026-11-28 (408 to 433 maps without a table), 63,072 in each run
-     * with that eviction off (-Devictbudget=10^12). A table is over Table.MIN_CAPACITY slots
-     * only while its map holds at least 1/8 of them (shrinkIfSparse after every removal), so
-     * the slots are at most the floor plus 8 times the handles; ST6 can fail only with fewer
-     * maps without a table than half the handles, under 9 where G5's M11 holds them to 18,
-     * against at least 408. Printed before the gate: the maps without a table and the slots
-     * above MIN_CAPACITY.</p>
+     * 200 MB) runs in batches that end after 2 ms (Eviction.BATCH_NANOS), or, on the
+     * eviction thread, when the writer waits for the write lock; so which handles leave a
+     * map when, and so which maps are left with no table (0 slots, a shrink to no entries)
+     * rather than an empty one of 16, depends on the timing: G5's emptied database 58,576
+     * to 59,008 slots in 72 runs on 2026-11-28 (408 to 435 maps without a table), 63,072
+     * in each run with that eviction off (-Devictbudget=10^12; 154 maps without a table).
+     * A table is over Table.MIN_CAPACITY slots only while its map holds at least 1/8 of
+     * them (shrinkIfSparse after every removal), but for HashMap's rare doubling of a
+     * table at capacity 16 (Table.capacity), so the slots are at most the floor plus 8
+     * times the handles and those doublings' slots; without one, ST6 can fail only with
+     * fewer maps without a table than half the handles, under 9 where G5's M11 holds them
+     * to 18, against at least 408 (154 with that eviction off). Printed before the gate:
+     * the maps without a table and the slots above MIN_CAPACITY (0 in every run).</p>
      */
     void slotGate(String gate, G4M e, G4M t) {
         long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
