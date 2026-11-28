@@ -1,7 +1,7 @@
 028-83. Fix: maintain() spins with the interrupt flag set; a write at a stop throws StreamIoException; e3 seed 101's restart changed the first available time
 ==========================================================================================================================================================
 
-Status: open (built on the branch `028-83`, gates below; to land).
+Status: open (built and gated on the branch `028-83`, to land).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -257,7 +257,32 @@ or within the floor).
 Gates
 -----
 
-To be run.
+On F53 beside other sessions' runs (a load of 15 to 25), 2026-11-28, on
+the branch rebased onto `main` at `16c64d9a` (028-81 and 028-82), its
+five commits before this section:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (120 s). Before the rebase,
+  on the first form of the fix, it failed at
+  `StorageFaultTester.testStopWhileReading` (section 3), then passed
+  (128 s).
+* `java/stress/level3.sh`: LEVEL 3 OK; InterruptStress: "60 s, 8010931
+  calls, 84232 of them with an interrupt, the flag kept by all".
+* `java/stress/apps.sh quick`: APPS OK (12:20 to 12:26).
+* The apps of 031-08 (`java/stress/apps/e1` to `e8`, compiled against
+  the branch's release jar), 64 runs in two lanes from 12:26 to 12:52,
+  all OK: e3 seed 101 twenty times at its soak size (800 rounds, 54
+  restarts each), e3 seeds 102 to 110 (800 rounds) and 201 and 202
+  (2,000); e8 seeds 601 to 612 with `-De8.cache=4 -De8.value=3000` (80
+  rounds, 960 stops) and 201 to 204 (60 rounds); e1 seeds 101 to 110
+  (3,000 keys, 3,000 rounds) and 201 (10,000, 6,000); e5 seeds 101 to 104
+  (60 s, with their writers and readers) and 201 and 202 (120 s). In
+  e8's 960 stops of seeds 601 to 612, where 031-08 met 391 calls that
+  threw a StreamIoException, 5,745 calls were refused with
+  IllegalDbStateException, nothing of them there after the restart, and
+  15 threw another DbException, none of them there after the restart:
+  each stack that e8 printed is a transfer's read in its rw() action
+  (`RwEnvironmentImp.get`), which `Database.stop()` lets throw a
+  StreamIoException; none came from `Db.warmup` or a writer.
 
 
 Log
@@ -272,3 +297,6 @@ entries committed between the app's read and `close()`; the start keeps
 the time), reproduced by `CleanupCutProbe`; the Javadoc and e3 changed.
 UA-9, UA-10 and UA-2 fixed with tests that fail before; UA-8 explained
 and stated.
+
+2026-11-28. Rebased onto `main` (028-81, 028-82); the gates passed
+(above). To land.
