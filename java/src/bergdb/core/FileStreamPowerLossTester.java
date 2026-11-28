@@ -1037,6 +1037,92 @@ public class FileStreamPowerLossTester {
         } finally { db.close(); }
     }
 
+    /**
+     * Bergdb 028-79, (F) and (G), 2026-11-28: a file database whose first stream file, after
+     * reclaim's cut, begins with a meta block whose every byte is the fill's at its offset or
+     * 0, as a start leaves it that took such a block in a record, on a storage that keeps a
+     * kill's zeros (FileStream's open leaves a run of zeros of up to 8 MB at the end of the
+     * last file out of the stream, so on files only after a longer run): the database's
+     * first byte and zeros, its first 4 bytes, the magic bytes, and zeros, and the fill after
+     * zeros, its first 2 bytes, 2 zeros and the template from there. Here the block is
+     * written over the first file's first block, the database's valid one, after the cut.
+     * The start passes over it, takes the next block, and every key reads as before; before,
+     * it refused the database (BadMagicBytes, or a VersioningStreamException for the magic
+     * bytes and zeros). Forces are no-ops, for the test's time.
+     */
+    @Nano("f")
+    public static void testFirstFileBeginsWithTheFillsBytes() throws Exception {
+        final long d = RecoverableStream.META_BLOCK_DISTANCE;
+        File dir = Files.createTempDirectory("bergdb-power-fill-bytes-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock();
+            clock.setTime(SEC);
+            Map<String, byte[]> model = new TreeMap<String, byte[]>();
+            Random random = new Random(2079);
+            long time = SEC;
+            FileStream stream = new FileStream(dir, new bergdb.stream.StreamContract.NoForceIo());
+            Db db = start(stream, clock);
+            long first;
+            try {
+                for (int i = 0; stream.getFirstPos() < 2 * d; i++) {
+                    Assert.assertTrue("no cut: " + stream.getFirstPos(), i < 5000);
+                    time += SEC / 10; clock.setTime(time);
+                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 12), value).build());
+                    model.put(key(i % 12), value);
+                }
+                // A block of the database's after the first: the clock nearly stops, so that
+                // reclaim's cut stays in the first file.
+                first = stream.getFirstPos();
+                for (int i = 0; stream.getLength() < first + d + 5000; i++) {
+                    Assert.assertTrue("no block after " + first, i < 5000);
+                    time += SEC / 1000; clock.setTime(time);
+                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 12), value).build());
+                    model.put(key(i % 12), value);
+                }
+                db.sync(SyncLevel.ORDINARY);
+                Assert.assertEquals("the cut moved", first, stream.getFirstPos());
+            } finally { db.close(); }
+            Assert.assertEquals("a file at a meta block", 0, first % d);
+            final String firstFile = String.format("%014d.bergdb", first / 100000);
+            final Map<String, byte[]> files = streamFiles(dir);
+            Assert.assertEquals(firstFile, files.keySet().iterator().next());
+            final byte[] own = Arrays.copyOf(files.get(firstFile), 128);
+            Assert.assertTrue("the database's block", own[0] == 'b' && own[127] == 10);
+            final byte[] fillAfterZeros = new byte[128];
+            System.arraycopy(own, 0, fillAfterZeros, 0, 2);
+            System.arraycopy(own, 4, fillAfterZeros, 4, 4);
+            final byte[][] blocks = {Arrays.copyOf(Arrays.copyOf(own, 1), 128),
+                Arrays.copyOf(Arrays.copyOf(own, 4), 128), fillAfterZeros};
+            final String[] whats = {"the first byte and zeros", "the magic bytes and zeros",
+                "the fill after zeros"};
+            for (int v = 0; v < blocks.length; v++) {
+                File copy = Files.createTempDirectory("bergdb-power-fill-bytes-copy-").toFile();
+                try {
+                    for (Map.Entry<String, byte[]> e : files.entrySet()) {
+                        byte[] bytes = e.getValue().clone();
+                        if (e.getKey().equals(firstFile)) {
+                            System.arraycopy(blocks[v], 0, bytes, 0, 128);
+                        }
+                        Files.write(new File(copy, e.getKey()).toPath(), bytes);
+                    }
+                    time += SEC; clock.setTime(time);
+                    Db started;
+                    try {
+                        started = start(new FileStream(copy,
+                                new bergdb.stream.StreamContract.NoForceIo()), clock);
+                    } catch (RuntimeException e) {
+                        throw new AssertionError(whats[v] + ": the start refused: " + e, e);
+                    }
+                    try {
+                        checkModel(started, model, whats[v]);
+                    } finally { started.close(); }
+                } finally { remove(copy); }
+            }
+        } finally { remove(dir); }
+    }
+
     private static void checkModel(Db db, Map<String, byte[]> model, String what) {
         for (Map.Entry<String, byte[]> e : model.entrySet()) {
             Assert.assertTrue(what + ": " + e.getKey(), Arrays.equals(e.getValue(),

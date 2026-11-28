@@ -3,8 +3,8 @@
 
 Status: fix (1) and the review's two shapes on `main` (2026-11-28:
 `2d4d178a`, `b9624ea1`, `01232710`); E, the second review's residual,
-fixed on the branch `028-79-e` (2026-11-28) and gated, to land; (F)
-and (G), found with it, open (Review).
+on `main` (2026-11-28); (F) and (G), found with it, fixed on the branch
+`028-79-fg` (2026-11-28), to land (Review).
 Kind: Fix. Frans: none; the smaller fix went ahead by default at 10:30
 on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
@@ -367,8 +367,8 @@ again with 028-85):
   `sweep.sh`, 0 different in each of its 63 lines.
 * `java/stress/level3.sh`: LEVEL 3 OK.
 
-Found with E's fix, not fixed (2026-11-28; on `main` before the fix as
-after it):
+Found with E's fix (2026-11-28; on `main` before E's fix as after it),
+fixed on 2026-11-28 (below):
 
 * **(F)** (A)'s block in a whole aborted record, with zeros after it
   past the record's end and other bytes after them, is refused with P
@@ -385,6 +385,73 @@ after it):
   way. Shown on `MemoryStream`, which keeps such zeros; `FileStream`'s
   open leaves a run of zeros of up to 8 MB at the end of the last file
   out of the stream (not tried there).
+* (B)'s block, the fill's completion of a block cut after zeros, which
+  the walk takes since the first review, refuses a later start from it
+  in the same way (`BadMagicBytes`), on `MemoryStream`: 6 of 6 shapes,
+  1 to 3 bytes with zeros to 2 to 4, in a record that the end cuts.
+
+**F and G fixed** (2026-11-28, by an agent of lead-1127, on the branch
+`028-79-fg`, as the lead decided: the root of both, not the walk's P):
+`RecoverableStream.readFirstMetaBlock` passes over a block whose every
+byte is the fill's at its offset or 0 (`fillOrZeros`), as it passes over
+the fill and a block of zeros since 2026-11-28 (week.sh's apps-kill-cc),
+and takes the first valid block after it; so does its read of the first
+8 bytes of a stream shorter than its first block. The blocks it passes
+over now: zeros, the fill, (A)'s block and (B)'s; any other bytes of the
+magic and the version are refused as before, among them a block of
+2026.6 (version 155) and another version's. Why it is sound:
+
+* **A start needs nothing in such a block.** It holds at most the magic
+  bytes and the version, and zeros: no position, no database ID, no last
+  transaction, no time; and it is not valid (its last byte 0). The fill,
+  passed over before, holds the same. Of the first block a start takes
+  its ID and its own position only, and the block taken is still the
+  first valid one, which must hold its own position (`isOwn`); its ID is
+  the stream's, compared with `created.txt`'s (028-81) as before.
+* **No stream that a cut made begin inside a record is taken for it.**
+  The blocks after the first are read as before (`readOwnMetaBlock`
+  passes over every block that is not this database's valid one), and
+  the last valid block must name a record at or after the first position
+  (`checkLastTransSpos`), else the start refuses, "names the last
+  transaction at ..., before the stream's first position": with such a
+  block first as with the fill first. A probe that cut a stream at such
+  a block inside an aborted record that the last block still named met
+  that refusal, as it should.
+* **A file before a gap whose first block is such a block is refused as
+  before**: `leftoverProblem` is unchanged ("does not begin as a meta
+  block", or "is of version 0"), with 028-66's way out, as for the fill
+  (028-76's decided case (a)).
+* **F needs no change of the walk's P**: the cut at P keeps the block,
+  and the start after reclaim's cut that makes its file the first passes
+  over it. The walk's rule (A) is unchanged: such a block followed by
+  other bytes in a record is refused, as it is no completion of the
+  database's; P at a block after the last valid one that is not zeros
+  or the magic and the version (`readableAsFirst`, badTail()) is kept,
+  so that a cut at P leaves no such block for a file before a gap.
+* On `FileStream`, F and G need a run of zeros of more than 8 MB: the
+  open leaves a shorter one at the end of the last file out, and the
+  start then completes the block as the fill, which a later start passes
+  over. (B) needs zeros that the storage keeps.
+
+Tests, each failing before (2026-11-28):
+
+* `RecoverableStream.testFirstBlockOfTheFillsBytesPassedOver`
+  (`MemoryStream`): (F) for 1 to 4 bytes, refused with P at the aborted
+  record's end, cut at P; (G) for 1 to 4 bytes, taken; (B) for its 6
+  shapes, taken; each then started with records past three more blocks
+  and cut at the block's position, as reclaim's cut leaves it: it
+  starts, its first block the next one; and (F)'s block as a piece
+  before a gap, refused by `leftoverProblem`. Before: "F, 1 bytes and
+  zeros past the aborted record's end: the start after the cut at
+  1000000: bergdb.storage.BadMagicBytes: Expected magic bytes: 62657267,
+  got: 62000000".
+* `FileStreamPowerLossTester.testFirstFileBeginsWithTheFillsBytes` (f):
+  a file database after reclaim's cut, its first file's first block
+  written over with the database's first byte and zeros, its first 4
+  bytes and zeros, and the fill after zeros (2 bytes, 2 zeros, the
+  template): it starts, and every key reads as before. Before: "the
+  first byte and zeros: the start refused: ... Invalid magic bytes in
+  stream".
 
 
 Log
@@ -408,3 +475,7 @@ open, its fix in work by an agent of lead-1127 (branch `028-79-e`).
 
 2026-11-28. The second review's E fixed by an agent of lead-1127 on the
 branch `028-79-e`; the gates passed; (F) and (G) found (Review).
+
+2026-11-28. (F) and (G) fixed by an agent of lead-1127 on the branch
+`028-79-fg`: a first block whose every byte is the fill's or 0 is passed
+over (Review).

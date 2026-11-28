@@ -111,10 +111,16 @@ comparison with `created.txt` on, a refusal has written nothing:
    position (028-67, C3; Frans, 2026-11-27; blocks that are not valid
    before it passed over since 2026-11-28, as recovery's completion of a
    block that a kill cut or a block of zeros leaves one at the front of
-   a cut stream). Each block read up to it must have the magic and the
-   version 156 (155 until 028-67, whose streams, of 2026.6 and of builds
-   of 2026.7 before 028-67, are refused with a message that names them;
-   154 until 028-15, 2026.5's and before), or be zeros: else a
+   a cut stream; since 028-79's F and G, 2026-11-28, also a block whose
+   every byte is the fill's at its offset or 0, such as the database's
+   first 1 to 4 bytes and zeros or the fill after zeros, which the walk
+   takes where it is the database's (1.3), and which a later start
+   refused when a cut had made it the first, `BadMagicBytes` or a
+   `VersioningStreamException`). Each block read up to it must have the
+   magic and the version 156 (155 until 028-67, whose streams, of 2026.6
+   and of builds of 2026.7 before 028-67, are refused with a message that
+   names them; 154 until 028-15, 2026.5's and before), or be zeros or
+   such a block: else a
    `StreamFormatException` (SFE) that names the causes (020-28), or a
    `VersioningStreamException` (005-40); and the first valid one must
    hold its own position, else none is valid. After it, a block of 128
@@ -1009,3 +1015,7 @@ By an agent of lead-1127, on the branch `start-fixes`.
 the first bytes and zeros are read to the end of the record or of the
 stream, the blocks among them passed over, not only to the next block
 (1.3). By an agent of lead-1127, on the branch `028-79-e`.
+
+2026-11-28. 028-79, F and G: a first block whose every byte is the
+fill's or 0 is passed over (1.2, step 3). By an agent of lead-1127, on
+the branch `028-79-fg`.

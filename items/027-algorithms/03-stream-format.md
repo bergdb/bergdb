@@ -378,7 +378,17 @@ before it are passed over (2026-11-28, week.sh's apps-kill-cc on
 at or in it (005-27), or a block of zeros inside a record that recovery
 aborted (028-60), stays in the stream, and a cut that deletes the files
 before it makes it the stream's first; from 028-67 until then, the start
-refused such a stream, which is sound. A cut stream holds a valid block
+refused such a stream, which is sound. So is, since 028-79's F and G
+(2026-11-28), a block whose every byte is the fill's at its offset or 0:
+the database's first 1 to 4 bytes and zeros, as the fill completes a
+block cut after them with zeros past byte 8, or as a kill 1 to 4 bytes
+into a new file leaves it, and the fill after zeros (028-79, (B)). Such
+a block holds no position, id or transaction, as the fill holds none;
+the walk takes it where it is the database's (section 7), and until
+then a start whose first block it was refused the sound stream
+(`BadMagicBytes`, or a `VersioningStreamException` for the magic and
+zeros). As the first block of a file before a gap it is refused, as the
+fill is (028-66; 028-76, case (a)). A cut stream holds a valid block
 of its own after its first position, written before the cut deleted
 anything: the cut is not after the record that the last valid block
 names (019-40), and `FileStream` deletes only after the stream is
@@ -448,7 +458,9 @@ recovery copies the last valid block whole, reserved bytes included
   larger number as a newer BergDB's. It writes nothing before these checks
   (005-40). Since 028-67 these refusals come from the stream's first
   block (`readFirstMetaBlock`, which also reads the first 8 bytes of a
-  stream shorter than a block); after it, a block of other bytes or of
+  stream shorter than a block), but for a block whose every byte is the
+  fill's or 0, passed over since 028-79's F and G (section 6); after it,
+  a block of other bytes or of
   another version is not valid and passed over (`readOwnMetaBlock`), as
   another file's bytes at the tail can put there, and the walk of the
   records refuses such a tail where it matters (section 7).
@@ -2360,3 +2372,7 @@ bytes (section 7). By an agent of lead-1127, on the branch `start-fixes`.
 2026-11-28. 028-84: the copy mark's readers include the Core's
 `Db.getTrans()` (031-08, UA-6). By an agent of lead-1127, on the branch
 `docs-1128`.
+
+2026-11-28. 028-79, F and G: a first block whose every byte is the
+fill's or 0 is passed over (sections 6 and 7). By an agent of lead-1127,
+on the branch `028-79-fg`.

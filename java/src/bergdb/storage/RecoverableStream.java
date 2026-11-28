@@ -837,8 +837,12 @@ public class RecoverableStream {
 
     /**
      * Whether the meta block at 'pos', as far as the stream of 'length' bytes holds it, is
-     * one that readFirstMetaBlock() passes over or takes: zeros, or the magic bytes and the
-     * version as far as they go (bergdb 028-79).
+     * zeros, or the magic bytes and the version as far as they go (bergdb 028-79): until
+     * 028-79's F and G (2026-11-28), the blocks that readFirstMetaBlock() passes over or
+     * takes. P right after another block, such as one of the database's first 1 to 4 bytes
+     * and zeros, is put at the block (badTail()), so that the cut at P leaves none; kept
+     * since readFirstMetaBlock() passes over such a block, as a file before a gap whose
+     * first block is one is refused (leftoverProblem()).
      */
     private boolean readableAsFirst(long pos, long length) {
         final byte[] bytes = new byte[(int) Math.min(META_BLOCK_SIZE, length - pos)];
@@ -1555,6 +1559,21 @@ public class RecoverableStream {
      * from 0 has its first block valid unless its creation did not complete, which the
      * start finds before (isIncompleteCreation()), or a storage damaged it.</p>
      *
+     * <p>Since 2026-11-28 (bergdb 028-79, F and G) so is a block whose every byte is the
+     * fill's at its offset or 0 (fillOrZeros()): the database's first 1 to 4 bytes and zeros,
+     * as recovery's fill completes a block that the end of the stream cut after them with
+     * zeros past byte 8, or as a kill 1 to 4 bytes into a new file leaves it; and the fill's
+     * completion of a block cut after zeros that the storage kept, its first bytes, zeros and
+     * the template's bytes from the end of the zeros (bergdb 028-79, (B)). Such a block holds
+     * nothing that a start reads, no position, no ID and no transaction, as the fill holds
+     * none, and it is not valid; the block taken is still the first valid one, which must
+     * hold its own position, and its ID is the stream's. The walk of the tail takes such a
+     * block where it is the database's (walkTail(), foreignBlock()), and it stays in the
+     * stream: until then it threw here, BadMagicBytes, or a VersioningStreamException for the
+     * magic bytes and zeros, and the start after the cut that made its file the first refused
+     * a sound stream. As the first block of a file before a gap it is refused as before
+     * (leftoverProblem(); bergdb 028-76, decided case (a)).</p>
+     *
      * @throws StreamIoException
      * @throws BadMagicBytes
      * @throws VersioningStreamException
@@ -1571,13 +1590,18 @@ public class RecoverableStream {
             if (aos.getLength() - pos >= 8) {
                 byte[] header = new byte[8];
                 readRaw(pos, header);
-                if (!isZeros(header)) {
+                if (!fillOrZeros(header)) {
                     checkBlockHeader(header);
                 }
             }
             return null;
         }
+        final byte[] bytes = new byte[META_BLOCK_SIZE];
         for (; pos + META_BLOCK_SIZE <= length; pos += META_BLOCK_DISTANCE) {
+            readRaw(pos, bytes);
+            if (fillOrZeros(bytes)) {
+                continue;       // Not valid: its last byte is 0 (bergdb 028-79, F and G).
+            }
             final MetaBlock block = readMetaBlock(aos, pos);
             if (block.isValid()) {
                 return block.isOwn(null) ? block : null;
@@ -1898,6 +1922,21 @@ public class RecoverableStream {
     private static boolean isZeros(byte[] bytes) {
         for (byte b : bytes) {
             if (b != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether every byte of 'bytes', a meta block's from its start, is the byte of
+     * MetaBlock.FILL_OUT_TEMPLATE at its offset (the magic bytes, the version, zeros) or 0
+     * (2026-11-28, bergdb 028-79, F and G): zeros, the fill, the database's first bytes and
+     * zeros, the fill after zeros. No such block is valid, as its last byte is 0.
+     */
+    private static boolean fillOrZeros(byte[] bytes) {
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] != 0 && bytes[i] != MetaBlock.FILL_OUT_TEMPLATE[i]) {
                 return false;
             }
         }
@@ -3417,6 +3456,121 @@ public class RecoverableStream {
                     }
                 }
             }
+        }
+
+        /**
+         * Bergdb 028-79, (F) and (G), 2026-11-28: a meta block whose every byte is the fill's
+         * at its offset or 0 is passed over where it is the first block of a stream that a
+         * cut makes begin there (readFirstMetaBlock()), as the fill and a block of zeros
+         * are: the database's first 1 to 4 bytes and zeros, (A)'s block, and the fill after
+         * zeros, (B)'s. (F) (A)'s block in an aborted record whose zeros reach past its end,
+         * other bytes after them: refused with P at the record's end, and the cut at P
+         * keeps the block. (G) (A)'s block with zeros after it to the end of the stream, in
+         * the record that the end cuts: taken. (B) the fill's completion of a block cut
+         * after zeros: taken. Then records past three more blocks, and the stream cut at
+         * the block's position, as reclaim's cut leaves it when the block begins a file: it
+         * starts, its first block the next one. Before, that start refused the stream,
+         * BadMagicBytes, or a VersioningStreamException for (A)'s block of 4 bytes. As the
+         * first block of a piece before a gap, (A)'s block is refused as before
+         * (leftoverProblem(); bergdb 028-76, decided case (a)).
+         */
+        @Nano
+        public static void testFirstBlockOfTheFillsBytesPassedOver() throws IOException {
+            final long x = 5 * META_BLOCK_DISTANCE;     // pretruncate() keeps pieces of 1 MB
+            final MemoryStream base = new MemoryStream();
+            final RecoverableStream r = new RecoverableStream(base, new MetaBlock());
+            while (base.getLength() < x - 20000) {
+                appendNamedRecord(r, 1000);
+            }
+            appendNamedRecord(r, 21000);        // over x
+            final long recordEnd = base.getLength();
+            Assert.assertTrue("the record ends after x", recordEnd > x + 1000);
+            while (base.getLength() < recordEnd + 20000) {
+                appendNamedRecord(r, 1000);
+            }
+            final byte[] own = new byte[META_BLOCK_SIZE];
+            base.read(x, own, 0, META_BLOCK_SIZE);
+            final byte[] id = Arrays.copyOfRange(own, 24, 40);
+            final byte[] other = new byte[9000];
+            new java.util.Random(83).nextBytes(other);
+
+            for (int k = 1; k <= 4; k++) {
+                // (F)
+                String what = "F, " + k + " bytes and zeros past the aborted record's end";
+                MemoryStream m = copyOf(base);
+                m.truncate(recordEnd + 3000 + other.length);
+                MemoryStream.TestAccess.write(m, Arrays.copyOf(own, k), x);
+                MemoryStream.TestAccess.write(m, new byte[(int) (recordEnd + 3000 - x - k)],
+                        x + k);
+                MemoryStream.TestAccess.write(m, other, recordEnd + 3000);
+                long p = -1;
+                try {
+                    new RecoverableStream(m, new MetaBlock()).recover();
+                } catch (BadTailException e) {
+                    p = e.getCutPos();
+                }
+                Assert.assertEquals(what + ": P", recordEnd, p);
+                m.truncate(p);
+                startAfterCutAt(m, x, what);
+                final MemoryStream piece = m;
+                final String left = leftoverProblem(x, META_BLOCK_DISTANCE,
+                        (pos, dest, offset, n) -> piece.read(pos, dest, offset, n), id);
+                Assert.assertTrue(what + ": as a piece before a gap", left != null
+                        && left.contains("its first meta block, at " + x));
+                // (G)
+                what = "G, " + k + " bytes and zeros to the end of the stream";
+                m = copyOf(base);
+                m.truncate(x + 1000);
+                MemoryStream.TestAccess.write(m, Arrays.copyOf(own, k), x);
+                MemoryStream.TestAccess.write(m, new byte[1000 - k], x + k);
+                new RecoverableStream(m, new MetaBlock()).recover();
+                startAfterCutAt(m, x, what);
+            }
+            for (int k = 1; k <= 3; k++) {
+                for (int j = k + 1; j <= 4; j++) {
+                    final String what = "B, " + k + " bytes and zeros to " + j;
+                    final MemoryStream m = copyOf(base);
+                    m.truncate(x + j);
+                    MemoryStream.TestAccess.write(m, new byte[j - k], x + k);
+                    new RecoverableStream(m, new MetaBlock()).recover();
+                    final byte[] block = new byte[META_BLOCK_SIZE];
+                    m.read(x, block, 0, META_BLOCK_SIZE);
+                    Assert.assertTrue(what + ": the fill after the zeros", block[k] == 0
+                            && block[4] == own[4] && block[META_BLOCK_SIZE - 1] == 0);
+                    startAfterCutAt(m, x, what);
+                }
+            }
+        }
+
+        /**
+         * Starts 'm', appends records past three more meta blocks after 'x', cuts a copy at
+         * 'x' and starts it; its first block must be the one after 'x'.
+         */
+        private static void startAfterCutAt(MemoryStream m, long x, String what)
+                throws IOException {
+            final RecoverableStream r = new RecoverableStream(m, new MetaBlock());
+            r.recover();
+            while (m.getLength() < x + 3 * META_BLOCK_DISTANCE + 5000) {
+                appendNamedRecord(r, 1000);
+            }
+            final MemoryStream cut = m.copy();
+            cut.pretruncate(x);
+            final RecoverableStream c = new RecoverableStream(cut, new MetaBlock());
+            try {
+                c.recover();
+            } catch (RuntimeException e) {
+                throw new AssertionError(what + ": the start after the cut at " + x + ": " + e,
+                        e);
+            }
+            Assert.assertEquals(what + ": the first block", x + META_BLOCK_DISTANCE,
+                    c.readFirstValidMetaBlock().getPos());
+        }
+
+        /** appendRecord(), the record named by the meta blocks after it, as NodeStream does. */
+        private static void appendNamedRecord(RecoverableStream r, int size) {
+            final long at = r.getNextSpos();
+            appendRecord(r, size);
+            r.getMetaBlock().setLastTransSpos(at);
         }
 
         private static void appendRecord(RecoverableStream r, int size) {
