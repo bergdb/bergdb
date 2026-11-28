@@ -1,8 +1,8 @@
 028-80. Fix: a creation left as zeros is not refused as a creation; the zero tail's bound rests on the default buffer
 =====================================================================================================================
 
-Status: built on the branch `start-fixes` (2026-11-28), to land; the
-gates below. Kind: Fix. Frans: none.
+Status: built and gated on the branch `start-fixes` (2026-11-28), to
+land. Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
 What: two findings of the review of the start path of 2026-11-28 (033,
@@ -123,8 +123,43 @@ Tests, each failing before the fix and passing after it (2026-11-28):
   file of 5,000,001 bytes (size class 20 MB) is three writes, 5, 5 and
   2 MB, and one force; before, one write of 12,000,000 bytes.
 
-The review's `CreationZerosProbe`, compiled against the branch's jar:
-gates below.
+* `PubTester.testCrashInCreation` expected a `StreamFormatException`
+  for a stream of 128 zero bytes, as 005-33 left such a stream an error:
+  with a crypto key, zeros could not be told from a wrong key. There is
+  no key since 028-69; the test expects `DatabaseNotCreatedException`,
+  and the stream unchanged.
+
+
+Gates
+-----
+
+On F53 beside other sessions' runs, 2026-11-28, on the branch: 028-80 on
+028-70 as it landed on `main`; `before-commit.sh` also with 028-70's
+follow-up (its review's three notes, the commit after 028-80's).
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (137 s; unit 1,763 tests,
+  f 96). On the change's first form it failed at
+  `PubTester.testCrashInCreation`'s zero bytes (above).
+* `java/stress/level3.sh`: LEVEL 3 OK (its power-loss stage: POWERLOSS
+  OK, 8 seeds, 488 cold recoveries).
+* 031-06's probes: `sweep.sh`, 0 different in each of its 63 lines;
+  `faults.sh`, bad 0 in each of its 42 lines.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* `java/stress/kill-restart.sh`: SELF-CHECK OK, LATE EXIT OK, KILL
+  RESTART OK: 1000 kills and 50 exits in 1099 s, seed 20261128.
+* The review's probes (033, `reviews/2026-11-28-start-probes`):
+  `CreationZerosProbe`, `DatabaseNotCreatedException` in all 25 images,
+  zeros only to 4,096 among them, no `StreamFormatException`, no file
+  changed. `StartChain 70000 70099 20 2 30 1 0`, no other bytes: 2,000
+  starts after 1,366 kills, 245 kills in a recovery's writes and 664
+  power losses in a cut's batch; 32 refusals of 028-76's decided case
+  (a), no failure. `StartChain 60000 60099 20 2 30 1 25`, other bytes
+  after a quarter of the kills: 2,000 starts; of 197 tails of other
+  bytes, 118 refused with a `BadTailException` and started after the cut
+  at P, 74 taken; 35 of the decided case, no failure, and in these 100
+  chains no later refusal of F2 (028-79). `StaleFirstBlockProbe`, as on
+  `main`: F2's refusals (028-79).
 
 
 Log
@@ -136,3 +171,7 @@ by an agent of lead-1127.
 2026-11-28. F3 and F4 built on the branch `start-fixes` by an agent of
 lead-1127 (on 028-70's branch): zeros only as an incomplete creation,
 and `FileStream`'s writes of at most 5 MB; 2026.6 shows F3.
+
+2026-11-28. The gates passed (above). Release 2026.6 refuses a
+creation left as zeros with a `StreamFormatException`, so F3 is in it,
+for 033.
