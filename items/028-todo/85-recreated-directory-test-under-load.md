@@ -1,7 +1,9 @@
 028-85. Fix: PubTesterJavadocNewUsers.testNewDatabaseWhereAStoppedOneWasDeleted fails under load
 ================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done (2026-11-28): the test deletes the directory after
+`close()`, as `stop()`'s Javadoc says; the window in a test of its own.
+Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
 What: `java/stress/level3.sh` failed once on 2026-11-28, under a load
@@ -60,3 +62,58 @@ Log
 
 2026-11-28. Registered by lead-1127 from `level3.sh`'s failure on the
 branch of 028-81 and 028-82.
+
+2026-11-28. Done by an agent of lead-1127 (branch `028-85`, on main's
+`d75dec96`).
+
+* The cause, shown: 021-24's window, its first case, not the cut. A
+  probe ran the test's steps with the old database on a `FileStream`
+  whose `FileStreamIo.open()` of a new stream file, after
+  `checkDirectory()` and before the file is made, sleeps a while (a
+  delay at the window's point). The old database's writer, still
+  writing the 1 MB after `stop()`, passes the check before its second
+  file, `00000000000002.bergdb` at 200000; the test deletes the
+  directory, and its start at the path, refused as in use, makes it
+  again; the old database then makes its file there, empty, and fails
+  at the check after. Once the old database has closed, the retried
+  start finds that empty file alone and throws the failure of
+  `level3.sh`: `StreamFormatException`, "Could not find *any* valid
+  meta block ... The stream begins at 200000 ... The stream's first
+  file in ... is 00000000000002.bergdb"; the directory holds
+  `00000000000002.bergdb` (0 bytes) and `bergdb.lock`. A cut cannot
+  meet a new database's file in this test: the new database starts
+  only after the old one has closed.
+* The documents: `Database.stop()` says to delete the directory only
+  after `close()` has returned, and states this outcome for a
+  replacement in the window ("leaves an empty stream file in the new
+  directory ... a start there is refused until the empty file is
+  removed"); `close()` waits for the close that `stop()` began. The
+  test deleted the directory right after `stop()` and expected the
+  start to be taken, which the documents do not promise. No product
+  finding: the code does what the Javadoc states.
+* Fix, in the test only, `PubTesterJavadocNewUsers`:
+  * `testNewDatabaseWhereAStoppedOneWasDeleted` follows `stop()`'s
+    Javadoc: it calls `close()`, which waits, before it deletes the
+    directory; `startRetried()` is gone.
+  * `testDirectoryReplacedInTheWindowAfterStop`, new, keeps the case
+    with the documented outcome, made on purpose: the old database's
+    writer is held by a `FileStreamIo` in the window, at its first new
+    file after the start, until the directory is deleted after
+    `stop()` and the start at the path is refused as in use (and has
+    made the directory). Released, the old close throws
+    `StreamIoException` ("is no longer"); the new directory has one
+    stream file, that one, of 0 bytes; a start throws
+    `StreamFormatException` ("valid meta block") until it is removed,
+    and then keeps its value, with nothing of the old database. No
+    timing decides it (latches; 60 s hang guards).
+  * The window itself is not closed: `SecureDirectoryStream` stays on
+    Frans's list (021-24).
+* Repetitions, the probe, 200 each (load average 13 to 24 from other
+  runs on F53): the old steps with no delay 200 of 200 passed (the
+  window is too short to meet without a pause), with a delay of 2 ms
+  60 failed, of 30 ms 49 failed, each with the message above; the new
+  steps (`close()` before the delete) with the same delays, 0 failed
+  of 200 each. The tests in one JVM, 300 times each (load average 13
+  to 15): `testNewDatabaseWhereAStoppedOneWasDeleted`,
+  `testDirectoryReplacedInTheWindowAfterStop` and
+  `testDirectoryDeletedWhileTheDatabaseRuns`, 300 of 300 passed each.

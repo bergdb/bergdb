@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -11,6 +12,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import bergdb.core.Db;
 import bergdb.core.TestNodeSize;
@@ -33,10 +38,13 @@ import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.DirectoryInUseException;
+import bergdb.stream.FileStream;
+import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
@@ -609,13 +617,16 @@ public class PubTesterJavadocNewUsers {
     }
 
     /**
-     * U10-1 (bergdb 020-24-10; 021-20): a database's directory deleted right after stop(),
-     * while the database still writes in the background, and a new database created at the
-     * path. The start is refused as in use until the old database has closed, as stop()
-     * says, and then taken; the old database writes nothing into the new directory. The
-     * start threw StreamFormatException ("The meta block at 200000 names the last
-     * transaction at ...") or was taken: the old database's close made its next stream files
-     * by name in the new directory.
+     * U10-1 (bergdb 020-24-10; 021-20): a database stopped and its directory deleted, and a
+     * new database created at the path. The directory is deleted after close() has returned,
+     * as stop()'s Javadoc says: close() waits for the close that stop() began in the
+     * background. The new database keeps its value, and nothing of the old one is there.
+     * Until 2026-11-28 the test deleted the directory right after stop(), while the old
+     * database still wrote; then its close could make its next stream file in the directory
+     * that the refused start had made, in the window between its check and the step that
+     * stop() states, and the start failed ("Could not find *any* valid meta block ... The
+     * stream begins at 200000"; once in level3.sh under a load average of about 20; bergdb
+     * 028-85). That case is testDirectoryReplacedInTheWindowAfterStop().
      */
     @Nano
     public static void testNewDatabaseWhereAStoppedOneWasDeleted(TestEnvironment env)
@@ -627,17 +638,99 @@ public class PubTesterJavadocNewUsers {
                 old.connection().put("/big" + i + ".bin", new byte[20_000]);
             }
             old.stop();
-            deleteTree(dir);
-            try (Database db = startRetried(dir)) {
-                db.connection().put("/new.txt", "new");
-                db.sync();
-            }
         } finally {
-            try {
-                old.close();
-            } catch (StreamIoException e) {
-                // Expected when its close had a new file to make: the directory was gone.
+            old.close();        // Waits for the close in the background.
+        }
+        deleteTree(dir);
+        try (Database db = Factory.database().create(dir.getPath()).start()) {
+            db.connection().put("/new.txt", "new");
+            db.sync();
+        }
+        try (Database again = Factory.database().open(dir.getPath()).start()) {
+            Assert.assertEquals("new", again.connection().get("/new.txt", String.class));
+            Assert.assertFalse("old", again.connection().exists("/big0.bin"));
+        }
+    }
+
+    /**
+     * U10-1 (bergdb 020-24-10; 021-20, 021-24, 028-85): a database's directory deleted right
+     * after stop(), while the database still writes in the background, against stop()'s
+     * Javadoc, and a new database created at the path. The old database's writer is held
+     * in the window that stop() states, between its check of the directory and the make of
+     * its next stream file (FileStreamIo.open()), until the directory is replaced; its close
+     * after stop() waits for it. A start at the path is refused as in use while the old
+     * database closes, and makes the directory. The old database then makes its next file
+     * (00000000000002.bergdb, at 200000) in the new directory, empty, and its close fails
+     * ("is no longer"); a start there is refused
+     * (StreamFormatException, "Could not find *any* valid meta block") until the empty file
+     * is removed, and then taken, with nothing of the old database. 028-85's failure of
+     * testNewDatabaseWhereAStoppedOneWasDeleted, made on purpose.
+     */
+    @Nano
+    public static void testDirectoryReplacedInTheWindowAfterStop(TestEnvironment env)
+            throws Exception {
+        final File dir = new File(env.createTempDir(), "doc");
+        Assert.assertTrue(dir.mkdir());
+        final AtomicBoolean armed = new AtomicBoolean(false);
+        final AtomicReference<File> next = new AtomicReference<File>();
+        final CountDownLatch held = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+        FileStreamIo io = new FileStreamIo() {
+            @Override
+            protected RandomAccessFile open(File file) throws IOException {
+                // The first new file after the start's.
+                if (armed.get() && !file.exists() && next.compareAndSet(null, file)) {
+                    held.countDown();           // After checkDirectory(), before the make.
+                    try {
+                        release.await(60, TimeUnit.SECONDS);    // A hang guard.
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                return super.open(file);
             }
+        };
+        final Database old = ((DatabaseBuilderImp) Factory.database())
+                .mainStream(new FileStream(dir, io)).start();
+        armed.set(true);
+        boolean done = false;
+        try {
+            for (int i = 0; i < 50; i++) {      // 1 MB: a second file is needed.
+                old.connection().put("/big" + i + ".bin", new byte[20_000]);
+            }
+            Assert.assertTrue("held", held.await(60, TimeUnit.SECONDS));    // A hang guard.
+            old.stop();
+            deleteTree(dir);
+            StreamIoException e = PubTesterJavadoc.assertThrows("start", StreamIoException.class,
+                    () -> Factory.database().create(dir.getPath()).start());
+            Assert.assertTrue(e.toString(), e.getCause() instanceof DirectoryInUseException);
+            Assert.assertTrue("made by the refused start", dir.isDirectory());
+            done = true;
+        } finally {
+            release.countDown();
+            if (!done) {
+                try {
+                    old.close();
+                } catch (StreamIoException e) {
+                    // The test has failed already.
+                }
+            }
+        }
+        StreamIoException c = PubTesterJavadoc.assertThrows("close", StreamIoException.class,
+                () -> old.close());
+        Assert.assertTrue(causes(c), causes(c).contains("is no longer"));
+        File[] files = dir.listFiles((d, name) -> name.endsWith(".bergdb"));
+        Assert.assertEquals(1, files.length);
+        Assert.assertEquals(next.get().getName(), files[0].getName());
+        Assert.assertEquals("no byte of the old database", 0L, files[0].length());
+        StreamFormatException f = PubTesterJavadoc.assertThrows("start beside the empty file",
+                StreamFormatException.class,
+                () -> Factory.database().create(dir.getPath()).start());
+        Assert.assertTrue(f.getMessage(), f.getMessage().contains("valid meta block"));
+        Assert.assertTrue(files[0].delete());
+        try (Database db = Factory.database().create(dir.getPath()).start()) {
+            db.connection().put("/new.txt", "new");
+            db.sync();
         }
         try (Database again = Factory.database().open(dir.getPath()).start()) {
             Assert.assertEquals("new", again.connection().get("/new.txt", String.class));
@@ -688,22 +781,6 @@ public class PubTesterJavadocNewUsers {
         try (Database again = Factory.database().open(dir.getPath()).start()) {
             Assert.assertEquals("new", again.connection().get("/new.txt", String.class));
             Assert.assertFalse("old", again.connection().exists("/big0.bin"));
-        }
-    }
-
-    /** A start of create(dir), again while it is refused as in use, for up to 10 s. */
-    private static Database startRetried(File dir) throws InterruptedException {
-        long end = System.nanoTime() + 10_000_000_000L;
-        while (true) {
-            try {
-                return Factory.database().create(dir.getPath()).start();
-            } catch (StreamIoException e) {
-                if (!(e.getCause() instanceof DirectoryInUseException)
-                        || System.nanoTime() > end) {
-                    throw e;
-                }
-                Thread.sleep(5);
-            }
         }
     }
 

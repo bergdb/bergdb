@@ -113,7 +113,6 @@ Open
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | built on a branch, reviewed; two shapes fixed, to land |
 | [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | open (built on a branch, to land) |
 | [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() spins when interrupted (UA-9); writes at a stop throw StreamIoException (UA-10, UA-2); e3 seed 101 | none | open (built and gated on a branch, to land) |
-| [028-85](85-recreated-directory-test-under-load.md) | Fix | A test of a directory deleted after stop() failed once under load: 021-24's window | none | open |
 
 
 Closed
@@ -121,6 +120,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-85](85-recreated-directory-test-under-load.md) | Fix | A test deleted a stopped database's directory before close(): now after it; the window a test | none | done | 2026-11-28 |
 | [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros now refused as one (RB-014); the zero tail's bound for every buffer | none | done | 2026-11-28 |
 | [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | done | 2026-11-28 |
 | [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | done | 2026-11-28 |
@@ -766,3 +766,10 @@ UA-4 to UA-7 and 031-02's N1; built on the branch `docs-1128`.
 2026-11-28. 028-83 registered by lead-1127 from 031-08, part A (UA-2,
 UA-8, UA-9, UA-10 and e3 seed 101's FAIL); built on the branch `028-83`
 by an agent of lead-1127.
+
+2026-11-28. 028-85 done by an agent of lead-1127 (branch `028-85`, to
+land): the failure was 021-24's window, shown with a delay in
+`FileStreamIo.open()`; the test now deletes the directory after
+`close()`, as `stop()`'s Javadoc says, and
+`testDirectoryReplacedInTheWindowAfterStop` holds the old database in
+the window and checks the documented outcome. Moved to Closed.
