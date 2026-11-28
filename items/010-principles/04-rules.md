@@ -171,6 +171,12 @@ cost little; damage that they do not see gives wrong values with no
 error. A check that finds damage refuses the start or fails the database
 (P7); none repairs it.
 
+Provisional until 028-77 is decided (Frans, 2026-11-28): the rule states
+the fault model as it is today, a prefix with a partial append or zeros
+in its place, and 028-77 with its review (035-03) reopens that model:
+what a crash may leave, who handles it, and whether a start may rewrite
+the stream's tail.
+
 Serves P7 and P13.
 
 Why: BergDB assumes correct storage (Frans, 2026-11-06; 017-08), and its
