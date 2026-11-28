@@ -207,3 +207,13 @@ and lets it go after 500 ms, and a sweep slowed by load is still running
 then. Readers and sweeps overlap like this outside tests too. Not M46's: it is
 item 001's eviction (Q8). Registered as 005-09
 ([09-fix-node-table-snapshot-race.md](09-fix-node-table-snapshot-race.md)).
+
+**Since 2026-11-28 (031-06, landing step 4, Q4).** The margin of 1,024
+ordinals is gone: with one record an action nothing runs after a
+transaction's record, so no internal transaction needs ordinals after a
+user's. Every transaction, a user's, a part of `maintain(budget)`, a
+setter's or another internal one, is refused once the super root's ordinal
+is the bound, 2^48 − 1 (`Db.refuseIfTopOrdinalsUsed`), and a record makes
+at most one top node, so none passes it. `Db.LAST_TOP_ORDINAL` and
+`TOP_ORDINAL_MARGIN` are removed; the tests of the end run to the bound.
+The text above describes the guard as it was until then.

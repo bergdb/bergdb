@@ -53,3 +53,17 @@ makes its step.
 * Tests: the new test, `DbClock.testTimeMarginForInternal` (unit), and
   `Reclaim.Tester`, `DbClock`, `DbTester`, `DbTesterRestart`,
   `DbTesterFailure` pass.
+
+2026-11-28. The margin removed by 031-06's landing, step 4 (Q4, option
+(a)): with one record an action a commit's maintenance is in its own
+record, and nothing runs after it, so the 1,024 times kept for reclaim's
+internal transactions are not needed. Every transaction may take a time up
+to `Klong.MAX_TIME` and none after it (`DbClock.transactionBegin()`, no
+longer with a flag of a user transaction); `DbClock.TIME_MARGIN`,
+`LAST_USER_TIME` and `userTimeLeft()` are gone. The case of R7-F6 stays
+covered: `Reclaim.Tester.testTransactionAtTheLastTime` (this entry's test,
+renamed) takes a put at `Klong.MAX_TIME` with its step in its record, and
+refuses the next put, a setter and a part with nothing written, the
+database active. One time is still kept, for the creation's second record
+(`Db.writePrimordialTransaction`; `DbTester.testCreationAtTheLastTimes`).
+The text above describes the code as it was until then.

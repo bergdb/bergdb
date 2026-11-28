@@ -61,8 +61,8 @@ checked; the evidence is in section 4.
      `Trans.part` through it.
    * Checked: `P2CrashProbe` counts the records of each action in every
      reference run (23 runs: records = accepted actions in each), and
-     `testMaintenanceNone`, `testUserTransactionLeavesTimesForReclaim`
-     (one record).
+     `testMaintenanceNone`, `testTransactionAtTheLastTime` (one record;
+     `testUserTransactionLeavesTimesForReclaim` until landing step 4).
 2. **The boundary.**
    * What: `Maintenance` (a new interface, `Maintenance.java`) with two
      calls. `plan(t, kvs)`: what the record of action `t` carries, from
@@ -181,7 +181,10 @@ checked; the evidence is in section 4.
    a part's too (as a user transaction's: refused after `LAST_USER_TIME`).
    There is no hold of `currentTime()` and no maintenance time: 031-05's
    `DbClock` changes are gone. The 1,024 kept times and top node ordinals
-   (015-55, 005-02) stay (question Q4).
+   (015-55, 005-02) stayed in the prototype (question Q4); landing step 4
+   removed them (2026-11-28): every action may take a time up to
+   `Klong.MAX_TIME`, and every action is refused once the super root's
+   ordinal is the bound, `TopNode.MAX_TOP_NODE_ID_VALUE` (section 9).
 10. **`maintain(budget)`.** Each part is an action with its own time and
     one record, the first that is due of M1 to M6 (031-05, section 6.4),
     built through the same path as a commit (`Reclaim.planPart`). A call
@@ -238,7 +241,7 @@ code and the decision:
 * **A part's time** (study, E4 of its section 11): Frans chose the part's
   own time (11:16); no hold inside calls either.
 * **The kept times and top node ordinals** (study, rule 7, "may go"):
-  kept; question Q4.
+  kept in the prototype; question Q4; removed in landing step 4.
 * **P1** (study, section 6, "confirmed, as an inference"): measured
   instead (section 4.7). The commit that carries a step took less than
   031-05's commit and its step's record; readers see the commit later by
@@ -695,14 +698,25 @@ and 10M suite, runs on the ported branch.
   nothing runs after a commit any more. Options: (a) removed, as their
   own change after the landing; (b) kept. Recommended: **(a)** (the
   study's question E5).
+  * Answered 2026-11-28: (a), in landing step 4 (section 9). Of the margin
+    only one time is kept, for the creation's second record: a creation
+    with the clock at `Klong.MAX_TIME` is refused with nothing written.
 * **Q5. The format's version for the copy mark**: (a) a new version of
   the value node (5 to 6) and of the meta block, so that 2026.6 refuses a
   stream with mixed records before it writes; (b) the meta block's only;
   (c) none. Recommended: **(b)**, with A3's rule for streams of 2026.6.
+  * Answered 2026-11-27 by landing steps 2 and 4, nothing more to do: the
+    record's format, `StoredTrans.RECORD_FORMAT` 9 (step 2; a 2026.6
+    stream refused with a message, A3), and the meta block's version 156
+    with 028-67's C1 and C3 (step 4); the value node's format stays 5.
 * **Q6. The cost of the plan at every commit** (section 4.7): about
   0.4 us at the median. Options: (a) as built; (b) a cheap first test on
   the live rows, copied only when something is due. Recommended: **(b)**
   at the landing, if a timing run (`timing.sh`) shows the cost.
+  * Answered 2026-11-28 by the timing run of `main` with step 3
+    (`landing.md`, step 2, "The timing run"): CORE's median 0.250 against
+    2026.6's 0.250, ratio 1.000, and `performance.sh ab` with no alert.
+    The run shows no cost: (a), nothing to do.
 
 
 ## 7. State
@@ -948,6 +962,34 @@ on the branch rebased onto `main` with step 4 (`734f05a2`): `BEFORE
 COMMIT OK (91 s)`, `LEVEL 2 OK`, `LEVEL 3 OK`, `LEVEL 4 OK` (quick),
 `APPS OK` (quick); nothing in `lean/` changed.
 
+**Step 4 is done** (2026-11-28; `landing.md`, step 4, has the rules, the
+tests and the gates). Its parts:
+
+* Q5 and 028-67's ties: on `main` since 2026-11-27 (`734f05a2`): record
+  format 9 (step 2), the meta block's version 156 with its own position
+  and the database ID checked, and the record header's 24-bit check
+  (028-67's C1 and C3).
+* Q4, the kept times and top node ordinals removed (a), on a branch for
+  the lead to land: `DbClock.TIME_MARGIN`, `LAST_USER_TIME`,
+  `userTimeLeft()` and `transactionBegin`'s flag of a user transaction,
+  `Db.TOP_ORDINAL_MARGIN` and `LAST_TOP_ORDINAL`. Every action, a user's,
+  a part, a setter's or another internal one, may take a time up to
+  `Klong.MAX_TIME`, and is refused once the super root's ordinal is the
+  bound; before the go point, with nothing written, as before. Kept of
+  the margin: the creation refuses the clock's last time, which would
+  leave no time for its second record. Nothing else read them: not the
+  Lean model (it has no bound of times or ordinals), not the trace format
+  or the checkers, not the stream's bytes; the C clones (012, 022) follow
+  their releases, where reclaim runs after a commit, and keep theirs.
+* The tests that depend on the stream's layout: made independent of it
+  where they could be, else they check the layout they need
+  (`landing.md`, step 4).
+* Q6: nothing to do (section 6).
+* With it, after step 5: the comments, Javadoc and messages that step 5
+  found stale, 027-03, 027-09 and 027-13 with Q4's removal, and 027-03's
+  G22 closed (`StoredValueNode.parse` refuses the copy mark on a delete
+  node, which no writer makes).
+
 
 ## Log
 
@@ -1003,3 +1045,9 @@ larger than its cache budget; gated on `main` with step 4.
 `landing.md`, step 3, "After review 3"): the warm-up with several writers
 and in `maintain()`'s rounds, the text of section 3 for a commit's step of
 up to 128 KiB, and two timing probes for the lead.
+
+2026-11-28. Step 4 of the landing, the clean-up, on a branch for the lead
+(`landing.md`, step 4): Q4's kept times and top node ordinals removed, the
+tests that depended on the stream's layout made independent of it or
+checking it; Q4 to Q6 answered (section 6); after step 5, the stale
+comments it found and G22.

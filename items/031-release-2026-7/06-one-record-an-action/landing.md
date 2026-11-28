@@ -1,4 +1,4 @@
-# 031-06. Landing notes: steps 0 and 1
+# 031-06. Landing notes: steps 0 to 4
 
 2026-11-27, on the branch `031-06-landing` of a clone of `main` (outside the
 repository), from `05c002ad`. Notes of the landing's work for the lead, who
@@ -998,7 +998,224 @@ the clone:
 * 028-75 (R4) is Frans's and unchanged: with a pass of `maintain()`, the
   parts' steps are `MAX_STEP_SIZE`, as before.
 
+## Step 4: the clean-up
+
+2026-11-28, from 03:30, on the branch `031-06-cleanup` of a clone of
+`main` at `8a0897cf` (outside the repository), rebased at 04:07 onto
+`main` at `6c17b10f` (step 5, the documents) without a conflict, for the
+lead to land. Two commits of code and tests, "031-06, landing step 4, the
+clean-up: ..." and "031-06, landing step 4: the comments, Javadoc and
+messages ...", and two of text (the item's, and 027's). Section 9's step 4 has three parts: Q5 with 028-67's
+ties, Q4, and the tests that depend on the stream's layout.
+
+### Q5 and 028-67's ties
+
+On `main` since 2026-11-27 (`734f05a2`): record format 9 (step 2), the
+meta block's version 156 with its own position and the database ID
+checked, and the record header's 24-bit check of the ID, its position and
+its fields (028-67's C1 and C3). Nothing more to do; readme section 6, Q5.
+
+### Q4: the kept times and top node ordinals removed
+
+Frans's question Q4, option (a), as recommended. Until now a user
+transaction was refused after `DbClock.LAST_USER_TIME` = `Klong.MAX_TIME`
+- 1,024 (015-55) and once the super root's ordinal was
+`Db.LAST_TOP_ORDINAL` = 2^48 - 1 - 1,024 (005-02), so that reclaim's
+internal transactions after a user transaction's go point, at most five
+or six, found a time and an ordinal. Since 031-06 a commit's maintenance
+is in its own record and nothing runs after it.
+
+* **Removed** (`DbClock`, `Db`, `Reclaim`): `DbClock.TIME_MARGIN`,
+  `LAST_USER_TIME`, `userTimeLeft()` (no caller was left) and
+  `transactionBegin(boolean user)`'s flag, now `transactionBegin()`;
+  `Db.TOP_ORDINAL_MARGIN` and `LAST_TOP_ORDINAL`; `Reclaim.setSettings`'s
+  own call of `refuseIfTopOrdinalsUsed()`, which `Db.executeLocked` now
+  makes for every transaction.
+* **The rules now.**
+  * Times. What: every action, a user's, a part of `maintain(budget)`, a
+    setter's or the creation's second record, may take a time up to
+    `Klong.MAX_TIME`, and none after it. When and by whom:
+    `DbClock.transactionBegin()`, in `Db.executeLocked` under the write
+    lock, before the go point: refused with a `DbException` ("No database
+    time is left"), nothing written, the database active. `currentTime()`
+    gives no time after `Klong.MAX_TIME` (it gave none after
+    `LAST_USER_TIME`); a time given at `Klong.MAX_TIME` leaves no time to
+    a later transaction, so a read at it stays the same (020-23, Z1).
+    Checked: `DbClock.testLastTime`, `testCurrentTimeAtTheEnd`,
+    `testCurrentTimeWithTheClockPastTheEnd`;
+    `Reclaim.Tester.testTransactionAtTheLastTime` (015-55's test,
+    renamed: a put at `Klong.MAX_TIME` that carries a step is taken in
+    one record; the next put, a setter, `setStartupDistance` and a part
+    are refused, nothing written, the database active);
+    `PubTesterJavadocRest.testClockOutOfRangeRefused`; `LimitsTester`'s
+    end phase.
+  * Ordinals. What: every action is refused once the super root's
+    ordinal is the bound, `TopNode.MAX_TOP_NODE_ID_VALUE`, 2^48 - 1; a
+    record makes at most one top node, so none passes the bound, where
+    `TopNode` throws. When and by whom: `Db.refuseIfTopOrdinalsUsed()`,
+    first in `Db.executeLocked`, under the write lock, before anything
+    changes; until now user transactions, parts and reclaim's settings
+    only, which left the creation's and `setStartupDistance`'s internal
+    record to the margin. Checked: `DbTesterRestart.testEndOfOrdinals`
+    (an internal transaction and `setStartupDistance` refused too, nothing
+    written), `testReclaimSettingAtEndOfOrdinals`,
+    `testOrdinalsWithReclaim` (the super root ends at the bound exactly;
+    it was within five above `LAST_TOP_ORDINAL`), `LimitsTester`'s second
+    ordinal 1 to 3 below the bound.
+* **Kept of the margin: one time, for the creation.** A creation writes
+  two records, each at a time of its own (028-15). With the clock at
+  `Klong.MAX_TIME` the primordial record would take the last time, the
+  second record would be refused, and the next start would refuse the
+  stream as a creation that did not complete (028-18). So
+  `Db.writePrimordialTransaction` refuses that time, before anything is
+  written (`transactionCancel()`, a `DbException`); until now the
+  primordial record took a user transaction's time and the margin left
+  the room. Checked: `DbTester.testCreationAtTheLastTimes` (at
+  `Klong.MAX_TIME` refused, the stream empty; at `Klong.MAX_TIME - 1` both
+  records, then every transaction refused, and a restart).
+* **Who read them.** In Java: the callers above, the tests above, and the
+  public Javadoc of `bergdb.pub.util.Clock.getTime()`, which said that
+  the last 1,024 units were kept for the database's own transactions (now
+  every time of the range, and the creation's two). The Lean model: no
+  bound of times or ordinals (`lean/` has none of them; a top node's
+  ordinal is a level, a natural number, 005-02's outcome). The trace
+  format (027-02), `TraceExport` and the checkers: none (`TraceExport`
+  uses `TopNode.MAX_TOP_NODE_ID_VALUE` for another purpose, a bound of
+  ids). The stream's bytes: none, only which transactions are refused
+  near 2^56 - 1 (the year 2198) or 2^48 - 1 ordinals. The C clones (012,
+  022): their code and notes follow their releases, in which reclaim runs
+  after a commit, and they keep the margins; not changed.
+* **The documents** after step 5: 027-03, section 5 ("Times") and
+  section 13's writer's bound of the ordinals (it said 2^30 − 1, before
+  005-02), 027-09's first paragraph, and 027-13's actions that carry
+  maintenance, section 1.10's refusal of a part and its code list now
+  state the rules above. 027-04, a proposal, and 027-01, a snapshot, are
+  not changed. `releases/next.md` has no line on it.
+
+### The stale comments that step 5 found (the lead, 04:05)
+
+Comments, Javadoc and messages only, but the last two points:
+
+* `Db.setRetainDuration`: `maintain(budget)` continues the iteration,
+  makes its cut and begins a pass (031-04), not "iterations by the
+  clock"; refused also when the times are used up.
+* `Reclaim.KEY_PREFIX_SKEY` (no record is reclaim's alone but a part's
+  and the settings'; the witness of rule 6), `SETTINGS_KEY_NAME` (the
+  setter's record), `initFromDb`'s row (stored in the record of its last
+  step, with the charge; not again after it, 028-26), and the unused
+  `Stats.rowRecords` removed.
+* `TraceExport`: a step's STEP line from its own record's hook; reclaim's
+  maintenance in the action's record.
+* `Db`: the meta block's versions 155 and 156 where 155 alone was named;
+  `Db.start`'s and `DatabaseBuilder`'s `@throws` name 2026.6's databases
+  (meta block 155, record format 8), refused with no upgrade path.
+* `FileStream`: the batch delete since 2026-11-27, not 2026-11-26
+  (`e848c58f`).
+* `DatabaseBuilderImp.refuseEncrypted`: the message said "release 2026.4
+  has no encryption" and that a copy made with the earlier release
+  "2026.4 starts", which this release does not (it refuses every format
+  before 2026.7's). Now: BergDB has no encryption since 2026.4; read the
+  data with the release that wrote the database and its key, and put it
+  into a new database with this release. `PubTester`'s check of the
+  message follows.
+* G22 (027-03): `StoredValueNode.parse` refuses the copy mark on a delete
+  node ("Bad flags of delete node"), which no writer makes; checked by
+  `testCopyMark` (a delete node without the mark parses, one with it is
+  refused with a right checksum). Not in the stream's bytes of any
+  writer, so StreamDigest is unchanged by it (below).
+
+### The tests that depend on the stream's layout
+
+Found from this file, the readme's section 4.0 and the commits since
+`5b88cc80`: a grep of the test code for seeds, counts and positions that
+the one-record rule or step 3's pace changed, and of the landing's diff
+for tests made loose, skipped or disabled (none skipped or disabled).
+
+* **Made independent of the layout:**
+  * `Eviction.testReclaimWithMisses`: its quick run went from 100 to 150
+    transactions (the port), because its first cut came later; it needs a
+    cut. Each run now goes on past its 100 (quick) or 200 transactions
+    until reclaim has cut, at most 400 (a hang guard), whatever the
+    layout.
+  * `ReclaimRoomTester.testSustainedLargeActionsNode8` and `Node30`: the
+    seed was changed twice (seed 1 to 3 to 2; 2 to 6), each time so that
+    the run would show both trims of the room, a step cut to its first
+    copy and one left out of a commit's record, which depends on the
+    steps' sizes and places. `sustained()` now runs the given seed, then
+    1 to 8, each run checked whole, until one shows both trims; at least
+    one must. With the given seed first, the run is as before; with a
+    seed that shows none left out (seed 3 at node size 8), the next seed
+    passes (checked once by hand).
+* **Checking the layout they need:**
+  * `DbTesterFailure.testGetTransCutDuringTheWalk`: an empty commit after
+    `/a`'s record, so that the iteration begins before `/target`'s record
+    (the port). It now asserts that the empty commit's record began an
+    iteration at or before its position, so that a change of the layout
+    fails with its reason, not at the cut's assertion.
+  * `lean/test-traces/step-faults.sh`: its two good traces need an
+    iteration of more than one step, a step in a commit's record, and a
+    crash with an iteration across a restart; the script checks each
+    ("WRONG" lines) since step 1. Not changed.
+  * The item's `P2CrashProbe`'s torn runs skip a position that a physical
+    cut followed and say so (step 3). Not changed.
+* **Made independent before, on `main`:**
+  `FileStreamPowerLossTester.testRefusedStartWritesNoCreatedTxt` removes
+  the stream's first file by name since `88e188a7` (028-66).
+* **Looked at, not of the layout, not changed:**
+  `Reclaim.Tester.testSafePosAfterTheCallsRecords` and
+  `testCrashBeforeIterationEnd` (positions that the plan defines: L0, the
+  stream's length after the record); `testAllowanceCountsNodesMadeAfterTheRow`
+  (the exact charge, and the index bytes not charged at most a third of
+  the charged: its workload's commits put one key off the steps' paths);
+  `DbTesterDirtyCount`'s record limit of 11,150 bytes (derived from the
+  action's 7/8, stated); `ReclaimMaintainTester.testEmptiedDatabaseConverges`'
+  100 records a call (031-04's budget).
+
+### Gates
+
+On F53, 2026-11-28, on the branch rebased onto `main` at `6c17b10f`,
+with week.sh's three lanes and other sessions on the machine; functional
+runs, at most two at a time, the probes and StreamDigest on a copy of the
+branch's jar:
+
+* `java/before-commit.sh`: `BEFORE COMMIT OK (108 s)`; before the rebase
+  `BEFORE COMMIT OK (104 s)`.
+* `java/stress/level2.sh`: `LEVEL 2 OK`, treeconf's figures as at step 3
+  (reclaim 7,545 transactions with 296 touches); also `LEVEL 2 OK` before
+  the rebase.
+* `java/stress/level3.sh`: `LEVEL 3 OK`; C-STEP's figures as at step 3,
+  one for one (its fault test 24 faults; 0 of 23,127 transactions fail,
+  1,345 STEP lines, 1,032 iterations; the crash set 0 of 5,593, 395 STEP
+  lines).
+* The sweep (`probes/sweep.sh`): 27,741 interruptions, 0 different; 570
+  torn records, 0 different: step 3's counts, one for one, as no record
+  changed. (A first run met a jar copied while it ran, a
+  `NoClassDefFoundError` in seed 2's stops; run again on the copy alone.)
+* `probes/faults.sh`: bad 0 in all 42 lines.
+* StreamDigest `all` (11 configurations and l2-default-100MB, 4 modes),
+  one compiled copy, `main`'s at `8a0897cf`, against both jars (`java/`
+  of `6c17b10f` differs from it in Javadoc only): `DIGESTS IDENTICAL (48
+  of 48; of the identical, the physical cut differs in 0)`; also quick
+  before the rebase, 44 of 44. No byte changed: the removal changes only
+  which transactions are refused near the last time and ordinal, and no
+  writer makes the delete node that G22's check refuses.
+* `lean/`: nothing changed; the contract's `gate.sh` not run.
+
 ## State
+
+2026-11-28, 04:50, step 4 (the clean-up), for the lead.
+
+* **Done:** step 4 on the branch `031-06-cleanup`, rebased onto `main` at
+  `6c17b10f` (step 5): Q4's kept times and top node ordinals removed (a),
+  one time kept for the creation; the tests that depended on the stream's
+  layout made independent of it or checking it; the stale comments that
+  step 5 found; G22 closed; 027-03, 027-09 and 027-13 with Q4; readme
+  section 6's Q4 to Q6 answered. Gates: `BEFORE COMMIT OK (108 s)`, `LEVEL
+  2 OK`, `LEVEL 3 OK`, the sweep 0 different, faults bad 0, StreamDigest
+  all `DIGESTS IDENTICAL (48 of 48)` against `main`.
+* **Not done:** level4.sh, apps.sh, night.sh, week.sh on the branch (step
+  6); the C clones keep their margins (they follow their releases).
+* **Next:** the lead's review and landing of `031-06-cleanup`; step 6.
 
 2026-11-28, 00:40, step 3 after review 3, for the lead.
 
