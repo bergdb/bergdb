@@ -839,8 +839,8 @@ public class Db implements AutoCloseable {
      * force writes nothing. On a database that is not active the call throws as a
      * transaction does (IllegalDbStateException, DbStoppingException, DbFailedException),
      * and so it does, with a DbException, on one that has used its top node ordinals
-     * (bergdb 005-02); a call that is refused, or whose commit fails, leaves the value as
-     * it was.
+     * (bergdb 005-02) or its times (Klong.MAX_TIME); a call that is refused, or whose commit
+     * fails, leaves the value as it was.
      * 
      * <p>How commits pace reclaim (bergdb 027-13, sections 1.2 to 1.7; 011-04): it works in
      * iterations, not as the duration passes. One begins at a user transaction's commit
@@ -857,8 +857,11 @@ public class Db implements AutoCloseable {
      * in a small database, and by more in one with much live data, which the first
      * iteration rewrites; a smaller startup distance cuts sooner and keeps less. After a
      * mass delete, commits give the space back only as they grow the stream, and slow
-     * writes give it back many retain durations later; maintain() begins iterations by the
-     * clock, without commits (bergdb 026-13, U13-4).</p>
+     * writes give it back many retain durations later; maintain(budget) gives it back
+     * without commits: a call continues the iteration in progress, makes its cut, and
+     * begins a pass that rewrites every live value stored before it and cuts at its own
+     * start, while the stream kept holds a record of the application's (bergdb 026-13,
+     * U13-4; 031-04).</p>
      * 
      * @param duration
      *            Number of time units (see Clock.UNITS_PER_SEC), at least one second.
@@ -1245,7 +1248,10 @@ public class Db implements AutoCloseable {
      *          005-50); and with a VersioningStreamException, a database of release 2026.5 or
      *          earlier, of the meta block's version 154 (bergdb 028-15, option A), whose
      *          data is read with the release that wrote it and put into a new database with
-     *          this release (bergdb 028-30). The start then writes nothing.
+     *          this release (bergdb 028-30); and a database of release 2026.6, of the meta
+     *          block's version 155 and record format 8, which this release does not open,
+     *          with no upgrade path (bergdb 031-06, A3; 028-67). The start then writes
+     *          nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33): a part of the creation's first record, or the
@@ -1493,8 +1499,9 @@ public class Db implements AutoCloseable {
      * 
      * @throws InternalDataException  if the KV's bytes are not a startup distance
      * @throws StreamFormatException  if a stream that this start did not create has no KV: a
-     *          damaged stream, as every database of the meta block's version 155 has it
-     *          (older ones are refused before, by the version)
+     *          damaged stream, as every database of the meta block's version 155 or 156
+     *          has it (other versions are refused before, by the version: 154 and, since
+     *          bergdb 028-67, 155, release 2026.6's)
      */
     private void readStartupDistanceKv(boolean creating) {
         byte[] value = getOne(Long.MAX_VALUE, DbConstants.SD_KEY, newGetData());
@@ -1837,8 +1844,8 @@ public class Db implements AutoCloseable {
     
     /**
      * Refuses a start with another maximum node size than the database's, and a database
-     * whose meta block has none, a damaged one since every block of the meta block's version
-     * 155 has it, before recovery writes anything (2026-10-27, bergdb 005-50; 028-15).
+     * whose meta block has none, a damaged one since every block of the meta block's versions
+     * 155 and 156 has it, before recovery writes anything (2026-10-27, bergdb 005-50; 028-15).
      * The size is in every meta block from the creation on; this reads the last valid one,
      * as recovery does first. Before, a start with another size reran the startup section
      * with it, which splits nodes otherwise, and failed with what looked like a corrupt
@@ -1861,7 +1868,7 @@ public class Db implements AutoCloseable {
         if (size == 0 || size > Dag.MAX_NODE_SIZE) {
             // No release makes one: 62 is the largest (bergdb 024-19, Q6), and every block
             // has the size since 2026-10-27 (bergdb 005-50), so every block of the meta
-            // block's version 155 (bergdb 028-15). A damaged block.
+            // block's versions 155 (bergdb 028-15) and 156 (028-67). A damaged block.
             throw new StreamFormatException("The database's meta block gives the maximum node "
                     + "size " + size + ", " + (size == 0 ? "none" : "above " + Dag.MAX_NODE_SIZE
                     + ", the largest node size of BergDB (bergdb 024-19, Q6)") + ": the block "

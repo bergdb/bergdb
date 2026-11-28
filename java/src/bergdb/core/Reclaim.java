@@ -141,9 +141,12 @@ public class Reclaim implements Maintenance {
     private static final String TABLE_KEY_NAME = DbConstants.INTERNAL_PREFIX + "dreclaim/-table.txt";
     
     /**
-     * The prefix of reclaim's keys, the table's and the row's: a record with a KV under it
-     * is one of reclaim's transactions, a step, the table, the settings or maintain()'s
-     * filler (bergdb 005-42).
+     * The prefix of reclaim's keys: the table's, the row's, the settings' and maintain()'s
+     * filler's (bergdb 005-42). Since bergdb 031-06 no record is reclaim's alone but a part
+     * of maintain(budget)'s and a setter's of reclaim's settings: the row and the table are
+     * in the records that carry maintenance, a commit's or a part's, beside the action's KVs
+     * and the step's copies. A KV under the prefix that is not a copy is the witness that a
+     * start reads a from a record's rows (031-06, rule 6; initFromDb).
      */
     public static final long[] KEY_PREFIX_SKEY = 
             Keys.toSegments(DbConstants.INTERNAL_PREFIX + "dreclaim/");
@@ -172,8 +175,8 @@ public class Reclaim implements Maintenance {
      * default fraction is 16384, 0.25. Each line ends with a newline, and the numbers have
      * no sign and no leading zeros (serializeSettings).
      * 
-     * Written by setSettings, in an internal transaction of its own, as the table is, and
-     * only when a setting changes: a database whose settings were never changed has no
+     * Written by setSettings, in an internal transaction of its own, the setter's record,
+     * which carries no other maintenance (bergdb 031-06), and only when a setting changes: a database whose settings were never changed has no
      * such KV, and runs with the defaults (forever, 16384). Read by initFromDb at every
      * start, which refuses a value in any other form (parseSettings). Reclaim's steps
      * rewrite it as any live value, so a cut never removes it.
@@ -1592,8 +1595,10 @@ public class Reclaim implements Maintenance {
             storedA = table.rows.isEmpty() ? table.a                // bergdb 031-04, R3
                     : table.rows.get(table.rows.size() - 1).a;
             
-            // The progress of the iteration in progress, stored by its last step (and again
-            // after it, with the bytes of the nodes its batch made dirty; bergdb 028-26).
+            // The progress of the iteration in progress, stored in the record of its last
+            // step, with the bytes of the nodes that its batch made dirty (bergdb 031-06,
+            // landing step 3, the fixed-width patch; from 028-26 until 031-06 the row was
+            // stored again in a record after the step's).
             byte[] current = db.getOne(Long.MAX_VALUE, currentKey, g);
             if (current != null) {
                 IterationInfo c = new IterationInfo();
@@ -1927,7 +1932,6 @@ public class Reclaim implements Maintenance {
                                         // top nodes, the table's path; at the batch's end).
             long charged;               // The index bytes charged (RecordPlan.charge).
             long madeCharged;           // Of them, the nodes the batches made (028-26).
-            long rowRecords;            // The rows stored again for them (028-26).
             long droppedCopies;         // Copies at a key of the action's (bergdb 031-06).
             long loads;                 // Versions the steps loaded from the stream (WP J6).
             long loadBytes;             // Their memory size.

@@ -287,11 +287,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     /**
      * Refuses a directory whose database an earlier release encrypted (2026-11-09, bergdb
-     * 020-28): release 2026.4 has no encryption in its API, and such a stream does not read
-     * without its key. Its created.txt names the key, its data masked, on the line "crypto
-     * key:", as every release with encryption wrote it, at the creation and at a start that
-     * found the file missing; a database without encryption has "none (not encrypted)" there,
-     * and one created since 2026-11-27 has no such line (bergdb 028-69).
+     * 020-28): BergDB has no encryption in its API since release 2026.4, and such a stream
+     * does not read without its key. Its created.txt names the key, its data masked, on the
+     * line "crypto key:", as every release with encryption wrote it, at the creation and at
+     * a start that found the file missing; a database without encryption has "none (not
+     * encrypted)" there, and one created since 2026-11-27 has no such line (bergdb 028-69).
      * Before the directory is opened, so that the start opens, creates and writes nothing;
      * it only reads created.txt, so the lock is not needed. A directory without created.txt,
      * or without that line, is not refused here: a stream that an earlier release encrypted
@@ -309,11 +309,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         throw new VersioningStreamException("The database in " + dir + " is encrypted: its "
                 + "created.txt names the crypto key " + keyInfo + ". An earlier release of "
                 + "BergDB, 2026.3 or before, encrypted it, and this release cannot start it: "
-                + "release 2026.4 has no encryption. The start has opened, created and written "
-                + "nothing. To use the data with 2026.4, start the database with the earlier "
-                + "release and its key, and copy the data to a new database created with that "
-                + "release without a key, which 2026.4 starts; the history is not copied "
-                + "(bergdb 020-28; the release notes of 2026.4).");
+                + "BergDB has no encryption since release 2026.4. The start has opened, created "
+                + "and written nothing. To keep the data, read it with the release that wrote "
+                + "the database and its key, and put it into a new database with this release, "
+                + "for example with two programs, one on each release's jar; the history is "
+                + "not copied (bergdb 020-28; the release notes of 2026.4).");
     }
     
     /**

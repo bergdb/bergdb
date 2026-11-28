@@ -146,6 +146,12 @@ public class StoredValueNode implements StoredNode {
             throw new StreamFormatException("Bad flags of value node at spos " + spos + ", "
                     + flags + " " + buffer[offset + 1] + ".");
         }
+        // A copy is a put of a live value (bergdb 031-06): no writer marks a delete node, and
+        // the mark on one is refused (027-03's G22, closed 2026-11-28).
+        if (type == Node.TYPE_DELETE && flags != 0) {
+            throw new StreamFormatException("Bad flags of delete node at spos " + spos + ", "
+                    + flags + ": a delete node has no copy mark.");
+        }
         offset += 2;
         offset += NodeChecksum.SIZE; // checksum bytes, checked before parsing
         
@@ -376,7 +382,8 @@ public class StoredValueNode implements StoredNode {
     
     /**
      * The copy mark (bergdb 031-06): byte 6 is 1 for a copy, 0 otherwise, under the checksum,
-     * and parsed back; another value of byte 6 or 7 is refused.
+     * and parsed back; another value of byte 6 or 7 is refused, and the mark on a delete node
+     * (027-03's G22, since 2026-11-28): a delete node without it parses.
      */
     @Nano
     private static void testCopyMark() {
@@ -405,6 +412,17 @@ public class StoredValueNode implements StoredNode {
             String refused = parseWithRightChecksum(buffer, size);
             Assert.assertTrue(refused, refused.startsWith("Bad flags"));
         }
+        ValueNode delete = new ValueNode(null, Spos.NULL);
+        final int deleteSize = getByteSize(delete, key);
+        byte[] plain = new byte[deleteSize];
+        toBytes(delete, key, plain, 0, false);
+        Assert.assertTrue("a delete node",
+                !((StoredValueNode) NodeStream.bytesToNode(128, plain, 0, deleteSize)).isCopy());
+        byte[] marked = new byte[deleteSize];
+        toBytes(delete, key, marked, 0, true);
+        Assert.assertEquals(Node.TYPE_DELETE, marked[4]);
+        String refused = parseWithRightChecksum(marked, deleteSize);
+        Assert.assertTrue(refused, refused.startsWith("Bad flags of delete node"));
     }
     
     @Nano

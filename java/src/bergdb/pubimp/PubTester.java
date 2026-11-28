@@ -3239,7 +3239,7 @@ public class PubTester {
     }
     
     /**
-     * Bergdb 020-28: release 2026.4 has no encryption in its API, and a start refuses a
+     * Bergdb 020-28: BergDB has no encryption since release 2026.4, and a start refuses a
      * database that an earlier release encrypted. Such a database is made here as 2026.3
      * left it, in its effect: its created.txt names the key on the line "crypto key:", and
      * its stream's bytes do not read as a BergDB stream, here with every bit flipped (until
@@ -3277,7 +3277,7 @@ public class PubTester {
                 String message = e.getMessage();
                 Assert.assertTrue(message, message.contains("is encrypted"));
                 Assert.assertTrue(message, message.contains(keyName));
-                Assert.assertTrue(message, message.contains("2026.4 has no encryption"));
+                Assert.assertTrue(message, message.contains("no encryption since release 2026.4"));
                 Assert.assertTrue(message, message.contains("opened, created and written "
                         + "nothing"));
             }

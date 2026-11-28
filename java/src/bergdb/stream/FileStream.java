@@ -51,7 +51,7 @@ import bergdb.pub.util.BadFormatException;
  * last one. So the files hold the stream from the start of the file that the cut's position
  * lies in: the disk can hold up to about one file more than the stream, about a tenth of the
  * stream when that file was made, and, for a while after a cut, the files that the cut's
- * thread has not yet deleted (since 2026-11-26 a batch at a time, the directory forced once
+ * thread has not yet deleted (since 2026-11-27 a batch at a time, the directory forced once
  * after it: runCuts, bergdb 028-66). This holds also after the stream has shrunk: a database
  * emptied after a large stream keeps the file that its first position lies in until appends
  * fill it (bergdb 033, RB-011: in bergdb 031-02's RetainChurn, seed 5, 10,400 kB of a 20 MB

@@ -183,7 +183,11 @@ public interface DatabaseBuilder {
      *             open it, the message names release 2026.5, and the start, as create() on
      *             its directory, changes no file; its data is read with the release that
      *             wrote the database and put into a new one with this release, as the release
-     *             notes say (bergdb 024-26, U26-8; 028-15, 028-30).
+     *             notes say (bergdb 024-26, U26-8; 028-15, 028-30). The same if release
+     *             2026.6 wrote it (its meta blocks of version 155, its records of format 8):
+     *             this release does not open it, the message names release 2026.6, and there
+     *             is no upgrade path; release 2026.6 still opens it (bergdb 031-06, A3;
+     *             028-67).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The

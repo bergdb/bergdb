@@ -107,9 +107,10 @@ import bergdb.stream.MemoryStream;
  * nodes meet it, and its history must go on from the one before. The start itself appends no
  * record, which is checked. The last record before the restart gets a line RESTART stop or
  * RESTART crash, and with steps=1 a line RESUME, the iteration in progress that the start read
- * from the stream (027-02, section 4); a step that the crash ended gets its STEP line from that
- * row, the row the step committed. Run A's state then has stream pointers, so live=1 is
- * refused with them.
+ * from the stream (027-02, section 4). A step's STEP line is made in the hook of its own
+ * record, a commit's or a part's, which a crash comes after (bergdb 031-06; until then a step
+ * that the crash ended got its STEP line from the row that the start read). Run A's state then
+ * has stream pointers, so live=1 is refused with them.
  *
  * The last line on stdout (not in the trace; bergdb 024-09, step A1) has the Dag's counters of
  * this JVM, so of runs A, B and E together, a rerun at a start included: PE's appends,
@@ -898,9 +899,11 @@ public class TraceExport {
         Crash() { super("TraceExport's crash (crash=K)"); }
     }
 
-    /** Run A: records everything, each executed transaction through Db's test hooks, so that
-     *  with reclaim its steps and table stores are records too; with restart=K, crash=K or a
-     *  workload's restarts, across restarts of its database (bergdb 030-31). */
+    /** Run A: records everything, each executed transaction through Db's test hooks, with
+     *  reclaim's maintenance, a step, the row and the table, in the record of the action that
+     *  carries it (bergdb 031-06; until then reclaim's steps and table stores were records of
+     *  their own); with restart=K, crash=K or a workload's restarts, across restarts of its
+     *  database (bergdb 030-31). */
     AppendOnlyStream runA() {
         streamA = newStream();
         clockA = new CoreTestClock();
