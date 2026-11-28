@@ -129,7 +129,10 @@ Released bugs fixed
   at; meta blocks and records of another file or place, such as an older
   stream file's bytes that a kill can leave in the last file on APFS, are
   not taken (a meta block holds its own position and the database's ID, a
-  record's header a check of them; meta version 156).
+  record's header a check of them; meta version 156). A file storage
+  hands the system at most 5 MB in one write, so the zeros that a kill
+  leaves are within that bound whatever the write buffer, also with the
+  Core API (028-80).
 * **RB-013, S4. A stop between a transaction's record and reclaim's
   records after it changed the stream's bytes** (bergdb 033; 031-06,
   2026-11-27). After a `stop()` from another thread that came between a
@@ -160,6 +163,59 @@ Not fixed on `main`; a release with one needs Frans's exception
 None (2026-11-27).
 
 
+maintain(int budget) and reclaim
+--------------------------------
+
+* **`maintain(int budget)` replaces `maintain()`, in the Pub and the
+  Core API** (bergdb 031-04, 031-06; Frans, 2026-11-27). The call gives
+  the database time for its maintenance within a budget, in cost units
+  of about 1 kB written to the stream, clamped to 100 to 100,000, and
+  returns nothing; `maintain()`, which returned whether more was due, is
+  gone, so code that calls it is changed: a loop such as
+  `while (db.maintain()) {}` becomes calls of `maintain(100000)`, the
+  largest budget, as the application's idle time allows.
+  Calling it stays optional: the maintenance goes on at the
+  application's commits. After a mass delete, the calls of an idle
+  application rewrite the live data once and give the space back once
+  the retain duration has passed since; then they do little or nothing
+  until the application writes again, and an emptied database keeps at
+  most about 1 MB of stream (RB-011, above). A pass takes about the live
+  data divided by the budget's bytes in calls. A call may go past its
+  budget by one part of its work, which copies whole values: one call of
+  the least budget can write a value of 8 MiB. A commit waits for at
+  most one part of a call, and the call gives way to every commit that
+  waits, so beside threads that commit without a pause a call may not
+  return until they pause: call it when the application is idle.
+  `Database.maintain(int)`'s Javadoc says what a caller can rely on
+  (bergdb 028-84).
+* **Every accepted action appends one record, and reclaim's work rides
+  in the commits' records** (bergdb 031-06, one record an action;
+  Frans, 2026-11-27). A transaction, a change of a setting that the
+  stream keeps (the retain duration, the startup distance) and a part of
+  `maintain(int budget)` each append exactly one record. With a finite
+  retain duration, the maintenance that reclaim owes is in the record
+  of the commit that pays for it, not in records of its own after it,
+  and the database appends nothing by itself or at a start (after a
+  crash, recovery may complete the stream's torn end, as before). So a
+  stop or a restart between the same actions no longer changes the
+  stream's bytes (RB-013, above). What a program reads is unchanged,
+  `Connection.transactionInfo()` included. With the Core API,
+  `Db.getTrans()` of a commit can list reclaim's copies of other keys'
+  values beside the transaction's own puts and deletes, each marked
+  (`StoredValueNode.isCopy()`), and reclaim's own keys under
+  `/#i/dreclaim/` (bergdb 031-08, UA-6; 028-84).
+* **Reclaim keeps up under large commits** (bergdb 028-71; 031-06's
+  landing, step 3). A commit's share of reclaim's work grows with the
+  commit, up to 128 KiB of copies, where a commit carried at most about
+  16 kB: under commits of 20, 100 and 300 kB the stream kept is 8.1, 7.2
+  and 7.8 times the live data, against 7.7, 13.8 and 36.4 times with the
+  old rule, and 18 times under commits of 1 MB, against 116 and growing.
+  The reads that the work needs are made before the write lock: at 20M
+  keys a commit that carries reclaim's work held the lock for a median
+  of 0.19 ms and at most 3.1 ms (F53, 2026-11-28; bergdb 027-13, section
+  4).
+
+
 The stream and the start
 ------------------------
 
@@ -176,6 +232,66 @@ The stream and the start
   such a start was refused with a wrong cause, and its way out left a
   database with the other database's values. A directory without
   `created.txt` starts as before.
+* **The stream format is new: databases of release 2026.6 are refused;
+  make them again** (bergdb 031-06, A3; 028-67, C3; Frans, 2026-11-27).
+  Records have the format 9 (8 in 2026.6), whose value nodes mark
+  reclaim's copies and whose header holds a check of the record's
+  database and place; meta blocks have the version 156 (155 in 2026.6)
+  and hold their own position, beside the database's ID, which a start
+  now checks. A start of a database of 2026.6 throws a
+  `VersioningStreamException` whose message names release 2026.6, and
+  writes nothing. There is no upgrade path: to keep the data, read it
+  with release 2026.6 and put it into a new database with this release,
+  as for a database of 2026.5 in 2026.6; the history is not copied.
+  Release 2026.6 refuses a database of this release by its meta block's
+  version ("Cannot read meta block with version 156. Version supported:
+  155.") and writes nothing. The stream's bytes changed for every
+  configuration of StreamDigest (031-06's `landing.md`, step 2).
+* **A start checks what it reads before it writes anything, and a
+  refused start writes nothing** (bergdb 028-67, C1 and C3, 2026-11-27;
+  028-70, 2026-11-28). A start takes a meta block as the stream's only
+  if it holds its own position and the database's ID, and a record only
+  if its header's check matches the database and the record's place, so
+  the bytes of an older stream file or of another database, which a
+  kill during an append can leave in the last stream file on macOS
+  (APFS), are not taken for the stream's. It walks the stream's end
+  before it writes; an end that is not the stream's records is refused
+  with a message that names the cause, the position where the records
+  end and how to cut the stream there. Recovery's writes after a crash,
+  the completion of the stream's torn end, are held until every check of
+  the start has passed, so a start refused by a check writes nothing;
+  before, a start refused for a record of another format could complete
+  the stream's end first.
+* **Reclaim's cuts delete their files in batches; files left before a
+  gap** (bergdb 028-66, option C; Frans, 2026-11-27). A file storage
+  deletes the files that reclaim's cuts free a batch at a time, with one
+  force of the directory, where 2026.6 forced it after each file, so a
+  fast writer no longer runs ahead of the deletes: in a test of about
+  120 MB of stream a second, 113,580 transactions a second against
+  67,052 with a force after each file, and the disk 1.10 times the
+  stream kept against 1.62, both with files of a tenth (RB-011). A power
+  loss during a batch can leave older stream files before a gap in the
+  files. A start then takes the stream from the files after the gap and
+  deletes the files before it if each is this database's, by its first
+  meta block; otherwise it refuses, names the file and the way out (move
+  the files before the gap out of the directory, and keep them), and
+  writes and deletes nothing. So it refuses too, rarely, when that block
+  is the fill that recovery writes at a meta block's position after a
+  kill (bergdb 028-76, option (a); Frans, 2026-11-28).
+
+
+Times
+-----
+
+* **A time that `currentTime()` gave holds for the run that gave it**
+  (bergdb 028-74, option (a); Frans, 2026-11-28). The Javadoc of
+  `Database.currentTime()` and `Connection.currentTime()` states a limit
+  that 2026.6 has too: after a restart, with a clock that stands still
+  (a test clock) or was set back, a transaction can get a time at or
+  before a time that `currentTime()` gave before the restart, and a read
+  at that time then sees that transaction. A time that holds across
+  restarts is that of a transaction that was committed and synced
+  (`Transaction.getTime()` after `Transaction.sync()`).
 
 
 Speed
