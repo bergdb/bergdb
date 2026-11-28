@@ -634,4 +634,122 @@ public class Util {
             out.close();
         }
     }
+    
+    /**
+     * Writes 'bytes' to 'file' whole, durably (2026-11-28, bergdb 028-88): to a file beside
+     * it, the name and ".tmp", which is forced, then renamed to 'file', replacing it, and
+     * the directory forced, as FileStream makes its files durable (the file, then its
+     * directory). So 'file' is never seen empty or cut: after a kill or a power loss it is
+     * the old file, or missing if there was none, or the new one, whole; the file beside it
+     * can be left, and the next write replaces it. bytesToFile(), a FileOutputStream, first
+     * makes the file empty and forces nothing: a kill or a power loss could leave it empty
+     * or cut. Not interruptible, as FileStream's forces (bergdb 005-46): the thread's
+     * interrupt flag is cleared first and set again after, and an interrupt that closes a
+     * channel meanwhile makes it write again. Needs a system where a directory opens for
+     * reading, as FileStream does.
+     */
+    public static void writeFileDurably(byte[] bytes, File file) throws IOException {
+        boolean interrupted = Thread.interrupted();
+        try {
+            while (true) {
+                try {
+                    writeFileDurablyOnce(bytes, file);
+                    return;
+                } catch (java.nio.channels.ClosedByInterruptException e) {
+                    Thread.interrupted();
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    private static void writeFileDurablyOnce(byte[] bytes, File file) throws IOException {
+        final File dir = file.getAbsoluteFile().getParentFile();
+        final File tmp = new File(dir, file.getName() + ".tmp");
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
+                tmp.toPath(), java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(bytes);
+            while (buffer.hasRemaining()) {
+                channel.write(buffer);
+            }
+            channel.force(true);
+        }
+        java.nio.file.Files.move(tmp.toPath(), file.toPath(),
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        forceDirectory(dir);
+    }
+    
+    /**
+     * Deletes 'file' if it is there, durably (2026-11-28, bergdb 028-88): the directory is
+     * forced after the delete. Not interruptible, as writeFileDurably().
+     * 
+     * @return  whether the file was there
+     */
+    public static boolean deleteFileDurably(File file) throws IOException {
+        boolean interrupted = Thread.interrupted();
+        try {
+            final boolean deleted = java.nio.file.Files.deleteIfExists(file.toPath());
+            if (deleted) {
+                while (true) {
+                    try {
+                        forceDirectory(file.getAbsoluteFile().getParentFile());
+                        break;
+                    } catch (java.nio.channels.ClosedByInterruptException e) {
+                        Thread.interrupted();
+                        interrupted = true;
+                    }
+                }
+            }
+            return deleted;
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    /** Forces a directory, as FileStreamIo.forceDirectory does. */
+    private static void forceDirectory(File dir) throws IOException {
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
+                dir.toPath(), java.nio.file.StandardOpenOption.READ)) {
+            channel.force(true);
+        }
+    }
+    
+    /**
+     * writeFileDurably() replaces the file whole, leaves no file beside it, and writes a
+     * missing one; on an interrupted thread too, whose flag it keeps (bergdb 028-88).
+     */
+    @Nano
+    private static void testWriteFileDurably(TestEnvironment env) throws IOException {
+        if (runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        File file = new File(dir, "created.txt");
+        writeFileDurably(new byte[] {1, 2, 3}, file);
+        Assert.assertArrayEquals(new byte[] {1, 2, 3},
+                java.nio.file.Files.readAllBytes(file.toPath()));
+        bytesToFile(new byte[] {9}, new File(dir, "created.txt.tmp"));  // as a kill leaves it
+        Thread.currentThread().interrupt();
+        try {
+            writeFileDurably(new byte[] {4, 5}, file);
+            Assert.assertTrue("the flag kept", Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+        Assert.assertArrayEquals(new byte[] {4, 5},
+                java.nio.file.Files.readAllBytes(file.toPath()));
+        Assert.assertFalse("no file beside it", new File(dir, "created.txt.tmp").exists());
+        Assert.assertTrue("deleted", deleteFileDurably(file));
+        Assert.assertFalse("gone", file.exists());
+        Assert.assertFalse("not there", deleteFileDurably(file));
+    }
 }

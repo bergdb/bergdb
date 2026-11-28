@@ -33,7 +33,9 @@ public interface DatabaseBuilder {
      * without created.txt and without a stream file with a byte, also an empty or a missing
      * one, gets a new, empty database, as a wrong path or a volume that is not mounted does
      * too. A directory with stream files and without created.txt is opened, and the start
-     * writes created.txt again (bergdb 020-24-08, U8-8). An application that must never
+     * writes created.txt again (bergdb 020-24-08, U8-8), as it writes one that names no
+     * database ID, which a kill or a power loss could leave empty or cut until created.txt
+     * was written whole (bergdb 028-88). An application that must never
      * create a database there uses {@link #open(String)}.</p>
      * 
      * @param dirname  The database's directory.
@@ -207,14 +209,20 @@ public interface DatabaseBuilder {
      *             while it was created left a part of it, and no data (bergdb 005-33). The
      *             start has written nothing. To create the database, remove its files, in
      *             its directory the stream's files (*.bergdb) and created.txt, and start
-     *             again. A database that holds data never gives this exception.
+     *             again. A database that holds data never gives this exception, nor a
+     *             directory with created.txt (the next one; bergdb 028-88).
      * @throws DatabaseMissingException
      *             If the directory of create() or open() held a database and its stream is
      *             missing: it has created.txt, and no stream file (*.bergdb) with a byte;
      *             the files were removed, not restored, or emptied (bergdb 015-01). The
      *             start has opened, created and written nothing. Restore the *.bergdb files
      *             and start again; or, for a new, empty database there, remove created.txt
-     *             and the *.bergdb files. Also, for open(), if the directory is missing,
+     *             and the *.bergdb files. Also if it has created.txt and its stream holds no
+     *             data, zeros only or a part of a creation (2026-11-28, bergdb 028-88): the
+     *             database was created, as created.txt is written once the creation is
+     *             durable, and its stream lost bytes, as a storage that lost the stream
+     *             file's bytes leaves it. The start has written and deleted nothing; keep the
+     *             files, and restore the database's files from a backup. Also, for open(), if the directory is missing,
      *             is not a directory, or holds no stream file with a byte (bergdb 015-05);
      *             the start has then created and written nothing.
      */

@@ -17,7 +17,9 @@ package bergdb.pub.util;
  *
  * <p>To create the database, remove its files and start it again: in its directory, the
  * stream's files (*.bergdb) and created.txt. A stream that holds a committed transaction
- * never gives this exception.</p>
+ * never gives this exception, and neither does a directory that has created.txt, which a
+ * creation writes once it is durable: such a stream gives a DatabaseMissingException, as
+ * its stream lost bytes (2026-11-28, bergdb 028-88).</p>
  */
 public class DatabaseNotCreatedException extends DbException {
     private static final long serialVersionUID = 1L;

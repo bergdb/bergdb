@@ -3433,6 +3433,50 @@ public class PubTester {
     }
     
     /**
+     * Bergdb 028-88 (033's second review of the start, F1): the one stream file's bytes made
+     * zeros, with its length kept, as a storage that lost them leaves it, and the file cut to
+     * its first 100 bytes, a part of the creation: with created.txt there, create() and
+     * open() both throw a DatabaseMissingException whose message says to restore the files
+     * from a backup, not to remove them, and no file changes. Before, a
+     * DatabaseNotCreatedException, "Remove its files and start it again", which would have
+     * made a new database where one was lost.
+     */
+    @Nano
+    private static void testOnlyStreamFileZerosOrCut(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        File[] streams = streamFiles(dir);
+        Assert.assertEquals(1, streams.length);
+        byte[] bytes = Util.fileToBytes(streams[0].getPath());
+        for (byte[] image : new byte[][] {new byte[bytes.length], Arrays.copyOf(bytes, 100)}) {
+            java.nio.file.Files.write(streams[0].toPath(), image);
+            for (boolean create : new boolean[] {true, false}) {
+                String before = listing(dir);
+                byte[] txt = Util.fileToBytes(new File(dir, "created.txt").getPath());
+                String what = (image.length == 100 ? "cut" : "zeros") + (create ? ", create()"
+                        : ", open()");
+                try {
+                    Database d = (create ? Factory.database().create(dir.getPath())
+                            : Factory.database().open(dir.getPath())).start();
+                    d.close();
+                    throw new AssertionError(what + ": started");
+                } catch (DatabaseMissingException e) {
+                    Assert.assertTrue(what + ": " + e.getMessage(),
+                            e.getMessage().contains("028-88")
+                            && e.getMessage().contains("restore its files from a backup")
+                            && !e.getMessage().contains("Remove its files"));
+                }
+                Assert.assertEquals(what, before, listing(dir));
+                Assert.assertArrayEquals(what, txt,
+                        Util.fileToBytes(new File(dir, "created.txt").getPath()));
+                Assert.assertArrayEquals(what, image, Util.fileToBytes(streams[0].getPath()));
+            }
+        }
+    }
+    
+    /**
      * The remedy that DatabaseMissingException's message gives (bergdb 015-01): with
      * created.txt removed too, start() creates a new, empty database, as for any directory
      * without created.txt.
@@ -4420,8 +4464,11 @@ public class PubTester {
     }
     
     /**
-     * bergdb 005-32: a directory whose start failed, here as its creation crashed (005-33),
-     * can be removed and created again at once: the failed start has closed its files.
+     * bergdb 005-32: a directory whose start failed, here as its stream was cut inside the
+     * creation, can be removed and created again at once: the failed start has closed its
+     * files. Beside created.txt such a stream is refused as one that lost bytes, a
+     * DatabaseMissingException, since 2026-11-28 (bergdb 028-88); until then as a creation
+     * that crashed, a DatabaseNotCreatedException (005-33).
      */
     @Nano
     private static void testFailedStartsDirectoryRemoved(TestEnvironment env) 
@@ -4449,8 +4496,9 @@ public class PubTester {
         try {
             Factory.database().create(d.getPath()).start();
             throw new AssertionError("started");
-        } catch (DatabaseNotCreatedException e) {
-            // Expected (005-33; until 2026-10-25 a StreamFormatException, 005-28).
+        } catch (DatabaseMissingException e) {
+            // Expected (028-88; until then a DatabaseNotCreatedException, 005-33, and until
+            // 2026-10-25 a StreamFormatException, 005-28).
         }
         Assert.assertEquals("the stream as it was", 200, stream.length());
         DbTesterFailure.assertNoNewStorageThreads(before);

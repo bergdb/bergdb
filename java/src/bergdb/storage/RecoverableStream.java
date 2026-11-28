@@ -214,12 +214,22 @@ public class RecoverableStream {
         // finds the same block before the fill as after it.
         MetaBlock lastBlock = readLastValidMetaBlock();
         if (lastBlock == null) {
+            // The cause, that the start has written nothing, and the way out since 2026-11-28
+            // (bergdb 028-88; 033's second review of the start, F2): until then the message
+            // of a stream from 0 had none of them, and that of a cut stream no way out.
             final long first = aos.getFirstPos();
             throw new StreamFormatException("Could not find *any* valid meta block. "
                     + "At least the very first meta block must be valid in a db stream."
-                    + (first == 0 ? "" : " The stream begins at " + first + ", and the bytes"
+                    + (first == 0 ? " No meta block is valid, also not the first, at 0, which"
+                    + " the database's creation wrote: the stream is damaged from its start,"
+                    + " as a storage that lost or changed the bytes of its first stream file"
+                    + " leaves it, or it is not a BergDB stream. The start has written"
+                    + " nothing. To start the database, restore its files from a backup, the"
+                    + " stream files and created.txt all together (bergdb 028-88)."
+                    : " The stream begins at " + first + ", and the bytes"
                     + " before it are not there: it may lack bytes that the database needs"
-                    + " (bergdb 028-66). The start has written nothing." + frontAccount()));
+                    + " (bergdb 028-66). The start has written nothing." + frontAccount()
+                    + MISSING_BYTES_WAY_OUT));
         }
         checkLastTransSpos(lastBlock);
         final byte[] id = lastBlock.getId();
@@ -998,7 +1008,8 @@ public class RecoverableStream {
                     + " names the last transaction at " + spos + ", before the stream's first"
                     + " position, " + aos.getFirstPos() + ": the stream lacks bytes that the"
                     + " database needs, from " + spos + " on. The start has written and"
-                    + " deleted nothing (bergdb 028-66)." + frontAccount());
+                    + " deleted nothing (bergdb 028-66)." + frontAccount()
+                    + MISSING_BYTES_WAY_OUT);
         }
         if (spos < Math.max(META_BLOCK_SIZE, aos.getFirstPos()) || spos >= block.getPos()) {
             throw new StreamFormatException("The meta block at " + block.getPos()
@@ -1655,6 +1666,18 @@ public class RecoverableStream {
     public long getFirstPos() {
         return aos.getFirstPos();
     }
+    
+    /**
+     * The way out of a start refused as the stream lacks bytes of the database (bergdb
+     * 031-08, UB-5 (d); 028-82): the end of the message of the four such refusals, recover()'s
+     * of a cut stream with no valid meta block and checkLastTransSpos()'s (since 2026-11-28,
+     * bergdb 028-88; 033's second review of the start, F2: until then they named none), and
+     * Db.refusalOfMissingBytes's and Reclaim.initFromDb's (Db.MISSING_BYTES_WAY_OUT).
+     */
+    public static final String MISSING_BYTES_WAY_OUT = " To start the database, put its missing"
+            + " stream files back from a backup, or restore its files all together, the stream"
+            + " files and created.txt; a copy of a running database's files that missed some is"
+            + " taken again (bergdb 028-82).";
     
     /**
      * For a start's refusal of a stream that lacks bytes it needs (2026-11-27, bergdb 028-66):

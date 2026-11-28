@@ -27,6 +27,7 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
+import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
@@ -1359,7 +1360,18 @@ public class Db implements AutoCloseable {
      *          first record alone, without the second, the startup distance's (bergdb
      *          028-18). A crash inside the creating start leaves it, and so does a crash
      *          after the creating start returned, before a sync (above; bergdb 028-40).
-     *          The start writes nothing.
+     *          The start writes nothing. Not with created.txt there (DbBuilder.createdTxt,
+     *          the Pub API's directories; since 2026-11-28, bergdb 028-88): the next one.
+     * @throws DatabaseMissingException
+     *          If created.txt is there (DbBuilder.createdTxt) and the stream holds no data,
+     *          as an incomplete creation (above), zeros or a part of the creation's records
+     *          (2026-11-28, bergdb 028-88): created.txt is written only once the creation's
+     *          records are durable in the stream, so the database was created and its
+     *          stream lost bytes, as a storage that lost a stream file's bytes leaves it.
+     *          The message names created.txt, the stream file and the way out, a restore of
+     *          the database's files from a backup; the start writes nothing. Until 028-88
+     *          a DatabaseNotCreatedException, whose way out, the files removed, made a new
+     *          database where one was lost.
      * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
@@ -1432,13 +1444,12 @@ public class Db implements AutoCloseable {
     /**
      * The way out of a start refused as the stream lacks bytes of the database (2026-11-28,
      * bergdb 031-08, UB-5 (d); 028-82), refusalOfMissingBytes() and Reclaim.initFromDb's
-     * refusal: until then the message named none.
+     * refusal: until then the message named none. The way out is the storage's
+     * (RecoverableStream.MISSING_BYTES_WAY_OUT), which ends its own two such refusals too
+     * (bergdb 028-88).
      */
     static final String MISSING_BYTES_WAY_OUT = " The start has written nothing either (bergdb"
-            + " 028-70). To start the database, put its missing stream files back from a"
-            + " backup, or restore its files all together, the stream files and created.txt;"
-            + " a copy of a running database's files that missed some is taken again (bergdb"
-            + " 028-82).";
+            + " 028-70)." + RecoverableStream.MISSING_BYTES_WAY_OUT;
     
     /**
      * Closes the storage of a start that threw, outside the locks (bergdb 005-32); see
@@ -1529,7 +1540,9 @@ public class Db implements AutoCloseable {
         // cut (2026-11-27, bergdb 028-66, review R2): before, a start so refused had written
         // a missing created.txt first.
         if (!creating) {
-            writeCreatedTxtIfMissing();     // the creating start writes it at its end
+            // The creating start writes it at its end. Also one without an ID, as a kill or a
+            // power loss left created.txt empty or cut before bergdb 028-88.
+            writeCreatedTxtIfMissing(createdTxtId);
         }
         synchronized (writeLock) {
             // The admission of the large values that the start made resident, as after a
@@ -1923,13 +1936,31 @@ public class Db implements AutoCloseable {
      * created.txt (handleEmptyStream). The creation date is unknown. Called at the end of a
      * start that read the stream, so that the Pub API refuses the directory if its stream
      * goes missing later. A failure to write it fails the start, as handleEmptyStream's does.
+     *
+     * <p>Since 2026-11-28 (bergdb 028-88; 033's second review of the start, F3) also a
+     * created.txt that names no database ID ('txtId' null, readCreatedTxtId()): empty,
+     * cut or damaged, as a kill or a power loss could leave it when created.txt was written
+     * with a FileOutputStream and no force (until 028-88; writeCreatedTxt()). It is written
+     * again with the stream's ID, after every check of the start, so a start that refuses
+     * writes nothing (bergdb 028-70). Until then such a file was left as it was, and 028-81's
+     * comparison was never made for the database: another database's stream files beside it
+     * were taken. A created.txt that is not a file, as a directory of that name, is left.</p>
      */
-    private void writeCreatedTxtIfMissing() {
-        if (createdTxtDir == null || new File(createdTxtDir, "created.txt").exists()) {
+    private void writeCreatedTxtIfMissing(byte[] txtId) {
+        if (createdTxtDir == null || txtId != null) {
+            return;
+        }
+        final File file = new File(createdTxtDir, "created.txt");
+        if (file.exists() && !file.isFile()) {
             return;
         }
         writeCreatedTxt("unknown (created.txt written at a start on " + Util.today() + ")",
                 DatabaseId.createFromBytes(nodeStream.getMetaBlock().getId()));
+    }
+    
+    /** Whether the start has created.txt (DbBuilder.createdTxt) and the file is there. */
+    private boolean hasCreatedTxt() {
+        return createdTxtDir != null && new File(createdTxtDir, "created.txt").isFile();
     }
     
     /**
@@ -2081,9 +2112,40 @@ public class Db implements AutoCloseable {
      * the files. The start that creates the database ('creating') has written the primordial
      * record itself, and is not refused.
      *
+     * <p>Since 2026-11-28 (bergdb 028-88; 033's second review of the start, F1), with
+     * created.txt there (DbBuilder.createdTxt, the Pub API's directories) such a stream is
+     * not a creation that did not complete, and is refused with a DatabaseMissingException:
+     * created.txt is written only after the creation's two records are durable in the stream
+     * (startInner, syncCreation()), or by a later start that has read them
+     * (writeCreatedTxtIfMissing()), and a creation removes a created.txt that is there
+     * before its first byte is appended (writePrimordialTransaction()). So the database
+     * was created, it may have held committed transactions, and its stream lost bytes that
+     * were durable: a storage that lost the file's bytes and kept its length (zeros), or cut
+     * it, or another file put in the place of the stream file. Until then it was refused as
+     * a creation that did not complete, whose way out, the files removed, made a new database
+     * where one was lost; a stream file of 0 bytes beside created.txt was refused by the Pub
+     * API as missing (DatabaseBuilderImp.refuseMissingStream; bergdb 015-01).</p>
+     *
      * @throws DatabaseNotCreatedException
+     * @throws DatabaseMissingException
      */
     private void refuseIncompleteCreation(boolean creating) {
+        if (!creating && hasCreatedTxt() && (nodeStream.isIncompleteCreation(CREATION_LENGTH)
+                || nodeStream.holdsPrimordialRecordAlone(CREATION_LENGTH))) {
+            final String file = streamFileAt(0);
+            throw new DatabaseMissingException("The stream, of length " + nodeStream.getLength()
+                    + ", holds no data, only zeros or a part of a creation's records, and"
+                    + " created.txt is in " + createdTxtDir.getPath() + ": the database was"
+                    + " created, as a creation writes created.txt only once its records are"
+                    + " durable in the stream (bergdb 015-01, 028-18), and its stream"
+                    + (file == null ? "" : " file " + file) + " lost bytes, as a storage that"
+                    + " lost a file's bytes and kept its length leaves it, or another file was"
+                    + " put in the place of the stream file. The start has written and deleted"
+                    + " nothing. To start the database, restore its files from a backup, the"
+                    + " stream files (*.bergdb) and created.txt all together, and keep the files"
+                    + " that are there now; removed, a start would create a new, empty database"
+                    + " in the place of the one that was lost (bergdb 028-88).");
+        }
         if (nodeStream.isIncompleteCreation(CREATION_LENGTH)) {
             throw new DatabaseNotCreatedException("The database was not completely created "
                     + "(a crash or a power loss while it was created?): its stream, of length "
@@ -2204,6 +2266,21 @@ public class Db implements AutoCloseable {
         transNodes.addKeyNode(root);
         transNodes.addTopNode(superRoot);
         
+        // A created.txt that is there is removed, durably, before the creation's first byte
+        // is appended (2026-11-28, bergdb 028-88): so created.txt is there only once a
+        // creation's records are durable, and a start refuses a stream that holds a part of
+        // a creation beside it as a stream that lost bytes (refuseIncompleteCreation()).
+        // Only the Core API meets one: the Pub API refuses a directory with created.txt and
+        // no stream byte before (DatabaseMissingException; bergdb 015-01). Until then a kill
+        // inside such a creation left the older created.txt beside a part of it.
+        if (createdTxtDir != null) {
+            try {
+                Util.deleteFileDurably(new File(createdTxtDir, "created.txt"));
+            } catch (IOException e) {
+                throw new StreamIoException(e);
+            }
+        }
+        
         nodeStream.appendNodes(transNodes, trans, new ArrayList<Node>(), superRoot);
         assert trans.lastPos + 1 == CREATION_LENGTH : "creation length " + (trans.lastPos + 1);
         
@@ -2212,7 +2289,12 @@ public class Db implements AutoCloseable {
     }
     
     /** 
-     * Writes created.txt if createdTxt parameters has been set in DbBuilder.
+     * Writes created.txt if createdTxt parameters has been set in DbBuilder: whole and
+     * durable, to created.txt.tmp, forced, renamed and the directory forced
+     * (Util.writeFileDurably; 2026-11-28, bergdb 028-88). Until then with a FileOutputStream
+     * and no force (Util.bytesToFile), so a kill or a power loss could leave it empty or cut.
+     * It holds the line "database ID:" with the ID, which a start compares with the stream's
+     * (bergdb 028-81), the creation date and the release that wrote it.
      * 
      * @param creationDate  The creation date's text: today's, or "unknown ..." (A+).
      * @param id  The database's ID.
@@ -2233,7 +2315,7 @@ public class Db implements AutoCloseable {
         
         try {
             byte[] stringBytes = b.toString().getBytes("UTF-8");
-            Util.bytesToFile(stringBytes, new File(createdTxtDir, "created.txt"));
+            Util.writeFileDurably(stringBytes, new File(createdTxtDir, "created.txt"));
         } catch (IOException e) {
             throw new StreamIoException(e);
         }

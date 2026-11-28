@@ -67,7 +67,17 @@ comparison with `created.txt` on, a refusal has written nothing:
    written at the end of the start (1.9); with `created.txt` (the Pub
    API) both are synced then, and `created.txt` written after the sync
    (015-01, 028-18; until 028-18 the primordial record was synced and
-   `created.txt` written here). A stream that is not empty is first
+   `created.txt` written here). Since 028-88 (2026-11-28) a `created.txt`
+   that is there is removed, and the directory forced, before the
+   creation's first byte is appended (only the Core API meets one: the
+   Pub API refuses `created.txt` without a stream byte before, 015-01),
+   and `created.txt` is written whole: to `created.txt.tmp`, forced,
+   renamed and the directory forced (`Util.writeFileDurably`; until then
+   in place, with no force, so a kill or a power loss could leave it
+   empty or cut). So `created.txt` is there only once a creation's
+   records are durable in the stream. It holds the line "database ID:"
+   with the id in 32 hex digits, the creation date and the release. A
+   stream that is not empty is first
    compared with `created.txt` (since 028-81, 2026-11-28; 031-08,
    UB-3), before every other check: with `created.txt` (the Pub API's
    directories, `DbBuilder.createdTxt`) that names an id on its line
@@ -103,6 +113,16 @@ comparison with `created.txt` on, a refusal has written nothing:
    first file, as the stream moves to a second only after the first is
    forced. Until then such a stream was refused at step 3, "Could not
    find *any* valid meta block", an SFE (033's review of the start, F3).
+   Since 028-88 (2026-11-28; 033's second review of the start, F1), with
+   `created.txt` there, each of these streams is refused as a database
+   whose stream lost bytes, a `DatabaseMissingException` whose message
+   names `created.txt`, the stream file and the way out, a restore of the
+   files from a backup, keeping the files that are there: `created.txt`
+   is there only once a creation is durable (step 1), so the database was
+   created and may have held data; a storage that lost the file's bytes
+   and kept its length, or cut it, leaves such a stream. Until then it
+   was refused as a creation that did not complete, whose way out, the
+   files removed, made a new database where one was lost.
 3. **The last valid meta block** B: of the blocks complete in the
    stream, from the last down to the first at or after the first
    position, the first that is valid: its last byte 10, its own position
@@ -133,7 +153,12 @@ comparison with `created.txt` on, a refusal has written nothing:
    after 0 its message says that the stream may lack bytes that the
    database needs, with the storage's account of its front (028-66; for
    `FileStream` it names a gap in the files, 027-14, or, where there is
-   none, the first file, since 028-82).
+   none, the first file, since 028-82), and since 028-88 the way out of
+   1.10's refusals (`RecoverableStream.MISSING_BYTES_WAY_OUT`); for a
+   stream from 0, since 028-88, that the stream is damaged from its start
+   or is not BergDB's, that the start has written nothing, and the way
+   out, a restore from a backup (033's second review of the start, F2:
+   until then neither named a way out).
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
@@ -141,7 +166,8 @@ comparison with `created.txt` on, a refusal has written nothing:
    the block (019-34); else an SFE. One from 128 to below the first
    position is refused as a stream that lacks bytes the database needs,
    from that record on, with the storage's account (028-66,
-   `RecoverableStream.checkLastTransSpos`).
+   `RecoverableStream.checkLastTransSpos`) and, since 028-88, the way out
+   of 1.10's refusals.
 6. **The files before a gap** (Frans, 2026-11-27; 028-66, section 6.2):
    the bytes that the storage holds before its first position and deletes
    at the next cut, `FileStream`'s files before a gap in its files (027-14),
@@ -491,7 +517,10 @@ writes, held since 1.3, are written (`NodeStream.writeRecovery`;
 028-70): every refusal of what the start reads comes before them. Then
 `created.txt` is written if missing (015-01; after reclaim's refusal
 since 2026-11-27, 028-66's review, R2: before, a start so refused wrote
-a missing `created.txt` first); eviction takes in what the start made
+a missing `created.txt` first), and since 028-88 also if it names no id
+(empty, cut or damaged), with the stream's id, so that a later start
+compares it (step 1; until then such a file was left, and the
+comparison never made); eviction takes in what the start made
 resident (015-68, 019-47). The creating start writes the creation's
 second record now: an internal transaction with no maintenance
 (`Trans.noMaintenance`; 031-06, section 2, rule 11) that puts the
@@ -744,8 +773,9 @@ T3 and T4 are part 6's; what they give a start:
 ## 6. In Java
 
 `core/Db` (`startInner`, the order of 1.2 to 1.9, and the methods it
-calls, `refuseCreatedTxtOfAnotherDatabase`, `readStartupPos` and
-`readStartupDistanceKv` among them;
+calls, `refuseCreatedTxtOfAnotherDatabase`, `refuseIncompleteCreation`,
+`writeCreatedTxtIfMissing`, `readStartupPos` and
+`readStartupDistanceKv` among them; `common/Util.writeFileDurably`;
 `StartInfo`);
 `core/DbStarter` (1.4's validation to 1.9); `core/NodeCollection`
 (`setStartupSection`, `readVersion`,
@@ -799,7 +829,11 @@ cycle check (027-03, 14.2).
   (028-79);
   `NodeStreamTester.testStartRefusesFormat8` (031-06); `DbTesterStream`'s
   three tests of 028-81 (`created.txt`'s id against the first meta
-  block's, and a start without one as before); the gap's tests of
+  block's, and a start without one as before, one that names no id
+  written again since 028-88); 028-88's `testStreamLostBesideCreatedTxt`,
+  `testCreationRemovesCreatedTxtFirst` and `testStreamLacksBytesWayOut`,
+  `PubTester.testOnlyStreamFileZerosOrCut` and
+  `Util.testWriteFileDurably`; the gap's tests of
   027-14 (028-66), `PubTesterJavadocNewUsers.testStartWithTheFirstFileDeleted`
   among them.
 * **In the night**: `level2.sh` (RestartStress, RestartInvariance,
@@ -1019,3 +1053,12 @@ stream, the blocks among them passed over, not only to the next block
 2026-11-28. 028-79, F and G: a first block whose every byte is the
 fill's or 0 is passed over (1.2, step 3). By an agent of lead-1127, on
 the branch `028-79-fg`.
+
+2026-11-28. 028-88 (033's second review of the start, F1 to F3): with
+`created.txt`, a stream that holds no data, zeros or a part of a
+creation, is refused as a database whose stream lost bytes; the
+storage's two refusals of a stream that lacks bytes or has no valid
+block name the way out; `created.txt` is removed before a creation,
+written whole, and written again where it names no id (1.2, steps 1
+to 5; 1.9; sections 6 and 7). By an agent of lead-1127, on the branch
+`028-88`.

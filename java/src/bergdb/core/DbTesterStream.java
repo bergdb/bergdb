@@ -15,6 +15,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.SyncLevel;
@@ -846,6 +847,164 @@ public class DbTesterStream {
         }
     }
     
+    /**
+     * Bergdb 028-88 (033's second review of the start, F1): with created.txt, a stream that
+     * holds no data, zeros only or a part of a creation, is a database whose stream lost
+     * bytes, not a creation that did not complete. A database of one stream file, with a
+     * value synced: the file's bytes made zeros, with its length kept, and the file cut to
+     * a part of the creation (1 to 350 bytes, the first record alone among them): each start
+     * with created.txt is refused with a DatabaseMissingException whose message names
+     * created.txt, the stream file and the way out, a restore from a backup; no file
+     * changes. Without createdTxt(File), as before, a DatabaseNotCreatedException. Before:
+     * a DatabaseNotCreatedException with created.txt too, "Remove its files and start it
+     * again".
+     */
+    @Nano
+    private static void testStreamLostBesideCreatedTxt(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                .createdTxt(dir).start()) {
+            db.execute(db.trans().put("a", "a-value"));
+            db.sync(SyncLevel.ORDINARY);
+        }
+        File file = new File(dir, "00000000000000.bergdb");
+        Assert.assertEquals("one stream file", 1, dir.listFiles((d, n) -> n.endsWith(".bergdb"))
+                .length);
+        final byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+        Assert.assertTrue("more than the creation, " + bytes.length, bytes.length > 416);
+        for (int n : new int[] {-1, 1, 100, 128, 200, (int) Db.CREATION_LENGTH, 350}) {
+            final String what = n < 0 ? "zeros" : "the first " + n + " bytes";
+            java.nio.file.Files.write(file.toPath(),
+                    n < 0 ? new byte[bytes.length] : Arrays.copyOf(bytes, n));
+            java.util.Map<String, byte[]> before = filesOf(dir);
+            try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                    .createdTxt(dir).start()) {
+                throw new AssertionError(what + ": started");
+            } catch (DatabaseMissingException e) {
+                String m = e.getMessage();
+                Assert.assertTrue(what + ": " + m, m.contains("created.txt is in "
+                        + dir.getPath()) && m.contains("stream file 00000000000000.bergdb lost"
+                        + " bytes") && m.contains("restore its files from a backup")
+                        && m.contains("has written and deleted nothing")
+                        && !m.contains("Remove its files"));
+            }
+            java.util.Map<String, byte[]> after = filesOf(dir);
+            Assert.assertEquals(what, before.keySet(), after.keySet());
+            for (String name : before.keySet()) {
+                Assert.assertArrayEquals(what + ", " + name, before.get(name), after.get(name));
+            }
+        }
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo())).start()) {
+            throw new AssertionError("started without created.txt");
+        } catch (DatabaseNotCreatedException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Remove its files"));
+        }
+    }
+    
+    /**
+     * Bergdb 028-88 (033's second review of the start, F2): the storage's two refusals of a
+     * stream that lacks bytes or has no valid meta block name the way out, as Db's and
+     * Reclaim's do since 028-82. A file database of four stream files of 200,000 bytes, its
+     * first three removed: the last valid meta block, at 600,000, names a record before the
+     * stream's first position (RecoverableStream.checkLastTransSpos); and a stream of
+     * 300,000 zeros from 0, longer than a creation's first file, has no valid meta block
+     * (recover()): each message ends with the way out, the second with its cause and that
+     * the start has written nothing too; no byte changes. Before, neither named a way out.
+     */
+    @Nano
+    private static void testStreamLacksBytesWayOut(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        CoreTestClock clock = new CoreTestClock();
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo())).clock(clock)
+                .start()) {
+            db.setRetainDuration(Long.MAX_VALUE);
+            for (int i = 0; db.getStreamLength() < 610000; i++) {
+                clock.setTime(1000 + i);
+                db.execute(db.trans().put("k" + (i % 10), new byte[10000]));
+            }
+        }
+        String[] names = dir.list((d, n) -> n.endsWith(".bergdb"));
+        Arrays.sort(names);
+        Assert.assertEquals(Arrays.toString(names), "00000000000006.bergdb",
+                names[names.length - 1]);
+        for (int i = 0; i < names.length - 1; i++) {
+            Assert.assertTrue(new File(dir, names[i]).delete());
+        }
+        java.util.Map<String, byte[]> before = filesOf(dir);
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo())).clock(clock)
+                .start()) {
+            throw new AssertionError("started without the first files");
+        } catch (StreamFormatException e) {
+            String m = e.getMessage();
+            Assert.assertTrue(m, m.contains("names the last transaction at")
+                    && m.contains("before the stream's first position, 600000")
+                    && m.endsWith(RecoverableStream.MISSING_BYTES_WAY_OUT)
+                    && m.contains("put its missing stream files back from a backup"));
+        }
+        java.util.Map<String, byte[]> after = filesOf(dir);
+        Assert.assertEquals(before.keySet(), after.keySet());
+        for (String name : before.keySet()) {
+            Assert.assertArrayEquals(name, before.get(name), after.get(name));
+        }
+        
+        MemoryStream zeros = new MemoryStream();
+        zeros.append(new byte[300000], 0, 300000);
+        try (Db db = Db.builder().testSetup(zeros).start()) {
+            throw new AssertionError("started on zeros");
+        } catch (StreamFormatException e) {
+            String m = e.getMessage();
+            Assert.assertTrue(m, m.startsWith("Could not find *any* valid meta block.")
+                    && m.contains("the stream is damaged from its start")
+                    && m.contains("The start has written nothing.")
+                    && m.contains("restore its files from a backup"));
+        }
+        Assert.assertEquals("unchanged", 300000, zeros.getLength());
+    }
+    
+    /**
+     * Bergdb 028-88 (F1): a creation removes a created.txt that is there before its first
+     * byte reaches the stream file, so a kill inside the creation leaves no created.txt
+     * beside a part of it (the Core API: the Pub API refuses a directory with created.txt and
+     * no stream byte, bergdb 015-01). Each write of the stream records whether created.txt
+     * was there: not at the first; after the start, created.txt names the new database's
+     * ID. Before, the older created.txt stayed until the creation's end.
+     */
+    @Nano
+    private static void testCreationRemovesCreatedTxtFirst(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        final File txt = new File(dir, "created.txt");
+        java.nio.file.Files.write(txt.toPath(), ("database ID:   "
+                + DatabaseId.createRandom().idToString() + "\n").getBytes("UTF-8"));
+        final java.util.List<Boolean> txtAtWrite =
+                java.util.Collections.synchronizedList(new java.util.ArrayList<Boolean>());
+        FileStreamIo io = new FileStreamIo() {
+            protected void write(File file, RandomAccessFile handle, byte[] b, int offset,
+                    int length) throws IOException {
+                txtAtWrite.add(txt.exists());
+                super.write(file, handle, b, offset, length);
+            }
+        };
+        DatabaseId id = DatabaseId.createRandom();
+        try (Db db = Db.builder().testSetup(new FileStream(dir, io)).id(id).createdTxt(dir)
+                .start()) {
+            Assert.assertTrue("a write", !txtAtWrite.isEmpty());
+            Assert.assertFalse("created.txt at the first write", txtAtWrite.get(0));
+        }
+        String text = new String(java.nio.file.Files.readAllBytes(txt.toPath()), "UTF-8");
+        Assert.assertTrue(text, text.contains("database ID:   " + id.idToString()));
+        Assert.assertFalse("no file beside it", new File(dir, "created.txt.tmp").exists());
+    }
+    
     /** Copies the stream files of 'from' to 'to', and returns 'to'. */
     private static File copyStreamFiles(File from, File to) throws IOException {
         for (File f : from.listFiles()) {
@@ -948,9 +1107,13 @@ public class DbTesterStream {
     /**
      * Bergdb 028-81: a start without an ID from created.txt is as before. A directory
      * without created.txt starts, and the start writes created.txt with the stream's ID; one
-     * whose created.txt names no ID (no such line, or a damaged one) starts and leaves it as
-     * it is; and a start without createdTxt(File), as the Core API's, of A's stream files
-     * beside B's created.txt starts, as it reads no created.txt.
+     * whose created.txt names no ID (no such line, or a damaged one; empty or cut, as a kill
+     * or a power loss could leave it until 028-88) starts, and since 028-88 (033's second
+     * review of the start, F3) writes it again with the stream's ID, so that a later start
+     * compares it: with B's stream files then in A's directory, the start is refused as files
+     * of two databases. Until 028-88 the start left such a created.txt as it was, and took
+     * B's stream files. And a start without createdTxt(File), as the Core API's, of A's
+     * stream files beside B's created.txt starts, as it reads no created.txt.
      */
     @Nano
     private static void testStartWithoutCreatedTxtIdAsBefore(TestEnvironment env)
@@ -961,21 +1124,31 @@ public class DbTesterStream {
         File a = env.createTempDir();
         File b = env.createTempDir();
         DatabaseId idA = madeForCreatedTxt(a, "A");
-        madeForCreatedTxt(b, "B");
+        DatabaseId idB = madeForCreatedTxt(b, "B");
         File txtA = new File(a, "created.txt");
         Assert.assertTrue(txtA.delete());
         checkValuesOf(a, "A");
         String written = new String(java.nio.file.Files.readAllBytes(txtA.toPath()), "UTF-8");
         Assert.assertTrue(written, written.contains("database ID:   " + idA.idToString())
                 && written.contains("creation date: unknown"));
+        final int idLine = written.indexOf("database ID:");
         for (String text : new String[] {"This directory contains a BergDB database.\n",
                 "database ID:   0123\n", "database ID:   zz" + idA.idToString().substring(2)
-                + "\n", "database ID:   00000000000000000000000000000000\n"}) {
+                + "\n", "database ID:   00000000000000000000000000000000\n", "",
+                written.substring(0, idLine), written.substring(0, idLine + 20),
+                written.substring(0, idLine + 15 + 31)}) {
             java.nio.file.Files.write(txtA.toPath(), text.getBytes("UTF-8"));
             checkValuesOf(a, "A");
-            Assert.assertEquals(text,
-                    new String(java.nio.file.Files.readAllBytes(txtA.toPath()), "UTF-8"));
+            String now = new String(java.nio.file.Files.readAllBytes(txtA.toPath()), "UTF-8");
+            Assert.assertTrue("[" + text + "]: " + now, now.contains("database ID:   "
+                    + idA.idToString() + "\n") && now.contains("creation date: unknown"));
         }
+        java.nio.file.Files.write(txtA.toPath(), new byte[0]);
+        checkValuesOf(a, "A");
+        File aWithB = env.createTempDir();
+        java.nio.file.Files.copy(txtA.toPath(), new File(aWithB, "created.txt").toPath());
+        copyStreamFiles(b, aWithB);
+        refusedAsTwoDatabases(aWithB, "00000000000000.bergdb", idB, idA);
         java.nio.file.Files.copy(new File(b, "created.txt").toPath(), txtA.toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         try (Db db = Db.builder().testSetup(new FileStream(a, new NoForceIo())).start()) {

@@ -386,7 +386,20 @@ public class DbBuilder {
      * block's, before anything else of the stream, and refuses another (2026-11-28, bergdb
      * 028-81; Db.start()): the stream files and created.txt are of two databases. It takes
      * nothing else from the file; a missing created.txt, or one that names no ID, is not
-     * compared, and the start writes a missing one again.
+     * compared, and the start writes it again, after its last check.
+     * 
+     * <p>What created.txt holds and when it is written (2026-11-28, bergdb 028-88): the line
+     * "database ID:" with the database's ID in 32 hex digits, the creation date ("unknown
+     * ..." where a later start wrote it) and the release. The creating start removes a
+     * created.txt that is there before the creation's first byte is appended, and writes
+     * created.txt after both records of the creation are synced, before start() returns;
+     * a later start writes it if it is missing or names no ID, from the stream's ID, after
+     * every check of what it reads. It is written whole: to created.txt.tmp beside it,
+     * forced, renamed and the directory forced. Until 028-88 it was written in place with no
+     * force, and one left empty or cut was never written again. So created.txt is there
+     * only once a creation's records are durable, and a start refuses a stream that holds
+     * no data beside it, zeros or a part of a creation, with a DatabaseMissingException:
+     * the stream lost bytes (Db.start()).</p>
      * 
      * @param dir  The directory to create the file in.
      * @throws IllegalArgumentException  If dir is null (bergdb 020-27, Q2: it was taken, as no

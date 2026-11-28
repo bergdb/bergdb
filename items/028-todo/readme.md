@@ -108,6 +108,7 @@ Open
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | fix (1) and two shapes on main; E open (a branch) |
+| [028-88](88-created-txt-lost-stream-and-ways-out.md) | Fix | created.txt beside a stream that lost bytes; two refusals without a way out | none | in progress |
 
 
 Closed
