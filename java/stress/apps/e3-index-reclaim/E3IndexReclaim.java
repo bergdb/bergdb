@@ -70,7 +70,7 @@ public class E3IndexReclaim {
     static final Object DELETED = new Object();
     Database db;
     Connection c;
-    long lastFirst, scans, txs, builds, deletes, maintains, restarts, refusedScans;
+    long lastFirst, scans, txs, builds, deletes, maintains, restarts, refusedScans, deletedWhileBuilding, buildDoneBeforeDelete;
     final Map<String, Job> running = new HashMap<>();
     final Map<String, Integer> runningDef = new HashMap<>();
 
@@ -388,8 +388,30 @@ public class E3IndexReclaim {
                     int def = rnd.nextInt(DEFS.length);
                     startIndex(name, def);
                     // writes while it builds
-                    for (int j = 0; j < 1 + rnd.nextInt(6); j++) { writes(c, 1 + rnd.nextInt(50)); tick(rnd.nextInt(200_000)); }
+                    for (int j = 0; j < 1 + rnd.nextInt(6); j++) {
+                        writes(c, 1 + rnd.nextInt(50));
+                        tick(rnd.nextInt(200_000));
+                        if (rnd.nextInt(3) == 0) { db.maintain(new int[] {100, 100_000}[rnd.nextInt(2)]); maintains++; }
+                    }
                     if (rnd.nextInt(4) == 0) restart("round " + round + ", during a build");
+                    if (rnd.nextInt(8) == 0) {
+                        // deleted while it builds: its join() throws IndexBuildException, FAILED (IndexBuilder.start())
+                        Job j = running.remove(name);
+                        runningDef.remove(name);
+                        db.deleteIndex(name);
+                        long t = now();
+                        eras.get(name).add(new Era(t, -1, false));
+                        deletes++;
+                        try {
+                            JobStatus st = j.join();
+                            // the build may have ended before the deletion
+                            EOracle.check(st.state() == JobStatus.State.ACTIVE, "round " + round + ": a build deleted ended " + st.state());
+                            buildDoneBeforeDelete++;
+                        } catch (IndexBuildException e) {
+                            EOracle.check(e.getStatus().state() == JobStatus.State.FAILED, "round " + round + ": the deleted build's status " + e.getStatus().state());
+                            deletedWhileBuilding++;
+                        }
+                    }
                     joinAll("round " + round);
                 }
             } else if (a < 16) {
@@ -413,7 +435,7 @@ public class E3IndexReclaim {
         db.close();
         EOracle.log("OK E3IndexReclaim seed " + seed + ": " + txs + " transactions, " + builds + " builds, " + deletes + " deletions, "
                 + maintains + " maintain calls, " + restarts + " restarts, " + scans + " index scans checked, " + refusedScans
-                + " refused as absent or building");
+                + " refused as absent or building, " + deletedWhileBuilding + " builds deleted while building (" + buildDoneBeforeDelete + " done before)");
         EOracle.rmrf(dir);
     }
 

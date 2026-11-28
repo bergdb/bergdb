@@ -200,7 +200,11 @@ public class E4KillMaintain {
                 db.setStartupDistance(sd);
                 db.setRetainDuration(retainMs * 10_000L);
             }
-            for (long i = 0; i <= n; i++) model.apply(gen(i), i);
+            for (long i = 0; i <= n; i++) {
+                model.apply(gen(i), i);
+                if (i % 64 == 0 && i > 64) model.prune(i - 64);   // the checks read the last 63 transactions' states only
+            }
+            if (n > 64) model.prune(n - 64);
             check(db, n);
             System.out.println("R " + n);
             System.out.println("older states checked " + olderChecked);
@@ -209,12 +213,22 @@ public class E4KillMaintain {
             long prevTime = -1;
             if (n >= 0) {
                 prevTime = -2;   // the time of n is not known after a restart: a currentTime() before n + 1
-                if (db.getRetainDuration() != retainMs * 10_000L) fail("recovered " + n + ": the retain duration is "
-                        + db.getRetainDuration() + ", set to " + retainMs * 10_000L + " before transaction 0");
-                if (db.getStartupDistance() != sd) fail("recovered " + n + ": the startup distance is " + db.getStartupDistance());
+                // the settings: those of the last change at or before n, or of a change just before n + 1, whose
+                // call came before transaction n + 1 and may be there without it (Database.setRetainDuration())
+                long c = lastChange(n);
+                long[] want = settings(c, retainMs, sd), next = (n + 1) % CHANGE == CHANGE / 2 ? settings(n + 1, retainMs, sd) : want;
+                long gotR = db.getRetainDuration(), gotS = db.getStartupDistance();
+                if (!((gotR == want[0] && gotS == want[1]) || (gotR == next[0] && gotS == next[1]) || (gotR == next[0] && gotS == want[1])))
+                    fail("recovered " + n + ": the retain duration " + gotR + " and the startup distance " + gotS + ", expected " + want[0] + " and "
+                            + want[1] + (next != want ? " (or " + next[0] + " and " + next[1] + ")" : ""));
             }
             for (long i = n + 1; i < end; i++) {
                 clock.t.set(T0 + i * STEP);
+                if (i % CHANGE == CHANGE / 2) {           // the settings change before transaction i
+                    long[] st = settings(i, retainMs, sd);
+                    db.setRetainDuration(st[0]);
+                    db.setStartupDistance((int) st[1]);
+                }
                 LinkedHashMap<Common.K, byte[]> ops = gen(i);
                 Trans.Builder tb = db.trans();
                 for (Map.Entry<Common.K, byte[]> e : ops.entrySet()) {
@@ -227,6 +241,7 @@ public class E4KillMaintain {
                 db.execute(t);
                 prevTime = t.tt;
                 model.apply(ops, i);
+                if (i % 64 == 0 && i > 64) model.prune(i - 64);
                 if (i % 13 == 0) {
                     db.sync(SyncLevel.ORDINARY);
                     System.out.println("S " + i);
@@ -252,6 +267,22 @@ public class E4KillMaintain {
             System.out.flush();
             Runtime.getRuntime().halt(1);
         }
+    }
+
+    /** The settings change every CHANGE transactions, before transaction k with k % CHANGE == CHANGE / 2. */
+    static final int CHANGE = 150;
+
+    static long lastChange(long n) {
+        if (n < CHANGE / 2) return -1;
+        return (n - CHANGE / 2) / CHANGE * CHANGE + CHANGE / 2;
+    }
+
+    /** {retain duration, startup distance} from the change at k on (k = -1: the creation's). */
+    static long[] settings(long k, int retainMs, int sd) {
+        if (k < 0) return new long[] {retainMs * 10_000L, sd};
+        Random r = new Random(seed * 13 + k);
+        return new long[] {new long[] {10_000_000L, 30_000_000L, 5_000_000_000L}[r.nextInt(3)],
+                new int[] {100_000, 300_000, 1_000_000, sd}[r.nextInt(4)]};
     }
 
     static DbBuilder builder(int nodeSize, File dir) throws IOException {

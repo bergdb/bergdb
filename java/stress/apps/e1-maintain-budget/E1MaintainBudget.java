@@ -40,12 +40,19 @@ public class E1MaintainBudget {
     final boolean memory;
     final TestClock clock = new TestClock();
     final EOracle m = new EOracle();
-    final long retainUnits;
+    long retainUnits;
+    long floorFirst;      // after an increase of the retain duration: the first available time then (setRetainDuration())
+    long retainChanges;
     final int style;
     Database db;
     Connection c;
-    long lastFirst, cuts, reads, maintains, restarts, txs, maxStream, maxDisk;
+    long lastFirst, cuts, reads, maintains, restarts, txs, maxStream, maxDisk, txInfos;
     double maxDiskRatio;
+    long maxOver = Long.MIN_VALUE;   // the most that a maintain() call wrote beyond its budget's bytes
+    int maxOverBudget;
+    long overCalls;                  // calls that wrote more than 472 kB beyond the budget's bytes
+    /** A FAIL above it; 4 MB by default, -De1.maxOver=N for 031-08's UA-5. */
+    static final long MAX_OVER = Long.getLong("e1.maxOver", 4_000_000L);
 
     E1MaintainBudget(long seed, File dir) {
         this.seed = seed;
@@ -116,8 +123,17 @@ public class E1MaintainBudget {
 
     void maintainOnce(int b) {
         long before = db.getStreamSize();
+        long firstBefore = db.getFirstAvailableLookupTime().units();
         db.maintain(b);
         maintains++;
+        // what the call wrote, when it cut nothing: the budget (clamped, about 1 kB a unit) and "a small part's work"
+        if (db.getFirstAvailableLookupTime().units() == firstBefore) {
+            long over = db.getStreamSize() - before - budgetBytes(b);
+            if (over > maxOver) { maxOver = over; maxOverBudget = b; }
+            if (over > 472_000) overCalls++;   // past the Core's list: a step of 16 kB, a take of 256 kB, a table padded by 200 kB
+            EOracle.check(over <= MAX_OVER, "maintain(" + b + ") wrote " + (db.getStreamSize() - before) + " bytes, " + over
+                    + " more than the budget's (Database.maintain(): \"may go past it by a small part's work\"; 031-08, UA-5)");
+        }
         if (db.getRetainDuration().equals(Duration.MAX))
             EOracle.check(db.getStreamSize() == before, "maintain(" + b + ") with the retain duration forever changed the stream size "
                     + before + " -> " + db.getStreamSize() + " (Database.maintain(): \"With the retain duration forever ... there is nothing to do\")");
@@ -131,7 +147,7 @@ public class E1MaintainBudget {
         if (first > lastFirst) cuts++;
         lastFirst = first;
         if (!db.getRetainDuration().equals(Duration.MAX))
-            EOracle.check(first <= now - retainUnits, what + ": first available " + first + " is after now - R = " + (now - retainUnits)
+            EOracle.check(first <= Math.max(floorFirst, now - retainUnits), what + ": first available " + first + " is after now - R = " + (now - retainUnits)
                     + " (getFirstAvailableLookupTime(): lookups work for every time in [now - retain duration, now])");
         long ss = db.getStreamSize();
         maxStream = Math.max(maxStream, ss);
@@ -173,9 +189,18 @@ public class E1MaintainBudget {
             c.get(k, byte[].class);
             TransactionInfo ti = c.transactionInfo();
             EOracle.check(ti.time().units() == wt, what + ": transactionInfo of " + k + " gives " + ti.time().units() + ", the write was at " + wt);
-            boolean found = false;
-            for (Kv<byte[]> kv : ti.kvs()) if (kv.key().equals(k)) found = Arrays.equals(kv.value(), m.valueAt(k, wt));
-            EOracle.check(found, what + ": transactionInfo's kvs of " + wt + " lack " + k);
+            // its KVs: exactly the application's transaction, none of reclaim's copies that a commit's record carries
+            Map<String, byte[]> want = m.txKvs.get(wt);
+            int n2 = 0;
+            for (Kv<byte[]> kv : ti.kvs()) {
+                EOracle.check(want != null && want.containsKey(kv.key()) && Arrays.equals(kv.value(), want.get(kv.key())), what
+                        + ": transactionInfo of " + k + " (time " + wt + ") lists " + kv.key() + " with " + (kv.value() == null ? "a delete"
+                        : kv.value().length + " bytes") + ", which that transaction did not write" + (want == null ? " (no record of it)" : ""));
+                n2++;
+            }
+            EOracle.check(want != null && n2 == want.size(), what + ": transactionInfo of " + k + " lists " + n2 + " KVs, the transaction had "
+                    + (want == null ? "?" : want.size()));
+            txInfos++;
             reads++;
         }
         EOracle.checkExpired(c, first, key(1), what);
@@ -251,6 +276,18 @@ public class E1MaintainBudget {
             }
             if (round % 5 == 0 || a >= 70) checks("round " + round);
             if (rnd.nextInt(150) == 0) restart("round " + round);
+            if (rnd.nextInt(400) == 0) {
+                // another retain duration: after an increase the lookups' window grows to it ("If the retain duration
+                // is increased, the actual duration available for lookups will increase until it equals or exceeds")
+                long[] rs = {1 * SEC, 3 * SEC, 20 * SEC, 600 * SEC};
+                long nr = rs[rnd.nextInt(rs.length)];
+                if (nr > retainUnits) floorFirst = db.getFirstAvailableLookupTime().units();
+                db.setRetainDuration(Duration.units(nr));
+                EOracle.check(db.getRetainDuration().equals(Duration.units(nr)), "round " + round + ": the retain duration not in force");
+                retainUnits = nr;
+                retainChanges++;
+                checks("round " + round + ", R set to " + nr / SEC + " s");
+            }
             if (round % 500 == 0) EOracle.log("  round " + round + ": stream " + db.getStreamSize() + ", live " + m.live + " keys, "
                     + m.liveBytes + " bytes, cuts " + cuts + ", maintains " + maintains);
         }
@@ -301,7 +338,8 @@ public class E1MaintainBudget {
         restart("quiet");
         db.close();
         EOracle.log("OK E1MaintainBudget seed " + seed + ": " + txs + " transactions, " + maintains + " maintain calls, " + cuts + " cuts, "
-                + restarts + " restarts, " + reads + " reads checked, the most stream " + maxStream
+                 + restarts + " restarts, " + retainChanges + " retain changes, " + reads + " reads checked (" + txInfos + " transactionInfo), a call's most beyond its budget " + maxOver
+                + " bytes (budget " + maxOverBudget + "), " + overCalls + " calls more than 472 kB beyond, the most stream " + maxStream
                 + (memory ? "" : ", the most disk " + maxDisk + " (" + String.format("%.2f", maxDiskRatio) + " of the stream at most)"));
     }
 

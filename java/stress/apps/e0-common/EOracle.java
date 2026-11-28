@@ -35,6 +35,8 @@ public final class EOracle {
     /** The times of the application's transactions, in order. */
     public final ArrayList<Long> times = new ArrayList<>();
     public long lastTime = -1;
+    /** Each transaction's stored KVs (a delete of an absent key left out, as TransactionInfo.kvs() does). */
+    public final HashMap<Long, Map<String, byte[]>> txKvs = new HashMap<>();
     public long liveBytes;   // the bytes of the live values
     public int live;         // the live keys
 
@@ -43,6 +45,7 @@ public final class EOracle {
     /** ops: key -> value, or null for a delete; applied as the transaction of time t. */
     public void apply(Map<String, byte[]> ops, long t) {
         check(t > lastTime, "transaction time " + t + " not after the last, " + lastTime);
+        HashMap<String, byte[]> stored = new HashMap<>();
         for (Map.Entry<String, byte[]> e : ops.entrySet()) {
             String k = e.getKey();
             byte[] v = e.getValue();
@@ -50,9 +53,11 @@ public final class EOracle {
             if (prev != null) { liveBytes -= prev.length; live--; }
             if (v != null) { liveBytes += v.length; live++; }
             if (v == null && prev == null) continue;
+            stored.put(k, v);
             hist.computeIfAbsent(k, x -> new TreeMap<>()).put(t, v);
             dirs.computeIfAbsent(dirOf(k), x -> new TreeSet<>(ORDER)).add(k);
         }
+        txKvs.put(t, stored);
         times.add(t);
         lastTime = t;
     }
@@ -88,6 +93,7 @@ public final class EOracle {
         int i = Collections.binarySearch(times, t);
         int cut = i >= 0 ? i : -i - 1;
         if (cut > 1) times.subList(0, cut - 1).clear();
+        txKvs.keySet().removeIf(x -> x < t);
     }
 
     public List<String> allKeys() {

@@ -145,6 +145,7 @@ public class E2LimitsReclaim {
         if (first > lastFirst) cuts++;
         lastFirst = first;
         Common.check(first <= now - SEC, what + ": first available " + first + " after now - R " + (now - SEC));
+        bound(now, what);
         GetData gd = db.newGetData();
         for (Common.K k : written) {
             byte[] got = db.getOne(Long.MAX_VALUE, Keys.toSegments(k.b), gd);
@@ -152,6 +153,32 @@ public class E2LimitsReclaim {
                     + Common.hex(m.valueAt(k, Long.MAX_VALUE)));
         }
         Common.verifyGets(db, m, Long.MAX_VALUE, rnd, 100, what);
+    }
+
+    // The stream kept against the bound that Database.setRetainDuration() states (the Pub's; the Core's
+    // setRetainDuration() says the same of iterations): "about the stream written within the retain duration
+    // plus that of one or two iterations, and an iteration spans at least twice the startup distance, the
+    // stream of a quarter of the duration, and four times the live data". Measured, with the live data as
+    // its keys and values: kept / (W(R) + 2 max(2 SD, W(R/4), 4 L)), the most of it printed; over 3 is a FAIL.
+    final TreeMap<Long, Long> lengthAt = new TreeMap<>();   // time -> stream length
+    double maxRatio;
+    String maxRatioAt = "";
+
+    void bound(long now, String what) {
+        long len = db.getStreamLength();
+        lengthAt.put(now, len);
+        lengthAt.headMap(now - 2 * SEC).clear();
+        Map.Entry<Long, Long> r = lengthAt.floorEntry(now - SEC), q = lengthAt.floorEntry(now - SEC / 4);
+        if (r == null) return;                    // not yet a retain duration of history
+        long wR = len - r.getValue(), wQ = len - (q == null ? r.getValue() : q.getValue());
+        long live = 0;
+        for (Map.Entry<Common.K, byte[]> e : m.latest.entrySet()) live += e.getKey().b.length + e.getValue().length;
+        long b = wR + 2 * Math.max(2L * sd, Math.max(wQ, 4 * live));
+        long kept = len - db.getFirstAvailablePos();
+        double ratio = kept / (double) b;
+        if (ratio > maxRatio) { maxRatio = ratio; maxRatioAt = what + ": kept " + kept + ", W(R) " + wR + ", W(R/4) " + wQ + ", live " + live; }
+        Common.check(ratio <= 3, what + ": the stream kept, " + kept + ", is " + String.format("%.2f", ratio) + " times the bound "
+                + b + " (W(R) " + wR + ", W(R/4) " + wQ + ", live " + live + ", SD " + sd + ")");
     }
 
     void fullChecks(String what) {
@@ -283,7 +310,8 @@ public class E2LimitsReclaim {
         db.close();
         Common.log("OK E2LimitsReclaim seed " + seed + " node " + nodeSize + ": " + taken + " transactions taken (" + bigBytes / 1_000_000
                 + " MB in transactions of 8 to 32 MiB), " + refused + " refused, " + maintains + " maintain calls, " + cuts + " cuts, "
-                + restarts + " restarts, " + scans + " full checks");
+                + restarts + " restarts, " + scans + " full checks; the most kept against the bound " + String.format("%.2f", maxRatio)
+                + " (" + maxRatioAt + ")");
         Common.rmrf(dir);
     }
 

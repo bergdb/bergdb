@@ -190,6 +190,11 @@ public class E7PubKill {
             check(db, c, n);
             System.out.println("R " + n);
             System.out.flush();
+            if (new Random(seed + n).nextInt(3) == 0) {      // maintain() right after the start that recovered
+                System.out.println("M " + n); System.out.flush();
+                db.maintain(new int[] {100, 100_000}[new Random(seed - n).nextInt(2)]);
+                System.out.println("m " + n); System.out.flush();
+            }
             long end = maxTx == Long.MAX_VALUE ? Long.MAX_VALUE : n + 1 + maxTx;
             long prevTime = -2;
             for (long i = n + 1; i < end; i++) {

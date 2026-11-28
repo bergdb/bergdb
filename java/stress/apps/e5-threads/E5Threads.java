@@ -52,6 +52,13 @@ public class E5Threads {
         long txs;
         W(String dir) { this.dir = dir; }
         static final byte[] DEL = new byte[0];
+        /** Forgets each key's versions before the one in force at t (the reader's oldest time and the first available). */
+        void prune(long t) {
+            for (ConcurrentSkipListMap<Long, byte[]> h : hist.values()) {
+                Long f = h.floorKey(t);
+                if (f != null) h.headMap(f, false).clear();
+            }
+        }
         TreeMap<String, byte[]> stateAt(long t) {
             TreeMap<String, byte[]> m = new TreeMap<>(EOracle.ORDER);
             for (Map.Entry<String, ConcurrentSkipListMap<Long, byte[]>> e : hist.entrySet()) {
@@ -170,6 +177,16 @@ public class E5Threads {
         while (!stop.get()) {
             W w = writers.get(r.nextInt(writers.size()));
             long t = db.currentTime().units();
+            Long reg = t * 64 + (s & 63);        // unique among the readers (each its own seed's low bits)
+            readerTimes.add(reg);
+            try { readOnce(w, t, c, r); } finally { readerTimes.remove(reg); }
+        }
+    }
+
+    final ConcurrentSkipListSet<Long> readerTimes = new ConcurrentSkipListSet<>();   // the times that readers read at now
+
+    void readOnce(W w, long t, Connection c, Random r) {
+        {
             c.setLookupTime(Time.units(t));
             List<String> got = new ArrayList<>();
             List<byte[]> vals = new ArrayList<>();
@@ -185,7 +202,7 @@ public class E5Threads {
                 long first = db.getFirstAvailableLookupTime().units();
                 if (t >= first) { fail("a listing at " + t + " expired, but the first available time is " + first + ": " + e); return; }
                 expired.incrementAndGet();
-                continue;
+                return;
             }
             // wait until the writer has recorded a transaction after t (or ended)
             long until = System.currentTimeMillis() + 120_000;
@@ -267,7 +284,7 @@ public class E5Threads {
         for (W w : writers) { long s = r.nextLong(); ts.add(new Thread(() -> guard(() -> writer(w, s)), "writer")); }
         for (int i = 0; i < 3; i++) { long s = r.nextLong(); ts.add(new Thread(() -> guard(() -> transfer(s)), "transfer")); }
         for (int i = 0; i < 2; i++) { long s = r.nextLong(); ts.add(new Thread(() -> guard(() -> maintainer(s)), "maintain")); }
-        for (int i = 0; i < nReaders; i++) { long s = r.nextLong(); ts.add(new Thread(() -> guard(() -> reader(s)), "reader")); }
+        for (int i = 0; i < nReaders; i++) { long s = (r.nextLong() & ~63L) | i; ts.add(new Thread(() -> guard(() -> reader(s)), "reader")); }
         long cs = r.nextLong();
         ts.add(new Thread(() -> guard(() -> clockThread(cs)), "clock"));
         for (Thread t : ts) t.start();
@@ -277,6 +294,11 @@ public class E5Threads {
             sleep(200);
             long f = db.getFirstAvailableLookupTime().units();
             if (f < firstSeen) fail("the first available time moved back, " + firstSeen + " -> " + f);
+            long horizon = f;
+            Long oldest = readerTimes.isEmpty() ? null : readerTimes.first();
+            if (oldest != null) horizon = Math.min(horizon, oldest / 64);
+            // a reader that starts after this takes a currentTime() later than the first available time
+            for (W w : writers) w.prune(horizon);
             if (f > firstSeen) cuts++;
             firstSeen = f;
         }
