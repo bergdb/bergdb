@@ -34,8 +34,17 @@ leaves a prefix of what was appended (014-01, section 7); 035-01 and
   leave it and with who handles it (the Core by appending, the provider
   by presenting a clean end, or a person), stated in 014-01's section 7
   and in 027-14, and the ground from which 028-77 is decided.
+* **Encryption and replication are requirements of the model** (Frans,
+  2026-11-28), though neither is implemented: both were meant to be
+  simple on append-only storage, and each exception to append-only may
+  complicate them. The review states, for each fault and each way of
+  handling it, what an encrypted stream and a replica by files may
+  still assume.
 
 
 ## Log
 
 2026-11-28. Created at Frans's request, with 028-77. Not started.
+
+2026-11-28. Scope: encryption and replication as requirements of the
+model (Frans).
