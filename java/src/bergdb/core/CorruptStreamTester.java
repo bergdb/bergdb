@@ -43,11 +43,12 @@ import bergdb.stream.MemoryStream;
  * transactions whose records end before the cut, passes the audit, takes one more
  * transaction and starts again with it. A cut in the creation may instead be refused with
  * DatabaseNotCreatedException, with nothing written.</li>
- * <li><b>Other damage</b>, best effort: a byte flipped, a range cut out, a record header's
- * field set (its size, time, startupPos or topPos, a got-dirty entry), a node's field
- * changed with its checksum made right. The start refuses the copy with a DbException, or a
- * read fails the database (P7 of bergdb 010-01), or the copy holds what the original held
- * after some transaction (a damage that does not matter, or that looks like a cut tail).
+ * <li><b>Other damage</b>, best effort (bergdb 010-04, R6): a byte flipped, a range cut out,
+ * a record header's field set (its size, time, startupPos or topPos, a got-dirty entry), a
+ * node's field changed with its checksum made right. The start refuses the copy with a
+ * DbException, or a read fails the database (P7 of bergdb 010-01), or the copy holds what
+ * the original held after some transaction (a damage that does not matter, or that looks
+ * like a cut tail).
  * A start or a read that throws anything else, does not end, or leaves the database going on
  * after a failed read, and a copy that answers other values without failing, is a fault,
  * but the damage that Frans decided passes undetected (KNOWN).</li>
@@ -71,7 +72,8 @@ public class CorruptStreamTester {
     /**
      * Damage that passes undetected by Frans's decision, not a fault (bergdb 018-01, section
      * 6.1): counted, not failed. BergDB assumes correct storage; its checksums and checks of
-     * damage other than a cut tail are a best effort (checksums in the stream: bergdb 017-08).
+     * damage other than a cut tail are a best effort (bergdb 010-04, R6; checksums in the
+     * stream: 017-08).
      * <ul>
      * <li>014-01 (005-83's case, moved to 014-01): recovery's zero fill of a damaged size
      * that passes MAX_APPENDED. A start that refused after recovery's zero fill had written
@@ -693,7 +695,8 @@ public class CorruptStreamTester {
         }
         if (c.kind.equals("node")) {
             // A node changed with its checksum made right is a valid node: outside the fault
-            // model (bergdb 017-08); only a crash or a database that goes on is a fault here.
+            // model (bergdb 017-08; 010-04, R6); only a crash or a database that goes on is a
+            // fault here.
             return Outcome.ok("undetected, its checksum made right");
         }
         return Outcome.fail("undetected: " + what);

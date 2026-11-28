@@ -306,13 +306,13 @@ import bergdb.stream.ReadBelowFirstPosException;
  * L5, and for 005-17's size, as a value given directly: execute() checks them after the
  * transformations, before the go point (bergdb 026-06; ValueTransformation).</p>
  * 
- * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
- * environment: correct storage, a stream that returns the bytes appended to it, and enough
- * memory and stack for its work. Its checksums and checks find some damage of the stored
- * bytes, not all: they are a best effort, and damage that passes them gives wrong values
- * with no error. Only a cut tail, as after a crash or a power loss, is recovered. BergDB
- * does not try to recover when the environment fails; the database fails instead. That
- * happens on:</p>
+ * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7; 010-04, R6). BergDB assumes a
+ * sound environment: correct storage, a stream that returns the bytes appended to it, and
+ * enough memory and stack for its work. Its checksums and checks find some damage of the
+ * stored bytes, not all: they are a best effort, and damage that passes them gives wrong
+ * values with no error. Only a cut tail, as after a crash or a power loss, is recovered.
+ * BergDB does not try to recover when the environment fails; the database fails instead.
+ * That happens on:</p>
  * <ul>
  * <li>an I/O error or corrupt data in the storage;</li>
  * <li>an unexpected exception from the storage's stream;</li>

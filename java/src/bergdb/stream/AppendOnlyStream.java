@@ -32,8 +32,8 @@ import java.io.IOException;
  * durable before they are forced). A caller cuts only after its record of the cut is
  * written and reported durable (Reclaim, cutIfDurable). BergDB assumes correct storage: its
  * checksums and checks find some damage of the stored bytes, not all, as a best effort, and
- * damage that passes them gives wrong values with no error (bergdb 019-10; Db,
- * "Errors").</p>
+ * damage that passes them gives wrong values with no error (bergdb 019-10; 010-04, R6;
+ * Db, "Errors").</p>
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:

@@ -1,8 +1,8 @@
 # 031-07. The stream's checksums, a review
 
-Created 2026-11-27 by Frans Lundberg. Status: decided (Frans,
-2026-11-28; section 5): no change of the checks beyond 028-67's; the
-principle is rule 010-R6. Open: the Javadoc and 030-04 cite the rule.
+Created 2026-11-27 by Frans Lundberg. Status: done (2026-11-28):
+decided by Frans (section 5): no change of the checks beyond 028-67's;
+the principle is rule 010-R6, which the Javadoc and 030-04 cite.
 
 Frans, 2026-11-27: the checksums of the stream are reviewed for release
 2026.7, with them the record header's new 3-byte check (028-67).
@@ -82,6 +82,17 @@ So 2026.7's format has no change of the checks beyond 028-67's, built in
 principle in part (`AppendOnlyStream`, `Db`, `CorruptStreamTester`) and
 030-04's assumptions 3 and 5 cite 010-R6 (the inventory, section 5.4).
 
+Done 2026-11-28: the citation added, no statement changed. The class
+Javadoc of `AppendOnlyStream` (its sentence that BergDB assumes correct
+storage); `Db`'s "Errors"; `CorruptStreamTester`'s class Javadoc ("Other
+damage", best effort), its `KNOWN` and the comment on a node changed
+with its checksum made right; 030-04, section 3.5, assumptions 3 and 5.
+A search of `java/` for "best effort", "correct storage", "storage
+owns", "017-08" and "024-28" finds no other statement of it but a dated
+line of `AppendOnlyStream`'s history (2026-11-06, `read()`), left as a
+record. Nothing remains of this item; R6 stays provisional
+until 028-77 is decided (010-04).
+
 A check of the nodes' place (a node's checksum begun with its position
 and the database's ID), which would close 028-67's finding that C3 does
 not cover nodes, is a change of the format taken with 028-77's review
@@ -116,3 +127,7 @@ For Frans's decision.
 2026-11-28. Decided by Frans (07:30): N1, GD1, M1, W24, and the
 principle as rule R6 of 010-04 (section 5); R6 added to 010-04. The
 nodes' place goes with 028-77's review.
+
+2026-11-28. The Javadoc of `AppendOnlyStream`, `Db` and
+`CorruptStreamTester` and 030-04's assumptions 3 and 5 cite 010-04, R6,
+by an agent of lead-1127. Status done.

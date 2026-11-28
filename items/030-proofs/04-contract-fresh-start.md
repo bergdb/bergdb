@@ -210,10 +210,12 @@ section 2.5).
    traces and by Java's own check.
 2. **A synced append is durable.** Tested by Java's crash and power-loss
    tests.
-3. **A crash leaves at most a torn tail.** The same tests.
+3. **A crash leaves at most a torn tail.** The same tests. Stated as
+   rule R6 of 010-04 since 2026-11-28 (010-04, R6).
 4. **One writer.** Tested by Java's thread tests.
 5. **The bytes decode to what was written.** Tested by the restart
-   tests; damaged bytes are found on a best effort only.
+   tests; damaged bytes are found on a best effort only. Stated as rule
+   R6 of 010-04 since 2026-11-28 (010-04, R6).
 
 A claim then reads: "proved, given these five stated assumptions, each
 of which is tested". Step 4 names the exact test beside each assumption.
@@ -540,3 +542,7 @@ later.
 coordinator's brief (`/Users/f/fl/bench/2026-11-17/w04/brief.md`) of the
 discussion with Frans, 09:13 to 11:14. 030's map updated: D0 added, D1
 paused.
+
+2026-11-28. Section 3.5: assumptions 3 and 5 cite 010-04, R6, the rule
+that the storage owns the integrity of the bytes (031-07, section 5);
+no statement changed.

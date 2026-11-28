@@ -83,7 +83,7 @@ Files
   each check detects and costs, and whether the node checksums stay, go
   or become one a record (Frans, 2026-11-27). Decided 2026-11-28: they
   stay, nothing is added beyond 028-67's checks, and the principle is
-  rule 010-R6.
+  rule 010-R6, which the Javadoc and 030-04 cite (done 2026-11-28).
 
 
 Log
