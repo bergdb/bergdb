@@ -462,7 +462,8 @@ public class StmBank {
     static final AtomicLong nMaintain = new AtomicLong();
     static void maintainer(Database db) throws Exception {
         while (!stop) {
-            db.maintain();
+            // One bounded part a call, as maintain() did before 031-06: the smallest budget.
+            db.maintain(100);
             nMaintain.incrementAndGet();
             Thread.sleep(2);
         }

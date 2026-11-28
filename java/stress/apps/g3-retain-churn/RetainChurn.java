@@ -1,4 +1,5 @@
 import bergdb.pub.*;
+import bergdb.pub.Limits;   // by name: 024-26's class Limits, in stress/apps/, shadows it
 import bergdb.pub.util.*;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -234,12 +235,9 @@ public class RetainChurn {
                 long best = Long.MAX_VALUE;
                 int sinceBest = 0;
                 for (int step = 0; step < 400 && sinceBest < 40; step++) {
-                    int calls = 0;
-                    while (db.maintain()) {
-                        calls++; nMaintain++;
-                        if (calls > 100000) fail("maintain() returns true 100,000 times");
-                        if (calls % 50 == 0) checkFirstAvailableOnly();
-                    }
+                    // All the maintenance that is due: maintain() until it returned false
+                    // is the largest budget since 031-06, which returns nothing.
+                    db.maintain(100000);
                     nMaintain++;
                     checkFirstAvailableOnly();
                     now += retainUnits / 4 + rc.nextInt((int) Math.min(Integer.MAX_VALUE, retainUnits / 4));
@@ -254,7 +252,8 @@ public class RetainChurn {
                 if (Boolean.getBoolean("probe")) probe(freshSize);
                 long size = dirSize();
                 System.out.println("  round " + round + ": emptied and maintained, stream files "
-                        + size / 1000 + " kB (fresh " + freshSize / 1000 + " kB), first available "
+                        + size / 1000 + " kB (fresh " + freshSize / 1000 + " kB), stream kept "
+                        + db.getStreamSize() / 1000 + " kB, first available "
                         + db.getFirstAvailableLookupTime() + ", clock " + Time.units(now) + ", retain "
                         + retainUnits / Clock.UNITS_PER_SEC + " s, last commit " + c.currentTime());
                 check("round " + round + " maintained");
@@ -299,7 +298,7 @@ public class RetainChurn {
     static void probe(long fresh) throws Exception {
         StringBuilder sb = new StringBuilder();
         for (int step = 0; step < 200; step++) {
-            while (db.maintain()) nMaintain++;
+            db.maintain(100000); nMaintain++;
             now += retainUnits / 2;
             clock.setTime(Time.units(now));
             if (step % 50 == 0) sb.append(' ').append(dirSize() / 1000);
@@ -313,7 +312,7 @@ public class RetainChurn {
         c = db.connection();
         sb.setLength(0);
         for (int step = 0; step < 100; step++) {
-            while (db.maintain()) nMaintain++;
+            db.maintain(100000); nMaintain++;
             now += retainUnits / 2;
             clock.setTime(Time.units(now));
             if (step % 25 == 0) sb.append(' ').append(dirSize() / 1000);
@@ -329,7 +328,7 @@ public class RetainChurn {
             m.put("/probe/p.txt", null); record(t, m);
             now += retainUnits / 200;
             clock.setTime(Time.units(now));
-            if (i % 3000 == 0) { while (db.maintain()) nMaintain++; sb.append(' ').append(dirSize() / 1000); }
+            if (i % 3000 == 0) { db.maintain(100000); nMaintain++; sb.append(' ').append(dirSize() / 1000); }
         }
         System.out.println("  probe: 30,000 puts of 1 kB and deletes (about 30 MB):" + sb + " kB, then " + dirSize() / 1000 + " kB");
     }

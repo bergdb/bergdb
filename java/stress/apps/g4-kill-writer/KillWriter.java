@@ -182,7 +182,7 @@ public class KillWriter {
             if (Boolean.getBoolean("idle") && r.nextInt(400) == 0) Thread.sleep(2100 + r.nextInt(1000));
             int x = r.nextInt(100);
             if (x < 8) { c.sync(); out.println("S " + j); }
-            else if (x < 12) { while (db.maintain()) { } out.println("M " + j); }
+            else if (x < 12) { db.maintain(100000); out.println("M " + j); }   // all that is due (031-06)
         }
     }
 

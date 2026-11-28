@@ -94,7 +94,9 @@ public class TreeShaper {
         }
         nTx++;
         if (retainUnits > 0 && r.nextInt(30) == 0) {
-            while (db.maintain()) nMaintain++;
+            // All the maintenance that is due (bergdb 031-06: maintain() until it returned
+            // false is the largest budget now).
+            db.maintain(100000);
             nMaintain++;
         }
     }
