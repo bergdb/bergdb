@@ -36,7 +36,7 @@ Findings are UB-1, UB-2, ...
 
 ## 1. In short
 
-(Written at the end; section 5 has the state.)
+SHORT-PLACEHOLDER
 
 
 ## 2. The applications
@@ -319,8 +319,8 @@ refusal whose diagnosis and way out are wrong (UB-3).
   and a tail that is not the stream's own records is refused with a
   message that "names the cause and P, the position where the stream's
   own records end", with the way out: keep a copy, cut the stream at P,
-  remove the later files. What happened (f4, all seeds; the probe
-  `probes/ForeignFileProbe.java`, mode `first`): A and B made by the same
+  remove the later files. What happened (f4, every seed; the probe
+  `probes/ForeignFileProbe.java`, mode `first`, 7 s): A and B made by the same
   puts, B's `00000000000000.bergdb` in place of A's: the start is refused
   with `BadTailException`: "The header of the record at 206200 is not one
   of this database's records at its place (bergdb 028-67, C3). The
@@ -355,8 +355,10 @@ refusal whose diagnosis and way out are wrong (UB-3).
   `/k/x112.bin` was B's value, with no error; seed 3, the same case: the
   latest state was A's, and a read at an older time failed with
   `DbFailedException` (`StreamChecksumException`, a node's checksum).
-  Reproduction: `probes/ForeignFileProbe.java`, mode `middle`, or
-  `java FileHandling 2 DIR` (case 38). Judgment: as documented; the
+  The probe `probes/ForeignFileProbe.java`, mode `middle` (7 s: 600 keys
+  put once each in A and B, B's 33rd of 64 files in place of A's): the
+  start is accepted, and a listing gives 600 keys, 595 values of A and 5
+  of B, with no error. Judgment: as documented; the
   2026.7 checks of the ID and the position (meta blocks, record headers)
   guard the start's tail, not the reads of nodes and values before it. For
   031-07's review of the checksums: a node checksum seeded with the
@@ -397,6 +399,31 @@ refusal whose diagnosis and way out are wrong (UB-3).
   removed every start was accepted with every transaction. Judgment:
   document (`open()` needs write access to the directory and the last
   file) and messages.
+* **UB-6 (document). The Pub API does not say how to back up a running
+  database; FileStream's Javadoc does, and its procedure works.**
+  Expected, for a Pub user: Database's "The files": "copy, move or
+  restore a stopped database's files all together"; nothing on a copy of
+  a running one. FileStream's Javadoc ("A backup by a copy of the files",
+  028-62), in `bergdb.stream`, which is not the Pub API, says that the
+  stream files of a running database, listed and copied in the order of
+  their names, the last one last, after a transaction and a sync since
+  the start, hold the stream as a kill would leave it, and that a start
+  recovers it, or refuses a copy that missed a file a cut deleted ("take
+  the copy again"). What happened (f5): every copy by that procedure was
+  accepted, with every transaction synced before the copy began and none
+  committed after it ended (COPIES-DOC copies; DOC-REFUSED refused
+  because a cut had deleted a listed file during the copy, as the Javadoc
+  allows); `cp DIR/*.bergdb` and `cp -R` copies were accepted or refused
+  as the Javadoc allows when a cut had deleted a listed file (REFUSED-CP
+  of COPIES-CP). Of the REFUSED-ALL refusals, WROTE-N wrote a file: the
+  copy's last file ended where a file begins, and the start completed
+  the torn last record into a new file before it refused (Db.start(),
+  "writes nothing but what recovery writes to complete a torn end of the
+  stream"; FileStream: "writes nothing before it refuses but what
+  recovery writes at a torn end"); the message says "The start has
+  deleted nothing" and not that it wrote. Judgment: document: the
+  Pub API's "The files" could give the procedure (or name FileStream's
+  paragraph), as a Pub user cannot stop a database for each backup.
 
 
 ## 5. State

@@ -192,6 +192,13 @@ public class SameBytes {
         return v;
     }
 
+    /**
+     * -Df1.big=true: one transaction in 25 is large, values of 1 to 8 MiB up to 30 MB a
+     * transaction (the limits are 8 MiB a value and 32 MiB a transaction), so that records
+     * cross many meta blocks and files and a kill tears them in the middle.
+     */
+    static final boolean BIG = Boolean.getBoolean("f1.big");
+
     static byte[] smallValue(Random r) {
         byte[] v = new byte[r.nextInt(101)];
         r.nextBytes(v);
@@ -231,13 +238,22 @@ public class SameBytes {
                 int start = r.nextInt(nKeys);
                 boolean delRun = run && r.nextBoolean();
                 boolean smallOnly = ops >= 50;                     // a large commit of small values
+                boolean big = BIG && r.nextInt(25) == 0;
+                if (big) { ops = 1 + r.nextInt(6); run = false; delRun = false; smallOnly = false; }
                 Set<Common.K> inTx = new HashSet<>();
                 long bytes = 0;
                 for (int j = 0; j < ops; j++) {
                     byte[] k = run ? universe.get((start + j) % nKeys) : universe.get(r.nextInt(nKeys));
                     if (!inTx.add(new Common.K(k))) continue;
-                    byte[] v = delRun || r.nextInt(100) < 30 ? null : smallOnly ? smallValue(r) : value(r);
-                    if (v != null && bytes + v.length > 6_000_000) v = null;
+                    byte[] v;
+                    if (big) {
+                        v = new byte[1_000_000 + r.nextInt(7_388_608)];
+                        r.nextBytes(v);
+                        if (bytes + v.length > 30_000_000) v = null;
+                    } else {
+                        v = delRun || r.nextInt(100) < 30 ? null : smallOnly ? smallValue(r) : value(r);
+                        if (v != null && bytes + v.length > 6_000_000) v = null;
+                    }
                     if (v != null) bytes += v.length;
                     x.keys.add(k);
                     x.vals.add(v);

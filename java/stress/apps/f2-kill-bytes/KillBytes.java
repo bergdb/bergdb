@@ -202,7 +202,8 @@ public class KillBytes {
 
     static Process spawn(File dir, int pause, boolean syncPause) throws IOException {
         String java = System.getProperty("java.home") + "/bin/java";
-        List<String> cmd = new ArrayList<>(Arrays.asList(java, "-ea", "-Xmx1g", "-XX:+ExitOnOutOfMemoryError", "-cp",
+        List<String> cmd = new ArrayList<>(Arrays.asList(java, "-ea", "-Xmx1g", "-XX:+ExitOnOutOfMemoryError",
+                "-Df1.big=" + SameBytes.BIG, "-cp",
                 System.getProperty("java.class.path"), "KillBytes", "child", "" + seed, "" + nActs, dir.getPath(),
                 "" + pause, "" + syncPause, "" + nKeys));
         ProcessBuilder pb = new ProcessBuilder(cmd);
