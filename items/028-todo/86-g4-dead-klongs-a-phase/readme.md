@@ -152,13 +152,28 @@ in each of a_n = 10 key nodes (Frans's yes, 2026-11-14).
 
 ### 7. Gates
 
+On the commit of this entry, from `main` at `01232710`, 2026-11-28
+13:28 to 13:33, at a load of about 20:
+
+* `java/before-commit.sh`: `BEFORE COMMIT OK (85 s)`.
+* `java/stress/count-gates.sh`, twice: `COUNT GATES OK` (133 s and 127
+  s), with the same counts in both, those of section 1, and G4's line
+
+      G4 M5 dead KEY klongs over the larger of twice the twin's and the twin's plus 70 (34 / 13) value 0.410 limit 1.000 margin 2.44 PASS
+
+  Only the heaps and the table slots differ, as in section 1; G5's ST6,
+  58,656 and 58,816 slots (value 0.895 and 0.897), is now the gate
+  nearest its limit.
+* No change in `java/src`, so not `level3.sh` or 031-06's `sweep.sh`
+  and `faults.sh`.
+
 
 Log
 ---
 
 2026-11-28. Registered by lead-1127 from night.sh's failure on
 `16c64d9a`, and taken by an agent of lead-1127, branch `028-86` of a
-clone of `main`. 13:14 to 13:40: the counts repeat (section 1); the
+clone of `main`. 13:14 to 13:34: the counts repeat (section 1); the
 bisect names `96daa4bb` (section 2); the probe's dump of the key nodes
 (section 3); no regression, G4's M5 a comparison of two phases (section
-4); option (a) built (sections 5 and 6).
+4); option (a) built (sections 5 and 6); the gates (section 7). Done.
