@@ -23,7 +23,7 @@ import bergdb.nanotest.Nano;
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID. A start takes a
- *                 block as valid only if it holds the ID of the stream's first block
+ *                 block as valid only if it holds the ID of the stream's first valid block
  *                 (bergdb 028-67, C3).
  * 40      4       Reserved, written zero and not read. The startup distance until version
  *                 155; since then an internal KV of the Core (bergdb 028-15, Db.SD_KEY).

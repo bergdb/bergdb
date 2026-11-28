@@ -52,7 +52,7 @@ import bergdb.stream.ReadBelowFirstPosException;
  * meta block will be written too. It will be the last part of the stream.
  * Each meta block holds its own stream position and the database ID (bergdb 028-67, C3): a
  * block that holds another position than the one it is read at, or another ID than the
- * stream's first block, is not valid, as a block that a crash cut is not.
+ * stream's first valid block, is not valid, as a block that a crash cut is not.
  * </pre>
  * 
  * @see AppendOnlyStream
@@ -153,7 +153,7 @@ public class RecoverableStream {
      * bergdb 028-67, T1).</p>
      * 
      * <p>Since 2026-11-27 (bergdb 028-67, C1 and C3): a meta block is valid only if it holds
-     * the position it is read at and the database ID of the stream's first block
+     * the position it is read at and the database ID of the stream's first valid block
      * (readLastValidMetaBlock()); a block of another place or database, as an older stream
      * file's bytes at the same offsets in a new file leave it, or of other bytes, is passed
      * over as a block of zeros is. Before it writes anything, the recovery walks the records
@@ -1037,9 +1037,9 @@ public class RecoverableStream {
      * Returns the last valid meta block, or null if no such block exists. A block of zero
      * bytes is not valid (bergdb 028-60; readMetaBlock()). Since 2026-11-27 (bergdb 028-67,
      * C3) a block is valid only if it holds the position it is read at and the database ID
-     * of the stream's first block (readFirstMetaBlock()); a block of other bytes or of
+     * of the stream's first valid block (readFirstMetaBlock()); a block of other bytes or of
      * another version after the first is passed over too, as stale bytes at a meta position
-     * are. None is valid if the first block is not.
+     * are. None is valid if that first valid block does not hold its own position.
      * 
      * @throws StreamIoException
      * @throws StreamFormatException  among them BadMagicBytes and VersioningStreamException,
@@ -1064,13 +1064,28 @@ public class RecoverableStream {
     }
     
     /**
-     * The stream's first meta block, the first at or after its first position, if it is
-     * complete in the stream, valid, and holds its own position; else null (bergdb 028-67,
-     * C3). Its database ID is the stream's: another block is valid only if it holds it. The
+     * The stream's first meta block: the first valid block at or after its first position,
+     * complete in the stream, if it holds its own position; else null (bergdb 028-67, C3).
+     * Its database ID is the stream's: another block is valid only if it holds it. The
      * stream's other bytes are cut only from its end, and another file's bytes after a kill
-     * are in the last file, from a page boundary on, so the first block is the stream's own.
-     * A block of other bytes or of another version throws here, as readMetaBlock() does: the
-     * stream is not one of this version of BergDB, or an earlier release encrypted it.
+     * are in the last file, from a page boundary on, so the first valid block is the
+     * stream's own. A block of other bytes or of another version throws here, as
+     * readMetaBlock() does: the stream is not one of this version of BergDB, or an earlier
+     * release encrypted it.
+     *
+     * <p>Blocks that are not valid before it are passed over (2026-11-28, week.sh's
+     * apps-kill-cc on 8a0897cf), as the search for the last valid block passes over them: a
+     * block that a crash cut, which recovery completes as one that is not valid
+     * (fixMetaBlockIfNeeded(); bergdb 005-27), or a block of zeros inside a record that a
+     * kill left zero and recovery aborted (bergdb 028-60). Such a block stays in the
+     * stream, and a cut that deletes the files before it makes it the first block of a
+     * stream that is sound: until then the start refused it, "Could not find *any* valid
+     * meta block". A cut stream holds a valid block of its own after its first position,
+     * written before the cut deleted anything: the cut is not after the record that the
+     * last valid block names (getPosOfTransCompletedBefore(); Reclaim), and FileStream
+     * deletes a file only after the stream is forced up to its length at the cut. A stream
+     * from 0 has its first block valid unless its creation did not complete, which the
+     * start finds before (isIncompleteCreation()), or a storage damaged it.</p>
      *
      * @throws StreamIoException
      * @throws BadMagicBytes
@@ -1079,8 +1094,9 @@ public class RecoverableStream {
     private MetaBlock readFirstMetaBlock() {
         final long firstIndex = (aos.getFirstPos() + META_BLOCK_DISTANCE - 1)
                 / META_BLOCK_DISTANCE;
-        final long pos = firstIndex * META_BLOCK_DISTANCE;
-        if (pos + META_BLOCK_SIZE > aos.getLength()) {
+        final long length = aos.getLength();
+        long pos = firstIndex * META_BLOCK_DISTANCE;
+        if (pos + META_BLOCK_SIZE > length) {
             // A stream shorter than its first block: its first 8 bytes, if there, are refused
             // as readMetaBlock() refuses them, as the search for the last block read them
             // before bergdb 028-67; zeros, or the magic bytes and the version, are not.
@@ -1093,8 +1109,13 @@ public class RecoverableStream {
             }
             return null;
         }
-        MetaBlock first = readMetaBlock(aos, pos);
-        return first.isOwn(null) ? first : null;
+        for (; pos + META_BLOCK_SIZE <= length; pos += META_BLOCK_DISTANCE) {
+            final MetaBlock block = readMetaBlock(aos, pos);
+            if (block.isValid()) {
+                return block.isOwn(null) ? block : null;
+            }
+        }
+        return null;
     }
 
     /**
@@ -2514,6 +2535,81 @@ public class RecoverableStream {
                         e.getCause() instanceof ReadBelowFirstPosException);
             }
             Assert.assertEquals(first + META_BLOCK_SIZE, r.getRecordStartBefore(cut, () -> 0));
+        }
+        
+        /**
+         * A stream whose front a cut took off can begin at a meta block that is not valid
+         * (2026-11-28, week.sh's apps-kill-cc on 8a0897cf, Kill seed 2078503, db 4): a kill
+         * ended the stream at the block's position, after the bytes of the record that reaches
+         * over it and before the block, and the next start's recovery completed the block as
+         * one that is not valid (bergdb 005-27) and the record as an aborted one; or a kill
+         * left the record's bytes zero from a page boundary on, the block's among them, and
+         * recovery aborted the record (bergdb 028-60). The block stays in the stream, and a
+         * cut that deletes what is before it makes it the stream's first block. Since bergdb
+         * 028-67, C3, until this test, the start took the stream's first block only and
+         * refused the stream, "Could not find *any* valid meta block"; the first valid block
+         * after it is the stream's first block now, the stream recovers, and its records from
+         * the one that the next block names are read.
+         */
+        @Nano
+        public static void testCutStreamBeginsAtInvalidBlock() throws IOException {
+            final long block = 5 * META_BLOCK_DISTANCE;     // At one of MemoryStream's arrays.
+            for (boolean zeros : new boolean[] {false, true}) {
+                MemoryStream m = new MemoryStream();
+                RecoverableStream r1 = new RecoverableStream(m, new MetaBlock());
+                byte[] t = new byte[1000];
+                Bytes.intToBytesLE(t.length, t, 0);
+                t[t.length - 1] = LAST_BYTE;
+                while (r1.getNextSpos() + 10 * t.length < block) {
+                    final long start = r1.getNextSpos();
+                    r1.append(t, 0, t.length, true, -1);
+                    r1.getMetaBlock().setLastTransSpos(start);
+                }
+                // The record that reaches over the block.
+                byte[] over = new byte[20000];
+                Bytes.intToBytesLE(over.length, over, 0);
+                over[over.length - 1] = LAST_BYTE;
+                final long overStart = r1.getNextSpos();
+                r1.append(over, 0, over.length, true, -1);
+                Assert.assertTrue(overStart + 4096 < block && m.getLength() > block + 10000);
+                if (zeros) {
+                    final long from = overStart + 4096;
+                    MemoryStream.TestAccess.write(m, new byte[(int) (m.getLength() - from)], from);
+                } else {
+                    m.truncate(block);
+                }
+                
+                RecoverableStream r2 = new RecoverableStream(m, new MetaBlock());
+                r2.recover();
+                Assert.assertFalse(readMetaBlock(m, block).isValid());
+                Assert.assertEquals(block - META_BLOCK_DISTANCE, r2.readLastValidMetaBlock().getPos());
+                final long[] starts = appendNamedTransactions(r2, 700);
+                
+                m.pretruncate(block + 3000);
+                Assert.assertEquals(block, m.getFirstPos());
+                RecoverableStream r3 = new RecoverableStream(m, new MetaBlock());
+                r3.recover();
+                final long last = (m.getLength() - META_BLOCK_SIZE) / META_BLOCK_DISTANCE
+                        * META_BLOCK_DISTANCE;
+                Assert.assertEquals(last, r3.readLastValidMetaBlock().getPos());
+                
+                long named = -1;        // the record that the block at 1,200,000 names
+                for (long start : starts) {
+                    named = getSpos(start, 1000) < block + META_BLOCK_DISTANCE ? start : named;
+                }
+                Assert.assertEquals(named, r3.getPosOfTransCompletedBefore(block + 50000));
+                Iterator iter = new Iterator(r3, 0);
+                int count = 0;
+                while (iter.next()) {
+                    Assert.assertEquals(1000, iter.getBytes().length);
+                    count++;
+                }
+                int expected = 0;
+                for (long start : starts) {
+                    expected += start >= named ? 1 : 0;
+                }
+                Assert.assertEquals("zeros " + zeros, expected, count);
+            }
         }
         
         /**
