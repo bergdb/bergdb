@@ -1,7 +1,8 @@
 028-82. Fix: a user's handling of the files: the backup of a running database, the files of a decided cut, the open's refusals
 ==============================================================================================================================
 
-Status: in progress (built on the branch `028-81-82`, to land).
+Status: in progress (built and gated on the branch `028-81-82`, to
+land).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -168,6 +169,47 @@ changed (only "records end at", 028-67's); its expectations of the cases
 whose refusals changed are any refusal.
 
 
+Gates
+-----
+
+On F53 beside other sessions' runs (load averages near 20), 2026-11-28,
+on the branch `028-81-82` rebased on `main` at `ead07411` (031-08's part
+B landed), at 028-82's commit, which holds 028-81's:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (130 s; unit 1,767 tests, f
+  96).
+* `java/stress/level3.sh`: LEVEL 3 OK on the second run (its power-loss
+  stage: POWERLOSS OK, 8 seeds, 488 cold recoveries). The first run
+  failed at its unit tests, at
+  `PubTesterJavadocNewUsers.testNewDatabaseWhereAStoppedOneWasDeleted`
+  ("Could not find *any* valid meta block ... The stream begins at
+  200000 ... The stream's first file in .../doc is
+  00000000000002.bergdb"), the failure of 021-20's case: the old
+  database's background close makes its next stream file in the
+  directory made again at the path, in the window between
+  `FileStream.checkDirectory()` and the step that 021-20 and 021-24
+  leave open. Not reproduced: the test passed in both runs of
+  `before-commit.sh`, in level3's second run, and 40 times of 40 alone
+  on the branch.
+* `java/stress/apps.sh quick`: APPS OK (every app compiled, 031-08's f1
+  to f5 among them).
+* f4 `FileHandling`, seeds 7, 8 (with a database of release 2026.6) and
+  14, as 031-08's section 3 runs it, before (on `main` at `4d2cb284`) and
+  after: OK in each; before 46, 41 and 52 accepted, after 45, 40 and 51,
+  the one case of each seed that changed being "B's stream files with
+  A's created.txt", now refused by 028-81 (f4 expects either); every
+  refused start changed no file, and every directory whose cause was
+  removed started with every transaction. f4 matches no message text
+  that 028-82 changed.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* After these, 028-82's commit took a Javadoc-only addition, part A's
+  UA-1 of the same finding and that `sync()` makes no cut, on `main` at
+  `32b7e6f1` (031-08's part A landed: apps and probes only):
+  `java/before-commit.sh`, BEFORE COMMIT OK (86 s; unit 1,767 tests, f
+  96).
+
+
 Log
 ---
 
@@ -175,3 +217,6 @@ Log
 taken by an agent of lead-1127, on the branch `028-81-82`.
 
 2026-11-28. Built: the Javadoc and the messages; the two tests.
+
+2026-11-28. The gates passed (above), on the branch rebased on `main` at
+`ead07411`, and before-commit.sh again on `32b7e6f1`; to land.

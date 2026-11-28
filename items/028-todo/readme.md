@@ -111,8 +111,8 @@ Open
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | open (on a branch) |
-| [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | in progress (on a branch) |
-| [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | in progress (on a branch) |
+| [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | built, gated (on a branch) |
+| [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | built, gated (on a branch) |
 
 
 Closed

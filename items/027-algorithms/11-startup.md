@@ -70,7 +70,7 @@ comparison with `created.txt` on, a refusal has written nothing:
    `created.txt` written here). A stream that is not empty is first
    compared with `created.txt` (since 028-81, 2026-11-28; 031-08,
    UB-3), before every other check: with `created.txt` (the Pub API's
-   directories, `DbBuilder.createdTxt`) that names an ID on its line
+   directories, `DbBuilder.createdTxt`) that names an id on its line
    "database ID:", 32 hex digits, and a first meta block that is valid
    and holds its own position (`RecoverableStream.readFirstValidMetaBlock`,
    the block of step 3's database id), another id there is refused, a
@@ -79,7 +79,7 @@ comparison with `created.txt` on, a refusal has written nothing:
    of the database's files from a backup (`Db.refuseCreatedTxtOfAnotherDatabase`).
    The start takes nothing else from `created.txt`: the id it checks
    blocks and records against is the first block's, compared with
-   `created.txt`'s again after recovery's walk; without `created.txt`, with
+   `created.txt`'s again after recovery; without `created.txt`, with
    one that names no id, or with a first block that is not valid, the
    start is as before. Until then another database's first file in place
    of the database's own was refused at the database's own first record
