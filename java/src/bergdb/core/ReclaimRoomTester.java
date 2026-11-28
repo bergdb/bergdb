@@ -14,6 +14,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.CutStream;
 
 /**
@@ -342,6 +343,10 @@ public class ReclaimRoomTester {
             run.tick(SEC / 20);
             run.exec(run.db.trans().put("/a", new byte[] {1}), new HashMap<String, byte[]>());
             final long[] k = longKeyAtL9("/#u");
+            // The stream's length once the writer has appended every record before the test's
+            // transactions (the write buffer drains on its own thread): read before the sync,
+            // it was 0 or the records' bytes, as the drain went, and the checks below raced it.
+            run.db.sync(SyncLevel.ORDINARY);
             StoredTrans.recordLimit = 20 * 1000;
             final long length = run.stream.getLength();
             run.tick(SEC / 20);
@@ -351,6 +356,7 @@ public class ReclaimRoomTester {
             } catch (DbException e) {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("005-31"));
             }
+            run.db.sync(SyncLevel.ORDINARY);
             Assert.assertEquals("refused: nothing appended", length, run.stream.getLength());
             StoredTrans.recordLimit = saved;
 
@@ -378,6 +384,7 @@ public class ReclaimRoomTester {
             }
             Assert.assertTrue(String.valueOf(failure), String.valueOf(c.getMessage())
                     .contains("more than a later record can take") && c instanceof bergdb.common.Bug);
+            run.db.sync(SyncLevel.ORDINARY);       // works on a failed database (Db, "Errors")
             Assert.assertEquals("failed: nothing appended", length, run.stream.getLength());
             run.restart();
             Assert.assertTrue("not put", run.db.getOne(Long.MAX_VALUE, k, run.db.newGetData())
