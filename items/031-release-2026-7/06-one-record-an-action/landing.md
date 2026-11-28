@@ -511,6 +511,37 @@ did not meet; load up to 25 while they ran together. Functional runs.
     digests (format 9); bad 0 in all 42 lines.
   * `conc.sh`: ten runs, the replay gave the same stream in all ten.
 
+#### The timing run (2026-11-28, 01:38 to 02:41, the lead)
+
+On F53, alone (night.sh had ended; the machine 85 to 98 % idle, a
+system process holding about one core), step 3 after review 3 on `main`
+at `080c1f2f`:
+
+* `java/timing.sh` against release 2026.6: `TIMING OK`. CORE median 0.250
+  against 0.250, ratio 1.000; the pause probe's longest get or commit
+  10.7 ms against 14.1 ms (guide 50 ms); `performance.sh ab`, no alerts,
+  commits a second against 2026.6 +10.6 % (r-100-fin), +6.6 %
+  (w-uni-100-fin), +5.7 % (w-uni-100-inf), +8.6 % (w10m-fin), +7.1 %
+  (w10m-inf); `main` before step 3 gave +12.3, +10.3, +5.8, +7.3 and
+  +13.9 % against the same release on 2026-11-27, within the runs'
+  spread.
+* `p1.sh` (20M keys, 5,435 MB of stream, a cache budget of 200 MB, 1M
+  commits), step 3 against `main`'s jar: 134.2 s against 140.4 s for the
+  million commits; commits with a step 29,780 against 71,109; with the
+  warm-up, a commit with a step under the lock median 0.192 ms, p99
+  0.840, max 3.146 (warm-up off 0.327, 1.536, 6.460; `main` 0.225, 0.493,
+  4.891); the longest commit 11.58 ms against 20.89 ms; loads 74.1M
+  against 78.2M.
+* `bigstep.sh` (a 128 KiB step of 20 to 30 byte values, about 930
+  copies): the longest under the lock 12.5 ms against 12.0 ms on `main`
+  (115 copies a step), the longest commit 20.4 ms at 2.6 s of uptime
+  (12.8 ms on `main`); a commit with a step p99 2.548 ms against 0.901.
+* `bigtail.sh` (a last record of 106.6 MB in 523 MB): starts of 4.77 to
+  4.98 s, as `main`'s 4.78 to 4.86 s (both parse the record whole since
+  step 4).
+* W1's read-ahead stays: with one writer the warm-up halves the time
+  under the lock of a commit with a step, and the total loads fall.
+
 ### For the later steps
 
 * **The pace (F2, F3, F4).** At lowered limits the room cuts many steps
