@@ -125,6 +125,9 @@ On the branch `028-70-refuse-first` (2026-11-28):
 * `CorruptStreamTester`: a refused start that has written is a failure,
   no longer 014-01's known case (it keeps the fill that passes
   `MAX_APPENDED`).
+* `DbTesterFailure.testFailedStartClosesStorage` (005-32) asserted that
+  its refused start had written the fill; it asserts that nothing is
+  written.
 * 027-11 (sections 1, 1.2, 1.3, 1.9, 3, 6, 7 and 8) and 027-03 (G18, Q15
   and the gap table) say the order.
 
@@ -140,6 +143,23 @@ format 10, the files byte for byte unchanged). And
 held, the reads and the length those of the stream with the writes, and
 the bytes that `writeRecovery()`, or an append, writes those that
 `recover()` writes, in three layouts.
+
+
+Gates, on F53 beside `week.sh`, on the branch rebased on `main` at
+`ee6c176e` (2026-11-28):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (142 s; unit 1,760 tests, f
+  96).
+* `java/stress/level2.sh`: LEVEL 2 OK (conformance: 70 traces,
+  TRACECHECK OK). `java/stress/level3.sh`: LEVEL 3 OK.
+* 031-06's probes: `sweep.sh`, 0 different in each of its 63 lines (the
+  torn records among them continued the same); `faults.sh`, bad 0 in
+  each of its 42 lines.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* The night tests of `DbTesterTail` (every cut of a completion, byte for
+  byte) and `CorruptStreamTester` (the full set on the day's seed, a
+  refusal after a write a failure): SUCCESS, 5 tests.
 
 
 Log
