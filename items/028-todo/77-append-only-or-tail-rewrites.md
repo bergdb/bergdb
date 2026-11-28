@@ -126,9 +126,19 @@ Frans: decision. Two parts:
 Decided so far (Frans, 2026-11-28): 028-67's C2 is held until this entry
 is decided; case 2 stays as it is in release 2026.7.
 
+Taken with this entry (Frans, 2026-11-28): another database's nodes
+behind a record's own header. Since C3 a meta block and a record's
+header are tied to their place and their database; a node is not. A
+record whose header is its own and whose later nodes are another file's
+at the same offsets passes the checks, and with two databases of
+identical layout a start took the other database's value of one key
+(028-67, "Found, not covered by C3"). Node checksums that include the
+position and the database's ID would close it: a change of the format,
+decided with this review, not in 2026.7.
+
 Done when: the model is written (035-03, and from it 014-01's section 7
-and 027-14), Frans has chosen among (A), (B) and (C), and 028-67's C2 is
-decided with it; work that the choice asks for becomes entries or
+and 027-14), Frans has chosen among (A), (B) and (C), and 028-67's C2 and the
+check of the nodes' place are decided with it; work that the choice asks for becomes entries or
 subitems of its own.
 
 First step: 035-03's review.
@@ -139,3 +149,6 @@ Log
 
 2026-11-28. Registered by lead-1127 at Frans's request; C2 of 028-67
 held (Frans). To be taken up after 2026.7's work is stable.
+
+2026-11-28. The nodes' place (028-67's finding that C3 does not cover
+nodes) is taken with this entry (Frans, 07:30).

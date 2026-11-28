@@ -1,10 +1,12 @@
 028-71. Investigate: under sustained large commits the stream kept grows far past the live data
 ==============================================================================================
 
-Status: open; the step is on `main` since 2026-11-28 (`96daa4bb` to
-`cdc437b2`, 031-06's landing, step 3), with its timing run (031-06,
-`landing.md`); closing it waits for Frans. Kind: Investigate. Frans:
-decision (done or not).
+Status: done (2026-11-28, closed by Frans): the step is on `main` since
+2026-11-28 (`96daa4bb` to `cdc437b2`, 031-06's landing, step 3), with
+its timing run (031-06, `landing.md`). A limit stays, stated in 027-13:
+under commits of 1 MB the stream kept is 18 times the live data, steady,
+by the cap of 128 KiB a step. Kind: Investigate. Frans: decided
+(closed).
 Created 2026-11-27 by Frans Lundberg.
 
 What: a commit allows at most one reclaim step, and a step copies at
@@ -105,3 +107,6 @@ after review 3 and the timing run on a quiet F53 (031-06, `landing.md`:
 `main`'s 140 s, the longest commit 11.6 ms against 20.9). Whether the
 entry is done is Frans's: under commits of 1 MB the stream kept stays
 at 18 times the live data, by the cap of 128 KiB a step.
+
+2026-11-28. Closed by Frans (07:30). The limit under commits of more
+than about 400 kB stays as stated (027-13; `Reclaim.MAX_COMMIT_STEP_SIZE`).

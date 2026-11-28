@@ -3,7 +3,8 @@
 
 Status: decided; C1 and C3 built (2026-11-27, below), T1 of 031-06's
 review 3 fixed (2026-11-28, below), open: C2, held (Frans, 2026-11-28)
-until 028-77 is decided. Kind: Fix. Frans: decided.
+until 028-77 is decided, and with it the nodes' place ("Found, not
+covered by C3", below). Kind: Fix. Frans: decided.
 Created 2026-11-26 by Frans Lundberg.
 
 What: on APFS, a write cut by a kill of the process (or one that fails
@@ -233,8 +234,10 @@ step 4. C1 and C3 as decided; C2 not built, C4 not taken.
   record (to 10,279,487) those bytes began in after its header. The
   test as committed gives the two databases other value sizes. Closing
   it needs a check of the nodes' place, such as each node's CRC-32C begun
-  with its position and the database ID (035-02's first form of C3): a
-  decision for Frans.
+  with its position and the database ID (035-02's first form of C3), a
+  change of the format. Decided (Frans, 2026-11-28): taken with 028-77's
+  review (035-03), not in 2026.7; the node checksums stay as they are
+  (031-07, N1).
 * **Not changed.** The Lean model, the contract and its checkers and the
   trace format (027-02): none reads a header's bytes or a meta block
   (031-07, section 6); `TraceExport` and `RestartInvariance` pass the ID
@@ -375,3 +378,7 @@ the branch `028-67-t1` (section Built).
 2026-11-28. C2 held (Frans) until 028-77 is decided: strictly
 append-only files, or rewrites of the tail at a start. A tail that is
 not the stream's own stays refused, with the way out named.
+
+2026-11-28. The finding that C3 does not cover nodes goes with 028-77's
+review (Frans, 07:30): a check of the nodes' place is a change of the
+format, not made in 2026.7.

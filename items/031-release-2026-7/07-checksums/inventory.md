@@ -751,6 +751,11 @@ removes.
    (recommended) or a principle (Frans's); with or without the stale
    face, by 028-67's C2.
 
+Decided (Frans, 2026-11-28, 07:30): N1, GD1, M1 and W24; the principle
+as rule R6 of 010-04 in section 5.4's wording, without the stale face
+(028-67's C2 is held until 028-77 is decided). 031-07's readme, section
+5.
+
 A finding for the record, no decision: the probe made the S1 case that
 028-67 described (another database's records at the same positions,
 taken whole, with their values) in 2 of 4,783 stale tails, with every

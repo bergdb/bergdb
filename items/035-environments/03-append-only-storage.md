@@ -40,6 +40,13 @@ leaves a prefix of what was appended (014-01, section 7); 035-01 and
   complicate them. The review states, for each fault and each way of
   handling it, what an encrypted stream and a replica by files may
   still assume.
+* **Another database's nodes behind a record's own header** (028-67):
+  a record whose header is its own and whose later nodes are another
+  file's at the same offsets passes the checks, since a node's checksum
+  covers its bytes, not its place. Node checksums that include the
+  position and the database's ID would close it, a change of the
+  format, decided with this review and not in 2026.7 (Frans,
+  2026-11-28).
 
 
 ## Log
@@ -48,3 +55,5 @@ leaves a prefix of what was appended (014-01, section 7); 035-01 and
 
 2026-11-28. Scope: encryption and replication as requirements of the
 model (Frans).
+
+2026-11-28. Scope: the nodes' place, from 028-67 (Frans).

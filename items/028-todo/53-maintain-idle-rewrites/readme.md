@@ -1,7 +1,10 @@
 028-53. Investigate: maintain() keeps rewriting live data in an idle database
 ==============================================================================
 
-Status: in progress. Kind: Investigate. Frans: decision.
+Status: done (2026-11-28, closed by Frans): RB-007 is fixed on `main`
+for 2026.7 by 031-06 (033); the rewriting that one small put still
+causes is 028-75's, decided (c). Kind: Investigate. Frans: decided
+(closed).
 Created 2026-11-24 by Frans Lundberg.
 
 What: on `main` before 028-51, an idle database with about 4.5 MB of live
@@ -359,3 +362,9 @@ and M1 with one threshold on the stream kept; its prototype fixes
 RB-007 and the rewriting. An emptied database kept at 790 kB by M1's
 two stretches, on `main` too (031-03, section 9.1). For Frans's
 decisions in 031-03, section 10.
+
+2026-11-28. Closed by Frans (07:30). RB-007 was fixed on `main` on
+2026-11-27 with 031-06's landing (033); options A, B and C of section 8
+were not taken. What is left of the idle rewriting, the pass that
+`maintain()` calls begin after one small put, is 028-75, decided (c) on
+2026-11-28.

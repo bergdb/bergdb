@@ -206,6 +206,22 @@ Frans, 2026-11-28:
   kept is more than about 1.5 times the live bytes and more than about
   400 kB over them, the live bytes kept up to date by each record. To be
   designed and measured.
+* **031-07's five, as its inventory recommends** (07:30): the node
+  checksums stay (N1); the got-dirty list gets nothing new (GD1); the
+  meta block holds its own position and the database's ID, nothing more
+  (M1); the record header's check stays 24 bits (W24); and "the storage
+  owns the integrity of the bytes, detection of damage is a best effort"
+  is a rule, R6 of 010-04, not a principle. R6 is added to 010-04 in the
+  inventory's wording (its section 5.4).
+* **A check of the nodes' place goes with 028-77's review** (07:30),
+  not into 2026.7: 028-67's finding that C3 does not cover nodes
+  (another database's nodes behind a record's own header) would be
+  closed by node checksums that include the position and the database's
+  ID, a change of the format (035-03's scope).
+* **028-71 and 028-53 are closed** (07:30). 028-71's limit stays as
+  stated in 027-13: under commits of 1 MB the stream kept is 18 times
+  the live data, by the cap of 128 KiB a step. What is left of 028-53's
+  idle rewriting is 028-75.
 
 The lead's, 2026-11-28 (class 1, from the timing run of 01:38 to 02:50;
 section 3):
@@ -748,6 +764,10 @@ The lead's overview (08:30), its conclusions:
   028-75 (c) at 07:27 (section 2). The work starts as agents become
   free, at most four at a time: 028-73 with 028-74 first, then O1, then
   028-75's design.
+* 2026-11-28 07:32 Frans decided 031-07's five as recommended (R6 added
+  to 010-04), the nodes' place with 028-77's review, and closed 028-71
+  and 028-53, at 07:30 (section 2). Left of 031-07: the Javadoc and
+  030-04 cite 010-R6.
 
 ## 4. Waiting for Frans
 
@@ -759,51 +779,20 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 07:30)
+### Open now (2026-11-28 07:32)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
-17:26, and of 2026-11-28, 06:05 to 07:27 (section 2). The text of
-sections 4.0 to 4.3 is left as it was written. New since 00:45: 028-71's
-closing and 028-77, the two points before the theme's wording. Answered
-since then: 028-76, (a); and at 07:27 O1, (b), 028-73, (b), 028-74, (a),
-and 028-75, (c), each to be built (section 2; the options are in
-031-06's section 8 and in the entries). Settled by the lead: the
-warm-up's reading ahead (review 3's W1) stays, from the timing run; T1's
-rule for a cut record's own bytes is in the review of the start path
-that runs until 11:00.
+17:26, and of 2026-11-28, 06:05 to 07:30 (section 2). The text of
+sections 4.0 to 4.3 is left as it was written. Answered on 2026-11-28:
+028-76, (a); at 07:27 O1, (b), 028-73, (b), 028-74, (a), and 028-75,
+(c), each to be built (the options are in 031-06's section 8 and in the
+entries); at 07:30 031-07's five as recommended, with the principle as
+rule R6 of 010-04, the check of the nodes' place (028-67's finding)
+moved to 028-77's review, and 028-71 and 028-53 closed. Settled by the
+lead: the warm-up's reading ahead (review 3's W1) stays, from the timing
+run; T1's rule for a cut record's own bytes is in the review of the
+start path that runs until 11:00.
 
-* **028-53. Idle rewrites by M1; RB-007** (in progress, Frans:
-  decision): RB-007 is fixed on `main` (18:52); the entry also covers
-  the idle rewrites, which 028-75 now holds. Whether 028-53 is done is
-  Frans's.
-* **031-07's review of the stream's checks** (its inventory, 19:22),
-  class 3 for the format and the principle:
-  * N1: node checksums kept (the only check of keys and values at a
-    load, before reclaim's copies make damage permanent; about 3 % of a
-    1 kB commit, estimated, and 4 bytes a KV);
-  * GD1: nothing added to the got-dirty list;
-  * M1: the meta block holds its own position and the database ID,
-    nothing more;
-  * W24: the header's check of 24 bits, as decided (it catches every
-    error of 1 to 3 bits in the 32 header bytes);
-  * the principle "the storage owns integrity, detection is best
-    effort": a rule, R6 in 010-04 (the inventory's section 5.4 proposes
-    the wording), or a principle; and whether another file's bytes at
-    the tail count as a face of the expected fault, which goes with
-    028-67's C2.
-  * Recommended: N1, GD1, M1, W24, and R6 as a rule.
-* **028-67's finding: C3 does not cover nodes** (step 4, 20:51). A
-  record whose header is its own, with later nodes from another file at
-  the same offsets, still passes: with two databases of identical
-  layout, a start took the other database's value of one key. Node
-  checksums that include the position and the ID would close it; not
-  decided, with 031-07's N1. 028-67's C2 is held (2026-11-28) until
-  028-77 is decided.
-* **028-71: whether it is done** (class 3: an item done). The step
-  sized by the commit's allowance landed with step 3 (2026-11-28). Under
-  commits of 1 MB the stream kept is 18 times the live data, steady, by
-  the cap of 128 KiB a step (115.7 times and growing before); under
-  commits of 20 kB to 300 kB, 7 to 8 times.
 * **028-77: strict append-only storage, or tail rewrites at a start**
   (class 3: the storage contract; not for today). Three tails after a
   crash are known: a cut record (the start appends zeros), a tail of
@@ -811,7 +800,8 @@ that runs until 11:00.
   other bytes (refused; the automatic cut, C2, held). Options: (A)
   strictly append-only files, (B) the provider may rewrite the tail,
   (C) as today. No recommendation before the review, 035-03; taken up
-  after 2026.7's work is stable.
+  after 2026.7's work is stable. With it: 028-67's C2, and the check of
+  the nodes' place.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
   Frans.

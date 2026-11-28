@@ -1,6 +1,8 @@
 # 031-07. The stream's checksums, a review
 
-Created 2026-11-27 by Frans Lundberg. Status: open.
+Created 2026-11-27 by Frans Lundberg. Status: decided (Frans,
+2026-11-28; section 5): no change of the checks beyond 028-67's; the
+principle is rule 010-R6. Open: the Javadoc and 030-04 cite the rule.
 
 Frans, 2026-11-27: the checksums of the stream are reviewed for release
 2026.7, with them the record header's new 3-byte check (028-67).
@@ -59,6 +61,33 @@ format.
 First step: the inventory.
 
 
+## 5. Decided
+
+Frans, 2026-11-28, 07:30, as the inventory recommends (its section 5):
+
+* **N1.** The node checksums stay as they are: a CRC-32C of each node's
+  bytes, checked at every load and parse.
+* **GD1.** The got-dirty list gets nothing new.
+* **M1.** The meta block holds its own position and the database's ID
+  (028-67's C3), nothing more.
+* **W24.** The record header's check stays 24 bits, in bytes 5 to 7.
+* **The principle is a rule, R6 of 010-04**, not a principle, in the
+  wording of the inventory's section 5.4: the storage owns the integrity
+  of the bytes, and BergDB's checks of damage are a best effort. Another
+  file's bytes at the tail are not a face of the expected fault in its
+  words: 028-67's C2 is held until 028-77 is decided.
+
+So 2026.7's format has no change of the checks beyond 028-67's, built in
+031-06's landing, step 4. Left to do: the Javadoc that state the
+principle in part (`AppendOnlyStream`, `Db`, `CorruptStreamTester`) and
+030-04's assumptions 3 and 5 cite 010-R6 (the inventory, section 5.4).
+
+A check of the nodes' place (a node's checksum begun with its position
+and the database's ID), which would close 028-67's finding that C3 does
+not cover nodes, is a change of the format taken with 028-77's review
+(035-03), not in 2026.7 (Frans, 2026-11-28).
+
+
 ## Files
 
 * [inventory.md](inventory.md): the inventory of the stream's checks on
@@ -83,3 +112,7 @@ considers its wording and place, and each check against it.
 the got-dirty list and the meta block beyond C3 (GD1, M1), the header
 check 24 bits as decided (W24), the principle as a rule of 010-04 (R6).
 For Frans's decision.
+
+2026-11-28. Decided by Frans (07:30): N1, GD1, M1, W24, and the
+principle as rule R6 of 010-04 (section 5); R6 added to 010-04. The
+nodes' place goes with 028-77's review.

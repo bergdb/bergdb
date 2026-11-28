@@ -100,12 +100,10 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.7 | open |
-| [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
-| [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 held (028-77) |
+| [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 and the nodes' place with 028-77 |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
-| [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | decision | open (on `main`; closing for Frans) |
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (made on a branch, to land) |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc to write) |
@@ -119,6 +117,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-71](71-large-commits-stream-kept.md) | Investigate | Large commits: a commit's step sized by its allowance; 18 times the live data at 1 MB commits | closed | done | 2026-11-28 |
+| [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 fixed by 031-06; the rest is 028-75 | closed | done | 2026-11-28 |
 | [028-68](68-step-reserve-outside-stream.md) | Decide | Step reserve a constant (B), built in 031-06 | B (16:09) | done | 2026-11-27 |
 | [028-54](54-p2-inside-maintenance.md) | Investigate | Stop inside maintenance: RB-013, fixed by 031-06 | answered | done | 2026-11-27 |
 | [028-69](69-remove-crypto-code.md) | Implement | The internal crypto code removed (`1809e04c`); recorded in 017-10 | none | done | 2026-11-27 |
@@ -711,3 +711,9 @@ the stream kept reaches 4 MB; 028-74 (a), the limit stated in
 `currentTime()`'s Javadoc and P2's draft; and 028-75 (c), a pass only
 when the stream kept is a share and a floor over the live bytes (07:27).
 None is on `main` yet.
+
+2026-11-28. 028-71 and 028-53 closed by Frans (07:30): 028-71's step is
+on `main`, with the limit under commits of 1 MB stated in 027-13;
+028-53's RB-007 is fixed by 031-06, and the rewriting after one small
+put is 028-75's. 028-67's finding that C3 does not cover nodes goes
+with 028-77's review, not into 2026.7 (Frans).

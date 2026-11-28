@@ -155,3 +155,43 @@ Cases:
   2026-11-13 (026-06): the value transformations run before the go point,
   and one that throws or passes a limit refuses the transaction; so does
   a key transformation that throws (Frans, 08:45, "yes to all").
+
+
+R6. The storage owns the integrity of the bytes
+-----------------------------------------------
+
+BergDB assumes that its storage returns the bytes appended to it, and
+that after a crash the stream is a prefix of them, with one expected
+fault: a partial append, which leaves at the stream's end a part of what
+was appended, or zeros in its place within the file's length. A start
+handles that fault exactly: it takes every record that ends before it
+and none after it. Any other damage of the stored bytes is the storage's
+to prevent. BergDB's checks of it are a best effort, kept where they
+cost little; damage that they do not see gives wrong values with no
+error. A check that finds damage refuses the start or fails the database
+(P7); none repairs it.
+
+Serves P7 and P13.
+
+Why: BergDB assumes correct storage (Frans, 2026-11-06; 017-08), and its
+detection of damaged bytes is a best effort, a low priority (Frans,
+2026-11-12; 024-28, section 7). The two were stated in part in several
+places and in no one place; 031-07's review of the stream's checks
+proposed the wording (its inventory, section 5.4), and Frans decided it
+as a rule, not a principle (2026-11-28).
+
+Cases:
+
+* 014-01 (prefix interruption, 2026-11-05).
+* 015-73, 019-30, 019-31 and 019-33: damage outside the fault, decided
+  (a) (2026-11-05 and 2026-11-06).
+* 024-25: the node checksum, CRC-32C, a best effort kept for its cost;
+  kept again by 031-07's N1 (2026-11-28).
+* 028-60: zeros within the file's length, a face of the fault
+  (2026-11-26).
+* 028-67: another file's bytes within the length, refused with the cause
+  and tied to their place (2026-11-27). Whether such a tail becomes a
+  face of the fault, cut and not refused, is 028-77's (028-67's C2,
+  held, 2026-11-28).
+* 031-07: each check of the stream against the rule (its inventory,
+  sections 4 and 5.4).

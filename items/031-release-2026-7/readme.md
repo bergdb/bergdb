@@ -81,7 +81,9 @@ Files
   * `p2-draft.md`: a draft of P2's extended wording, a proposal.
 * [031-07](07-checksums/readme.md): the stream's checksums, a review: what
   each check detects and costs, and whether the node checksums stay, go
-  or become one a record (Frans, 2026-11-27).
+  or become one a record (Frans, 2026-11-27). Decided 2026-11-28: they
+  stay, nothing is added beyond 028-67's checks, and the principle is
+  rule 010-R6.
 
 
 Log
@@ -147,3 +149,9 @@ done; 028-54 done, RB-013 registered (S4) and fixed by it (Frans, 17:12).
 026-04: 1/4 kept for now, the choice after step 3 (Frans, 16:47).
 026-14: no addition to the model in 2026.7 (Frans, 17:10). 028-34: as it
 is in 2026.7 (Frans, 16:45).
+
+2026-11-28. 031-07 decided (Frans, 07:30): the node checksums stay, the
+got-dirty list and the meta block get nothing beyond 028-67's C3, the
+header's check stays 24 bits, and "the storage owns the integrity of the
+bytes" is rule R6 of 010-04. A check of the nodes' place, a change of the
+format, goes with 028-77's review, not into 2026.7.

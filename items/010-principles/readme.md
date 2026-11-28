@@ -91,7 +91,8 @@ Files
 * [04-rules.md](04-rules.md). 010-04, the rules: more detailed than the
   principles and grown from Frans's decisions, each with the principle it
   serves and the cases it decided; R1 to R3, from 024-27 (P14); R4
-  removed; R5, the Core API never destroys the KV store (021-27).
+  removed; R5, the Core API never destroys the KV store (021-27); R6,
+  the storage owns the integrity of the bytes (031-07).
 
 
 Log
@@ -168,3 +169,7 @@ number is not reused.
 
 2026-11-12. R5 added to 010-04, the Core API never destroys the KV store
 (Frans, 13:21 and 13:24: "as a new rule"), from 021-27.
+
+2026-11-28. R6 added to 010-04, the storage owns the integrity of the
+bytes: a rule, not a principle (Frans), in the wording of 031-07's
+inventory, section 5.4.
