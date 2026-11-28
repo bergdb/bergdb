@@ -30,26 +30,26 @@ Findings are UA-1, UA-2, ...; cited from elsewhere as "031-08, UA-1".
 
 ## 1. In short
 
-Written 10:35; section 5 has the exact state.
+Written 11:00; section 5 has the exact state.
 
 * **Eight applications** in `java/stress/apps/e1-*` to `e8-*`, with their
   oracle `e0-common/EOracle.java`, about 3,300 lines of Java, and nine
   probes of a page each in `08-user-apps/probes/`, on the release jar of
   `main` at `ee8a8165`.
-* **What they ran** (section 3), from 06:22 to 10:30, beside week.sh:
-  about 190 runs of the apps (with the first and quick ones), 1,370
-  SIGKILLs and 2,200 stops: e1 112,700 Pub transactions and 104,800
-  `maintain()` calls under a moved clock, 5,390 cuts, 941 restarts, 2.65
-  million reads checked at the latest and older times; e2 5,500 Core
-  transactions at the limits (24.5 GB in transactions of 8 to 32 MiB)
-  and 1,660 refusals at node sizes 8 to 62; e3 35,900 transactions,
-  3,990 index builds and 264,000 index scans checked; e5 4.2 million
-  writer transactions, 5.8 million `rw()` transfers and 53,000 held
-  listings checked beside 129,000 `maintain()` calls; e6 432 scenarios
-  of refusals; e8 20.7 million writer transactions and 7.0 million
-  transfers checked across 2,200 stops; e4 750 SIGKILLs (more than 350 of
-  them in a `maintain()` call) and e7 620, each recovery checked against
-  the oracle.
+* **What they ran** (section 3), from 06:22 to 10:58, beside week.sh:
+  about 200 runs of the apps (with the first and quick ones), 1,870
+  SIGKILLs and 2,600 stops: e1 125,000 Pub transactions and 116,000
+  `maintain()` calls under a moved clock, 5,900 cuts, 1,060 restarts,
+  367 changes of the retain duration, 3.0 million reads checked at the
+  latest and older times; e2 5,800 Core transactions at the limits (25.9
+  GB in transactions of 8 to 32 MiB) and 1,770 refusals at node sizes 8
+  to 62; e3 39,700 transactions, 4,420 index builds and 291,000 index
+  scans checked; e5 4.7 million writer transactions, 6.6 million `rw()`
+  transfers and 57,000 held listings checked beside 146,000 `maintain()`
+  calls; e6 432 scenarios of refusals; e8 22.1 million writer
+  transactions and 7.8 million transfers checked across 2,600 stops; e4
+  750 SIGKILLs (more than 350 of them in a `maintain()` call) and e7
+  1,120, each recovery checked against the oracle.
 * **No bug of data found**: no wrong value at any time, at the latest
   state or an older one inside the retain duration; no recovery short of
   a synced transaction, none with a part of a transaction; no returned
@@ -414,6 +414,17 @@ the seeds and outcomes below.
   and 20 runs: e1 seeds 401 to 406, e2 401 and 402 (node sizes 8 and 62,
   200 rounds), e3 401 to 404 (1,000 rounds), e5 401 and 402, e6 401 and
   402, e8 401 to 404: all OK.
+* **Kill 6** (10:28 to 10:41): e7 seed 33, 300 kills (16 in a
+  `maintain()` call, 23 in a start), 17 databases, 306 recoveries
+  checked: OK.
+* **Soak 5** (10:41 to 10:45): e8 seeds 613 to 618 with `-De8.cache=4
+  -De8.value=3000` (60 rounds; 140 calls threw StreamIoException at a
+  stop, none written: UA-10) and e5 seeds 403 and 404 (60 s): all OK.
+* **Kill 7** (10:45 to 10:53): e7 seed 34, 200 kills (13 in a
+  `maintain()` call, 15 in a start), 12 databases, 208 recoveries
+  checked: OK.
+* **Soak 6** (10:53 to 10:58): e1 seeds 501 to 506, e3 501 to 504, e2
+  501 and 502 (node sizes 14 and 30, 200 rounds): all OK.
 
 Measurements that the apps print, against the documents (no FAIL):
 
@@ -535,7 +546,7 @@ under "Why".
     than the retain duration of the clock: it called `maintain(100)`
     inside, which waits while commits come (`Db.maintain()`, the
     handover). Nothing was written. Counted since, in e5's runs of soaks
-    1 to 4: 117 of 5.8 million transfers (88 of 2,787 in seed 202, 8
+    1 to 5: 118 of 6.6 million transfers (88 of 2,787 in seed 202, 8
     writers beside them), each followed by balances that the final check
     found exact.
     `RwExpires`: an action reads an account, waits while reclaim cuts
@@ -773,11 +784,11 @@ under "Why".
 
 ## 5. State
 
-Written 10:35.
+Written 11:00.
 
 * **Done**: the apps e1 to e8 and their oracle in `java/stress/apps/`,
   the probes in `08-user-apps/probes/`, the runs of section 3 (quick
-  runs, soaks 1 to 4, kill rounds 1 to 5, the hunt of UA-10), the
+  runs, soaks 1 to 6, kill rounds 1 to 7, the hunt of UA-10), the
   findings UA-1 to UA-10. No product code changed; `java/stress/apps.sh`
   not changed.
 * **Not done**: the apps are not in `apps.sh`'s modes (the lead's step);
@@ -798,5 +809,5 @@ Log
 ===
 
 2026-11-28. Created; the apps e1 to e8, the probes, the runs of section
-3 on the release jar of `ee8a8165` (06:22 to 10:28) and the findings
+3 on the release jar of `ee8a8165` (06:22 to 10:58) and the findings
 UA-1 to UA-10.
