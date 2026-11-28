@@ -294,20 +294,22 @@ was fixed and the seed run again. Times are F53's, from `date`.
   `OutOfMemoryError` (the app keeps three runs' streams of 400 to 490 MB
   in a heap of 1.5 GB), not run again at that size. 44 runs ended with
   other files than the ref's for the same stream (UB-1's NOTE).
-* **f2 KillBytes**, 07:08 to KILLEND. Seeds 2 to 10 (400 to 1,200
-  actions, 200 or 250 kills each; K5 from seed 7 on, and a 60-kill run of
-  seed 3): 1,960 SIGKILLs, 1,273 between actions and 687 at random
-  times; 1,624 starts that found the stream at an action's end and wrote
-  nothing (but the deletes of a decided cut's files, 747 files); 296
-  starts that completed a torn end, each with K4; 450 K5 checks after 860
-  kills during the start that completed the end, 16 meta blocks among
-  them completed as invalid blocks; 23 kills that left zeros at the end
-  of the last file; 25 chains that reached the last action, each with
-  the ref's stream; 40 kills before the creation was durable. KILLMORE
-  Three FAILEDs were the app's (a child's last lines not read before the
-  kill, then read from a progress file the child writes; an empty file
-  after a kill during the creation; K5's first version, which did not
-  allow the invalid meta block that 027-11 describes).
+* **f2 KillBytes**, 07:08 to 10:00. Seeds 2 to 15 (400 to 1,200
+  actions, 200 or 250 kills each; K5 from seed 7 on; and a 60-kill run of
+  seed 3), and seeds 20 to 22 with `-Df1.big=true` (180 to 240 actions,
+  streams of up to 180 MB, 120 kills each): 3,570 SIGKILLs, 2,334
+  between actions and 1,236 at random times; 2,934 starts that found the
+  stream at an action's end and wrote nothing but the deletes of a
+  decided cut's files (1,688 files); 551 starts that completed a torn
+  end, each with K4; 1,215 K5 checks after 2,329 kills during the start
+  that completed the end, 97 meta blocks among them completed as invalid
+  blocks; 39 kills that left zeros at the end of the last file; 54 chains
+  that reached the last action, each with the ref's stream (two of them in
+  other files, UB-1); 85 kills before the creation was durable. Three
+  FAILEDs were the app's (a child's last lines not read before the kill,
+  then read from a progress file the child writes; an empty file after a
+  kill during the creation; K5's first version, which did not allow the
+  invalid meta block that 027-11 describes).
 * **f3 PubSameBytes**, 06:45 to F3END. Seeds 1 to 11 (600 to 1,500
   actions; seed 1 by hand, the others in lanes), five runs each (`fast`,
   `slow`, `restart`, `cache`, `copy`): every stream the ref's; NOTEs of
@@ -386,7 +388,9 @@ refusal whose diagnosis and way out are wrong (UB-3).
   was made after a cut, at a tenth of the stream the files held). In the
   other runs, where both had files they were the same files, byte for
   byte. Reproduction (30 s): `java PubSameBytes 1 600 DIR fast` (a
-  NOTE line: "the same stream, other files"). Judgment: document; the
+  NOTE line: "the same stream, other files"; it follows the write
+  buffer's timing: seed 1 showed it in four of its five runs, seed 2 in
+  none). Judgment: document; the
   README's sentence is about the stream, and FileStream's and
   `getStreamSize()`'s Javadoc could say that a closed or idle database
   keeps the files of a decided cut until the next start, commit or
