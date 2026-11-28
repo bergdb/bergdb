@@ -816,6 +816,63 @@ files) and with 5.8's indicative run, made on a loaded F53; `main`'s
 with section 1's force a file (63,000 to 68,000 a second), its files
 not yet deleted somewhat more (0.58 to 0.68 against 0.45 to 0.59).
 
+#### 6.9. The landing
+
+Made 2026-11-28 by an agent of lead-1127, in a clone of `main` at
+`9f446ad5` (with T1's fix, `b7f21db4`, the AppRecord fix and 031-06's
+step 3), on the branch `028-66-land`: the branch's commits picked onto
+it in their order.
+
+* The picks: no conflict. In `RecoverableStream.recover()` both rules
+  hold: the check of the files before a gap (`checkLeftovers()`) comes
+  after the last valid meta block is read and before the walk of the
+  tail (`walkTail()`), so a start refused by it has written and deleted
+  nothing; the walk keeps T1's rule (a cut record whose header checks,
+  or the begin of one followed by zeros, as an earlier start's
+  completion leaves it, is taken; other tails are refused with a
+  `BadTailException`). `Db.startInner` writes a missing `created.txt`
+  after `Reclaim.initFromDb` (R2), as on the branch; `initFromDb`'s
+  refusal of a first position after the cut comes before
+  its `pretruncate()` and step 3's `publishWarm`.
+* One test fixed: `FileStreamPowerLossTester.testRefusedStartWritesNoCreatedTxt`
+  removed `00000000000006.bergdb` as the stream's first file. Under
+  load (2 of 40 runs, here and on the branch before the picks), the
+  database of `writeUntilCut()` closes with reclaim's cut recorded after
+  that file and before the storage's cut, which the next start completes
+  (`initFromDb`'s `pretruncate()`), so the first file is
+  `00000000000008.bergdb`. The product does as 6.2 says; the test now
+  removes the file with the lowest name, and expects the refusal at the
+  next file's first position: 48 of 48 runs of the class under the same
+  load.
+
+The gates on the combined tree, one at a time, F53 with nothing else
+running, 2026-11-28:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (77 s; unit 1,754 tests, f
+  96), `DbTesterTail` among the unit tests (7 tests).
+* `java/stress/level2.sh`: LEVEL 2 OK.
+* `java/stress/level3.sh`: LEVEL 3 OK; its power-loss stage POWERLOSS
+  OK, 8 seeds, 488 cold recoveries, without per-append forces 496,
+  negative controls caught; conformance with reclaim 40 traces, crash
+  15, TRACECHECK OK.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744, negative controls caught.
+* [NestedGap.java](NestedGap.java) with LEVEL2_SAMPLES 1000, per-append
+  forces on and off: NESTED GAP OK each, 2,060 starts, 1,812 images with
+  a gap, none refused.
+* `java/night.sh tests -c DbTesterTail`: SUCCESS, 4 tests.
+* 031-06's `probes/sweep.sh`: SWEEP DONE, 0 different in each of its
+  63 lines.
+* 031-06's `probes/faults.sh`: FAULTS DONE, bad 0 in each of its 42
+  lines.
+* 031-06's review-3 probes, `run.sh OUT tail`: the four T1 probes start
+  every case: `S4RestartAfterTornSizeProbe` three starts ok at each cut
+  of 1 to 8 bytes; `S4TornSweepFileProbe` ok 1,016, bad 0;
+  `S4TornFillProbe` ok 308, refused 0; `S4TornFillFileProbe` ok 109,
+  not ok 0. `S4TornSweepProbe` ok 5,835, bad 2, its two cuts in the
+  database's creation as in review 3's run; `S4Version155Probe` refuses
+  version 155 having written nothing.
+
 Log
 ---
 
@@ -860,3 +917,8 @@ the landing.
 of the stream kept against 1.623, the files not yet deleted 0.1165
 against 0.6505, 27 files against 63; 027-13's figure from it. Status:
 built, reviewed, timed; landing.
+
+2026-11-28. Landing prepared by an agent of lead-1127 (6.9): the
+branch's commits picked onto `main` at `9f446ad5` with no conflict,
+`testRefusedStartWritesNoCreatedTxt` made independent of which file is
+first, the gates on the combined tree.
