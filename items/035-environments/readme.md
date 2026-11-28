@@ -67,11 +67,12 @@ Files
   within a file's length after a kill (APFS; 035-01, section 7): on
   F53's internal SSD too or not, and what a start of BergDB does with
   an older stream file's records inside the last file.
-* [035-03](03-append-only-storage.md): append-only storage, what
-  BergDB may take for granted: what append-only means for the stream
-  and for the files, the faults a crash may leave by environment, and a
-  fault model for the storage contract (014-01, section 7), from which
-  028-77 is decided. Not started.
+* [035-03](03-storage-model.md): the storage model, what BergDB may
+  take for granted from append-only storage: what append-only means for
+  the stream and for the files, the faults a crash may leave by
+  environment, and a fault model for the storage contract (014-01,
+  section 7), from which 028-77 is decided. Not started; notes of
+  2026-11-28 in its section 2.
 
 
 Log
@@ -85,3 +86,6 @@ Log
 (028-60, part 2; Frans's decision).
 
 2026-11-28. 035-03 created (Frans), with 028-77; not started.
+
+2026-11-28. 035-03: its file renamed to `03-storage-model.md` (Frans);
+notes of a discussion in its section 2.
