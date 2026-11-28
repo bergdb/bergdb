@@ -1,10 +1,11 @@
 028-66. Investigate: the cut's deletes lag behind a fast writer
 ================================================================
 
-Status: open. Kind: Investigate. Frans: decided (2026-11-27, 17:26: C with
-the rule of the files before a gap, after a quiet timing run against `main`
-and a review; section 4). C with the rule built on a branch (section 6),
-reviewed, and the review's findings fixed (6.7).
+Status: built, reviewed, timed; landing. Kind: Investigate. Frans:
+decided (2026-11-27, 17:26: C with the rule of the files before a gap,
+after a quiet timing run against `main` and a review; section 4). C with
+the rule built on a branch (section 6), reviewed, the review's findings
+fixed (6.7), timed on a quiet F53 against `main` (6.8), and landing.
 Created 2026-11-26 by Frans Lundberg.
 
 What: since 005-46 the cut's own thread deletes the stream files below a
@@ -708,12 +709,14 @@ builds for core and pauses only.
 
 #### 6.6. What is left
 
-* The timing run of 6.5 on a quiet machine (Frans's decision 2), and
-  027-13's figure from it in place of 5.8's indicative one.
+* The timing run of 6.5 on a quiet machine (Frans's decision 2): made
+  2026-11-28 (6.8); 027-13's figure is the run's, in place of 5.8's
+  indicative one.
 * The review of the branch, then the landing in place of A for 2026.7;
   `java/night.sh` before the release as usual. The review is made
-  ([review.md](review.md); land after the timing run), and its findings
-  R1 to R5 are fixed (6.7).
+  ([review.md](review.md); land after the timing run), its findings R1
+  to R5 are fixed (6.7), and the branch is rebased onto `main` with T1's
+  fix (`b7f21db4`) and 031-06's step 3 for the landing (6.9).
 * 028-73 (the sizes of new files) waits for Frans; C does not change
   file sizes.
 
@@ -778,6 +781,41 @@ The gates, on F53 beside `java/night.sh` and another review, 2026-11-27:
   forces on and off: NESTED GAP OK each, 2,060 starts, 1,812 images with
   a gap, none refused.
 
+#### 6.8. The timing run
+
+Made 2026-11-28, 02:40 to 02:41, on F53 with nothing else running (load
+2.8 to 4.2 from the runs themselves), as 6.5 says:
+[probes/ab-reclaimcost.sh](probes/ab-reclaimcost.sh), `ReclaimCost` on
+disk, 20 MB live, no rate limit, ABBA in 2 rounds, 4 runs each. REF a
+build of `main` at `080c1f2f` (with T1's fix and 031-06's step 3), CAND
+one of the branch with the review's fixes (6.7), before its rebase onto
+that `main`. Every run RECLAIMCOST OK; the same work in each (78,644
+transactions in the steady period, 7 cuts, store efficiency 0.415).
+
+The medians (each run's figure in brackets, in the order of the runs):
+
+* Transactions a second: REF 67,052 (70,198, 66,019, 67,815, 66,289),
+  CAND 113,580 (121,855, 108,666, 115,454, 111,706): 1.69 times.
+* The disk over the stream kept, mean: REF 1.623 (1.563 to 1.645), CAND
+  1.096 (1.093 to 1.102); the maximum 2.16 to 2.23 against 1.59.
+* The files that end before fp and are not yet deleted, mean, a share
+  of the stream kept: REF 0.6505 (0.583 to 0.675), CAND 0.1165 (0.112
+  to 0.118); of them taken off by the storage's cut and waiting for its
+  thread: REF 0.549 (0.490 to 0.576), CAND 0.011 (0.006 to 0.031).
+* The files on disk, mean: REF 62.9 (59.5 to 64.4), CAND 27.15 (26.9 to
+  27.7).
+* The latency of a commit: p99.9 64 to 71 us in both; the largest 60 to
+  72 ms in REF, 24 to 47 ms in CAND.
+
+So on a quiet machine C writes 1.7 times as fast as `main` in this
+measurement, keeps 1.10 of the stream kept on disk against 1.62, and
+its storage's thread no longer lags: the files that wait for it are a
+hundredth of the stream kept against a half. The figures agree with
+section 1's batch (102,000 to 110,000 a second, 1.10 to 1.15, 26 to 30
+files) and with 5.8's indicative run, made on a loaded F53; `main`'s
+with section 1's force a file (63,000 to 68,000 a second), its files
+not yet deleted somewhat more (0.58 to 0.68 against 0.45 to 0.59).
+
 Log
 ---
 
@@ -816,3 +854,9 @@ review, the landing.
 lead-1127 (clone c66e, on the review's branch, not pushed): section 6.7
 and a Fixed line under each finding in review.md. Left: the timing run,
 the landing.
+
+2026-11-28. The quiet timing run of 6.5 made (6.8): C
+113,580 transactions a second against `main`'s 67,052, the disk 1.096
+of the stream kept against 1.623, the files not yet deleted 0.1165
+against 0.6505, 27 files against 63; 027-13's figure from it. Status:
+built, reviewed, timed; landing.

@@ -463,10 +463,12 @@ pending, M1's condition holds, or the dead hand has more.
   quarter, 50 to 55 with the tenth, which makes about three times as
   many files (16 to 23 against 56 to 60 on average); the disk 1.28 to
   1.48 times the stream kept with the quarter, 1.49 to 1.56 with the
-  tenth: measured. With a batch and one force (028-66, one run on F53,
-  loaded): 110,000 transactions a second against 63,000 to 68,000, the
-  disk 1.13 times the stream kept, the files that wait for the storage's
-  thread 0.013 of it: measured. An emptied database (031-02's
+  tenth: measured. With a batch and one force (028-66, section 6.8: an
+  A/B against `main` on a quiet F53, 2026-11-28, medians of 4 runs
+  each): 113,580 transactions a second against 67,052, the disk 1.10
+  times the stream kept against 1.62, the files not yet deleted 0.12 of
+  it against 0.65, those that wait for the storage's thread 0.011
+  against 0.549, 27 files against 63: measured. An emptied database (031-02's
   RetainChurn): 400 kB on disk for 61 kB of stream in seed 5 (10,400 kB
   with the quarter); 200, 600 and 800 kB in seed 1's rounds 1 to 3 (200,
   2,600 and 3,800): measured.

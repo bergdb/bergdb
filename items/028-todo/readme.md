@@ -102,7 +102,7 @@ Open
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.7 | open |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 | decision | in progress |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
-| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | reviewed, fixed; timing open |
+| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
@@ -680,4 +680,9 @@ review's findings R1 to R5 fixed: the power-loss trace's check of a
 `CLOSE` force, no `created.txt` written by a refused start, the
 refusals' messages, the stream contract's duty of an implementation,
 `seekFirstPos` and the rule (028-66, 6.7). Open: the timing run, the
+landing.
+
+2026-11-28. 028-66 timed on a quiet F53 against `main` (6.8): C 113,580
+transactions a second against 67,052, the disk 1.10 of the stream kept
+against 1.62, 27 files against 63. Status: built, reviewed, timed;
 landing.
