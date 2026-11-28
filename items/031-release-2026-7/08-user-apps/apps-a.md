@@ -30,14 +30,56 @@ Findings are UA-1, UA-2, ...; cited from elsewhere as "031-08, UA-1".
 
 ## 1. In short
 
-STATE-SHORT
+Written 10:35; section 5 has the exact state.
+
+* **Eight applications** in `java/stress/apps/e1-*` to `e8-*`, with their
+  oracle `e0-common/EOracle.java`, about 3,300 lines of Java, and nine
+  probes of a page each in `08-user-apps/probes/`, on the release jar of
+  `main` at `ee8a8165`.
+* **What they ran** (section 3), from 06:22 to 10:30, beside week.sh:
+  about 190 runs of the apps (with the first and quick ones), 1,370
+  SIGKILLs and 2,200 stops: e1 112,700 Pub transactions and 104,800
+  `maintain()` calls under a moved clock, 5,390 cuts, 941 restarts, 2.65
+  million reads checked at the latest and older times; e2 5,500 Core
+  transactions at the limits (24.5 GB in transactions of 8 to 32 MiB)
+  and 1,660 refusals at node sizes 8 to 62; e3 35,900 transactions,
+  3,990 index builds and 264,000 index scans checked; e5 4.2 million
+  writer transactions, 5.8 million `rw()` transfers and 53,000 held
+  listings checked beside 129,000 `maintain()` calls; e6 432 scenarios
+  of refusals; e8 20.7 million writer transactions and 7.0 million
+  transfers checked across 2,200 stops; e4 750 SIGKILLs (more than 350 of
+  them in a `maintain()` call) and e7 620, each recovery checked against
+  the oracle.
+* **No bug of data found**: no wrong value at any time, at the latest
+  state or an older one inside the retain duration; no recovery short of
+  a synced transaction, none with a part of a transaction; no returned
+  transaction lost at a stop and nothing of a refused one written; no
+  refusal that wrote anything; no failed database but by e6's own Error;
+  the first available time kept by every restart and its promise held;
+  `transactionInfo()` exact under reclaim's copies; no lost update across
+  a cut (`StaleRead`). Three FAILs became findings (UA-3, UA-5, UA-10);
+  the others were the apps' own, each fixed (section 3).
+* **Ten findings** (section 4): UA-9, a product issue of S4: a
+  `maintain()` call with its thread's interrupt flag set spins on a core
+  while it gives way to commits, which it does as long as commits come
+  (UA-7, 0 calls ended in 10 s beside 8 writers). Nine of the documents:
+  the files of a decided cut stay until the next action (UA-1); the
+  exceptions at a stop, StreamIoException from `maintain()` (UA-2) and
+  from a put's warm-up (UA-10), nothing written; `rw()` that outlives the
+  retain duration expires when it writes an indexed directory and
+  commits when it does not (UA-3, with a question); a pass's length
+  (UA-4, a note); a call's overrun up to a whole 8 MiB value (UA-5); the
+  Core's `getTrans()` lists reclaim's copies in a commit's record (UA-6);
+  `maintain()` on a small new database writes about 200 kB and keeps it
+  (UA-8, with a question).
 
 
 ## 2. The applications
 
 Each is plain Java with `main`, in `java/stress/apps/` beside the
 earlier apps, compiled with `javac` against `build/bergdb-release.jar`
-alone, as `java/stress/apps.sh` compiles them (they join it later); each
+alone, as `java/stress/apps.sh` compiles them (they are in none of its
+modes yet, section 5); each
 takes a seed and sizes, prints `OK ...` or a `FAIL ...` line with the
 seed, and exits non-zero on a wrong result. e1, e3, e5, e6, e7 and e8 use
 the Pub API, e2 and e4 the Core API, at the node sizes 8, 14, 30 and 62
@@ -55,8 +97,9 @@ item, also had names e1 to e11.
   `Integer.MIN_VALUE`, -1, 0, 1, 99, 100, 100,000 and
   `Integer.MAX_VALUE` on a new database and while the retain duration is
   forever: the stream size must not change ("With the retain duration
-  forever (the default) there is nothing to do"). A load of 2,000 to
-  3,000 keys (one in 37 a key of 111 bytes, the limit), then a retain
+  forever (the default) there is nothing to do"). A load of KEYS keys
+  (2,000 to 10,000 in the runs; one in 37 a key of 111 bytes, the
+  limit), then a retain
   duration R of 1, 3, 20 or 600 s, and rounds of churn: `w()`
   transactions of 1 to 500 puts and deletes, values of 0 to 3,000 bytes
   and now and then 10 kB to 1 MB, the clock moved by 0 to R/50 a round
@@ -227,8 +270,9 @@ item, also had names e1 to e11.
   (budgets 100, 2,000 and 100,000) after a third of the transactions and
   3 to 8 after each of the 20 transactions that follow a mass delete
   (since kill round 4; before, after a fifth and 6), and in a third of
-  the starts right after the recovery. The marker and the logged times as in e4. A child joins the
-  builds that the start resumed, replays the oracle to the marker n and
+  the starts right after the recovery. The marker and the logged times
+  as in e4. A child joins the builds that the start resumed, replays the
+  oracle to the marker n and
   checks both listings, every value, "by-n" whole both ways and from a
   bound, "by-s" if it is active, and the listing and "by-n" at 2 logged
   times inside the retain duration; the parent's kills and checks as in
@@ -259,24 +303,25 @@ item, also had names e1 to e11.
   `-De8.value=N` the most bytes of a value beyond its 16 (300).
 
 The probes for the findings, in `08-user-apps/probes/`, each a few
-seconds with the jar alone: `CutFilesStay` (UA-1), `RwExpires` (UA-3),
+seconds with the jar alone: `CutFilesStay` (UA-1), `EmptiedDisk` (the
+files after an emptied database's calls), `RwExpires` (UA-3),
 `MaintainOverrun` (UA-5), `CoreGetTrans` (UA-6), `MaintainWaits` (UA-7),
 `FreshMaintain` (UA-8), and `StaleRead`, a read-modify-write whose read
 time a cut passes after another transaction wrote what it read (the
 Core's `execute()` must refuse it with RerunException and the Pub's
 `rw()` run the action again; both did).
 
-Commands, from `java/` after `java/build.sh` (`apps.sh` will have them;
-until then by hand):
+Commands, from `java/` after `java/build.sh`, by hand (`apps.sh` has
+none of them yet):
 
     javac --release 17 -nowarn -encoding UTF-8 -cp build/bergdb-release.jar -d out \
         $(find stress/apps -name '*.java')
     J="java -ea -Xmx2g -XX:+ExitOnOutOfMemoryError -cp build/bergdb-release.jar:out"
-    $J E1MaintainBudget SEED DIR [KEYS] [ROUNDS]          # 3000 3000: 10 to 60 s
-    $J E2LimitsReclaim SEED DIR [NODESIZE] [ROUNDS]       # 300 rounds: 1 to 3 minutes
+    $J E1MaintainBudget SEED DIR [KEYS] [ROUNDS]          # 3000 3000: about 1 minute
+    $J E2LimitsReclaim SEED DIR [NODESIZE] [ROUNDS]       # 300 rounds: 2 to 4 minutes
     $J E3IndexReclaim SEED DIR [ROUNDS]                   # 800 rounds: about 30 s
-    $J E4KillMaintain parent SEED DIR KILLS [DBKILLS] [MAXDELAYMS]   # 300 kills: about 30 minutes
-    $J E5Threads SEED DIR SECONDS [WRITERS] [READERS]
+    $J E4KillMaintain parent SEED DIR KILLS [DBKILLS] [MAXDELAYMS]   # 300 kills: about 30 minutes, children of 2 GB
+    $J E5Threads SEED DIR SECONDS [WRITERS] [READERS]     # 4 writers and 3 readers by default
     $J E6Refusals SEED DIR [ROUNDS]                       # 24: about 30 s
     $J E7PubKill parent SEED DIR KILLS [DBKILLS] [MAXDELAYMS]        # 300 kills: about 12 minutes
     $J E8StopEverywhere SEED DIR [ROUNDS]                 # 60 rounds: about 1 minute
@@ -311,14 +356,20 @@ the seeds and outcomes below.
   were lost to the agent's recompile and rerun from 07:08 to 07:19, all
   OK. e2 seeds 101 to 108 (node sizes 8, 14, 30 and 62, 300 rounds), all
   OK. e3 seeds 101 to 110 (800 rounds): seeds 101 and 105 FAIL, "the
-  restart changed the first available time", the app's: it read the
-  time before `close()` while an index build or the removal of a deleted
-  index's entries committed in the background, and a start that resumes
-  a build commits at once; e3 now reads it after `close()` and allows a
-  later time after a start that resumed a build or followed a deletion,
-  never an earlier one; the reruns of both seeds at 08:58 passed, seed
-  105 with one such cut. e5 seeds 101 to 104 (60 s): 104 ran out of heap
-  (the app's oracle kept every version; since then it keeps versions
+  restart changed the first available time", the app's: it compared the
+  time read before `close()`, while an index build or the removal of a
+  deleted index's entries can commit in the background, with the time
+  after the start, and a start that resumes a build commits at once. e3
+  now reads the time after `close()` (the getters give the last values)
+  and allows a later time after a start that resumed a build or followed
+  a deletion, never an earlier one. The rerun of seed 105 at 08:58 met
+  one cut of a resumed build right after a start, its FAIL's case, and
+  passed; seed 101, whose FAIL came at a restart with no build running,
+  passed at 08:58 and six more times at 10:15, 54 restarts each, none
+  with a time that moved: the case of its FAIL was not met again, and
+  which background commit moved its time is not shown. e5 seeds 101 to
+  104 (60 s): 104 ran out of heap (the app's oracle kept every version;
+  since then it keeps versions
   from the readers' oldest time on), the others OK. e6 seeds 101 to 104
   (24 scenarios), all OK.
 * **Kill 2** (07:23 to 07:34): e7 seed 31, 300 kills (22 in a
@@ -340,9 +391,52 @@ the seeds and outcomes below.
 * **Kill 4** (08:45 to 08:58): e7 seed 32, 300 kills (16 in a
   `maintain()` call, 26 in a start), 18 databases, 321 recoveries
   checked: OK.
-SOAK3-KILL5
+* **Soak 3** (08:58 to 09:24): the reruns of e3 seeds 101 and 105 (OK,
+  seed 105 with one cut of a resumed build right after a start), and 34
+  runs: e1 seeds 301 to 310 (5,000 keys, 5,000 rounds), e2 seeds 301 to
+  306 (300 rounds), e3 seeds 301 to 306 (1,500 rounds; 667 restarts, the
+  first available time the same after each), e5 seeds 301 to 304 (90 s),
+  e6 seeds 301 to 304 and e8 seeds 301 to 304 (80 rounds): all OK but e8
+  seed 303, FAIL at round 60: a writer's `w().execute()` threw
+  StreamIoException at the stop (UA-10). The kill round that followed
+  (e4 seed 23) was stopped after a minute to free the two slots for it.
+* **The hunt of UA-10** (09:25 to 09:37): e8 with the stack and the
+  whole-or-nothing check, seeds 303 and 501 to 503 at the default cache
+  (no such call in 320 stops), then seeds 601 to 612 with
+  `-De8.cache=4 -De8.value=3000`: 391 such calls in 960 stops, none of
+  them written, all OK.
+* **Kill 5** (09:43 to 10:15): e4 seed 24, with the settings' changes
+  and children of 2 GB: 300 kills (173 in a `maintain()` call, 22 in a
+  start), 17 databases, 311 recoveries checked: OK. (A run of seed 23 at
+  09:37 was stopped after 20 kills, again for the slots, for the probe
+  `EmptiedDisk`.)
+* **Soak 4** (10:15 to 10:28): the six reruns of e3 seed 101 above,
+  and 20 runs: e1 seeds 401 to 406, e2 401 and 402 (node sizes 8 and 62,
+  200 rounds), e3 401 to 404 (1,000 rounds), e5 401 and 402, e6 401 and
+  402, e8 401 to 404: all OK.
 
-RUNS-NOTES
+Measurements that the apps print, against the documents (no FAIL):
+
+* e2, the stream kept against `setRetainDuration()`'s "about the stream
+  written within the retain duration plus that of one or two iterations"
+  (W(R) + 2 max(2 SD, W(R/4), 4 L), section 2): at most 0.45 to 1.04 of
+  it in the 22 runs, 1.04 in seed 202 of soak 2 (698 MB kept, 80 MB of
+  live keys and values of 111-byte keys and values up to 8 MiB), where
+  the iterations are bound by the live data.
+* e1, the files on disk against `getStreamSize()` during the churn: at
+  most 1.8 to 3.4 times (UA-1). Right after the idle phase's last call,
+  0.2 to 38.4 MB of files for a stream of 29 to 212 kB (38.4 MB in seed
+  204 of soak 2, whose stream had reached 76 MB): the cut's thread
+  deletes the files of a cut a batch at a time (FileStream, "for a while
+  after a cut, the files that the cut's thread has not yet deleted").
+  `EmptiedDisk` (a probe of 1 minute): a stream of 80 MB emptied and
+  given `maintain(100,000)` until quiet held 66,165,912 bytes of files
+  for 211,008 of stream right after the last call, and 5 s later
+  1,165,912 in one file, as after a restart.
+* e1, the most that one `maintain()` call wrote beyond its budget's
+  bytes: up to 1,236,312 bytes (UA-5).
+* e5 and e8, `maintain()` beside busy writers: e8 ended 0 calls in
+  most rounds of 20 to 1,500 ms beside 2 to 5 writer threads (UA-7).
 
 
 ## 4. Findings
@@ -432,8 +526,8 @@ under "Why".
     `getFirstAvailableLookupTime()`: "a read that runs longer than that
     may expire. Retry such a read with a later lookup time", which the
     caller of `rw()` cannot, as the action's read time is not its own.
-  * What happened: the first runs of e5 (seeds 2 and 3, R of 1 s, the
-    test clock moved by 0.2 to 5 ms every millisecond) ended with a
+  * What happened: the first runs of e5 (seeds 2 and 3, R of 1 to 3 s,
+    the test clock moved by 0.2 to 5 ms every millisecond) ended with a
     transfer's `rw()` throwing LookupTimeNotAvailableException from
     `RwEnvironmentImp.indexEntries()`, the read, at the action's read
     time, of the old values whose index entries the commit deletes (the
@@ -441,7 +535,7 @@ under "Why".
     than the retain duration of the clock: it called `maintain(100)`
     inside, which waits while commits come (`Db.maintain()`, the
     handover). Nothing was written. Counted since, in e5's runs of soaks
-    1 and 2: 114 of 3.2 million transfers (88 of 2,787 in seed 202, 8
+    1 to 4: 117 of 5.8 million transfers (88 of 2,787 in seed 202, 8
     writers beside them), each followed by balances that the final check
     found exact.
     `RwExpires`: an action reads an account, waits while reclaim cuts
@@ -467,10 +561,10 @@ under "Why".
   * Expected: `Database.maintain()`: "a pass takes about getStreamSize()
     divided by the budget's bytes in calls".
   * What happened: e1's idle phase, after every key but up to 30 was
-    deleted, in the 25 runs of soaks 1 and 2: at the budgets of 100 and
+    deleted, in the 41 runs of soaks 1 to 4: at the budgets of 100 and
     less (100 kB a call), 5 to 13 calls wrote, where the sentence gives 77
-    to 563; at the budgets of 720 to 2,909, 6 to 9 calls, where it gives
-    6 to 34; at 20,000 and more, 5 to 9 calls, where it gives 1 or 2,
+    to 563; at the budgets of 429 to 3,662, 6 to 9 calls, where it gives
+    6 to 78; at 20,000 and more, 5 to 9 calls, where it gives 1 to 3,
     most of them for the cut's wait. Every quiet database kept 29 to 241
     kB, within 1 MB of its fresh twin (UA-8).
   * Why: a part's cost is what its record writes and a quarter of what
@@ -490,10 +584,9 @@ under "Why".
     kB beyond one transaction's, a table padded by at most 200 kB up to
     the next meta block)".
   * What happened: in e1, calls of `maintain(100)` (100 kB) that cut
-    nothing wrote up to 1,230,200 bytes beyond the budget's bytes (seed
-    201 of soak 2), and 412 calls of the 25 runs of soaks 1 and 2 more than
-    472 kB beyond (the sum of the Core's list); the largest values there
-    are 1 MB. `MaintainOverrun`: with one live value of 8 MiB among small
+    nothing wrote up to 1,236,312 bytes beyond the budget's bytes, and
+    600 calls of the 41 runs of soaks 1 to 4 more than 472 kB beyond (the
+    sum of the Core's list); the largest values there are 1 MB. `MaintainOverrun`: with one live value of 8 MiB among small
     ones, a call of `maintain(100)` wrote 8,462,864 bytes, 84 times its
     budget.
   * Why: `Db.maintain()` runs parts while the cost spent is below the
@@ -680,11 +773,30 @@ under "Why".
 
 ## 5. State
 
-STATE
+Written 10:35.
+
+* **Done**: the apps e1 to e8 and their oracle in `java/stress/apps/`,
+  the probes in `08-user-apps/probes/`, the runs of section 3 (quick
+  runs, soaks 1 to 4, kill rounds 1 to 5, the hunt of UA-10), the
+  findings UA-1 to UA-10. No product code changed; `java/stress/apps.sh`
+  not changed.
+* **Not done**: the apps are not in `apps.sh`'s modes (the lead's step);
+  no 028-todo entries are written (the lead's, from section 4).
+* **Where**: the branch `031-08-apps-a` of a clone of `main` at
+  `ee8a8165`; the runs' logs and the kept data of the failures in the
+  agent's run directory, not in the repository.
+* **To continue**: new seeds of the soak lines of section 3 (each app's
+  usage line in section 2), more kill rounds of e4 and e7, and e8 with
+  `-De8.cache=4`. Sizes for apps.sh's quick mode, as the first runs of
+  section 3 ran them (5 s to 2 minutes each on F53 beside week.sh):
+  e1 `1 DIR 2000 1500`, e2 `1 DIR 30 100`, e3 `1 DIR 300`, e5 `1 DIR
+  30`, e6 `1 DIR 12`, e8 `1 DIR 15`, e4 `parent 1 DIR 30 10 2000`, e7
+  `parent 1 DIR 20 8 2000`; for soak and kill, section 3's rounds.
 
 
 Log
 ===
 
-2026-11-28. Created; the apps e1 to e7 and their first runs on the
-release jar of `ee8a8165`.
+2026-11-28. Created; the apps e1 to e8, the probes, the runs of section
+3 on the release jar of `ee8a8165` (06:22 to 10:28) and the findings
+UA-1 to UA-10.
