@@ -902,6 +902,149 @@ public class FileStreamPowerLossTester {
     }
     
     /**
+     * Bergdb 028-79 (033's review of the start, F2): the kill of
+     * testStartOnACutStreamThatBeginsAtAnInvalidBlock, with the file at the block's position
+     * holding 300 other bytes, as 035-02 found a cut first write of a new file to leave on
+     * APFS: random bytes, the database's block of another place (its first file's first
+     * block, valid), and another database's (that block with another ID). The start refuses
+     * the tail with a BadTailException whose P is the start of the record over the block, and
+     * changes no file; the stream cut at P, as the message says, starts with every key as
+     * before the kill, and so does the start after the cut of reclaim that makes the block's
+     * file the first. Before, the start took the stream with the other bytes at the block's
+     * position, inside the aborted record, and the start after that cut refused it. Forces
+     * are no-ops, for the test's time.
+     */
+    @Nano("f")
+    public static void testOtherBytesAtAFilesFirstBlockRefused() throws Exception {
+        for (int variant = 0; variant < 3; variant++) {
+            File dir = Files.createTempDirectory("bergdb-power-other-first-").toFile();
+            try {
+                otherBytesAtAFilesFirstBlock(dir, variant);
+            } finally { remove(dir); }
+        }
+    }
+
+    private static void otherBytesAtAFilesFirstBlock(File dir, int variant) throws Exception {
+        final String what = variant == 0 ? "random bytes" : variant == 1
+                ? "a block of another place" : "another database's block";
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(SEC);
+        Map<String, byte[]> model = new TreeMap<String, byte[]>();
+        Random random = new Random(2078503);
+        long time = SEC;
+        long block = -1;        // the position of the kill, after the first cut
+        long recordPos = -1;    // the record over the block, which the kill cuts
+        byte[] firstBlock = null;
+        FileStream stream = new FileStream(dir, new bergdb.stream.StreamContract.NoForceIo());
+        Db db = start(stream, clock);
+        try {
+            long end = 0;
+            for (int i = 0; ; i++) {
+                Assert.assertTrue(what + ": no record over " + block, i < 3000);
+                time += SEC / 10; clock.setTime(time);
+                if (firstBlock == null) {
+                    db.sync(SyncLevel.ORDINARY);
+                    firstBlock = Arrays.copyOf(Files.readAllBytes(
+                            new File(dir, "00000000000000.bergdb").toPath()), 128);
+                }
+                if (block < 0 && stream.getFirstPos() > 0) {
+                    final long d = RecoverableStream.META_BLOCK_DISTANCE;
+                    block = (end / d + 2) * d;
+                }
+                boolean over = block > 0 && end + 15000 > block;
+                byte[] value = new byte[over ? 20000 : 1000 + random.nextInt(1000)];
+                random.nextBytes(value);
+                Trans t = db.trans().put(key(i % 12), value).build();
+                db.execute(t);
+                end = t.nextPos;
+                if (over) {
+                    Assert.assertTrue(t.tpos + " " + t.lastPos, t.tpos < block - 8000
+                            && t.lastPos > block + 4000);
+                    recordPos = t.tpos;
+                    break;          // Aborted by the kill: not in the model.
+                }
+                model.put(key(i % 12), value);
+            }
+            db.sync(SyncLevel.ORDINARY);
+        } finally { db.close(); }
+        // The kill: the stream ends in the record over the block, and the file at the
+        // block's position holds other bytes from its start.
+        final String blockFile = String.format("%014d.bergdb", block / 100000);
+        for (String name : streamFiles(dir).keySet()) {
+            if (name.compareTo(blockFile) >= 0) {
+                Assert.assertTrue(new File(dir, name).delete());
+            }
+        }
+        byte[] other = new byte[300];
+        random.nextBytes(other);
+        Assert.assertTrue(firstBlock[127] == 10);
+        if (variant > 0) {
+            System.arraycopy(firstBlock, 0, other, 0, 128);
+            if (variant == 2) {
+                other[30] ^= 1;
+            }
+        }
+        Files.write(new File(dir, blockFile).toPath(), other);
+
+        time += SEC; clock.setTime(time);
+        Map<String, byte[]> files = streamFiles(dir);
+        long p = -1;
+        try {
+            db = start(new FileStream(dir, new bergdb.stream.StreamContract.NoForceIo()), clock);
+            db.close();
+        } catch (bergdb.storage.BadTailException e) {
+            p = e.getCutPos();
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("meta block at " + block));
+        }
+        Assert.assertEquals(what + ": P, the record over the block", recordPos, p);
+        Assert.assertTrue(what + ": the start changed the files",
+                sameFiles(files, streamFiles(dir)));
+        // The cut at P, as the message says: the file that holds it cut, the later removed.
+        for (String name : streamFiles(dir).keySet()) {
+            final long first = Long.parseLong(name.substring(0, 14)) * 100000;
+            final File f = new File(dir, name);
+            if (first >= p) {
+                Assert.assertTrue(f.delete());
+            } else if (first + f.length() > p) {
+                try (RandomAccessFile raf = new RandomAccessFile(f, "rw")) {
+                    raf.setLength(p - first);
+                }
+            }
+        }
+
+        time += SEC; clock.setTime(time);
+        stream = new FileStream(dir, new bergdb.stream.StreamContract.NoForceIo());
+        db = start(stream, clock);
+        try {
+            checkModel(db, model, what + ", after the cut at P");
+            for (int i = 0; stream.getFirstPos() < block; i++) {
+                Assert.assertTrue(what + ": no cut to " + block + ": " + stream.getFirstPos(),
+                        i < 5000);
+                time += SEC / 10; clock.setTime(time);
+                byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                db.execute(db.trans().put(key(i % 12), value).build());
+                model.put(key(i % 12), value);
+            }
+            Assert.assertEquals(what, block, stream.getFirstPos());
+            db.sync(SyncLevel.ORDINARY);
+        } finally { db.close(); }
+        Assert.assertEquals(what, blockFile, streamFiles(dir).keySet().iterator().next());
+
+        time += SEC; clock.setTime(time);
+        db = start(new FileStream(dir, new bergdb.stream.StreamContract.NoForceIo()), clock);
+        try {
+            checkModel(db, model, what + ", after the cut to the block's file");
+        } finally { db.close(); }
+    }
+
+    private static void checkModel(Db db, Map<String, byte[]> model, String what) {
+        for (Map.Entry<String, byte[]> e : model.entrySet()) {
+            Assert.assertTrue(what + ": " + e.getKey(), Arrays.equals(e.getValue(),
+                    DbUtil.get(db, Long.MAX_VALUE, e.getKey())));
+        }
+    }
+    
+    /**
      * bergdb 028-66, the rule of the files before a gap (Frans, 2026-11-27): a file of the
      * database before a gap, here its first file, kept before a cut deleted it and put back,
      * is checked at the start (its first meta block holds its own position and the

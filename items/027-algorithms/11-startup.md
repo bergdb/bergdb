@@ -157,18 +157,24 @@ C1; Frans, 2026-11-27), then the writes:
     walk:                                              (walkTail)
         r := the record bytes from p to the end; if r = 0: go to end
         h := the first min(r, 32) bytes at p
-        if r < 4: the record is torn; refuse at P unless it is own;
+        if r < 4: the record is torn; refuse at P unless it is own,
+            and if a block after B in it is foreign       (028-79);
             the torn record is at p; go to write
         z := h's size
         if z < 5: refuse at P
-        if r < z: the record is torn; refuse at P unless it is own;
+        if r < z: the record is torn; refuse at P unless it is own,
+            and if a block after B in it is foreign       (028-79);
             the torn record is at p; go to write
         refuse at P unless the last byte is 0 or 10
         if it is the first record and committed: refuse another
             format (a VersioningStreamException)
         if committed: refuse at P unless h holds its check; refuse
-            another format (028-70); P := n(p, z)
-        if aborted and h holds its check: P := n(p, z)
+            another format (028-70)
+        if aborted: refuse at P if a block after B in it is foreign
+        if committed, or aborted and h holds its check: P := n(p, z)
+        if the record ends at a block after B, in the stream, and
+            the block is foreign: refuse at the block's position if
+            P = n(p, z), else at P                         (028-79)
         p := n(p, z)
     end: refuse at its start if the last record is committed, ended
         at P, and does not parse
@@ -266,7 +272,35 @@ step 3), and their records do not hold the check of this database's id
 at their position; a size read from them no longer makes the recovery
 append up to 2 GB of zeros first (035-02, section 10.2). Such bytes inside
 the last record, which the end of the stream cuts, after a header that
-holds its check, are not read: the record is completed and aborted.
+holds its check, are not read: the record is completed and aborted; but
+at a meta block's position they are refused (below).
+
+A block after B is foreign (028-79; 033's review of the start, F2;
+2026-11-28) if its bytes in the stream, up to the last that is not
+zero, are not the begin of the block that the database writes at its
+position: B's bytes, but the last transaction's position (offsets 16 to
+23, any) and the block's own position at 46. Zeros, recovery's fill
+(the magic and the version), its completion of a block that the end of
+the stream cut, and a block that a kill cut are not foreign
+(`RecoverableStream.foreignBlock`). The walk reads the blocks after B
+where it does not read a record's content: in the record that the end of
+the stream cuts, in an aborted record, and the block right after a whole
+record that ends at its position, which until then gave P 128 bytes
+after the block, so that the cut at P kept it. A block inside a whole
+committed record is not read: its content is the database's, parsed
+where another file's bytes can begin in it. Until 028-79 the walk read
+no block after B: another file's bytes at a block's position, inside a
+record that the start aborted or kept by the cut at P, stayed in the
+stream, and once reclaim's cut had made their file the stream's first,
+or a file before a gap, a later start refused the sound database
+(`readFirstMetaBlock`, `leftoverProblem`), in four ways, two of whose
+messages said that bytes were missing. So a stream that a start takes
+holds no other bytes at a meta block's position after B, and a cut
+cannot make such bytes a file's first block. The cost: a start refuses,
+with P before the record, a tail that it took before, a record that the
+end cuts or an aborted one over a block of other bytes, and a stream that
+ends at or in such a block after a whole record; a person cuts it at P,
+as for the other tails of other bytes.
 
 ### 1.4. The startup pos and the section
 
@@ -738,6 +772,9 @@ cycle check (027-03, 14.2).
   `testOtherFormatRefusedFilesUnchanged`, refusals after the walk with a
   torn record after them, the stream and the files byte for byte as
   before); `StoredTrans`'s `testHeaderCheck` and `testRecordCheck`;
+  `RecoverableStream.testForeignBlockRefused` and the f-test
+  `FileStreamPowerLossTester.testOtherBytesAtAFilesFirstBlockRefused`
+  (028-79);
   `NodeStreamTester.testStartRefusesFormat8` (031-06); `DbTesterStream`'s
   three tests of 028-81 (`created.txt`'s id against the first meta
   block's, and a start without one as before); the gap's tests of
@@ -939,3 +976,9 @@ agent of lead-1127, on the branch `028-81-82`.
 2026-11-28. 028-82 (031-08, UB-5 (d)): the refusals of a stream that
 lacks bytes name the first file where there is no gap, and the way out
 (1.2, step 3; 1.10). By an agent of lead-1127, on the branch `028-81-82`.
+
+2026-11-28. 028-79: the walk refuses a foreign block after B in a record
+whose content it does not read, the cut one and an aborted one, with P
+before the record, and right after a whole record that ends at it, with
+P at the block (1.3, section 7). By an agent of lead-1127, on the branch
+`start-fixes`.

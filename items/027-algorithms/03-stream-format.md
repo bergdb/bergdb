@@ -367,7 +367,12 @@ file's bytes there (035-02, sections 7 and 10): its position is another,
 and another database's block has another id, so neither is valid, as a
 block that a crash cut is not. The first block is the stream's own: a
 stream's bytes are cut only from its end, and a kill's other bytes are
-in the last file, from a page boundary on. Blocks that are not valid
+in the last file, from a page boundary on; and since 028-79 (2026-11-28)
+a start takes no stream that holds other bytes at a meta block's position
+after its last valid block (section 7, the walk), so that a later cut
+cannot make such bytes a file's first block (until then a start could
+take them inside a record that it aborted, or keep them by the cut at P,
+and a later start refused the stream: 033's review of the start, F2). Blocks that are not valid
 before it are passed over (2026-11-28, week.sh's apps-kill-cc on
 8a0897cf): a block that recovery completed after a kill ended the stream
 at or in it (005-27), or a block of zeros inside a record that recovery
@@ -572,6 +577,20 @@ for a failed one, made only by recovery's fill.
   size in db stream, 0, spos P. Stream length: L." So a size read from
   another file's bytes no longer makes the start append up to 2 GB of
   zeros before it refuses (035-02, section 10.2, step 3).
+  **The blocks after the last valid one** (028-79, 2026-11-28): where the
+  walk does not read a record's content, in the record that the end of
+  the stream cuts and in an aborted record, and right after a whole
+  record that ends at a block's position, each meta block after the last
+  valid block must hold, as far as the stream holds it, zeros or the
+  begin of the block that the database writes there followed by zeros:
+  the last valid block's bytes but the last transaction's position (any)
+  and the block's own position (`RecoverableStream.foreignBlock`). So
+  recovery's fill, its completion of a cut block, a block that a kill
+  cut and a block of zeros pass; other bytes, as another file's, are
+  refused with a `BadTailException`, P the record's start, or the
+  block's position after a whole record that ends there (until 028-79,
+  P was 128 bytes after the block, and the cut at P kept it). A block
+  inside a whole committed record is not read.
 * **A cut record** (028-67, C1; since 2026-11-28 with T1 of 031-06's
   review 3), the record that the end of the stream cuts after r of its
   bytes, z its size if r is 4 or more: it is taken, and completed, if its
@@ -2319,3 +2338,8 @@ stream (028-73, option (b)); the stream's bytes are unchanged.
 2026-11-28. 028-80: a stream of zeros only, at most a meta block distance
 long, is an incomplete creation (sections 7 and 14.2). By an agent of
 lead-1127, on the branch `start-fixes`.
+
+2026-11-28. 028-79: the walk refuses other bytes at a meta block after
+the last valid one, in a cut or an aborted record and after a whole
+record that ends at it (sections 6 and 7). By an agent of lead-1127, on
+the branch `start-fixes`.

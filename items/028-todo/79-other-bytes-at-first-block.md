@@ -1,9 +1,10 @@
 028-79. Fix: other bytes at a meta block's position, once taken, refuse a later start
 =====================================================================================
 
-Status: open (an agent of lead-1127 prepares the fix on a branch,
-2026-11-28). Kind: Fix. Frans: none; the smaller fix goes ahead by
-default at 10:30 on 2026-11-28.
+Status: fix (1) built on the branch `start-fixes` (2026-11-28), in
+commits of its own after 028-80's, to land after 10:30 unless Frans
+says otherwise; the gates below. Kind: Fix. Frans: none; the smaller fix
+goes ahead by default at 10:30 on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
 
 What: another file's bytes at a stream file's first meta block can be
@@ -111,8 +112,99 @@ Found by: the review of the start and recovery path of 2026-11-28 (033,
 `reviews/2026-11-28-start.md`, F2).
 
 
+Result
+------
+
+Fix (1), on the branch `start-fixes`, after 028-80, on 028-70's branch
+(2026-11-28). Fix (2) is not built (028-77).
+
+* **The rule.** `RecoverableStream.walkTail` reads the meta blocks after
+  the last valid block B where it does not read a record's content: in
+  the record that the end of the stream cuts, in an aborted record, and
+  the block right after a whole record that ends at its position. Each
+  must hold, as far as the stream holds it, zeros or the begin of the
+  block that the database writes there followed by zeros: B's bytes but
+  the last transaction's position (offsets 16 to 23, any) and the
+  block's own position at 46 (`foreignBlock`). So recovery's fill, its
+  completion of a cut block, a block that a kill cut and a block of
+  zeros pass; random bytes, an older stream file's block of the
+  database, another database's block and a block of version 155 are
+  refused with a `BadTailException`, before anything is written: in a
+  record, with P its start (the end of the last record that is one); after a whole record
+  that ends at the block, with P the block's position, no longer 128
+  bytes after it. A block inside a whole committed record is not read:
+  its content is the database's, parsed where another file's bytes can
+  begin in it (`DbTesterTail.testOtherBlocksPassedOver`, a block of
+  another place or ID inside committed records, still starts). The
+  walk's other refusals come first, so a committed record of another
+  format is still a `VersioningStreamException` (028-70).
+* **Why the aborted record too.** The fix as registered names the cut
+  record and the block after the last whole record. An aborted record
+  is the third place where the walk passes over a block unread: a kill's
+  other bytes that begin after a record's header and put a 0 at its
+  last byte make it a whole aborted record, which the walk counts, and
+  the refusal of the bytes after it gave a P after the record, so the
+  cut at P kept the record and its block. Every aborted record that a
+  database writes is recovery's completion: zeros and blocks of its own.
+* **What it settles.** No start takes a stream that holds other bytes
+  at a meta block's position after its last valid block, so no later cut
+  can make such bytes a stream file's first block, and the four
+  refusals of the review's F2 do not come. 028-76's rule and
+  `readFirstMetaBlock` are unchanged. Not settled: a copy of the
+  database at the same positions (028-78, F1), whose blocks pass every
+  check.
+* **The cost**, the tails that a start took and refuses: a record that
+  the end of the stream cuts, whose header holds its check, with other
+  bytes at a meta block's position after its header; an aborted record
+  over such a block; a stream that ends at or inside a block of other
+  bytes after a whole record that ends at the block (taken before, the
+  block completed with the fill). Each is refused with P before the
+  record, or at the block, and starts after the cut at P with what the
+  stream held at the kill: the cut record was not committed. A person
+  cuts the stream, as for the other tails of other bytes. Tails refused
+  before with P 128 bytes after the block are refused with P at it.
+  The counts of the review's `StartChain` with other bytes: the gates
+  below.
+* 027-11, 1.3 and section 7, and 027-03, sections 6 and 7, state the
+  rule.
+
+Tests, each failing before the fix and passing after it (2026-11-28):
+
+* `RecoverableStream.testForeignBlockRefused` (`MemoryStream`): a meta
+  block at 400,000 of random bytes, of another place, of another
+  database, of version 155, of zeros, the fill, and a block cut after 60
+  bytes and completed, in a record that the end of the stream cuts, in
+  an aborted record, and after a record that ends at the block with 300
+  and with 50 bytes of the stream from it. The first four are refused,
+  P the record's start or the block's position, the stream unchanged;
+  the last three are taken (with 300 bytes, the random bytes after the
+  block refused at P 128 after it). Before: "random bytes, in a cut
+  record: P, expected 380256, got -1" (taken).
+* `FileStreamPowerLossTester.testOtherBytesAtAFilesFirstBlockRefused`
+  (f): 028-76's file test with the file at the kill's block holding 300
+  other bytes (random bytes, the first file's block, another
+  database's): the start refuses with P the start of the record over the
+  block and changes no file; cut at P it starts with every key, and
+  again after reclaim's cut has made the block's file the first. Before:
+  "random bytes: P, the record over the block, expected 787736, got -1"
+  (taken; the start after the cut refused, as in the review).
+
+The review's `StaleFirstBlockProbe` on the branch (2026-11-28): `none`
+start 2 ok; `random`, `older`, `other`, `v155` refused at start 1 with
+P 787736, the start of the record over the block at 800000, cut there,
+start 1 ok, start 2 ok with every key; `random exact`, `older exact`,
+`other exact`, `v155 exact` refused at start 1 with P 400000, the block,
+cut there, start 1 ok, start 2 ok with every key. `sameid` and `sameid
+exact` are F1's (028-78): the copy's block is taken as the last valid
+block, as before; `sameid exact` still loses committed records by the
+cut at P.
+
+
 Log
 ---
 
 2026-11-28. Registered by lead-1127 from the review's F2; an agent of
 lead-1127 prepares fix (1) on a branch; it lands by default after 10:30.
+
+2026-11-28. Fix (1) built on the branch `start-fixes` by an agent of
+lead-1127, after 028-80, with the aborted record as a third place.
