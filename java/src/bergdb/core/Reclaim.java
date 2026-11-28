@@ -1646,7 +1646,7 @@ public class Reclaim implements Maintenance {
                     + aos.getFirstPos() + ", after reclaim's cut, " + firstPos + ": the stream"
                     + " lacks bytes of the database from " + firstPos + " to "
                     + aos.getFirstPos() + ". The start has deleted nothing (bergdb 028-66)."
-                    + db.internal().nodeStream().frontAccount()));
+                    + db.internal().nodeStream().frontAccount() + Db.MISSING_BYTES_WAY_OUT));
         }
         if (cutRow != null && aos.getFirstPos() < firstPos) {
             // A crash came between the table write and the cut; or a power loss left a gap in

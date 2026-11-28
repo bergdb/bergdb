@@ -126,7 +126,8 @@ comparison with `created.txt` on, a refusal has written nothing:
    None valid: an SFE; for a stream whose first position is
    after 0 its message says that the stream may lack bytes that the
    database needs, with the storage's account of its front (028-66; for
-   `FileStream` it names a gap in the files, 027-14).
+   `FileStream` it names a gap in the files, 027-14, or, where there is
+   none, the first file, since 028-82).
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
@@ -473,7 +474,8 @@ deletes what the storage holds before it, the files before a gap once
 lacks bytes of the database (a file removed by hand, a copy that missed
 files): `Reclaim.initFromDb` refuses the start (a `StreamIoException`
 whose cause, a `ReadBelowFirstPosException`, names the first position,
-the cut and the storage's account), and a read below the first position
+the cut and the storage's account, and since 028-82 the way out, the
+missing files put back from a backup), and a read below the first position
 during a start is refused the same way (`Db.refusalOfMissingBytes`);
 nothing is deleted (028-66, 2026-11-27; before, the start went on, and
 reads of those bytes failed the database later).
@@ -933,3 +935,7 @@ branch `start-fixes`.
 `created.txt` with the stream's first meta block's before every other
 check, and refuses another (1.2, step 1; sections 3, 6 and 7). By an
 agent of lead-1127, on the branch `028-81-82`.
+
+2026-11-28. 028-82 (031-08, UB-5 (d)): the refusals of a stream that
+lacks bytes name the first file where there is no gap, and the way out
+(1.2, step 3; 1.10). By an agent of lead-1127, on the branch `028-81-82`.

@@ -1341,7 +1341,7 @@ public class Db implements AutoCloseable {
                     + " bytes of the stream before its first position, "
                     + nodeStream.getFirstPos() + ": the stream lacks bytes of the database."
                     + " The start has deleted nothing (bergdb 028-66)."
-                    + nodeStream.frontAccount());
+                    + nodeStream.frontAccount() + MISSING_BYTES_WAY_OUT);
             r.initCause(e);
             return new StreamIoException(r);
         } catch (RuntimeException | Error x) {
@@ -1349,6 +1349,17 @@ public class Db implements AutoCloseable {
             return e;
         }
     }
+    
+    /**
+     * The way out of a start refused as the stream lacks bytes of the database (2026-11-28,
+     * bergdb 031-08, UB-5 (d); 028-82), refusalOfMissingBytes() and Reclaim.initFromDb's
+     * refusal: until then the message named none.
+     */
+    static final String MISSING_BYTES_WAY_OUT = " The start has written nothing either (bergdb"
+            + " 028-70). To start the database, put its missing stream files back from a"
+            + " backup, or restore its files all together, the stream files and created.txt;"
+            + " a copy of a running database's files that missed some is taken again (bergdb"
+            + " 028-82).";
     
     /**
      * Closes the storage of a start that threw, outside the locks (bergdb 005-32); see

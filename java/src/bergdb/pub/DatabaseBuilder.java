@@ -54,6 +54,15 @@ public interface DatabaseBuilder {
      * <p>A directory with created.txt and no stream byte is refused as by create(String),
      * with that DatabaseMissingException's message (bergdb 015-01).</p>
      * 
+     * <p>A start needs write access to the directory, also one that only reads the
+     * database and writes nothing to its stream: it makes the lock file bergdb.lock if it is
+     * not there, opens it for writing to lock it, and opens the last stream file (*.bergdb,
+     * the one with the largest number) for appends (start(); bergdb 031-08, UB-5; 028-82).
+     * So a database on a read-only medium, or whose directory or files are read-only, as an
+     * archive's or a read-only copy's, is refused with a StreamIoException whose message
+     * names the file: copy its files to a directory where they can be written, and open the
+     * copy there.</p>
+     * 
      * @param dirname  The database's directory.
      * @throws IllegalArgumentException If dirname is null.
      */
@@ -131,9 +140,12 @@ public interface DatabaseBuilder {
      * missing, and nothing else.</p>
      * 
      * <p>A start may write to the stream: it completes a cut tail, as a crash leaves it, and
-     * writes created.txt if it is missing. On a full disk a start may therefore be refused,
+     * writes created.txt if it is missing, after its last check of what it reads, so a start
+     * refused by a check of the stream writes nothing to the stream or created.txt (bergdb
+     * 028-70). On a full disk a start may therefore be refused,
      * with a StreamIoException, or may work, and the database then fails at the first write
-     * that needs room (Database, "Errors"; bergdb 020-24-08, U8-2).</p>
+     * that needs room (Database, "Errors"; bergdb 020-24-08, U8-2). It needs write access to
+     * the directory and to the last stream file, also when it writes nothing (open()).</p>
      * 
      * <p>One database at a time has the stream of memory() too (bergdb 015-65): while the
      * database that this builder started on it has not closed, it runs or is closing after

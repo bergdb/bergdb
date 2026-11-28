@@ -29,10 +29,28 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   that file was made, or 1 MB when 4 to 10 MB were kept, also after the
   stream has shrunk (RB-011), and,
   for a while after a cut, the files not yet deleted (027-13, section
-  4). A start accepts files of any sizes beside each other, the
+  4). The database makes a cut that reclaim has decided only once the
+  stream is durable past the record that decided it
+  (`Reclaim.cutIfDurable`), at a later commit or `maintain()` call, or
+  at the next start (`Reclaim.initFromDb`); `close()` and `sync()` make
+  none. So a
+  database stopped or idle after that record keeps the cut's files until
+  then; which commit makes the cut follows the write buffer's timing, so
+  the files on disk can differ between runs of the same actions while
+  the stream is the same, byte for byte, and so can the split of the
+  stream into files after starts (031-08, UA-1 and UB-1; 028-82, 2026-11-28:
+  `FileStream`'s Javadoc and `Database.getStreamSize()`'s say so). A
+  start accepts files of any sizes beside each other, the
   quarter's beside the tenth's: it checks that each file begins where
   the one before ends, or after a gap (below), and that every file but
-  the last is a multiple of 100,000 bytes (`testMixedFileSizes`). A new
+  the last is a multiple of 100,000 bytes (`testMixedFileSizes`); a
+  refusal names the file, or both files where the open cannot tell
+  which does not fit (a file but the last that was cut, or a file put
+  after the last), and the way out (028-82). The open needs write
+  access to the directory, for `bergdb.lock`, and to the last file, which
+  it opens for appends, also for a stream that is only read: a read-only
+  directory or last file is refused with a message that names the file
+  (028-82; 031-08, UB-5). A new
   database writes 20 files of 200 kB up to 4 MB and 1 MB files from
   there, as with the quarter. With per-append forcing each new file
   costs `BufferedStream`'s thread the force of its predecessor's last
@@ -82,7 +100,11 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   committed since the start, and a `sync()` that returned after it (a
   commit alone can return before its bytes reach `FileStream`); for a
   stopped one, after its `close()` has returned (`stop()` returns
-  before the close ends).
+  before the close ends). Since 028-82 (2026-11-28; 031-08, UB-6, whose
+  `LiveCopy` app took 598 copies so, one refused for a listed file that
+  a cut had deleted) the Pub API's `Database` gives the procedure in its
+  words ("A backup of a running database"); a start that refuses such a
+  copy writes nothing since 028-70.
 * **A gap in the files** (028-66, 2026-11-27, from the principle that
   Frans decided that day: the stream is the bytes from reclaim's cut to
   the end, and what the storage still holds before the cut belongs to
@@ -171,7 +193,10 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   the zeros, before a later check refused the start). A longer run is left, and so is a stream
   whose only file is all zeros (a repair never empties a stream); a
   start refuses the latter, up to 200,000 bytes, as a creation that did
-  not complete (`DatabaseNotCreatedException`; 028-80, 2026-11-28). The same rule on every operating system and file system,
+  not complete (`DatabaseNotCreatedException`; 028-80, 2026-11-28). A
+  longer run in the stream is a cut tail only where its zeros begin
+  inside the last record and end in it (027-11, 1.3; `FileStream`'s
+  Javadoc says so since 028-82, 031-08's UB-5 (e)). The same rule on every operating system and file system,
   with no detection of either (Frans, 2026-11-26). The layers above see
   a stream cut short, a prefix of what was appended (014-01, section 7),
   and recovery completes and aborts the torn last record (027-11, 1.3);
@@ -236,3 +261,9 @@ on the branch `start-fixes`.
 2026-11-28. 028-70's follow-up (its review's note 1): a refused start
 writes nothing since 028-70, so it leaves the tail of zeros in the file.
 By an agent of lead-1127, on the branch `start-fixes`.
+
+2026-11-28. 028-82 (031-08, UB-1, UB-5, UB-6): the files of a decided
+cut kept until the next commit, `maintain()` call or start; the open's
+write access and its refusals' files and ways out; the Pub API's
+backup of a running database; the condition of a longer run of zeros.
+By an agent of lead-1127, on the branch `028-81-82`.

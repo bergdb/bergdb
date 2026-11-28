@@ -60,10 +60,33 @@ import bergdb.pub.util.SyncLevel;
  * 028-66). created.txt names the database's ID: a start whose first stream file holds
  * another, as another database's file put in place of the database's own, or the stream
  * files of one database beside the created.txt of another, is refused in the same way, with
- * a message that names the files and says to restore them from a backup (bergdb 028-81).
- * So leave the files alone while the database is stopped, as while it runs, and
- * copy, move or restore a stopped database's files all together: the stream's files and
- * created.txt.</p>
+ * a message that names the files and says to restore them from a backup (bergdb 028-81). So
+ * leave the files alone while the database is stopped, as while it runs, and copy, move or
+ * restore a stopped database's files all together: the stream's files and created.txt.</p>
+ * 
+ * <p><b>A backup of a running database</b> (bergdb 028-62; 031-08, UB-6). The database
+ * changes a stream file only by appends at its end, removes files only whole, oldest first,
+ * and renames none; it writes no byte twice but where a start left a tail of zeros of the
+ * last file out of the stream ("What a crash keeps"): its first write after the start
+ * writes over them. So a copy of the stream files of a running database is a backup when it
+ * is taken so: after a transaction that changed something, committed since the start, and a
+ * sync() that returned after it (so that the copy does not overlap that first write; a
+ * commit alone can return before its bytes reach the file), list the stream files
+ * (*.bergdb) of the directory, then copy them in the order of their names, the last one
+ * last, with created.txt, which does not change; bergdb.lock is not needed. The copy is the
+ * database as a kill of the process would leave it at the moment the copy read the last
+ * file's end: it holds every transaction that a sync() returned for before the copy began,
+ * maybe later ones, each whole or not at all, and a start on it recovers it as after a
+ * kill. A file that reclaim deletes while the copy reads it stays readable on macOS and
+ * Linux, and a start on the copy makes the cut again, which deletes it. A listed file that
+ * reclaim deleted before the copy opened it is missing from the copy: a start then takes
+ * the copy, and deletes the files before the missing one, or refuses it with a
+ * StreamIoException that says that the stream lacks bytes of the database, having deleted
+ * and written nothing (bergdb 028-66, 028-70); take the copy again. A copy made otherwise,
+ * as of the directory's files in another order (cp -R, a file manager, a sync tool), is not
+ * known to be a backup. Not run on Windows, where reclaim's delete of a file that a copy
+ * holds open can fail, and that fails the database. The Core's bergdb.stream.FileStream ("A
+ * backup by a copy of the files") says the same of its files.</p>
  * 
  * <p><b>What a crash keeps</b> (bergdb 020-24-13, U13-3). The transactions are written to
  * the stream one after another, in the order of their commits, each in a record of its own
@@ -602,11 +625,17 @@ public interface Database extends AutoCloseable {
     public void maintain(int budget);
     
     /**
-     * The size of the stream kept, in bytes: from the first position that reclaim has not
-     * cut to the stream's end (bergdb 031-04). Exact, and free to call. The storage may hold
-     * a little more (a file storage drops whole files). With a finite retain duration it
-     * holds the live data, the states that the duration keeps readable, and what reclaim
-     * has not yet given back; in a database not written to for longer than the retain
+     * The size of the stream kept, in bytes: from the first position that reclaim has not cut
+     * to the stream's end (bergdb 031-04). Exact, and free to call. The storage may hold a
+     * little more: a file storage drops whole files, and the files of a cut that reclaim has
+     * decided go only once the stream is durable past the record that decided it, at a later
+     * transaction's commit or maintain() call, or at the next start, not at a sync(); a
+     * database stopped or idle after that record keeps them until then, up to the stream of
+     * an iteration of reclaim (bergdb 031-08, UA-1 and UB-1). Which commit makes the cut
+     * follows the write buffer's timing, so the files on disk can differ between runs of the
+     * same actions while the stream, and this size, are the same. With a finite retain
+     * duration it holds the live data, the states that the duration keeps readable, and what
+     * reclaim has not yet given back; in a database not written to for longer than the retain
      * duration, what it holds beyond the live data is what maintain() can give back.
      */
     public long getStreamSize();

@@ -491,7 +491,8 @@ public class PubTesterJavadocNewUsers {
      * cause is a ReadBelowFirstPosException, as DatabaseBuilder.start() says. It threw a
      * DbFailedException, "A read failed on the storage (the cause). The database takes no
      * more transactions or reads and must be restarted.": the index manager's first scan,
-     * after the Db's start, failed the database that was starting.
+     * after the Db's start, failed the database that was starting. Since 2026-11-28 (bergdb
+     * 028-82; 031-08, UB-5 (d)) the message names the stream's first file and the way out.
      */
     @Nano
     public static void testStartWithTheFirstFileDeleted(TestEnvironment env) throws IOException {
@@ -510,6 +511,11 @@ public class PubTesterJavadocNewUsers {
                     StreamIoException.class,
                     () -> Factory.database().open(dir.getPath()).start());
             Assert.assertTrue(e.toString(), e.getCause() instanceof ReadBelowFirstPosException);
+            // The first file and the way out (bergdb 031-08, UB-5 (d); 028-82).
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("The stream's first file"
+                    + " in " + dir.getPath() + " is 00000000000002.bergdb, which begins there.")
+                    && e.getMessage().contains("put its missing stream files back from a"
+                    + " backup"));
         }
     }
 

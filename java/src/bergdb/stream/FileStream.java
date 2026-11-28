@@ -63,6 +63,17 @@ import bergdb.pub.util.BadFormatException;
  * quarter beside those of the tenth: it checks that each file begins where the one before
  * ends, or after a gap (below, "A gap in the files"), and that every file but the last is a
  * multiple of 100,000 bytes long (checkDbFiles; testMixedFileSizes).
+ * The database calls pretruncate() for a cut that reclaim has decided only once the stream
+ * is durable past the record that decided it (Reclaim, cutIfDurable): at a later commit or
+ * maintain() call, or at the next start (Reclaim, initFromDb); close() and sync() make no
+ * such cut. So a database that is stopped or idle after the cut's record keeps the files
+ * that the cut deletes until then, up to the stream between two cut points; which commit
+ * makes the cut follows the write buffer's timing, so the files on disk can differ between
+ * runs of the same actions while the stream is the same, byte for byte (2026-11-28, bergdb
+ * 031-08, UA-1 and UB-1; 028-82). The split of the stream into files can differ too,
+ * after starts: a start gives the last file the smallest size not below the lengths of the
+ * last two files, where a run without the start makes its next file at a tenth of the
+ * stream that the files hold.
  * 
  * A backup by a copy of the files (2026-11-26, bergdb 028-62). This class changes a file
  * only by appends at its end, and removes files only whole, by deletes, issued oldest first
@@ -131,7 +142,10 @@ import bergdb.pub.util.BadFormatException;
  * before such a check has passed. An older copy of a file of the same database passes it
  * and is deleted. Still refused at the open
  * (BadDirStateException): a bad name, a file that begins before the end of the one before
- * it, and a file but the last whose length is not a multiple of 100,000 bytes.
+ * it, and a file but the last whose length is not a multiple of 100,000 bytes. The message
+ * names the file, or the two files where the open cannot tell which of them does not fit,
+ * as a file but the last that was cut and a file put after the last, and the way out
+ * (2026-11-28, bergdb 031-08, UB-5; 028-82).
  * 
  * A tail of zeros (2026-11-26, bergdb 028-60; 033, RB-012). At the open, before anything
  * reads the stream, the constructor leaves a run of zero bytes of at most 8 MB at the end
@@ -143,8 +157,10 @@ import bergdb.pub.util.BadFormatException;
  * whole by the next open); close() and an append of nothing do not. So an
  * open that is closed before an append, as a start refused before it writes (another node
  * size, an unsupported version, bytes that are not BergDB's stream format), leaves the
- * files as they were. A start's recovery
- * may append before a later check refuses the start; then the cut is made. The same rule on
+ * files as they were; since 2026-11-28 so does every start that the database refuses, as
+ * its recovery appends only after its last check (Db, start(); bergdb 028-70); until then
+ * a recovery could append, and so make the cut, before a later check refused the start.
+ * The same rule on
  * every operating system and file system, with no detection of either (Frans, 2026-11-26).
  * A kill of the process during an append can leave the last file with zeros within its
  * length on APFS (macOS), from a page boundary on, where the cut write's bytes should be
@@ -153,8 +169,11 @@ import bergdb.pub.util.BadFormatException;
  * completes and aborts the torn last record. Safe for BergDB's stream format: a committed
  * record and a valid meta block end in the byte 10, so the zeros at the end hold no
  * committed transaction. A longer run is left in the stream, and the start takes it as
- * before: as a cut tail where its zeros begin inside the last record, else refused, "Bad
- * transaction size in db stream, 0, spos P" (Database, "What a crash keeps"); so is a
+ * before: as a cut tail where its zeros begin inside the last record and end in it, the
+ * record's size, read before them, reaching to or past the stream's end; else, where they
+ * begin at a record's start or reach past the end of the record they begin in, refused,
+ * "Bad transaction size in db stream, 0, spos P" (Database, "What a crash keeps"; bergdb
+ * 031-08, UB-5 (e)); so is a
  * stream whose only file is all zeros, so that the repair never empties a stream
  * (DatabaseBuilder's open() would then create a database in its place; the start refuses
  * such a stream, of at most 200,000 bytes, as a creation that did not complete, bergdb
@@ -417,11 +436,20 @@ public class FileStream implements AppendOnlyStream {
      * first file is created by its first append (bergdb 015-06): a stream closed before one
      * leaves the directory with no stream file, only bergdb.lock.
      * 
+     * <p>The open needs write access, also for a stream that is only read: to the directory,
+     * to make the lock file bergdb.lock if it is not there; to bergdb.lock, which it opens
+     * for writing to lock it; and to the last stream file, which it opens for appends. The
+     * other stream files are opened for reading. So a stream on a read-only medium, or whose
+     * files or directory are read-only, as an archive's or a copy's can be, is refused with
+     * an IOException that names the file (2026-11-28, bergdb 031-08, UB-5; 028-82): copy the
+     * files to a directory where they can be written, or give the write access back.</p>
+     * 
      * @param dir
      *      The directory to use.
      * @throws IOException
      *      If existing directory cannot be read from / written to, or if 
-     *      'dir' does not exist and cannot be created.
+     *      'dir' does not exist and cannot be created; or if bergdb.lock cannot be made or
+     *      opened for writing, or the last stream file cannot be opened for appends (above).
      * @throws DirectoryInUseException
      *      If another FileStream holds the directory, in this JVM or in another process
      *      (bergdb 005-63).
@@ -522,9 +550,15 @@ public class FileStream implements AppendOnlyStream {
                     // 2026-10-13 (bergdb 011-04, W1): a read admitted before a
                     // cut can come here. It fails alone; the stream is not faulty.
                     String g = gap;
+                    DbFile[] files = dbFiles;
+                    // The first file named where no gap is (2026-11-28, bergdb 031-08, UB-5
+                    // (d); 028-82): the start's refusal of a stream whose first files are
+                    // missing named none.
                     throw new ReadBelowFirstPosException("Cannot read at spos " + spos
                             + ", below the first position, " + first + "."
-                            + (g == null ? "" : " " + g));
+                            + (g != null ? " " + g : files.length == 0 ? ""
+                            : " The stream's first file in " + dir.getPath() + " is "
+                            + files[0].file.getName() + ", which begins there."));
                 }
                 this.ioException = new IOException("No file found for reading at spos " + spos + ".");
                 throw ioException;
@@ -1050,14 +1084,26 @@ public class FileStream implements AppendOnlyStream {
             }
             
             File file = new File(dir, LOCK_NAME);
-            if (file.createNewFile()) {
-                try (FileOutputStream out = new FileOutputStream(file)) {
-                    out.write(LOCK_TEXT.getBytes(StandardCharsets.UTF_8));
+            try {
+                if (file.createNewFile()) {
+                    try (FileOutputStream out = new FileOutputStream(file)) {
+                        out.write(LOCK_TEXT.getBytes(StandardCharsets.UTF_8));
+                    }
                 }
+            } catch (IOException e) {
+                // 2026-11-28 (bergdb 031-08, UB-5 (b); 028-82): the message was the system's
+                // alone, "Permission denied", with no file named.
+                throw new IOException(lockRefusal(file, "could not be made", e), e);
             }
             
             while (true) {
-                RandomAccessFile f = new RandomAccessFile(file, "rw");
+                RandomAccessFile f;
+                try {
+                    f = new RandomAccessFile(file, "rw");
+                } catch (IOException e) {
+                    throw new IOException(lockRefusal(file, "could not be opened for writing",
+                            e), e);
+                }
                 FileLock lock;
                 try {
                     lock = f.getChannel().tryLock(LOCK_POS, 1, false);
@@ -1105,6 +1151,20 @@ public class FileStream implements AppendOnlyStream {
                 Thread.currentThread().interrupt();
             }
         }
+    }
+    
+    /**
+     * The message of an open refused as the lock file 'file' 'what' (bergdb 028-82): the file,
+     * the directory, the system's message and the way out.
+     */
+    private String lockRefusal(File file, String what, IOException e) {
+        return "The lock file " + file.getName() + " in the stream's directory " + dir.getPath()
+                + " " + what + ": " + e.getMessage() + ". The open needs write access to the"
+                + " directory, to make " + LOCK_NAME + " if it is not there, to " + LOCK_NAME
+                + ", which it locks, and to the last stream file, also for a stream that is"
+                + " only read (bergdb 028-82). Give the write access back, or copy the stream"
+                + " files (*.bergdb) to a directory where they can be written; no stream file"
+                + " has been opened.";
     }
     
     /**
@@ -1365,7 +1425,8 @@ public class FileStream implements AppendOnlyStream {
             
             String name = f.getName();
             if (!(name.length() > SUFFIX.length())) {
-                throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
+                throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + "."
+                        + BAD_NAME_WAY_OUT);
             }
             
             name = name.substring(0, name.length() - SUFFIX.length());
@@ -1374,7 +1435,8 @@ public class FileStream implements AppendOnlyStream {
             try {
                 index = this.stringToIndex(name);
             } catch (BadFormatException e) {
-                throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + ".");
+                throw new BadDirStateException("Bad name of bergdb file: " + f.getPath() + "."
+                        + BAD_NAME_WAY_OUT);
             }
             
             fileSpos = index * BYTES_PER_INDEX_UNIT;
@@ -1387,20 +1449,51 @@ public class FileStream implements AppendOnlyStream {
                 currentSpos = fileSpos;
             } else {
                 if (currentSpos != fileSpos) {
+                    // 2026-11-28 (bergdb 031-08, UB-5 (c); 028-82): the two files and the way
+                    // out; the open cannot tell which of them does not fit.
+                    final File before = bergdbFiles[i - 1];
                     throw new BadDirStateException("Existing files in dir " + dir.getPath() 
                             + " are not in a correct state. File " + f.getPath() 
                             + " has a filename with an index value that does not" 
                             + " match the previous file sizes. currentSpos: " + currentSpos 
-                            + ", fileSpos: " + fileSpos);
+                            + ", fileSpos: " + fileSpos + ". The file " + f.getName()
+                            + " begins at " + fileSpos + " by its name, before the end of the"
+                            + " file before it, " + before.getName() + ", at " + currentSpos
+                            + ": one of the two is not the database's, as a copy of a stream"
+                            + " file put under another name, or was replaced by another file."
+                            + DIR_STATE_WAY_OUT);
                 }
             }
             
             long fLength = f.length();
             if (i != bergdbFiles.length - 1) {
                 if (fLength % BYTES_PER_INDEX_UNIT != 0) {
+                    // 2026-11-28 (bergdb 031-08, UB-5 (c) and (f); 028-82): the file after it
+                    // and the way out. The database's last file has any length, so a file put
+                    // after it, an empty one or a copy, makes it the one named here; a file
+                    // but the last that was cut, or replaced by an older copy, is named too.
+                    // The open cannot tell the two apart: the message names both.
+                    final File next = bergdbFiles[i + 1];
+                    final int later = bergdbFiles.length - 1 - i;
                     throw new BadDirStateException("Bad size of file " + f.getPath() 
                             + ", should have been a multiple of " + BYTES_PER_INDEX_UNIT 
-                            + ", but was " + fLength + ".");
+                            + ", but was " + fLength + ". Every stream file but the last is a"
+                            + " multiple of " + BYTES_PER_INDEX_UNIT + " bytes long, and "
+                            + f.getName() + " is not the last: " + (later == 1 ? "the file "
+                            + next.getName() + " is after it" : later + " files are after it,"
+                            + " from " + next.getName() + " to "
+                            + bergdbFiles[bergdbFiles.length - 1].getName()) + ". Either "
+                            + f.getName() + " was cut, or replaced by an older copy of it, or "
+                            + (later == 1 ? "that file is" : "those files are") + " not the"
+                            + " database's, as a file put after the database's last stream"
+                            + " file; the open cannot tell which. The open has changed no"
+                            + " stream file (bergdb 028-82). If " + f.getName() + " was cut or"
+                            + " replaced, restore it from a backup, or the database's stream"
+                            + " files (*.bergdb) all together, and start again; if it is the"
+                            + " database's last stream file and " + (later == 1 ? "the file"
+                            + " after it was" : "the files after it were") + " put there, move "
+                            + (later == 1 ? "that file" : "them") + " out of the directory, and"
+                            + " keep " + (later == 1 ? "it" : "them") + ".");
                 }
             }
             
@@ -1408,6 +1501,23 @@ public class FileStream implements AppendOnlyStream {
         }
         return first;
     }
+    
+    /**
+     * The way out of the refusal of a file that begins before the end of the one before it
+     * (checkDbFiles; 2026-11-28, bergdb 028-82), as DatabaseMissingException's message gives
+     * one for a missing stream.
+     */
+    private static final String DIR_STATE_WAY_OUT = " The open has changed no stream file"
+            + " (bergdb 028-82). Move the file that was put in the directory out of it, and"
+            + " keep it; or restore the database's stream files (*.bergdb) from a backup, all"
+            + " together, and start again.";
+    
+    /** The way out of a refusal of a stream file's name (bergdb 028-82). */
+    private static final String BAD_NAME_WAY_OUT = " A stream file's name is a 14-digit number"
+            + " and \".bergdb\", as 00000000000000.bergdb; a file of another name that ends in"
+            + " .bergdb, as a copy that a file manager made, is not a stream file. Move it out"
+            + " of the directory, and keep it; the open has changed no stream file (bergdb"
+            + " 028-82).";
     
     /** The first stream position of a file with a checked name (checkDbFiles). */
     private long fileSpos(File f) throws BadDirStateException {
@@ -1801,7 +1911,17 @@ public class FileStream implements AppendOnlyStream {
             boolean onlyFile) throws IOException {
         DbFile k = new DbFile(spos, file, maxSize);
         checkDirectory();
-        k.rfile = io.open(file);
+        try {
+            k.rfile = io.open(file);
+        } catch (java.io.FileNotFoundException e) {
+            // 2026-11-28 (bergdb 031-08, UB-5 (a); 028-82): the system's message alone, as
+            // ".../00000000000320.bergdb (Permission denied)" for a read-only file.
+            throw new IOException("The stream file " + file.getName() + " in " + dir.getPath()
+                    + " could not be opened for appends: " + e.getMessage() + ". The open"
+                    + " needs write access to the last stream file, also for a stream that is"
+                    + " only read (bergdb 028-82). Give the write access back, or copy the"
+                    + " stream files (*.bergdb) to a directory where they can be written.", e);
+        }
         try {
             // Read only; the file is not changed here (bergdb 028-60).
             final long zeros = zeroTail ? zeroTailLength(k.rfile, onlyFile) : 0;
@@ -3111,6 +3231,109 @@ public class FileStream implements AppendOnlyStream {
         } catch (BadDirStateException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("Bad size"));
         }
+    }
+    
+    /**
+     * bergdb 028-82 (031-08, part B, UB-5): the open's refusals name the files and the way
+     * out. A stray empty file after the last, whose length is not a multiple of 100,000: the
+     * last file and the stray one, as the open cannot tell a file but the last that was cut
+     * from a file put after the last; a file but the last cut: it and the file after it; a
+     * file under a name that begins inside the file before it: both; a name that is not a
+     * stream file's (a copy as a file manager names it): the way out. The first file
+     * missing: a read below the first position names the first file. A read-only directory
+     * without bergdb.lock: the lock file and the directory; a read-only last file: that
+     * file. Before, the bad size named only the database's last file, the lock's refusal was
+     * "Permission denied", and no message gave a way out.
+     */
+    @Nano
+    static void testOpenRefusalsNameTheFiles(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        f.append(new byte[450*1000], 0, 450*1000);      // 0, 200,000, 400,000 (50,000 bytes)
+        f.close();
+        final File last = new File(dir, fileName(400000));
+        
+        File stray = new File(dir, fileName(700000));
+        Files.write(stray.toPath(), new byte[0]);
+        String m = openRefusal(dir);
+        Assert.assertTrue(m, m.startsWith("Bad size of file " + last.getPath() + ", should have"
+                + " been a multiple of 100000, but was 50000.") && m.contains("the file "
+                + fileName(700000) + " is after it") && m.contains("the open cannot tell which")
+                && m.contains("restore it from a backup") && m.contains("move that file out of"
+                + " the directory"));
+        Assert.assertTrue(stray.delete());
+        
+        File second = new File(dir, fileName(200000));
+        byte[] secondBytes = Files.readAllBytes(second.toPath());
+        Files.write(second.toPath(), Arrays.copyOf(secondBytes, 199999));
+        m = openRefusal(dir);
+        Assert.assertTrue(m, m.startsWith("Bad size of file " + second.getPath())
+                && m.contains("but was 199999.") && m.contains("the file " + fileName(400000)
+                + " is after it") && m.contains("The open has changed no stream file"));
+        Files.write(second.toPath(), secondBytes);
+        
+        File overlap = new File(dir, fileName(100000));
+        Files.copy(new File(dir, fileName(0)).toPath(), overlap.toPath());
+        m = openRefusal(dir);
+        Assert.assertTrue(m, m.contains("does not match the previous file sizes. currentSpos:"
+                + " 200000, fileSpos: 100000. The file " + fileName(100000) + " begins at 100000 by"
+                + " its name, before the end of the file before it, " + fileName(0) + ", at"
+                + " 200000") && m.contains("restore the database's stream files"));
+        Assert.assertTrue(overlap.delete());
+        
+        File copy = new File(dir, indexToString(0) + " copy" + SUFFIX);
+        Files.copy(new File(dir, fileName(0)).toPath(), copy.toPath());
+        m = openRefusal(dir);
+        Assert.assertTrue(m, m.startsWith("Bad name of bergdb file: " + copy.getPath() + ".")
+                && m.contains("Move it out of the directory"));
+        Assert.assertTrue(copy.delete());
+        
+        File moved = new File(c.createTempDir(), fileName(0));
+        Files.move(new File(dir, fileName(0)).toPath(), moved.toPath());
+        FileStream g = new FileStream(dir);
+        try {
+            g.read(199999, new byte[1], 0, 1);
+            throw new AssertionError("read below the first position");
+        } catch (ReadBelowFirstPosException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("The stream's first file"
+                    + " in " + dir.getPath() + " is " + fileName(200000) + ", which begins"
+                    + " there."));
+        } finally {
+            g.close();
+        }
+        Files.move(moved.toPath(), new File(dir, fileName(0)).toPath());
+        
+        Assert.assertTrue(new File(dir, LOCK_NAME).delete());
+        try {
+            if (dir.setWritable(false) && !Files.isWritable(dir.toPath())) {
+                m = openRefusal(dir);
+                Assert.assertTrue(m, m.startsWith("The lock file " + LOCK_NAME + " in the"
+                        + " stream's directory " + dir.getPath() + " could not be made: ")
+                        && m.contains("Give the write access back"));
+            }
+        } finally {
+            dir.setWritable(true);
+        }
+        try {
+            if (last.setWritable(false) && !Files.isWritable(last.toPath())) {
+                m = openRefusal(dir);
+                Assert.assertTrue(m, m.startsWith("The stream file " + fileName(400000) + " in "
+                        + dir.getPath() + " could not be opened for appends: "));
+            }
+        } finally {
+            last.setWritable(true);
+        }
+        new FileStream(dir).close();
+    }
+    
+    /** The message of the IOException of an open of 'dir', which must refuse (bergdb 028-82). */
+    private static String openRefusal(File dir) {
+        try {
+            new FileStream(dir).close();
+        } catch (IOException e) {
+            return e.getMessage();
+        }
+        throw new AssertionError("opened " + dir);
     }
     
     /**
