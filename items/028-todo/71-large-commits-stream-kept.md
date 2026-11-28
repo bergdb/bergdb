@@ -1,8 +1,10 @@
 028-71. Investigate: under sustained large commits the stream kept grows far past the live data
 ==============================================================================================
 
-Status: open (built on a branch, 2026-11-27; done when it lands). Kind:
-Investigate. Frans: none.
+Status: open; the step is on `main` since 2026-11-28 (`96daa4bb` to
+`cdc437b2`, 031-06's landing, step 3), with its timing run (031-06,
+`landing.md`); closing it waits for Frans. Kind: Investigate. Frans:
+decision (done or not).
 Created 2026-11-27 by Frans Lundberg.
 
 What: a commit allows at most one reclaim step, and a step copies at
@@ -46,7 +48,8 @@ Built
 -----
 
 2026-11-27, in 031-06's landing, step 3, on the branch `031-06-pace`
-(031-06, `landing.md`, step 3):
+(031-06, `landing.md`, step 3); on `main` since 2026-11-28 (`96daa4bb`
+to `cdc437b2`):
 
 * What: a commit's step scans up to its allowance, at most the larger of
   `MAX_STEP_SIZE` (16 kB) and twice the allowance that the application's
@@ -95,3 +98,10 @@ Log
 
 2026-11-27. Built in 031-06's landing, step 3 (section Built), on a
 branch, gated there; open until it lands.
+
+2026-11-28. Landed on `main` with step 3 (`96daa4bb` to `cdc437b2`),
+after review 3 and the timing run on a quiet F53 (031-06, `landing.md`:
+`TIMING OK` against 2026.6; P1 with the larger steps, 134 s against
+`main`'s 140 s, the longest commit 11.6 ms against 20.9). Whether the
+entry is done is Frans's: under commits of 1 MB the stream kept stays
+at 18 times the live data, by the cap of 128 KiB a step.

@@ -178,6 +178,25 @@ Frans, 2026-11-27:
   So C lands after the landing's step 4, the format, which brings
   028-67's ties. A stays on `main` until then.
 
+Frans, 2026-11-28:
+
+* **028-76: (a) for 2026.7** (06:05): 028-66's rule for the files
+  before a gap stays as it is. A file before a gap whose first block is
+  recovery's fill makes the start refuse, with the file and the way out
+  named; nothing is lost. (b), the fill written as a valid block, is
+  studied with 031-07's review of the stream's checks.
+* **The usage limit is 90 % of the week** (06:10), from 50 %; the
+  weekend's work need not be kept light.
+
+The lead's, 2026-11-28 (class 1, from the timing run of 01:38 to 02:50;
+section 3):
+
+* Review 3's W1, a commit's warm-up reading ahead for up to 4 queued
+  commits, is kept.
+* Step 3 of 031-06's landing and 028-66's C landed on `main`: the
+  conditions Frans set (the review, the rule, a quiet timing run
+  against `main`) were met.
+
 Gone ahead by default:
 
 * 09:15, where the notes of 2012 go (class 2; proposed by the lead at
@@ -630,6 +649,79 @@ The lead's overview (08:30), its conclusions:
   values, and a start whose last record is 100 MB or more, each on step
   3 and on `main`; 028-66's comparison of reclaim's cost, `main` against
   C. Step 3 and 028-66's C land after it if their figures are fine.
+* 2026-11-28 01:43 `night.sh` 2026-11-27-2225 on `50c60f13` (the
+  review's fixes, step 4 and the `AppRecord` fix; not T1's fix or step
+  3): `NIGHT OK` (192 minutes).
+* 2026-11-28 02:50 The timing sequence done, on a quiet F53 from 01:38:
+  * `timing.sh` on step 3 against 2026.6: `TIMING OK`; CORE 1.000; the
+    longest pause 10.7 ms against 14.1 ms; no alerts, +5.7 to +10.6 %
+    against 2026.6 (`main` before step 3: +5.8 to +13.9 %).
+  * P1 on a database larger than its cache (20M keys, a budget of
+    200 MB, 1M commits), step 3 against `main`: 134 s against 140 s; a
+    commit with a step, under the lock, median 0.19 ms against 0.23; the
+    longest commit 11.6 ms against 20.9; 74.1M loads against 78.2M.
+  * A commit carrying a 128 KiB step of small values: the longest time
+    under the lock 12.5 ms against 12.0; the longest commit 20.4 ms, at
+    2.6 s of uptime, against 12.8.
+  * A start whose last record is 100 MB or more: 4.8 s on both.
+  * 028-66's comparison of reclaim's cost, C against `main`: 113,580
+    transactions a second against 67,052; the disk 1.096 of the stream
+    kept against 1.623; 27 files against 63.
+  * Decided by the lead (class 1): W1's read-ahead stays. Step 3 landed
+    on `main` (`96daa4bb` to `cdc437b2`, `java/` as gated on its
+    branch), the timing run in 031-06's `landing.md` (`9f446ad5`).
+* 2026-11-28 03:35 028-66's C landed on `main` (`e848c58f` to
+  `5f867e08`; the reviewed branch's hashes mapped in `8a0897cf`), on
+  step 3 and T1's fix: a start reads the last meta block, checks the
+  files before a gap, walks the tail and only then writes. One test,
+  `testRefusedStartWritesNoCreatedTxt`, failed 2 times in 40 under load
+  (the test's assumption of the first file; fixed in the test, 48 of
+  48). `BEFORE COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK`, the power-loss
+  tester on 12 seeds, `NESTED GAP OK`, the sweep 0 different,
+  `faults.sh` bad 0, T1's probes all starting. `week.sh` started on
+  `8a0897cf` at 03:30.
+* 2026-11-28 04:05 The documents (the landing's step 5) on `main`
+  (`6c17b10f`): 027-13 written again from the code; 027-03 at format 9;
+  027-02, 027-08, 027-11, 027-14; `maintain(int budget)`'s Javadoc; the
+  README's sentence on the one stream. `BEFORE COMMIT OK`.
+* 2026-11-28 04:48 `week.sh`: one step failed, apps-kill-cc. The Kill
+  app (seed 2078503, database 4, node size 62) could not start a
+  database after its 30th kill: no valid meta block at the stream's
+  first position, 800,000; nothing written. The other steps that had
+  ended by 06:15 are ok (before-commit, apps-quick, apps-soak-cc, both
+  kill-restart steps; the consistency checker no failure). An agent
+  started on the failure at once.
+* 2026-11-28 04:52 The clean-up (Q4) on `main` (`70f45c17` to
+  `b9e45295`): the clock's margins for maintenance removed
+  (`TIME_MARGIN`, `LAST_USER_TIME`, `TOP_ORDINAL_MARGIN`), one time kept
+  for the creation's two records; `Clock.getTime()`'s Javadoc allows any
+  time up to 2^56 - 1; the stale comments and messages the documents'
+  agent listed; a copy mark on a delete node refused at parse. `BEFORE
+  COMMIT OK`, `LEVEL 2 OK`, `LEVEL 3 OK`, the sweep 0 different,
+  `faults.sh` bad 0, StreamDigest identical in all 48 against
+  `8a0897cf`.
+* 2026-11-28 05:55 The kill failure's cause and fix (`05bf46e3` to
+  `27267148`; 028-76, `aa68efc4`). Since 028-67's C3 (`b0aac3a9`) a
+  start read only the stream's first meta block. An earlier kill had
+  ended the stream at a block's position, which the next start filled as
+  recovery does, not a valid block; a later cut made that block the
+  stream's first. The database was sound. Fixed: the stream's first
+  block is the first valid one at or after the first position. Two tests
+  that failed before; `BEFORE COMMIT OK`, `LEVEL 3 OK`, the Kill app
+  with the seed (300 kills) and three others, `APPS OK` quick, the sweep
+  0 different, `faults.sh` bad 0, the power-loss tester. No release has
+  the rule (not a released bug).
+* 2026-11-28 06:05 Frans decided 028-76's open part, (a) (section 2;
+  `ee8a8165`). 06:10 the usage limit set to 90 % (section 2).
+* 2026-11-28 06:12 A review of the start and recovery path on `main`
+  at `ee8a8165` started (Fable, effort high, until 11:00): the format's
+  checks (028-67's C1 and C3), T1's rule for a cut record, 028-66's C
+  and its rule, 028-76's fix and the zero tail, under sequences of
+  kills and power losses.
+* 2026-11-28 06:15 Started: 028-70, a start refused after its recovery
+  has written (an agent, until 10:00); and a round of user apps against
+  2026.7's changes, 031-08, in two parts (until 11:30). `week.sh` still
+  runs its long lanes; `night.sh` on the current `main` follows it.
 
 ## 4. Waiting for Frans
 
@@ -641,14 +733,15 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 00:45)
+### Open now (2026-11-28 06:15)
 
-What is open for Frans after the decisions of 16:09 to 17:26 (section
-2). The text of sections 4.0 to 4.3 is left as it was written. Nothing
-new for Frans since 21:00; two things the lead settles: whether the
-warm-up's reading ahead (review 3's W1) stays is decided from the
-timing run (class 1); T1's rule for a cut record's own bytes goes to
-the next review.
+What is open for Frans after the decisions of 2026-11-27, 16:09 to
+17:26, and of 2026-11-28, 06:05 (section 2). The text of sections 4.0
+to 4.3 is left as it was written. New since 00:45: 028-71's closing,
+the last point but three. Answered since then: 028-76, (a). Settled by
+the lead: the warm-up's reading ahead (review 3's W1) stays, from the
+timing run; T1's rule for a cut record's own bytes is in the review of
+the start path that runs until 11:00.
 
 * **O1. BergDB's own long keys under "/#"**, class 3 (a new limit;
   031-06, section 8, with the investigation of 17:20 to 17:28). The
@@ -735,14 +828,20 @@ the next review.
   layout, a start took the other database's value of one key. Node
   checksums that include the position and the ID would close it; not
   decided, with 031-07's N1. 028-67's C2 is still open.
+* **028-71: whether it is done** (class 3: an item done). The step
+  sized by the commit's allowance landed with step 3 (2026-11-28). Under
+  commits of 1 MB the stream kept is 18 times the live data, steady, by
+  the cap of 128 KiB a step (115.7 times and growing before); under
+  commits of 20 kB to 300 kB, 7 to 8 times.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
   Frans.
 * Still open from sections 4.0 to 4.3: A5, the Lean statement (026-14's
   answer puts the first model addition with the proof of P2's extension,
   after 2026.7); P2's text in 010, which is Frans's (031-06, step 5);
-  B8 to B14 of 031-04's design, as the landing reaches them; Q4 (step 4)
-  and Q6 (a timing run) of the landing.
+  B8 to B14 of 031-04's design, as the landing reaches them. Q4 and Q6
+  of the landing are answered by the clean-up and the timing run of
+  2026-11-28 (section 3).
 * Answered since 16:02: 028-68 (B), C2 (028-66: C to be designed), C4
   (028-54: RB-013), C5 (028-34), C6 (026-04), C7 (026-14), P2's wording
   (W2, W4, W5), Q3 (step 2: the record's room by a check) and Q5 (step

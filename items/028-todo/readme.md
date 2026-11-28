@@ -105,7 +105,7 @@ Open
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 open |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
-| [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | none | open |
+| [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | decision | open (on `main`; closing for Frans) |
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given | decision | open |
@@ -693,3 +693,8 @@ failure on `main`: a start refused a sound database whose first meta
 block was recovery's fill (since 028-67's C3); fixed on `main`; for
 Frans, the same fill as the first block of a file before a gap (028-66's
 rule), (a) recommended.
+
+2026-11-28. 028-71: the step sized by the commit's allowance is on
+`main` since 031-06's landing, step 3 (`96daa4bb` to `cdc437b2`), with
+its timing run; whether the entry is done waits for Frans (commits of
+1 MB keep 18 times the live data, by the cap of 128 KiB a step).
