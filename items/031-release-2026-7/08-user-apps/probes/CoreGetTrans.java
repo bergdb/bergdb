@@ -22,6 +22,7 @@ public class CoreGetTrans {
             db.setRetainDuration(10_000_000L);           // 1 s
             Random r = new Random(1);
             int more = 0, copies = 0, commits = 0;
+            Set<String> unmarked = new TreeSet<>();
             for (int i = 0; i < 3000; i++) {
                 now[0] += 2_000_000;                      // 0.2 s
                 Trans.Builder b = db.trans();
@@ -41,7 +42,11 @@ public class CoreGetTrans {
                 int others = 0, marked = 0;
                 for (StoredValueNode vn : vns) {
                     String k = Arrays.toString(Keys.toBytes(vn.getKey()));
-                    if (!mine.contains(k)) { others++; if (vn.isCopy()) marked++; }
+                    if (!mine.contains(k)) {
+                        others++;
+                        if (vn.isCopy()) marked++;
+                        else if (unmarked.size() < 3) unmarked.add(new String(Keys.toBytes(vn.getKey()), java.nio.charset.StandardCharsets.ISO_8859_1));
+                    }
                 }
                 if (others > 0) {
                     more++;
@@ -52,6 +57,7 @@ public class CoreGetTrans {
                 }
             }
             System.out.println(more + " of " + commits + " commits list value nodes that they did not put (" + copies + " with the copy mark)");
+            System.out.println("keys of those without the mark (bytes as ISO-8859-1): " + unmarked);
         }
     }
 }

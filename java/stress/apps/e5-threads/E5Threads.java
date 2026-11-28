@@ -195,7 +195,7 @@ public class E5Threads {
                 int part = r.nextInt(200);
                 long m0 = maintains.get();
                 for (int i = 0; i < part && it.hasNext(); i++) { Kv<byte[]> kv = it.next(); got.add(kv.key()); vals.add(kv.value()); }
-                sleep(r.nextInt(30));
+                sleep(r.nextInt(10) == 0 ? 300 + r.nextInt(1700) : r.nextInt(30));   // now and then past the retain duration
                 if (maintains.get() > m0) heldOverMaintain.incrementAndGet();
                 while (it.hasNext()) { Kv<byte[]> kv = it.next(); got.add(kv.key()); vals.add(kv.value()); }
             } catch (LookupTimeNotAvailableException e) {

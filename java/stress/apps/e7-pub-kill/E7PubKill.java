@@ -212,11 +212,11 @@ public class E7PubKill {
                 applyModel(ops, i);
                 if (i % 11 == 0) { db.sync(); System.out.println("S " + i); System.out.flush(); }
                 Random r = new Random(seed * 31 + i);
-                int nm = i % 200 >= 120 && i % 200 < 126 ? 3 + r.nextInt(6) : r.nextInt(5) == 0 ? 1 : 0;
+                int nm = i % 200 >= 120 && i % 200 < 140 ? 3 + r.nextInt(6) : r.nextInt(3) == 0 ? 1 + r.nextInt(2) : 0;
                 for (int k = 0; k < nm; k++) {
                     clock.setTime(Time.units(clock.getTime() + 20_000));
                     System.out.println("M " + i); System.out.flush();
-                    db.maintain(new int[] {100, 2000, 100_000}[r.nextInt(3)]);
+                    db.maintain(new int[] {100, 2000, 100_000, 100_000}[r.nextInt(4)]);
                     System.out.println("m " + i); System.out.flush();
                 }
             }

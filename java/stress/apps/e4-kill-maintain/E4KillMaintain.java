@@ -73,7 +73,7 @@ public class E4KillMaintain {
             long maxSynced = -1, lastRecovered = -1;
             for (int k = 0; k < dbKills && done < kills; k++) {
                 boolean clean = rnd.nextInt(10) == 0;
-                List<String> cmd = new ArrayList<>(List.of(java, "-ea", "-Xmx1g", "-XX:+ExitOnOutOfMemoryError", "-cp", cp,
+                List<String> cmd = new ArrayList<>(List.of(java, "-ea", "-Xmx2g", "-XX:+ExitOnOutOfMemoryError", "-cp", cp,
                         "E4KillMaintain", "child", "" + dbSeed, dir.getPath(), "" + nodeSize, "" + retainMs, "" + sd));
                 if (clean) cmd.add("" + (100 + rnd.nextInt(300)));
                 Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
@@ -148,7 +148,7 @@ public class E4KillMaintain {
                         + " in a start), clean exits " + cleanExits + ", databases " + dbs + ", last recovered " + lastRecovered
                         + ", synced " + maxSynced + ", node " + nodeSize + ", sd " + sd + ", retain " + retainMs);
             }
-            List<String> cmd = List.of(java, "-ea", "-Xmx1g", "-cp", cp, "E4KillMaintain", "child", "" + dbSeed, dir.getPath(),
+            List<String> cmd = List.of(java, "-ea", "-Xmx2g", "-cp", cp, "E4KillMaintain", "child", "" + dbSeed, dir.getPath(),
                     "" + nodeSize, "" + retainMs, "" + sd, "0");
             Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
             String out = new String(p.getInputStream().readAllBytes());
@@ -459,7 +459,10 @@ public class E4KillMaintain {
 
     static byte[] val(Random r) {
         int x = r.nextInt(1000);
-        byte[] v = new byte[x < 700 ? r.nextInt(30) : x < 985 ? r.nextInt(600) : x < 998 ? r.nextInt(6000) : 100_000 + r.nextInt(1_900_000)];
+        // a value of 0.1 to 2 MB in one KV of 2,000 (one of 500 until kill round 3, whose final check ran out of a heap of 1 GB:
+        // the oracle and the check's scan each hold every live value)
+        byte[] v = new byte[x < 700 ? r.nextInt(30) : x < 985 ? r.nextInt(600) : x < 998 ? r.nextInt(6000)
+                : r.nextInt(4) == 0 ? 100_000 + r.nextInt(1_900_000) : r.nextInt(6000)];
         r.nextBytes(v);
         return v;
     }
