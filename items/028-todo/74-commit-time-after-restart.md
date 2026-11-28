@@ -1,8 +1,10 @@
 028-74. Decide: a commit's time after a restart can be at or before a time a reader was given
 ==========================================================================================
 
-Status: decided (2026-11-28): (a); the Javadoc written, P2's draft
-not changed (it is not in the repository). Kind: Decide. Frans: decided.
+Status: decided (2026-11-28): (a); the Javadoc written and on `main`,
+and the limit added to P2's draft (the lead's, not in the repository; a
+limit for 010-01's P2 when Frans writes it). Kind: Decide. Frans:
+decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: `DbClock.transactionBegin` gives a transaction the clock's time,
@@ -122,3 +124,7 @@ changed yet.
 and `Db`, and `Db`'s "Threads", by an agent of lead-1127 (branch
 `floor-74-r6`); BEFORE COMMIT OK on the branch's final tree. P2's
 draft left as it is.
+
+2026-11-28. Landed on `main` (`1a136a9c`). The lead added the limit to
+P2's draft as its limit 6: a time given holds for the session that gave
+it; the times that hold across restarts are those of accepted actions.
