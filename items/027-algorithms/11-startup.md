@@ -290,8 +290,11 @@ template's bytes from the end of the zeros, is not foreign (before, a
 second start refused it, on `MemoryStream`); a block of the database's
 first 1 to 4 bytes and zeros to its end is not foreign only where the
 stream ends in it, where the record's bytes after it to the record's
-end, the stream's or the next block are zeros, as a completion writes
-them, or right after a whole record; and a refusal right after a block
+end, or the stream's, are zeros, as a completion writes them, the blocks
+among them passed over (each is read on its own; until the second
+review of 028-79, 2026-11-28, E, the zeros were read only to the next
+block, and such a block with zeros past it, then other bytes, was
+taken), or right after a whole record; and a refusal right after a block
 that a later start could not read as its first, such a block, has P at
 the block (before, such a block followed by other bytes in a cut record
 was taken, and a later start that read it as its first refused the
@@ -1001,3 +1004,8 @@ bytes, the fill after zeros taken, a block of the first bytes and zeros
 taken only at the stream's end, before zeros or after a whole record,
 and P at a block that a later start could not read as its first (1.3).
 By an agent of lead-1127, on the branch `start-fixes`.
+
+2026-11-28. 028-79, its second review's E: the zeros after a block of
+the first bytes and zeros are read to the end of the record or of the
+stream, the blocks among them passed over, not only to the next block
+(1.3). By an agent of lead-1127, on the branch `028-79-e`.

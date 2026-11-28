@@ -96,6 +96,9 @@ public class RecoverableStream {
         // The transaction that recovery starts from (2026-10-13).
     private volatile byte[] streamId;
         // The database ID of the stream's first meta block, set by recover() (bergdb 028-67).
+    private long zerosFrom = -1;
+    private long zerosTo = -1;
+        // The walk's last range of record bytes found zero (zerosAfterBlock(); bergdb 028-79).
     
     /**
      * Creates a new instance from an append-only stream.
@@ -516,6 +519,8 @@ public class RecoverableStream {
         long verified = start;      // P: the end of the last record found to be one
         long committed = -1;        // the committed record that ends at 'verified', if any
         int committedSize = 0;
+        zerosFrom = -1;
+        zerosTo = -1;
 
         while (true) {
             // The end is at or in the meta block after a record's end (spos >= length), or
@@ -679,11 +684,14 @@ public class RecoverableStream {
      * a sound stream on MemoryStream). A block of the database's first 1 to 4 bytes and
      * zeros to its end, the fill's when the zeros reached past byte 8, is the database's only
      * where the stream ends in it, or where the record's bytes after it are zeros, to 'end',
-     * the record's end or the stream's, or the next meta block, as the completion of a
-     * record writes them; 'end' -1 for a block after a whole record, where a refusal after
-     * it puts P at the block (badTail()). Until then such a block followed by other bytes in
-     * the record was taken, and a later start that read it as its first block refused the
-     * stream, as no valid block begins so.</p>
+     * the record's end or the stream's, as the completion of a record writes them, the meta
+     * blocks among them passed over (zerosAfterBlock()); 'end' -1 for a block after a whole
+     * record, where a refusal after it puts P at the block (badTail()). Until then such a
+     * block followed by other bytes in the record was taken, and a later start that read it
+     * as its first block refused the stream, as no valid block begins so. Until the second
+     * review of bergdb 028-79 (2026-11-28, E) the zeros were checked only to the next block:
+     * such a block followed by zeros past it, then other bytes, was taken, and a later start
+     * from the block refused the stream in the same way.</p>
      */
     private String foreignBlock(long pos, long length, MetaBlock last, long end) {
         final int n = (int) Math.min(META_BLOCK_SIZE, length - pos);
@@ -713,8 +721,7 @@ public class RecoverableStream {
                 t++;
             }
             if (t == k && (e < k || n < META_BLOCK_SIZE || end < 0
-                    || rawZeros(pos + META_BLOCK_SIZE,
-                            Math.min(end, pos + META_BLOCK_DISTANCE)))) {
+                    || zerosAfterBlock(pos + META_BLOCK_SIZE, end))) {
                 return null;
             }
             if (t == k) {
@@ -839,16 +846,29 @@ public class RecoverableStream {
         return isZeros(bytes) || MetaBlock.beginsAsBlock(bytes);
     }
 
-    /** Whether the stream's bytes from 'from' to 'to', no meta block among them, are zero. */
-    private boolean rawZeros(long from, long to) {
-        for (long pos = from; pos < to; ) {
-            final byte[] bytes = new byte[(int) Math.min(to - pos, 64 * 1024)];
-            readRaw(pos, bytes);
-            if (!isZeros(bytes)) {
-                return false;
-            }
-            pos += bytes.length;
+    /**
+     * Whether the record bytes from 'from', right after a meta block, to 'to' are zero, the
+     * meta blocks among them passed over (2026-11-28, the second review of bergdb 028-79, E):
+     * for foreignBlock(), the bytes after a block in a record, to the record's end or the
+     * stream's. The blocks among them are refuseForeignBlock()'s, which checks each block of
+     * the record after the last valid one on its own (foreignBlock()). Read in pieces of 64
+     * KiB, up to the first piece that holds a byte that is not zero; a range found zero is
+     * kept for the walk (zerosFrom, zerosTo), so that a later block of the record, whose
+     * range lies in it, reads nothing, and a range not zero ends the walk, as the record is
+     * then refused. So the walk reads each byte after the last valid block at most once for
+     * it, and none of a record before that block: the bytes of the appends after the block,
+     * which a kill cut (a write on FileStream is at most 5 MB, bergdb 028-80), not a whole
+     * record, which can be many MB.
+     */
+    private boolean zerosAfterBlock(long from, long to) {
+        if (to == zerosTo && from >= zerosFrom) {
+            return true;
         }
+        if (!recordBytesZero(from, 0, getTransPos(to) - getTransPos(from))) {
+            return false;
+        }
+        zerosFrom = from;
+        zerosTo = to;
         return true;
     }
 
@@ -3319,6 +3339,81 @@ public class RecoverableStream {
                         final byte[] image = bytesOf(m);
                         new RecoverableStream(m, new MetaBlock()).recover();
                         Assert.assertArrayEquals(what + ": taken as it is", image, bytesOf(m));
+                    }
+                }
+            }
+        }
+
+        /**
+         * Bergdb 028-79, its second review of 2026-11-28 (E): a block of the database's first 1
+         * to 4 bytes and zeros, followed by zeros past the next meta block and then other
+         * bytes in the record, as a kill 1 to 4 bytes into a file leaves it where the zeros
+         * after it reach past 200 kB, is refused with P the record's start, in the record
+         * that the end of the stream cuts and in an aborted record, the stream unchanged; cut
+         * at P, it starts. With zeros after it to the end of the stream or of the record, a
+         * later block among them of zeros or the database's own cut after 60 bytes, it is
+         * taken. Before, the zeros were checked only to the next meta block, and the stream
+         * was taken with the block, which a later start that read it as its first refused
+         * (BadMagicBytes, or a VersioningStreamException).
+         */
+        @Nano
+        public static void testFirstBytesOfABlockZerosPastTheNextBlock() throws IOException {
+            final long x = 2 * META_BLOCK_DISTANCE;
+            final long y = x + META_BLOCK_DISTANCE;
+            final MemoryStream over = new MemoryStream();       // a record over x and y
+            final RecoverableStream r = new RecoverableStream(over, new MetaBlock());
+            while (over.getLength() < x - 20000) {
+                appendRecord(r, 1000);
+            }
+            final long record = over.getLength();
+            final int size = 300000;
+            appendRecord(r, size);
+            appendRecord(r, 1000);
+            Assert.assertTrue("the record ends after y", getSpos(record, size) > y + 20000);
+            Assert.assertTrue("no block after y", over.getLength() < y + META_BLOCK_DISTANCE);
+            final byte[] own = new byte[META_BLOCK_SIZE];
+            over.read(x, own, 0, META_BLOCK_SIZE);
+            final byte[] ownY = new byte[META_BLOCK_SIZE];
+            over.read(y, ownY, 0, META_BLOCK_SIZE);
+            final byte[] other = new byte[9000];
+            new java.util.Random(81).nextBytes(other);
+
+            for (int k = 1; k <= 4; k++) {
+                for (int c = 0; c < 5; c++) {
+                    final String what = k + " bytes and zeros, zeros after it past the next "
+                            + "block, " + (c == 0 ? "then other bytes, in a cut record"
+                            : c == 1 ? "then other bytes, in an aborted record"
+                            : c == 2 ? "to the end, in a cut record"
+                            : c == 3 ? "to the end, the next block the database's cut, in a "
+                                    + "cut record"
+                            : "to the record's end, in an aborted record");
+                    final MemoryStream m = copyOf(over);
+                    final boolean cut = c == 0 || c == 2 || c == 3;
+                    if (cut) {
+                        m.truncate(y + 4096 + other.length);
+                    }
+                    MemoryStream.TestAccess.write(m, Arrays.copyOf(own, k), x);
+                    final long zerosEnd = cut ? m.getLength() : getSpos(record, size - 1) + 1;
+                    MemoryStream.TestAccess.write(m, new byte[(int) (zerosEnd - x - k)], x + k);
+                    if (c < 2) {
+                        MemoryStream.TestAccess.write(m, other, y + 4096);
+                    } else if (c == 3) {
+                        MemoryStream.TestAccess.write(m, Arrays.copyOf(ownY, 60), y);
+                    }
+                    final byte[] image = bytesOf(m);
+                    long p = -1;
+                    try {
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                    } catch (BadTailException e) {
+                        p = e.getCutPos();
+                        Assert.assertArrayEquals(what + ": unchanged", image, bytesOf(m));
+                    }
+                    Assert.assertEquals(what + ": P", c < 2 ? record : -1, p);
+                    if (c < 2) {
+                        m.truncate(p);
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                        Assert.assertEquals(what + ": cut at P", record, m.getLength());
                     }
                 }
             }

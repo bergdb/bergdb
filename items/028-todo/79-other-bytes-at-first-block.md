@@ -3,7 +3,8 @@
 
 Status: fix (1) and the review's two shapes on `main` (2026-11-28:
 `2d4d178a`, `b9624ea1`, `01232710`); E, the second review's residual,
-open: its fix in work by an agent of lead-1127, branch `028-79-e`.
+fixed on the branch `028-79-e` (2026-11-28) and gated, to land; (F)
+and (G), found with it, open (Review).
 Kind: Fix. Frans: none; the smaller fix went ahead by default at 10:30
 on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
@@ -302,7 +303,8 @@ with the parent's wherever both start (8 lines, refused by both, with P
 400000 instead of 400128); `StartChain` 3,000 starts plain, 1,000 with
 `-Dforce=off` and 6,000 with other bytes, no failure (C twice). P at
 the block moves only the P of a start that is refused anyway, to the
-block after the record before it. One residual, open:
+block after the record before it. One residual, fixed on 2026-11-28
+(below):
 
 * **(E)** S4, a residual of (A). `rawZeros` reads the zeros after a
   block of the database's first 1 to 4 bytes only up to the next meta
@@ -314,6 +316,75 @@ block after the record before it. One residual, open:
   It needs a kill 1 to 4 bytes into a block followed by at least about
   200 kB of zeros. The fix: the zeros read to the record's or the
   stream's end, passing over block positions.
+* **E fixed** (2026-11-28, by an agent of lead-1127, on the branch
+  `028-79-e`): the zeros after such a block are read to the end of the
+  record that holds it, or to the stream's end for the record that the
+  end cuts, the meta blocks among them passed over, as the walk reads
+  each of them on its own (`RecoverableStream.zerosAfterBlock`, in
+  place of `rawZeros`). A range found zero is kept for the walk, so that
+  a later block of the record reads nothing again: the check reads each
+  byte after the last valid block at most once, not a whole record.
+* Test: `RecoverableStream.testFirstBytesOfABlockZerosPastTheNextBlock`,
+  failing before ("1 bytes and zeros, zeros after it past the next
+  block, then other bytes, in a cut record: P, expected 380256, got
+  -1", and so in an aborted record): 1 to 4 bytes and zeros, zeros past
+  the next block and then other bytes, in a cut record and in an aborted
+  record, refused with P the record's start, the stream unchanged, and
+  started after the cut at P; with zeros to the end of the stream or of
+  the record, the next block zeros or the database's own cut after 60
+  bytes, taken.
+
+Probes and gates after E's fix (2026-11-28, on F53 beside other
+sessions' runs, on `main` with 028-83 and 028-84; `java/before-commit.sh`
+again with 028-85):
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (82 s); with 028-85,
+  BEFORE COMMIT OK (74 s).
+* The review's probes, against `main`'s build before the fix (01232710):
+  `LongZerosProbe`, the block of 1 to 4 of the database's bytes and
+  zeros with zeros to 4,096 and to 204,096 bytes after it and other
+  bytes after them, refused at start 1 in all 8 cases with P the
+  record's start, 980640 (before, the 4 with 204,096 were taken); with
+  zeros to 404,096 too, and, cut at P and started, records appended past
+  three more blocks and the stream cut at the block's position, a later
+  start from there started in every case; `OwnPrefixProbe` and
+  `CutBlockZerosProbe`, the same lines as `main`'s; `SameBytesProbe
+  12520`, the same 12,520 lines as `main`'s.
+* 033's probes: `StartChain 70000 70099 20 2 30 1 0`, 2,000 starts, 23
+  of 028-76's decided case, no failure; `StartChain 60000 60099 20 2 30
+  1 25`, 2,000 starts, of 187 tails of other bytes 103 refused with P
+  and started after the cut, 75 taken, 24 of the decided case, no
+  failure and no later refusal of F2. A run of both before the rebase
+  onto 028-83, with the same `RecoverableStream`, had no failure either,
+  and one later refusal in the second, note (C)'s (seed 60009: a new
+  file's first block left zeros, other bytes after it, then a file
+  before a gap).
+* The night tests of `DbTesterTail` and `CorruptStreamTester`: SUCCESS,
+  5 tests.
+* `PowerLossTest 1001 12 3000 3`: POWERLOSS OK, 12 seeds, 732 cold
+  recoveries, without per-append forces 744; negative controls caught.
+* 031-06's probes: `faults.sh`, bad 0 in each of its 42 lines;
+  `sweep.sh`, 0 different in each of its 63 lines.
+* `java/stress/level3.sh`: LEVEL 3 OK.
+
+Found with E's fix, not fixed (2026-11-28; on `main` before the fix as
+after it):
+
+* **(F)** (A)'s block in a whole aborted record, with zeros after it
+  past the record's end and other bytes after them, is refused with P
+  at the end of the aborted record, after the block: the cut at P keeps
+  the block, and a later start from it refuses the stream
+  (`BadMagicBytes`, or a `VersioningStreamException` for 4 bytes). It
+  needs fewer zeros than E, to past the record's end. Shown on
+  `MemoryStream`: a record of 21,000 or 50,000 bytes over the block at
+  1,000,000, the block's first 1 to 4 bytes and zeros to 3,000 bytes
+  after the record's end, then 9,000 random bytes.
+* **(G)** (A)'s block in the record that the end of the stream cuts,
+  with zeros only after it to the stream's end, is taken, as the rule
+  says, and stays: a later start from it refuses the stream in the same
+  way. Shown on `MemoryStream`, which keeps such zeros; `FileStream`'s
+  open leaves a run of zeros of up to 8 MB at the end of the last file
+  out of the stream (not tried there).
 
 
 Log
@@ -334,3 +405,6 @@ lead-1127, after 028-80, with the aborted record as a third place.
 (`2d4d178a`, `b9624ea1`, `01232710`), gated on the combined tree:
 BEFORE COMMIT OK (138 s), LEVEL 3 OK. The second review's residual (E)
 open, its fix in work by an agent of lead-1127 (branch `028-79-e`).
+
+2026-11-28. The second review's E fixed by an agent of lead-1127 on the
+branch `028-79-e`; the gates passed; (F) and (G) found (Review).
