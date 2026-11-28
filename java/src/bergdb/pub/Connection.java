@@ -193,9 +193,14 @@ public interface Connection extends ReadInterface {
      * The returned time is also guaranteed to be greater than or equal to the transaction 
      * time of the last completed transaction.</p>
      *
-     * <p>These promises are for this started database: after a restart, with a clock
-     * that has not moved (a test clock), the first transaction can have the time that
-     * currentTime() returned before the restart (bergdb 018-04, Q5).</p>
+     * <p>These promises are for this started database: a time that currentTime() returned
+     * holds for the session that returned it. After a restart, with a clock that stands
+     * still (a test clock) or was set back, a transaction can get a time at or before a time
+     * that currentTime() returned before the restart, and a read at that time then sees that
+     * transaction (bergdb 018-04, Q5; 028-74). A time that holds across restarts is the time
+     * of a transaction that was committed and is durable (Transaction.getTime(), after
+     * Transaction.sync()): every later transaction, also after a restart, gets a later
+     * time.</p>
      */
     public Time currentTime();
 

@@ -163,10 +163,11 @@ import bergdb.stream.ReadBelowFirstPosException;
  * Long.MAX_VALUE gives the latest state. That state holds every transaction with a time at or
  * before it and nothing of a later one, never a part of a transaction, and no transaction that
  * runs or comes later has a time at or before it: a read at a time that currentTime() or a
- * read's actual lookup time gave reads the same state whenever it runs, until reclaim cuts it
- * (getFirstAvailableLookupTime()). A GetData, a GetMany and a Trans.Builder are for one thread
- * at a time, so that each thread makes its own (newGetData(), newGetMany(), trans()); a GetData
- * may be used again for the thread's next get, a GetMany is for one call (GetMany).</p>
+ * read's actual lookup time gave reads the same state whenever it runs, within the started Db
+ * (currentTime(); bergdb 028-74), until reclaim cuts it (getFirstAvailableLookupTime()). A
+ * GetData, a GetMany and a Trans.Builder are for one thread at a time, so that each thread
+ * makes its own (newGetData(), newGetMany(), trans()); a GetData may be used again for the
+ * thread's next get, a GetMany is for one call (GetMany).</p>
  * 
  * <p><b>Optimistic transactions</b> (the STM; bergdb 020-24-09, U9-7). A transaction that
  * writes what it computed from its reads, such as a counter's increment, and must not lose
@@ -1191,6 +1192,14 @@ public class Db implements AutoCloseable {
      * every transaction that runs or comes later. So a read at it reads the same state
      * whenever it runs, and it may be a transaction's read time ("Threads" and "Optimistic
      * transactions" above).
+     * 
+     * This holds for the started Db that gave the time (bergdb 028-74). After a restart, with
+     * a clock that stands still or was set back, a transaction can get a time at or before a
+     * time that this method gave before the restart, and a read at that time then sees that
+     * transaction. A time that holds across restarts is the time of a transaction that was
+     * committed and is durable (Trans.tt after execute(), and sync(t.lastPos, level)): a
+     * start takes the last transaction's time from the stream, and every later transaction
+     * gets a later time.
      * 
      * @see bergdb.core.DbClock
      */

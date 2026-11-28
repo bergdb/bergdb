@@ -1,8 +1,8 @@
 028-74. Decide: a commit's time after a restart can be at or before a time a reader was given
 ==========================================================================================
 
-Status: decided (2026-11-28): (a); the text not written yet. Kind:
-Decide. Frans: decided.
+Status: decided (2026-11-28): (a); the Javadoc written, P2's draft
+not changed (it is not in the repository). Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: `DbClock.transactionBegin` gives a transaction the clock's time,
@@ -82,6 +82,33 @@ and the Pub API.
 First step: the sentence in `currentTime()`'s Javadoc and in P2's draft.
 
 
+Result
+------
+
+Written 2026-11-28 by an agent of lead-1127, from the code (`DbClock`,
+`Db.setLastTransTimeOfDbClock`); no change of behaviour.
+
+* `Connection.currentTime()` and `Database.currentTime()` (the Pub
+  API): the paragraph of 018-04's Q5 says that a time that
+  `currentTime()` returned holds for the session that returned it;
+  after a restart, with a clock that stands still or was set back, a
+  transaction can get a time at or before it, and a read at that time
+  then sees that transaction. A time that holds across restarts is the
+  time of a transaction that was committed and is durable
+  (`Transaction.getTime()`, after `Transaction.sync()`).
+* `Db.currentTime()` (the Core): the same, with `Trans.tt` after
+  `execute()` and `sync(t.lastPos, level)`, and that a start takes the
+  last transaction's time from the stream. The class Javadoc's
+  "Threads": a read at a time given reads the same state within the
+  started Db.
+* Why a transaction's time holds: a start sets the last transaction's
+  time from the last record it reads (`setLastTransTime`), and
+  `transactionBegin` gives every transaction a time above it; a
+  transaction that is durable is in the stream that the start reads.
+* Not done: P2's draft (031-06, `p2-draft.md`), which is not in the
+  repository.
+
+
 Log
 ---
 
@@ -90,3 +117,8 @@ diff (R3).
 
 2026-11-28. Frans decided (a) (07:27). The Javadoc and P2's draft not
 changed yet.
+
+2026-11-28. The Javadoc of `currentTime()` in `Connection`, `Database`
+and `Db`, and `Db`'s "Threads", by an agent of lead-1127 (branch
+`floor-74-r6`); BEFORE COMMIT OK on the branch's final tree. P2's
+draft left as it is.
