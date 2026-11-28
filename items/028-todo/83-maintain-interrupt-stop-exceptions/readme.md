@@ -300,4 +300,8 @@ UA-9, UA-10 and UA-2 fixed with tests that fail before; UA-8 explained
 and stated.
 
 2026-11-28. Rebased onto `main` (028-81, 028-82); the gates passed
-(above). To land.
+(above). Rebased again onto `main` at `9afba859` (031-06's O1, which
+changes Db.java elsewhere), without a conflict: before-commit.sh, BEFORE
+COMMIT OK (139 s); level3.sh, LEVEL 3 OK (InterruptStress "60 s,
+132464779 calls, 63217 of them with an interrupt, the flag kept by
+all"); apps.sh quick, APPS OK. To land.
