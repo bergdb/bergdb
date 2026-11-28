@@ -96,8 +96,9 @@ import bergdb.pub.util.BadFormatException;
  *   first files opens from its first file. Either can lack the record of the cut that
  *   deleted the missing files, which may be in a file made after the listing; a start then
  *   refuses the copy, as its first position is after that copy's cut, and writes nothing
- *   before it refuses but what recovery writes at a torn end (Db, start(); bergdb 028-66):
- *   take the copy again. A start that takes such a copy deletes the files before the gap.
+ *   (Db, start(); bergdb 028-66; since 2026-11-28, bergdb 028-70, not what recovery writes
+ *   at a torn end either, which it wrote before such a refusal until then): take the copy
+ *   again. A start that takes such a copy deletes the files before the gap.
  * - Not run on Windows, where a delete of a file that a copy program holds open can fail,
  *   which fails the stream.
  * 

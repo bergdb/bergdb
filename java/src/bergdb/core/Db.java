@@ -1227,7 +1227,10 @@ public class Db implements AutoCloseable {
      * on until the garbage collector finalized the Db, and its threads wrote into a database
      * started after it on the same files. A start refused by a check of what it reads has
      * appended nothing: recovery's completion of a torn end of the stream is written after
-     * the start's last check (2026-11-28, bergdb 028-70); until then it was written first.</p>
+     * the start's last check (2026-11-28, bergdb 028-70); until then it was written first.
+     * So only a start that fails after that check, as at created.txt or the creation's
+     * second record, can have appended, and that is written at the close
+     * (DbTesterFailure.testFailedStartAfterTheRecoveryWritesItAtClose).</p>
      * 
      * <p>A start on an empty stream creates the database, and the creation is durable only
      * at the first sync after it (bergdb 028-40): this start writes the creation's records

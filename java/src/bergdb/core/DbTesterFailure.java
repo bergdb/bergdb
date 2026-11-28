@@ -1658,6 +1658,64 @@ public class DbTesterFailure {
     }
     
     /**
+     * Bergdb 005-32 with 028-70 (its review's note 3, 2026-11-28): a start that fails after it
+     * has written the recovery's completion (NodeStream.writeRecovery()) closes its storage,
+     * and what it appended is written at that close. Here a stream whose last record a kill
+     * cut, and created.txt to be written in a directory that is not there: the start fails
+     * at created.txt, after the completion, with a StreamIoException; the stream holds the
+     * completion, byte for byte as a start that succeeds writes it, the stream is closed, no
+     * thread of its storage runs, and later calls are refused. Since 028-70 only a start
+     * that fails after writeRecovery() can have appended; testFailedStartClosesStorage is a
+     * start refused before it.
+     */
+    @Nano
+    public static void testFailedStartAfterTheRecoveryWritesItAtClose() throws IOException {
+        MemoryStream created = new MemoryStream();
+        Db first = Db.builder().testSetup(created).start();
+        first.execute(first.trans().put("/a", "a0").build());
+        Trans t = first.trans().put("/k", "v").build();
+        first.execute(t);
+        first.close();
+        MemoryStream s = created.copy();
+        s.truncate(t.lastPos - 10);         // t cut by a kill
+        final long cut = s.getLength();
+        MemoryStream ok = s.copy();         // as a start that succeeds completes it
+        Db.builder().testSetup(ok).start().close();
+        final byte[] completed = bytes(ok.copy());
+        Assert.assertTrue("a completion", completed.length > cut);
+
+        File missing = new File(System.getProperty("java.io.tmpdir"),
+                "bergdb-no-such-dir-" + System.nanoTime());
+        Assert.assertFalse(missing.exists());
+        Set<Thread> before = storageThreads();
+        Db db = Db.builder().testSetup(s).createdTxt(missing).build();
+        StreamIoException e = null;
+        try {
+            db.start();
+        } catch (StreamIoException ex) {
+            e = ex;
+        }
+        Assert.assertTrue("the start fails at created.txt", e != null);
+        Assert.assertFalse("no directory made", missing.exists());
+        assertNoNewStorageThreads(before);
+        assertClosed(s);
+        assertStopped(db);
+        Assert.assertArrayEquals("the completion written at the close", completed,
+                bytes(s.copy()));
+        Db db2 = Db.builder().testSetup(s.copy()).start();
+        Assert.assertEquals("a0", DbUtil.getString(db2, "/a"));
+        Assert.assertTrue("/k not committed", DbUtil.getString(db2, "/k") == null);
+        db2.close();
+    }
+
+    /** The bytes of 's', from 0. */
+    private static byte[] bytes(MemoryStream s) throws IOException {
+        byte[] b = new byte[(int) s.getLength()];
+        s.read(0, b, 0, b.length);
+        return b;
+    }
+
+    /**
      * bergdb 005-32: an Error in a flush (as an assertion of FileStream) ended the storage
      * thread without telling the storage, and a sync waited for ever. Now the flush fails the
      * stream, and the sync fails the database (005-30); close() returns.

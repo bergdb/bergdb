@@ -188,3 +188,12 @@ Three notes of severity S4, fixed after the landing: a sentence of
 before a refusal, and no test of what a start that fails after the
 recovery's write appends at its close (005-32). Landed on `main`
 (`2b134c37`, `a5469731`).
+
+2026-11-28. The review's three notes, by an agent of lead-1127 on the
+branch `start-fixes` (with 028-80): the sentence of 027-14 and the
+comment in `FileStream` say that a refused start writes nothing; a test,
+`DbTesterFailure.testFailedStartAfterTheRecoveryWritesItAtClose`, of a
+start that fails after `NodeStream.writeRecovery()` (at created.txt, in
+a directory that is not there): its completion is written at the close,
+byte for byte as a start that succeeds writes it (005-32); `Db.start()`'s
+Javadoc says that only such a start can have appended.

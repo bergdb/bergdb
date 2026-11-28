@@ -165,8 +165,10 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   refused before it writes (another node size, an unsupported version,
   bytes that are not a BergDB stream's, as an earlier release's
   encryption: "The start has written nothing") leaves the files as they
-  were; a recovery may append before a later check refuses a start,
-  and then the cut is made. A longer run is left, and so is a stream
+  were; since 028-70 (2026-11-28) so does every refused start, as the
+  recovery's writes, the first append, come after the start's last
+  check (027-11, 1.3; until then a recovery could append, and so cut
+  the zeros, before a later check refused the start). A longer run is left, and so is a stream
   whose only file is all zeros (a repair never empties a stream); a
   start refuses the latter, up to 200,000 bytes, as a creation that did
   not complete (`DatabaseNotCreatedException`; 028-80, 2026-11-28). The same rule on every operating system and file system,
@@ -230,3 +232,7 @@ the files, the disk and a new database's first 10 MB.
 zero tail's bound holds for every buffer; the only file all zeros is
 refused as a creation that did not complete. By an agent of lead-1127,
 on the branch `start-fixes`.
+
+2026-11-28. 028-70's follow-up (its review's note 1): a refused start
+writes nothing since 028-70, so it leaves the tail of zeros in the file.
+By an agent of lead-1127, on the branch `start-fixes`.
