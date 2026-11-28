@@ -369,6 +369,50 @@ about a day; and B with the next change to the Lean's tree bound. None
 of C to G.
 
 
+A, done
+-------
+
+Done on 2026-11-28 (Frans: A, by default at 10:00), as the Options
+state it:
+
+* **024-17** (sections 5.2, 5.2a, 5.3, 8 and 9, and a note under its
+  status): the count with q is 14, 10, 8 and 8 nodes a level at node
+  sizes 8, 14, 30 and 62; at 14 it was 9 until 028-21. At 14 that makes
+  5.2a's 1,210 operations of 111-byte keys 1,089, the L3 table's +55 %
+  (56 KiB) +50 %, and 5.3's dirty set 3,483,800 nodes, 1.00 GB, a record
+  of 1.04 GB (48.3 %), from 3,136,120, 0.90 GB and 0.94 GB (43.6 %).
+  5.2a's Java counts of one delete were format 7's (bound112.py's
+  model): 2,615 nodes at node size 30 and H = 22, and 766, 1,215, 1,478
+  and 996 operations at the four node sizes. They are now today's, from
+  this entry's probe: 2,983, and 760, 1,205, 1,296 and 866; the 13,685 of
+  5.2a is 13,789 (14,658 at 17 segments). 5.2a states the action's 7/8 as
+  in this entry's Finding. 6.2 (a): an index entry is at most 496 bytes,
+  71 segments (one of the small slips above).
+* **031-06**, section 3: at node size 14, 10 and 38; the action's dirty
+  set 1.00 GB, the step's 249 MB, a record 1.30 GB (were 0.90, 225 MB and
+  1.17 GB, O1's figures with 9), a commit's step of 128 KiB 1.90 GB (was
+  1.71). The figures at 8, 30 and 62 are O1's, unchanged. "Assumed
+  there" states that the count with q holds on the worst path, and the
+  mixed record by Java's count (76.5 % of 15/16 at node size 8, 73.7 %
+  of the record limit). Section 9: settled, by Java's count, 76.5 % of
+  the 7/8 at worst. `landing.md`, step 2: 1 KiB is 147 segments.
+* **The test**, `DagTester.testDirtyNodeBoundOfTheWorstPath` (a unit
+  test, about 140 ms): the probe's worst tree, made in memory at node
+  sizes 8, 14, 30 and 62 (H = 61, 38, 22, 16), for one delete of 6, 7,
+  105 and 1,022 bytes, a put and a value transformation of 105, and 8
+  deletes, puts and value transformations of 119 and 112 bytes. Java's
+  count must be at most c (H + 2) S + 14 n with c = 14, 10, 8 and 8, and
+  the delete of 147 segments above c - 1 a level, so that the tree stays
+  the worst one. With c = 9 at node size 14 it fails: 5,797 nodes for a
+  delete of 16 segments, above 5,774. Its counts are the probe's (754,
+  1,623, 13,789 and 127,628 at node size 8).
+* **The other small slips** were fixed by O1 (`DbTesterLimits`, and
+  `ReclaimRoomTester`'s long key, which L9 now refuses).
+* **B is open.** The Lean's `nodesALevel` restated from Java's count,
+  with a theorem that an action fits its 7/8, waits for the next change
+  of `SIS/Tree/Bound.lean`.
+
+
 Log
 ---
 
@@ -383,3 +427,8 @@ any node size (76.5 % at worst, node size 8); 024-17's 14 bounds Java's
 count at node size 8, the Lean's 19 is a looser bound of it; 024-17's 9
 at node size 14 is short since 028-21. Frans: decision (Options). The
 entry became a directory, with the probes.
+
+2026-11-28. A done by an agent of lead-1127 (12:00 to 13:00, in a
+clone): 024-17's 10 a level at node size 14, the figures of 024-17 and
+031-06, sections 3 and 9, and `DagTester.testDirtyNodeBoundOfTheWorstPath`
+(A, done). B open, with the next change of `Bound.lean`.

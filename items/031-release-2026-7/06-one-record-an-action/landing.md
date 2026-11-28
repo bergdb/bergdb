@@ -572,7 +572,7 @@ at `080c1f2f`:
     L3 (56 KiB) in a transaction; the record's room counts them from the
     actual keys. What the Core accepts does not change.
   * (b) `putLongKey` and `deleteLongKey` refuse a key over a bound of
-    BergDB's own keys, for example 1 KiB (146 segments), well above the
+    BergDB's own keys, for example 1 KiB (147 segments), well above the
     Pub layer's largest (about 400 bytes, L6), with an
     `IllegalArgumentException` as L2 does: a new public limit in 024-17.
     The item's arithmetic for the step's last KV (section 3: 60 segments

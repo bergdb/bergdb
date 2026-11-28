@@ -1054,11 +1054,12 @@ on, as today's two refusals do.
   object's file part with its "-" (within the ikey's 111): today up to
   4,482 bytes. **So L2 is the user's limit, not every Core key's**: the
   Core takes BergDB's own keys longer, and L3 bounds what they add. With
-  L6 at 111 (17:45) an entry is at most 11 + 255 + 1 + 8 + 111 + 111 =
-  497 bytes, 72 segments (at 256: 642 bytes, 92 segments), and an
-  object with k indexes adds at most 2k x 497 bytes to L3. Objects of
-  one transaction, with entries all at the largest: 51 with one index
-  (57,344 / (111 + 2 x 497)), 27 with two; with short entries L1 binds
+  L6 at 111 (17:45) an entry is at most 11 + 255 + 1 + 8 + 111 + 110 =
+  496 bytes, 71 segments (the object's file part is at most 110, as the
+  ikey begins with "/"; 497 and 72 until 2026-11-28, 028-72; at 256: 642
+  bytes, 92 segments), and an object with k indexes adds at most 2k x
+  496 bytes to L3. Objects of one transaction, with entries all at the
+  largest: 51 with one index (57,344 / (111 + 2 x 496)), 27 with two; with short entries L1 binds
   first, 500 / (1 + 2k) objects (166 with one index). (The fourth
   version, at L1 1,000 and L3 112 KiB: 103, 54 and 333.) The index
   name, up to 255 bytes, is the largest part of an entry: a limit of 64

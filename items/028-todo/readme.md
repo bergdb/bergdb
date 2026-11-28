@@ -103,7 +103,7 @@ Open
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 and the nodes' place with 028-77 |
-| [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
+| [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count 76.5 % at worst; A: the text, 10 a level at 14, a test | A | A done; B open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (built and gated on a branch, to land) |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc written; P2's draft, not in the repository) |
 | [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decided | open (to design and build) |
@@ -749,3 +749,11 @@ refused start writes nothing. Moved to Closed.
 2026-11-28. 028-85 registered by lead-1127: a test of a directory
 deleted after `stop()` failed once in `level3.sh` under load, 021-24's
 window left open.
+
+2026-11-28. 028-72, A done (Frans: A, by default at 10:00): 024-17's
+count with q is 10 nodes a level at node size 14 since 028-21, not 9;
+031-06, sections 3 and 9, and 024-17 state that by Java's count the
+worst transaction within L1 to L5 takes at most 76.5 % of the action's
+7/8; `DagTester.testDirtyNodeBoundOfTheWorstPath` checks Java's count on
+the worst path against 14, 10, 8 and 8 a level. B (the Lean's count
+restated) waits for the next change of `Bound.lean`.

@@ -273,21 +273,23 @@ code and the decision:
   `MAX_STEP_SIZE`; until landing step 3 every step's; 024-17, sections
   5.2a, 5.3 and 5.5, the same arithmetic). A transaction within L1 to L5
   has own bytes of at most 33.6 MB and a dirty set, by the count with q, of at most
-  1.47 GB at node size 8 (0.90, 0.91 and 1.33 GB at 14, 30 and 62). The
+  1.47 GB at node size 8 (1.00, 0.91 and 1.33 GB at 14, 30 and 62). The
   step's KVs are a transaction of at most about 459 operations (024-17,
   5.5); its segments are at most 16,000 / 8 by the scan's count, and
   those of one more KV, at most 147 (L9, below), so 2,147. By the
   count with q, c (H + 2) nodes a segment and 14 an operation (c = 14,
-  H = 61 at node size 8; 9 and 38 at 14; 8 and 21 at 30; 8 and 16 at
-  62), its dirty set is at most 1.90 M nodes, 365 MB at node size 8 (225,
+  H = 61 at node size 8; 10 and 38 at 14; 8 and 21 at 30; 8 and 16 at
+  62), its dirty set is at most 1.90 M nodes, 365 MB at node size 8 (249,
   218 and 333 MB at 14, 30 and 62). The count is a sum over operations,
   so the record's transaction, the action's and the step's together, has
   a dirty set of at most 1.84 GB at node size 8. The step's own bytes are
   at most one value node of 8 MiB at an L3 key, 16 kB, and the row and
   the table. A record that carries such a step then holds at most its own
   bytes, about 42.3 MB, and one such dirty set taken whole: 1.88 GB,
-  87.6 % of 2^31 - 9 at node size 8 (1.17, 1.17 and 1.70 GB at 14, 30
-  and 62). Until 2026-11-28 the last KV was assumed at 60 segments:
+  87.6 % of 2^31 - 9 at node size 8 (1.30, 1.17 and 1.70 GB at 14, 30
+  and 62). At node size 14 the count with q is 10 a level since 028-21,
+  not 9 (028-72, 2026-11-28; with 9: 0.90 GB, 225 MB and 1.17 GB).
+  Until 2026-11-28 the last KV was assumed at 60 segments:
   2,060, 1.82 M nodes, 1.87 GB, 86.9 % at node size 8 (1.16, 1.16 and
   1.69 GB). So at the release's limits `recordCap()` is
   `MAX_RECORD_SIZE`, as the record limit was, and the step's room is
@@ -295,7 +297,7 @@ code and the decision:
 * **A commit's step, up to 128 KiB since landing step 3: by the checks,
   not by this arithmetic** (2026-11-27; review 3, D1). The same count
   gives a step of 128 KiB 131,072 / 8 + 60 = 16,444 segments and a dirty
-  set of 14.5 M nodes, 2.79 GB at node size 8 (1.71, 1.66 and 2.52 GB at
+  set of 14.5 M nodes, 2.79 GB at node size 8 (1.90, 1.66 and 2.52 GB at
   14, 30 and 62; with the last KV at L9's 147 segments, 16,531, half a
   per cent more): over the limit by itself at node sizes 8 and 62, so
   the derivation above does not bound a record that carries a commit's
@@ -335,8 +337,18 @@ code and the decision:
   meta version 156 of 028-67, to 2026-11-28; older ones are refused at
   the start) may hold a longer own key, which only tests wrote; for such a key
   `Db.recordDirtyFits` and `checkTakeable` bound the record, as in (a).
-  By the Lean's count of nodes a level since 028-21 the figures are
-  higher (028-72); the row and the table together are at most 128 KiB
+  The count with q holds on the worst path: Java's count
+  (`Dag.dirtyNodeBound`, which `Db` compares) of a middle segment there is 869 nodes at node
+  size 8, 365, 186 and 137 at 14, 30 and 62, within 14, 10, 8 and 8
+  (H + 2), checked by `DagTester.testDirtyNodeBoundOfTheWorstPath`
+  (028-72). By Java's count on that path the mixed record (the action's
+  500 deletes at L3 and a step of 401 puts of 2,147 segments, walked
+  together as `recordDirtyFits` walks them) takes 76.5 % of 15/16 at node
+  size 8 (49.8, 49.0 and 70.0 % at 14, 30 and 62), and 73.7 % of the
+  record limit with its own bytes (028-72's `ActionRoomProbe`). The
+  Lean's count of nodes a level (`Params.nodesALevel`, 19 at node size
+  8 since 028-21) is a looser bound of the same count, by which the
+  figures are higher; the row and the table together are at most 128 KiB
   (`STEP_FIXED_ROOM` / 2; 240 kB until landing step 3), which the code
   does not bound: the table's rows are removed at cuts, and the serializer's check fails the database if a
   record passes its cap (P7).
@@ -907,7 +919,19 @@ record limit, 15/16 before; at the release's limits that is 1.879 GB,
 and a transaction within L1 to L5 makes at most 1.47 GB dirty by
 024-17's count, so none is refused by it (`landing.md`, step 2). By the
 Lean's count since 028-21 (19 nodes a level at node size 8) the worst is
-about 2.00 GB, 106 % of 7/8: which count holds is 028-72.
+about 2.00 GB, 106 % of 7/8. Settled by 028-72 (2026-11-28): `Db`
+compares Java's count, `Dag.dirtyNodeBound`, not either formula, and by
+it the worst transaction within L1 to L5 (500 deletes of keys whose
+bytes sum to L3, 8,692 segments, on paths of full nodes in segment
+trees 62 key nodes high) counts 7,488,343 nodes at node size 8,
+1.44 GB, 76.5 % of the 7/8 (48.2, 46.8 and 66.9 % at 14, 30 and 62).
+024-17's count with q bounds Java's count at every node size, with 10
+nodes a level at node size 14 since 028-21 (9 before): 78.4 % at node
+size 8 (53.4, 48.5 and 70.7 %), checked by
+`DagTester.testDirtyNodeBoundOfTheWorstPath`. The Lean's 19 a level is
+a looser bound of the same count, so `releaseFits8` shows only that the
+worst action fits 15/16; its restatement from Java's count (028-72, B)
+waits for the next change of `Bound.lean`.
 
 **The review of the landed diff is done** (2026-11-27, 18:20 to 19:15,
 an agent on Fable; `review-main.md`, its probes in `review-main-probes/`,
@@ -1103,3 +1127,9 @@ L9 for a key over 1,024 bytes; kept as the review's record. Gates:
 `main` at `ead07411`; `LEVEL 2 OK` and `LEVEL 3 OK` on it rebased onto
 `main` at `8fe32468` (main's changes since then are of the start path
 and `FileStream`, not of the limits).
+
+2026-11-28. 028-72, A: section 3's figures at node size 14 by 10 nodes
+a level (since 028-21), not 9: 1.00 GB, 249 MB and a record of 1.30 GB
+(1.90 GB for a commit's step of 128 KiB); section 3's mixed record and
+section 9's action by Java's count, which `Db` compares: 76.5 % of
+15/16 and of the 7/8 at node size 8, at worst.
