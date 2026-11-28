@@ -1,0 +1,392 @@
+Runs of the second review of the start and recovery path, 2026-11-28
+=====================================================================
+
+The commands of 2026-11-28-start-2.md, section 3, and the last lines of their output; each
+run from java/ of a clone at 2b3755ab after build.sh, as
+  java -ea -cp CLASSES:build/bergdb.jar COMMAND
+with the probes of 2026-11-28-start-2-probes/ compiled to CLASSES (StartChain and the single
+probes of 2026-11-28-start-probes/ too). OLD is build/bergdb.jar of a clone at ee8a8165, NEW
+the one of 2b3755ab, ONCE the classes of StartOnce compiled against OLD. On F53, beside other
+sessions' runs, at most two JVMs at a time. Kind: functional.
+
+In the lines of StartChain and StartChain2: "kill", "kill-in-recovery", "power" as in the first
+review; "kill-in-start": the image at a call of the stream inside a start; "stale": a tail of
+other bytes, "stale-zeros-first" those of them that begin with zeros, "stale-refused-with-P" and
+"stale-started" as in the first review; "txt-other-refused", "txt-removed-written-again",
+"txt-cut-started", "txt-cut-left-as-it-was": created.txt of another ID, removed, cut, and a cut
+one that the start left as it was (counted by the two last builds of the probe only); "known
+(a)": 028-76's decided case. The lines "diff, N: KIND" count the pairs of outcomes of the two
+builds, "old" ee8a8165 and "new" 2b3755ab, a kind cut to its first characters. The probe was
+extended between the runs (the later refusals counted by the file's first block, a cut
+created.txt compared, the largest stream file printed); its rules of faults and checks were the
+same in all of them.
+
+
+1. The first review's runs on main (StartChain, unchanged)
+==========================================================
+
+== bergdb.core.StartChain OUT 70000 70399 20 2 30 1 0
+STARTCHAIN DONE seeds 70000..70399: starts 8000, faults {kill=5455, kill-in-recovery=1111, power=2679}, known (a) 125, failures 0
+
+== bergdb.core.StartChain OUT 1 100 70 250 25 5 0
+STARTCHAIN DONE seeds 1..100: starts 7000, faults {kill=4942, kill-in-recovery=820, power=806}, known (a) 28, failures 0
+
+== -Dforce=off bergdb.core.StartChain OUT 80000 80299 20 2 30 1 0
+STARTCHAIN DONE seeds 80000..80299: starts 6000, faults {kill=4122, kill-in-recovery=836, power=1962}, known (a) 84, failures 0
+
+== bergdb.core.StartChain OUT 60000 60399 20 2 30 1 25
+STARTCHAIN DONE seeds 60000..60399: starts 8000, faults {kill=5437, kill-in-recovery=1010, power=2694, stale=785, stale-refused-with-P=481, stale-started=277}, known (a) 94, failures 0
+a later start refused after other bytes were taken, 1: a file before a gap
+
+
+2. The extended chains (StartChain2)
+====================================
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on bergdb.core.StartChain2 OUT 90000 90399 20 2 30 1 25
+(stopped after 87 chains, for the single probes)
+STARTCHAIN DONE seeds 90000..90399: starts 1740, faults {kill=1187, kill-in-recovery=122, kill-in-start=154, power=592, stale=176, stale-refused-with-P=96, stale-started=70, stale-zeros-first=73, txt-cut-started=71, txt-other-refused=56, txt-removed-written-again=75}, known (a) 47, failures 0
+a later start refused after other bytes were taken, 1: a file before a gap
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 90100 90499 20 2 30 1 25
+STARTCHAIN DONE seeds 90100..90499: starts 8000, faults {kill=5474, kill-in-recovery=495, kill-in-start=757, power=2714, stale=797, stale-refused-with-P=461, stale-started=311, stale-zeros-first=256, txt-cut-started=283, txt-other-refused=314, txt-removed-written-again=307}, known (a) 197, failures 0
+diff, 2: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a valid block of
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds the first N bytes of a meta block and zeros, and bytes tha
+diff, 2: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d
+diff, 204: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 106: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 120: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 23: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 90: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 1: both refused, the same P: old refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end  // new refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end
+diff, 95: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 8290: both started, the same files
+diff, 33: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 7: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+a later start refused after other bytes were taken, 2: a file before a gap
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 91000 91299 20 2 60 1 0
+STARTCHAIN DONE seeds 91000..91299: starts 6000, faults {kill=3375, kill-in-recovery=653, kill-in-start=960, power=1757, txt-cut-started=243, txt-other-refused=239, txt-removed-written-again=217}, known (a) 130, failures 0
+diff, 134: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 6235: both started, the same files
+
+== -Dforce=off -Dtxt=on -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 92000 92199 20 2 40 1 25
+STARTCHAIN DONE seeds 92000..92199: starts 4000, faults {kill=2498, kill-in-recovery=322, kill-in-start=491, power=1192, stale=376, stale-refused-with-P=202, stale-started=155, stale-zeros-first=124, txt-cut-started=132, txt-other-refused=166, txt-removed-written-again=148}, known (a) 103, failures 0
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it does not begin as a
+diff, 106: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 50: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 53: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 9: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 35: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 44: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 4151: both started, the same files
+diff, 18: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 4: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 93001 93060 70 250 25 5 25
+STARTCHAIN DONE seeds 93001..93060: starts 4200, faults {kill=2945, kill-in-recovery=245, kill-in-start=341, power=451, stale=443, stale-refused-with-P=289, stale-started=148, stale-zeros-first=143, txt-cut-started=176, txt-other-refused=172, txt-removed-written-again=167}, known (a) 17, failures 0
+diff, 2: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it does not begin as a
+diff, 3: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a block of versi
+diff, 5: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a valid block of
+diff, 3: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds the first N bytes of a meta block and zeros, and bytes tha
+diff, 19: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 76: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 67: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 10: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 71: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 39: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 1: both refused, the same P: old refused BadTailException: The record at N, the last of the stream, is not one of this database's records: spos: N, storedSum: N, computedSum: N, nodeT // new refused BadTailException: The record at N, the last of the stream, is not one of this database's records: spos: N, storedSum: N, computedSum: N, nodeT
+diff, 4353: both started, the same files
+diff, 3: both started, the same stream in other files
+diff, 21: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 5: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+
+== -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 94000 94399 20 2 20 1 50
+STARTCHAIN DONE seeds 94000..94399: starts 8000, faults {kill=5917, kill-in-recovery=349, kill-in-start=503, power=2843, stale=1697, stale-last-byte-10=1, stale-refused-with-P=988, stale-started=621, stale-zeros-first=508}, known (a) 185, failures 0
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a valid block of
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds the first N bytes of a meta block and zeros, and bytes tha
+diff, 4: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d
+diff, 185: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 224: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 225: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 50: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 210: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 166: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 8000: both started, the same files
+diff, 92: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 19: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+a later start refused after other bytes were taken, 4: a file before a gap
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 95000 95399 20 2 30 1 35
+STARTCHAIN DONE seeds 95000..95399: starts 8000, faults {kill=5486, kill-in-recovery=511, kill-in-start=723, power=2668, stale=1088, stale-refused-with-P=617, stale-started=419, stale-zeros-first=348, txt-cut-started=309, txt-other-refused=330, txt-removed-written-again=291}, known (a) 198, failures 0
+diff, 3: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a valid block of
+diff, 1: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d
+diff, 211: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 147: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 152: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 31: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 129: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 1: both refused, the same P: old refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end  // new refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end
+diff, 109: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 1: both refused, the same P: old refused BadTailException: The record at N, whose size field the end of the stream cuts, begins with a byte that does not begin the size of one of this // new refused BadTailException: The record at N, whose size field the end of the stream cuts, begins with a byte that does not begin the size of one of this
+diff, 8286: both started, the same files
+diff, 58: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 17: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+a later start refused after other bytes were taken, 1: a file before a gap: its first block zeros (028-79, note C)
+
+== -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 96000 96399 20 2 30 1 0
+STARTCHAIN DONE seeds 96000..96399: starts 8000, faults {kill=5442, kill-in-recovery=546, kill-in-start=763, power=2638}, known (a) 193, failures 0
+diff, 193: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 8000: both started, the same files
+
+== -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 97001 97060 70 250 25 5 0
+STARTCHAIN DONE seeds 97001..97060: starts 4200, faults {kill=2992, kill-in-recovery=262, kill-in-start=341, power=470}, known (a) 18, failures 0
+diff, 18: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 4200: both started, the same files
+
+== -Dtxt=on -Dstartkill=on bergdb.core.StartChain2 OUT 98000 98299 20 2 30 1 0
+STARTCHAIN DONE seeds 98000..98299: starts 6000, faults {kill=4056, kill-in-recovery=428, kill-in-start=575, power=2012, txt-cut-left-as-it-was=224, txt-cut-started=224, txt-other-refused=232, txt-removed-written-again=200}, known (a) 97, failures 0
+
+== -Dstartkill=on -Dshapes=on -Ddiff=OLD:NEW:ONCE bergdb.core.StartChain2 OUT 94400 94799 20 2 20 1 50
+STARTCHAIN DONE seeds 94400..94799: starts 8000, faults {kill=5873, kill-in-recovery=345, kill-in-start=496, power=2866, stale=1760, stale-refused-with-P=1012, stale-started=654, stale-zeros-first=559}, known (a) 193, failures 0
+the largest stream file of an image before a step: 1000000 bytes
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: The meta block at N, after the record at N, which ends there, holds bytes that are not this database's: it is not the block
+diff, 2: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is a valid block of
+diff, 1: both refused, another P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds the first N bytes of a meta block and zeros, and bytes tha
+diff, 1: both refused, another P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The meta block at N, in the aborted record at N, of size N, holds bytes that are not this database's: it is not the block of
+diff, 4: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, d
+diff, 193: both refused, no P: old refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i // new refused StreamIoException: The file N.bergdb, before a gap in the stream's files, is not known to be the database's own: its first meta block, at N, i
+diff, 229: both refused, the same P: old refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e // new refused BadTailException: Bad lastByte, -N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's e
+diff, 241: both refused, the same P: old refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en // new refused BadTailException: Bad lastByte, N, of the record at N, of size N. The stream's records end at stream position N: from there to the stream's en
+diff, 63: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t // new refused BadTailException: Bad transaction size in db stream, -N, spos N. Stream length: N. The stream's records end at stream position N: from there t
+diff, 191: both refused, the same P: old refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to // new refused BadTailException: Bad transaction size in db stream, N, spos N. Stream length: N. The stream's records end at stream position N: from there to
+diff, 1: both refused, the same P: old refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end  // new refused BadTailException: The header of the record at N is not one of this database's records at its place (bergdb N-N, CN). The stream's records end
+diff, 172: both refused, the same P: old refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its // new refused BadTailException: The record at N, of size N, which the end of the stream cuts, has a header that is not one of this database's records at its
+diff, 8000: both started, the same files
+diff, 96: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds bytes that are not this database
+diff, 14: old started, new refused: refused BadTailException: The meta block at N, in the record at N, of size N, which the end of the stream cuts, holds the first N bytes of a meta bloc
+a later start refused after other bytes were taken, 4: a file before a gap: its first block zeros (028-79, note C)
+
+== -Dtxt=on -Dstartkill=on -Dshapes=on bergdb.core.StartChain2 OUT 97101 97112 70 250 25 5 25
+STARTCHAIN DONE seeds 97101..97112: starts 840, faults {kill=601, kill-in-recovery=46, kill-in-start=56, power=99, stale=88, stale-refused-with-P=54, stale-started=31, stale-zeros-first=27, txt-cut-left-as-it-was=31, txt-cut-started=31, txt-other-refused=41, txt-removed-written-again=36}, known (a) 5, failures 0
+the largest stream file of an image before a step: 5000000 bytes
+
+
+3. The chains on a MemoryStream (MemChain)
+==========================================
+
+== bergdb.core.MemChain 1 300 20 0 0
+MEMCHAIN DONE seeds 1..300: starts 6000, {kill=4604, kill-in-recovery=462}, later 0, failures 0
+
+== bergdb.core.MemChain 1000 1299 20 0 30
+MEMCHAIN DONE seeds 1000..1299: starts 6000, {kill=4507, kill-in-recovery=381, refused-with-P=456, taken=891, zeros=1416}, later 0, failures 0
+
+== bergdb.core.MemChain 2000 2299 20 25 15
+MEMCHAIN DONE seeds 2000..2299: starts 6000, {kill=4652, kill-in-recovery=288, last-byte-10=2, refused-with-P=1176, stale=1243, taken=696, zeros=722}, later 0, failures 0
+
+== -Dshapes=on bergdb.core.MemChain 3000 3499 20 30 30
+MEMCHAIN DONE seeds 3000..3499: starts 10000, {kill=7624, kill-in-recovery=451, refused-with-P=2616, stale=2361, taken=1932, zeros=2443}, later 0, failures 0
+
+== -Dshapes=on bergdb.core.MemChain 3000 3499 20 30 30
+(the negative control: with ee8a8165's build/bergdb.jar in the place of main's)
+FAIL seed 3023, step 11: start refused: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: 8087f300 |
+FAIL seed 3079, step 12: start refused: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: 47619706 |
+FAIL seed 3123, step 18: start refused: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: eaaefdc4 |
+LATER seed 3003, step 2: refused after zeros or other bytes were taken: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: 62657200 |
+LATER seed 3048, step 7: refused after zeros or other bytes were taken: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: 62650000 |
+LATER seed 3052, step 3: refused after zeros or other bytes were taken: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this release cannot read it: it has no encryption (bergdb 020-28). The start has written nothing. | BadMagicBytes: Expected magic bytes: 62657267, got: 62000000 |
+(9 FAIL lines and 19 LATER lines in all)
+MEMCHAIN DONE seeds 3000..3499: starts 9699, {kill=7426, kill-in-recovery=437, refused-with-P=2360, stale=2274, taken=2052, zeros=2371}, later 19, failures 9
+
+
+4. The single probes
+====================
+
+== bergdb.core.RefusedStartProbe OUT 1
+  the stream: files from 1600000, the first position 2800000, reclaim's cut 2867944; 6 files that the cuts took off are kept: [00000000000016.bergdb, 00000000000018.bergdb, 00000000000020.bergdb, 00000000000022.bergdb, 00000000000024.bergdb, 00000000000026.bergdb]
+  == no gap: the stream cut at 3554904, 40 bytes into the record at 3554864, and 4840 zeros after it; the last committed record at 3553264
+    the last committed record of format 10: the stream's calls []; the files as before; refused, VersioningStreamException: Cannot parse stored transaction of format version 10; this version of BergDB reads format 9 only. A larger number is a database written by a newer version of BergDB. |
+    its startup pos after itself: the stream's calls []; the files as before; refused, StreamFormatException: The record at 3553264 has startupPos 3553272, after the record. |
+    its time the time of the record before it: the stream's calls []; the files as before; refused, StreamFormatException: non-increasing tt, tt:1212980000, tpos:3553264, lastPos:3554863, startupPos:3545736, topPos:3547984, nodeCount:1 |
+    the last valid meta block, at 3400000, with the time -1: the stream's calls []; the files as before; refused, StreamFormatException: Meta block, bad time, -1. |
+    a byte changed in the record at 3551056, before the last committed one: the stream's calls []; the files as before; refused, StreamChecksumException: spos: 3551088, storedSum: 2494891279, computedSum: 1315127504, nodeType: 30 |
+    the files up to the one that holds reclaim's cut removed, [00000000000016.bergdb, 00000000000018.bergdb, 00000000000020.bergdb, 00000000000022.bergdb, 00000000000024.bergdb, 00000000000026.bergdb, 00000000000028.bergdb]: the stream's calls []; the files as before; refused, StreamIoException: The start needs bytes of the stream before its first position, 3000000: the stream lacks bytes of the database. The start has deleted nothing (bergdb 028-66). The storage: Cannot read at spos 2999999, below the first position, 3000000. The stream's first file in D is 00000000000030.bergdb, which begins there. The start has written nothing either (bergdb 028-70). To start the database, put its missing stream files back from a backup, or restore its files all together, the stream files and created.txt; a copy of a running database's files that missed some is taken again (bergdb 028-82). | ReadBelowFirstPosException: The start needs bytes of the stream before its first position, 3000000: the stream lacks bytes of the database. The start has deleted nothing (bergdb 028-66). The storage: Cannot read
+    every stream file but the last removed: the stream's calls []; the files as before; refused, StreamFormatException: The meta block at 3400000 names the last transaction at 3395304, before the stream's first position, 3400000: the stream lacks bytes that the database needs, from 3395304 on. The start has written and deleted nothing (bergdb 028-66). The storage: Cannot read at spos 3399999, below the first position, 3400000. The stream's first file in D is 00000000000034.bergdb, which begins there. |
+    created.txt of another database ID: the stream's calls []; the files as before; refused, StreamIoException: The stream's first meta block, at 1600000, in the stream file 00000000000016.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 1eb5756a3657abe87be438c105e67245: the stream files and created.txt are of two databases, and either may be another database's, as when another database's first stream file is put in place of the database's own, or the stream files of one database beside the created.txt of another (bergdb 028-81). The start, which checks this before it reads the rest of the stream, has written and deleted nothing. To start the database, restore its own files from a backup, the stream files (*.bergdb) and created.txt all together, and keep the files that are there now: they may be another database's. | BadDirStateException: The stream's first meta block, at 1600000, in the stream file 00000000000016.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 1eb5756a3
+    created.txt of another database ID, and the last byte of the last committed record 7: the stream's calls []; the files as before; refused, StreamIoException: The stream's first meta block, at 1600000, in the stream file 00000000000016.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 1eb5756a3657abe87be438c105e67245: the stream files and created.txt are of two databases, and either may be another database's, as when another database's first stream file is put in place of the database's own, or the stream files of one database beside the created.txt of another (bergdb 028-81). The start, which checks this before it reads the rest of the stream, has written and deleted nothing. To start the database, restore its own files from a backup, the stream files (*.bergdb) and created.txt all together, and keep the files that are there now: they may be another database's. | BadDirStateException: The stream's first meta block, at 1600000, in the stream file 00000000000016.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, an
+    the last byte of the last committed record 7: the stream's calls []; the files as before; refused, BadTailException: Bad lastByte, 7, of the record at 3553264, of size 1600. The stream's records end at stream position 3553264: from there to the stream's end, 3554902, it holds bytes that are not its records. A kill of the process during an append can leave such bytes in the last stream file, within its length: zeros, or the bytes of a file deleted before, such as an older stream file or another database's, as on macOS (APFS; bergdb 028-67, 035-02); so can a storage that loses or damages bytes. The start has written nothing. To start the database, keep a copy of its files, then cut the stream at 3553264: cut the stream file that holds it to 3553264 less the file's first position, which is the number in its name times 100,000, and remove the later stream files, if any; the stream's bytes from there on are lost. |
+    the control: started, every key as the model; the stream 3554902 at the open, 3557856 after the start; created.txt names the ID; the stream's calls until start() returned: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb]; all its calls: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, delete 00000000000018.bergdb, write 2954 bytes to 00000000000034.bergdb at 154902, delete 00000000000020.bergdb, delete 00000000000022.bergdb, delete 00000000000024.bergdb, delete 00000000000026.bergdb]
+    the control, created.txt removed: started, every key as the model; the stream 3554902 at the open, 3557856 after the start; created.txt names the ID; the stream's calls until start() returned: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, delete 00000000000018.bergdb, delete 00000000000020.bergdb, delete 00000000000022.bergdb, delete 00000000000024.bergdb]; all its calls: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, delete 00000000000018.bergdb, delete 00000000000020.bergdb, delete 00000000000022.bergdb, delete 00000000000024.bergdb, delete 00000000000026.bergdb, write 2954 bytes to 00000000000034.bergdb at 154902]
+  == a gap: the stream cut at 3554904, 40 bytes into the record at 3554864, and 4840 zeros after it; the last committed record at 3553264
+    the last committed record of format 10: the stream's calls []; the files as before; refused, VersioningStreamException: Cannot parse stored transaction of format version 10; this version of BergDB reads format 9 only. A larger number is a database written by a newer version of BergDB. |
+    its startup pos after itself: the stream's calls []; the files as before; refused, StreamFormatException: The record at 3553264 has startupPos 3553272, after the record. |
+    its time the time of the record before it: the stream's calls []; the files as before; refused, StreamFormatException: non-increasing tt, tt:1212980000, tpos:3553264, lastPos:3554863, startupPos:3545736, topPos:3547984, nodeCount:1 |
+    the last valid meta block, at 3400000, with the time -1: the stream's calls []; the files as before; refused, StreamFormatException: Meta block, bad time, -1. |
+    a byte changed in the record at 3551056, before the last committed one: the stream's calls []; the files as before; refused, StreamChecksumException: spos: 3551088, storedSum: 2494891279, computedSum: 1315127504, nodeType: 30 |
+    the files up to the one that holds reclaim's cut removed, [00000000000016.bergdb, 00000000000018.bergdb, 00000000000020.bergdb, 00000000000024.bergdb, 00000000000026.bergdb, 00000000000028.bergdb]: the stream's calls []; the files as before; refused, StreamIoException: The start needs bytes of the stream before its first position, 3000000: the stream lacks bytes of the database. The start has deleted nothing (bergdb 028-66). The storage: Cannot read at spos 2999999, below the first position, 3000000. The stream's first file in D is 00000000000030.bergdb, which begins there. The start has written nothing either (bergdb 028-70). To start the database, put its missing stream files back from a backup, or restore its files all together, the stream files and created.txt; a copy of a running database's files that missed some is taken again (bergdb 028-82). | ReadBelowFirstPosException: The start needs bytes of the stream before its first position, 3000000: the stream lacks bytes of the database. The start has deleted nothing (bergdb 028-66). The storage: Cannot read at spos 2999999, below
+    every stream file but the last removed: the stream's calls []; the files as before; refused, StreamFormatException: The meta block at 3400000 names the last transaction at 3395304, before the stream's first position, 3400000: the stream lacks bytes that the database needs, from 3395304 on. The start has written and deleted nothing (bergdb 028-66). The storage: Cannot read at spos 3399999, below the first position, 3400000. The stream's first file in D is 00000000000034.bergdb, which begins there. |
+    created.txt of another database ID: the stream's calls []; the files as before; refused, StreamIoException: The stream's first meta block, at 2400000, in the stream file 00000000000024.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 8e5323abbc4f2a98d10334a31d9687dd: the stream files and created.txt are of two databases, and either may be another database's, as when another database's first stream file is put in place of the database's own, or the stream files of one database beside the created.txt of another (bergdb 028-81). The start, which checks this before it reads the rest of the stream, has written and deleted nothing. To start the database, restore its own files from a backup, the stream files (*.bergdb) and created.txt all together, and keep the files that are there now: they may be another database's. | BadDirStateException: The stream's first meta block, at 2400000, in the stream file 00000000000024.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 8e5323abb
+    created.txt of another database ID, and the last byte of the last committed record 7: the stream's calls []; the files as before; refused, StreamIoException: The stream's first meta block, at 2400000, in the stream file 00000000000024.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, and created.txt in D names the database ID 8e5323abbc4f2a98d10334a31d9687dd: the stream files and created.txt are of two databases, and either may be another database's, as when another database's first stream file is put in place of the database's own, or the stream files of one database beside the created.txt of another (bergdb 028-81). The start, which checks this before it reads the rest of the stream, has written and deleted nothing. To start the database, restore its own files from a backup, the stream files (*.bergdb) and created.txt all together, and keep the files that are there now: they may be another database's. | BadDirStateException: The stream's first meta block, at 2400000, in the stream file 00000000000024.bergdb, holds the database ID 82dd6a9782c9581f5ec7496a9dc18dce, an
+    the last byte of the last committed record 7: the stream's calls []; the files as before; refused, BadTailException: Bad lastByte, 7, of the record at 3553264, of size 1600. The stream's records end at stream position 3553264: from there to the stream's end, 3554902, it holds bytes that are not its records. A kill of the process during an append can leave such bytes in the last stream file, within its length: zeros, or the bytes of a file deleted before, such as an older stream file or another database's, as on macOS (APFS; bergdb 028-67, 035-02); so can a storage that loses or damages bytes. The start has written nothing. To start the database, keep a copy of its files, then cut the stream at 3553264: cut the stream file that holds it to 3553264 less the file's first position, which is the number in its name times 100,000, and remove the later stream files, if any; the stream's bytes from there on are lost. |
+    the control: started, every key as the model; the stream 3554902 at the open, 3557856 after the start; created.txt names the ID; the stream's calls until start() returned: [truncate 00000000000034.bergdb from 159744 to 154902]; all its calls: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, write 2954 bytes to 00000000000034.bergdb at 154902, delete 00000000000018.bergdb, delete 00000000000020.bergdb, delete 00000000000024.bergdb, delete 00000000000026.bergdb]
+    the control, created.txt removed: started, every key as the model; the stream 3554902 at the open, 3557856 after the start; created.txt names the ID; the stream's calls until start() returned: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, delete 00000000000018.bergdb]; all its calls: [truncate 00000000000034.bergdb from 159744 to 154902, delete 00000000000016.bergdb, delete 00000000000018.bergdb, delete 00000000000020.bergdb, write 2954 bytes to 00000000000034.bergdb at 154902, delete 00000000000024.bergdb, delete 00000000000026.bergdb]
+  REFUSEDSTART DONE: no start changed a file before it refused, and the controls started
+
+== bergdb.core.CreationKillProbe OUT
+  the creation: 2 writes, 416 bytes, the creation's first record ends at 272
+  first: outside the contract: n zeros, then the write's bytes, the file 272 bytes: OTHER REFUSAL: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this re
+  first: outside the contract: n zeros, then the write's bytes, the file 272 bytes: OTHER REFUSAL: StreamFormatException: Could not find *any* valid meta block. At least the very first meta block must be valid in a db stream.
+  first: outside the contract: n zeros, then the write's bytes, the file 416 bytes: OTHER REFUSAL: BadTailException: Bad transaction size in db stream, 0, spos 272. Stream length: 416. The stream's records end at stream position 272: from there to the stream's end, 416, it hol
+  417: a prefix and zeros after it: DatabaseNotCreatedException
+  1: a prefix and zeros after it: started
+  416: a prefix, created.txt there: DatabaseNotCreatedException
+  1: a prefix, created.txt there: started
+  1: a prefix, created.txt there: started (an empty file: the start creates the database)
+  416: a prefix: DatabaseNotCreatedException
+  1: a prefix: started
+  1: a prefix: started (an empty file: the start creates the database)
+  143: outside the contract: n zeros, then the write's bytes: OTHER REFUSAL: BadTailException: Bad transaction size in db stream, 0, spos 272. Stream length: 416. The stream's records end at stream position 272: from there to the stream's end, 416, it hol
+  144: outside the contract: n zeros, then the write's bytes: OTHER REFUSAL: StreamFormatException: Could not find *any* valid meta block. At least the very first meta block must be valid in a db stream.
+  127: outside the contract: n zeros, then the write's bytes: OTHER REFUSAL: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this re
+  416: the write's length, zeros after the prefix: DatabaseNotCreatedException
+  272: zeros only, created.txt there: DatabaseNotCreatedException
+  416: zeros only: DatabaseNotCreatedException
+  CREATIONKILL DONE: every image started or was refused as a creation that did not complete, with no file changed
+
+== -Xmx2g bergdb.core.ZeroValueTailProbe OUT
+  == z's value of 8388608 zeros: 99 stream files, the last at 240000000, 8979136 bytes, the one before it 20000000; z's record 240582656 to 248977047, s's 248977048 to 248979135
+     the writes of the two records: [240582656, 5000000 bytes] [245582656, 3396480 bytes]
+     the kill: in the write at 245582656 of 3396480 bytes, which holds the end of z's record and 2088 bytes after it; its bytes zero from the page boundary at 245586944, 3392192 zeros; the run of zeros at the end of the last file: 3579008 bytes
+     started: the stream 245400128 at the open (3579008 zeros left out), z not there, s not there, the 40 keys before z as written
+  == z's value of 8388608 random bytes: 99 stream files, the last at 240000000, 8979136 bytes, the one before it 20000000; z's record 240582656 to 248977047, s's 248977048 to 248979135
+     the writes of the two records: [240582656, 5000000 bytes] [245582656, 3396480 bytes]
+     the kill: in the write at 245582656 of 3396480 bytes, which holds the end of z's record and 2088 bytes after it; its bytes zero from the page boundary at 245586944, 3392192 zeros; the run of zeros at the end of the last file: 3392192 bytes
+     started: the stream 245586944 at the open (3392192 zeros left out), z not there, s not there, the 40 keys before z as written
+  ZEROVALUETAIL DONE: z's value of zeros: started; of random bytes: started
+
+== bergdb.core.PubCreatedTxtProbe OUT
+  a database with one value: created.txt of 152 bytes, the stream file 528 bytes, the files [00000000000000.bergdb, bergdb.lock, created.txt]
+  F1:
+    created.txt there, the stream file zeros, create(): DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 528, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).
+    created.txt there, the stream file zeros, open(): DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 528, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).
+    created.txt there, the stream file its first 100 bytes, create(): DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 45, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).
+    created.txt there, the stream file its first 100 bytes, open(): DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of length 45, holds an incomplete creation, and no data. Remove its files and start it again; the start then creates it (bergdb 005-33).
+  F3:
+    created.txt empty, the database's own stream, open(): started, /k/note.txt reads of a; created.txt after it: 0 bytes
+    created.txt empty, the other database's stream file in the stream file's place, open(): started, /k/note.txt reads of b; created.txt after it: 0 bytes
+    the control, created.txt whole, the other database's stream file, open(): StreamIoException: The stream's first meta block, at 0, in the stream file 00000000000000.bergdb, holds the database ID 9bfbc4e464ccb9ab4c631a6c5c90315e, and created.txt in D names the database ID ede79921d05c7424032d815aff9b6470: the stream files and created.txt are of two databases, and either may be another database's, as when another database's first stream file is put in place of the database's own, or the stream files
+
+
+5. The first review's single probes on main
+===========================================
+
+== bergdb.core.StaleFirstBlockProbe OUT none
+stale none: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb is not there
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT random
+stale random: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 800000, in the record at 787736, of size 23008, which the end of the stream cuts, holds bytes that are not this database's: it does not begin as a meta block. A kill of the process during an append can leave another file's bytes there (bergdb 028-79). The stream's records end
+its P is 787736: the stream cut there, before the file 00000000000008.bergdb; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT older
+stale older: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 800000, in the record at 787736, of size 23008, which the end of the stream cuts, holds bytes that are not this database's: it is a valid block of another place or database: it holds the position 200000 and the database ID 7deef48a8466f387c0bb729d2c8aab38. A kill of the proces
+its P is 787736: the stream cut there, before the file 00000000000008.bergdb; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT other
+stale other: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 800000, in the record at 787736, of size 23008, which the end of the stream cuts, holds bytes that are not this database's: it is a valid block of another place or database: it holds the position 800000 and the database ID a8c3448e7741180d81f2ee98f9a791e1. A kill of the proces
+its P is 787736: the stream cut there, before the file 00000000000008.bergdb; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT v155
+stale v155: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 800000, in the record at 787736, of size 23008, which the end of the stream cuts, holds bytes that are not this database's: it is a block of version 155. A kill of the process during an append can leave another file's bytes there (bergdb 028-79). The stream's records end at st
+its P is 787736: the stream cut there, before the file 00000000000008.bergdb; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT random exact
+stale random: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 400000, after the record at 393424, which ends there, holds bytes that are not this database's: it does not begin as a meta block. A kill of the process during an append can leave another file's bytes there (bergdb 028-79). The stream's records end at stream position 400000: f
+its P is 400000: the stream cut there, the file 00000000000004.bergdb to 0 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT older exact
+stale older: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 400000, after the record at 393424, which ends there, holds bytes that are not this database's: it is a valid block of another place or database: it holds the position 200000 and the database ID 7deef48a8466f387c0bb729d2c8aab38. A kill of the process during an append can leave
+its P is 400000: the stream cut there, the file 00000000000004.bergdb to 0 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT other exact
+stale other: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 400000, after the record at 393424, which ends there, holds bytes that are not this database's: it is a valid block of another place or database: it holds the position 400000 and the database ID 8fbb7f9d62a236bbcc610f16060eccb4. A kill of the process during an append can leave
+its P is 400000: the stream cut there, the file 00000000000004.bergdb to 0 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT v155 exact
+stale v155: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The meta block at 400000, after the record at 393424, which ends there, holds bytes that are not this database's: it is a block of version 155. A kill of the process during an append can leave another file's bytes there (bergdb 028-79). The stream's records end at stream position 400000: from t
+its P is 400000: the stream cut there, the file 00000000000004.bergdb to 0 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT sameid
+stale sameid: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 refused: BadTailException: Bad transaction size in db stream, -1207458198, spos 797296. Stream length: 800300. The stream's records end at stream position 797296: from there to the stream's end, 800300, it holds bytes that are not its records. A kill of the process during an append can leave such bytes in the last stream
+its P is 797296: the stream cut there, before the file 00000000000008.bergdb; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT sameid exact
+stale sameid: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: Bad transaction size in db stream, -374333256, spos 397512. Stream length: 400300. The stream's records end at stream position 397512: from there to the stream's end, 400300, it holds bytes that are not its records. A kill of the process during an append can leave such bytes in the last stream
+its P is 397512: the stream cut there, before the file 00000000000004.bergdb; start 1 again
+THE CUT AT P LOST COMMITTED RECORDS: after the cut at P: /history/long-key-segment-0 reads another value; the last committed record ended at 400000
+
+== bergdb.core.StaleCopyProbe OUT restore
+mode restore: B's file, B's bytes to 22208 (the end of the copy), then A's bytes to 72448 (the end of A's record 45)
+B started: of its 8 keys, 8 read a value that A wrote after the copy, 0 one that B wrote, 0 one from before the copy; stream length 72448
+TAKEN: B holds A's records
+
+== bergdb.core.StaleCopyProbe OUT same
+mode same: B's file, B's bytes to 36416 (the end of its record 12 after the copy), then A's bytes to 72448 (the end of A's record 45)
+B started: of its 8 keys, 8 read a value that A wrote after the copy, 0 one that B wrote, 0 one from before the copy; stream length 72448
+TAKEN: B holds A's records
+
+== bergdb.core.StaleCopyProbe OUT earlier
+mode earlier: B's file, B's bytes to 36416 (the end of its record 12 after the copy), then A's bytes to 72448 (the end of A's record 45)
+B's start refused: StreamFormatException: non-increasing tt, tt:350000000, tpos:36416, lastPos:37503, startupPos:0, topPos:160, nodeCount:1
+the file as before the start
+
+== bergdb.core.CreationZerosProbe OUT
+a new database's stream: 416 bytes
+25 lines, each "N bytes of the creation[, zeros to 4096]: DatabaseNotCreatedException: ..."; 0 with another outcome
+
+
+6. The Pub layer's kill-and-restart harness on main's build
+===========================================================
+
+== java -cp build/bergdb.jar bergdb.pubimp.KillRestartHarness parent OUT 2026112805 400 40 1500
+Kills by phase: open 38, started 66, verified 40, running 96, build 72, cleanup 52, late 0, close 36, exit 18 (exit: a stop() and a return from main, no kill)
+Counts: {building=115, closedRuns=35, entries=82362, entriesChecked=32968, exitedRuns=17, indexOpsLost=11, indexOpsThere=696, inflightLost=423, inflightThere=8, keys=614831, markers=30, pastChecked=948, pastEntries=192191, scans=2202, startMs=100000, txLost=2679, txThere=246744}
+KILL RESTART OK: 400 kills and 18 exits in 538 s, seed 2026112805
