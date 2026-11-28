@@ -110,6 +110,7 @@ Open
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given | decision | open |
 | [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data | decision | open |
+| [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap | decision | open |
 
 
 Closed
@@ -686,3 +687,9 @@ landing.
 transactions a second against 67,052, the disk 1.10 of the stream kept
 against 1.62, 27 files against 63. Status: built, reviewed, timed;
 landing.
+
+2026-11-28. 028-76 registered by lead-1127 from `week.sh`'s apps-kill-cc
+failure on `main`: a start refused a sound database whose first meta
+block was recovery's fill (since 028-67's C3); fixed on `main`; for
+Frans, the same fill as the first block of a file before a gap (028-66's
+rule), (a) recommended.
