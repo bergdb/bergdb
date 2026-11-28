@@ -602,17 +602,44 @@ public interface Database extends AutoCloseable {
      * has deleted much and then writes little or nothing can call this method when it is
      * idle, to have the space back without writes of its own. The calls rewrite the live
      * data once, in parts, and the space comes back once the retain duration has passed
-     * since that pass ended: a pass takes about getStreamSize() divided by the budget's bytes
-     * in calls. Calls after that do little or nothing until the application writes again.
-     * With the retain duration forever (the default) there is nothing to do.</p>
+     * since that pass ended. A pass costs about the live data that it rewrites, not the
+     * stream: a part's cost is what its record writes and a quarter of what its step reads,
+     * and data deleted before the pass is not read again, so a pass takes about the live
+     * data divided by the budget's bytes in calls, at most about getStreamSize() divided by
+     * them; after a mass delete a few calls do it, and the calls after them mostly wait for
+     * the cut (bergdb 031-08, UA-4: 5 to 13 calls of maintain(100) wrote, where
+     * getStreamSize() divided by 100 kB gave 77 to 563). Calls after the cut do little or
+     * nothing until the application writes again. With the retain duration forever (the
+     * default) there is nothing to do.</p>
      * 
      * <p>The budget is an indication of the work allowed in the call, in cost units: a unit
      * is about the work of writing 1 kB to the stream. It is clamped to 100 to 100,000. The
      * database may use less than the budget, or none, depending on its state, and may go
-     * past it by a small part's work. How the cost is counted may change between releases.
+     * past it by one part's work: the call runs parts while it has used less than the
+     * budget, and a part is never split. Most parts are small, but a part's step copies
+     * whole values, the last of them whatever its size, up to a value's largest, 8 MiB
+     * (Limits, L4), and a part that writes the index nodes that wait in memory writes those
+     * of at least one whole transaction. So the budget bounds the number of parts in a call,
+     * not the bytes that a call writes: one call of the least budget, about 100 kB, can write
+     * a whole value of 8 MiB beyond it (bergdb 031-08, UA-5: 8,462,864 bytes in one call of
+     * maintain(100)). How the cost is counted may change between releases.
      * The work runs in parts, each a transaction of the database's own, with its own time and
      * one record, as a commit has (bergdb 031-06): a commit waits for the part that runs, and
      * reads go on.</p>
+     * 
+     * <p>How long a call takes (bergdb 031-04, Q9; 031-08, UA-7). The call gives way to
+     * commits: before each part, and again once it holds the database's write lock, it waits
+     * while another thread's commit waits for that lock, and goes on when none does. So a
+     * commit waits for at most one part of the call, and the call itself waits as long as
+     * commits come without a pause: beside threads that commit without a pause, a call may
+     * not return until they pause or the database stops (in bergdb 031-08, no call of
+     * maintain(100) returned in 10 s beside 8 threads that committed without a pause, where
+     * 33 million returned with none). An interrupt does not end that wait ("Interrupts"
+     * above). What a caller can rely on: the call returns once it has used its budget or has
+     * nothing more to do, counting only the moments when no commit waits; it holds no lock
+     * while it waits. Its time has no bound while commits come without a pause: call it
+     * when the application is idle, as above, from a thread whose wait holds up no other
+     * work, and not inside an rw() action, which then lasts as long as the call.</p>
      * 
      * @param budget  The work allowed in this call, in cost units of about 1 kB written.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a

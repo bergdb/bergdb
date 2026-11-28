@@ -55,9 +55,11 @@ import bergdb.stream.ReadBelowFirstPosException;
  * the Pub API is built on. The Core API is: this class, Db; DbBuilder, but for its members
  * for tests; Trans.Builder, and Trans as a transaction to execute with its outputs tt, tpos,
  * lastPos and nextPos; GetData; GetMany and its stop conditions; Kvt;
- * StoredTrans as getTrans() gives it; StartInfo; the key conversions Keys.toSegments() and
- * Keys.toBytes(); ValueTransformation and KeyTransformation, which Trans.Builder's put()
- * takes, and what a key transformation uses (KeyTransformation.transform()): Trans.kvs,
+ * StoredTrans as getTrans() gives it, with its StoredValueNodes' getKey(), getValueNode()
+ * and isCopy(), the copy mark of reclaim's copies (bergdb 031-06; getTrans()); StartInfo;
+ * the key conversions Keys.toSegments() and Keys.toBytes(); ValueTransformation and
+ * KeyTransformation, which Trans.Builder's put() takes, and what a key transformation uses
+ * (KeyTransformation.transform()): Trans.kvs,
  * Kv.getKey() and Kv.setKey(), Trans.writeKeyHashes, Trans.tt and Keys.hash() (bergdb
  * 026-06; 026-13, U13-6); FileStream and MemoryStream as a stream for DbBuilder; and the
  * exceptions that their Javadoc names. Everything else that is reachable from them is
@@ -923,11 +925,15 @@ public class Db implements AutoCloseable {
      * of writing 1 kB to the stream (Reclaim.MAINTAIN_UNIT). It is clamped to 100 .. 100,000
      * (Reclaim.MAINTAIN_MIN_BUDGET, MAINTAIN_MAX_BUDGET), and is an indication only: the call
      * may use less, or none, and may go past it by one part's work (a step of about 16 kB of
-     * KVs, a take of at most 256 kB beyond one transaction's, a table padded by at most 200 kB
-     * up to the next meta block). The cost is counted from deterministic counts only
-     * (maintainPart(), Reclaim.planPart), so that the stream after the same calls is the same
-     * (010-01, P2); the eviction's dead hand, which writes nothing, is charged by its time,
-     * and only after reclaim's work in the call is done.</p>
+     * KVs, whose last KV is copied whole, whatever its size, a value of up to 8 MiB
+     * (MAX_VALUE_BYTES, L4; Reclaim.planStep); a take of at most 256 kB beyond one
+     * transaction's, which is taken whole; a table padded by at most 200 kB up to the next
+     * meta block). So the budget bounds the parts of a call, not its bytes: one call of the
+     * least budget wrote 8,462,864 bytes, a live value of 8 MiB (bergdb 031-08, UA-5). The
+     * cost is counted from deterministic counts only (maintainPart(), Reclaim.planPart), so
+     * that the stream after the same calls is the same (010-01, P2); the eviction's dead
+     * hand, which writes nothing, is charged by its time, and only after reclaim's work in
+     * the call is done.</p>
      * 
      * <p>It works in parts (bergdb 031-06; 027-13, section 1.10). Each part is an action of its
      * own, through the path of a commit (maintainPart()): an empty internal transaction with
@@ -939,8 +945,10 @@ public class Db implements AutoCloseable {
      * Q9): before each part, and again under the lock, it gives way while a commit waits for
      * the lock, and goes on when none does. A commit that comes during a part then waits
      * for that part only, of the call's work; under commits without a pause the call waits
-     * as long as they come. A cut whose table is not durable is synced outside the
-     * lock, then made. A call when nothing is due writes nothing.</p>
+     * as long as they come, with no bound (bergdb 031-08, UA-7: no call of maintain(100)
+     * returned in 10 s beside 8 threads committing without a pause), and an interrupt does
+     * not end the wait (giveWayToWriters()). A cut whose table is not durable is synced
+     * outside the lock, then made. A call when nothing is due writes nothing.</p>
      * 
      * @param budget  The work allowed, in cost units of about 1 kB written each.
      * @throws IllegalDbStateException, DbStoppingException, DbFailedException  On a
@@ -1158,7 +1166,9 @@ public class Db implements AutoCloseable {
     
     /**
      * The number of transactions that this Db has executed since its start(), BergDB's own
-     * included (the settings' commits, reclaim's steps; Keys and the layers above): 0 after a
+     * included (the settings' commits, the parts of maintain(budget) that write, each with a
+     * record of its own; since bergdb 031-06 reclaim's steps ride in those records and the
+     * commits' and are not counted apart; Keys and the layers above): 0 after a
      * start, not the number of transactions in the database (bergdb 020-24-09, U9-10). The
      * transaction of the start that creates the database, which puts the startup distance
      * (bergdb 028-15), is not counted.
@@ -2649,14 +2659,25 @@ public class Db implements AutoCloseable {
      * and, by getValueNodes(), its puts and deletes, a StoredValueNode each, with its key
      * (bergdb 020-24-09, U9-9). A delete of a key that had no value at the transaction's
      * time stores nothing and is not listed, as the Pub API's TransactionInfo leaves it out.
-     * A value that reclaim has copied forward (setRetainDuration()) is read from reclaim's
-     * step, so that a get's tpos is the step's: a transaction of reclaim's, whose value nodes
-     * are the values that it copied, each with its key, and reclaim's own keys under
-     * "/#i/dreclaim/" (Keys and the layers above). The transaction that wrote the value is
-     * found by a get of the key at the step's time less one unit, which gives the value as
-     * the step read it and that value's tpos, again a step's if reclaim had copied it before,
-     * as the Pub API's Connection.transactionInfo() does (bergdb 021-17); while that time is
-     * not before getFirstAvailableLookupTime().</p>
+     * Since bergdb 031-06 (one record an action) reclaim's work (setRetainDuration()) rides
+     * in the records of the actions: a commit's record, the application's own, and the
+     * record of each part of maintain(budget) that writes carry reclaim's work, so that
+     * getValueNodes() of a commit's StoredTrans can list, beside the transaction's own puts
+     * and deletes, the values that reclaim copied forward in that record, each with its key
+     * and the copy mark (StoredValueNode.isCopy() true; bergdb 027-03, section 12), and
+     * reclaim's own keys under "/#i/dreclaim/" that the record writes, its row and its
+     * table, without the mark (Keys and the layers above). So of a user transaction's
+     * StoredTrans, its own puts and deletes are the value nodes without the mark but those
+     * under "/#i/dreclaim/"; a copy is never at a key of the transaction's own (bergdb
+     * 031-08, UA-6: of 3,000 commits of 20 puts each under a retain duration of 1 s, 1,472
+     * listed more, up to 60 value nodes for 20 puts). The StoredTrans's time (tt) is the
+     * commit's. A copied value is read from the record that
+     * copied it, so that a get's tpos is that record's, a commit's or a part's. The
+     * transaction that wrote the value is found by a get of the key at that record's time
+     * less one unit, which gives the value as the copy read it and that value's tpos, again
+     * a copy's if reclaim had copied it before, as the Pub API's
+     * Connection.transactionInfo() does (bergdb 021-17), which lists a record's KVs without
+     * its copies; while that time is not before getFirstAvailableLookupTime().</p>
      *
      * @throws IllegalArgumentException
      *             If 'tpos' cannot start a transaction: negative (Spos.NULL from a get: the

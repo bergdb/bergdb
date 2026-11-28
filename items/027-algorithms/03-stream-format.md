@@ -1368,7 +1368,10 @@ reads it: a start's reclaim, which takes a record as its own only by a
 key of reclaim's that is not a copy (`Reclaim.isOwnRecord`, 8.5); the
 Pub layer's `ConnectionImp.transactionInfo()`, which follows a value back
 only through a copy and lists a record's KVs without its copies (031-06,
-rule 7; 028-34); the trace exporter (027-02, `OP C`). Format 8 wrote 0
+rule 7; 028-34); a user of the Core API, whose `Db.getTrans()` of a
+commit lists the record's copies, with the mark, and reclaim's keys
+beside the transaction's own KVs (`StoredTrans.getValueNodes()`; 031-08,
+UA-6); the trace exporter (027-02, `OP C`). Format 8 wrote 0
 there and the parser skipped bytes 6 and 7.
 
 **Checked on reading** (`StoredValueNode.parse`): size 28 or more and
@@ -2353,3 +2356,7 @@ the branch `start-fixes`.
 
 2026-11-28. 028-79, after its review: the rule of a block's first 8
 bytes (section 7). By an agent of lead-1127, on the branch `start-fixes`.
+
+2026-11-28. 028-84: the copy mark's readers include the Core's
+`Db.getTrans()` (031-08, UA-6). By an agent of lead-1127, on the branch
+`docs-1128`.

@@ -440,8 +440,12 @@ public class StoredTrans {
     /**
      * Creates and returns a list of the value nodes of the transaction: its puts and
      * deletes, one for each key it put or deleted, with the key (getKey()). A delete of a
-     * key that had no value stores nothing and is not in the list; a step of reclaim lists
-     * the values it copied and reclaim's own keys (Db.getTrans(); bergdb 020-24-09, U9-9).
+     * key that had no value stores nothing and is not in the list. Since bergdb 031-06 a
+     * record that carries reclaim's work, a commit's or a part's of maintain(budget), lists
+     * also the values that reclaim copied in it, each with the copy mark
+     * (StoredValueNode.isCopy()), and reclaim's own keys that it writes, without the mark;
+     * until 031-06 those were in reclaim's records of their own (Db.getTrans(); bergdb
+     * 020-24-09, U9-9; 031-08, UA-6).
      */
     public List<StoredValueNode> getValueNodes() {
         List<StoredValueNode> storedValueNodes = new ArrayList<StoredValueNode>();

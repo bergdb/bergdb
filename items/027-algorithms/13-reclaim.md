@@ -431,14 +431,23 @@ units, times UNIT bytes, is spent by the parts' costs: the bytes of the
 part's record and a quarter of the bytes that its step read, by
 deterministic counts (each KV met 8 s + VN, and v if loaded to be
 rewritten; each index node followed NB), whether resident or not, so that
-the same calls write the same stream (010-01, P2). Before each part, and
-again under the lock, the call gives way while a commit waits for the
-write lock (031-04, Q9), and before each part's lock it warms the part's
-scan (1.11). After a part, a pending cut whose table is durable is made
-and one batch of eviction's dead hand runs (part 8); if the table is not
-yet durable, the call syncs outside the lock, then makes the cut. Once a
-part has nothing due, the dead hand alone runs, charged by its time (5 us
-a unit), until it has nothing more or the budget is spent. The call
+the same calls write the same stream (010-01, P2). A part is never
+split: the call runs parts while its spent cost is below the budget, so
+it goes past the budget by the last part's cost, which a step's last KV,
+copied whole, makes as large as a value, 8 MiB (L4; 031-08, UA-5:
+8,462,864 bytes in one call of the least budget, 100). Before each part,
+and again under the lock, the call gives way while a commit waits for
+the write lock (031-04, Q9; `Db.giveWayToWriters`, spins and parks of
+20 us, which an interrupt does not end), so that a commit waits for at
+most one part, and the call waits as long as commits come without a
+pause, with no bound (031-08, UA-7: no call of `maintain(100)` returned
+in 10 s beside 8 threads committing without a pause); before each part's
+lock it warms the part's scan (1.11). After a part, a pending cut whose
+table is durable is made and one batch of eviction's dead hand runs
+(part 8); if the table is not yet durable, the call syncs outside the
+lock, then makes the cut. Once a part has nothing due, the dead hand
+alone runs, charged by its time (5 us a unit), until it has nothing more
+or the budget is spent. The call
 returns nothing (until 031-06's merge `maintain()` returned whether more
 was due).
 
@@ -647,7 +656,9 @@ not active it reads nothing.
   record, with one of: a begin, a step of MAX_STEP, the table, the table
   and a take of TAKE_MORE beyond its first taken transaction, the table
   padded by at most META bytes, the cut; a call goes past its budget by at
-  most one part's cost: argued; gated (ReclaimMaintainTester).
+  most one part's cost: argued; gated (ReclaimMaintainTester). A step's
+  last KV is copied whole, so one part's cost can be a value of 8 MiB
+  (1.10; 031-08, UA-5).
 * **Pauses** (P1): the physical cut waits for the storage's append in
   progress, 19.85 ms at the longest on s1 (015-80, 019-36); 1.6's forget
   0.3 to 6 ms (026-10): measured. With the step in the commit's record
@@ -994,3 +1005,9 @@ pauses; 026-09 landed). By an agent of lead-1127, on the branch
 stream are kept (028-73, option (b)); the part before fp of the file
 that fp lies in is up to 1 MB for 4 to 10 MB kept. RetainChurn's
 figures are of the tenth alone, not measured again.
+
+2026-11-28. 028-84: 1.10 and 4: a call of `maintain(budget)` goes past
+its budget by its last part, whose step copies its last KV whole, up to
+a value of 8 MiB (031-08, UA-5), and it waits as long as commits come
+without a pause (031-08, UA-7). By an agent of lead-1127, on the branch
+`docs-1128`.

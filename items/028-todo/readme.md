@@ -111,6 +111,7 @@ Open
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | built on a branch, reviewed; two shapes fixed, to land |
+| [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | open (built on a branch, to land) |
 | [028-85](85-recreated-directory-test-under-load.md) | Fix | A test of a directory deleted after stop() failed once under load: 021-24's window | none | open |
 
 
@@ -757,3 +758,6 @@ worst transaction within L1 to L5 takes at most 76.5 % of the action's
 7/8; `DagTester.testDirtyNodeBoundOfTheWorstPath` checks Java's count on
 the worst path against 14, 10, 8 and 8 a level. B (the Lean's count
 restated) waits for the next change of `Bound.lean`.
+
+2026-11-28. 028-84 registered by lead-1127: the documents of 031-08's
+UA-4 to UA-7 and 031-02's N1; built on the branch `docs-1128`.
