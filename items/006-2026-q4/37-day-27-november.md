@@ -768,6 +768,44 @@ The lead's overview (08:30), its conclusions:
   to 010-04), the nodes' place with 028-77's review, and closed 028-71
   and 028-53, at 07:30 (section 2). Left of 031-07: the Javadoc and
   030-04 cite 010-R6.
+* 2026-11-28 07:40 R6 marked provisional until 028-77 is decided, and
+  encryption and replication named as requirements of 035-03's model
+  (Frans; `6a34dde4`, `ea89dc4f`).
+* 2026-11-28 07:58 The review of the start and recovery path reported
+  (Fable, 06:12 to 07:53; `f2a88740`, `b0c65f2e`: 033,
+  `reviews/2026-11-28-start.md`, with its probes). Checked and found
+  right, with zeros and cut tails only: `StartChain`, 21,000 starts on
+  files of 200 kB, 1 MB and 5 MB and with per-append forcing off, after
+  kills, kills inside a recovery's own writes and power losses in a
+  cut's batch: no refusal other than 028-76's decided case (a) (212
+  times), no wrong value, no file changed by a refused start, no gap
+  left; the completion taken again from every part of itself; the zero
+  tail, the first valid block and the gap rule hold. With other bytes
+  after a quarter of the kills (7,987 starts, 768 such tails): each
+  taken as cut at the kill, or refused with a `BadTailException` and
+  started after the cut at P with the right state. Four findings:
+  * F1, S1 on a storage of 035-02 after a restore in place: a deleted
+    copy of the database's own later bytes passes C3 (the same ID and
+    positions); a start took the copy's records, or named a cut that
+    lost two synced puts. No check of the bytes alone closes it: 028-78,
+    for Frans, with 028-77.
+  * F2, S2 on a storage that can leave other bytes at a new file's
+    start (not a shape seen on APFS): other bytes at a file's first meta
+    block, taken inside an aborted record or kept by the cut at P,
+    refuse a later start with no way out named, once reclaim's cut makes
+    the file the stream's first: 028-79; the smaller fix (the tail walk
+    refuses such bytes at a meta position) by default at 10:30
+    (section 4.4).
+  * F3 and F4, S4: a creation that a kill left as zeros is refused with
+    a `StreamFormatException`, not as a creation; the zero tail's bound
+    of 8 MB rests on the default write buffer (the Core API only):
+    028-80, to an agent.
+  * F5, notes on 028-76 (a), no new bug: the refusal also meets a first
+    block cut inside and completed, and a kill lands at a file's first
+    block for the time of the file switch's forces, not at one instant
+    (recorded in 028-76).
+  An agent (Opus, effort xhigh) starts on 028-80 and prepares 028-79's
+  fix on a branch.
 
 ## 4. Waiting for Frans
 
@@ -779,7 +817,7 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 07:32)
+### Open now (2026-11-28 08:00)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
 17:26, and of 2026-11-28, 06:05 to 07:30 (section 2). The text of
@@ -790,8 +828,8 @@ entries); at 07:30 031-07's five as recommended, with the principle as
 rule R6 of 010-04, the check of the nodes' place (028-67's finding)
 moved to 028-77's review, and 028-71 and 028-53 closed. Settled by the
 lead: the warm-up's reading ahead (review 3's W1) stays, from the timing
-run; T1's rule for a cut record's own bytes is in the review of the
-start path that runs until 11:00.
+run. New at 08:00, from the review of the start path (section 3,
+07:58): 028-78.
 
 * **028-77: strict append-only storage, or tail rewrites at a start**
   (class 3: the storage contract; not for today). Three tails after a
@@ -802,6 +840,21 @@ start path that runs until 11:00.
   (C) as today. No recommendation before the review, 035-03; taken up
   after 2026.7's work is stable. With it: 028-67's C2, and the check of
   the nodes' place.
+* **028-78: a deleted copy of the database's bytes in the tail pass
+  C3** (class 3: the format or the contract; with 028-77, not for
+  today). On a storage that can leave a deleted file's bytes after a
+  kill (035-02), after a backup was restored in place, the deleted
+  files' later records have the database's ID and positions: a start
+  took them, or named a cut that lost two synced puts (the review's
+  probes, on constructed images).
+  * (a) The storage's to prevent: a limit stated under R6 and in
+    `Database`'s Javadoc (restore into a new directory or volume).
+  * (b) A restore makes a new incarnation that later records and blocks
+    are tied to: a change of the format and a restore tool or call.
+  * (c) New stream files zeroed before use (028-67's C4, not taken on
+    2026-11-27 for its cost).
+  * Recommended: taken with 028-77; (a) meanwhile, as the state of the
+    code.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
   Frans.
@@ -1125,5 +1178,15 @@ inside the code that fails the database (F7), both work of the landing.
   guard test of the worst path against 14, 10, 8 and 8 nodes a level;
   B, the Lean's `nodesALevel` restated (14, 10, 9, 9) with a theorem
   that an action fits the 7/8, with the next change of `Bound.lean`.
+* **028-79, the smaller fix, by default Saturday 10:30** (the lead's,
+  class 2): the walk of the tail refuses other bytes at a meta position
+  inside the tail that it takes (a cut record's blocks, and the block
+  after the last whole record), with a `BadTailException` whose P is at
+  or before the block, so that no later first block can be other bytes;
+  a start then refuses, with the cause and P, a tail that it takes
+  today. The wider fix (every reader of a first block passes over what
+  is not this database's, with the ID from a source that other bytes
+  cannot give) is left to 028-77. An agent prepares the fix on a branch
+  before then; it lands after 10:30.
 
 D1, where the notes of 2012 go, went ahead at 09:15 (section 2).

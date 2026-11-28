@@ -74,6 +74,31 @@ stream's checks.
 
 Decision: Frans, 2026-11-28, 06:05: (a) for 2026.7.
 
+Note (2026-11-28, from the review of the start path, 033,
+`reviews/2026-11-28-start.md`, F5; not a change of the decision):
+
+* The same refusal meets a first block that a kill cut inside (1 to 127
+  of its bytes written) and recovery completed: the block then holds the
+  database's ID and its position and a last byte of 0, and the message
+  says "is not valid, its last byte 0: damaged".
+* Option (a)'s "a kill exactly at a file's first block" says too little:
+  the kill need not come at one instant. The stream moves to a new file
+  between the append that fills the last file and the first append to
+  the new one, with the forces of the full file, of the new file and of
+  the directory between them (`FileStream.newFile`); a kill of a busy
+  writer ends the stream at the file's first block for the time of
+  those forces, in each file's writing. `week.sh`'s Kill app met it at
+  its 30th kill.
+* How often, in the review's `StartChain` (chains of kills, kills
+  inside a recovery's writes and power losses in a cut's batch, each
+  start on what the fault before left): the decided case 212 times in
+  21,000 starts without other bytes (87 in 8,000 with files of 200 kB,
+  33 in 7,000 with files of 200 kB to 5 MB, 92 in 6,000 with per-append
+  forcing off), and no other refusal. The probe makes the kills at
+  chosen positions, a file's start among them, and takes files off as a
+  power loss in a cut's batch does; the figure is the probe's, not a
+  rate of use.
+
 Found by: `week.sh` of 2026-11-28 (java/build/week, apps-kill-cc), the
 Kill app of `java/stress/apps.sh`'s kill set.
 
@@ -86,3 +111,9 @@ block fixed on `main` (`05bf46e3`..`27267148`) by an agent of lead-1127;
 the files before a gap left for Frans.
 
 2026-11-28. Frans decided (a) for 2026.7 (06:05).
+
+2026-11-28. A note under the decision from the review of the start
+path (F5): the refusal also meets a first block cut inside and
+completed; the kill lands at a file's first block for the time of the
+file switch's forces; `StartChain` met the decided case 212 times in
+21,000 starts.

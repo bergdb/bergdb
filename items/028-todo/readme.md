@@ -110,6 +110,9 @@ Open
 | [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decided | open (to design and build) |
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
+| [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
+| [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | open (on a branch) |
+| [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros is not refused as one; the zero tail's bound and the buffer | none | in progress |
 
 
 Closed
@@ -717,3 +720,12 @@ on `main`, with the limit under commits of 1 MB stated in 027-13;
 028-53's RB-007 is fixed by 031-06, and the rewriting after one small
 put is 028-75's. 028-67's finding that C3 does not cover nodes goes
 with 028-77's review, not into 2026.7 (Frans).
+
+2026-11-28. 028-78, 028-79 and 028-80 registered by lead-1127 from the
+review of the start and recovery path (033,
+`reviews/2026-11-28-start.md`): F1, a deleted copy of the database's own
+bytes in the tail passes C3 (S1 on a storage of 035-02 after a restore
+in place), for Frans with 028-77; F2, other bytes at a meta block's
+position refuse a later start (S2), the smaller fix by default at
+10:30; F3 and F4 (S4), a creation left as zeros and the zero tail's
+bound, to an agent. 028-76 has the review's notes on its decided case.

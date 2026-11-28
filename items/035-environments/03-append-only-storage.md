@@ -47,6 +47,10 @@ leaves a prefix of what was appended (014-01, section 7); 035-01 and
   position and the database's ID would close it, a change of the
   format, decided with this review and not in 2026.7 (Frans,
   2026-11-28).
+* **A deleted copy of the database's own bytes in the tail** (028-78):
+  after a restore in place on a storage that can leave a deleted file's
+  bytes, the bytes have the database's ID and positions and pass C3; a
+  face of the third fault that no check of the bytes closes.
 
 
 ## Log
@@ -57,3 +61,6 @@ leaves a prefix of what was appended (014-01, section 7); 035-01 and
 model (Frans).
 
 2026-11-28. Scope: the nodes' place, from 028-67 (Frans).
+
+2026-11-28. Scope: 028-78, a deleted copy's bytes in the tail (the
+review of the start path, 033).

@@ -136,6 +136,12 @@ identical layout a start took the other database's value of one key
 position and the database's ID would close it: a change of the format,
 decided with this review, not in 2026.7.
 
+Also with this entry (2026-11-28): 028-78, a deleted copy of the
+database's own later bytes in the tail (a restore in place on a storage
+of 035-02): a face of case 3 that no check of the bytes closes, since
+the copy has the database's ID and positions (the review of the start
+path, 033, `reviews/2026-11-28-start.md`, F1).
+
 Done when: the model is written (035-03, and from it 014-01's section 7
 and 027-14), Frans has chosen among (A), (B) and (C), and 028-67's C2 and the
 check of the nodes' place are decided with it; work that the choice asks for becomes entries or
@@ -152,3 +158,6 @@ held (Frans). To be taken up after 2026.7's work is stable.
 
 2026-11-28. The nodes' place (028-67's finding that C3 does not cover
 nodes) is taken with this entry (Frans, 07:30).
+
+2026-11-28. 028-78 (a deleted copy's bytes pass C3) named as taken with
+this entry.
