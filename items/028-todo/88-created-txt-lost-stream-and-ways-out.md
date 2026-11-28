@@ -1,7 +1,8 @@
 028-88. Fix: with created.txt, a stream that lost its bytes is refused as a creation; two refusals name no way out; a cut created.txt is not written again
 ==========================================================================================================================================================
 
-Status: in progress (2026-11-28): built on the branch `028-88`.
+Status: in progress (2026-11-28): built and gated on the branch `028-88`;
+to land.
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -159,6 +160,11 @@ before run on `3726bb18` with the new tests):
   a cut to 100 bytes, `create()` and `open()`: a
   `DatabaseMissingException`, nothing changed. Before: the
   `DatabaseNotCreatedException`.
+* `PubTester.testFailedStartsDirectoryRemoved` (005-32), changed: its
+  stream, cut to 200 bytes beside `created.txt`, is refused with a
+  `DatabaseMissingException` now, and the directory is removed and
+  created again as before. On the change's first form `before-commit.sh`
+  failed there.
 * `DbTesterStream.testStreamLacksBytesWayOut` (F2): four files of
   200,000 bytes, the first three removed, `checkLastTransSpos`'s message
   ends with the way out; 300,000 zeros from 0, "Could not find *any*"
@@ -192,6 +198,34 @@ image as before.
 Gates
 -----
 
+On F53 beside other sessions' runs, 2026-11-28, on the branch on `main`
+at `3726bb18`:
+
+* `java/before-commit.sh`: BEFORE COMMIT OK (85 s; unit 1,783 tests, f
+  98). The first run failed at `PubTester.testFailedStartsDirectoryRemoved`
+  (above).
+* `java/stress/level3.sh`: LEVEL 3 OK (its power-loss stage: POWERLOSS
+  OK, 8 seeds, 488 cold recoveries).
+* `java/stress/apps.sh quick`: APPS OK. f4 `FileHandling` seed 1: 88
+  cases, 51 accepted, 37 refused; its cases "created.txt of garbage
+  bytes" and "created.txt empty" accepted, the start writing
+  `created.txt` again (300 and 0 to 196 bytes; F3), which f4 allows.
+* `StartChain2` (033, `reviews/2026-11-28-start-2-probes/`),
+  `-Dtxt=on -Dstartkill=on -Dshapes=on ... 88000 88099 20 2 30 1 25`:
+  "STARTCHAIN DONE seeds 88000..88099: starts 2000, faults {kill=1405,
+  kill-in-recovery=113, kill-in-start=170, power=668, stale=201,
+  stale-refused-with-P=119, stale-started=71, stale-zeros-first=61,
+  txt-cut-started=88, txt-cut-written-again=88, txt-other-refused=80,
+  txt-removed-written-again=74}, known (a) 49, failures 0": a cut
+  `created.txt` written again in 88 of 88 (the review: left as it was in
+  255 of 255).
+* `RefusedStartProbe OUT 1`: "REFUSEDSTART DONE: no start changed a file
+  before it refused, and the controls started".
+* `PowerLossTest 1001 12 3000 3`: "POWERLOSS OK: 12 seeds, 732 cold
+  recoveries; without per-append forces 744, and of 144 hole images 2
+  recovered, 142 failed (a known limit, bergdb 014-01); negative
+  controls caught".
+
 
 Log
 ---
@@ -200,3 +234,7 @@ Log
 by an agent of lead-1127, on the branch `028-88`.
 
 2026-11-28. Built: F1, F2, F3; the tests, each failing before.
+
+2026-11-28. The gates passed (above), on the branch on `main` at
+`3726bb18`; rebased onto `main` at `f5f22893` (items only), where
+`java/before-commit.sh` ran again; to land.
