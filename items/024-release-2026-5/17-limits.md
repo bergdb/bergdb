@@ -20,7 +20,12 @@ for Frans's QL2 (a key at most 112 bytes, 14:45): sections 0, 3, 5, 6,
 17:41** (section 8): L1 = 500, L2 = 111, L3 = 56 KiB, L4 = 8 MiB, L5 =
 32 MiB, L6 = 111; sections 0, 1, 3, 5.2a, 5.3, 6, 8 and 9. **L9 added
 2026-11-28** (section 6.1): BergDB's own keys at most 1,024 bytes each,
-decided by Frans that day (031-06, section 8, O1).
+decided by Frans that day (031-06, section 8, O1). **Corrected
+2026-11-28 (028-72)**: the count with q needs 10 nodes a level at node
+size 14 since 028-21, not 9; Java's counts of a delete are today's
+(record format 8, since 028-21); and since 031-06 an action's index
+nodes are admitted up to 7/8 of the record limit (5.2a, "The action's
+7/8"); sections 5.2, 5.2a, 5.3, 8 and 9.
 
 
 ## 0. Summary
@@ -660,7 +665,7 @@ output `bound112.txt`.
   statements checked by `treetest` and by Java's traces (C-T8), and H
   rests on V1 (TP30). **What L1 = 1,000 needs**: (1) `Limits.dirtyNodes`
   for format 7 restated with q (8 a level at node sizes 30 and 62, 9 at
-  14; at 8, 14 a level, 5.2a), a line of `Bound.lean`, and `treetest` and
+  14, 10 since 028-21; at 8, 14 a level, 5.2a), a line of `Bound.lean`, and `treetest` and
   `treeconf.sh` run against it, as they run TP26 today (024-22's agent
   or 024-12's); (2) a third field in `Limits`, the segments of a
   transaction (L3), with the sum form (5.6); (3) the proofs of TP23, TP26
@@ -681,7 +686,9 @@ output `bound112.txt`.
 | 62 | 1,056 | 16/35/35, 24 |    1.91 M | 16 |   6,134 |  2,462 |    2,032 | 310, 774, 938     |
 
   "With q": c (H + 2) x 17 + 14 with c = 13, 9, 8, 8 (5 + x rounded
-  up; 14 at B = 8 since 5.2a); at B = 8 it is below Java's own count (the collapses, H / q a
+  up; 14 at B = 8 since 5.2a, and 10 at B = 14 since 028-21, so 6,814
+  and 1,025 operations there; the column "Java (a)" is format 7's count,
+  5.2a gives today's); at B = 8 it is below Java's own count (the collapses, H / q a
   segment, weigh at q = 2), so there the form needs more. **At B = 8
   and 62 no per-operation count reaches 1,000 operations**, not even
   Java's count of one delete (720 and 938); with trees of at most 2^48
@@ -720,32 +727,50 @@ segments, and L3 = 56 KiB (6.1). Restated 17:45 from
 | TP26 of format 7                   | 19 |       6,734 |      549 |           +9.8 % |
 | with q, 8 (H + 2) + 14             | 22 |       3,086 |    1,199 |           +140 % |
 | with q                             | 19 |       2,702 |    1,369 |           +174 % |
-| Java's count, one delete (5.2 (a)) | 22 |       2,615 |    1,415 |           +183 % |
+| Java's count, one delete (5.2 (a)) | 22 |       2,983 |    1,240 |           +148 % |
 
 * **Every node size** (H by 5.2's rule; "with q": the nodes a level of
   the count with q, then the most operations):
 
 | B  |  H | TP26 of format 7 | With q   | Java, one delete |
 |----|---:|-----------------:|----------|-----------------:|
-| 8  | 61 |              519 | 14: 742  |              766 |
-| 14 | 38 |              545 | 9: 1,210 |            1,215 |
-| 30 | 21 |              501 | 8: 1,251 |            1,478 |
-| 62 | 16 |              330 | 8: 822   |              996 |
+| 8  | 61 |              519 | 14: 742   |              760 |
+| 14 | 38 |              545 | 10: 1,089 |            1,205 |
+| 30 | 21 |              501 | 8: 1,251  |            1,296 |
+| 62 | 16 |              330 | 8: 822    |              866 |
 
   At node size 8 the count with q needs 14 a level, not 13 (5.2's
-  F12 table): Java's count of one delete there is 13,685 nodes at 16
-  segments (14,547 at 17), the root collapses' H / q weighing at q = 2;
+  F12 table): Java's count of one delete there is 13,789 nodes at 16
+  segments (14,658 at 17), the root collapses' H / q weighing at q = 2;
   14 x 16 x 63 + 14 = 14,126 covers it (and 15,008 at 17 segments).
+  At node size 14 it needs 10 a level since 028-21, which added the new
+  roots above a cut segment root, 3 a tree there: Java's count of one
+  delete of 16 segments is 5,797, above 9's 5,774; 10 x 16 x 40 + 14 =
+  6,414 covers it.
+* **Corrected 2026-11-28 (028-72).** Java's counts of one delete in the
+  two tables above are today's, measured on the worst path (028-72's
+  `ActionRoomProbe`: every segment tree on the path H + 1 key nodes
+  high, every node full); until 2026-11-28 they were format 7's (2,615,
+  and 766, 1,215, 1,478 and 996 operations), and the count with q at
+  node size 14 was 9 a level (1,210 operations). On that path Java
+  counts a middle segment 869 nodes at node size 8 (13.79 a level), 365
+  at 14 (9.12), 186 at 30 (7.75) and 137 at 62 (7.61), within 14, 10, 8
+  and 8 a level. `DagTester.testDirtyNodeBoundOfTheWorstPath` checks
+  Java's count on that path against c (H + 2) S + 14 n with these c, so
+  that a change that raises the count fails a unit test.
 * **With L3** (BergDB's longer keys; S <= L3 / 7 + 500; per cent under
   the record's dirty limit, TP26 of format 7 / with q, H by the rule):
 
 | L3     | Keys of 111 B |     S | B = 8     | B = 14    | B = 30    | B = 62    |
 |--------|--------------:|------:|-----------|-----------|-----------|-----------|
-| 48 KiB |           442 | 7,521 | +10 / +37 | +14 / +61 | +6 / +62  | -42 / +43 |
-| 52 KiB |           479 | 8,106 | +3 / +32  | +7 / +58  | -1 / +60  | -53 / +38 |
-| 54 KiB |           498 | 8,399 | -1 / +29  | +4 / +57  | -5 / +58  | -59 / +36 |
-| 56 KiB |           516 | 8,692 | -5 / +27  | +0 / +55  | -8 / +57  | -64 / +34 |
-| 64 KiB |           590 | 9,862 | -19 / +17 | -13 / +49 | -23 / +51 | -87 / +25 |
+| 48 KiB |           442 | 7,521 | +10 / +37 | +14 / +57 | +6 / +62  | -42 / +43 |
+| 52 KiB |           479 | 8,106 | +3 / +32  | +7 / +54  | -1 / +60  | -53 / +38 |
+| 54 KiB |           498 | 8,399 | -1 / +29  | +4 / +52  | -5 / +58  | -59 / +36 |
+| 56 KiB |           516 | 8,692 | -5 / +27  | +0 / +50  | -8 / +57  | -64 / +34 |
+| 64 KiB |           590 | 9,862 | -19 / +17 | -13 / +43 | -23 / +51 | -87 / +25 |
+
+  (At B = 14 with 10 a level since 2026-11-28, 028-72; with 9, +61, +58,
+  +57, +55 and +49.)
 
 * **So TP26 as stated does not cover the decided limits.** At node size
   30 it covers 500 operations of 111-byte keys only if H <= 21 (0.2 %;
@@ -759,8 +784,23 @@ segments, and L3 = 56 KiB (6.1). Restated 17:45 from
   L3 = 56 KiB. One L1 for every node size (QL12 (a), decided) is so
   provable at 8, 14, 30 and 62 alike, and L8 can become a `Bug` at every
   node size once the count is proved (QL5). The restatement for format
-  7 (F11's (1)) is then 14 a level at node size 8, 9 at 14, 8 at 30 and
-  62.
+  7 (F11's (1)) is then 14 a level at node size 8, 9 at 14 (10 since
+  028-21), 8 at 30 and 62.
+* **The action's 7/8** (since 031-06, 2026-11-27; 028-72, 2026-11-28).
+  An action's index nodes are admitted up to 7/8 of the record limit
+  (`StoredTrans.actionDirtyLimit()`, 1,879,048,185 bytes), not 15/16.
+  `Db` compares Java's count (`Dag.dirtyNodeBound`) with it, not a
+  formula. The worst transaction within L1 to L5 for that count is 500
+  deletes of keys whose bytes sum to L3 (8,692 segments) on the worst
+  path at H = 61: 7,488,343 nodes at node size 8, 76.5 % of the 7/8; at
+  14, 30 and 62 (H = 38, 22, 16), 48.2, 46.8 and 66.9 %. So no
+  transaction within L1 to L5 is refused by it. The count with q (14,
+  10, 8, 8 a level) gives 78.4, 53.4, 48.5 and 70.7 %. The Lean's
+  `Params.nodesALevel` (19, 13, 11, 11 since 028-21) is a looser bound
+  of the same count, by which the worst action is 106.4 % of the 7/8 at
+  node size 8, so `releaseFits8` shows only that it fits 15/16; its
+  restatement from Java's count waits for the next change of
+  `Bound.lean` (028-72, B).
 * **L3 = 56 KiB** (57,344 bytes, 516 keys of 111 bytes): by the rule of
   6.1, L1 keys of L2 bytes never meet it (500 x 111 = 55,500 bytes,
   54.2 KiB); 54 KiB (55,296) would refuse 500 keys of 111 bytes, so 56
@@ -809,7 +849,7 @@ segments, and L3 = 56 KiB (6.1). Restated 17:45 from
 | B  |     Nodes | Dirty set |  Record | Of 2^31 - 9 |
 |----|----------:|----------:|--------:|------------:|
 | 8  | 7,673,344 |   1.47 GB | 1.51 GB |      70.2 % |
-| 14 | 3,136,120 |   0.90 GB | 0.94 GB |      43.6 % |
+| 14 | 3,483,800 |   1.00 GB | 1.04 GB |      48.3 % |
 | 30 | 1,675,864 |   0.91 GB | 0.95 GB |      44.0 % |
 | 62 | 1,258,648 |   1.33 GB | 1.36 GB |      63.5 % |
 
@@ -1440,10 +1480,12 @@ So:
     %); at node size 62, 330; with L3's index entries, at no node size
     but 14. **So QL8's restatement is still needed, not a margin.** With
     q (14 a level at node size 8, 9 at 14, 8 at 30 and 62): 742, 1,210,
-    1,199 to 1,251 and 822 operations, 1.5 to 2.5 times L1.
+    1,199 to 1,251 and 822 operations, 1.5 to 2.5 times L1 (at 14, 10 a
+    level and 1,089 operations since 028-21, 5.2a, corrected 2026-11-28).
   * **QL12 is gone**: with the count with q every node size covers 500,
     so one L1 is provable at 8, 14, 30 and 62 alike; Java's own counts
-    of one delete are 766, 1,215, 1,415 and 996 operations.
+    of one delete are 766, 1,215, 1,415 and 996 operations (format 7's;
+    today's in 5.2a).
   * **The record** at the limits: at most 0.95 GB at node size 30, 1.51
     GB at node size 8 (70 % of 2^31 - 9), so the record limit stays.
   * **L4 = 8 MiB** holds every tracked file of the repository but the
@@ -1485,7 +1527,7 @@ The questions as they stood before 17:41, each now decided:
   over L7 (6.5)? **Recommended: yes, in 2026.5.** **Decided: yes.**
 * **QL8. Which count L1 = 1,000 rests on** (F11)? (a) TP26 for format
   7 restated with q, the room after a merge: 8 nodes a level at node
-  sizes 30 and 62, 9 at 14, the 20 kept at 8 (`Limits.dirtyNodes`, a
+  sizes 30 and 62, 9 at 14 (10 since 028-21, 028-72), the 20 kept at 8 (`Limits.dirtyNodes`, a
   line of `Bound.lean`; `treetest` and `treeconf.sh`, C-T8, run it as
   they run TP26 today), with the transaction's segments (L3) as a third
   field of `Limits` and the sum form; or (b) TP26 as stated (20 a
@@ -1587,7 +1629,7 @@ MiB, L5 32 MiB, the rest as recommended). Arithmetic and reading only.
   in the model; 8 MiB's costs are 4.2's rows scaled, not measured.
 * **To continue:** 024-22's agent (or 024-12's) restates
   `Limits.dirtyNodes` for format 7 with q (14, 9, 8, 8 nodes a level at
-  node sizes 8, 14, 30, 62) and L3 as a field, and runs `treetest` and
+  node sizes 8, 14, 30, 62; 10 at 14 since 028-21, 028-72) and L3 as a field, and runs `treetest` and
   `treeconf.sh` against it; then the implementation subitem (checks in
   `Trans.Builder` and `Db.execute`, the Javadoc "Limits", the tests and
   harnesses of 6.2 (e) and F3).

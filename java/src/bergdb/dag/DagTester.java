@@ -1280,6 +1280,162 @@ public class DagTester {
                 klongs.get(leaf) >= collapses + 2 * dels.size());
     }
     
+    /**
+     * The count of 024-17 (sections 5.2 and 5.2a) against Dag.dirtyNodeBound on the worst path
+     * (bergdb 028-72, ActionRoomProbe): c (H + 2) S + 14 n nodes for n operations of S
+     * segments, c = 14, 10, 8 and 8 nodes a level at node sizes 8, 14, 30 and 62, with H, the
+     * most levels of a segment tree less one, at 61, 38, 22 and 16 (024-17, 5.2: a stream of
+     * under 2^60 klongs, m = 2, 3, 7 and 16). The worst tree for the count: every segment tree
+     * on the keys' paths H + 1 key nodes high, every node of the paths full (B klongs, no
+     * room), the paths apart as far as full nodes allow (at most B - 1 children a node); it
+     * is made of key nodes directly, in memory, the other klongs of a node KEY klongs that
+     * point nowhere and that no search of the walk picks. Deletes, puts and value
+     * transformations (a put and a delete of one key) of keys of 1 to 147 segments (6 to
+     * 1,022 bytes; 147 is the cap on BergDB's own long keys, 031-06, O1). The count with q
+     * is what 024-17 and 031-06 state for a transaction within L1 to L5, and its 7/8 at the
+     * release's limits (031-06, section 9): a change that raises Java's count above it fails
+     * here, as 028-21's new roots above a cut segment root raised it at node size 14 above 9
+     * a level (9.12 on this path). The second check, that the long key's count is above
+     * c - 1 a level, keeps the tree the worst one: if a change lowers the count below it, the
+     * documents' c can be lowered too.
+     */
+    @Nano
+    public static void testDirtyNodeBoundOfTheWorstPath() {
+        final int[][] sizes = {{8, 61, 14}, {14, 38, 10}, {30, 22, 8}, {62, 16, 8}};
+        final Random r = new Random(28072);
+        for (int[] bhc : sizes) {
+            final int b = bhc[0], h = bhc[1], c = bhc[2];
+            for (int bytes : new int[] {6, 7, 105, 1022}) {
+                final long[][] k = {worstKey(r, bytes)};
+                final long n = worstPathCheck(b, h, c, "one delete of " + bytes + " B", k,
+                        new boolean[] {true}, 1);
+                if (bytes == 1022) {
+                    final long below = (c - 1L) * (h + 2) * k[0].length;
+                    Assert.assertTrue("B=" + b + ": " + n + " nodes for a delete of "
+                            + k[0].length + " segments, not above " + (c - 1) + " a level ("
+                            + below + "): the path is not the worst, or the count fell",
+                            n > below);
+                }
+            }
+            long[][] k = {worstKey(r, 105)};
+            worstPathCheck(b, h, c, "one put of 105 B", k, new boolean[] {false}, 1);
+            worstPathCheck(b, h, c, "one value transformation of 105 B",
+                    new long[][] {k[0], k[0]}, new boolean[] {false, true}, 1);
+            k = new long[8][];
+            for (int i = 0; i < k.length; i++) {
+                k[i] = worstKey(r, i < 4 ? 119 : 112);
+            }
+            final boolean[] dels = new boolean[k.length], puts = new boolean[k.length];
+            java.util.Arrays.fill(dels, true);
+            worstPathCheck(b, h, c, "8 deletes of 119 and 112 B", k, dels, 8);
+            worstPathCheck(b, h, c, "8 puts of 119 and 112 B", k, puts, 8);
+            final long[][] k2 = new long[2 * k.length][];
+            final boolean[] d2 = new boolean[k2.length];
+            for (int i = 0; i < k.length; i++) {
+                k2[2 * i] = k[i];
+                k2[2 * i + 1] = k[i];
+                d2[2 * i + 1] = true;
+            }
+            worstPathCheck(b, h, c, "8 value transformations of 119 and 112 B", k2, d2, 8);
+        }
+    }
+
+    /** A key of 'bytes' printable bytes at random, as segments. */
+    private static long[] worstKey(Random r, int bytes) {
+        final byte[] k = new byte[bytes];
+        for (int i = 0; i < bytes; i++) {
+            k[i] = (byte) (0x21 + r.nextInt(0x5e));
+        }
+        return Keys.toSegments(k);
+    }
+
+    /**
+     * Java's count of the operations (keys[i], deletes[i]), 'ops' of them (a value
+     * transformation is two entries and one operation), on the worst tree of their keys
+     * (testDirtyNodeBoundOfTheWorstPath), checked against c (H + 2) S + 14 n.
+     */
+    private static long worstPathCheck(int b, int h, int c, String what, long[][] keys,
+            boolean[] deletes, int ops) {
+        final List<long[]> distinct = new ArrayList<long[]>();
+        final Set<String> seen = new java.util.HashSet<String>();
+        long s = 0;
+        for (long[] k : keys) {
+            if (seen.add(java.util.Arrays.toString(k))) {
+                distinct.add(k);
+                s += k.length;
+            }
+        }
+        final KeyNode root = worstTrie(distinct, 0, h + 1, b);
+        final Dag dag = new Dag(new TopNode(0, root, Spos.NULL, 0, Spos.NULL), b);
+        final long n = dag.dirtyNodeBound(1, keys, deletes, gd(dag));
+        final long bound = c * (h + 2L) * s + 14L * ops;
+        Assert.assertTrue("B=" + b + " H=" + h + ", " + what + " (S=" + s + "): Java's count "
+                + n + " is above " + c + " (H + 2) S + 14 n = " + bound, n <= bound);
+        return n;
+    }
+
+    /** The worst tree of segment 'seg' for keys that share their first seg segments. */
+    private static KeyNode worstTrie(List<long[]> keys, int seg, int levels, int b) {
+        final TreeMap<Long, List<long[]>> by = new TreeMap<Long, List<long[]>>();
+        for (long[] k : keys) {
+            List<long[]> l = by.get(k[seg]);
+            if (l == null) {
+                l = new ArrayList<long[]>();
+                by.put(k[seg], l);
+            }
+            l.add(k);
+        }
+        final long[] vals = new long[by.size()];
+        final Node[] targets = new Node[by.size()];
+        int i = 0;
+        for (Map.Entry<Long, List<long[]>> e : by.entrySet()) {
+            vals[i] = e.getKey();
+            final List<long[]> sub = new ArrayList<long[]>();
+            for (long[] k : e.getValue()) {
+                if (k.length > seg + 1) {
+                    sub.add(k);
+                }
+            }
+            Assert.assertTrue("a key ends where another goes on",
+                    sub.isEmpty() || sub.size() == e.getValue().size());
+            targets[i] = sub.isEmpty() ? null : worstTrie(sub, seg + 1, levels, b);
+            i++;
+        }
+        return worstTree(vals, targets, 0, vals.length, levels, b);
+    }
+
+    /**
+     * A segment tree of 'levels' levels of full key nodes for the sorted values vals[from,
+     * to), each pointing to targets[i] (the next segment's tree, or nothing where a key ends):
+     * an inner node a KEY klong for each of at most b - 1 groups, a leaf one for each value,
+     * each node filled to b klongs with KEY klongs above its values.
+     */
+    private static KeyNode worstTree(long[] vals, Node[] targets, int from, int to, int levels,
+            int b) {
+        final KeyNode node = new KeyNode(levels == 1);
+        final int n = to - from;
+        if (levels == 1) {
+            Assert.assertTrue(n + " values in one leaf", n <= b - 1);
+            for (int i = from; i < to; i++) {
+                node.addKlong(0, Klong.compareValueToKeyKlong(vals[i]), targets[i], Spos.NULL);
+            }
+        } else {
+            final int g = Math.min(n, b - 1);
+            for (int j = 0; j < g; j++) {
+                final int lo = from + (int) ((long) n * j / g);
+                final int hi = from + (int) ((long) n * (j + 1) / g);
+                node.addKlong(0, Klong.compareValueToKeyKlong(vals[lo]),
+                        worstTree(vals, targets, lo, hi, levels - 1, b), Spos.NULL);
+            }
+        }
+        long cv = vals[to - 1];
+        while (node.size < b) {
+            cv += 8;
+            node.addKlong(0, Klong.compareValueToKeyKlong(cv), null, Spos.NULL);
+        }
+        return node;
+    }
+    
     /** A Dag and the key nodes a transaction makes dirty, for testDirtyNodeBoundOfDeletes. */
     private static final class BoundCase {
         final Dag dag;

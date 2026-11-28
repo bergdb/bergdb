@@ -1,7 +1,9 @@
 028-72. Investigate: the action's 7/8 against the worst action by the Lean's node count
 =======================================================================================
 
-Status: open. Kind: Investigate. Frans: decision.
+Status: open: A done (2026-11-28), B open, with the next change of
+`Bound.lean`. Kind: Investigate. Frans: A, gone ahead by default at
+10:00 on 2026-11-28 (the lead's decision of class 2, no objection).
 Created 2026-11-27 by Frans Lundberg.
 
 What: since 031-06's step 2 (on `main` since `5b88cc80`), an action's
