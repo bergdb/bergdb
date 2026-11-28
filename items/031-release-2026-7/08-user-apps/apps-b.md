@@ -28,8 +28,8 @@ Core's `Db`, `DbBuilder`, `FileStream` and `MemoryStream`, and
 was read only to tell a product bug from a mistake of the app or the
 documents after a result disagreed. Nothing in `java/src` was changed.
 
-Made by: Claude, Anthropic's model Opus 5.5, as an agent of the lead, on
-2026-11-28 from 06:16; on the branch `031-08-apps-b` of a clone.
+Made by an agent of the lead on 2026-11-28, from 06:16, on the branch
+`031-08-apps-b` of a clone of `main`.
 
 Findings are UB-1, UB-2, ...
 
@@ -196,7 +196,7 @@ action list and file helpers.
   begins with its database's tag and its transaction's number), and R
   with reclaim (a retain duration of 1 s on a `TestClock`), written until
   its first file begins at 1 MB or more, with a copy taken before its
-  first cut. About 65 cases a seed, each on a copy: the last file cut at
+  first cut. 66 to 93 cases a seed, each on a copy: the last file cut at
   0, 1 and 7 bytes, at record ends and one byte off them, at and near each
   200,000-byte block, at random places; a file but the last cut to a
   length that is not a multiple of 100,000, and to 100,000; the last file
@@ -204,14 +204,21 @@ action list and file helpers.
   one in the middle, the one before the last, the last), `created.txt`
   missing, every stream file missing; B's file of the same name in place
   of A's (the last, one in the middle, the first); A's first half and B's
-  second half; B's bytes, random bytes, 100 zeros and 9 MB of zeros after
-  A's last record; B's stream files with A's `created.txt`; an older copy
+  second half; B's bytes, random bytes, 100 zeros, 8,000,000, 8,000,001
+  and 9,000,000 zeros after A's last record; the last file cut inside a
+  record and 1 MB or 9 MB of zeros after; every stream file replaced by
+  one file of zeros; B's stream files with A's `created.txt`; an older copy
   of a file put back, the older copy over the newer files, the older copy
   alone; a `.DS_Store` and a `notes.txt` beside the files, a copy of the
   first file as Finder names it ("00000000000000 copy.bergdb"), an empty
   file, a file of zeros, A's first and A's last file under a name after a
-  gap after the last file, an empty file where the last ends; every
-  stream file read-only, the directory read-only; before a
+  gap after the last file, an empty file where the last ends, the same
+  with the last file first cut to 100,000 bytes (so that the files before
+  the gap are all of the database's); `created.txt` of garbage, empty, or
+  naming a crypto key as 2026.3 wrote it; `bergdb.lock` removed; the
+  directory moved and a symbolic link at its old path; a second start
+  while the database runs; every stream file read-only, the directory
+  read-only; before a
   gap in R's files, B's first file, R's file under an earlier name, an
   empty file, R's own old files (from its earlier copy); R's second file
   missing; a database of release 2026.6 (made by the jar built from the
@@ -462,7 +469,8 @@ refusal whose diagnosis and way out are wrong (UB-3).
   031-07's review of the checksums: a node checksum seeded with the
   database's ID and the node's position would refuse such a read.
 * **UB-5 (document and messages, minor). Read-only files cannot be read,
-  four refusals name no way out or no file, and a sentence on zeros.** (a) Every stream file
+  refusals that name no way out, no file or another file, and a
+  sentence on zeros.** (a) Every stream file
   read-only (a copy on a read-only medium, an archive): `open()`'s start
   is refused, `StreamIoException`: ".../00000000000320.bergdb (Permission
   denied)", though a start of a cleanly stopped database writes nothing;
@@ -493,7 +501,17 @@ refusal whose diagnosis and way out are wrong (UB-3).
   refused"): the zeros begin inside the last record and reach past its
   end. With 1 MB of zeros, left out of the stream, the same cut is a cut
   tail and the start is accepted. FileStream's sentence could add "and
-  end in it". Every refusal changed no file, and after the cause was
+  end in it". (f) A stray stream file after the last (an empty file, a
+  file of zeros, a copy of a file under a later name): refused (f4 seed
+  7) with "Bad
+  size of file .../00000000000170.bergdb, should have been a multiple of
+  100000, but was 402384", which names the database's own last file, not
+  the stray one; with the last file at a multiple of 100,000 (as a user
+  who follows that message would leave it), the start is refused (seed
+  8) with
+  "Could not find *any* valid meta block ... The stream begins at
+  83300000, and the bytes before it are not there", or with "Invalid
+  magic bytes", and has written nothing. No case lost a transaction. Every refusal changed no file, and after the cause was
   removed every start was accepted with every transaction. Judgment:
   document (`open()` needs write access to the directory and the last
   file) and messages.
