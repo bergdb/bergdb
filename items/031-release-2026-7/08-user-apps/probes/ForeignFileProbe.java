@@ -41,7 +41,7 @@ public class ForeignFileProbe {
                     byte[] v = new byte[20_000 + r.nextInt(40_000)];
                     byte[] h = (d.getName() + ":" + i + ":").getBytes();
                     System.arraycopy(h, 0, v, 0, h.length);
-                    c.put("/k/x" + (i % 300) + ".bin", v);
+                    c.put("/k/x" + i + ".bin", v);           // each key once: every file holds latest values
                 }
                 c.sync();
             }

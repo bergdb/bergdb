@@ -73,6 +73,7 @@ public class FileHandling {
             foreign(A, B);
             olderCopy(A);
             strays(A);
+            others(A);
             readOnly(A);
             gaps(R, B);
             if (old != null && old.isDirectory()) oldRelease(old);
@@ -300,9 +301,18 @@ public class FileHandling {
             for (Long e : A.ends) if (e > l0 + 1000 && e < l0 + lastA.length()) { inside = e - l0 - 500; break; }
             if (inside > 0) {
                 final long at = inside;
+                // More than 8 MB: left in the stream; the zeros begin inside the record and reach past
+                // its end, which Database's "What a crash keeps" refuses ("a longer run of zeros that
+                // reaches past a transaction's end"); FileStream's "as a cut tail where its zeros begin
+                // inside the last record" reads otherwise (UB-5 (e)).
                 runCase("the last file cut inside a record and 9 MB of zeros appended", A, dir -> {
                     truncate(new File(dir, lastA.getName()), at);
                     append(new File(dir, lastA.getName()), new byte[9_000_000]);
+                }, Expect.REFUSE_TAIL, -1, null);
+                // Less than 8 MB: left out; a cut tail inside the record.
+                runCase("the last file cut inside a record and 1 MB of zeros appended", A, dir -> {
+                    truncate(new File(dir, lastA.getName()), at);
+                    append(new File(dir, lastA.getName()), new byte[1_000_000]);
                 }, Expect.ACCEPT, txBefore(A, l0 + at), null);
             }
         }
@@ -408,6 +418,54 @@ public class FileHandling {
         }
     }
 
+    /** created.txt and bergdb.lock handled by hand, the directory moved or linked, a second start. */
+    static void others(Src A) throws Exception {
+        runCase("created.txt of garbage bytes", A, dir -> {
+            byte[] g = new byte[300];
+            new Random(seed).nextBytes(g);
+            Files.write(new File(dir, "created.txt").toPath(), g);
+        }, Expect.EITHER, A.ends.size(), null);
+        runCase("created.txt empty", A, dir -> Files.write(new File(dir, "created.txt").toPath(), new byte[0]), Expect.EITHER,
+                A.ends.size(), null);
+        runCase("created.txt naming a crypto key, as release 2026.3 wrote it", A, dir -> {
+            String t = new String(Files.readAllBytes(new File(dir, "created.txt").toPath()));
+            Files.write(new File(dir, "created.txt").toPath(), (t + "crypto key: 0123456789abcdef\n").getBytes());
+        }, Expect.EITHER, A.ends.size(), null);
+        runCase("bergdb.lock removed (stopped)", A, dir -> new File(dir, "bergdb.lock").delete(), Expect.ACCEPT,
+                A.ends.size(), null);
+        runCase("the directory moved, and a symbolic link at its old path", A, dir -> {
+            File moved = new File(dir.getPath() + "-moved");
+            Common.rmrf(moved);
+            Files.move(dir.toPath(), moved.toPath());
+            Files.createSymbolicLink(dir.toPath(), moved.getAbsoluteFile().toPath());
+        }, Expect.ACCEPT, A.ends.size(), null);
+        // A second start while the first runs (DatabaseBuilder.start(): DirectoryInUseException, nothing
+        // in the directory read or changed, the first runs on).
+        cases++;
+        File dir = new File(base, "case" + cases);
+        copyDir(A.dir, dir);
+        try (Database db = Factory.database().open(dir.getPath()).start()) {
+            Map<String, String> before = snapshot(dir);
+            before.remove("created.txt");
+            String outcome;
+            try (Database db2 = Factory.database().open(dir.getPath()).start()) {
+                outcome = "ACCEPTED, A SECOND DATABASE ON THE DIRECTORY";
+                failures++;
+            } catch (Throwable t) {
+                outcome = "refused: " + describe(t);
+                refused++;
+            }
+            Map<String, String> after = snapshot(dir);
+            after.remove("created.txt");
+            String ch = diff(before, after);
+            if (ch != null) { outcome += "; THE REFUSED START CHANGED: " + ch; failures++; }
+            checkState(db, A, A.ends.size(), "the first database after a second start was refused");
+            db.connection().put("/k/after.txt", "the first runs on");
+            log("case " + cases + ": a second start while the database runs: " + outcome);
+        }
+        Common.rmrf(dir);
+    }
+
     static void readOnly(Src A) throws Exception {
         runCase("every stream file read-only", A, dir -> {
             for (File f : files(dir)) f.setWritable(false);
@@ -451,7 +509,9 @@ public class FileHandling {
         // before a gap, or right before R's first file; the start deletes them (they are R's).
         if (rMid != null) {
             List<File> old = new ArrayList<>();
-            for (File f : files(rMid)) if (SameBytes.fileStart(f.getName()) + f.length() <= first) old.add(f);
+            List<File> mid = files(rMid);
+            // The copy's last file was the last then, shorter than its place: not one that a cut leaves.
+            for (File f : mid.subList(0, mid.size() - 1)) if (SameBytes.fileStart(f.getName()) + f.length() <= first) old.add(f);
             if (!old.isEmpty()) {
                 File o = old.get(0);
                 boolean contiguous = SameBytes.fileStart(o.getName()) + o.length() == first;

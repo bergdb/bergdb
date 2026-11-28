@@ -130,9 +130,20 @@ action list and file helpers.
   * K3: a chain whose starts all found the stream at an action's end ends,
     after all the actions, with the ref's stream (byte for byte where the
     files are, and its length);
+  * K5: after such a kill, three times, a copy of the files as the kill
+    left them is started by children that only start and close the
+    database, each killed 0 to 200 ms after it begins (one to three such
+    kills), and then started here: the state is the same, and the stream
+    is that of a start that no kill cut, but for a meta block that a kill
+    cut, which may be completed as an invalid block (the magic and the
+    version, zeros after: 027-11, section 1.3, "Every later start takes
+    what a start's completion wrote"; read after a first version of K5
+    failed on exactly that);
   * K4: after a start that completed a torn end, two copies of the files
     as the kill left them, each started and given the next 25 to 65
     actions, end with the same stream; the chain then ends.
+  The child writes what it has done (each action, each sync) to a file
+  of its own, a write a line, which the parent reads after the kill.
 * **f3 PubSameBytes** (Pub API; field 1 for a Pub user). The clock is a
   `TestClock` (`DatabaseBuilder.clock()`: "Use this method together with a
   TestClock to do deterministic testing"). The database is created at a
@@ -199,6 +210,24 @@ action list and file helpers.
   C + 1, every value as written, or be refused only as FileStream's
   Javadoc allows (a listed file that a cut deleted is missing: "take the
   copy again"), with no file changed.
+
+
+How to run them, from `java/` after `./build.sh` (the arguments are in
+each source's header):
+
+    javac --release 17 -nowarn -encoding UTF-8 -cp build/bergdb-release.jar -d /tmp/fb \
+        $(find stress/apps/common stress/apps/f* -name '*.java')
+    J="java -ea -Xmx2g -XX:+ExitOnOutOfMemoryError -cp build/bergdb-release.jar:/tmp/fb"
+    $J SameBytes 1 600 /tmp/fb/f1 all          # f1, all runs (about 1.5 minutes)
+    $J KillBytes 1 400 /tmp/fb/f2 40           # f2, 40 kills (about 1.5 minutes; two JVMs)
+    $J PubSameBytes 1 600 /tmp/fb/f3           # f3 (about 1 minute)
+    $J FileHandling 1 /tmp/fb/f4 [OLD_DB]      # f4 (1 to 3 minutes)
+    $J LiveCopy 1 /tmp/fb/f5 30                # f5 (about 1 minute)
+
+f4's optional `OLD_DB` is a database that release 2026.6 made: f4 then
+also checks its refusal. One is made with the jar built from the tag
+`release-2026.6`, as `apps.sh` builds 2026.4's for Upgrade (a7), and a
+program that puts some values with it.
 
 
 ## 3. The runs
@@ -333,7 +362,7 @@ refusal whose diagnosis and way out are wrong (UB-3).
   031-07's review of the checksums: a node checksum seeded with the
   database's ID and the node's position would refuse such a read.
 * **UB-5 (document and messages, minor). Read-only files cannot be read,
-  and four refusals name no way out or no file.** (a) Every stream file
+  four refusals name no way out or no file, and a sentence on zeros.** (a) Every stream file
   read-only (a copy on a read-only medium, an archive): `open()`'s start
   is refused, `StreamIoException`: ".../00000000000320.bergdb (Permission
   denied)", though a start of a cleanly stopped database writes nothing;
@@ -353,7 +382,18 @@ refusal whose diagnosis and way out are wrong (UB-3).
   missing stream). (d) The first file missing: "The start needs bytes of
   the stream before its first position, 200000: the stream lacks bytes
   of the database. The start has deleted nothing (bergdb 028-66)": no
-  file named (a gap in the middle is named, with its files), no way out. Every refusal changed no file, and after the cause was
+  file named (a gap in the middle is named, with its files), no way out.
+  (e) FileStream's "A tail of zeros" says of a run of zeros longer than
+  8 MB: "the start takes it as before: as a cut tail where its zeros
+  begin inside the last record, else refused"; f4's case "the last file
+  cut inside a record and 9 MB of zeros appended" is refused
+  (`BadTailException`, "The stream's records end at stream position P",
+  P the end of that record), as Database's "What a crash keeps" says ("a
+  longer run of zeros that reaches past a transaction's end ... is
+  refused"): the zeros begin inside the last record and reach past its
+  end. With 1 MB of zeros, left out of the stream, the same cut is a cut
+  tail and the start is accepted. FileStream's sentence could add "and
+  end in it". Every refusal changed no file, and after the cause was
   removed every start was accepted with every transaction. Judgment:
   document (`open()` needs write access to the directory and the last
   file) and messages.
