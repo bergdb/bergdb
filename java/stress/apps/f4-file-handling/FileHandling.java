@@ -42,6 +42,7 @@ public class FileHandling {
     static long seed;
     static File base;
     static int cases, refused, accepted, failures;
+    static File rMid;
     static final List<String> notes = new ArrayList<>();
 
     /** A database made once: its files, and where each transaction's records end. */
@@ -71,6 +72,7 @@ public class FileHandling {
             missing(A);
             foreign(A, B);
             olderCopy(A);
+            strays(A);
             readOnly(A);
             gaps(R, B);
             if (old != null && old.isDirectory()) oldRelease(old);
@@ -115,6 +117,14 @@ public class FileHandling {
         int n = reclaim ? 6000 : 500 + shape.nextInt(200);
         for (int i = 0; i < n; i++) {
             if (reclaim && i > 200 && i % 50 == 0 && firstFileStart(s.dir) >= 1_000_000) break;
+            if (reclaim && rMid == null && i % 10 == 0 && firstFileStart(s.dir) > 0) {
+                // A copy of R as it was once it had cut, for its own files that later cuts delete.
+                db.close();
+                rMid = new File(base, "src-R-mid");
+                copyDir(s.dir, rMid);
+                db = Factory.database().open(s.dir.getPath()).clock(tc).start();
+                c = db.connection();
+            }
             t += 10_000L * (reclaim ? 20 + shape.nextInt(40) : 1 + shape.nextInt(5));
             tc.setTime(bergdb.pub.Time.units(t));
             int ops = shape.nextInt(10) < 8 ? 1 : 2 + shape.nextInt(30);
@@ -320,6 +330,38 @@ public class FileHandling {
         Common.rmrf(older);
     }
 
+    /** Other files in the directory: stray files, a copy that Finder names, files after the last. */
+    static void strays(Src A) throws Exception {
+        List<File> fa = files(A.dir);
+        File lastA = fa.get(fa.size() - 1);
+        long endA = SameBytes.fileStart(lastA.getName()) + lastA.length();
+        runCase("a .DS_Store and a notes.txt in the directory", A, dir -> {
+            Files.write(new File(dir, ".DS_Store").toPath(), new byte[] {0, 0, 0, 1, 'B', 'u', 'd', '1'});
+            Files.write(new File(dir, "notes.txt").toPath(), "backup of 2026-11-28".getBytes());
+        }, Expect.ACCEPT, A.ends.size(), null);
+        runCase("a copy of the first file as Finder names it, \"00000000000000 copy.bergdb\"", A,
+                dir -> copy(new File(dir, fa.get(0).getName()), new File(dir, "00000000000000 copy.bergdb")), Expect.REFUSE, -1, null);
+        // An empty stream file far after the last, and one right where the last ends.
+        String far = String.format("%014d.bergdb", (endA / 100_000) + 500);
+        runCase("an empty file " + far + " far after the last (a gap before it)", A,
+                dir -> Files.write(new File(dir, far).toPath(), new byte[0]), Expect.EITHER, A.ends.size(), null);
+        long nextStart = ((endA + 99_999) / 100_000) * 100_000;
+        String next = String.format("%014d.bergdb", nextStart / 100_000);
+        if (endA % 100_000 != 0) {
+            runCase("an empty file " + next + " after the last, whose length is not a multiple of 100,000", A,
+                    dir -> Files.write(new File(dir, next).toPath(), new byte[0]), Expect.EITHER, A.ends.size(), null);
+        }
+        // A's first file copied far after the last (a gap before it): its meta blocks name other positions.
+        runCase("A's first file copied as " + far + ", after a gap", A,
+                dir -> copy(new File(dir, fa.get(0).getName()), new File(dir, far)), Expect.EITHER, A.ends.size(), null);
+        // A's last file copied far after itself.
+        runCase("A's last file copied as " + far + ", after a gap", A,
+                dir -> copy(new File(dir, lastA.getName()), new File(dir, far)), Expect.EITHER, A.ends.size(), null);
+        // A file of zeros far after the last.
+        runCase("200,000 zero bytes as " + far + ", after a gap", A,
+                dir -> Files.write(new File(dir, far).toPath(), new byte[200_000]), Expect.EITHER, A.ends.size(), null);
+    }
+
     static void readOnly(Src A) throws Exception {
         runCase("every stream file read-only", A, dir -> {
             for (File f : files(dir)) f.setWritable(false);
@@ -358,6 +400,23 @@ public class FileHandling {
             File m = fr.get(1);
             runCase("R's second file " + m.getName() + " missing", R, dir -> del(new File(dir, m.getName())), Expect.REFUSE, -1,
                     null);
+        }
+        // R's own files that a later cut deleted, put back from the copy of R made once it had cut:
+        // before a gap, or right before R's first file; the start deletes them (they are R's).
+        if (rMid != null) {
+            List<File> old = new ArrayList<>();
+            for (File f : files(rMid)) if (SameBytes.fileStart(f.getName()) + f.length() <= first) old.add(f);
+            if (!old.isEmpty()) {
+                File o = old.get(0);
+                boolean contiguous = SameBytes.fileStart(o.getName()) + o.length() == first;
+                runCase("R's own old file " + o.getName() + " put back (" + (contiguous ? "right before its first file" : "before a gap")
+                        + ")", R, dir -> copy(o, new File(dir, o.getName())), Expect.ACCEPT, R.ends.size(), null);
+                runCase("R's own " + old.size() + " old files put back (the last right before its first file: "
+                        + (SameBytes.fileStart(old.get(old.size() - 1).getName()) + old.get(old.size() - 1).length() == first) + ")", R,
+                        dir -> { for (File f : old) copy(f, new File(dir, f.getName())); }, Expect.ACCEPT, R.ends.size(), null);
+            } else {
+                notes.add("R's copy made once it had cut has no file before R's first file now");
+            }
         }
         runCase("R as it is", R, dir -> {}, Expect.ACCEPT, R.ends.size(), null);
     }

@@ -50,6 +50,12 @@ import java.util.concurrent.atomic.AtomicReference;
  *            in other calls (Db.maintain(): each part is an action of its own, with its time
  *            from the clock and one record, "planned under the write lock from the stream
  *            before the record"; "with the application idle, the calls then go quiet");
+ *   stoptx   one transaction in three executed in another thread, a stop() 0 to 2 ms after it
+ *            begins, a start; the transaction is in the stream whole (its commit had begun)
+ *            or not at all (refused), and then executed again at the same clock;
+ *   stopmid  each maintain(budget) a call of maintain(100000) in another thread, a stop()
+ *            0 to 3 ms after it begins, a start, and calls of maintain(100) until quiet;
+ *            compared with quietbig too;
  *   copy     at a random action the database is closed, its files copied to a new directory
  *            in the order of their names, and the run goes on in the copy;
  *   memory   a MemoryStream in place of the file stream.
@@ -70,6 +76,7 @@ public class SameBytes {
     static final int RESTART_EVERY = 25;
     static final boolean DEBUG = Boolean.getBoolean("f1.debug");
     static int fileNotes;
+    static long stopRefused, stopCommitted;
 
     static long seed;
     static int nKeys;
@@ -103,7 +110,7 @@ public class SameBytes {
         String vs = a.length > 3 ? a[3] : "all";
         nKeys = a.length > 4 ? Integer.parseInt(a[4]) : 1200;
         List<String> variants = vs.equals("all")
-                ? Arrays.asList("restart", "cache", "nosync", "quiet", "copy", "memory", "every")
+                ? Arrays.asList("restart", "cache", "nosync", "stoptx", "quiet", "stopmid", "copy", "memory", "every")
                 : Arrays.asList(vs.split(","));
         Common.rmrf(base);
         base.mkdirs();
@@ -119,12 +126,12 @@ public class SameBytes {
             for (String v : variants) {
                 // "every" (a stop and a start after each action) runs the first 400 actions only.
                 // "quiet" is compared with "quietbig", not with the ref.
-                if (v.equals("quiet") && quietRef == null) {
+                if ((v.equals("quiet") || v.equals("stopmid")) && quietRef == null) {
                     quietRef = run("quietbig");
                     Common.rmrf(new File(base, "quietbig"));
                 }
                 Result r = run(v);
-                compare(v, r, v.equals("quiet") ? quietRef : ref);
+                compare(v, r, v.equals("quiet") || v.equals("stopmid") ? quietRef : ref);
                 Common.rmrf(new File(base, v));
                 Common.rmrf(new File(base, v + "-copy"));
             }
@@ -134,7 +141,8 @@ public class SameBytes {
         }
         Common.rmrf(base);
         System.out.println("OK SameBytes seed " + seed + ", " + acts.size() + " actions, variants " + variants
-                + ", " + fileNotes + " with other files (NOTE)"
+                + ", " + fileNotes + " with other files (NOTE), stoptx: " + stopCommitted + " transactions committed at a stop, "
+                + stopRefused + " refused and executed again"
                 + ", " + (System.currentTimeMillis() - t0) / 1000 + " s");
     }
 
@@ -419,7 +427,76 @@ public class SameBytes {
         for (int i = 0; i < n; i++) {
             Act act = acts.get(i);
             x.clock.t.set(act.time);
-            if (name.startsWith("quiet") && act.kind == 'M') {
+            if (name.equals("stoptx") && act.kind == 'T' && x.r.nextInt(3) == 0) {
+                // A stop from another thread while the transaction runs: "a transaction whose commit
+                // has begun completes", one that has not is refused and writes nothing (Database.stop());
+                // after a start, a refused one is executed again at the same clock (RB-013's case).
+                final Db d = x.db;
+                long len0 = x.db.getStreamLength();
+                AtomicReference<Trans> done = new AtomicReference<>();
+                Thread th = new Thread(() -> {
+                    try {
+                        Trans.Builder b = d.trans();
+                        for (int j = 0; j < act.keys.size(); j++) {
+                            if (act.vals.get(j) == null) b.delete(act.keys.get(j)); else b.put(act.keys.get(j), act.vals.get(j));
+                        }
+                        Trans t = b.build();
+                        d.execute(t);
+                        done.set(t);
+                    } catch (Throwable e) { /* refused by the stop */ }
+                });
+                th.start();
+                if (x.r.nextBoolean()) Thread.sleep(x.r.nextInt(3));
+                x.db.stop();
+                th.join();
+                x.db.close();
+                tap(x, Long.MAX_VALUE);
+                start(x);
+                x.restarts++;
+                long len1 = x.db.getStreamLength();
+                if (len1 == len0) {
+                    Common.check(done.get() == null, name + ": action " + i + " returned, and its record is not in the stream");
+                    apply(x, act);
+                    stopRefused++;
+                } else {
+                    Common.check(len1 == refLen[i], name + ": a stop during action " + i + " (" + act + ") left the stream at " + len1
+                            + ", from " + len0 + "; the ref's after the action " + refLen[i]);
+                    Map<Common.K, byte[]> ops = new LinkedHashMap<>();
+                    for (int j = 0; j < act.keys.size(); j++) {
+                        ops.put(new Common.K(act.keys.get(j)), act.vals.get(j) == null ? Common.DELETED : act.vals.get(j));
+                    }
+                    long tt = done.get() != null ? done.get().tt : act.time;
+                    x.m.apply(ops, Math.max(tt, x.m.lastTime + 1));
+                    stopCommitted++;
+                }
+            } else if (name.equals("stopmid") && act.kind == 'M') {
+                // A stop from another thread while a call of maintain(100000) runs its parts, a
+                // start, and then calls of maintain(100) until quiet: "a call that a crash or a
+                // stop interrupts ... counts with the work it wrote" (031-05); compared with quietbig.
+                final Db d = x.db;
+                Thread th = new Thread(() -> {
+                    try { d.maintain(100_000); } catch (Throwable e) { /* refused or stopped: as documented */ }
+                });
+                th.start();
+                Thread.sleep(x.r.nextInt(4));
+                long len0 = x.db.getStreamLength();
+                x.db.stop();
+                th.join();
+                x.db.close();
+                tap(x, Long.MAX_VALUE);
+                start(x);
+                x.restarts++;
+                Common.check(x.db.getStreamLength() >= len0, name + ": a start after the stop in maintain() at action " + i
+                        + " has a shorter stream");
+                int calls = 0;
+                while (true) {
+                    long before = x.db.getStreamLength();
+                    x.db.maintain(100);
+                    if (x.db.getStreamLength() == before) break;
+                    if (++calls > 20_000) throw new Common.Fail(name + ": action " + i + ": maintain() does not go quiet");
+                }
+                x.maintainCalls += calls;
+            } else if (name.startsWith("quiet") && act.kind == 'M') {
                 // maintain(budget) until a call writes nothing ("the calls then go quiet"),
                 // in calls of 100 (with stops and starts between some) or of 100,000.
                 int budget = name.equals("quietbig") ? 100_000 : 100;
@@ -449,7 +526,7 @@ public class SameBytes {
             lens[i] = x.db.getStreamLength();
             if (name.equals("ref") || name.equals("quietbig")) x.db.sync(SyncLevel.ORDINARY);   // the reference taps all
             tap(x, x.db.getDurableLength());
-            if (refLen != null && !name.startsWith("quiet") && lens[i] != refLen[i]) {
+            if (refLen != null && !name.startsWith("quiet") && !name.equals("stopmid") && lens[i] != refLen[i]) {
                 throw new Common.Fail(name + ": after action " + i + " (" + act + ") the stream length is " + lens[i]
                         + ", the ref's " + refLen[i] + (i > 0 ? " (both " + refLen[i - 1] + " before? this run "
                         + lens[i - 1] + ")" : ""));
