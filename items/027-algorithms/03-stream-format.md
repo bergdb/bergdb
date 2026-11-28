@@ -590,7 +590,14 @@ for a failed one, made only by recovery's fill.
   refused with a `BadTailException`, P the record's start, or the
   block's position after a whole record that ends there (until 028-79,
   P was 128 bytes after the block, and the cut at P kept it). A block
-  inside a whole committed record is not read.
+  inside a whole committed record is not read. In a block's first 8
+  bytes (the review of 028-79): the fill after zeros that the storage
+  kept, the database's first bytes, zeros and the template's bytes from
+  their end, passes; a block of the database's first 1 to 4 bytes and
+  zeros passes only where the stream ends in it, where the record's
+  bytes after it are zeros, or right after a whole record; and a
+  refusal right after a block that a later start could not read as its
+  first has P at the block.
 * **A cut record** (028-67, C1; since 2026-11-28 with T1 of 031-06's
   review 3), the record that the end of the stream cuts after r of its
   bytes, z its size if r is 4 or more: it is taken, and completed, if its
@@ -2343,3 +2350,6 @@ lead-1127, on the branch `start-fixes`.
 the last valid one, in a cut or an aborted record and after a whole
 record that ends at it (sections 6 and 7). By an agent of lead-1127, on
 the branch `start-fixes`.
+
+2026-11-28. 028-79, after its review: the rule of a block's first 8
+bytes (section 7). By an agent of lead-1127, on the branch `start-fixes`.

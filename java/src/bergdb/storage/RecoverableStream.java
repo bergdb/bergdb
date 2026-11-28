@@ -545,8 +545,8 @@ public class RecoverableStream {
                             + "size of one of this database's records (bergdb 028-67, C1).",
                             verified, committed, committedSize, check, id, length);
                 }
-                refuseForeignBlock(spos, length, length, last, "the record at " + spos
-                        + ", which the end of the stream cuts,", verified, committed,
+                refuseForeignBlock(spos, length, length, length, last, "the record at "
+                        + spos + ", which the end of the stream cuts,", verified, committed,
                         committedSize, check);
                 return spos;
             }
@@ -564,8 +564,8 @@ public class RecoverableStream {
                             + "database's records at its place (bergdb 028-67, C3).", verified,
                             committed, committedSize, check, id, length);
                 }
-                refuseForeignBlock(spos, length, length, last, "the record at " + spos
-                        + ", of size " + size + ", which the end of the stream cuts,",
+                refuseForeignBlock(spos, length, length, length, last, "the record at "
+                        + spos + ", of size " + size + ", which the end of the stream cuts,",
                         verified, committed, committedSize, check);
                 return spos;
             }
@@ -614,15 +614,15 @@ public class RecoverableStream {
             // record's is the database's, and parsed where another file's bytes can begin
             // in it (recordProblem()).
             if (lastByte[0] == 0) {
-                refuseForeignBlock(spos, lastPos, length, last, "the aborted record at "
-                        + spos + ", of size " + size + ",", before, beforeCommitted, beforeSize,
-                        check);
+                refuseForeignBlock(spos, lastPos, lastPos + 1, length, last,
+                        "the aborted record at " + spos + ", of size " + size + ",", before,
+                        beforeCommitted, beforeSize, check);
             }
             // The meta block after a whole record that ends at its position (bergdb 028-79):
             // P is the block's position, the end of the record, if the record is one.
             final long after = lastPos + 1;
             if (after % META_BLOCK_DISTANCE == 0 && after > last.getPos() && after < length) {
-                final String problem = foreignBlock(after, length, last);
+                final String problem = foreignBlock(after, length, last, -1);
                 if (problem != null) {
                     throw badTail("The meta block at " + after + ", after the record at "
                             + spos + ", which ends there, " + problem + " (bergdb 028-79).",
@@ -639,14 +639,15 @@ public class RecoverableStream {
      * block, 'last', from after 'spos' to before 'to' (the record's last byte, or the end of
      * the stream for a record that it cuts) holds bytes that are not this database's
      * (foreignBlock(); bergdb 028-79): a BadTailException with P before the record, as
-     * badTail() gives it for 'verified' and 'committed'.
+     * badTail() gives it for 'verified' and 'committed'. 'end' is the record's end, or the
+     * stream's for a record that it cuts.
      */
-    private void refuseForeignBlock(long spos, long to, long length, MetaBlock last,
+    private void refuseForeignBlock(long spos, long to, long end, long length, MetaBlock last,
             String what, long verified, long committed, int committedSize, RecordCheck check) {
         long block = Math.max(spos, last.getPos()) / META_BLOCK_DISTANCE * META_BLOCK_DISTANCE
                 + META_BLOCK_DISTANCE;
         for (; block < to; block += META_BLOCK_DISTANCE) {
-            final String problem = foreignBlock(block, length, last);
+            final String problem = foreignBlock(block, length, last, end);
             if (problem != null) {
                 throw badTail("The meta block at " + block + ", in " + what + " " + problem
                         + " (bergdb 028-79).", verified, committed, committedSize, check,
@@ -667,8 +668,24 @@ public class RecoverableStream {
      * Else what the block holds: such as another file's bytes, which a kill can leave in the
      * last file (bergdb 035-02), an older stream file's block of this database, another
      * database's, or a block of another version.
+     *
+     * <p>The block's first 8 bytes, the magic bytes and the version (since the review of
+     * 2026-11-28 of bergdb 028-79): a block that the end of the stream cut after 1 to 7 of its
+     * bytes, with zeros after them, as a kill's zeros (bergdb 028-60) on a storage that keeps
+     * them leave it, is completed by recovery's fill from the end of the stream
+     * (fixMetaBlockIfNeeded()), which writes the rest of the magic bytes and the version
+     * after the zeros: such a block, the database's first bytes, a run of zeros and the
+     * template's bytes from the run's end, is the database's (until then a start refused it,
+     * a sound stream on MemoryStream). A block of the database's first 1 to 4 bytes and
+     * zeros to its end, the fill's when the zeros reached past byte 8, is the database's only
+     * where the stream ends in it, or where the record's bytes after it are zeros, to 'end',
+     * the record's end or the stream's, or the next meta block, as the completion of a
+     * record writes them; 'end' -1 for a block after a whole record, where a refusal after
+     * it puts P at the block (badTail()). Until then such a block followed by other bytes in
+     * the record was taken, and a later start that read it as its first block refused the
+     * stream, as no valid block begins so.</p>
      */
-    private String foreignBlock(long pos, long length, MetaBlock last) {
+    private String foreignBlock(long pos, long length, MetaBlock last, long end) {
         final int n = (int) Math.min(META_BLOCK_SIZE, length - pos);
         final byte[] bytes = new byte[n];
         readRaw(pos, bytes);
@@ -681,6 +698,33 @@ public class RecoverableStream {
         }
         final byte[] own = last.getBlock().clone();
         Bytes.longToBytesLE(pos, own, MetaBlock.POS_OFFSET);
+        final int k = Math.min(n, 8);
+        int m = 0;      // the bytes of the magic and the version, as far as they go
+        while (m < k && bytes[m] == own[m]) {
+            m++;
+        }
+        if (m > 0 && m < k && w <= 8) {
+            int e = m;  // the zeros after them
+            while (e < k && bytes[e] == 0) {
+                e++;
+            }
+            int t = e;  // the template's bytes after the zeros
+            while (t < k && bytes[t] == own[t]) {
+                t++;
+            }
+            if (t == k && (e < k || n < META_BLOCK_SIZE || end < 0
+                    || rawZeros(pos + META_BLOCK_SIZE,
+                            Math.min(end, pos + META_BLOCK_DISTANCE)))) {
+                return null;
+            }
+            if (t == k) {
+                return "holds the first " + m + " bytes of a meta block and zeros, and bytes "
+                        + "that are not zero after it in the record: not a block that the end "
+                        + "of the stream cut, which recovery completes with the magic bytes and "
+                        + "the version. A kill of the process during an append can leave "
+                        + "another file's bytes there";
+            }
+        }
         int i = 0;
         while (i < w && (bytes[i] == own[i] || (i >= 16 && i < 24))) {
             i++;
@@ -772,7 +816,40 @@ public class RecoverableStream {
                         + problem;
             }
         }
+        // P right after a meta block after the last valid one that a later start could not
+        // read as its first (readFirstMetaBlock()), a block of the database's first bytes and
+        // zeros: P at the block, so that the cut at P leaves no such block (2026-11-28, the
+        // review of bergdb 028-79). The block is no record's.
+        final long block = cut - META_BLOCK_SIZE;
+        if (cut % META_BLOCK_DISTANCE == META_BLOCK_SIZE && block > posOfLastValidMetaBlock
+                && !readableAsFirst(block, length)) {
+            cut = block;
+        }
         return tailRefusal(cause, cut, length);
+    }
+
+    /**
+     * Whether the meta block at 'pos', as far as the stream of 'length' bytes holds it, is
+     * one that readFirstMetaBlock() passes over or takes: zeros, or the magic bytes and the
+     * version as far as they go (bergdb 028-79).
+     */
+    private boolean readableAsFirst(long pos, long length) {
+        final byte[] bytes = new byte[(int) Math.min(META_BLOCK_SIZE, length - pos)];
+        readRaw(pos, bytes);
+        return isZeros(bytes) || MetaBlock.beginsAsBlock(bytes);
+    }
+
+    /** Whether the stream's bytes from 'from' to 'to', no meta block among them, are zero. */
+    private boolean rawZeros(long from, long to) {
+        for (long pos = from; pos < to; ) {
+            final byte[] bytes = new byte[(int) Math.min(to - pos, 64 * 1024)];
+            readRaw(pos, bytes);
+            if (!isZeros(bytes)) {
+                return false;
+            }
+            pos += bytes.length;
+        }
+        return true;
     }
 
     /** check.recordProblem() for the record of 'size' bytes at 'pos', read whole. */
@@ -3164,6 +3241,85 @@ public class RecoverableStream {
                     final long expected = !foreign ? (c == 2 ? x + META_BLOCK_SIZE : -1)
                             : c < 2 ? record : x;
                     Assert.assertEquals(what + ": P", expected, p);
+                }
+            }
+        }
+
+        /**
+         * Bergdb 028-79, the review of 2026-11-28: a meta block's first 8 bytes. (A) A block of
+         * the database's first 1 to 4 bytes and zeros, with other bytes after it in the
+         * record that the end of the stream cuts, as a kill 1 to 4 bytes into a file and
+         * other bytes from there leave it, is refused with P the record's start; with zeros
+         * after it, as recovery's completion writes them, it is taken. After a whole record
+         * that ends at the block, with other bytes after it, P is the block's position, not
+         * 128 after it. (B) A block that the end of the stream cut after 1 to 3 bytes, with
+         * zeros after them to 2 to 4 bytes into it, as a kill's zeros on a storage that keeps
+         * them leave it, is completed by the fill from the stream's end, and the next start
+         * takes the stream, in a record over the block and after one that ends at it. Before,
+         * (A) was taken, and a later start that read the block as its first refused the
+         * stream; (B) was refused at the second start, "does not begin as a meta block", and
+         * (A) after a whole record was refused with P 128 after the block.
+         */
+        @Nano
+        public static void testFirstBytesOfABlock() throws IOException {
+            final long x = 2 * META_BLOCK_DISTANCE;
+            final MemoryStream over = new MemoryStream();       // a record over x
+            final RecoverableStream r = new RecoverableStream(over, new MetaBlock());
+            while (over.getLength() < x - 20000) {
+                appendRecord(r, 1000);
+            }
+            final long record = over.getLength();
+            appendRecord(r, 50000);
+            final MemoryStream ends = new MemoryStream();       // a record that ends at x
+            final RecoverableStream r2 = new RecoverableStream(ends, new MetaBlock());
+            while (ends.getLength() < x - 10000) {
+                appendRecord(r2, 1000);
+            }
+            appendRecord(r2, (int) (x - ends.getLength()));
+            appendRecord(r2, 1000);
+            final byte[] own = new byte[META_BLOCK_SIZE];
+            over.read(x, own, 0, META_BLOCK_SIZE);
+            final byte[] other = new byte[900];
+            new java.util.Random(80).nextBytes(other);
+
+            for (int k = 1; k <= 4; k++) {
+                final byte[] block = Arrays.copyOf(Arrays.copyOf(own, k), META_BLOCK_SIZE);
+                for (int c = 0; c < 3; c++) {
+                    final String what = k + " bytes and zeros, " + (c == 0
+                            ? "other bytes after it in a cut record"
+                            : c == 1 ? "zeros after it in a cut record"
+                            : "other bytes after it, after a record");
+                    final MemoryStream m = c < 2 ? copyOf(over) : copyOf(ends);
+                    MemoryStream.TestAccess.write(m, block, x);
+                    m.truncate(x + META_BLOCK_SIZE + other.length);
+                    MemoryStream.TestAccess.write(m, c == 1 ? new byte[other.length] : other,
+                            x + META_BLOCK_SIZE);
+                    final byte[] image = bytesOf(m);
+                    long p = -1;
+                    try {
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                    } catch (BadTailException e) {
+                        p = e.getCutPos();
+                        Assert.assertArrayEquals(what + ": unchanged", image, bytesOf(m));
+                    }
+                    Assert.assertEquals(what + ": P", c == 0 ? record : c == 1 ? -1 : x, p);
+                }
+            }
+            for (int k = 1; k <= 3; k++) {
+                for (int j = k + 1; j <= 4; j++) {
+                    for (int c = 0; c < 2; c++) {
+                        final String what = k + " bytes, zeros to " + j
+                                + (c == 0 ? ", in a record" : ", after a record");
+                        final MemoryStream m = c == 0 ? copyOf(over) : copyOf(ends);
+                        MemoryStream.TestAccess.write(m, Arrays.copyOf(own, j), x);
+                        MemoryStream.TestAccess.write(m, new byte[j - k], x + k);
+                        m.truncate(x + j);
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                        Assert.assertTrue(what + ": completed", m.getLength() >= x + 128);
+                        final byte[] image = bytesOf(m);
+                        new RecoverableStream(m, new MetaBlock()).recover();
+                        Assert.assertArrayEquals(what + ": taken as it is", image, bytesOf(m));
+                    }
                 }
             }
         }

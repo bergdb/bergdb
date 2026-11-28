@@ -1,9 +1,9 @@
 028-79. Fix: other bytes at a meta block's position, once taken, refuse a later start
 =====================================================================================
 
-Status: fix (1) built on the branch `start-fixes` (2026-11-28), in
-commits of its own after 028-80's, to land after 10:30 unless Frans
-says otherwise; the gates below. Kind: Fix. Frans: none; the smaller fix
+Status: fix (1) built on the branch `start-fixes` (2026-11-28) and
+reviewed; the review's two shapes fixed; to land (by default after 10:30
+unless Frans says otherwise); the gates below. Kind: Fix. Frans: none; the smaller fix
 goes ahead by default at 10:30 on 2026-11-28.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -199,6 +199,75 @@ exact` are F1's (028-78): the copy's block is taken as the last valid
 block, as before; `sameid exact` still loses committed records by the
 cut at P.
 
+Gates of the first build (2026-11-28, on F53 beside other sessions'
+runs, on 028-80 and 028-70's follow-up): `BEFORE COMMIT OK (159 s)`;
+`StartChain 70000 70099 20 2 30 1 0`, 2,000 starts, 25 of 028-76's
+decided case, no failure; `StartChain 60000 60099 20 2 30 1 25`, 2,000
+starts, of 176 tails of other bytes 105 refused with P and started
+after the cut, 63 taken, 28 of the decided case, no failure and no later
+refusal of F2; the night tests of `DbTesterTail` and
+`CorruptStreamTester`, SUCCESS, 5 tests; `PowerLossTest 1001 12 3000 3`,
+POWERLOSS OK; 031-06's `faults.sh` bad 0 in each of 42 lines and
+`sweep.sh` 0 different in each of 63; `LEVEL 3 OK`; `KILL RESTART OK:
+1000 kills and 50 exits in 1364 s, seed 20261128`.
+
+
+Review
+------
+
+Reviewed on 2026-11-28 by a second agent of lead-1127, independent of
+the change: no S1. It checked that no sound file stream is refused,
+that P is always right, that the aborted record as a third place is
+right and needed, and that the bytes are the parent's in 12,520 cases
+of its `SameBytesProbe` but for the case (B) below. Two shapes of a
+block's first 8 bytes, the magic and the version, fixed on the branch:
+
+* **(A)** S2 where F2 applies, rare, not a regression. A block of the
+  database's first 1 to 4 bytes and zeros, with other bytes after it in
+  the record that the end of the stream cuts, as a kill 1 to 4 bytes
+  into a file and other bytes from there leave it, was taken as a block
+  that a kill cut. Recovery never leaves such a block with bytes after
+  it: its fill writes the magic bytes and the version first. Once
+  reclaim's cut made the file the first, a start refused with F2's
+  messages (`BadMagicBytes`, or "Cannot read meta block with version
+  0"). `StartChain` met it once (seed 60016); the review's
+  `OwnPrefixProbe` shows it for 1 to 4 bytes. Fixed: such a block is the
+  database's only where the stream ends in it, where the record's bytes
+  after it are zeros, to the record's end, the stream's or the next meta
+  block, as a completion writes them, or right after a whole record;
+  and a refusal right after a block that a later start could not read
+  as its first (`readFirstMetaBlock`: zeros, or the magic bytes and the
+  version) has P at the block, so that the cut at P leaves none.
+* **(B)** S4, a regression, on `MemoryStream` only. A kill's zeros
+  (028-60) that end 2 to 4 bytes into a block after 1 to 3 of its bytes:
+  the start takes the stream and completes the block with the fill from
+  the stream's end, which writes the rest of the magic bytes and the
+  version after the zeros, and the next start refused that completion,
+  "does not begin as a meta block", after every kill inside it too.
+  `FileStream`'s open leaves such zeros out, so a file database was not
+  affected. Fixed: the database's first bytes, a run of zeros and the
+  template's bytes from the run's end pass.
+* Test: `RecoverableStream.testFirstBytesOfABlock`, failing before ("1
+  bytes and zeros, other bytes after it in a cut record: P, expected
+  380256, got -1"): (A) in a cut record with other bytes and with zeros
+  after the block, and after a whole record; (B) at 1 to 3 bytes with
+  zeros to 2 to 4, in a record and after one, taken at the second start.
+
+Notes of the review, not fixed:
+
+* **(C)** S3, not a regression. A block of zeros at a file's first
+  position, followed by other bytes, passes as zeros. After a power loss
+  in a cut's batch the file lies before a gap, and `leftoverProblem`
+  refuses it with 028-66's way out: a sibling of 028-76's decided case
+  (a). `StartChain` met it in seeds 60104, 62116 and 63022 (60104 on the
+  parent too).
+* **(D)** By reading. A foreign block inside the last committed record,
+  whose nodes end before the block, with only its padding and last byte
+  after it (the record's last byte 10 among the other bytes), is still
+  taken. And a stream of version 156 with such a block that a build
+  before the fix took is now refused with P before later records; no
+  release has version 156.
+
 
 Log
 ---
@@ -208,3 +277,6 @@ lead-1127 prepares fix (1) on a branch; it lands by default after 10:30.
 
 2026-11-28. Fix (1) built on the branch `start-fixes` by an agent of
 lead-1127, after 028-80, with the aborted record as a third place.
+
+2026-11-28. Reviewed by a second agent of lead-1127; its shapes (A) and
+(B) fixed on the branch, its notes (C) and (D) recorded (Review).

@@ -282,7 +282,20 @@ position: B's bytes, but the last transaction's position (offsets 16 to
 23, any) and the block's own position at 46. Zeros, recovery's fill
 (the magic and the version), its completion of a block that the end of
 the stream cut, and a block that a kill cut are not foreign
-(`RecoverableStream.foreignBlock`). The walk reads the blocks after B
+(`RecoverableStream.foreignBlock`). In a block's first 8 bytes, the
+magic and the version (the review of 028-79, 2026-11-28): the fill's
+completion of a block that the end of the stream cut after zeros that
+the storage kept, the database's first 1 to 3 bytes, zeros, and the
+template's bytes from the end of the zeros, is not foreign (before, a
+second start refused it, on `MemoryStream`); a block of the database's
+first 1 to 4 bytes and zeros to its end is not foreign only where the
+stream ends in it, where the record's bytes after it to the record's
+end, the stream's or the next block are zeros, as a completion writes
+them, or right after a whole record; and a refusal right after a block
+that a later start could not read as its first, such a block, has P at
+the block (before, such a block followed by other bytes in a cut record
+was taken, and a later start that read it as its first refused the
+stream, as 033's review of the start found for other blocks). The walk reads the blocks after B
 where it does not read a record's content: in the record that the end of
 the stream cuts, in an aborted record, and the block right after a whole
 record that ends at its position, which until then gave P 128 bytes
@@ -982,3 +995,9 @@ whose content it does not read, the cut one and an aborted one, with P
 before the record, and right after a whole record that ends at it, with
 P at the block (1.3, section 7). By an agent of lead-1127, on the branch
 `start-fixes`.
+
+2026-11-28. 028-79, after its review: the rule of a block's first 8
+bytes, the fill after zeros taken, a block of the first bytes and zeros
+taken only at the stream's end, before zeros or after a whole record,
+and P at a block that a later start could not read as its first (1.3).
+By an agent of lead-1127, on the branch `start-fixes`.
