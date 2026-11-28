@@ -760,6 +760,12 @@ count-gates on `16c64d9a`, G4's M5 (34 / 13), comes from `96daa4bb`
 within theta; G4's M5 takes G5's limit, the larger of twice the twin's
 and the twin's plus 70. Moved to Closed.
 
+2026-11-28. 028-87 done by an agent of lead-1127: G5's ST6 varies by
+run (58,576 to 59,008 slots in 94 runs) with the timing of the capacity
+controller's eviction during the fill; its pass cannot vary, as ST6
+fails only with fewer than 9 maps without a table, against 408 or more.
+The gate prints those maps; its header states the range. In Closed.
+
 2026-11-28. 028-72, A done (Frans: A, by default at 10:00): 024-17's
 count with q is 10 nodes a level at node size 14 since 028-21, not 9;
 031-06, sections 3 and 9, and 024-17 state that by Java's count the
