@@ -1067,8 +1067,15 @@ public class Db implements AutoCloseable {
      * lock, while a commit waits for it (writersWaiting); a few spins, then parks of 20 us.
      * The count falls as each waiting writer gets the lock, which this thread does not hold,
      * so the wait ends when they have it; a part then waits for the commit that runs, as
-     * any part does. An interrupt is left as it is: parkNanos then returns at once, and the
-     * wait spins until the writers have the lock.
+     * any part does.
+     * 
+     * <p>An interrupt is kept and not acted on: maintain() ignores it until it is done, and
+     * the flag is set when the call returns or throws (Database, "Interrupts"; bergdb
+     * 005-46). parkNanos returns at once while the flag is set, so the wait clears it before
+     * a park and sets it again when the wait ends, also when an interrupt comes during the
+     * wait. Until bergdb 028-83 it left the flag as it was, and the wait of a thread whose
+     * flag was set spun on a core as long as commits came (031-08, UA-9: MaintainSpins,
+     * 3,961 ms of CPU in 5 s beside 8 writers).</p>
      */
     private void giveWayToWriters() {
         if (writersWaiting.get() == 0) {
@@ -1103,13 +1110,23 @@ public class Db implements AutoCloseable {
     }
     
     /**
+        long parks = 0;
+        boolean interrupted = false;
      * Sets reclaim's internal fraction: the bytes an iteration rewrites, compared to the
      * stream's growth while it runs; 0.25 by default. Used from the next step.
      * 
      * <p>It must be between 0.001 and 0.90 inclusive. NaN and other values are refused with
+                interrupted |= Thread.interrupted();
      * an IllegalArgumentException, and the setting stays as it was (bergdb 005-73).</p>
+                parks++;
      * 
      * <p>Kept in the stream with the retain duration, as setRetainDuration() keeps that
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        if (hooks != null) {
+            hooks.gaveWay(parks);
+        }
      * (bergdb 015-87, F7): a commit of reclaim's settings, nothing written when the value
      * is in force, refused as a transaction is on a database that is not active, the value
      * unchanged when refused; a restart keeps it.</p>
@@ -5168,6 +5185,15 @@ non-conventional. The advantage is that readers (threads calling
 DB.get()/getMany()) will *never* block on anything but stream reads. 
 Yes, really never! This is independent on what a writer does and 
 other concurrent read threads.
+        /**
+         * bergdb 028-83: the wait of giveWayToWriters() has ended, on the call's thread,
+         * without the lock, after 'parks' parks of 20 us (the spins before them not counted):
+         * for the test of a call whose thread's interrupt flag is set
+         * (ReclaimMaintainTester.testInterruptedCallWaits), which counts the parks against the
+         * wait's time.
+         */
+        public default void gaveWay(long parks) {}
+        
  
 ---- The essence ----
  

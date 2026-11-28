@@ -471,6 +471,110 @@ public class ReclaimMaintainTester {
         }
     }
 
+    /**
+     * A call of maintain() whose thread's interrupt flag is set waits for a commit that
+     * waits for the write lock as any call does, in parks of 20 us, and ends with the flag
+     * set (bergdb 028-83; 031-08, UA-9). Database, "Interrupts": maintain() ignores an
+     * interrupt until it is done, and the flag is set when the call returns or throws. Until
+     * 028-83 the handover's parks (Db.giveWayToWriters) returned at once while the flag was
+     * set, and the call spun on a core as long as commits came: MaintainSpins of 031-08
+     * measured 3,961 ms of CPU in 5 s beside 8 writers. The test holds the lock with a commit
+     * that waits for it, starts the call with the flag set, waits until the call gives way
+     * (Db.TestHooks.givingWay), holds the lock 200 ms more, and lets it go; the hook gaveWay
+     * gives the parks of the wait, which the hooks time. A park waits 20 us or more unless
+     * the flag is set or it is woken, so the parks are at most the wait's time over 20 us;
+     * the bound is twice that, and 1,000 more. The spinning wait made one turn every few
+     * hundred nanoseconds, a hundred times more. The count does not depend on the machine's
+     * speed: a slow or loaded machine parks longer and counts fewer; the 200 ms is not a
+     * limit, and the waits' time limits are hang guards. The call may then throw for its
+     * sync, as maintain()'s Javadoc allows for an interrupt: a StreamIoException whose cause
+     * is an InterruptedIOException.
+     */
+    @Nano
+    public static void testInterruptedCallWaits() throws Exception {
+        Run r = new Run(SEC);
+        try {
+            r.fill(5000, 0);
+            r.advance(2 * SEC);
+            final Db db = r.db;
+            final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
+            final boolean[] flagAfter = new boolean[1];
+            final long[] wait = new long[3];        // the wait's begin and end, its parks
+            final Thread w = new Thread(() -> {
+                try {
+                    db.execute(db.trans().put("/w", "w").build());
+                } catch (Throwable e) {
+                    failure.set(e);
+                }
+            });
+            final Thread m = new Thread(() -> {
+                Thread.currentThread().interrupt();
+                try {
+                    db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
+                } catch (bergdb.storage.StreamIoException e) {
+                    if (!(e.getCause() instanceof java.io.InterruptedIOException)) {
+                        failure.set(e);
+                    }
+                } catch (Throwable e) {
+                    failure.set(e);
+                }
+                flagAfter[0] = Thread.interrupted();
+            });
+            final java.util.concurrent.CountDownLatch givingWay =
+                    new java.util.concurrent.CountDownLatch(1);
+            final java.util.concurrent.CountDownLatch gaveWay =
+                    new java.util.concurrent.CountDownLatch(1);
+            synchronized (db.internal().getWriteLock()) {
+                w.start();
+                final long end = System.nanoTime() + 60_000_000_000L;
+                while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
+                    Thread.sleep(1);
+                }
+                Assert.assertEquals("the commit waits", 1, db.internal().writersWaiting());
+                Db.testHooks = new Db.TestHooks() {
+                    public void givingWay() {
+                        if (Thread.currentThread() == m && givingWay.getCount() > 0) {
+                            wait[0] = System.nanoTime();
+                            givingWay.countDown();
+                        }
+                    }
+                    public void gaveWay(long parks) {
+                        if (Thread.currentThread() == m && gaveWay.getCount() > 0) {
+                            wait[1] = System.nanoTime();
+                            wait[2] = parks;
+                            gaveWay.countDown();
+                        }
+                    }
+                    public void transExecuted(Db.ExecuteData x) {}
+                    public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                    public void nodeTouched(bergdb.dag.Node node) {}
+                    public void nodeReplaced(bergdb.dag.Node node) {}
+                };
+                m.start();
+                Assert.assertTrue("the call gives way", givingWay.await(60,
+                        java.util.concurrent.TimeUnit.SECONDS));
+                Thread.sleep(200);
+                Assert.assertEquals("the commit still waits", 1, db.internal().writersWaiting());
+            }
+            Assert.assertTrue("the wait ends", gaveWay.await(60,
+                    java.util.concurrent.TimeUnit.SECONDS));
+            w.join(60_000);
+            m.join(60_000);
+            Db.testHooks = null;
+            if (failure.get() != null) throw new AssertionError("failed", failure.get());
+            Assert.assertFalse("the threads ended", w.isAlive() || m.isAlive());
+            Assert.assertTrue("the flag is set after the call", flagAfter[0]);
+            final long waitNanos = wait[1] - wait[0];
+            final long bound = 1000 + 2 * waitNanos / 20_000;
+            Assert.assertTrue("the wait of " + waitNanos / 1000 + " us made " + wait[2]
+                    + " parks, more than " + bound + ": it spun", wait[2] <= bound);
+            Assert.assertEquals("no writer waits", 0, db.internal().writersWaiting());
+        } finally {
+            Db.testHooks = null;
+            r.db.close();
+        }
+    }
+
     private static boolean stopped(boolean[] stop) {
         synchronized (stop) {
             return stop[0];
