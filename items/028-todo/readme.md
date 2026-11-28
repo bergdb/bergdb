@@ -112,6 +112,7 @@ Open
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | built on a branch, reviewed; two shapes fixed, to land |
 | [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | open (built on a branch, to land) |
+| [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() spins when interrupted (UA-9); writes at a stop throw StreamIoException (UA-10, UA-2); e3 seed 101 | none | open (built on a branch, to land) |
 | [028-85](85-recreated-directory-test-under-load.md) | Fix | A test of a directory deleted after stop() failed once under load: 021-24's window | none | open |
 
 
@@ -761,3 +762,7 @@ restated) waits for the next change of `Bound.lean`.
 
 2026-11-28. 028-84 registered by lead-1127: the documents of 031-08's
 UA-4 to UA-7 and 031-02's N1; built on the branch `docs-1128`.
+
+2026-11-28. 028-83 registered by lead-1127 from 031-08, part A (UA-2,
+UA-8, UA-9, UA-10 and e3 seed 101's FAIL); built on the branch `028-83`
+by an agent of lead-1127.
