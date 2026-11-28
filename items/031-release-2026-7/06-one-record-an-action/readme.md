@@ -1098,4 +1098,8 @@ Lean: `Limits.release.maxSegs` 147 (`SIS/Tree/Bound.lean`), its
 unchanged; the contract package (Mathlib) unchanged, as its PE theorems
 hold for keys of up to 8,193 segments, which covers the longer keys of
 an older stream. The review's `RvLong` (`review-probes/`) is refused by
-L9 for a key over 1,024 bytes; kept as the review's record.
+L9 for a key over 1,024 bytes; kept as the review's record. Gates:
+`BEFORE COMMIT OK` and `APPS OK` (quick) on the change rebased onto
+`main` at `ead07411`; `LEVEL 2 OK` and `LEVEL 3 OK` on it rebased onto
+`main` at `8fe32468` (main's changes since then are of the start path
+and `FileStream`, not of the limits).
