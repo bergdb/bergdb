@@ -622,6 +622,13 @@ public interface Database extends AutoCloseable {
      * nothing until the application writes again. With the retain duration forever (the
      * default) there is nothing to do.</p>
      * 
+     * <p>A pass's cut needs a meta block of the stream after the pass's start, and the
+     * stream has one every 200,000 bytes; when none has come by the time the cut is due, a
+     * call writes up to the next one (a part of up to 200 kB). So the calls keep at least
+     * about 200 kB after a pass that ends so: a database whose stream is smaller grows to
+     * about 200 kB by them, also a new or nearly empty one (a new database with no value,
+     * 704 bytes, keeps 199,728 bytes after four calls; bergdb 028-83; 031-08, UA-8).</p>
+     * 
      * <p>The budget is an indication of the work allowed in the call, in cost units: a unit
      * is about the work of writing 1 kB to the stream. It is clamped to 100 to 100,000. The
      * database may use less than the budget, or none, depending on its state, and may go
@@ -676,7 +683,9 @@ public interface Database extends AutoCloseable {
      * same actions while the stream, and this size, are the same. With a finite retain
      * duration it holds the live data, the states that the duration keeps readable, and what
      * reclaim has not yet given back; in a database not written to for longer than the retain
-     * duration, what it holds beyond the live data is what maintain() can give back.
+     * duration, what it holds beyond the live data is what maintain() can give back, and
+     * after maintain()'s calls at least about 200 kB, a meta block distance, also in a new
+     * or nearly empty database (maintain(); bergdb 028-83).
      */
     public long getStreamSize();
 

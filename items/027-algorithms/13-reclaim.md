@@ -421,7 +421,13 @@ before it (`Reclaim.planPart`):
   and that meta block names a transaction at or after pCut. Until 031-06's
   merge a filler: a put of `/#i/dreclaim/-fill.txt` with that many zero
   bytes and its delete, two transactions, whose put a stop or a crash
-  between them left live (028-59).
+  between them left live (028-59). So a pass in a stream with no meta
+  block after its pCut, one shorter than META among them, writes up to
+  META, and the calls keep about META: a new database with no value, 704
+  bytes, keeps 199,728 bytes after four calls; one with 20 small values,
+  2,976 bytes, keeps 195,032 (031-08, UA-8; 028-83). M1 has no floor
+  (031-04); 028-75's decided (c), a floor over the live data, would
+  begin no pass there.
 * **M6**: decideCut(now = the part's time).
 
 A part with nothing due writes nothing and gives its time back.
