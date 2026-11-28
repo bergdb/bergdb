@@ -116,6 +116,11 @@ the gap in the files, which `main` had since.
 * **Not measured again:** RetainChurn (031-02): its figures in 027-13
   and RB-011 are of the tenth alone; the apps of 031-02 do not compile
   on `main` since `maintain()` takes a budget (031-04).
+* **The gates**, 2026-11-28, F53 busy: FileStream's and DbTesterStream's
+  unit tests, 88 tests, SUCCESS; `java/stress/level3.sh` on the floor
+  and its documents, LEVEL 3 OK; `java/before-commit.sh` on the branch's
+  tree with 028-74's and 031-07's changes beside it, from `main` at
+  `23a54033`: BEFORE COMMIT OK (161 s; Unit 1760, F 96, DEMOS OK).
 
 
 Log
@@ -128,4 +133,5 @@ Log
 
 2026-11-28. Built by an agent of lead-1127 (branch `floor-74-r6`, from
 `main` at `23a54033`): the floor, its tests and the documents; the probe
-run ABBA against `main` on a busy F53. Gates: below.
+run ABBA against `main` on a busy F53. Gates: FileStream's and
+DbTesterStream's unit tests, LEVEL 3 OK, BEFORE COMMIT OK. To land.
