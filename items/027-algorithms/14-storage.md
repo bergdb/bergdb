@@ -19,25 +19,29 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   200 kB, 1, 5, 20, 100 and 500 MB, 2, 10, 50 and 200 GB, each named by
   its first position. A new file gets the largest size that is at most
   a tenth of the stream that the files hold when it is made (a quarter
-  until 2026-11-26); a larger size begins only at a length that is a
+  until 2026-11-26), and at least 1 MB once that stream is 4 MB
+  (2026-11-28, 028-73); a larger size begins only at a length that is a
   multiple of it, a smaller one at once. A cut deletes whole files
   only, those that end before its position, never the last one, on a
   thread of the storage's own (005-46), a batch at a time with one
   force of the directory after it (028-66). So the disk can hold up to
   about one file more than the stream, about a tenth of the stream when
-  that file was made, also after the stream has shrunk (RB-011), and,
+  that file was made, or 1 MB when 4 to 10 MB were kept, also after the
+  stream has shrunk (RB-011), and,
   for a while after a cut, the files not yet deleted (027-13, section
   4). A start accepts files of any sizes beside each other, the
   quarter's beside the tenth's: it checks that each file begins where
   the one before ends, or after a gap (below), and that every file but
   the last is a multiple of 100,000 bytes (`testMixedFileSizes`). A new
-  database writes its first 10 MB in 50 files of 200 kB (20 files up to
-  4 MB with the quarter); with per-append forcing each new file costs
-  `BufferedStream`'s thread the force of its predecessor's last piece, the
-  new file's and the directory's, about 10.5 ms on F53; there a fast
-  load's longest wait for room in the write buffer was 144 to 282 ms in
-  six runs, 0 to 16 ms on release 2026.6: measured (028-73, 2026-11-27,
-  open).
+  database writes 20 files of 200 kB up to 4 MB and 1 MB files from
+  there, as with the quarter. With per-append forcing each new file
+  costs `BufferedStream`'s thread the force of its predecessor's last
+  piece, the new file's and the directory's, about 10.5 ms on F53. With
+  the tenth alone (2026-11-26 to 2026-11-28) a new database wrote its
+  first 10 MB in 50 files of 200 kB, and a fast load's longest wait for
+  room in the write buffer was 144 to 282 ms in six runs, 0 to 16 ms on
+  release 2026.6; with the floor of 1 MB, 1 wait of 7 to 21 ms in four
+  runs, against 145 to 169 ms on `main` then: measured (028-73).
 * **A backup by a copy of the files.** A file is changed only by
   appends at its end and removed only whole, the deletes issued oldest
   first; no file
@@ -207,3 +211,7 @@ commits recorded on 2026-11-27; added the cost of the tenth's files at a
 new database's first 10 MB (028-73) and the backup copies with gaps,
 028-66's `BackupGap` on that rule. By an agent of lead-1127, on the
 branch `031-06-docs`.
+
+2026-11-28. New files at least 1 MB once the kept stream is 4 MB, the
+tenth unchanged above 10 MB (028-73, Frans's option (b)): the points on
+the files, the disk and a new database's first 10 MB.

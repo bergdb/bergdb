@@ -1,7 +1,7 @@
 028-73. Decide: new stream files a tenth, the writer waits at a new database's first 10 MB
 =========================================================================================
 
-Status: decided (2026-11-28): (b); made on a branch, to be rebased and
+Status: decided (2026-11-28): (b); built and gated on a branch, to be
 landed. Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
@@ -80,6 +80,44 @@ First step: rebase `loadwait-1mb-floor` onto `main`, the documents
 above, the gate.
 
 
+Result
+------
+
+Built 2026-11-28 by an agent of lead-1127, from `main` at `23a54033`:
+`loadwait-1mb-floor`'s commit taken onto it; the class Javadoc's "The
+files and the disk" merged with 028-66's text of the cut's batches and
+the gap in the files, which `main` had since.
+
+* **The code.** `FileStream.determineFileSizeIndex`: a size of at least
+  1 MB (`FILE_SIZES[1]`) when the stream that the files hold is 4 MB or
+  more; the tenth unchanged, so from 10 MB on the rule is the tenth's.
+  The stream's bytes are the same; only the file boundaries move.
+* **The tests.** `testFileSizeRules0` (unit): 10, 9 and 4 MB give 1 MB,
+  3.9 MB gives 200 kB, and a kept stream of 3 MB after 1 MB files goes
+  back to 200 kB at once; `tFileSizeIncrease` (f): 27 files for 11 MB,
+  51 with the tenth alone. `testMixedFileSizes` and `DbTesterStream`'s
+  `testZeroedTailOverMetaBlock`: Javadoc only.
+* **The documents.** 027-03, section 4; 027-13, section 4 (the disk);
+  027-14 (the files and the disk); 028-62's decision (a dated addition);
+  033's RB-011; `releases/next.md`.
+* **The probe** (each build's own `PauseProbe`, `-Dseconds=1
+  -Dtsize=1`, ZGC, the load phase of 1M keys). The figures of 2026-11-27,
+  the branch on `a20b0034`, ABBA, 2 rounds: the floor 1 wait in each run, 7.1 to
+  20.9 ms, 99 directory and 286 to 287 file forces; `main` 2 waits,
+  longest 145.5 to 168.6 ms, 123 directory and 333 file forces.
+  2026-11-28, on this build and `main` at `23a54033`, ABBA, 1 round, F53
+  busy (load average 15 to 19, other heavy runs): the floor 10 and 11
+  waits, longest 489.6 and 417.7 ms, 1,492 and 1,547 ms in all, 99
+  directory and 277 to 278 file forces; `main` 11 and 11 waits, longest
+  991.3 and 801.6 ms, 2,403 and 2,411 ms in all, 123 directory and 324
+  to 325 file forces. A figure of time on a busy machine decides
+  nothing; the counts of forces are the change's: 24 fewer new files in
+  the first 10 MB.
+* **Not measured again:** RetainChurn (031-02): its figures in 027-13
+  and RB-011 are of the tenth alone; the apps of 031-02 do not compile
+  on `main` since `maintain()` takes a budget (031-04).
+
+
 Log
 ---
 
@@ -87,3 +125,7 @@ Log
 17:16 and the bisection of 18:22 to 18:41 (an agent of lead-1127).
 
 2026-11-28. Frans decided (b) (07:27). Not on `main` yet.
+
+2026-11-28. Built by an agent of lead-1127 (branch `floor-74-r6`, from
+`main` at `23a54033`): the floor, its tests and the documents; the probe
+run ABBA against `main` on a busy F53. Gates: below.

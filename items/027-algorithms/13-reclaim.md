@@ -660,7 +660,8 @@ not active it reads nothing.
   see a commit that carries a step after its scan (031-06, section 4.7).
 * **The disk** (028-62): a file storage deletes whole files and keeps
   the part before fp of the file that fp lies in, up to about a tenth of
-  the stream when that file was made (a quarter until 2026-11-26), also
+  the stream when that file was made, or 1 MB when 4 to 10 MB were kept
+  (the floor since 2026-11-28, 028-73; a quarter until 2026-11-26), also
   after the stream has shrunk (RB-011): argued (`FileStream`'s Javadoc).
   With `ReclaimCost` on disk (K = 1, uniform, 20 MB live, no cache
   budget; stream kept 99.6 MB on average) that part is 2.1 percent of
@@ -988,3 +989,8 @@ sections 2 to 10 with them (ONE RECORD AN ACTION, THE PLAN FROM THE
 STREAM, COPIES CHANGE NO USER READ; the step's room, the pace, the
 pauses; 026-09 landed). By an agent of lead-1127, on the branch
 `031-06-docs`.
+
+2026-11-28. 4: the disk: a new file is at least 1 MB once 4 MB of
+stream are kept (028-73, option (b)); the part before fp of the file
+that fp lies in is up to 1 MB for 4 to 10 MB kept. RetainChurn's
+figures are of the tenth alone, not measured again.

@@ -210,9 +210,10 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
   10, 50 and 200 GB (decimal). A file is filled to its capacity before
   the next is made (`newFile`); the capacity is chosen by
   `determineFileSizeIndex` when a file is made: since 2026-11-26 (028-62)
-  the largest that is at most a tenth of the stream the files hold, a
-  larger one than the last file's only at a length that is a multiple of
-  it (a quarter until then; `FileStream`'s class comment); and at an open
+  the largest that is at most a tenth of the stream the files hold, and
+  at least 1 MB once it holds 4 MB (since 2026-11-28, 028-73), a larger
+  one than the last file's only at a length that is a multiple of it (a
+  quarter until 2026-11-26; `FileStream`'s class comment); and at an open
   by `determineFileSizeIndexFromFiles`, from the last two files' lengths
   (012-02, section 9.2). A start accepts files of any of the sizes beside
   each other.
@@ -2308,3 +2309,6 @@ check of what it reads, so a start that refuses writes nothing (section
 format whose header holds its check, not the first only (section 7); G18
 closed, Q15 done by the code (sections 19 and 20). By an agent of
 lead-1127, on the branch `028-70-refuse-first`.
+
+2026-11-28. 4: a new file at least 1 MB once the files hold 4 MB of
+stream (028-73, option (b)); the stream's bytes are unchanged.

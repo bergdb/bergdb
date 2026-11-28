@@ -378,7 +378,11 @@ RB-011. An emptied file database keeps its last stream file under maintain()
   of files; `FileStream` gives a new file about a tenth of the stream
   that its files hold, not a quarter, and its Javadoc states that the
   disk can hold up to about one file more than the stream. RetainChurn's
-  case: 400 kB on disk for 61 kB of stream, from 10,400 kB.
+  case: 400 kB on disk for 61 kB of stream, from 10,400 kB. Since
+  2026-11-28 (028-73, Frans's option (b)) a new file is at least 1 MB
+  once 4 MB of stream are kept: the bound on the disk is a tenth of the
+  stream kept when the file was made, or 1 MB while 4 to 10 MB are
+  kept.
 
 
 RB-012. After a kill on macOS, a zeroed tail over a meta block stops the start
@@ -581,3 +585,8 @@ and padded table: the probes of 028-58, 028-53 and 028-59, ported to
 `maintain(int)` in `probes/`, run on `main` (`a20b0034`) and on
 2026.6, which still shows each bug (`probes/runs-2026-11-27.txt`).
 The counts are unchanged: they count the bugs in the releases.
+
+2026-11-28. RB-011's fix has a floor (028-73, Frans's option (b), 07:27):
+a new file is at least 1 MB once 4 MB of stream are kept, so the disk's
+bound is a tenth, or 1 MB while 4 to 10 MB are kept. The counts are
+unchanged.

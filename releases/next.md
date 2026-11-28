@@ -103,7 +103,9 @@ Released bugs fixed
   about one file more than the stream, and that the files, copied in
   the order of their names, are a backup. Files made by the quarter open
   beside new ones. The stream's bytes are the same; a stream has about
-  three times as many files.
+  three times as many files. A new file is at least 1 MB once 4 MB of
+  stream are kept, as with the quarter, so a new database's first 10 MB
+  are not in 200 kB files (028-73).
 * **RB-012, S2. After a kill on macOS, a zeroed tail over a meta block
   stopped the start** (bergdb 033; 028-60, 2026-11-25 and 2026-11-27).
   A kill during a large append can leave the last stream file ending in

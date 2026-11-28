@@ -81,6 +81,15 @@ Frans decided on 2026-11-26: neither J nor S as written. Instead:
 Rejected: a copy and swap of files within the storage, for its
 file-system complexity and as it would break the backup property.
 
+Added 2026-11-28 (028-73, Frans's option (b), 07:27): the tenth of
+point 1 has a floor. A new file is at least 1 MB once the kept stream
+is 4 MB, as the quarter gave; above 10 MB the tenth is unchanged. With
+the tenth alone a new database wrote its first 10 MB in 200 kB files,
+and a fast load waited for room in the write buffer for up to about
+0.2 s. The disk can then hold up to about one file more than the
+stream, a tenth of the stream kept when that file was made, or 1 MB
+for 4 to 10 MB kept.
+
 
 Result
 ------
@@ -245,3 +254,6 @@ copy of the files. Done by an agent of lead-1126 (clone c62, branch
 `028-62`): RetainChurn's case at 400 kB on disk, from 10,400 kB; a
 start accepts files of both rules (`testMixedFileSizes`); the backup
 property checked in the code and by a probe. Status done.
+
+2026-11-28. The floor of 1 MB from 4 MB kept added to the decision
+(028-73, option (b)).
