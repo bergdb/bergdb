@@ -952,12 +952,19 @@ public class Db implements AutoCloseable {
      * 
      * @param budget  The work allowed, in cost units of about 1 kB written each.
      * @throws IllegalDbStateException, DbStoppingException, DbFailedException  On a
-     *      database that is not active, as a transaction (and setRetainDuration()).
+     *      database that is not active, as a transaction (and setRetainDuration()). A stop
+     *      that comes during the call ends it so, a DbStoppingException, also when the
+     *      call's warm-up or the sync of a cut's table met the storage as it closes, whose
+     *      StreamIoException is then the cause (bergdb 028-83; 031-08, UA-2): the parts that
+     *      ran before stay written, each a record of its own, and the database has not
+     *      failed.
      * @throws DbException  If the database has used its top node ordinals, or has no time
      *      left after the last one's, Klong.MAX_TIME (bergdb 005-02, 015-55): as a
      *      transaction is refused.
      *      Nothing more is written then.
-     * @throws StreamIoException  If the sync is interrupted, or the database is stopping.
+     * @throws StreamIoException  If the sync of a cut's table is interrupted (its cause an
+     *      InterruptedIOException): the parts that ran stay written, the cut is made later.
+     *      Until bergdb 028-83 also at a stop, "Storage is closing.".
      */
     public void maintain(int budget) {
         // A test's limit of the parts that write (TestHooks.maintainMaxParts), else none.
@@ -1015,7 +1022,7 @@ public class Db implements AutoCloseable {
             if (durableAt != -1) {
                 // A cut is decided and its table is not yet durable (Reclaim.cutIfDurable): a
                 // sync outside the lock, then the cut.
-                sync(durableAt - 1, SyncLevel.ORDINARY);
+                syncForCut(durableAt - 1);
                 while (true) {
                     if (giveWay) giveWayToWriters();
                     synchronized (writeLock) {
@@ -1029,6 +1036,24 @@ public class Db implements AutoCloseable {
             }
             reclaimDone = cost == 0;
             spent += cost;
+        }
+    }
+
+    /**
+     * maintain()'s sync of a decided cut's table, outside the lock (Reclaim.cutIfDurable). A
+     * stop that comes meanwhile ends the call as at its next part, with a
+     * DbStoppingException, an IllegalDbStateException, whose cause is the sync's
+     * StreamIoException (refusedAtStop(); bergdb 028-83; 031-08, UA-2: until then the
+     * StreamIoException came out of the call); an interrupt's is thrown as it is.
+     */
+    private void syncForCut(long pos) {
+        try {
+            sync(pos, SyncLevel.ORDINARY);
+        } catch (StreamIoException e) {
+            if (e.getCause() instanceof InterruptedIOException) {
+                throw e;
+            }
+            throw refusedAtStop("maintain", e);
         }
     }
 
@@ -1085,12 +1110,22 @@ public class Db implements AutoCloseable {
         if (hooks != null) {
             hooks.givingWay();
         }
+        long parks = 0;
+        boolean interrupted = false;
         for (int spins = 0; writersWaiting.get() > 0; spins++) {
             if (spins < 100) {
                 Thread.onSpinWait();
             } else {
+                interrupted |= Thread.interrupted();
                 java.util.concurrent.locks.LockSupport.parkNanos(20 * 1000);
+                parks++;
             }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+        if (hooks != null) {
+            hooks.gaveWay(parks);
         }
     }
     
@@ -1110,23 +1145,13 @@ public class Db implements AutoCloseable {
     }
     
     /**
-        long parks = 0;
-        boolean interrupted = false;
      * Sets reclaim's internal fraction: the bytes an iteration rewrites, compared to the
      * stream's growth while it runs; 0.25 by default. Used from the next step.
      * 
      * <p>It must be between 0.001 and 0.90 inclusive. NaN and other values are refused with
-                interrupted |= Thread.interrupted();
      * an IllegalArgumentException, and the setting stays as it was (bergdb 005-73).</p>
-                parks++;
      * 
      * <p>Kept in the stream with the retain duration, as setRetainDuration() keeps that
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
-        if (hooks != null) {
-            hooks.gaveWay(parks);
-        }
      * (bergdb 015-87, F7): a commit of reclaim's settings, nothing written when the value
      * is in force, refused as a transaction is on a database that is not active, the value
      * unchanged when refused; a restart keeps it.</p>
@@ -3180,7 +3205,10 @@ public class Db implements AutoCloseable {
      * @throws IllegalArgumentException
      *             If t is null (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
-     *             If start() has not been called or database is stopping.
+     *             If start() has not been called or database is stopping: a
+     *             DbStoppingException then, also when a read of the warm-up before the
+     *             write lock met the storage as it closes at the stop, which is then the
+     *             cause (bergdb 028-83); nothing of the transaction is written.
      * @throws DbFailedException
      *             If the database has failed: this transaction threw after its go point, or
      *             a read of its warm-up failed on the storage (the cause), or the database
@@ -3201,7 +3229,8 @@ public class Db implements AutoCloseable {
      *             the cause of a DbFailedException.
      * @throws StreamIoException
      *             If there was an i/o error with the database stream, while the database is
-     *             stopping; else the cause of a DbFailedException.
+     *             stopping, after the go point; before it, the warm-up's, the cause of a
+     *             DbStoppingException (above); else the cause of a DbFailedException.
      * @throws InternalDataException
      *             If BergDB internal data in the database is corrupt.
      * @throws DbException
@@ -4202,6 +4231,12 @@ public class Db implements AutoCloseable {
      * out of execute(), which refused the transaction with an exception that its Javadoc
      * does not list. The warmup only loads nodes; the transaction reads again under the
      * lock, at the latest time.</p>
+     * 
+     * <p>A read that a stop overtakes refuses the transaction as the stop does
+     * (refusedAtStop(), bergdb 028-83): it met the storage as it closes, before the go
+     * point, and nothing of the transaction is written. Until 028-83 its StreamIoException
+     * ("Storage is closing.") came out of execute(), where Database.stop() names
+     * IllegalDbStateException (031-08, UA-10).</p>
      */
     private final void warmup(Trans t) {
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
@@ -4213,6 +4248,8 @@ public class Db implements AutoCloseable {
             }
         } catch (LookupTimeNotAvailableException e) {
             // A cut overtook readTime; see above.
+        } catch (StreamIoException e) {
+            throw refusedAtStop("execute", e);
         }
     }
 
@@ -4222,8 +4259,11 @@ public class Db implements AutoCloseable {
      * landing step 3; the review's F4): only what is in memory changes, so that the plan's
      * scan under the lock meets its nodes there. On a database that is not active it reads
      * nothing, and a stop or a failure that comes during it ends it: the lock's check then
-     * refuses the action as before (executeLocked()). 'done' and the result as
-     * Maintenance.warmup's: maintain() passes what the last call returned.
+     * refuses the action as before (executeLocked()); a read that met the storage as it
+     * closes at the stop refuses it at once, as the stop does (refusedAtStop(), bergdb
+     * 028-83; until then its StreamIoException came out of the commit or the maintain()
+     * call). 'done' and the result as Maintenance.warmup's: maintain() passes what the last
+     * call returned.
      */
     private Object warmupStep(Trans t, Object done) {
         if (state != DbState.ACTIVE) {
@@ -4234,7 +4274,33 @@ public class Db implements AutoCloseable {
         } catch (IllegalDbStateException e) {    // also a DbStoppingException, DbFailedException
             // Refused or failed under the lock (assertDbStateIsActive("execute")).
             return null;
+        } catch (StreamIoException e) {
+            throw refusedAtStop(t == null ? "maintain" : "execute", e);
         }
+    }
+    
+    /**
+     * What a call throws whose read or sync before its commit, or between the parts of
+     * maintain(), met the storage as it closes at a stop (bergdb 028-83; 031-08, UA-2 and
+     * UA-10): the refusal of a call at a stop, a DbStoppingException (an
+     * IllegalDbStateException) with the message of assertDbStateIsActive() and 'e' as its
+     * cause; the database has not failed. A read or a sync that fails on the storage throws
+     * a StreamIoException only when the database is no longer active (failOnStorage()):
+     * while it is active, the failure fails it, a DbFailedException. So such an exception
+     * means a stop, whatever the storage met as it closed: "Storage is closing.", a stream
+     * that the stop's close has closed ("File closed", StorageFaultTester's
+     * testStopWhileReading), or an I/O error, which stays the cause. Returns 'e' itself in
+     * any other state, which does not happen. A sync that an interrupt ended is not a
+     * stop's: maintain() throws it as it is.
+     */
+    private RuntimeException refusedAtStop(String methodName, StreamIoException e) {
+        if (state != DbState.STOPPING) {
+            return e;
+        }
+        final DbStoppingException refused = new DbStoppingException("Cannot call "
+                + methodName + "() while DB is stopping.");
+        refused.initCause(e);
+        return refused;
     }
     
     /**
@@ -4832,6 +4898,17 @@ public class Db implements AutoCloseable {
         public Object getWriteLock() { return writeLock; }
         
         /**
+         * refusedAtStop(): for the Pub layer's own reads before a commit, the reads of the
+         * previous values whose index entries a put() or an rw() deletes (RwTransaction;
+         * bergdb 028-83). A StreamIoException of a read means a stop; returns the
+         * DbStoppingException with it as the cause, or 'e' itself if the database is not
+         * stopping.
+         */
+        public RuntimeException refusedAtStop(String methodName, StreamIoException e) {
+            return Db.this.refusedAtStop(methodName, e);
+        }
+        
+        /**
          * Db.getTrans() for a position the database has given, a get's GetData.tpos, as the
          * Pub API's Connection.transactionInfo() reads it (bergdb 021-27): a record there that
          * is not a committed transaction is damage, and fails the database
@@ -5109,6 +5186,15 @@ public class Db implements AutoCloseable {
         public default void givingWay() {}
         
         /**
+         * bergdb 028-83: the wait of giveWayToWriters() has ended, on the call's thread,
+         * without the lock, after 'parks' parks of 20 us (the spins before them not counted):
+         * for the test of a call whose thread's interrupt flag is set
+         * (ReclaimMaintainTester.testInterruptedCallWaits), which counts the parks against the
+         * wait's time.
+         */
+        public default void gaveWay(long parks) {}
+        
+        /**
          * bergdb 031-06, landing step 3: whether a commit or a part of maintain() warms the
          * reads of the step that its record may carry before the write lock
          * (Maintenance.warmup). True, the default; false for probes that count the reads
@@ -5185,15 +5271,6 @@ non-conventional. The advantage is that readers (threads calling
 DB.get()/getMany()) will *never* block on anything but stream reads. 
 Yes, really never! This is independent on what a writer does and 
 other concurrent read threads.
-        /**
-         * bergdb 028-83: the wait of giveWayToWriters() has ended, on the call's thread,
-         * without the lock, after 'parks' parks of 20 us (the spins before them not counted):
-         * for the test of a call whose thread's interrupt flag is set
-         * (ReclaimMaintainTester.testInterruptedCallWaits), which counts the parks against the
-         * wait's time.
-         */
-        public default void gaveWay(long parks) {}
-        
  
 ---- The essence ----
  

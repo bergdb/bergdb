@@ -182,12 +182,16 @@ public interface Database extends AutoCloseable {
      * refused: it throws IllegalDbStateException, nothing of it is written, and the database
      * has not failed (bergdb 020-24-03, U3-1). That holds for an rw() whose action runs: the
      * action's next read throws it, or the commit does, and rw() throws it. It holds for a
-     * put(), a delete() or a WBuilder's execute() that has not reached its commit, and for
-     * a read: get(), exists(), useIndex(), and a scan's iterator at its next read from the
-     * database, which hasNext() or next() makes after the values it read before (U3-5). A
-     * read that loads from the storage as the storage closes may throw another DbException
-     * instead, a StreamIoException; the database has not failed then either. A sync() at a
-     * stop: see sync().
+     * put(), a delete() or a WBuilder's execute() that has not reached its commit, also when
+     * the database's own reads before the commit (of the keys it writes, of the old values
+     * whose index entries it deletes) meet the storage as it closes, whose StreamIoException
+     * is then the cause (bergdb 028-83; 031-08, UA-10). It holds for maintain() too: a call
+     * that the stop comes into ends with it, and the parts that it ran before stay written.
+     * And it holds for a read: get(), exists(), useIndex(), and a scan's iterator at its next
+     * read from the database, which hasNext() or next() makes after the values it read before
+     * (U3-5). A read that loads from the storage as the storage closes may throw another
+     * DbException instead, a StreamIoException; the database has not failed then either. A
+     * sync() at a stop: see sync().
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
@@ -649,11 +653,14 @@ public interface Database extends AutoCloseable {
      * 
      * @param budget  The work allowed in this call, in cost units of about 1 kB written.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a
-     *     transaction does.
+     *     transaction does; also when the stop comes during the call, which then ends, the
+     *     parts that it ran before written, the database not failed (stop(); bergdb 028-83).
      * @throws DbFailedException  If the database has failed, as a transaction does.
      * @throws bergdb.pub.util.DbException  If the database takes no more transactions (its
      *     top node ordinals or its times are used up), as a transaction is refused; nothing
-     *     more is written then. Or if the thread is interrupted during a sync.
+     *     more is written then. Or if the thread is interrupted during a sync: a
+     *     StreamIoException whose cause is an InterruptedIOException, the parts that ran
+     *     written ("Interrupts" above).
      */
     public void maintain(int budget);
     

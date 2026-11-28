@@ -871,6 +871,128 @@ public class DbTesterFailure {
     }
 
     /**
+     * A transaction whose warm-up, before the write lock, meets the storage as it closes at
+     * a stop is refused as the stop says (bergdb 028-83; 031-08, UA-10): a
+     * DbStoppingException, an IllegalDbStateException, with the read's StreamIoException
+     * ("Storage is closing.") as its cause, and nothing of it is written. Until 028-83 the
+     * StreamIoException came out of execute(), where Database.stop() names
+     * IllegalDbStateException for a put() or a WBuilder's execute() that has not reached its
+     * commit. The stream closes the database from the transaction's first load of a node
+     * that eviction has released, after the read: the warm-up's next load meets the closed
+     * storage, as in testReadDuringStop.
+     */
+    @Nano
+    public static void testPutDuringStop() {
+        final Thread self = Thread.currentThread();
+        final boolean[] armed = new boolean[1];
+        final Db[] dbs = new Db[1];
+        final int[] closes = new int[1];
+        final FaultStream s = new FaultStream() {
+            public void read(long position, byte[] dest, int destOffset, int length)
+                    throws IOException {
+                super.read(position, dest, destOffset, length);
+                if (armed[0] && Thread.currentThread() == self) {
+                    armed[0] = false;
+                    closes[0]++;
+                    dbs[0].close();
+                }
+            }
+        };
+        final Db db = startEvicting(s, 0);
+        dbs[0] = db;
+        fill(db);
+        db.sync(SyncLevel.ORDINARY);
+        final long length = s.getLength();
+
+        // Keys spread over the index, a load each.
+        Trans.Builder b = db.trans();
+        for (int i = 0; i < KEYS; i += 100) {
+            b.put(key(i), "w" + i);
+        }
+        RuntimeException thrown = null;
+        armed[0] = true;
+        try {
+            db.execute(b.build());
+        } catch (RuntimeException e) {
+            thrown = e;
+        }
+        Assert.assertEquals("the stop came in the warm-up", 1, closes[0]);
+        Assert.assertTrue("refused as at a stop: " + thrown, thrown instanceof DbStoppingException);
+        Assert.assertTrue("the cause, the read that met the closing storage: " + thrown.getCause(),
+                thrown.getCause() instanceof StreamIoException);
+        Assert.assertEquals("nothing written", length, s.getLength());
+    }
+
+    /**
+     * A call of maintain() whose sync of a cut's table meets a stop ends as at its next part
+     * (bergdb 028-83; 031-08, UA-2): a DbStoppingException, an IllegalDbStateException, with
+     * the sync's StreamIoException ("Storage is closing.") as its cause; the parts that ran
+     * before stay written, and the database has not failed. Until 028-83 the sync's
+     * StreamIoException came out of maintain(), whose Pub Javadoc names
+     * IllegalDbStateException for a stopping database. The test calls maintain() on an
+     * emptied database with a retain duration of a second until a call syncs; at that sync
+     * (StorageManager.testHookSync, on the call's thread) the stream holds its appends, so
+     * that the record is not durable, and the database stops; the sync then meets the
+     * closing storage. The appends go on after the call, and close() ends the close.
+     */
+    @Nano
+    public static void testMaintainSyncDuringStop() {
+        final FaultStream s = new FaultStream();
+        final CoreTestClock clock = new CoreTestClock();
+        long time = Clock.UNITS_PER_SEC;
+        clock.setTime(time);
+        final Db db = Db.builder().testSetup(s).clock(clock).start();
+        final Thread self = Thread.currentThread();
+        final int[] syncs = new int[1];
+        try {
+            db.setStartupDistance(100000);
+            db.setRetainDuration(Clock.UNITS_PER_SEC);
+            for (int round = 0; round < 3; round++) {
+                for (int i = 0; i < 5000; i += 100) {
+                    Trans.Builder b = db.trans();
+                    for (int j = i; j < i + 100; j++) {
+                        if (round < 2) b.put("/k/" + j, new byte[100]); else b.delete("/k/" + j);
+                    }
+                    clock.setTime(time += Clock.UNITS_PER_SEC / 1000);
+                    db.execute(b.build());
+                }
+            }
+            StorageManager.testHookSync = () -> {
+                if (Thread.currentThread() == self && syncs[0]++ == 0) {
+                    s.holdAppends = true;
+                    db.stop();
+                }
+            };
+            RuntimeException thrown = null;
+            for (int call = 0; call < 1000 && syncs[0] == 0; call++) {
+                clock.setTime(time += Clock.UNITS_PER_SEC / 4);
+                try {
+                    db.maintain(Reclaim.MAINTAIN_MAX_BUDGET);
+                } catch (RuntimeException e) {
+                    thrown = e;
+                }
+            }
+            StorageManager.testHookSync = null;
+            s.holdAppends = false;
+            Assert.assertEquals("a call synced", 1, syncs[0]);
+            Assert.assertTrue("ended as at a stop: " + thrown, thrown instanceof DbStoppingException);
+            Assert.assertTrue("the cause, the sync that met the closing storage: "
+                    + thrown.getCause(), thrown.getCause() instanceof StreamIoException);
+            DbStoppingException stopping = null;
+            try {
+                db.execute(db.trans().put("/later", "x").build());
+            } catch (DbStoppingException e) {
+                stopping = e;
+            }
+            Assert.assertTrue("stopping, not failed", stopping != null);
+        } finally {
+            StorageManager.testHookSync = null;
+            s.holdAppends = false;
+            db.close();
+        }
+    }
+
+    /**
      * Regression test for bergdb 015-17: a get that runs while another thread closes the
      * database, and reads a file after the storage thread has closed it, fails as a read
      * while the database stops does (the StreamIoException as it is), and close() does not

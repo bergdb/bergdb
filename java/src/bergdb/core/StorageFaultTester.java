@@ -997,6 +997,9 @@ public class StorageFaultTester {
      * lost, and close() returns normally. Harness 6.2's oracle counted it as a failure before
      * the close that no call reported; with JDK 17 the stop's thread sometimes closed the
      * stream before the read, on s1 and F53. Calls 1 (a transaction's warm-up) and 3 (a get).
+     * Since bergdb 028-83 the transaction whose warm-up meets the stop is refused as at a
+     * stop: a DbStoppingException with the read's StreamIoException as its cause (031-08,
+     * UA-10); the get throws the StreamIoException as before.
      */
     @Nano
     public static void testStopWhileReading() throws Exception {
@@ -1005,7 +1008,10 @@ public class StorageFaultTester {
         try {
             for (long at : new long[] {1, 3}) {
                 Run run = run(Layer.STREAM, Fault.STOP, at, false, true);
-                if (!(run.thrown instanceof StreamIoException)) {
+                final Throwable read = at == 1 && run.thrown instanceof DbStoppingException
+                        ? run.thrown.getCause() : run.thrown;
+                if (!(read instanceof StreamIoException)
+                        || (at == 1) != (run.thrown instanceof DbStoppingException)) {
                     throw new AssertionError("call " + at + ": the read did not meet the "
                             + "closed stream: " + run.thrownCall + " threw " + run.thrown);
                 }

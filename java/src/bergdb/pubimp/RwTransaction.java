@@ -138,7 +138,7 @@ class RwTransaction implements Transaction {
                     env.close();
                 }
             }
-            env.indexEntries(m);                        // Internal reads are done here, internal writes are requested.
+            indexEntries(env, m, connection);           // Internal reads are done here, internal writes are requested.
             trans = env.createTrans(connection.getDb());
             
             try {
@@ -170,6 +170,22 @@ class RwTransaction implements Transaction {
         }
         
         return trans;
+    }
+    
+    /**
+     * env.indexEntries(m), the transaction's reads of the old values whose index entries it
+     * deletes. A read that met the storage as it closes at a stop refuses the transaction as
+     * Database.stop() says: IllegalDbStateException, a DbStoppingException whose cause is the
+     * read's StreamIoException, and nothing of it is written (bergdb 028-83; 031-08, UA-10;
+     * Db.Internal.refusedAtStop()).
+     */
+    private static void indexEntries(RwEnvironmentImp env, IndexManager m,
+            ConnectionImp connection) {
+        try {
+            env.indexEntries(m);
+        } catch (StreamIoException e) {
+            throw connection.getDb().internal().refusedAtStop("execute", e);
+        }
     }
     
     /**
