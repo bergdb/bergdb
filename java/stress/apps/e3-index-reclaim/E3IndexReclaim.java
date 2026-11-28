@@ -70,7 +70,9 @@ public class E3IndexReclaim {
     static final Object DELETED = new Object();
     Database db;
     Connection c;
-    long lastFirst, scans, txs, builds, deletes, maintains, restarts, refusedScans, deletedWhileBuilding, buildDoneBeforeDelete;
+    long lastFirst, scans, txs, builds, deletes, maintains, restarts, refusedScans, deletedWhileBuilding, buildDoneBeforeDelete, movedAtClose,
+            movedAfterStart;
+    boolean deletedSinceRestart;
     final Map<String, Job> running = new HashMap<>();
     final Map<String, Integer> runningDef = new HashMap<>();
 
@@ -350,11 +352,22 @@ public class E3IndexReclaim {
     }
 
     void restart(String what) {
-        long first = db.getFirstAvailableLookupTime().units();
+        long before = db.getFirstAvailableLookupTime().units();
         if (rnd.nextBoolean()) db.close(); else { db.stop(); db.close(); }
+        // read after close(): a build's steps and a deleted index's removal commit in the background, and their
+        // records may cut (soak 1, seeds 101 and 105, read it before the close); the getters give the last values
+        long first = db.getFirstAvailableLookupTime().units();
+        if (first != before) movedAtClose++;
         start(false);
         restarts++;
-        EOracle.check(db.getFirstAvailableLookupTime().units() == first, what + ": the restart changed the first available time");
+        long after = db.getFirstAvailableLookupTime().units();
+        // a build that the start resumed commits at once, and its record may cut: a later time then, never an earlier one
+        boolean background = !running.isEmpty() || deletedSinceRestart;
+        if (after > first && background) movedAfterStart++;
+        else EOracle.check(after == first, what + ": the restart changed the first available time " + first + " (after close()) to " + after
+                + (after < first ? ", an earlier time" : ", a later time") + "; " + before + " before close(); builds running "
+                + running.keySet() + ", an index deleted since the last restart " + deletedSinceRestart);
+        deletedSinceRestart = false;
         // builds that ran are taken again by the start
         for (String name : new ArrayList<>(running.keySet())) running.put(name, db.indexJob(name));
     }
@@ -380,6 +393,7 @@ public class E3IndexReclaim {
                 boolean exists = es != null && !es.isEmpty() && es.get(es.size() - 1).def >= 0;
                 if (exists) {
                     db.deleteIndex(name);
+                    deletedSinceRestart = true;
                     long t = now();
                     eras.get(name).add(new Era(t, -1, false));
                     deletes++;
@@ -399,6 +413,7 @@ public class E3IndexReclaim {
                         Job j = running.remove(name);
                         runningDef.remove(name);
                         db.deleteIndex(name);
+                        deletedSinceRestart = true;
                         long t = now();
                         eras.get(name).add(new Era(t, -1, false));
                         deletes++;
@@ -435,7 +450,7 @@ public class E3IndexReclaim {
         db.close();
         EOracle.log("OK E3IndexReclaim seed " + seed + ": " + txs + " transactions, " + builds + " builds, " + deletes + " deletions, "
                 + maintains + " maintain calls, " + restarts + " restarts, " + scans + " index scans checked, " + refusedScans
-                + " refused as absent or building, " + deletedWhileBuilding + " builds deleted while building (" + buildDoneBeforeDelete + " done before)");
+                + " refused as absent or building, " + movedAtClose + " restarts whose close() met a cut in the background, " + movedAfterStart + " a cut of a resumed build's, " + deletedWhileBuilding + " builds deleted while building (" + buildDoneBeforeDelete + " done before)");
         EOracle.rmrf(dir);
     }
 

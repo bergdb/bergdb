@@ -37,6 +37,8 @@ public class E8StopEverywhere {
     }
 
     static final int ACCOUNTS = 30;
+    /** The most bytes of a writer's value beyond its 16; -De8.value=N. */
+    static final int VALUE = Integer.getInteger("e8.value", 300);
     static final long START = 1000;
 
     final long seed;
@@ -52,8 +54,24 @@ public class E8StopEverywhere {
 
     void fail(String m) { failure.compareAndSet(null, m); }
 
+    final Map<Integer, Map<String, byte[]>> uncertain = new java.util.concurrent.ConcurrentHashMap<>();
+    final List<long[]> transferUncertain = java.util.Collections.synchronizedList(new ArrayList<>());
+    final AtomicLong otherExceptions = new AtomicLong();
+    long uncertainWritten, uncertainNot;
+
+    static String stack(Throwable e) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        e.printStackTrace(new java.io.PrintWriter(sw));
+        return sw.toString();
+    }
+
+    void other(Throwable e, String who) {
+        if (otherExceptions.incrementAndGet() <= 3) EOracle.log("  " + who + " at a stop: " + stack(e));
+    }
+
     Database start() {
-        return Factory.database().create(dir.getPath()).cacheSizeInMb(32).start();
+        // -De8.cache=4 (MB), the least, makes the commits' reclaim steps read from the stream more often
+        return Factory.database().create(dir.getPath()).cacheSizeInMb(Integer.getInteger("e8.cache", 32)).start();
     }
 
     /** One round's threads; returns when all have ended after the stop. */
@@ -79,7 +97,7 @@ public class E8StopEverywhere {
                             String k = "/e8/w" + id + "/k" + wr.nextInt(200) + ".bin";
                             if (wr.nextInt(5) == 0) { b.delete(k); ops.put(k, null); }
                             else {
-                                byte[] v = ByteBuffer.allocate(16 + wr.nextInt(300)).putLong(r).putLong(seq).array();
+                                byte[] v = ByteBuffer.allocate(16 + wr.nextInt(VALUE)).putLong(r).putLong(seq).array();
                                 b.put(k, v); ops.put(k, v);
                             }
                         }
@@ -90,8 +108,14 @@ public class E8StopEverywhere {
                     } catch (IllegalDbStateException e) {
                         ref.incrementAndGet();
                         return;        // refused: nothing of it written
+                    } catch (bergdb.pub.util.DbException e) {
+                        // not what Database.stop() names for a transaction (031-08, UA-10): kept, with its stack, and the
+                        // check takes the directory with this transaction or without it, whole or not at all
+                        other(e, "writer " + id);
+                        uncertain.put(id, ops);
+                        return;
                     } catch (Throwable e) {
-                        fail("writer " + id + ": " + e);
+                        fail("writer " + id + ": " + stack(e));
                         return;
                     }
                     for (Map.Entry<String, byte[]> e : ops.entrySet()) { if (e.getValue() == null) st.remove(e.getKey()); else st.put(e.getKey(), e.getValue()); }
@@ -123,8 +147,12 @@ public class E8StopEverywhere {
                     } catch (IllegalDbStateException e) {
                         ref.incrementAndGet();
                         return;
+                    } catch (bergdb.pub.util.DbException e) {
+                        other(e, "transfer");
+                        transferUncertain.add(new long[] {from, to, amount});
+                        return;
                     } catch (Throwable e) {
-                        fail("transfer: " + e);
+                        fail("transfer: " + stack(e));
                         return;
                     }
                     if (x.getOutput("ok", Boolean.class)) synchronized (balances) { balances[from] -= amount; balances[to] += amount; }
@@ -187,6 +215,18 @@ public class E8StopEverywhere {
         Connection c = db.connection();
         for (int w = 0; w < writerState.size(); w++) {
             TreeMap<String, byte[]> st = writerState.get(w);
+            Map<String, byte[]> u = uncertain.remove(w);
+            if (u != null) {
+                // the transaction that threw at the stop: there whole, or not at all
+                TreeMap<String, byte[]> with = new TreeMap<>(st);
+                for (Map.Entry<String, byte[]> e : u.entrySet()) { if (e.getValue() == null) with.remove(e.getKey()); else with.put(e.getKey(), e.getValue()); }
+                TreeMap<String, byte[]> got = new TreeMap<>(EOracle.ORDER);
+                for (Kv<byte[]> kv : c.usePrimary(byte[].class).dir("/e8/w" + w + "/").kvs()) got.put(kv.key(), kv.value().clone());
+                boolean isWith = same(got, with), isWithout = same(got, st);
+                EOracle.check(isWith || isWithout, what + ": writer " + w + ": the transaction that threw at the stop is there in part");
+                if (isWith && !isWithout) { uncertainWritten++; st.clear(); st.putAll(with); } else uncertainNot++;
+                EOracle.log("  " + what + ": writer " + w + "'s transaction that threw at the stop is " + (isWith && !isWithout ? "there" : "not there"));
+            }
             Iterator<Map.Entry<String, byte[]>> it = st.entrySet().iterator();
             for (Kv<byte[]> kv : c.usePrimary(byte[].class).dir("/e8/w" + w + "/").kvs()) {
                 EOracle.check(it.hasNext(), what + ": writer " + w + " has an extra key " + kv.key() + " (a refused transaction written?)");
@@ -199,6 +239,16 @@ public class E8StopEverywhere {
                 }
             }
             EOracle.check(!it.hasNext(), what + ": writer " + w + " lacks " + (it.hasNext() ? it.next().getKey() : "") + " (a returned transaction lost?)");
+        }
+        synchronized (transferUncertain) {
+            for (long[] t : transferUncertain) {
+                // a transfer that threw at the stop: moved or not, by the balances
+                int from = (int) t[0], to = (int) t[1];
+                Acc p = c.get("/e8/acc/a" + from, Acc.class), q = c.get("/e8/acc/a" + to, Acc.class);
+                if (p.balance == balances[from] - t[2] && q.balance == balances[to] + t[2]) { balances[from] -= t[2]; balances[to] += t[2]; uncertainWritten++; }
+                else uncertainNot++;
+            }
+            transferUncertain.clear();
         }
         long sum = 0;
         List<long[]> byBalance = new ArrayList<>();
@@ -224,6 +274,12 @@ public class E8StopEverywhere {
         List<String> got = new ArrayList<>();
         for (Kv<Acc> kv : c.useIndex("by-balance", Acc.class).kvs()) got.add(kv.key());
         EOracle.check(got.equals(want), what + ": the index by-balance lists " + got.size() + " accounts, not in the oracle's order");
+    }
+
+    static boolean same(TreeMap<String, byte[]> a, TreeMap<String, byte[]> b) {
+        if (a.size() != b.size()) return false;
+        for (Map.Entry<String, byte[]> e : a.entrySet()) if (!Arrays.equals(e.getValue(), b.get(e.getKey()))) return false;
+        return true;
     }
 
     void run(int rounds) throws Exception {
@@ -255,7 +311,8 @@ public class E8StopEverywhere {
         EOracle.log("OK E8StopEverywhere seed " + seed + ": " + rounds + " rounds (" + stops + " by stop(), " + closes + " by close(), "
                 + inFlightMaintain + " with a maintain() call running), " + returned + " writer transactions returned, " + refused
                 + " calls refused at a stop, " + transfers + " transfers, " + maintains + " maintain calls, " + rebuilt + " index rebuilds ("
-                + absentIndex + " left deleted by a stop)");
+                + absentIndex + " left deleted by a stop); " + otherExceptions.get() + " calls threw another DbException at a stop ("
+                + uncertainWritten + " of them there after the restart, " + uncertainNot + " not)");
         EOracle.rmrf(dir);
     }
 

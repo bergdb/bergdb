@@ -251,7 +251,12 @@ item, also had names e1 to e11.
   oracle's order, after `indexJob().join()` of the build that the start
   resumed; an index whose creation the stop refused after its deletion
   returned is absent; the retain duration and the startup distance as
-  set. No call may throw DbFailedException.
+  set. No call may throw DbFailedException. A call that throws another
+  DbException at the stop (UA-10) is printed with its stack, and the
+  check takes its writer's directory with that transaction whole or
+  without it, a transfer moved or not by the balances (the sum must be
+  the total). `-De8.cache=N` sets the cache budget (32 MB by default) and
+  `-De8.value=N` the most bytes of a value beyond its 16 (300).
 
 The probes for the findings, in `08-user-apps/probes/`, each a few
 seconds with the jar alone: `CutFilesStay` (UA-1), `RwExpires` (UA-3),
@@ -286,19 +291,71 @@ JVMs at a time, heaps of 1 or 2 GB. All on the release jar of
 the logs are in the run directory of the agent (not in the repository),
 the seeds and outcomes below.
 
-| When          | What                                                 | Result |
-|---------------|------------------------------------------------------|--------|
-RUNS-TABLE
+* **First runs** (06:22 to 06:46): e1 seeds 1 to 8 (2,000 keys, 1,500
+  rounds), all OK; e4 seed 1, 30 kills, OK; e4 seed 11, 45 kills, then
+  stopped by the agent's own recompile, which removed the classes under
+  the run (since then each run copies its classes); quick runs of e2,
+  e3, e5, e6 and e7 (seeds 1 to 4): three bugs of the apps fixed (e3 read
+  a String at an object key as a String through `Object.class`, which
+  gives its bytes; e3's transactions of 150 objects in a directory with
+  three indexes passed 500 operations; e6's loop at the end of the clock
+  ended before a refusal), and e5 seeds 2 and 3 FAIL: UA-3.
+* **Kill 1** (06:46 to 06:54): e4 seed 21, 84 kills in 5 databases,
+  every recovery checked, then FAIL: the child's OutOfMemoryError, the
+  app's (its oracle kept every version of every key); since then it keeps
+  the last 64 transactions.
+* **Soak 1** (06:54 to 07:23): 46 runs, two lanes. e1 seeds 101 to 120
+  (3,000 keys, 3,000 rounds): seed 102 FAIL, the first sight of UA-5 (a
+  call of `maintain(100)` wrote 1,054,352 bytes beyond its budget's; the
+  check became a report, a FAIL beyond 4 MB); the even seeds 104 to 120
+  were lost to the agent's recompile and rerun from 07:08 to 07:19, all
+  OK. e2 seeds 101 to 108 (node sizes 8, 14, 30 and 62, 300 rounds), all
+  OK. e3 seeds 101 to 110 (800 rounds): seeds 101 and 105 FAIL, "the
+  restart changed the first available time", the app's: it read the
+  time before `close()` while an index build or the removal of a deleted
+  index's entries committed in the background, and a start that resumes
+  a build commits at once; e3 now reads it after `close()` and allows a
+  later time after a start that resumed a build or followed a deletion,
+  never an earlier one; the reruns of both seeds at 08:58 passed, seed
+  105 with one such cut. e5 seeds 101 to 104 (60 s): 104 ran out of heap
+  (the app's oracle kept every version; since then it keeps versions
+  from the readers' oldest time on), the others OK. e6 seeds 101 to 104
+  (24 scenarios), all OK.
+* **Kill 2** (07:23 to 07:34): e7 seed 31, 300 kills (22 in a
+  `maintain()` call, 20 in a start), 17 databases, 307 recoveries
+  checked: OK.
+* **Kill 3** (07:35 to 08:05): e4 seed 22 with the settings' changes,
+  271 kills (133 in a `maintain()` call, 35 in a start), 15 databases,
+  every recovery checked and right; then the final check of database 15
+  ran out of a heap of 1 GB (the app's: the oracle and the check's scan
+  each held every live value, values of 0.1 to 2 MB in one KV of 500);
+  since then the children have 2 GB and such values are 4 times rarer.
+* **Soak 2** (08:06 to 08:45): 32 runs. e1 seeds 201 to 206 (10,000
+  keys, 6,000 rounds, retain durations changed in a 400th of the
+  rounds); e2 seeds 201 to 208
+  (400 rounds); e3 seeds 201 to 206 (2,000 rounds); e5 seeds 201 to 204
+  (120 s, 3 to 8 writers, listings now and then held past the retain
+  duration); e6 seeds 201 to 204 (36 scenarios); e8 seeds 201 to 204 (60
+  rounds): all OK.
+* **Kill 4** (08:45 to 08:58): e7 seed 32, 300 kills (16 in a
+  `maintain()` call, 26 in a start), 18 databases, 321 recoveries
+  checked: OK.
+SOAK3-KILL5
 
 RUNS-NOTES
 
 
 ## 4. Findings
 
-No wrong value at any time, no lost synced transaction, no failed
-database but by the Error that e6 throws on purpose, no refusal that
-wrote anything (section 3). The findings are of the documents; UA-3 also
-asks a question of the design.
+No wrong value at any time, no lost synced transaction, no returned
+transaction lost at a stop, no failed database but by the Error that e6
+throws on purpose, no refusal that wrote anything (section 3). Of the
+ten findings, nine are of the documents (UA-3 and UA-8 also ask a
+question of the design, UA-4 is a note) and one, UA-9, is of the product,
+of severity S4 (026-26's scale: S1 data lost or wrong, S2 a database
+that fails or cannot start, S3 a call refused wrongly, S4 minor or
+documentation). Read after each result that disagreed: the code named
+under "Why".
 
 * **UA-1 (document). The files of a decided cut stay on disk until the
   next commit or `maintain()` call.**
@@ -347,8 +404,12 @@ asks a question of the design.
     interrupted during a sync."
   * What happened: e6, scenario 2, a `stop()` or `close()` from another
     thread while a thread calls `maintain(100,000)` on a database with a
-    mass delete to give back: COUNTS-UA2. None failed the database, and
-    every restart had every transaction.
+    mass delete to give back: in the 40 stops of soaks 1 and 2, 33 calls
+    threw DbStoppingException (an IllegalDbStateException) and 7
+    StreamIoException ("StorageManager has error: Storage is closing.");
+    in the quick runs 2 and 1 of 5. None failed the database, and every
+    restart had every transaction. e8 met the same at its stops and took
+    either.
   * Why: `Db.maintain()` syncs a decided cut's table outside the write
     lock; at a stop that sync throws "Storage is closing", as
     `Database.sync()` does. The Core's `Db.maintain()` says so ("@throws
@@ -379,7 +440,10 @@ asks a question of the design.
     accounts' directory has an index), after its action had run longer
     than the retain duration of the clock: it called `maintain(100)`
     inside, which waits while commits come (`Db.maintain()`, the
-    handover). Nothing was written. Counted since: COUNTS-UA3.
+    handover). Nothing was written. Counted since, in e5's runs of soaks
+    1 and 2: 114 of 3.2 million transfers (88 of 2,787 in seed 202, 8
+    writers beside them), each followed by balances that the final check
+    found exact.
     `RwExpires`: an action reads an account, waits while reclaim cuts
     past its read time, then writes the account: with an index on the
     directory `rw()` throws after one run and the balance stays 100;
@@ -403,7 +467,12 @@ asks a question of the design.
   * Expected: `Database.maintain()`: "a pass takes about getStreamSize()
     divided by the budget's bytes in calls".
   * What happened: e1's idle phase, after every key but up to 30 was
-    deleted: COUNTS-UA4.
+    deleted, in the 25 runs of soaks 1 and 2: at the budgets of 100 and
+    less (100 kB a call), 5 to 13 calls wrote, where the sentence gives 77
+    to 563; at the budgets of 720 to 2,909, 6 to 9 calls, where it gives
+    6 to 34; at 20,000 and more, 5 to 9 calls, where it gives 1 or 2,
+    most of them for the cut's wait. Every quiet database kept 29 to 241
+    kB, within 1 MB of its fresh twin (UA-8).
   * Why: a part's cost is what its record writes and a quarter of what
     its step reads (`Db.maintain()`); a stream of dead data costs little
     to pass, and the calls at the end wait for the cut (the retain
@@ -421,12 +490,17 @@ asks a question of the design.
     kB beyond one transaction's, a table padded by at most 200 kB up to
     the next meta block)".
   * What happened: in e1, calls of `maintain(100)` (100 kB) that cut
-    nothing wrote up to COUNTS-UA5. `MaintainOverrun`: with one live
-    value of 8 MiB among small ones, MAINTAIN-OVERRUN.
+    nothing wrote up to 1,230,200 bytes beyond the budget's bytes (seed
+    201 of soak 2), and 412 calls of the 25 runs of soaks 1 and 2 more than
+    472 kB beyond (the sum of the Core's list); the largest values there
+    are 1 MB. `MaintainOverrun`: with one live value of 8 MiB among small
+    ones, a call of `maintain(100)` wrote 8,462,864 bytes, 84 times its
+    budget.
   * Why: `Db.maintain()` runs parts while the cost spent is below the
     budget, and a part is never split: a step copies at least one KV
-    whole, so a value of up to 8 MiB, and an M4 part takes a whole
-    transaction's index nodes and 256 kB more.
+    whole, so a value of up to 8 MiB, and an M4 part's take may write a
+    whole transaction's index nodes and 256 kB more (the Core's own
+    list).
   * Reproduction: `java -cp bergdb-release.jar:out MaintainOverrun 100`
     (2 s); `java -De1.maxOver=472000 E1MaintainBudget 102 DIR 3000
     3000` stops at the first call past the Core's list.
@@ -559,6 +633,50 @@ asks a question of the design.
     ends when the writers pause or the database stops. With UA-7 it is
     for 031-04's handover (Q9) to bound the wait or to end it on an
     interrupt, as the three waiting calls do.
+
+* **UA-10 (document). A put or a `w().execute()` at a stop can throw
+  StreamIoException ("Storage is closing."), not IllegalDbStateException;
+  nothing of it is written.**
+  * Expected: `Database.stop()`: "A call that runs in another thread at
+    the stop, and has not begun its commit, is refused: it throws
+    IllegalDbStateException, nothing of it is written ... It holds for a
+    put(), a delete() or a WBuilder's execute() that has not reached its
+    commit, and for a read ... A read that loads from the storage as the
+    storage closes may throw another DbException instead, a
+    StreamIoException"; the second sentence names reads only.
+  * What happened: e8 seed 303 of soak 3 FAIL, "writer 4:
+    bergdb.storage.StreamIoException: Storage is closing.", the first in
+    about 1,300 stops of e8 at a cache budget of 32 MB. e8 now keeps such
+    a transaction and checks after the restart that it is there whole or
+    not at all; with the least cache budget (`-De8.cache=4`) and values
+    of up to 3 kB it comes in the first rounds: 12 seeds of 80 rounds
+    (seeds 601 to 612, 960 stops) met 391 such calls, the writers'
+    `w().execute()` with the stack of `Db.warmup()` and the transfers'
+    `rw()` in their actions' reads (`Db.getOne()`, which the sentence on
+    reads covers). None of them was there after the restart, and no
+    database failed.
+  * Why: `Db.executeInner()` warms the transaction's keys up before the
+    write lock (`Db.warmup()`, reads of the KVs' keys at the latest time,
+    which catch LookupTimeNotAvailableException only); a load from the
+    stream while the storage closes throws the StreamIoException of
+    `StorageManager.read()` out of `execute()`, before the go point. The
+    warm-up of the record's reclaim step (`Db.warmupStep()`, 031-06)
+    catches IllegalDbStateException only, so it can do the same.
+  * Reproduction (about 10 s):
+
+        java -ea -Xmx2g -De8.cache=4 -De8.value=3000 -cp build/bergdb-release.jar:out \
+            E8StopEverywhere 601 DIR 20
+
+    prints "writer N at a stop: bergdb.storage.StreamIoException: Storage
+    is closing." with its stack (`Db.warmup()`), then that the
+    transaction is not there.
+  * Judgment: document, as UA-2 (or a small product change: the warm-ups
+    end on a closing storage as on a stop, and the lock's check refuses
+    the action with IllegalDbStateException, as `warmupStep()`'s comment
+    intends). Nothing wrong was written and no database failed; an
+    application that catches IllegalDbStateException at its shutdown
+    meets a StreamIoException instead. Not new in 2026.7 for
+    `Db.warmup()`; `warmupStep()` is 031-06's.
 
 ## 5. State
 
