@@ -155,6 +155,24 @@ Not fixed on `main`; a release with one needs Frans's exception
 None (2026-11-27).
 
 
+The stream and the start
+------------------------
+
+* **A start compares created.txt's database ID with the stream's**
+  (bergdb 028-81, 2026-11-28). A start that does not create the database
+  reads the database ID that `created.txt` names, where the directory has
+  one, and refuses, before it reads the rest of the stream, when the
+  stream's first meta block holds another ID: another database's first
+  stream file put in place of the database's own, or the stream files of
+  one database beside the `created.txt` of another. The refusal names
+  both IDs, says that the files are of two databases and gives the way
+  out (restore the database's files from a backup, the stream files and
+  `created.txt` together); the start writes and deletes nothing. Before,
+  such a start was refused with a wrong cause, and its way out left a
+  database with the other database's values. A directory without
+  `created.txt` starts as before.
+
+
 Speed
 -----
 

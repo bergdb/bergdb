@@ -849,6 +849,67 @@ The lead's overview (08:30), its conclusions:
   of `kill-restart.sh` and 4,000 starts of `StartChain`. F3 is in
   2026.5 and 2026.6: RB-014, S4 (033). 028-79's fix is built, in its
   gates, with an independent review before it lands.
+* 2026-11-28 10:22 RB-014 in 033, with its bullets in the notes of
+  2026.5 and 2026.6 and in `releases/next.md`; the GitHub release pages
+  of 2026.6 and 2026.5 set again from `main` (034-01, section 5;
+  `body.sh`: BODY OK).
+* 2026-11-28 10:18 Codex's review of 028-79's fix stopped by OpenAI's
+  content filter ("flagged for possible cybersecurity risk"), two
+  minutes in, no report, as on 2026-11-27 at 14:24. Not reworded or
+  retried (013-04, section 9); for Frans (section 4). The review went to
+  a Claude agent (Opus, effort xhigh).
+* 2026-11-28 10:30 028-79's smaller fix went ahead by default (section
+  4.4); it lands after its gates and the review.
+* 2026-11-28 10:40 031-08, part B, reported and landed (`ead07411`):
+  five apps (f1 to f5) of the README's "One stream" taken at its word and
+  of a user's handling of the files. The same actions gave the same
+  stream, byte for byte, in 22,106 actions run eleven ways with 17,215
+  stops and starts (f1); every one of 3,570 kills left a prefix of the
+  reference stream (f2); 13,700 Pub actions run six ways were identical
+  while no index was deleted (f3); in 1,407 cases of a user's handling of
+  the files every refusal changed no file and every accepted start held
+  the expected state (f4); 970 copies of a running database (f5). No
+  product bug that the documents do not allow. Six findings: UB-3 (a
+  product finding, low: another database's first file refused with a
+  wrong cause) as 028-81; UB-1, UB-5 and UB-6 (documents and messages)
+  as 028-82; UB-4 (another database's file in the middle, accepted, as
+  documented) with 028-77; UB-2 (the README's sentence) for Frans
+  (section 4). On the combined tree `BEFORE COMMIT OK`, `APPS OK`.
+* 2026-11-28 11:15 031-08, part A, reported and landed (`32b7e6f1`):
+  nine apps (e0 to e8) of the Pub API under reclaim: `maintain()`'s
+  budgets, the limits while commits carry reclaim's steps, indexes with
+  `maintain()` and restarts, kills inside commits and `maintain()`,
+  threads, refusals, stops beside everything; about 200 runs, 1,870
+  kills, 2,600 stops. No data bug: no wrong value, no lost synced
+  transaction, no refusal that wrote. Ten findings: UA-9 (S4: a
+  `maintain()` call with the interrupt flag set spins a core), UA-10
+  and UA-2 (the exception of a write at a stop) and UA-8 (a question:
+  `maintain()` grows a small new database to about 200 kB) with an open
+  failure of e3, seed 101 ("the restart changed the first available
+  time", seven reruns passed) as 028-83 (an agent, until 14:00, the
+  failure first); UA-3 (an `rw()` that outlives the retain duration) for
+  Frans (section 4); the other documents later. On the combined tree
+  `BEFORE COMMIT OK`, `APPS OK`.
+* 2026-11-28 11:28 O1 built (L9, `Db.MAX_OWN_KEY_BYTES` = 1,024, not
+  public; checked where an own key is written, not at reclaim's copies
+  or a start; 024-17 and 031-06's section 3 with the cap). Its landing is
+  held: on `main` `level2.sh` failed in a test that the change modified
+  (`ReclaimRoomTester.testUntakeableRecordFails`, "nothing appended,
+  expected 0, got 792"); the agent fixes it.
+* 2026-11-28 11:36 The review of 028-79's fix: land after fixing two
+  shapes of a block's first bytes (one rare and not new, one a sound
+  in-memory stream refused at its second start); no data lost, the same
+  bytes as before in 12,520 cases, 23,000 starts of `StartChain` with no
+  failure. The fix agent corrects both, until 13:30.
+* 2026-11-28 11:40 028-81 and 028-82 landed (`710ae35e`, `49f3838c`,
+  `cc848794`): a start compares `created.txt`'s database ID with the
+  stream's first meta block's; the messages of a user's handling of the
+  files name the files and a way out; the Javadoc says that a start
+  needs write access, how to back up a running database, and that a
+  stopped database keeps a decided cut's files. `BEFORE COMMIT OK` on
+  the head, `LEVEL 3 OK`, `APPS OK`, the power-loss tester and f4 on the
+  tree before a change of the Javadoc. `level3.sh`'s first run failed
+  once under load in a test of a deleted directory: 028-85.
 
 ## 4. Waiting for Frans
 
@@ -860,7 +921,7 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 08:00)
+### Open now (2026-11-28 11:40)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
 17:26, and of 2026-11-28, 06:05 to 07:30 (section 2). The text of
@@ -898,9 +959,26 @@ run. New at 08:00, from the review of the start path (section 3,
     2026-11-27 for its cost).
   * Recommended: taken with 028-77; (a) meanwhile, as the state of the
     code.
+* **UB-2: the README's "One stream" sentence** (031-08, part B; the
+  sentence is Frans's). It does not name the Pub API's index jobs, which
+  commit on a thread of their own after `deleteIndex()` and during a
+  build, so that a stop or the timing then changes the bytes, or the
+  random ID that a creation takes, so that two databases made by the
+  same actions differ. 031-05's Q4 (a) recommended naming them.
+  Recommended: a sentence after Frans's, naming both.
+* **UA-3: an `rw()` whose action outlives the retain duration** (031-08,
+  part A; the Pub API's behaviour, class 3). It throws
+  LookupTimeNotAvailableException, nothing written, when it writes an
+  indexed directory, and commits when it does not; `rw()`'s @throws does
+  not name the exception. Not new in 2026.7. (a) The Javadoc says it,
+  with a new `rw()` as the way out. (b) `rw()` runs the action again, as
+  after a conflict, when its read time has expired, for indexed and
+  plain directories alike (a product change). The record states both
+  and recommends neither; none yet.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
-* **Codex's stop by the content filter** (section 3, 14:24), known to
-  Frans.
+* **Codex's stops by the content filter**: on 2026-11-27 at 14:24
+  (section 3), known to Frans, and on 2026-11-28 at 10:18, a review of
+  028-79's fix of the start path (section 3), no report; not reworded.
 * Still open from sections 4.0 to 4.3: A5, the Lean statement (026-14's
   answer puts the first model addition with the proof of P2's extension,
   after 2026.7); P2's text in 010, which is Frans's (031-06, step 5);

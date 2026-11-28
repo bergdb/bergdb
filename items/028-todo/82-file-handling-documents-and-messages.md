@@ -1,8 +1,8 @@
 028-82. Fix: a user's handling of the files: the backup of a running database, the files of a decided cut, the open's refusals
 ==============================================================================================================================
 
-Status: in progress (built and gated on the branch `028-81-82`, to
-land).
+Status: done (2026-11-28): on `main` (`710ae35e`, `49f3838c`,
+`cc848794`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -220,3 +220,8 @@ taken by an agent of lead-1127, on the branch `028-81-82`.
 
 2026-11-28. The gates passed (above), on the branch rebased on `main` at
 `ead07411`, and before-commit.sh again on `32b7e6f1`; to land.
+
+2026-11-28. Landed on `main` by lead-1127 (`710ae35e`, `49f3838c`,
+`cc848794`): the branch's head passed `java/before-commit.sh` on `main`
+at `32b7e6f1`, and between the tree that `level3.sh` passed and the head
+only the Javadoc changed. Done.

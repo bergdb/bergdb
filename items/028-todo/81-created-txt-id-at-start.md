@@ -1,8 +1,8 @@
 028-81. Fix: another database's first stream file is refused with a wrong cause; created.txt's ID not read
 ==========================================================================================================
 
-Status: in progress (built and gated on the branch `028-81-82`, to
-land).
+Status: done (2026-11-28): on `main` (`710ae35e`, `49f3838c`,
+`cc848794`).
 Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
@@ -184,3 +184,8 @@ before every other check; the three tests, two failing before.
 
 2026-11-28. The gates passed (above), on the branch rebased on `main` at
 `ead07411`, and before-commit.sh again on `32b7e6f1`; to land.
+
+2026-11-28. Landed on `main` by lead-1127 (`710ae35e`, `49f3838c`,
+`cc848794`): the branch's head passed `java/before-commit.sh` on `main`
+at `32b7e6f1`, and between the tree that `level3.sh` passed and the head
+only the Javadoc changed. Done.

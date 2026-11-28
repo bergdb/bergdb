@@ -111,8 +111,7 @@ Open
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | open (on a branch) |
-| [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | built, gated (on a branch) |
-| [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | built, gated (on a branch) |
+| [028-85](85-recreated-directory-test-under-load.md) | Fix | A test of a directory deleted after stop() failed once under load: 021-24's window | none | open |
 
 
 Closed
@@ -121,6 +120,8 @@ Closed
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
 | [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros now refused as one (RB-014); the zero tail's bound for every buffer | none | done | 2026-11-28 |
+| [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | done | 2026-11-28 |
+| [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | done | 2026-11-28 |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A refused start wrote recovery's fill: now held until the last check | none | done | 2026-11-28 |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Large commits: a commit's step sized by its allowance; 18 times the live data at 1 MB commits | closed | done | 2026-11-28 |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 fixed by 031-06; the rest is 028-75 | closed | done | 2026-11-28 |
@@ -741,3 +742,10 @@ refused start writes nothing. Moved to Closed.
 2026-11-28. 028-80 done: F3 and F4 of the review of the start, with
 028-70's follow-up, landed on `main` (`d5aa1cf7`, `929537b5`,
 `71cf993e`); F3 is RB-014 (033). Moved to Closed.
+
+2026-11-28. 028-81 and 028-82 done: landed on `main` (`710ae35e`,
+`49f3838c`, `cc848794`). Moved to Closed.
+
+2026-11-28. 028-85 registered by lead-1127: a test of a directory
+deleted after `stop()` failed once in `level3.sh` under load, 021-24's
+window left open.
