@@ -1827,9 +1827,11 @@ public class Db implements AutoCloseable {
      * a part of what the creation writes. A creation writes two records (bergdb 028-15): the
      * primordial record and the creating start's record of the startup distance, the KV
      * /#i/-sd. Refused: a part of the primordial record, or the record failed
-     * (RecoverableStream.isIncompleteCreation; 005-33); and, since 2026-11-19 (bergdb 028-18,
-     * option C), the primordial record alone, with nothing after it, or with a part of the
-     * second record, or the second failed (RecoverableStream.holdsFirstTransactionAlone).
+     * (RecoverableStream.isIncompleteCreation; 005-33), or, since 2026-11-28 (bergdb 028-80),
+     * zeros only, as a kill can leave the creation's first write; and, since 2026-11-19
+     * (bergdb 028-18, option C), the primordial record alone, with nothing after it, or with
+     * a part of the second record, or the second failed
+     * (RecoverableStream.holdsFirstTransactionAlone).
      * Such a stream holds no committed transaction but the primordial one, so no data, and it
      * is not a database: a stream is valid only after its creation has run (Frans,
      * 2012-08-20). Before 005-33, the start threw one of three StreamFormatExceptions that

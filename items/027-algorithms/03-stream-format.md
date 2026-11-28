@@ -628,7 +628,10 @@ for a failed one, made only by recovery's fill.
   whole and alone, or followed by a part of the creation's second record
   (the startup distance's, section 14.2) or by that record failed:
   `RecoverableStream.holdsFirstTransactionAlone`, the same exception, on
-  any start but the creating one.
+  any start but the creating one. Since 028-80 (2026-11-28) also a stream
+  from 0 of zeros only, at most a meta block distance long: a creation's
+  first write that a kill left as zeros (section 6; 028-60), refused
+  before as no valid meta block, an SFE.
 * The order of a start's checks: `Db.startInner` (:888), as 012-02,
   section 4.6, says.
 
@@ -1443,8 +1446,8 @@ be below the stream's first position after a cut.
 The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
 
 1. The checks before any write: an incomplete creation (the primordial
-   record in part, or alone without the creation's second record; 005-33,
-   028-18), the meta version, the node size (sections 6 and 7).
+   record in part, or alone without the creation's second record, or a
+   stream of zeros only; 005-33, 028-18, 028-80), the meta version, the node size (sections 6 and 7).
 2. Recovery (section 7).
 3. The startup position (`Db.readStartupPos`;
    `getStartupPosFromLastTransaction`, :1000): from the record that the
@@ -2312,3 +2315,7 @@ lead-1127, on the branch `028-70-refuse-first`.
 
 2026-11-28. 4: a new file at least 1 MB once the files hold 4 MB of
 stream (028-73, option (b)); the stream's bytes are unchanged.
+
+2026-11-28. 028-80: a stream of zeros only, at most a meta block distance
+long, is an incomplete creation (sections 7 and 14.2). By an agent of
+lead-1127, on the branch `start-fixes`.

@@ -797,13 +797,32 @@ public class RecoverableStream {
      * transaction's size says: it may hold data. This method only reads. Caller must hold
      * DB.writeLock.
      *
+     * <p>Since 2026-11-28 (bergdb 028-80; 033's review of the start, F3) also a stream of
+     * zeros only, from position 0 and at most a meta block distance long: a creation's first
+     * write that a kill left as zeros within the file's length, from its first page on,
+     * where its bytes should be, as on macOS (bergdb 028-60; 031-02, F1). Such a stream
+     * holds no meta block and no record, so no data. FileStream's open leaves it as it is,
+     * the stream's only file (a repair never empties a stream), and the start refused it
+     * with "Could not find *any* valid meta block", a StreamFormatException, where every
+     * other cut of a creation, with or without zeros after it, gives this one. The bound is
+     * FileStream's first file: the stream moves to a second file only after the first is
+     * forced (FileStream, newFile()), so only a write into the first file can leave zeros
+     * from position 0; a longer stream of zeros is refused as before. A stream that begins
+     * after 0, a cut one, is not a creation.</p>
+     *
      * @param creationLength  The length of a new database's stream: the first meta block
      *      and the first transaction.
      * @throws StreamIoException
      */
     public boolean isIncompleteCreation(long creationLength) {
         final long length = aos.getLength();
-        if (length == 0 || length > creationLength || aos.getFirstPos() > 0) {
+        if (length == 0 || aos.getFirstPos() > 0) {
+            return false;
+        }
+        if (length <= META_BLOCK_DISTANCE && rawZeros(length)) {
+            return true;        // A creation's first write left as zeros (bergdb 028-80).
+        }
+        if (length > creationLength) {
             return false;
         }
         
@@ -890,6 +909,23 @@ public class RecoverableStream {
         }
         readRaw(length - 1, lastByte);
         return lastByte[0] == 0;
+    }
+    
+    /**
+     * Whether the stream's bytes from 0 to 'length' are all zero (bergdb 028-80): read in
+     * pieces, the first of a meta block's size, until a byte that is not zero.
+     */
+    private boolean rawZeros(long length) {
+        for (long pos = 0; pos < length; ) {
+            final byte[] bytes = new byte[(int) Math.min(length - pos,
+                    pos == 0 ? META_BLOCK_SIZE : 64 * 1024)];
+            readRaw(pos, bytes);
+            if (!isZeros(bytes)) {
+                return false;
+            }
+            pos += bytes.length;
+        }
+        return true;
     }
     
     /** Reads bytes of the underlying stream, meta blocks included. */
@@ -2276,7 +2312,8 @@ public class RecoverableStream {
          * transaction failed; the whole of it committed is not, nor an empty or a longer
          * stream, a stream that does not begin as a meta block of this version, a complete
          * block that is invalid or names a transaction, or a first transaction that more bytes
-         * follow. The method only reads.
+         * follow. Zeros only are one, up to a meta block distance (bergdb 028-80): a creation's
+         * first write that a kill left as zeros. The method only reads.
          */
         @Nano
         public static void testIsIncompleteCreation() throws IOException {
@@ -2310,12 +2347,23 @@ public class RecoverableStream {
             large.truncate(200);
             Assert.assertTrue("cut at 200", isIncompleteCreation(large, creation));
             
-            // Not the beginning of a meta block of this version.
-            for (int n : new int[] {1, 100, META_BLOCK_SIZE, creation}) {
+            // Zeros only, as a kill can leave a creation's first write (bergdb 028-80), up to
+            // a meta block distance; not longer, nor with a byte that is not zero.
+            for (int n : new int[] {1, 100, META_BLOCK_SIZE, creation, 4096, META_BLOCK_DISTANCE,
+                    META_BLOCK_DISTANCE + 1}) {
                 MemoryStream zeros = new MemoryStream();
                 zeros.append(new byte[n], 0, n);
-                Assert.assertFalse(n + " zero bytes", isIncompleteCreation(zeros, creation));
+                Assert.assertEquals(n + " zero bytes", n <= META_BLOCK_DISTANCE,
+                        isIncompleteCreation(zeros, creation));
+                for (int at : new int[] {0, n / 2, n - 1}) {
+                    MemoryStream m = zeros.copy();
+                    MemoryStream.TestAccess.write(m, new byte[] {LAST_BYTE}, at);
+                    Assert.assertFalse(n + " zero bytes but at " + at,
+                            isIncompleteCreation(m, creation));
+                }
             }
+            
+            // Not the beginning of a meta block of this version.
             MemoryStream version = created.copy();
             MemoryStream.TestAccess.write(version, new byte[] {(byte) 154}, 4);
             version.truncate(10);

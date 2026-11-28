@@ -78,6 +78,13 @@ refusal has written nothing:
    naming no record, its first record of the creation's length and
    committed, and after it nothing, a part of a record, or one record
    failed that ends the stream (`RecoverableStream.holdsFirstTransactionAlone`).
+   Since 028-80 (2026-11-28) also a stream not cut, at most a meta block
+   distance long, of zeros only: a creation's first write that a kill
+   left as zeros within the file's length (028-60), which `FileStream`'s
+   open leaves as it is, as its only file; the bound is `FileStream`'s
+   first file, as the stream moves to a second only after the first is
+   forced. Until then such a stream was refused at step 3, "Could not
+   find *any* valid meta block", an SFE (033's review of the start, F3).
 3. **The last valid meta block** B: of the blocks complete in the
    stream, from the last down to the first at or after the first
    position, the first that is valid: its last byte 10, its own position
@@ -214,7 +221,11 @@ during an append left on macOS (031-02, F1), is left out of the stream
 before the start reads it, when it is a run of at most 8 MB at the end
 of the last file: `FileStream`'s open ends the stream where the run
 starts, and its first append truncates the file there (027-14; 028-60,
-part 2, 2026-11-26); the recovery above sees a cut tail. A longer run, or one on another storage, is recovered
+part 2, 2026-11-26); the recovery above sees a cut tail. The bound holds
+for a kill whatever the buffer: `FileStream` hands the system at most
+5 MB in one write (`WRITE_MAX`, since 028-80; until then a buffer of
+16 MB or more, which `DbBuilder.stream` takes, gave longer writes). A
+longer run, or one on another storage, is recovered
 as a cut where its zeros begin inside the last record: z, read before
 them, reaches to or past the end, and the zeros are read only if they
 begin in its header (h does not hold its check), to see that they are
@@ -886,3 +897,9 @@ by any check writes nothing (sections 1, 1.3, 1.9, 3, 6, 7 and 8); the
 walk refuses every committed record of another format whose header holds
 its check (1.3, 1.4); B's time is checked at the search for s (1.2). By
 an agent of lead-1127, on the branch `028-70-refuse-first`.
+
+2026-11-28. 028-80: a stream of zeros only, at most a meta block
+distance long, is refused as a creation that did not complete (1.2,
+step 2); `FileStream` writes at most 5 MB at a time, so the zero tail's
+bound holds for every buffer (1.3). By an agent of lead-1127, on the
+branch `start-fixes`.

@@ -167,7 +167,9 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   encryption: "The start has written nothing") leaves the files as they
   were; a recovery may append before a later check refuses a start,
   and then the cut is made. A longer run is left, and so is a stream
-  whose only file is all zeros (a repair never empties a stream). The same rule on every operating system and file system,
+  whose only file is all zeros (a repair never empties a stream); a
+  start refuses the latter, up to 200,000 bytes, as a creation that did
+  not complete (`DatabaseNotCreatedException`; 028-80, 2026-11-28). The same rule on every operating system and file system,
   with no detection of either (Frans, 2026-11-26). The layers above see
   a stream cut short, a prefix of what was appended (014-01, section 7),
   and recovery completes and aborts the torn last record (027-11, 1.3);
@@ -177,13 +179,21 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   record's that was never synced, or a recovery's zeros of an aborted
   record, which the next recovery writes again. The bound limits a
   silent repair in the case outside the contract, a power loss that
-  destroyed forced bytes. Not removed: bytes that are not zero (028-67).
+  destroyed forced bytes. It holds for a kill whatever the buffer above:
+  `FileStream` hands the system at most 5 MB in one write (`WRITE_MAX`;
+  028-80, 2026-11-28), a longer append in pieces with one force after
+  them, and a kill's zeros are where the bytes of the write that it cut
+  should be. Until then the bound rested on `BufferedStream`'s writes,
+  at most half its buffer, 5 MB with the default of 10 MB, and the Core
+  API's `DbBuilder.stream` takes any size: from 16 MB a write could pass
+  8 MB (033's review of the start, F4). Not removed: bytes that are not zero (028-67).
   The rule holds for every stream that `FileStream` opens, with no way
   to turn it off; BergDB has no encrypted stream since 028-69
   (2026-11-27). Tests: `FileStream.testZeroTailRemoved`,
   `testZeroTailLastFileOnly`, `testZeroTailCutAtFirstAppend`,
-  `testZeroTailFileSize`, `testZeroTailCutBeforeFirstAppend`; `DbTesterStream.testZeroedTailOverMetaBlock`,
-  `testRefusedStartsKeepZeroTail`;
+  `testZeroTailFileSize`, `testZeroTailCutBeforeFirstAppend`,
+  `testWritesAtMostWriteMax`; `DbTesterStream.testZeroedTailOverMetaBlock`,
+  `testRefusedStartsKeepZeroTail`, `testCreationLeftAsZeros`;
   `PubTester.testEncryptedByAnEarlierReleaseRefused`.
 
 
@@ -215,3 +225,8 @@ branch `031-06-docs`.
 2026-11-28. New files at least 1 MB once the kept stream is 4 MB, the
 tenth unchanged above 10 MB (028-73, Frans's option (b)): the points on
 the files, the disk and a new database's first 10 MB.
+
+2026-11-28. 028-80: `FileStream` writes at most 5 MB at a time, so the
+zero tail's bound holds for every buffer; the only file all zeros is
+refused as a creation that did not complete. By an agent of lead-1127,
+on the branch `start-fixes`.

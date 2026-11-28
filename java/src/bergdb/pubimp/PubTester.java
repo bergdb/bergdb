@@ -3109,9 +3109,12 @@ public class PubTester {
      * of the creation the start throws a DatabaseNotCreatedException and writes nothing; the
      * whole creation starts. Since bergdb 028-18 (option C) also at the primordial record
      * alone and at a cut in the creation's second record, the startup distance's. A stream of
-     * zero bytes, as a power loss can leave, gives a StreamFormatException (bergdb 020-28).
-     * Until 2026-11-27 each case ran with the internal crypto key too, and the message named
-     * a wrong key only with one (bergdb 028-69).
+     * zero bytes, as a kill or a power loss can leave the creation's first write, gives a
+     * DatabaseNotCreatedException since 2026-11-28 (bergdb 028-80), and is left as it was;
+     * until then a StreamFormatException (bergdb 020-28), as with a crypto key it could not
+     * be told from a wrong key (bergdb 005-33). Until 2026-11-27 each case ran with the
+     * internal crypto key too, and the message named a wrong key only with one (bergdb
+     * 028-69).
      */
     @Nano
     private static void testCrashInCreation() throws IOException {
@@ -3142,9 +3145,10 @@ public class PubTester {
         try {
             builderOn(zeros).start();
             throw new AssertionError("started on zero bytes");
-        } catch (StreamFormatException e) {
-            // Expected.
+        } catch (DatabaseNotCreatedException e) {
+            // Expected (bergdb 028-80).
         }
+        Assert.assertEquals("zero bytes", 128, zeros.getLength());
             
         Database d = builderOn(m.copy()).start();
         d.connection().put("/k", "v");

@@ -1,8 +1,8 @@
 028-80. Fix: a creation left as zeros is not refused as a creation; the zero tail's bound rests on the default buffer
 =====================================================================================================================
 
-Status: in progress (an agent of lead-1127, 2026-11-28). Kind: Fix.
-Frans: none.
+Status: built on the branch `start-fixes` (2026-11-28), to land; the
+gates below. Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
 What: two findings of the review of the start path of 2026-11-28 (033,
@@ -58,8 +58,81 @@ Found by: the review of the start and recovery path of 2026-11-28 (033,
 `reviews/2026-11-28-start.md`, F3 and F4).
 
 
+Result
+------
+
+On the branch `start-fixes`, on 028-70's branch `028-70-refuse-first`
+(2026-11-28).
+
+* **F3, built.** `RecoverableStream.isIncompleteCreation` also takes a
+  stream that begins at 0, is at most a meta block distance (200,000
+  bytes) long and holds zeros only: a creation's first write that a kill
+  left as zeros. Such a stream holds no meta block and no record, so no
+  data; the start refuses it with `DatabaseNotCreatedException` ("Remove
+  its files and start it again") before it reads anything else, and
+  writes nothing. The bound is `FileStream`'s first file: the stream
+  moves to a second file only after the first is forced (`newFile`), so
+  only a write into the first file can leave zeros from position 0; a
+  longer stream of zeros, or one that begins after 0, is refused as
+  before. `FileStream`'s open is unchanged: it leaves the only file all
+  zeros as it is (a repair never empties a stream). Javadoc:
+  `isIncompleteCreation`, `Db.refuseIncompleteCreation`,
+  `DatabaseNotCreatedException`; 027-11, 1.2, step 2; 027-03, sections 7
+  and 14.2; 027-14.
+* **F4, built: the write bounded, in `FileStream`.** An append hands the
+  system at most `FileStream.WRITE_MAX`, 5 MB, in one write; a longer one
+  is written in pieces of 5 MB, one after the other, with one force
+  after them, as before, with per-append forcing on. The zeros that a
+  kill leaves within the last file's length are where the bytes of the
+  write that it cut should be (031-02, F1; 035-01, section 9), so they
+  are at most 5 MB, below `ZERO_TAIL_MAX`, whatever the buffer above:
+  the bound holds for every buffer size that `DbBuilder.stream` takes
+  and for any other user of `FileStream`. Why in `FileStream` and not
+  the builder or `BufferedStream`: the bound and its reason are then in
+  one class, which needs no knowledge of the layer above, and no API
+  changes; a bound of the builder's size would refuse sizes that work
+  today, and a bound that follows the buffer would need the buffer's
+  size at `FileStream`'s open, which runs before the builder wraps the
+  stream. 5 MB is half of the default buffer, so `BufferedStream`'s
+  writes with the default are not split; a write of more than 5 MB
+  needs a buffer of more than 10 MB and a last file of 20 MB or more, a
+  stream of 200 MB or more. Javadoc: `ZERO_TAIL_MAX`, `WRITE_MAX`,
+  `FileStream`'s class comment; 027-11, 1.3; 027-14.
+* **Release 2026.6** (built from its tag and run with a probe, 2026-11-28):
+  a creation's first write left as zeros (416 and 4,096 bytes) is
+  refused with a `StreamFormatException`, "Invalid magic bytes in
+  stream"; so is a cut creation with zeros after it within the file's
+  length (200 or 300 bytes, then zeros to 4,096: "Bad transaction size
+  in db stream, 0"), where 2026.6 has no rule of a zero tail (RB-012).
+  So F3 is in 2026.6, with RB-012's zeros. F4 is not: 2026.6 leaves no
+  zeros out.
+
+Tests, each failing before the fix and passing after it (2026-11-28):
+
+* `RecoverableStream.testIsIncompleteCreation`: zeros only of 1, 100,
+  128, 272, 4,096 and 200,000 bytes are an incomplete creation, 200,001
+  are not, nor zeros with one byte 10 at the start, the middle or the
+  end; before, "1 zero bytes, expected true, got false".
+* `DbTesterStream.testCreationLeftAsZeros`: a `FileStream` whose only
+  file is zeros of 416 (the creation), 4,096, 16,384 and 200,000 bytes,
+  and one of 200,000 zeros with a second file of 3,000 zeros, which the
+  open leaves out: `DatabaseNotCreatedException`, no file changed; with
+  the file removed the start creates the database. Before, "Could not
+  find *any* valid meta block".
+* `FileStream.testWritesAtMostWriteMax`: an append of 12 MB to a last
+  file of 5,000,001 bytes (size class 20 MB) is three writes, 5, 5 and
+  2 MB, and one force; before, one write of 12,000,000 bytes.
+
+The review's `CreationZerosProbe`, compiled against the branch's jar:
+gates below.
+
+
 Log
 ---
 
 2026-11-28. Registered by lead-1127 from the review's F3 and F4; taken
 by an agent of lead-1127.
+
+2026-11-28. F3 and F4 built on the branch `start-fixes` by an agent of
+lead-1127 (on 028-70's branch): zeros only as an incomplete creation,
+and `FileStream`'s writes of at most 5 MB; 2026.6 shows F3.

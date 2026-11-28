@@ -14,6 +14,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
@@ -26,6 +27,7 @@ import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.OneFileStream;
 import bergdb.stream.ReadOnlyStream;
+import bergdb.stream.StreamContract.NoForceIo;
 
 /**
  * Tests the database with a stream.
@@ -786,6 +788,60 @@ public class DbTesterStream {
         try (Db db = Db.builder().testSetup(new FileStream(dir)).start()) {
             Assert.assertArrayEquals(StringUtil.toBytes("a-value"),
                     DbUtil.get(db, Long.MAX_VALUE, "a"));
+        }
+    }
+    
+    /**
+     * Bergdb 028-80 (033's review of the start, F3): a creation's first write that a kill
+     * left as zeros, the stream's only file all zeros, which FileStream's open leaves as it
+     * is (a repair never empties a stream). The start refuses it as a creation that did not
+     * complete, a DatabaseNotCreatedException, and changes no file: as long as the creation
+     * (416 bytes), a page, 16 KiB, and the first file's 200,000 bytes; and 200,000 zeros with
+     * a second file of zeros, which the open leaves out. Before, a StreamFormatException,
+     * "Could not find *any* valid meta block". With the file removed, the start creates the
+     * database.
+     */
+    @Nano
+    private static void testCreationLeftAsZeros(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File made = env.createTempDir();
+        try (Db db = Db.builder().testSetup(new FileStream(made, new NoForceIo())).start()) {
+            // The creation only.
+        }
+        final int creation = (int) new File(made, "00000000000000.bergdb").length();
+        Assert.assertEquals(416, creation);
+        for (int n : new int[] {creation, 4096, 16384, 200000, -200000}) {
+            final String what = n < 0 ? "200000 zeros and a second file of zeros" : n + " zeros";
+            File dir = env.createTempDir();
+            File first = new File(dir, "00000000000000.bergdb");
+            java.nio.file.Files.write(first.toPath(), new byte[Math.abs(n)]);
+            File second = new File(dir, "00000000000002.bergdb");
+            if (n < 0) {
+                java.nio.file.Files.write(second.toPath(), new byte[3000]);
+            }
+            try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo())).start()) {
+                throw new AssertionError(what + ": started");
+            } catch (DatabaseNotCreatedException e) {
+                Assert.assertTrue(what + ": " + e.getMessage(),
+                        e.getMessage().contains("Remove its files"));
+            }
+            Assert.assertArrayEquals(what, new byte[Math.abs(n)],
+                    java.nio.file.Files.readAllBytes(first.toPath()));
+            Assert.assertEquals(what, n < 0 ? 3000 : 0, second.length());
+            if (n == creation) {
+                Assert.assertTrue(what, first.delete());
+                try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                        .start()) {
+                    db.execute(db.trans().put("a", "a-value"));
+                }
+                try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                        .start()) {
+                    Assert.assertArrayEquals(what, StringUtil.toBytes("a-value"),
+                            DbUtil.get(db, Long.MAX_VALUE, "a"));
+                }
+            }
         }
     }
     

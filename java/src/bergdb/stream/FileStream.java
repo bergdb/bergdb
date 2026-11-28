@@ -155,9 +155,12 @@ import bergdb.pub.util.BadFormatException;
  * before: as a cut tail where its zeros begin inside the last record, else refused, "Bad
  * transaction size in db stream, 0, spos P" (Database, "What a crash keeps"); so is a
  * stream whose only file is all zeros, so that the repair never empties a stream
- * (DatabaseBuilder's open() would then create a database in its place). The bound limits a
+ * (DatabaseBuilder's open() would then create a database in its place; the start refuses
+ * such a stream, of at most 200,000 bytes, as a creation that did not complete, bergdb
+ * 028-80). The bound limits a
  * silent repair in the case outside the contract, a power loss that destroyed forced
- * bytes. Bytes that are not zero are never left out (stale bytes after a kill, bergdb
+ * bytes; it holds for a kill as an append hands the system at most WRITE_MAX, 5 MB, in one
+ * write, whatever the buffer above (since 2026-11-28, bergdb 028-80). Bytes that are not zero are never left out (stale bytes after a kill, bergdb
  * 028-67). The rule holds for every stream that this class opens, with no way to turn it
  * off: a stream of other bytes than BergDB's format, whose last byte can be zero, loses
  * its trailing zeros at each open that appends; BergDB has no such stream since its
@@ -274,12 +277,27 @@ public class FileStream implements AppendOnlyStream {
     
     /**
      * The longest tail of zero bytes at the end of the last file that the open leaves out of
-     * the stream (zeroTailLength(); 2026-11-26, bergdb 028-60): 8 MB, decimal. A write of
-     * BufferedStream's thread is at most 5 MB (bergdb 026-07); the zeros that a kill left on
-     * APFS were 115 to 459 kB (bergdb 031-02, F1), in 035-01 within one piece of a write
-     * (bergdb 035-01).
+     * the stream (zeroTailLength(); 2026-11-26, bergdb 028-60): 8 MB, decimal. This class
+     * hands the system at most WRITE_MAX, 5 MB, in one write (since 2026-11-28, bergdb 028-80),
+     * and the zeros that a kill leaves are where the bytes of the write that it cut should be;
+     * those that a kill left on APFS were 115 to 459 kB (bergdb 031-02, F1), in 035-01 within
+     * one piece of a write (bergdb 035-01). Until 028-80 the bound rested on BufferedStream's
+     * writes, at most half its buffer, 5 MB with the default of 10 MB (bergdb 026-07); a
+     * buffer of 16 MB or more, which the Core API's DbBuilder.stream() takes, gave longer
+     * writes.
      */
     public static final long ZERO_TAIL_MAX = 8*M;
+    
+    /**
+     * The most bytes that an append hands the system in one write (2026-11-28, bergdb 028-80;
+     * 033's review of the start, F4): 5 MB, decimal, half of StorageManager's default buffer,
+     * so that the writes of BufferedStream's thread with that buffer are not split. A longer
+     * append is written in pieces of this size, one after the other, and forced once, as
+     * before, with per-append forcing on. So the zeros that a kill of the process can leave
+     * within the last file's length, where the bytes of the write that it cut should be, are
+     * at most this long, below ZERO_TAIL_MAX, whatever the buffer above.
+     */
+    static final int WRITE_MAX = (int) (5*M);
     
     /** The lock file, in the stream's directory (bergdb 005-63). */
     private static final String LOCK_NAME = "bergdb.lock";
@@ -2267,7 +2285,13 @@ public class FileStream implements AppendOnlyStream {
                 
                 rfile.seek(this.fileLength);
                 if (toAppend > 0) {
-                    io.write(file, rfile, bytes, offset, toAppend);
+                    // At most WRITE_MAX bytes a write (bergdb 028-80): a kill's zeros are
+                    // within the write that it cuts, below ZERO_TAIL_MAX.
+                    for (int done = 0; done < toAppend; ) {
+                        final int n = Math.min(toAppend - done, WRITE_MAX);
+                        io.write(file, rfile, bytes, offset + done, n);
+                        done += n;
+                    }
                     if (forceAppends) {
                         force(FileStreamIo.Force.APPEND);
                     }
@@ -2733,6 +2757,62 @@ public class FileStream implements AppendOnlyStream {
             Assert.assertArrayEquals(what, more, Arrays.copyOfRange(all, stream, all.length));
             f.close();
         }
+    }
+    
+    /**
+     * Bergdb 028-80 (033's review of the start, F4): an append hands the system at most
+     * WRITE_MAX bytes in one write, below ZERO_TAIL_MAX, so that the zeros that a kill can
+     * leave, where the bytes of the write that it cut should be, are within the bound,
+     * whatever the buffer above (DbBuilder.stream() takes any size). A last file of
+     * 5,000,001 bytes, whose size class is 20 MB, takes an append of 12 MB in one file: three
+     * writes, 5 MB, 5 MB and 2 MB, one force after them; before, one write of 12 MB. The
+     * bytes read back, and are opened again.
+     */
+    @Nano
+    static void testWritesAtMostWriteMax(TestEnvironment c) throws IOException {
+        Assert.assertTrue(WRITE_MAX <= ZERO_TAIL_MAX);
+        File dir = c.createTempDir();
+        File file = new File(dir, "00000000000000.bergdb");
+        final int before = 5 * 1000 * 1000 + 1;
+        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+            raf.setLength(before - 1);
+            raf.seek(before - 1);
+            raf.write(10);
+        }
+        final List<Integer> writes = new ArrayList<Integer>();
+        final List<String> forces = new ArrayList<String>();
+        FileStreamIo io = new FileStreamIo() {
+            protected void write(File f, RandomAccessFile handle, byte[] bytes, int offset,
+                    int length) throws IOException {
+                writes.add(length);
+                super.write(f, handle, bytes, offset, length);
+            }
+            protected void forceFile(File f, RandomAccessFile handle, Force why) {
+                forces.add(why + " after " + writes.size());
+            }
+            protected void forceDirectory(File directory) {}
+        };
+        FileStream f = new FileStream(dir, io);
+        Assert.assertEquals(before, f.getLength());
+        byte[] more = new byte[12 * 1000 * 1000];
+        for (int i = 0; i < more.length; i++) {
+            more[i] = patternByte(i);
+        }
+        forces.clear();
+        f.append(more, 0, more.length);
+        Assert.assertEquals(Arrays.asList(WRITE_MAX, WRITE_MAX, 2 * 1000 * 1000), writes);
+        Assert.assertEquals(Arrays.asList("APPEND after 3"), forces);
+        Assert.assertEquals(before + more.length, file.length());
+        byte[] back = new byte[more.length];
+        f.read(before, back, 0, back.length);
+        Assert.assertArrayEquals(more, back);
+        f.close();
+        f = new FileStream(dir, new StreamContract.NoForceIo());
+        Assert.assertEquals(before + more.length, f.getLength());
+        Arrays.fill(back, (byte) 0);
+        f.read(before, back, 0, back.length);
+        Assert.assertArrayEquals(more, back);
+        f.close();
     }
     
     /**

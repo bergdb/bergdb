@@ -4,8 +4,9 @@ package bergdb.pub.util;
  * <p>Thrown by a start when the database's creation did not complete (bergdb 005-33): a
  * crash, as a power loss, while the database was created left a part of what a
  * creation writes, its first meta block and its first two records (the empty database's,
- * and the startup distance's; bergdb 028-18), and no committed transaction. The database
- * holds no data, and the start has written nothing.</p>
+ * and the startup distance's; bergdb 028-18), and no committed transaction; or zeros in
+ * place of the creation's first write, as a kill of the process during it can leave them
+ * (bergdb 028-80). The database holds no data, and the start has written nothing.</p>
  *
  * <p>With the Pub API, a start that returned has made its creation durable, and the
  * exception means a crash inside that start. With the Core API (bergdb.core.Db), the
