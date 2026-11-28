@@ -754,7 +754,11 @@ public class FileStreamPowerLossTester {
      * written with no cut (retained forever), so that reclaim has moved its live nodes past
      * the first file; its first file removed, the cut in it; a start with a created.txt
      * directory and no created.txt is refused; the stream files are as they were, and there is
-     * no created.txt.
+     * no created.txt. The first file is the one with the lowest name: writeUntilCut() can
+     * close its database with reclaim's cut recorded after the storage's first file, before
+     * the storage's cut, which the next start then completes (Reclaim.initFromDb); the first
+     * file is then 00000000000008.bergdb, not 00000000000006.bergdb (2026-11-28: under load,
+     * 2 of 40 runs).
      */
     @Nano
     public static void testRefusedStartWritesNoCreatedTxt() throws Exception {
@@ -774,7 +778,11 @@ public class FileStreamPowerLossTester {
                 }
                 db.sync(SyncLevel.ORDINARY);
             } finally { db.close(); }
-            File first = new File(dir, "00000000000006.bergdb");
+            List<String> names = new ArrayList<String>(streamFiles(dir).keySet());
+            Assert.assertTrue(String.valueOf(names), names.size() >= 2);
+            File first = new File(dir, names.get(0));
+            // A file's name is its first position divided by FileStream's index unit, 100,000.
+            long begins = Long.parseLong(names.get(1).replace(".bergdb", "")) * 100000;
             Assert.assertTrue(first.delete());
             File created = new File(dir, "created.txt");
             Assert.assertFalse(created.exists());
@@ -787,8 +795,8 @@ public class FileStreamPowerLossTester {
             } catch (StreamIoException e) {
                 Assert.assertTrue(String.valueOf(e.getCause()),
                         e.getCause() instanceof Reclaim.StreamAfterCutException);
-                Assert.assertTrue(e.getMessage(), e.getMessage().contains("The stream begins at"
-                        + " 800000, after reclaim's cut, ") 
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("The stream begins at "
+                        + begins + ", after reclaim's cut, ") 
                         && !e.getMessage().contains("The start needs"));
             }
             Assert.assertFalse("the refused start wrote created.txt", created.exists());
