@@ -169,3 +169,22 @@ Log
 
 2026-11-28. The list and the change, by an agent of lead-1127 on the
 branch `028-70-refuse-first`, from `main` at `ee8a8165`. Done.
+
+2026-11-28. Reviewed before landing by a second agent of lead-1127
+(Opus 5.5, effort xhigh), independent of the change: no wrong start, no
+lost record, no sound stream refused, and no byte different from `main`
+for the same history. Its runs: a digest of the files after 884 cuts
+(inside 140 records, in a record of 430 kB over two meta blocks, around
+5 meta blocks, with and without zeros after the cut; each with a start
+and a close, two restarts after cuts inside what the start wrote, and a
+start with a commit), identical to `main`'s; 333 cases with reclaim's
+cuts, identical but for 8 where `main` refused with
+`StreamAfterCutException` after writing and the branch refused with the
+files unchanged; 033's `StartChain` (reviews/2026-11-28-start-probes),
+6,810 starts with kills, kills inside a recovery, power losses in a
+cut's batch and other bytes, no failure and no new kind of refusal.
+Three notes of severity S4, fixed after the landing: a sentence of
+027-14 and a comment in `FileStream` that still say a recovery may write
+before a refusal, and no test of what a start that fails after the
+recovery's write appends at its close (005-32). Landed on `main`
+(`2b134c37`, `a5469731`).
