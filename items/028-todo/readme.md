@@ -121,6 +121,7 @@ Closed
 | [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() no longer spins when interrupted; a write at a stop throws the documented exception; e3 seed 101 explained | none | done | 2026-11-28 |
 | [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | done | 2026-11-28 |
 | [028-85](85-recreated-directory-test-under-load.md) | Fix | A test deleted a stopped database's directory before close(): now after it; the window a test | none | done | 2026-11-28 |
+| [028-86](86-g4-dead-klongs-a-phase/readme.md) | Investigate | G4's M5 failed on a phase after 031-06's pace; G5's limit | none | done | 2026-11-28 |
 | [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros now refused as one (RB-014); the zero tail's bound for every buffer | none | done | 2026-11-28 |
 | [028-81](81-created-txt-id-at-start.md) | Fix | Another database's first file: created.txt's ID compared first (UB-3) | none | done | 2026-11-28 |
 | [028-82](82-file-handling-documents-and-messages.md) | Fix | A running database's backup, a decided cut's files, the open's refusals | none | done | 2026-11-28 |
@@ -751,6 +752,12 @@ refused start writes nothing. Moved to Closed.
 2026-11-28. 028-85 registered by lead-1127: a test of a directory
 deleted after `stop()` failed once in `level3.sh` under load, 021-24's
 window left open.
+
+2026-11-28. 028-86 done by an agent of lead-1127: night.sh's failure of
+count-gates on `16c64d9a`, G4's M5 (34 / 13), comes from `96daa4bb`
+(031-06's pace), which moved the phases of the same 7 key nodes, each
+within theta; G4's M5 takes G5's limit, the larger of twice the twin's
+and the twin's plus 70. Moved to Closed.
 
 2026-11-28. 028-72, A done (Frans: A, by default at 10:00): 024-17's
 count with q is 10 nodes a level at node size 14 since 028-21, not 9;

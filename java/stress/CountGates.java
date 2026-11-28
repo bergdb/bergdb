@@ -53,7 +53,9 @@ import bergdb.stream.FileStream;
  *      tables' slots (ST6; counted since its fix, 024-33) and the heap after a GC, each
  *      at most 2 times the twin's, the slots at most the larger of that and the tables'
  *      floor, as in G5 (since bergdb 028-52: the twin's slots grow with its drive's
- *      length). KeyAccessPath's arrays (ST7) were printed, not
+ *      length), the dead KEY klongs at most the larger of twice the twin's and the twin's
+ *      plus 70, as in G5 (since bergdb 028-86: both counts are phases of the compactions of
+ *      the same key nodes). KeyAccessPath's arrays (ST7) were printed, not
  *      gated, until record format 8, whose writer has none (bergdb 026-25). Needs --add-opens java.base/java.util (the slots are
  *      HashMap's table lengths). The lag: the first drive transaction from which kept
  *      stays at most twice the twin's M1 (the most in its last R), at most 2 R (bergdb
@@ -673,7 +675,14 @@ public class CountGates {
                 e.lag < 0 ? Double.POSITIVE_INFINITY : (double) e.lag / rTx, d("g4lag", 2),
                 "%.3f");
         g4Gate("M4 reachable key nodes", e.reach, t.reach, d("g4nodes", 2));
-        g4Gate("M5 dead KEY klongs", e.dead, t.dead, d("g4nodes", 2));
+        // The dead klongs as G5's (bergdb 028-86): the twin's plus 70, theta = 7 in each of
+        // a_n = 10 key nodes (026-09, Q2), if that is more than twice the twin's. Both
+        // databases end with the same 7 key nodes (M4), the leaves of "/a.txt" and of BergDB's
+        // own keys, each holding 0 to theta dead klongs, a phase of its last compaction: in
+        // the last R the twin's sum swings from 10 to 37 and the emptied database's from 21
+        // to 39 (13 to 30 before 031-06's pace, 96daa4bb), so twice the twin's at the end
+        // compared two phases (34 against 13 on 16c64d9a; 20 against 14 before).
+        gateSmall("G4", "M5 dead KEY klongs", e.dead, t.dead, 70);
         g4Gate("M11 resident index objects", e.objects, t.objects, d("g4nodes", 2));
         g4Gate("M11 live handles", e.handles, t.handles, d("g4nodes", 2));
         slotGate("G4", e, t);
@@ -740,8 +749,13 @@ public class CountGates {
 
     /** G5: emptied at most the larger of twice the twin's and the twin's plus 'plus'. */
     void gateSmall(String what, long emptied, long twin, long plus) {
+        gateSmall("G5", what, emptied, twin, plus);
+    }
+
+    /** gateSmall() for gate 'name' (G4's dead klongs since bergdb 028-86). */
+    void gateSmall(String name, String what, long emptied, long twin, long plus) {
         long limit = Math.max(2 * twin, twin + plus);
-        gate("G5", what + " over the larger of twice the twin's and the twin's plus " + plus
+        gate(name, what + " over the larger of twice the twin's and the twin's plus " + plus
                 + " (" + emptied + " / " + twin + ")", (double) emptied / limit, 1, "%.3f");
     }
 
