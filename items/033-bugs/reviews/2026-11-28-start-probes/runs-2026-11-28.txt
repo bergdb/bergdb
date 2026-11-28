@@ -1,0 +1,162 @@
+Runs of the review's probes, 2026-11-28, on main at ee8a8165 (java/build/bergdb.jar of that
+commit, java -ea, F53 beside week.sh). OUT is a scratch directory. A line "== ..." is a
+command's arguments after the class path; long lines are cut.
+
+
+1. StartChain
+=============
+
+== bergdb.core.StartChain OUT 70000 70399 20 2 30 1 0
+(no other bytes; files of 200 kB)
+STARTCHAIN DONE seeds 70000..70399: starts 8000, faults {kill=5446, kill-in-recovery=1141, power=2624}, known (a) 87, failures 0
+
+== bergdb.core.StartChain OUT 1 400 70 250 25 5 0
+(no other bytes; files of 200 kB, 1 MB and 5 MB; stopped after 100 chains; the probe's build
+before its last changes, which are for other bytes)
+at seed 100: starts 7000, faults {kill=4954, kill-in-recovery=860, power=786}, known (a) 33, failures 0
+
+== bergdb.core.StartChain OUT 60000 60399 20 2 30 1 25
+(other bytes after a quarter of the kills; files of 200 kB)
+STARTCHAIN DONE seeds 60000..60399: starts 7987, faults {kill=5424, kill-in-recovery=1048, power=2711, stale=768, stale-refused-with-P=408, stale-started=325}, known (a) 123, failures 0
+a later start refused after other bytes were taken, 7: a file before a gap
+a later start refused after other bytes were taken, 2: the stream's first block: not its own position
+
+The first of each kind of later refusal in that run, with its chain's steps:
+
+seed 60013, step 10: refused after other bytes were taken, the stream's first block: not its own position: StreamFormatException: Could not find *any* valid meta block. At least the very first meta bl ...
+    0: run 214, kill at 1614285 of 1614288, 3 zeros after it
+    1: stop, kill in the recovery's writes [1614269, 1614288) at 1614281
+    2: run 360, kill at 4782030 of 4782032, power loss in the batch: taken off [00000000000010.bergdb, 00000000000012.bergdb, 00000000000014.bergdb, 00000000000016.bergdb, 00000000000018.bergdb, 00000 ...
+    3: run 104, kill at 5358421 of 5359264, power loss in the batch: taken off [00000000000010.bergdb, 00000000000012.bergdb, 00000000000018.bergdb, 00000000000022.bergdb, 00000000000024.bergdb, 00000 ...
+    4: run 109, kill at 5599972 of 5627744, 28 zeros after it
+    5: run 146, kill at 6781726 of 6784976
+    6: run 288
+    7: run 218, kill at 14570253 of 14570256, then 3 other bytes: the file's own bytes of 4096 before
+    refused, BadTailException; the stream cut at its P, 14569848
+    8: run 288, kill at 16400000 of 16498856, the file at 16400000 absent, then 5286 other bytes: the bytes of 00000000000052.bergdb at the same offsets
+    9: run 137, kill at 17453488 of 17456432, then 1619 other bytes: the bytes of 00000000000052.bergdb at the same offsets
+seed 60022, step 15: refused after other bytes were taken, a file before a gap: StreamIoException: The file 00000000000170.bergdb, before a gap in the stream's files, is not known to be the database's ...
+    3: run 304, kill at 5799964 of 5825368
+    4: stop, kill in the recovery's writes [5799964, 5825368) at 5799966
+    5: run 118, kill at 6728800 of 6730536
+    6: run 43, kill at 6800000 of 6810288, the file at 6800000 absent
+    7: run 297, kill at 10982895 of 11025528
+    8: run 116, kill at 11727825 of 11804400
+    9: run 68, kill at 12367096 of 12370464, 3368 zeros after it, power loss in the batch: taken off [00000000000110.bergdb, 00000000000112.bergdb, 00000000000114.bergdb], deleted [00000000000110.berg ...
+    10: run 225, kill at 14400000 of 14409328, the file at 14400000 absent
+    11: run 235, kill at 17000000 of 17014416, the file at 17000000 absent, then 3053 other bytes: random bytes
+    12: run 20
+    13: run 83, kill at 18944761 of 18948120, power loss in the batch: taken off [00000000000166.bergdb, 00000000000168.bergdb], deleted [00000000000166.bergdb]
+    14: stop, kill in the recovery's writes [18944761, 18948120) at 18944767, power loss in the batch: taken off [00000000000168.bergdb, 00000000000170.bergdb, 00000000000172.bergdb, 00000000000174.be ...
+
+"known (a)": refusals of 028-76's decided case, a file before a gap whose first block is
+recovery's fill or its completion of a cut block; the file moved out and the chain went on.
+"failures": any other refusal, a wrong value, a start that changed the files and then
+refused, a gap left, files that begin after reclaim's cut. "stale": kills with other bytes
+after them; "stale-refused-with-P": refused with a BadTailException, the stream then cut
+at its P and started; "stale-started": taken by the start as they were.
+
+
+2. The single probes
+====================
+
+== bergdb.core.StaleFirstBlockProbe OUT none
+stale none: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb is not there
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+start 2 ok, every key as written
+
+== bergdb.core.StaleFirstBlockProbe OUT random
+stale random: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+START 2 REFUSED: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this re ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT older
+stale older: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+START 2 REFUSED: StreamFormatException: Could not find *any* valid meta block. At least the very first meta block must be valid in a db stream. The stream begins at 800000, and the bytes before it are ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT other
+stale other: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+START 2 REFUSED: StreamFormatException: The meta block at 800000 names the last transaction at 797296, before the stream's first position, 800000: the stream lacks bytes that the database needs, from  ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT v155
+stale v155: the kill ends the stream at 800000 in a record over it; the file 00000000000008.bergdb holds 300 other bytes
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000008.bergdb the stream's first file, 2 files
+START 2 REFUSED: VersioningStreamException: Cannot read meta block with version 155. Version supported: 156. Version 155 is a database written by BergDB release 2026.6, which this release does not ope ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT random exact
+stale random: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: Bad transaction size in db stream, -1460749695, spos 400128. Stream length: 400300. The stream's records end at stream position 400128: from there to the stream's en ...
+its P is 400128: the stream cut there, the file 00000000000004.bergdb to 128 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+START 2 REFUSED: StreamFormatException: Invalid magic bytes in stream: the stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and this re ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT older exact
+stale older: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: The record at 400128, of size 1533392670, which the end of the stream cuts, has a header that is not one of this database's records at its place (bergdb 028-67, C3). ...
+its P is 400128: the stream cut there, the file 00000000000004.bergdb to 128 bytes; start 1 again
+start 1 ok
+written on and stopped; reclaim's cut has made 00000000000004.bergdb the stream's first file, 2 files
+START 2 REFUSED: StreamFormatException: Could not find *any* valid meta block. At least the very first meta block must be valid in a db stream. The stream begins at 400000, and the bytes before it are ...
+the files as before the start
+
+== bergdb.core.StaleFirstBlockProbe OUT sameid exact
+stale sameid: the kill ends the stream at 400000, where its last record ends; the file 00000000000004.bergdb holds 300 other bytes
+start 1 refused: BadTailException: Bad transaction size in db stream, -374333256, spos 397512. Stream length: 400300. The stream's records end at stream position 397512: from there to the stream's end ...
+its P is 397512: the stream cut there, before the file 00000000000004.bergdb; start 1 again
+THE CUT AT P LOST COMMITTED RECORDS: after the cut at P: /history/long-key-segment-0 reads another value; the last committed record ended at 400000
+
+== bergdb.core.StaleCopyProbe OUT restore
+mode restore: B's file, B's bytes to 22208 (the end of the copy), then A's bytes to 72448 (the end of A's record 45)
+B started: of its 8 keys, 8 read a value that A wrote after the copy, 0 one that B wrote, 0 one from before the copy; stream length 72448
+TAKEN: B holds A's records
+
+== bergdb.core.StaleCopyProbe OUT same
+mode same: B's file, B's bytes to 36416 (the end of its record 12 after the copy), then A's bytes to 72448 (the end of A's record 45)
+B started: of its 8 keys, 8 read a value that A wrote after the copy, 0 one that B wrote, 0 one from before the copy; stream length 72448
+TAKEN: B holds A's records
+
+== bergdb.core.StaleCopyProbe OUT earlier
+mode earlier: B's file, B's bytes to 36416 (the end of its record 12 after the copy), then A's bytes to 72448 (the end of A's record 45)
+B's start refused: StreamFormatException: non-increasing tt, tt:350000000, tpos:36416, lastPos:37503, startupPos:0, topPos:160, nodeCount:1
+the file as before the start
+
+== bergdb.core.CreationZerosProbe OUT
+a new database's stream: 416 bytes
+1 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of le
+4 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of le
+8 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of le
+60 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of l
+128 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+130 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+200 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+271 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+272 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+274 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+312 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+415 bytes of the creation: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): its stream, of
+0 bytes of the creation, zeros to 4096: StreamFormatException: Could not find *any* valid meta block. At least the very first meta block must be valid in a db s
+1 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): it
+4 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): it
+8 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): it
+60 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?): i
+128 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+130 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+200 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+271 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+272 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+274 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+312 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
+415 bytes of the creation, zeros to 4096: DatabaseNotCreatedException: The database was not completely created (a crash or a power loss while it was created?):
