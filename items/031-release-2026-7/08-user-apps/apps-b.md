@@ -602,3 +602,49 @@ Log
 
 2026-11-28. Created (06:16, an agent of the lead): the apps f1 to f5,
 their runs to 10:26 on `main` at `ee8a8165`, the findings UB-1 to UB-6.
+
+
+Runs on s1 (Linux)
+==================
+
+2026-11-28, 13:29 to 13:45, by an agent of the lead: the kill apps on
+s1 (Linux, ext4, a virtual private server), for the zero tail after a
+kill (028-60, 035-01) that F53 (macOS, APFS) shows. Ended early: the
+agent's session ended its run at 13:45, so the runs were stopped and
+the directory on s1 removed; nothing of them is left there.
+
+* **Environment**: Ubuntu 26.04 LTS, kernel 7.0.0-30-generic, x86_64,
+  2 virtual CPUs, 3.8 GB; ext4 (`rw,relatime,discard,commit=30`) on a
+  virtual disk; OpenJDK 27 (build 27+35-2325). Nothing else ran (load
+  below 0.1 before); every JVM with `nice -n 10`, two apps at a time.
+* **Build**: the release jar of `main` at `01232710`, built on F53 with
+  `java/build.sh`, copied to s1 with the apps' sources and compiled
+  there with `javac --release 17` as `apps.sh` does (not `apps.sh`
+  itself). 031-02's KillWriter does not compile on `main` (`maintain()`
+  takes a budget since 031-04): in the copy on s1 only, its `while
+  (db.maintain()) { }` became up to 20 calls of `maintain(100000)`
+  until a call leaves `getStreamSize()` unchanged; not committed.
+* **f2 KillBytes**, `KillBytes SEED ACTIONS DIR 250`: seed 101 (800
+  actions) and 102 (1,200), OK: 500 SIGKILLs (349 between actions, 151
+  at random), 452 starts at an action's end, 36 starts that completed a
+  torn end (36 K4 checks, 108 K5 checks after 203 kills during the
+  completion, no meta block completed as an invalid one), 7 chains with
+  all actions equal to the ref's files. Seed 103 (600 actions) passed 6
+  chains before the stop. The 6 "zero tails" of the counts are 2 to 6
+  zero bytes at the end of a file that ends at its full length (a file
+  boundary), bytes of the stream itself; no run of zeros of a page or
+  more after any kill (F53: 39 kills of 3,570 with zeros).
+* **g KillWriter** (031-02), `-DnoSd=true KillWriter parent DIR 163
+  400` (031-02's reproduction of F1 with a new seed): 370 kills, about
+  43,300 transactions, 661 older states checked, every recovery right;
+  no zeroed tail (21 notes of zeros, all "there before the child ran
+  (a start's fill)"). Stopped before kill 400.
+* **Not run** (the stop): e4 KillMaintain, e7 PubKill, a4 Kill and b5
+  KillEmpty, f4 FileHandling, f5 LiveCopy, f1 SameBytes, which were
+  queued with seeds 121 and 122 (e4), 131 to 133 (e7), 1103 (a4), 1101
+  (b5), 101 to 103 (f4, f5, f1). Note for f4 on s1: as root, read-only
+  files and directories stay writable, so its read-only cases do not
+  test there what they test on F53.
+* **Result**: no FAIL, no refused start, no zero tail and no other
+  file's bytes after 870 kills on ext4, as 035-01, section 8 found with
+  its probe.
