@@ -316,8 +316,13 @@ the mapping between them and positions; alignment; ids and vpos; times.
 * **Times**: an `i64` in units of 100 ns since 1970-01-01 00:00 UTC
   (`Clock.UNITS_PER_SEC` = 10^7), from `Klong.MIN_TIME` = 0 to
   `Klong.MAX_TIME` = 2^56 − 1 (`dag/Klong`, :61 and :62), about the year
-  2198. User transactions stop at `DbClock.LAST_USER_TIME` = MAX_TIME −
-  1024 (015-55); internal ones go on to MAX_TIME.
+  2198. Every action, a user transaction, a part of `maintain(budget)`, a
+  setter's or another internal one, may take a time up to MAX_TIME, and
+  none after it (`DbClock.transactionBegin`); the creation needs two, so a
+  start that creates a database with the clock at MAX_TIME is refused
+  (`Db.writePrimordialTransaction`). From 015-55 until 031-06's Q4 user
+  transactions and parts stopped at MAX_TIME − 1024, the last times kept
+  for reclaim's internal transactions after a commit.
 
 **Gaps.** None in the bytes. The time's range, unit and epoch are frozen
 with the format (Q20 in section 20).
@@ -1073,9 +1078,13 @@ the ordinal's bit length (:160); each skip pointer set exactly at the
 ordinal's set bits (:167). At a start: topPos must name the newest
 version of a top node (section 8.1).
 
-**Writer's bound.** Ordinals are limited to 2^30 − 1 over a database's
-life by `Db.refuseIfTopOrdinalsUsed` (`Db.java`:2443; item 002, M46);
-the field holds 48 bits.
+**Writer's bound.** Ordinals are limited to the field's 2^48 − 1
+(`TopNode.MAX_TOP_NODE_ID_VALUE`) over a database's life by
+`Db.refuseIfTopOrdinalsUsed` (item 002, M46; 005-02): every action is
+refused once the super root's ordinal is the bound, and a record makes at
+most one top node. From 005-02 until 031-06's Q4 user transactions and
+parts were refused 1,024 below it, kept for reclaim's internal
+transactions after a commit; before 005-02 the bound was 2^30 − 1.
 
 **Tests.** UT: `StoredTopNode` (9: `testRefusesOtherVersion`,
 `testParserRefusesSlotsThatDoNotFit`, `testRefusesPointerCountBeyondTheNode`,
@@ -1339,10 +1348,11 @@ refused if set since 031-06.
   record format 8 a start's rerun refuses a record of the startup section
   whose KVs are not in
   strictly increasing key order (`DbStarter.rerunTransaction`; 026-25).
-* G22. A delete node (type 40) with the copy mark is accepted at parse
-  (the check of byte 6 is the same for both types), and `isCopy()` is
-  true for it; no writer writes one, as a copy is a put of a live value.
-  A specification should refuse the mark on a delete node.
+* G22. Closed 2026-11-28 (031-06, landing step 4): a delete node (type
+  40) with the copy mark is refused at parse (`StoredValueNode.parse`, a
+  `StreamFormatException`, "Bad flags of delete node"; `testCopyMark`);
+  no writer writes one, as a copy is a put of a live value. Until then it
+  was accepted, and `isCopy()` was true for it.
 
 
 ## 13. Keys and segments
@@ -1827,7 +1837,7 @@ where the result depends on Java rather than on the bytes.
 | G19 | the node size given by the start             | 6       | `refuseOtherNodeSize`     |
 | G20 | nothing marks an encrypted stream            | 16      | 2026.3's streams          |
 | G21 | no Pub format version in the stream          | 17      | the Pub layer             |
-| G22 | a delete node with the copy mark (031-06)    | 12      | `StoredValueNode.parse`   |
+| G22 | closed: a delete node's copy mark refused    | 12      | `StoredValueNode.parse`   |
 | J1  | a row's line order is `HashMap`'s            | 15      | `StringMap.serialize`     |
 | J2  | `Long.toString` and `Long.parseLong` texts   | 4, 15   | `StringMap`, `FileStream` |
 | J3  | -ea: refusals become assertions or go        | 14      | `checkLinkById`           |

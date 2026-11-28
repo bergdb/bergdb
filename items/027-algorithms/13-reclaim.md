@@ -87,9 +87,12 @@ transactions of its own (1.2).
   transaction with its own time from the clock (`Trans.part`). The
   setters' records (`Trans.noMaintenance` for `setStartupDistance`;
   reclaim's settings, an internal transaction) and the creation's carry
-  none. User transactions and parts are refused in the last 1,024 times
-  and top node ordinals (015-55, 005-02), which reclaim's own transactions
-  used until 031-06 (031-06, rule 9 and Q4).
+  none. Every action is refused when no time is left after the last one's
+  (`Klong.MAX_TIME`) or the super root's ordinal is the bound (2^48 − 1):
+  since 031-06's Q4 no margin is kept; until then user transactions and
+  parts were refused in the last 1,024 times and top node ordinals
+  (015-55, 005-02), which reclaim's own transactions after a commit
+  used.
 * **Constants**: MIN_STEP 10,000 bytes; MAX_STEP 16,000 (a part's step,
   and the least cap of a commit's); MAX_COMMIT_STEP 131,072 (128 KiB, half
   of `StoredTrans.STEP_FIXED_ROOM`); GROWTH 2 (`STEP_GROWTH_FACTOR`); VN
@@ -383,7 +386,7 @@ A2). It works in parts, each an action of its
 own (031-06, rule 10): an empty internal transaction (`Trans.part`) with
 its own time from the clock, through a commit's path (`Db.maintainPart`,
 `Db.executeLocked`), refused as a user transaction is (an inactive
-database, the top node ordinals used, no user time left), and one record,
+database, the top node ordinals used, no time left), and one record,
 which carries the first of these that is due, planned from the state
 before it (`Reclaim.planPart`):
 
@@ -767,7 +770,8 @@ not active it reads nothing.
   the setters; `StoredTrans` (`recordCap`, `stepRoom`, `dirtyLimit`,
   `actionDirtyLimit`, `takeRoom`); `StoredValueNode` (the copy mark) and
   `TransNodes.copyKeys`; `Kv.planned`; `Trans.part`, `Trans.noMaintenance`;
-  `DbClock` (the 1,024 times kept); `dag/GetMany` (`endKey`,
+  `DbClock` (`transactionBegin`: no time after `Klong.MAX_TIME`);
+  `dag/GetMany` (`endKey`,
   `valuesBefore`); `NodeCollection.MaintenanceFollower` (a step's reads,
   kept nowhere); `stream`: `AppendOnlyStream.pretruncate`, `FileStream`,
   `CutStream`, `ReadBelowFirstPosException`.

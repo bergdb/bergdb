@@ -4,8 +4,9 @@ Created 2026-11-13 by Frans Lundberg. Status: stub.
 
 Part 5 of 027's outline (027-04, section 2.3; levels: 0). How a
 transaction becomes a change and a record: the clock and the times (56
-bits; the last 1,024 times kept, for reclaim's internal transactions
-until 031-06, its Q4); the read set and the STM check; the key and value
+bits; every action may take a time up to the last, `Klong.MAX_TIME`,
+since 031-06's Q4: the last 1,024 had been kept for reclaim's internal
+transactions after a commit, 015-55); the read set and the STM check; the key and value
 transformations; one record an action (031-06): a commit's, a setter's
 and a part of `maintain(budget)`'s, through one path (`Db.executeLocked`);
 the maintenance that a record carries, planned from the state before it
