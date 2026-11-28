@@ -1,6 +1,8 @@
 package bergdb.storage;
 
+import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.LongSupplier;
 
@@ -85,7 +87,9 @@ public class RecoverableStream {
     private static final byte[] zeros = new byte[10*1000];
     private static final int MAX_TRANS_SIZE = Integer.MAX_VALUE;
     public static final byte LAST_BYTE = 10;    
-    private final AppendOnlyStream aos;
+    private final Hold aos;
+        // The storage, with the recovery's writes held in memory until writeRecovery()
+        // (bergdb 028-70): every read, append and length of this class goes through it.
     private final MetaBlock metaBlock;
     private long posOfLastValidMetaBlock;
     private long lastTransSposOfLastValidMetaBlock = -1;
@@ -110,7 +114,7 @@ public class RecoverableStream {
         
         assert zeros.length > META_BLOCK_SIZE : zeros.length + ", too short.";
         
-        this.aos = aos;
+        this.aos = new Hold(aos);
         this.metaBlock = metaBlock;
         this.posOfLastValidMetaBlock = -1;   // inited later
     }
@@ -180,6 +184,24 @@ public class RecoverableStream {
      *      BadTailException, thrown before anything is written
      */
     public void recover(RecordCheck check) {
+        recover(check, false);
+    }
+
+    /**
+     * As recover(RecordCheck), and with 'hold' the recovery's writes, the completion of a
+     * meta block and of a torn last record, are held in memory, not written (2026-11-28,
+     * bergdb 028-70): until writeRecovery(), or the next append, which writes them first,
+     * the storage is as it was before the call, and this stream's reads and length are those
+     * of the stream with the writes made. A database's start holds them until it has made
+     * its last check of what it reads (Db.startInner), so that a start refused by any check,
+     * of a record, of the section, of the startup distance or of reclaim's state, has written
+     * nothing; until then the start refused after the recovery had written. The bytes written
+     * are those that recover() without 'hold' writes, in the same order.
+     *
+     * @throws StreamIoException
+     * @throws StreamFormatException  as recover(RecordCheck)
+     */
+    public void recover(RecordCheck check, boolean hold) {
         // 2026-10-25 (bergdb 005-40): fixMetaBlockIfNeeded() came first. With a wrong crypto
         // key, or none, it filled out a meta block that a crash had cut, through that key,
         // and only then did readLastValidMetaBlock() find the magic bytes wrong; the right key
@@ -212,6 +234,20 @@ public class RecoverableStream {
         // any bytes, up to 2 GB, before a later check refused the stream.
         final long torn = walkTail(spos, check, id);
 
+        aos.holding = hold;     // bergdb 028-70
+        try {
+            complete(lastBlock, id, torn);
+        } finally {
+            aos.holding = false;
+        }
+    }
+
+    /**
+     * recover()'s writes, after its walk: the meta block that the end of the stream cuts, and
+     * the torn record at 'torn', if 0 or more; and the meta block in memory set from
+     * 'lastBlock', the last valid one, of the stream's ID 'id'.
+     */
+    private void complete(MetaBlock lastBlock, byte[] id, long torn) {
         fixMetaBlockIfNeeded();
 
         metaBlock.setFromOtherMetaBlock(lastBlock);
@@ -219,6 +255,176 @@ public class RecoverableStream {
 
         if (torn >= 0) {
             fixLastTransactionIfNeeded(torn);
+        }
+    }
+
+    /**
+     * Writes the recovery's writes that recover(RecordCheck, true) holds, if any, to the
+     * storage, in the order made (bergdb 028-70); else returns. The caller must hold
+     * DB.writeLock.
+     *
+     * @throws StreamIoException
+     */
+    public void writeRecovery() {
+        try {
+            aos.writeHeld();
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+    }
+
+    /**
+     * The storage as this class reads and appends it (bergdb 028-70): 'storage', and the
+     * bytes appended while 'holding', which recover() sets for its writes when asked to hold
+     * them. Those bytes are kept in memory, a run of zeros as its length only, at the end of
+     * the stream, after the storage's bytes: getLength() and read() give the stream with them,
+     * and writeHeld(), or the first append after 'holding', appends them to the storage.
+     * Nothing is held but during a start, under the write lock, before any reader (the
+     * fields are set only then); after it, every call passes on to the storage. 'pieces' is
+     * volatile, so that a reader that comes later sees it null, as the interface asks of
+     * the writer's changes (AppendOnlyStream, "CONCURRENCY").
+     */
+    private static final class Hold implements AppendOnlyStream {
+        private final AppendOnlyStream storage;
+        boolean holding;
+        /** The pieces held, in order: each's offset from 'base', length and bytes. */
+        private volatile ArrayList<long[]> pieces;     // null when nothing is held
+        private ArrayList<byte[]> bytes;       // a piece's bytes, or null for zeros
+        private long base;                     // the storage's length when held began
+        private long held;                     // the bytes held
+
+        Hold(AppendOnlyStream storage) {
+            this.storage = storage;
+        }
+
+        public long getLength() {
+            return pieces == null ? storage.getLength() : base + held;
+        }
+
+        public long getFirstPos() {
+            return storage.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            if (pieces == null || position + length <= base) {
+                storage.read(position, dest, destOffset, length);
+                return;
+            }
+            if (destOffset < 0 || length < 0 || destOffset + length > dest.length) {
+                throw new IllegalArgumentException("destOffset " + destOffset + ", length "
+                        + length + ", dest.length " + dest.length);
+            }
+            if (position < 0 || position + length > base + held) {
+                throw new EOFException("Read of " + length + " bytes at " + position
+                        + ", the stream's length " + (base + held) + ".");
+            }
+            final int below = position < base ? (int) (base - position) : 0;
+            if (below > 0) {
+                storage.read(position, dest, destOffset, below);
+            }
+            long p = position + below - base;
+            int o = destOffset + below;
+            int n = length - below;
+            int i = pieceAt(p);
+            while (n > 0) {
+                final long[] piece = pieces.get(i);
+                final int k = (int) Math.min(n, piece[0] + piece[1] - p);
+                final byte[] b = bytes.get(i);
+                if (b == null) {
+                    Arrays.fill(dest, o, o + k, (byte) 0);
+                } else {
+                    System.arraycopy(b, (int) (p - piece[0]), dest, o, k);
+                }
+                p += k;
+                o += k;
+                n -= k;
+                i++;
+            }
+        }
+
+        /** The index of the piece that holds offset 'p' from 'base', 0 <= p < held. */
+        private int pieceAt(long p) {
+            int lo = 0;
+            int hi = pieces.size() - 1;
+            while (lo < hi) {
+                final int mid = (lo + hi + 1) >>> 1;
+                if (pieces.get(mid)[0] <= p) {
+                    lo = mid;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            return lo;
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            if (!holding) {
+                writeHeld();
+                storage.append(source, sourceOffset, length);
+                return;
+            }
+            if (sourceOffset < 0 || length < 0 || sourceOffset + length > source.length) {
+                throw new IllegalArgumentException("sourceOffset " + sourceOffset + ", length "
+                        + length + ", source.length " + source.length);
+            }
+            if (pieces == null) {
+                bytes = new ArrayList<byte[]>();
+                base = storage.getLength();
+                held = 0;
+                pieces = new ArrayList<long[]>();
+            }
+            if (length == 0) {
+                return;
+            }
+            boolean zero = true;
+            for (int i = sourceOffset; i < sourceOffset + length && zero; i++) {
+                zero = source[i] == 0;
+            }
+            final int last = pieces.size() - 1;
+            if (zero && last >= 0 && bytes.get(last) == null) {
+                pieces.get(last)[1] += length;
+            } else {
+                pieces.add(new long[] {held, length});
+                bytes.add(zero ? null : Arrays.copyOfRange(source, sourceOffset,
+                        sourceOffset + length));
+            }
+            held += length;
+        }
+
+        /** Appends the bytes held to the storage, in order, and holds nothing after it. */
+        void writeHeld() throws IOException {
+            final ArrayList<long[]> p = pieces;
+            if (p == null) {
+                return;
+            }
+            final ArrayList<byte[]> b = bytes;
+            pieces = null;      // none is written twice if an append throws
+            bytes = null;
+            assert storage.getLength() == base : storage.getLength() + ", " + base;
+            for (int i = 0; i < p.size(); i++) {
+                long n = p.get(i)[1];
+                if (b.get(i) != null) {
+                    storage.append(b.get(i), 0, (int) n);
+                }
+                while (b.get(i) == null && n > 0) {
+                    final int k = (int) Math.min(n, zeros.length);
+                    storage.append(zeros, 0, k);
+                    n -= k;
+                }
+            }
+        }
+
+        public void pretruncate(long position) throws IOException {
+            storage.pretruncate(position);
+        }
+
+        public void checkLeftovers(LeftoverCheck check) throws IOException {
+            storage.checkLeftovers(check);
+        }
+
+        public void close() throws IOException {
+            storage.close();
         }
     }
 
@@ -272,7 +478,9 @@ public class RecoverableStream {
      * that does not check, as the recovery of a record that a crash cut in its header leaves
      * it, is walked over, not taken as one. The first record, if committed, is
      * refused first for another record format (check.checkFormat()), as a start refused it
-     * before (bergdb 005-40): a valid block names a record that this database wrote.
+     * before (bergdb 005-40): a valid block names a record that this database wrote. Since
+     * 2026-11-28 (bergdb 028-70) so is every later committed record whose header holds its
+     * check, as a record of a newer release would.
      *
      * @throws BadTailException  for a tail that is not the stream's records, with P, the end of
      *      the last record found to be one; or that record's start, if it is a committed
@@ -359,6 +567,11 @@ public class RecoverableStream {
                                 + "this database's records at its place (bergdb 028-67, C3).",
                                 verified, committed, committedSize, check, id, length);
                     }
+                    // Another format, under a header that holds its check, as a newer
+                    // release's record after this one's, is refused as such (2026-11-28,
+                    // bergdb 028-70): before, it was refused after the recovery had written,
+                    // or, the last of the stream, as a tail to cut (recordProblem()).
+                    check.checkFormat(spos, header);
                     verified = next;
                     committed = spos;
                     committedSize = size;
@@ -1132,7 +1345,8 @@ public class RecoverableStream {
     }
     
     /**
-     * Returns the length of the underlying append-only stream.
+     * Returns the length of the underlying append-only stream, with the recovery's writes
+     * that recover(RecordCheck, true) holds (bergdb 028-70).
      * Caller must hold DB.writeLock.
      */
     public long getLength() {
@@ -2612,6 +2826,85 @@ public class RecoverableStream {
             }
         }
         
+        /**
+         * Bergdb 028-70: recover(check, true) holds the recovery's writes. After it the
+         * storage is as before, byte for byte, and the stream's length and reads are those of
+         * the stream that recover() without the hold leaves; writeRecovery(), or the next
+         * append, writes the same bytes as recover() did, the meta blocks inside the
+         * completion among them. The cases: a record of 3 meta block distances cut after
+         * 250,000 bytes, whose completion crosses two meta blocks; a stream cut in a meta
+         * block after a record that ends at its position (crashAtMetaBlockPosition()); a
+         * record whose size field the end of the stream cuts after 2 bytes.
+         */
+        @Nano
+        public static void testRecoveryHeld() throws IOException {
+            for (int c = 0; c < 3; c++) {
+                for (boolean byAppend : new boolean[] {false, true}) {
+                    final String what = "case " + c + (byAppend ? ", by an append" : "");
+                    final MemoryStream m = new MemoryStream();
+                    final RecoverableStream r1 = new RecoverableStream(m, new MetaBlock());
+                    final long cut;
+                    if (c == 0) {
+                        appendRecord(r1, 3 * META_BLOCK_DISTANCE + 20);
+                        cut = 250000;
+                    } else if (c == 1) {
+                        appendRecord(r1, META_BLOCK_DISTANCE - META_BLOCK_SIZE);
+                        cut = META_BLOCK_DISTANCE + 50;
+                    } else {
+                        appendRecord(r1, 1000);
+                        cut = m.getLength() + 2;
+                        appendRecord(r1, 1000);
+                    }
+                    m.truncate(cut);
+                    final MemoryStream a = copyOf(m);
+                    final RecoverableStream ra = new RecoverableStream(a, new MetaBlock());
+                    ra.recover(null, false);
+                    final MemoryStream b = copyOf(m);
+                    final RecoverableStream rb = new RecoverableStream(b, new MetaBlock());
+                    rb.recover(null, true);
+                    Assert.assertArrayEquals(what + ": held", bytesOf(m), bytesOf(b));
+                    Assert.assertTrue(what + ": a completion", a.getLength() > cut);
+                    Assert.assertEquals(what + ": the length", a.getLength(), rb.getLength());
+                    final long from = META_BLOCK_SIZE;
+                    final int n = (int) getRemainingTransBytes(from, a.getLength());
+                    final byte[] readA = new byte[n];
+                    final byte[] readB = new byte[n];
+                    ra.read(from, readA, 0, n);
+                    rb.read(from, readB, 0, n);
+                    Assert.assertArrayEquals(what + ": the reads", readA, readB);
+                    final byte[] whole = new byte[(int) a.getLength()];
+                    a.read(0, whole, 0, whole.length);
+                    final byte[] blocks = new byte[(int) a.getLength() - (int) cut];
+                    rb.aos.read(cut, blocks, 0, blocks.length);
+                    Assert.assertArrayEquals(what + ": the bytes held",
+                            Arrays.copyOfRange(whole, (int) cut, whole.length), blocks);
+                    if (byAppend) {
+                        appendRecord(ra, 64);
+                        appendRecord(rb, 64);
+                    } else {
+                        rb.writeRecovery();
+                        rb.writeRecovery();
+                    }
+                    Assert.assertArrayEquals(what + ": written", bytesOf(a), bytesOf(b));
+                }
+            }
+        }
+
+        private static void appendRecord(RecoverableStream r, int size) {
+            final byte[] t = new byte[size];
+            Bytes.intToBytesLE(size, t, 0);
+            Arrays.fill(t, 4, size - 1, (byte) 7);
+            t[size - 1] = LAST_BYTE;
+            r.append(t, 0, size, true, -1);
+        }
+
+        private static MemoryStream copyOf(MemoryStream m) throws IOException {
+            final MemoryStream copy = new MemoryStream();
+            final byte[] b = bytesOf(m);
+            copy.append(b, 0, b.length);
+            return copy;
+        }
+
         /**
          * Appends 'count' committed transactions of 1000 bytes, each named by the meta
          * blocks after it, as NodeStream.appendNodes() does; returns their positions.

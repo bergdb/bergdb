@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.storage.BadTailException;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamFormatException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -939,5 +941,145 @@ public class DbTesterTail {
                 Assert.assertTrue(what + ": " + w.keys[i] + " taken", v == null);
             }
         }
+    }
+
+    /**
+     * Bergdb 028-70: a start refused by a check of what it reads writes nothing, also when its
+     * recovery has a torn last record to complete. The stream: "a", "c", then "b", of 5,000
+     * bytes, whose record a kill cut after its first 40 bytes (its header whole). Each
+     * corruption of the last committed record, c's, with its header's check made again, is
+     * refused after the recovery's walk, which takes the record: another record format, 10
+     * (the found case); a startupPos after the record (Db.checkStartupPos); a time not after
+     * a's (DbStarter's validation); and so is a negative time in the last valid meta block,
+     * the first (MetaBlock.checkFormat). After each refusal the stream is as before, byte for
+     * byte.
+     * The stream without the corruption starts, with "a" and "c", not "b", and its recovery's
+     * completion of b's record is written. Until 028-70 the recovery appended the completion
+     * before the start read the records, and each refusal came after it.
+     */
+    @Nano
+    private static void testRefusalsAfterTheWalkWriteNothing() throws IOException {
+        final CoreTestClock clock = new CoreTestClock();
+        final MemoryStream written = new MemoryStream();
+        final long[] tpos = writeAcb(written, clock);
+        final long c = tpos[1];
+        final long cut = tpos[2] + 40;
+        final MemoryStream s = written.copy();
+        s.truncate(cut);
+        final byte[] header = bytes(s, c, StoredTrans.HEADER_SIZE);
+        final long timeOfA = Bytes.bytesToLongLE(bytes(s, tpos[0] + 8, 8), 0);
+        final Object[][] corruptions = {
+            {"format 10", 4, new byte[] {StoredTrans.RECORD_FORMAT + 1}, "format version 10;"},
+            {"startupPos", 16, le8(c + 8), "startupPos " + (c + 8)},
+            {"time", 8, le8(timeOfA), "non-increasing tt"},
+            {"the meta block's time", -1, le8(-1), "Meta block, bad time, -1."},
+        };
+        final byte[] block = bytes(s, 0, RecoverableStream.META_BLOCK_SIZE);
+        for (Object[] x : corruptions) {
+            final String what = (String) x[0];
+            final MemoryStream m = s.copy();
+            if ((Integer) x[1] >= 0) {
+                DbTesterRestart.writeHeaderField(m, c, (Integer) x[1], (byte[]) x[2]);
+            } else {
+                MemoryStream.TestAccess.write(m, (byte[]) x[2], 8);    // the time, at 8
+            }
+            final byte[] before = bytes(m, 0, (int) m.getLength());
+            try (Db db = Db.builder().testSetup(m).clock(clock).start()) {
+                throw new AssertionError(what + ": started");
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(what + ": " + e, e.getMessage().contains((String) x[3]));
+            }
+            Assert.assertArrayEquals(what + ": the stream", before,
+                    bytes(m, 0, (int) m.getLength()));
+            final MemoryStream r = m.copy();
+            MemoryStream.TestAccess.write(r, header, c);
+            MemoryStream.TestAccess.write(r, block, 0);
+            startAc(r, clock, what + ", restored");
+            Assert.assertTrue(what + ": the completion", r.getLength() > cut);
+        }
+    }
+
+    /**
+     * Bergdb 028-70: testRefusalsAfterTheWalkWriteNothing()'s found case on a file database:
+     * the last committed record, c's, of another record format, 10, with its header's check,
+     * and b's record cut after its first 40 bytes. The start is refused with a
+     * VersioningStreamException, and the stream's files are as before, byte for byte; with
+     * c's header as it was, the database starts with "a" and "c", and the completion of b's
+     * record is in the files. Until 028-70 the refused start had appended the completion.
+     */
+    @Nano
+    private static void testOtherFormatRefusedFilesUnchanged(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        final CoreTestClock clock = new CoreTestClock();
+        final File d = env.createTempDir();
+        final long[] tpos = writeAcb(new FileStream(d, false), clock);
+        final long c = tpos[1];
+        final long cut = tpos[2] + 40;
+        cutStream(d, cut);
+        final File file = streamFiles(d)[0];
+        Assert.assertEquals("one file", 1, streamFiles(d).length);
+        final byte[] header = new byte[StoredTrans.HEADER_SIZE];
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.seek(c);
+            f.readFully(header);
+            final byte[] other = header.clone();
+            other[4] = StoredTrans.RECORD_FORMAT + 1;
+            StoredTrans.setHeaderCheck(DatabaseId.TEST_ID.getBytes(), c, other, 0);
+            f.seek(c);
+            f.write(other);
+        }
+        final byte[] before = fileBytes(d);
+        try (Db db = Db.builder().testSetup(new FileStream(d, false)).clock(clock).start()) {
+            throw new AssertionError("started with a record of format 10");
+        } catch (bergdb.storage.VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 10;"));
+        }
+        Assert.assertArrayEquals("the files", before, fileBytes(d));
+        Assert.assertEquals("one file", 1, streamFiles(d).length);
+        try (RandomAccessFile f = new RandomAccessFile(file, "rw")) {
+            f.seek(c);
+            f.write(header);
+        }
+        startAc(new FileStream(d, false), clock, "restored");
+        Assert.assertTrue("the completion", fileBytes(d).length > cut);
+    }
+
+    /**
+     * Writes 028-70's records to 's': "a", "c" and "b", of 5,000 random bytes; returns their
+     * positions, in that order. The stream is then closed.
+     */
+    private static long[] writeAcb(AppendOnlyStream s, CoreTestClock clock) {
+        final long[] tpos = new long[3];
+        final String[] keys = {"a", "c", "b"};
+        final byte[] v = new byte[5000];
+        new Random(70).nextBytes(v);
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            for (int i = 0; i < 3; i++) {
+                clock.setTime(10 * (i + 1));
+                Trans t = db.trans().put(keys[i], i < 2 ? StringUtil.toBytes(keys[i]) : v)
+                        .build();
+                db.execute(t);
+                tpos[i] = t.tpos;
+            }
+        }
+        return tpos;
+    }
+
+    /** Starts the stream 's' and checks that it holds "a" and "c", and not "b". */
+    private static void startAc(AppendOnlyStream s, CoreTestClock clock, String what) {
+        try (Db db = Db.builder().testSetup(s).clock(clock).start()) {
+            Assert.assertTrue(what + ": a", DbUtil.get(db, Long.MAX_VALUE, "a") != null);
+            Assert.assertTrue(what + ": c", DbUtil.get(db, Long.MAX_VALUE, "c") != null);
+            Assert.assertTrue(what + ": b", DbUtil.get(db, Long.MAX_VALUE, "b") == null);
+        }
+    }
+
+    private static byte[] le8(long v) {
+        byte[] b = new byte[8];
+        Bytes.longToBytesLE(v, b, 0);
+        return b;
     }
 }

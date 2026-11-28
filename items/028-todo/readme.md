@@ -103,7 +103,6 @@ Open
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
 | [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 and the nodes' place with 028-77 |
-| [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (made on a branch, to land) |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc to write) |
@@ -120,6 +119,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A refused start wrote recovery's fill: now held until the last check | none | done | 2026-11-28 |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Large commits: a commit's step sized by its allowance; 18 times the live data at 1 MB commits | closed | done | 2026-11-28 |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 fixed by 031-06; the rest is 028-75 | closed | done | 2026-11-28 |
 | [028-68](68-step-reserve-outside-stream.md) | Decide | Step reserve a constant (B), built in 031-06 | B (16:09) | done | 2026-11-27 |
@@ -729,3 +729,9 @@ in place), for Frans with 028-77; F2, other bytes at a meta block's
 position refuse a later start (S2), the smaller fix by default at
 10:30; F3 and F4 (S4), a creation left as zeros and the zero tail's
 bound, to an agent. 028-76 has the review's notes on its decided case.
+
+2026-11-28. 028-70 done by an agent of lead-1127 (branch
+`028-70-refuse-first`): the refusals of a start after the recovery's
+first write listed, six checks, each of what the start reads; the
+recovery's writes are held in memory until the last of them, and a
+refused start writes nothing. Moved to Closed.

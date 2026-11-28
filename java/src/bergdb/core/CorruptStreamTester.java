@@ -73,8 +73,10 @@ public class CorruptStreamTester {
      * 6.1): counted, not failed. BergDB assumes correct storage; its checksums and checks of
      * damage other than a cut tail are a best effort (checksums in the stream: bergdb 017-08).
      * <ul>
-     * <li>014-01 (005-83's case, moved to 014-01): a start that refuses a corrupt record size
-     * after recovery's zero fill has written.</li>
+     * <li>014-01 (005-83's case, moved to 014-01): recovery's zero fill of a damaged size
+     * that passes MAX_APPENDED. A start that refused after recovery's zero fill had written
+     * was 014-01's too, until bergdb 028-70 (2026-11-28) made the start write the fill after
+     * its last check: such a refusal is a failure since.</li>
      * </ul>
      * Since bergdb 028-67 (C1 and C3, 2026-11-27) a record's header holds a check of the
      * database's ID, its position and its fields, and the start's recovery checks the headers
@@ -605,9 +607,11 @@ public class CorruptStreamTester {
                     + " bytes");
         }
         if (stream.appended() > 0) {
-            // Recovery wrote (zero fill), then the start refused: 005-83, now 014-01.
-            return Outcome.ok("known 014-01: refused (" + e.getClass().getSimpleName()
-                    + ") after writing");
+            // Recovery wrote (zero fill), then the start refused: 005-83, then 014-01, known
+            // until 2026-11-28. Since bergdb 028-70 a start writes the fill after its last
+            // check of what it reads, and a refusal after a write is a failure.
+            return Outcome.fail("refused, " + e + ", after writing " + stream.appended()
+                    + " bytes: a start refuses before recovery writes (bergdb 028-70)");
         }
         return Outcome.ok("refused (" + e.getClass().getSimpleName() + ")");
     }

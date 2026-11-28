@@ -556,7 +556,11 @@ for a failed one, made only by recovery's fill.
   before the first that fails are parsed whole, as another file's bytes
   can begin inside a record, after its own header. The first record, the
   one the block names, is refused first for another record format
-  (`VersioningStreamException`), as before. A tail that fails is refused
+  (`VersioningStreamException`), as before; since 028-70 (2026-11-28) so
+  is every later committed record whose header holds its check, as a
+  newer release's record would (until then it was refused after the
+  recovery had written, or, the last of the stream, as a tail to cut at
+  its start). A tail that fails is refused
   with a `BadTailException` (an SFE), its message the cause, then P, the
   end of the last record that is one (or the start of the record parsed
   whole, if it does not parse), and the way out: "The stream's records
@@ -604,6 +608,17 @@ for a failed one, made only by recovery's fill.
   (`TORN_HEADER_FILLER`, since 2016) and the least size was 17: a later
   start that found that byte, or a size of 24 to 40, in a cut record
   refused it.
+* **The writes held** (028-70, 2026-11-28): the cut meta block's
+  completion and the completion of a cut record are held in memory, not
+  written, until the start's last check of what it reads, reclaim's
+  (027-11, section 1.9); the start reads the stream with them, a run of
+  zeros held as its length. Then they are written, the same bytes in the
+  same order (`RecoverableStream.recover(check, true)`, `writeRecovery`;
+  an append writes them first too). So a start that refuses the stream,
+  by any check, writes nothing; until 028-70 the completion came first,
+  and a refusal by a check of a record before the walk's first, of the
+  section, of the startup distance's KV or of reclaim's state came after
+  it (G18).
 * An incomplete creation, at most 272 bytes (`Db.CREATION_LENGTH`, :385;
   264 until 024-25):
   `RecoverableStream.isIncompleteCreation` (:199) and
@@ -635,13 +650,14 @@ is one (028-67).
 
 **Gaps.**
 
-* G18. Recovery writes its fill before the records are parsed: a start
-  that refuses a stream later, by a node checksum or a check of a record
-  before the walk's first, may first have appended the fill of a torn
-  tail (`StoredTrans.RECORD_FORMAT`'s Javadoc, :37 to :58). Since 028-67
-  the walk's refusals, the record format of the first record walked, the
-  meta version and the node size write nothing. The specification should
-  say whether a refusing start may write (Q15).
+* G18. Closed by 028-70 (2026-11-28): recovery wrote its fill before the
+  records were parsed, so a start that refused a stream later, by a node
+  checksum or a check of a record before the walk's first, could first
+  have appended the fill of a torn tail (`StoredTrans.RECORD_FORMAT`'s
+  Javadoc, :37 to :58). Since 028-67 the walk's refusals, the record
+  format of the first record walked, the meta version and the node size
+  wrote nothing; since 028-70 the fill is held until the start's last
+  check (the writes held, above), and no refusing start writes (Q15).
 * A size field of 5 to 16 with all four bytes present (damage) is filled
   as 012-02, section 4.4, says, and then refused by the walk: the fill is
   defined for bytes no writer writes. To be written as such.
@@ -1843,7 +1859,7 @@ where the result depends on Java rather than on the bytes.
 | G15 | file names with `+`, other digits, zeros     | 4       | `stringToIndex`, :1163    |
 | G16 | reclaim's row: any order, unknown names      | 15      | `StringMap.parse`, :33    |
 | G17 | a user's puts under `/#`                     | 15      | `Trans.Builder` (CA3)     |
-| G18 | a refusing start may write recovery's fill   | 7       | `Db.startInner` (028-67)  |
+| G18 | closed: a refusing start writes nothing      | 7       | `Db.startInner` (028-70)  |
 | G19 | the node size given by the start             | 6       | `refuseOtherNodeSize`     |
 | G20 | nothing marks an encrypted stream            | 16      | 2026.3's streams          |
 | G21 | no Pub format version in the stream          | 17      | the Pub layer             |
@@ -1989,7 +2005,9 @@ found here:
   "must be zero, refused", which makes every addition a new number. Before
   the freeze.
 * **Q15.** A start that refuses a stream writes nothing, recovery's fill
-  included (G18). Later and additive (the order of the checks).
+  included (G18): the code does so since 028-70 (2026-11-28); whether the
+  specification requires it. Later and additive (the order of the
+  checks).
 * **Q16.** A node type, node format or klong type that a reader does not
   know: refused, as today, or skipped. It decides whether Q3 can come
   without a new record format. Before the freeze.
@@ -2283,3 +2301,10 @@ table, a, rewritten at 19 digits, the table without rows, the HashMap
 order with a); 19 (G22); 20 (Q14); 21 (2026.7 refuses 2026.6's, the
 messages, the reserved bytes). By an agent of lead-1127, on the branch
 `031-06-docs`.
+
+2026-11-28. 028-70: the recovery's writes are held until the start's last
+check of what it reads, so a start that refuses writes nothing (section
+7, "The writes held"); the walk refuses every committed record of another
+format whose header holds its check, not the first only (section 7); G18
+closed, Q15 done by the code (sections 19 and 20). By an agent of
+lead-1127, on the branch `028-70-refuse-first`.

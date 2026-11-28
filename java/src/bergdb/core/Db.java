@@ -1211,13 +1211,14 @@ public class Db implements AutoCloseable {
      * after constructor and before the get/set methods.
      * 
      * <p>A start that throws closes the storage before the exception leaves (2026-10-24,
-     * bergdb 005-32): what it appended is written (recovery's zero fill, as any start writes
-     * it; until 2026-11-04, bergdb 005-11, also the copies between the main stream and its
-     * replicas), the stream is closed and its thread has ended, and the database is
-     * stopped: later calls are refused as after stop(). A failure of that close is added to
-     * the exception as suppressed. Before, the storage ran on until the garbage collector
-     * finalized the Db, and its threads wrote into a database started after it on the same
-     * files.</p>
+     * bergdb 005-32): what it appended is written (until 2026-11-04, bergdb 005-11, also the
+     * copies between the main stream and its replicas), the stream is closed and its thread
+     * has ended, and the database is stopped: later calls are refused as after stop(). A
+     * failure of that close is added to the exception as suppressed. Before, the storage ran
+     * on until the garbage collector finalized the Db, and its threads wrote into a database
+     * started after it on the same files. A start refused by a check of what it reads has
+     * appended nothing: recovery's completion of a torn end of the stream is written after
+     * the start's last check (2026-11-28, bergdb 028-70); until then it was written first.</p>
      * 
      * <p>A start on an empty stream creates the database, and the creation is durable only
      * at the first sync after it (bergdb 028-40): this start writes the creation's records
@@ -1233,9 +1234,9 @@ public class Db implements AutoCloseable {
      *          028-66): the first position is after reclaim's cut, or the start reads before
      *          it, as when a file of a FileStream's was removed by hand, or a copy of the
      *          files missed some. The message has what the storage says, FileStream's a gap
-     *          in its files. The start deletes nothing, and writes nothing but what recovery
-     *          writes to complete a torn end of the stream, as a start of the whole stream
-     *          would: no created.txt either (bergdb 028-66, review R2). With the storage's
+     *          in its files. The start deletes and writes nothing: no created.txt (bergdb
+     *          028-66, review R2), and since bergdb 028-70 not the completion of a torn end
+     *          of the stream either, which recovery wrote first until then. With the storage's
      *          exception as the cause, for a FileStream a BadDirStateException, if the
      *          storage holds bytes before its first position that are not the database's
      *          (Frans, 2026-11-27; bergdb 028-66): a file before a gap in a FileStream's
@@ -1398,6 +1399,12 @@ public class Db implements AutoCloseable {
         // The stream's last record, for a (bergdb 031-04, R3); it is in the section (a
         // record's startup pos is before its own position).
         reclaim.initFromDb(transactions.get(transactions.size() - 1));
+        // The recovery's completion of a torn end of the stream, held since recover(), after
+        // the start's last check of what it reads, reclaim's (2026-11-28, bergdb 028-70): a
+        // start refused by any check has written nothing. Until then recover() wrote it
+        // first, and a refusal by a check of a record, of the section, of the startup
+        // distance's KV or of reclaim's state came after it.
+        nodeStream.writeRecovery();
         // After initFromDb, which refuses a stream whose first position is after reclaim's
         // cut (2026-11-27, bergdb 028-66, review R2): before, a start so refused had written
         // a missing created.txt first.

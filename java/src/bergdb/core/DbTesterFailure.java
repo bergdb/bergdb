@@ -1624,10 +1624,12 @@ public class DbTesterFailure {
      * Regression test for bergdb 005-32: a start that throws closes its storage before the
      * exception leaves. What it appended is written, its stream is closed, no thread of its
      * storage runs, and later calls are refused. Here a damaged stream whose first
-     * transaction failed, with a cut one after it (005-28): recovery zero-fills the cut one,
-     * and startup then throws at the failed one. Before, the storage ran on until the garbage
-     * collector finalized the Db. Until 2026-10-25 the stream was a creation cut in its first
-     * transaction, which a start now refuses before recovery, and writes nothing (005-33).
+     * transaction failed, with a cut one after it (005-28): startup throws at the failed one,
+     * and recovery's completion of the cut one, held until the start's last check (bergdb
+     * 028-70, 2026-11-28), is not written; until 028-70 it was, and this test asserted it.
+     * Before 005-32, the storage ran on until the garbage collector finalized the Db. Until
+     * 2026-10-25 the stream was a creation cut in its first transaction, which a start now
+     * refuses before recovery, and writes nothing (005-33).
      */
     @Nano
     public static void testFailedStartClosesStorage() throws IOException {
@@ -1649,7 +1651,7 @@ public class DbTesterFailure {
             e = ex;
         }
         Assert.assertTrue("the start throws", e != null);
-        Assert.assertEquals("the zero fill is written", t.lastPos + 1, s.getLength());
+        Assert.assertEquals("nothing is written (bergdb 028-70)", t.lastPos, s.getLength());
         assertNoNewStorageThreads(before);
         assertClosed(s);
         assertStopped(db);

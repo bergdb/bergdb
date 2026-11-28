@@ -66,17 +66,31 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * and reads the last valid meta block. With the Core's check of the records' headers
      * (StoredTrans.RECORD_CHECK; bergdb 028-67, C1): a tail that is not the stream's records
      * is refused with a BadTailException before anything is written, and a torn last record
-     * is completed only after its header is found to be one.
+     * is completed only after its header is found to be one. The completion is held in
+     * memory until writeRecovery(), or the next append (2026-11-28, bergdb 028-70): the start
+     * reads the stream with it, and writes it after its last check, so that a start refused
+     * by any check has written nothing.
      * 
-     * @see RecoverableStream#recover(RecoverableStream.RecordCheck)
+     * @see RecoverableStream#recover(RecoverableStream.RecordCheck, boolean)
      * @throws StreamIoException
      * @throws StreamFormatException
      */
     public void recover() {
         assert Thread.holdsLock(writeLock);
         
-        rstream.recover(StoredTrans.RECORD_CHECK);
+        rstream.recover(StoredTrans.RECORD_CHECK, true);
         appendedEnd = rstream.getLength();      // Whole records only, after the recovery.
+    }
+    
+    /**
+     * Writes the recovery's completion that recover() holds, if any (bergdb 028-70); see
+     * RecoverableStream.writeRecovery(). The caller must hold DB.writeLock.
+     *
+     * @throws StreamIoException
+     */
+    void writeRecovery() {
+        assert Thread.holdsLock(writeLock);
+        rstream.writeRecovery();
     }
     
     /**
