@@ -1,8 +1,8 @@
 028-76. Fix and decide: a stream whose first meta block is recovery's fill
 ========================================================================
 
-Status: fixed on `main` for the stream's first block; open for the files
-before a gap. Kind: Fix, then Decide. Frans: decision (the second part).
+Status: fixed on `main` for the stream's first block; the files before a
+gap decided (a). Kind: Fix, then Decide. Frans: decided.
 Created 2026-11-28 by Frans Lundberg.
 
 What: `week.sh` of 2026-11-28 on `main` at `8a0897cf` failed its step
@@ -72,6 +72,8 @@ block. The options:
 Recommended: (a) for 2026.7, (b) studied with 031-07's review of the
 stream's checks.
 
+Decision: Frans, 2026-11-28, 06:05: (a) for 2026.7.
+
 Found by: `week.sh` of 2026-11-28 (java/build/week, apps-kill-cc), the
 Kill app of `java/stress/apps.sh`'s kill set.
 
@@ -82,3 +84,5 @@ Log
 2026-11-28. Registered by lead-1127 from `week.sh`'s failure; the first
 block fixed on `main` (`05bf46e3`..`27267148`) by an agent of lead-1127;
 the files before a gap left for Frans.
+
+2026-11-28. Frans decided (a) for 2026.7 (06:05).

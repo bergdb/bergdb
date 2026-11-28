@@ -110,7 +110,7 @@ Open
 | [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
 | [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given | decision | open |
 | [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data | decision | open |
-| [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap | decision | open |
+| [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 
 
 Closed
