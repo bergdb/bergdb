@@ -15,6 +15,10 @@ STARTCHAIN DONE seeds 70000..70399: starts 8000, faults {kill=5446, kill-in-reco
 before its last changes, which are for other bytes)
 at seed 100: starts 7000, faults {kill=4954, kill-in-recovery=860, power=786}, known (a) 33, failures 0
 
+== -Dforce=off bergdb.core.StartChain OUT 80000 80299 20 2 30 1 0
+(no other bytes; per-append forcing off; files of 200 kB)
+STARTCHAIN DONE seeds 80000..80299: starts 6000, faults {kill=4096, kill-in-recovery=839, power=1975}, known (a) 92, failures 0
+
 == bergdb.core.StartChain OUT 60000 60399 20 2 30 1 25
 (other bytes after a quarter of the kills; files of 200 kB)
 STARTCHAIN DONE seeds 60000..60399: starts 7987, faults {kill=5424, kill-in-recovery=1048, power=2711, stale=768, stale-refused-with-P=408, stale-started=325}, known (a) 123, failures 0

@@ -63,7 +63,9 @@ import bergdb.stream.FileStreamIo;
  * the files are of 1 MB and 5 MB, with several meta blocks each. STOP_PERCENT (15): the share
  * of steps that stop with no commit. SCALE (1): the factor of the ordinary values' sizes,
  * 300 to 3,000 bytes. STALE_PERCENT (0): the share of kills with other bytes. With
- * -Dstopfile=FILE the run ends before the next chain when FILE is there.
+ * -Dstopfile=FILE the run ends before the next chain when FILE is there; with -Dforce=off
+ * the stream is opened with per-append forcing off (the faults are a kill's then, of what
+ * was written).
  */
 public class StartChain {
     static final long SEC = FileStreamPowerLossTester.SEC;
@@ -168,7 +170,7 @@ public class StartChain {
             String suspect = null;
             while (true) {
                 try {
-                    stream = new FileStream(dir, io, true);
+                    stream = new FileStream(dir, io, !"off".equals(System.getProperty("force")));
                     before = stream.getLength();
                     db = Db.builder().testSetup(stream).clock(clock).start();
                     db.setStartupDistance(20000);
