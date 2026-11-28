@@ -3,25 +3,27 @@
 # new users of BergDB from the README and the Javadoc only, each with an oracle of its own
 # that checks every result (024-26, against 2026.5; 026-13, against 2026.6; 026-26, an
 # independent hunt on the Pub API alone; 031-02 and 031-08, against main before 2026.7; the
-# items have the scenarios in full and the runs' records). Compiled with javac against build/bergdb-release.jar, the jar for users; the
-# apps at node sizes 8, 14 and 62 reach them through bergdb.core.TestNodeSize, which that
-# jar has (since 026-08 no Core API method sets a node size). Kind: functional: the result
-# does not depend on speed (the checks that wait for something have limits that only a
-# hang meets, or give a NOTE). Not a commit gate.
+# items have the scenarios in full and the runs' records). Compiled with javac against
+# build/bergdb-release.jar, the jar for users; the apps at node sizes 8, 14 and 62 reach
+# them through bergdb.core.TestNodeSize, which that jar has (since 026-08 no Core API method
+# sets a node size). Kind: functional: the result does not depend on speed (the checks that
+# wait for something have limits that only a hang meets, or give a NOTE). Not a commit gate.
 #
-# Usage: java/stress/apps.sh [quick]   each app once, small (about 6 minutes on F53)
+# Usage: java/stress/apps.sh [quick]   each app once, small (about 15 minutes on F53)
 #        java/stress/apps.sh soak N    round N of the long runs, new seeds per N
-#                                      (about 40 minutes)
-#        java/stress/apps.sh kill N    round N of the kill runs (about 30 minutes)
+#                                      (about 1 hour 45 minutes)
+#        java/stress/apps.sh kill N    round N of the kill runs (about 1 hour 30
+#                                      minutes)
 # Round N of soak or kill takes the seeds of the items' round N (024-26 and 026-13,
 # section 3), and soak's node sizes are 024-26's, so a round of the records reruns as it
 # was; a new N gives new seeds (d1 to d8's too, 100 N + 11 and 12; 026-26's records used
 # other seeds; g1 to g11's are 031-02's run.sh's plus 100 N, so round 0 has its seeds, at
-# smaller sizes). The times are F53's from the items' records, g1 to g11's from 2026-11-28.
+# smaller sizes; f1 to f5's 031-08's plus 100 N, e1 to e8's 100 N + 1, 2, 21 and 31). The
+# times are F53's from the items' records, e, f and g's from 2026-11-28 under load.
 #
 # The apps (sources in stress/apps/, by item: a1 to a7 024-26's, b1 to c2 026-13's, d1 to
-# d8 026-26's, f1 to f5 031-08's part B, g1 to g11 031-02's, its e1 to e11; e is kept for
-# 031-08's part A):
+# d8 026-26's, e1 to e8 031-08's part A (e0 their oracle), f1 to f5 its part B, g1 to g11
+# 031-02's, its e1 to e11):
 #   DeleteHeavy (a1)   bulk loads of six key shapes, scattered, ranged and near-total
 #                      deletes, refills, builders whose last call wins (Core API, file
 #                      streams, node sizes 8 to 62, some with a cache below the data):
@@ -92,6 +94,28 @@
 #                      each outcome and the committed directory as the oracle has them.
 #   D8OnlineIndex (d8) index builds beside a writer, cancelled, renamed and joined by the
 #                      next start; a build that must fail on an old object, then succeed.
+#   E1MaintainBudget (e1)
+#                      Database.maintain(int budget) against its Javadoc, budgets from
+#                      Integer.MIN_VALUE to MAX_VALUE, a moved clock: every state and the
+#                      first available time against the oracle (Pub API, as e3 to e8).
+#   E2LimitsReclaim (e2)
+#                      Core transactions at the limits while reclaim rides in the commits,
+#                      node sizes 8 to 62, a startup distance of 100 kB to 1 MB.
+#   E3IndexReclaim (e3)
+#                      indexes created, built under writes, deleted and made again, with
+#                      maintain(budget), reclaim and restarts: scans against the oracle.
+#   E4KillMaintain (e4)
+#                      SIGKILLs of a child inside commits and maintain(budget) calls (Core
+#                      API, node sizes 8 to 62): each recovery a whole prefix, the oracle's.
+#   E5Threads (e5)     writers, readers, rw() transfers that run again, iterators held over
+#                      commits and maintain() calls from several threads, a moved clock.
+#   E6Refusals (e6)    the refusals the Javadoc promises around maintain(), the settings and
+#                      reclaim, and every key after each, through a restart.
+#   E7PubKill (e7)     SIGKILLs of a child that writes indexed objects, builds and deletes
+#                      indexes and calls maintain(): each recovery checked.
+#   E8StopEverywhere (e8)
+#                      stop() and close() from another thread while writers, rw(),
+#                      maintain() and an index build run: every committed value after.
 #   SameBytes (f1)     the README's "One stream" with the Core API: one list of actions
 #                      (transactions, settings, maintain(budget) at a set clock) run in ten
 #                      ways (restarts, a stop after every action, a cache of 1 MB with
@@ -152,26 +176,29 @@
 # The modes:
 #   quick   the union of the items' quick modes: each app once, small; Kill 10 kills,
 #           KillEmpty 12, Buffers kill 6, D4CrashBatches 10; d1 to d8 at 026-26's seeds,
-#           about 30 seconds in all; f1 to f5 at 031-08's apps-b.md's sizes (f1 without
-#           -Df1.big, f2 30 kills; about FQTIME); g1 to g11 once each, smaller than
-#           031-02's run.sh quick, KillWriter 10 kills (about QTIME).
-#   soak N  024-26's soak (DeleteHeavy 18 runs at node sizes 8 to 62, Churn 16, Readers 4
-#           of 60 s, IndexChurn 3, Limits, WorstCase at 100,000 keys) and 026-13's
-#           (BackToEmpty 14, Transform 4 of 90 s, Buffers many at 150 databases for 90 s,
-#           KeyLimits 3, Readers of 20,000 keys, GivenBack 2, Huge 16 rounds) and 026-26's
-#           full runs of d1 to d8 but d4 (about 35 seconds), 031-08's f1 at four seeds of
-#           700 to 1,800 actions, f3 at three of 900 to 1,500, f4 at four seeds (without
-#           its database of 2026.6), f5 at two of 100 copies (about FSTIME), and 031-02's
-#           run.sh runs but
-#           KillWriter's, with its seeds plus 100 N, smaller (StmBank 2 of 120 s,
-#           RetainChurn 2 of 2 rounds, RwReplace 90 s; about STIME).
+#           about 30 seconds in all; e1 to e8 at 031-08's apps-a.md's sizes (section 5;
+#           about 4 minutes); f1 to f5 at its apps-b.md's sizes (f1 without -Df1.big, f2 30
+#           kills; about 3 minutes); g1 to g11 once each, smaller than 031-02's run.sh
+#           quick, KillWriter 10 kills (about 2.5 minutes).
+#   soak N  024-26's soak (DeleteHeavy 18 runs at node sizes 8 to 62, Churn 16, Readers 4 of
+#           60 s, IndexChurn 3, Limits, WorstCase at 100,000 keys) and 026-13's (BackToEmpty
+#           14, Transform 4 of 90 s, Buffers many at 150 databases for 90 s, KeyLimits 3,
+#           Readers of 20,000 keys, GivenBack 2, Huge 16 rounds) and 026-26's full runs of
+#           d1 to d8 but d4 (about 35 seconds), 031-08's e1, e2, e3, e6 and e8 at two seeds
+#           each and e5 at one, at the sizes of apps-a.md's soak 3 (16 minutes), its f1 at four seeds of 700 to 1,800 actions, f3 at
+#           three of 900 to 1,500, f4 at four seeds (without its database of 2026.6), f5 at
+#           two of 100 copies (about 35 minutes, estimated from its record), and 031-02's
+#           run.sh runs but KillWriter's, with its seeds plus 100 N, smaller (StmBank 2 of
+#           120 s, RetainChurn 2 of 2 rounds, RwReplace 90 s; 13 minutes).
 #   kill N  Kill 300 kills (024-26's Kill at scale), KillEmpty 250 kills, Buffers kill 60,
-#           D4CrashBatches 60 kills (about 95 seconds); 031-08's f2 at three seeds of 250
-#           kills and one with -Df1.big=true, 200 actions and 120 kills (about FKTIME);
-#           031-02's KillWriter with run.sh's three
-#           options, 100 kills each, its seeds plus 100 N (about KTIME).
+#           D4CrashBatches 60 kills (about 95 seconds); 031-08's e4 150 kills and e7 200
+#           (about 18 minutes); its f2 at three seeds of 250 kills and one with
+#           -Df1.big=true, 200 actions and 120 kills (about 35 minutes, estimated from its
+#           record); 031-02's KillWriter with run.sh's three options, 100 kills each, its
+#           seeds plus 100 N (13 minutes).
 # ONLY=LETTERS runs only the apps of those letters' items (a: 024-26's, b: 026-13's b and
-# c, d: 026-26's, f: 031-08's part B, g: 031-02's), for a trial of some; unset, all run.
+# c, d: 026-26's, e and f: 031-08's parts A and B, g: 031-02's), for a trial of some;
+# unset, all run.
 #
 # Environment: JAVA_HOME (the JDK; the PATH's otherwise). Builds with build.sh, then runs on
 # a copy of build/bergdb-release.jar in build/apps/MODE-N/ (classes, data, out.txt), so that
@@ -316,6 +343,15 @@ if [ $mode = quick ]; then
     r -Xmx512m D6SchemaValues $D/d6 601
     r -Xmx512m D7RwConflicts $D/d7 601 120
     r -Xmx512m D8OnlineIndex $D/d8 601 6 3000
+    grp=e   # 031-08's part A, its apps-a.md's sizes (section 5)
+    g e1 E1MaintainBudget 1 $D/e1 2000 1500
+    g e2 E2LimitsReclaim 1 $D/e2 30 100
+    g e3 E3IndexReclaim 1 $D/e3 300
+    g e5 E5Threads 1 $D/e5 30
+    g e6 E6Refusals 1 $D/e6 12
+    g e8 E8StopEverywhere 1 $D/e8 15
+    g e4 E4KillMaintain parent 1 $D/e4 30 10 2000
+    g e7 E7PubKill parent 1 $D/e7 20 8 2000
     grp=f   # 031-08's part B, its apps-b.md's sizes (section 5)
     g f1 SameBytes 1 300 $D/f1 all
     g f2 KillBytes 1 300 $D/f2 30
@@ -384,6 +420,16 @@ elif [ $mode = soak ]; then
     r -Xmx512m D6SchemaValues $D/d6 $((b + 11))
     r -Xmx512m D7RwConflicts $D/d7 $((b + 11)) 200
     r -Xmx512m D8OnlineIndex $D/d8 $((b + 11)) 6 4000
+    grp=e   # 031-08's part A but e4 and e7 (in kill), apps-a.md's soak 3, seeds 100 N + 1, 2
+    for s in 1 2; do
+        g e1 E1MaintainBudget $((b + s)) $D/e1 5000 5000
+        g e3 E3IndexReclaim $((b + s)) $D/e3 1500
+        g e6 E6Refusals $((b + s)) $D/e6 24
+        g e8 E8StopEverywhere $((b + s)) $D/e8 80
+    done
+    g e2 E2LimitsReclaim $((b + 1)) $D/e2 8 300
+    g e2 E2LimitsReclaim $((b + 2)) $D/e2 62 300
+    g e5 E5Threads $((b + 1)) $D/e5 90
     grp=f   # 031-08's part B but f2 (in kill), apps-b.md's sizes, its seeds plus 100 N
     g f1 SameBytes $((b + 30)) 700 $D/f1 all
     g f1 SameBytes $((b + 31)) 1100 $D/f1 all
@@ -413,6 +459,9 @@ else
     grp=b; r KillEmpty parent $((b + 1)) $D/b5 250 10 2500
     r Buffers kill $((b + 2)) $D/b3k 60 12
     grp=d; r -Xmx512m D4CrashBatches $D/d4 $((b + 11)) 60
+    grp=e   # 031-08's e4 and e7, smaller than apps-a.md's kill rounds, seeds 100 N + 21, 31
+    g e4 E4KillMaintain parent $((b + 21)) $D/e4 150 10 2000
+    g e7 E7PubKill parent $((b + 31)) $D/e7 200 8 2000
     grp=f   # 031-08's f2, apps-b.md's sizes, its seeds plus 100 N
     g f2 KillBytes $((b + 2)) 800 $D/f2 250
     g f2 KillBytes $((b + 3)) 800 $D/f2 250

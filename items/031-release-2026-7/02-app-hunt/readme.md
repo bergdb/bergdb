@@ -631,8 +631,8 @@ bound. F2's 0.4 to 15.2 MB are now 0.3 to 2.8 MB.
   6 minutes (238 to 263 s on 2026-11-25 and 26, 028-64) to about 15 (674
   s for all but e1 to e8, which took 239 s alone; the sets e, f and g
   about 4, 3 and 2.5 minutes); soak by 13 minutes for g1 to g11 (789 s
-  measured) and, estimated from 031-08's records, about 35 for f1 to f5
-  and 17 for e1 to e8; kill by 13 minutes for g1 to g11 (774 s
+  measured), 16 for e1 to e8 (935 s measured) and, estimated from
+  031-08's record, about 35 for f1 to f5; kill by 13 minutes for g1 to g11 (774 s
   measured), about 35 for f2 and 18 for e4 and e7 (1,059 s measured).
 * **week.sh** (aim about 10 hours, at most 12; 028-64): its run's time
   is that of its longest lane, the large reclaim run's 5.5 to 6.6 hours;
@@ -650,7 +650,8 @@ bound. F2's 0.4 to 15.2 MB are now 0.3 to 2.8 MB.
   (119 s); with e1 to e8 joined: `ONLY=e sh stress/apps.sh quick`: APPS
   OK (239 s); `ONLY=e sh stress/apps.sh kill 28`: APPS OK (1,059 s; e4
   150 kills, 143 recoveries checked; e7 200 kills, 210 recoveries
-  checked); SOAKE Not run for want of time: the soak and kill rounds of
+  checked); `ONLY=e sh stress/apps.sh soak 28`: APPS OK (935 s, 11
+  runs). Not run for want of time: the soak and kill rounds of
   f1 to f5, and the whole rounds of soak and kill.
 
 Log
