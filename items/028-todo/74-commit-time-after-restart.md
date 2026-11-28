@@ -1,7 +1,7 @@
 028-74. Decide: a commit's time after a restart can be at or before a time a reader was given
 ==========================================================================================
 
-Status: decided (2026-11-28): (a); the Javadoc written and on `main`,
+Status: done (2026-11-28): (a); the Javadoc written and on `main`,
 and the limit added to P2's draft (the lead's, not in the repository; a
 limit for 010-01's P2 when Frans writes it). Kind: Decide. Frans:
 decided.

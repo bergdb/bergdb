@@ -1,8 +1,7 @@
 028-73. Decide: new stream files a tenth, the writer waits at a new database's first 10 MB
 =========================================================================================
 
-Status: decided (2026-11-28): (b); built and gated on a branch, to be
-landed. Kind: Decide. Frans: decided.
+Status: done (2026-11-28): (b) on `main` (`68a26a38`..`28a557fd`). Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: since 028-62 (`05fc573c`, the fix of RB-011), `FileStream` gives a

@@ -1,7 +1,8 @@
 028-66. Investigate: the cut's deletes lag behind a fast writer
 ================================================================
 
-Status: built, reviewed, timed; landing. Kind: Investigate. Frans:
+Status: done (2026-11-28): C with the rule on `main` (`e848c58f`..`5f867e08`,
+`8a0897cf`). Kind: Investigate. Frans:
 decided (2026-11-27, 17:26: C with the rule of the files before a gap,
 after a quiet timing run against `main` and a review; section 4). C with
 the rule built on a branch (section 6), reviewed, the review's findings

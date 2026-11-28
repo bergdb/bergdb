@@ -101,11 +101,8 @@ Open
 |---|---|---|---|---|
 | [028-34](34-transaction-info.md) | Decide | transactionInfo() in the Pub API, or the walk in the Core | as it is for 2026.7 | open |
 | [028-65](65-idle-db-space-amplification.md) | Investigate | An idle database keeps several times its live values (031-03, 9.3) | none | open |
-| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule built | decided | built, reviewed, timed; landing |
 | [028-67](67-stale-tail-at-start.md) | Fix | A deleted file's bytes in the last file after a kill (APFS): C1 and C3 in 2026.7 | decided | C1, C3 built; C2 and the nodes' place with 028-77 |
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count 76.5 % at worst; A: the text, 10 a level at 14, a test | A | A done; B open |
-| [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (built and gated on a branch, to land) |
-| [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc written; P2's draft, not in the repository) |
 | [028-75](75-small-put-full-pass/readme.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decision | open (designed: a record format change) |
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
@@ -118,6 +115,9 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-66](66-cut-deletes-lag/readme.md) | Investigate | The cut's deletes lag behind a fast writer; C and the rule on `main` | decided | done | 2026-11-28 |
+| [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) on `main` | decided | done | 2026-11-28 |
+| [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) on `main` | decided | done | 2026-11-28 |
 | [028-83](83-maintain-interrupt-stop-exceptions/readme.md) | Fix | maintain() no longer spins when interrupted; a write at a stop throws the documented exception; e3 seed 101 explained | none | done | 2026-11-28 |
 | [028-84](84-maintain-and-gettrans-documents.md) | Fix | Documents: a maintain() call's work and wait, a commit's getTrans(), an emptied stream | none | done | 2026-11-28 |
 | [028-85](85-recreated-directory-test-under-load.md) | Fix | A test deleted a stopped database's directory before close(): now after it; the window a test | none | done | 2026-11-28 |
@@ -786,3 +786,7 @@ prototype. Not built. The entry is a directory since.
 `main` (`2d4d178a`, `b9624ea1`, `01232710`); the second review's
 residual (E) open, its fix on the branch `028-79-e`. Moved to Closed:
 028-83, 028-84.
+
+2026-11-28. 028-66 (C with the rule, e848c58f..5f867e08, 8a0897cf),
+028-73 ((b), 68a26a38) and 028-74 ((a), 1a136a9c) done: on `main`.
+Moved to Closed.
