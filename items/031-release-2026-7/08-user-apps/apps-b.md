@@ -377,8 +377,15 @@ refusal whose diagnosis and way out are wrong (UB-3).
   cut points (an iteration, at least twice the startup distance), stay on
   disk while the database is stopped and until the next start or commit;
   which commit makes it follows the write buffer's timing, so the files
-  on disk differ between runs of the same actions; where both runs had
-  files, they were the same files, byte for byte. Reproduction (30 s): `java PubSameBytes 1 600 DIR fast` (a
+  on disk differ between runs of the same actions. The split of the
+  stream into files follows the restarts too: in f2 seed 22 (big
+  transactions) a chain of kills and starts ended with the ref's stream
+  in other files, one file of 5 MB at 160,000,000 where the ref has five
+  of 1 MB, as FileStream says ("a start gives the last file the smallest
+  size not below the lengths of the last two files"; the ref's file there
+  was made after a cut, at a tenth of the stream the files held). In the
+  other runs, where both had files they were the same files, byte for
+  byte. Reproduction (30 s): `java PubSameBytes 1 600 DIR fast` (a
   NOTE line: "the same stream, other files"). Judgment: document; the
   README's sentence is about the stream, and FileStream's and
   `getStreamSize()`'s Javadoc could say that a closed or idle database
