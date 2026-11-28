@@ -19,7 +19,10 @@ import java.util.concurrent.*;
  * state (every key, object, index scan forward and backward, counter) equals the oracle's
  * after transactions 1 to k; states at older times printed by the child, when still
  * available, equal the oracle's at those transactions. Then it closes the database and
- * starts the next child, which goes on from k + 1.
+ * starts the next child, which goes on from k + 1. A kill before the creation's first byte
+ * leaves no database: the parent's open() is refused with DatabaseMissingException and
+ * changes nothing (DatabaseBuilder.open()), and the next child's create() makes it; a kill
+ * inside the creation gives DatabaseNotCreatedException, and the files are removed.
  *
  * The child writes its lines to DIR.out, one write each: the pipe of its stdout loses the
  * last ones, as Process.destroyForcibly() closes the parent's end (031-02, section 8). Before
@@ -226,7 +229,7 @@ public class KillWriter {
         }
     }
 
-    static long nByJ, nBeyond, nZeroTails;
+    static long nByJ, nBeyond, nZeroTails, nMissing;
 
     static String parentLastName = "";
     static long parentLastLength = 0;
@@ -236,6 +239,16 @@ public class KillWriter {
         if (fs == null || fs.length == 0) return null;
         Arrays.sort(fs);
         return fs[fs.length - 1];
+    }
+
+    /** The names and lengths of the files in dir, sorted; null if dir is not a directory. */
+    static List<String> listing(File dir) {
+        File[] fs = dir.listFiles();
+        if (fs == null) return null;
+        List<String> l = new ArrayList<>();
+        for (File f : fs) l.add(f.getName() + " " + f.length());
+        Collections.sort(l);
+        return l;
     }
 
     static long trailingZeros(File dir) throws IOException {
@@ -357,8 +370,24 @@ public class KillWriter {
                         + from + (before ? ", there before the child ran (a start's fill)" : ", written while the child ran"));
             }
             Database db;
+            List<String> filesBefore = listing(new File(dir));
             try {
                 db = Factory.database().open(dir).start();
+            } catch (DatabaseMissingException e) {
+                // A kill before the creation's first byte: no directory, or one without
+                // created.txt and without a stream file with a byte. open() refuses it, and
+                // creates and writes nothing (DatabaseBuilder.open(), bergdb 015-05); the next
+                // child's create() makes the database there. With created.txt the creation was
+                // durable, and a stream gone after it is a failure.
+                if (lastK != 0) fail("kill " + kill + ": DatabaseMissingException after " + lastK + " transactions: " + e);
+                if (new File(dir, "created.txt").exists()) fail("kill " + kill + ": DatabaseMissingException with created.txt: " + e);
+                List<String> filesAfter = listing(new File(dir));
+                if (!Objects.equals(filesAfter, filesBefore)) fail("kill " + kill + ": the refused start of open() changed the directory: "
+                        + filesBefore + " before, " + filesAfter + " after");
+                nMissing++;
+                System.out.println("kill " + kill + ": killed before the creation's first byte (" + (filesBefore == null
+                        ? "no directory" : filesBefore) + "); open() refused it, nothing changed");
+                continue;
             } catch (DatabaseNotCreatedException e) {
                 // A kill while the database was created: documented; its files are removed.
                 if (lastK != 0) fail("kill " + kill + ": DatabaseNotCreatedException after " + lastK + " transactions");
@@ -368,8 +397,9 @@ public class KillWriter {
             } catch (RuntimeException e) {
                 System.out.println("kill " + kill + ": the start after the kill threw: " + e);
                 File[] fs = new File(dir).listFiles();
-                Arrays.sort(fs);
-                for (File f : fs) System.out.println("  " + f.getName() + " " + f.length());
+                if (fs == null) System.out.println("  (no directory)");
+                else Arrays.sort(fs);
+                for (File f : fs == null ? new File[0] : fs) System.out.println("  " + f.getName() + " " + f.length());
                 System.out.println("  the child's last lines: " + tail);
                 fail("kill " + kill + ": the database does not start after a kill (files as the kill left them in "
                         + snap.getName() + " with -Dsnap=true)");
@@ -446,7 +476,8 @@ public class KillWriter {
             lastK = k;
         }
         System.out.println("kills " + kills + ", transactions " + lastK + ", older states " + checksOld
-                + ", recoveries beyond the last printed commit " + nBeyond + ", zeroed tails " + nZeroTails);
+                + ", recoveries beyond the last printed commit " + nBeyond + ", zeroed tails " + nZeroTails
+                + ", kills before the creation's first byte " + nMissing);
         System.out.println("KILLWRITER OK");
     }
 

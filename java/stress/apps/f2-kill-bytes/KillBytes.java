@@ -30,6 +30,9 @@ import java.util.concurrent.TimeUnit;
  *       state after those actions; if it ends inside an action's records, the start holds
  *       the state after the actions before it (each transaction whole or not at all), at
  *       least to the last synced, and its writes leave the bytes before the cut as they were;
+ *       after a random kill, at most one action beyond those the child reported, and after
+ *       that one only actions that wrote nothing in the ref and that Db's Javadoc lets write
+ *       nothing (a maintain() with nothing due, a setting with the value in force);
  *   K3  a chain whose starts all found the stream at an action's end ends, after all the
  *       actions, with the ref's files, byte for byte (a kill and a restart change no byte);
  *   K5  after such a kill, children that only start the database are killed 0 to 200 ms after
@@ -48,7 +51,8 @@ public class KillBytes {
     static File base;
     static SameBytes.Result ref;
     static long kills, betweenKills, randomKills, boundaryStarts, writingStarts, chains, chainsWhole,
-            zeroTails, k4Checks, childEnds, notCreated, deadDeleted, layoutNotes, k5Checks, k5Kills;
+            zeroTails, k4Checks, childEnds, notCreated, deadDeleted, layoutNotes, k5Checks, k5Kills,
+            nothingAfter;
 
     public static void main(String[] a) throws Exception {
         if (a[0].equals("child")) {
@@ -98,7 +102,7 @@ public class KillBytes {
                 + " between actions, " + randomKills + " random), " + boundaryStarts + " starts at an action's end, "
                 + writingStarts + " starts that completed a torn end (" + k4Checks + " K4 checks, " + k5Checks + " K5 checks after "
                 + k5Kills + " kills during the completion, " + invalidBlocks + " meta blocks completed as invalid ones), " + zeroTails
-                + " zero tails, " + deadDeleted + " files of a decided cut deleted by a start, " + layoutNotes
+                + " zero tails, " + nothingAfter + " random kills with actions that write nothing after the one in flight, " + deadDeleted + " files of a decided cut deleted by a start, " + layoutNotes
                 + " chains with other files (NOTE), " + notCreated + " kills before the creation was durable, " + chains + " chains, " + chainsWhole + " whole chains equal to the ref, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s");
     }
@@ -186,6 +190,27 @@ public class KillBytes {
             done = after;
         }
         Common.rmrf(dir);
+    }
+
+    /**
+     * Why action j may write nothing, as Db's Javadoc says, or null if it may not: maintain()
+     * ("a part with nothing due writes nothing"); setRetainDuration(),
+     * setReclaimInternalFraction() and setStartupDistance() with the value in force ("a call
+     * with the value in force writes nothing"; the startup distance's "clamped value is the
+     * setting in force"), the value of the last earlier call of the same setting. A
+     * transaction commits a record.
+     */
+    static String writesNothing(int j) {
+        SameBytes.Act x = SameBytes.acts.get(j);
+        if (x.kind == 'M') return "maintain() with nothing due";
+        if (x.kind == 'T') return null;
+        for (int i = j - 1; i >= 0; i--) {
+            SameBytes.Act e = SameBytes.acts.get(i);
+            if (e.kind != x.kind) continue;
+            boolean same = x.kind == 'F' ? Math.round(e.frac * 65536) == Math.round(x.frac * 65536) : e.arg == x.arg;
+            return same ? "a setting with the value in force" : null;
+        }
+        return null;
     }
 
     static int parse(String s) {
@@ -303,7 +328,19 @@ public class KillBytes {
             throw new Common.Fail("K2: chain " + chains + ": the start holds " + k + " actions, the child synced action " + synced);
         }
         if (mode == 2 && k > lastA + 2) {
-            throw new Common.Fail("K2: chain " + chains + ": the start holds " + k + " actions, the child reported " + (lastA + 1));
+            // The action in flight (lastA + 1) may have its records in the files; the actions
+            // after it that hold no record in the ref's stream are counted too, as nothing tells
+            // them from it: allowed only when each is one that Db's Javadoc says writes nothing.
+            for (int j = lastA + 2; j < k; j++) {
+                String why = writesNothing(j);
+                if (ref.lens[j] != ref.lens[lastA + 1] || why == null) {
+                    throw new Common.Fail("K2: chain " + chains + ": the start holds " + k + " actions, the child reported "
+                            + (lastA + 1) + "; action " + j + " (" + SameBytes.acts.get(j) + ") "
+                            + (ref.lens[j] != ref.lens[lastA + 1] ? "appended records in the ref"
+                                    : "is not one that the documents allow to write nothing"));
+                }
+            }
+            nothingAfter++;
         }
         if (wrote == null) {
             if (len != kept) throw new Common.Fail("K2: chain " + chains + ": the start wrote nothing, its stream length " + len
@@ -311,7 +348,13 @@ public class KillBytes {
             boolean atEnd = (k > 0 && ref.lens[k - 1] == kept) || (k == 0 && kept == ref.createdLen);
             boundaryStarts++;
             Common.rmrf(before);
-            if (atEnd) return k;
+            if (atEnd) {
+                // The child's place (findPlace()): the first action whose end is the stream's,
+                // before the actions after it that wrote nothing.
+                int place = k;
+                while (place > 0 && (place == 1 ? ref.createdLen : ref.lens[place - 2]) == kept) place--;
+                return place;
+            }
             log("chain " + chains + ": the kill came between two records of " + actionAt(kept) + "; the start wrote nothing;"
                     + " the chain ends");
             return -1;

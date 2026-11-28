@@ -32,7 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * a sync: S = the last transaction that a sync returned for before the copy began, C = the
  * last that returned before it ended. Ways of copying: "doc" (list, sort by name, copy each,
  * the last one last: FileStream's procedure), "glob" (cp DIR/*.bergdb COPY/, the shell's
- * order is the names'), "cpr" (cp -R DIR COPY, the directory's order). Each copy is started
+ * order is the names'), "cpr" (cp -R DIR/. COPY/, the directory's order; DIR/. copies the
+ * directory's contents into COPY with both BSD's and GNU's cp, where GNU's cp -R DIR/ COPY/
+ * makes COPY/db, as on Linux in 031-08 on 2026-11-28). Each copy is started
  * by open() and must hold the state after k transactions, S + 1 <= k <= C + 1, every value
  * as written, or be refused only as FileStream allows (a listed file missing from the copy,
  * or a way that is not the documented one, which is printed as a NOTE); a refused start must
@@ -147,7 +149,7 @@ public class LiveCopy {
             how = "listed and copied in name order";
         } else {
             String cmd = way.equals("glob") ? "cp " + dbDir.getPath() + "/*.bergdb " + copy.getPath() + "/"
-                    : "cp -R " + dbDir.getPath() + "/ " + copy.getPath() + "/";
+                    : "cp -R " + dbDir.getPath() + "/. " + copy.getPath() + "/";
             Process p = new ProcessBuilder("sh", "-c", cmd + " 2>&1").start();
             String out = new String(p.getInputStream().readAllBytes());
             p.waitFor();
