@@ -61,9 +61,11 @@
 #      and 25), most of it its longest trace (a check of 3.9 hours on 2026-11-25).
 #   And one after another, in RUN/repo:
 #   4. apps-quick, apps-soak-cc, apps-kill-cc: stress/apps.sh, the user applications of
-#      024-26, 026-13 and 026-26 (its header), built against the clone's own release jar:
-#      quick (about 6 minutes), soak and kill rounds with the day's number as N, new seeds
-#      each day (about 40 and 30 minutes). Soak and kill with CC (below).
+#      024-26, 026-13, 026-26, 031-08 (parts A and B) and 031-02 (its header), built against the
+#      clone's own release jar: quick (about 15 minutes), soak and kill rounds with the
+#      day's number as N, new seeds each day (about 105 and 95 minutes; 031-08's and
+#      031-02's apps added about 65 and 65, and 9 to quick, on 2026-11-28, partly
+#      estimated). Soak and kill with CC (below).
 #   5. kill-restart-week, kill-restart-cc: stress/kill-restart.sh, its self-check and 1,000
 #      kills on each of three seeds (the day's number times 10, plus 1 to 3; night.sh's
 #      seed is the date, YYYYMMDD), the third with CC; about 80 minutes. Stops at the
