@@ -358,15 +358,25 @@ bytes long (`RecoverableStream.META_BLOCK_SIZE`, :59;
 2026-11-27; version 156). Bytes 46 to 53 hold the stream position the
 block was written at, and a start takes a block as valid only if it
 holds the position it is read at and the database id of the stream's
-first block, the first at or after the first position. Every stream
-file begins at a multiple of 200,000, so a block of an older stream file
-of the database lies at the same offsets in a new file, and on APFS a
-kill during the first write of a new file can leave the older file's
-bytes there (035-02, sections 7 and 10): its position is another, and
-another database's block has another id, so neither is valid, as a block
-that a crash cut is not. The first block is the stream's own: a stream's
-bytes are cut only from its end, and a kill's other bytes are in the last
-file, from a page boundary on.
+first block, the first valid one at or after the first position. Every
+stream file begins at a multiple of 200,000, so a block of an older
+stream file of the database lies at the same offsets in a new file, and
+on APFS a kill during the first write of a new file can leave the older
+file's bytes there (035-02, sections 7 and 10): its position is another,
+and another database's block has another id, so neither is valid, as a
+block that a crash cut is not. The first block is the stream's own: a
+stream's bytes are cut only from its end, and a kill's other bytes are
+in the last file, from a page boundary on. Blocks that are not valid
+before it are passed over (2026-11-28, week.sh's apps-kill-cc on
+8a0897cf): a block that recovery completed after a kill ended the stream
+at or in it (005-27), or a block of zeros inside a record that recovery
+aborted (028-60), stays in the stream, and a cut that deletes the files
+before it makes it the stream's first; from 028-67 until then, the start
+refused such a stream, which is sound. A cut stream holds a valid block
+of its own after its first position, written before the cut deleted
+anything: the cut is not after the record that the last valid block
+names (019-40), and `FileStream` deletes only after the stream is
+forced to its length at the cut (027-14).
 
 **The node size** (B, field 44; Frans, 2026-11-12, 024-19, Q1 and Q6;
 made in 024-27; fixed at 30 by 026-08, Frans, 2026-11-13, 09:21). B,

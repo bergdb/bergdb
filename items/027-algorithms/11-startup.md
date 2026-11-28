@@ -81,21 +81,25 @@ refusal has written nothing:
    stream, from the last down to the first at or after the first
    position, the first that is valid: its last byte 10, its own position
    at offset 46 the one it is read at, and its database id that of the
-   stream's first block (028-67, C3; Frans, 2026-11-27). The first block
-   must have the magic and the version 156 (155 until 028-67, whose
-   streams, of 2026.6 and of builds of 2026.7 before 028-67, are refused
-   with a message that names them; 154 until 028-15, 2026.5's and
-   before): else a `StreamFormatException` (SFE) that names the causes
-   (020-28), or a `VersioningStreamException` (005-40); and it must be
-   valid itself, else none is. After it, a block of 128 zero bytes (as a
-   zeroed tail leaves it, 028-60), of other bytes or another version, or
-   of another place or database (as an older stream file's or another
-   database's bytes in the last file after a kill leave it, 035-02) is
-   not valid and passed over. B's time must not be negative. None valid:
-   an SFE; for a stream whose first position is after 0 its message says
-   that the stream may lack bytes that the database needs, with the
-   storage's account of its front (028-66; for `FileStream` it names a
-   gap in the files, 027-14).
+   stream's first block, the first valid one at or after the first
+   position (028-67, C3; Frans, 2026-11-27; blocks that are not valid
+   before it passed over since 2026-11-28, as recovery's completion of a
+   block that a kill cut or a block of zeros leaves one at the front of
+   a cut stream). Each block read up to it must have the magic and the
+   version 156 (155 until 028-67, whose streams, of 2026.6 and of builds
+   of 2026.7 before 028-67, are refused with a message that names them;
+   154 until 028-15, 2026.5's and before), or be zeros: else a
+   `StreamFormatException` (SFE) that names the causes (020-28), or a
+   `VersioningStreamException` (005-40); and the first valid one must
+   hold its own position, else none is valid. After it, a block of 128
+   zero bytes (as a zeroed tail leaves it, 028-60), of other bytes or
+   another version, or of another place or database (as an older stream
+   file's or another database's bytes in the last file after a kill
+   leave it, 035-02) is not valid and passed over. B's time must not be
+   negative. None valid: an SFE; for a stream whose first position is
+   after 0 its message says that the stream may lack bytes that the
+   database needs, with the storage's account of its front (028-66; for
+   `FileStream` it names a gap in the files, 027-14).
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
