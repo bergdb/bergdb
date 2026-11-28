@@ -105,9 +105,14 @@ without a step) or `table` (BergDB's own internal records: the settings, the
 creating start's startup distance), and `copies=N`, the copies among its puts.
 Since bergdb 015-87 the exporter's call of `setRetainDuration`, before the
 first user transaction, commits reclaim's settings
-(`/#i/dreclaim/-settings.txt`) in a record of their own, R(2) (R(1) until
-bergdb 028-15), internal and marked `kind=table`; its calls after a restart
-write nothing. Format 2 then also has:
+(`/#i/dreclaim/-settings.txt`) in a record of their own, internal and
+marked `kind=table`: R(3) since bergdb 028-13 (2026-11-19), after the
+startup distance's R(2) (R(2) from 028-15, 2026-11-18, R(1) before), and
+the workload's first transaction is R(4); its calls after a restart
+write nothing. The
+startup distance's record of `Db.setStartupDistance`, a user transaction
+that carries no maintenance, is marked `kind=user`. Format 2 then also
+has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
                                  T(i)'s touch visited (Db.touchPaths: the paths
@@ -124,8 +129,9 @@ write nothing. Format 2 then also has:
 
 `FA`, `CUT` and `PHYSCUT` come after `DIRTY`. Run B also restarts right after
 each call that decided a cut, and looks up only from the first available time
-on; its `PROBE` lines are in the block of the last record of the call (the
-user record without reclaim).
+on; its `PROBE` lines are in the block of the last record of the call (since
+bergdb 031-06 a commit's call has one record, its own; until then, with
+reclaim, the last of reclaim's records after it).
 
 With eviction (the exporter's `rune=S`, since 2026-10-18, bergdb item 001,
 WP J4; 001-08, 7.3), run E executes run A's workload with a

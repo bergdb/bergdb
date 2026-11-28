@@ -890,14 +890,18 @@ public class Db implements AutoCloseable {
      * of writing 1 kB to the stream (Reclaim.MAINTAIN_UNIT). It is clamped to 100 .. 100,000
      * (Reclaim.MAINTAIN_MIN_BUDGET, MAINTAIN_MAX_BUDGET), and is an indication only: the call
      * may use less, or none, and may go past it by one part's work (a step of about 16 kB of
-     * KVs, a take of at most 256 kB beyond one transaction's, a filler of at most 200 kB).
-     * The cost is counted from deterministic counts only (Reclaim.maintainPart), so that the
-     * stream after the same calls is the same (010-01, P2); the eviction's dead hand, which
-     * writes nothing, is charged by its time, and only after reclaim's work in the call is
-     * done.</p>
+     * KVs, a take of at most 256 kB beyond one transaction's, a table padded by at most 200 kB
+     * up to the next meta block). The cost is counted from deterministic counts only
+     * (maintainPart(), Reclaim.planPart), so that the stream after the same calls is the same
+     * (010-01, P2); the eviction's dead hand, which writes nothing, is charged by its time,
+     * and only after reclaim's work in the call is done.</p>
      * 
-     * <p>It works in parts, each under the write lock, as a commit's maintenance is: a part
-     * waits for a running commit, and a commit waits for the part that runs; reads go on.
+     * <p>It works in parts (bergdb 031-06; 027-13, section 1.10). Each part is an action of its
+     * own, through the path of a commit (maintainPart()): an empty internal transaction with
+     * its own time from the clock and one record, which carries the first of reclaim's M1 to
+     * M6 that is due, planned under the write lock from the stream before the record; a part
+     * with nothing due writes nothing. A part waits for a running commit, and a commit waits
+     * for the part that runs; reads go on.
      * The lock is a monitor, which is not fair, so the call hands it over (bergdb 031-04,
      * Q9): before each part, and again under the lock, it gives way while a commit waits for
      * the lock, and goes on when none does. A commit that comes during a part then waits

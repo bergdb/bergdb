@@ -175,6 +175,26 @@ from the code at ba81b104 and the proved program; 028-25 registered (the
 short way and the plan mark D's nodes in different orders). By an agent
 of coord-1118, on the branch `027-08-writer`.
 
+2026-11-28. 027 brought up to date with one record an action, the
+documents step of 031-06's landing (its section 9, item 5), with what
+landed beside it since release 2026.6 (031-04's `maintain(int budget)`,
+031-05's plan from the stream, 028-67's C1, C3 and T1, 028-66's option
+C, 028-62's file sizes, 028-69's removal of the crypto code), from the
+code at 8a0897cf: 027-13 (a commit's and a part's maintenance planned
+before the go point and applied after the record, the copies, the charge
+in the record, a and the witness, the pass of `maintain(budget)`, the
+warm-up), 027-03 (record format 9 in full: what a record holds, 8.5, the
+copy mark, the record's cap and the take's room, the row's a and fixed
+width, the padded table, the files), 027-02 (the setters' records, run
+B's PROBE lines), 027-08 (the batch with the maintenance's KVs, the
+record's room), 027-11 (no work of reclaim's at a start, a from the
+stream, format 9, the gap and the files before it), 027-14 (028-73's
+first 10 MB, the backup copies with gaps), and the stubs 027-06, 027-09,
+027-15 and 027-17; with them the Javadoc of `maintain(int budget)` (`Db`,
+`Database`) and the README's sentence on one stream, in the words Frans
+chose (2026-11-27; 031-06, section 8). P2 in 010 is Frans's and not
+changed. By agents of lead-1127, on the branch `031-06-docs`.
+
 
 State
 =====
@@ -200,3 +220,7 @@ the dirty set, with its ways by counts, the rerun, the bounds, the model
 and a worked example run on the code; not yet reviewed by a second agent
 (027-04, section 5.2). Open from it: 028-25 (the order of the marks of
 the short way and the plan).
+
+2026-11-28. Up to date with one record an action (031-06) and the work
+landed with it, at 8a0897cf: 027-02, 027-03, 027-08, 027-11, 027-13 and
+027-14, and the stubs that name what changed.

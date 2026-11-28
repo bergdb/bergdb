@@ -30,7 +30,14 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   4). A start accepts files of any sizes beside each other, the
   quarter's beside the tenth's: it checks that each file begins where
   the one before ends, or after a gap (below), and that every file but
-  the last is a multiple of 100,000 bytes (`testMixedFileSizes`).
+  the last is a multiple of 100,000 bytes (`testMixedFileSizes`). A new
+  database writes its first 10 MB in 50 files of 200 kB (20 files up to
+  4 MB with the quarter); with per-append forcing each new file costs
+  `BufferedStream`'s thread the force of its predecessor's last piece, the
+  new file's and the directory's, about 10.5 ms on F53; there a fast
+  load's longest wait for room in the write buffer was 144 to 282 ms in
+  six runs, 0 to 16 ms on release 2026.6: measured (028-73, 2026-11-27,
+  open).
 * **A backup by a copy of the files.** A file is changed only by
   appends at its end and removed only whole, the deletes issued oldest
   first; no file
@@ -53,7 +60,13 @@ Recorded before the part is written (028-62, 2026-11-26), from the code;
   deletes the files before the gap (028-66). Checked on F53 by 028-62's
   `BackupCopy` probe: 100 copies of a database written all the time,
   with cuts, each started and holding the state after one of its
-  transactions; 29 taken again. Windows not run: a delete of a file that
+  transactions; 29 taken again. With the gaps of 028-66, by its
+  `BackupGap` probe (`BackupCopy` that goes on past a listed file that a
+  cut deleted, on the rule of the files before a gap; 028-66, section
+  6.4): 100 copies, 45 whole, 41 with a gap (5 started, 36 refused), 14
+  without their first files (14 started); each started copy held the
+  state after one of the writer's transactions, and each refusal said that
+  the stream lacks bytes. Windows not run: a delete of a file that
   a copy program holds open can fail there, which fails the stream. A
   copy that overlaps the first append after an open that left zeros
   out (after a kill, or of a copy that ended in zeros) can hold the old
@@ -186,3 +199,11 @@ the backup's one exception to appends only.
 
 2026-11-27. The tail of zeros on `main`, for every stream, with no
 opt-out: the internal encryption is gone (028-69; 028-60, part 2).
+
+2026-11-28. Checked against the code at 8a0897cf (031-06's landing and
+028-66's option C on `main`): the recorded points stand, among them the
+gap in the files and the rule of the files before it, which 028-66's
+commits recorded on 2026-11-27; added the cost of the tenth's files at a
+new database's first 10 MB (028-73) and the backup copies with gaps,
+028-66's `BackupGap` on that rule. By an agent of lead-1127, on the
+branch `031-06-docs`.

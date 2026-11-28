@@ -578,8 +578,9 @@ public interface Database extends AutoCloseable {
      * is about the work of writing 1 kB to the stream. It is clamped to 100 to 100,000. The
      * database may use less than the budget, or none, depending on its state, and may go
      * past it by a small part's work. How the cost is counted may change between releases.
-     * The work runs in the database's own transactions, in parts: a commit waits for the
-     * part that runs, and reads go on.</p>
+     * The work runs in parts, each a transaction of the database's own, with its own time and
+     * one record, as a commit has (bergdb 031-06): a commit waits for the part that runs, and
+     * reads go on.</p>
      * 
      * @param budget  The work allowed in this call, in cost units of about 1 kB written.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a

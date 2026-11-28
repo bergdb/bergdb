@@ -14,7 +14,11 @@ format); since record format 8 the tree checker's writer is PE
 `Contract.PE.peTx` (030-21), on Java's traces by `pecmp`, a step of
 `level2.sh` since 030-28 (first 026-25's) and of `night.sh` on the medium
 set, and the
-contract checker (`lean/contract/check.sh`); the pins of the statements,
+contract checker (`lean/contract/check.sh`); since one record an action
+(031-06's landing, step 1) a record that carries a step also holds its
+action's operations: the copy mark in the traces (`OP C`), the action as
+submitted (`ACT`), C-STEP's STEP-action, and the contract's per-operation
+marks (`MaintenanceOK`, `record_preserves_users`); the pins of the statements,
 checked by `gate.sh` and, without a build, by `level2.sh` (030-15,
 030-28); a table of every theorem with its part.
 
@@ -34,3 +38,6 @@ coord-1118, on the branch `027-pe`.
 2026-11-19. 030-28: pecmp and the pins' check in level2.sh.
 
 2026-11-20. 030-28: pecmp also on night.sh's medium set.
+
+2026-11-28. The checks of one record an action (031-06's landing, step
+1). By an agent of lead-1127, on the branch `031-06-docs`.

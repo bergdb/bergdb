@@ -7,10 +7,12 @@ stream of files, and lets you read the database as it was at an earlier
 time. A value can be any byte array, a Java object, or a schemaless
 document.
 
-* **One stream.** Data, index and history are all records in the
-  stream: no write-ahead log, no index files. The same transactions in
-  the same order give the same bytes. A start reads only the stream's
-  tail, so the time to open a database does not grow with its size.
+* **One stream:** what is appended is decided by the stream so far and
+  the transactions that follow, with their times and order, and by
+  nothing else. A restart or a stop changes no byte. Data, index and
+  history are all records in the stream: no write-ahead log, no index
+  files. A start reads only the stream's tail, so the time to open a
+  database does not grow with its size.
 * **History.** A read can be made at any time that is still kept, and
   sees the database as it was then, its indexes included.
 * **Code only.** Java code is all that is needed, for the advanced

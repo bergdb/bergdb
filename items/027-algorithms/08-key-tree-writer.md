@@ -10,7 +10,9 @@ decides, on lists only, what each node it touches holds after the
 transaction, and then each decided node is written once. The rule as
 `main` has it at ba81b104 (2026-11-19; the writer's code as at d64e5638),
 read from the code (`PeWriter`, `Dag`, `Db`, `DbStarter`) and the proved
-model (lean/contract/Contract/PeWriter.lean). It replaces 027-01's
+model (lean/contract/Contract/PeWriter.lean); the writer's callers and
+the record's room checked against `main` at 8a0897cf (2026-11-28) for one
+record an action (031-06). It replaces 027-01's
 `levels.md` on Level 0's writer and `sis-model.md`'s pages on the old
 writer, both stale since format 8 (they describe the splits, the upward
 unlink and the merges at the delete). The tree's structure and the reads
@@ -106,13 +108,20 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
   repeated `putKv` calls at the same time are not allowed. Before the go
   point: the limits and the dirty-node check (section 4.2), the key
   transformations and the refusal of a transaction that they leave with
-  two KVs at one key, and a user transaction's value transformations (005-01, 024-16,
-  026-06). The KVs reach the writer as **one batch**, one operation a
-  key, in strictly increasing key order: a put of a key with a value, or
-  a delete (a null value). A reclaim step's touch, and its row (an
-  internal transaction's value transformation), run in `Db.putKvs` before
-  the batch reaches the writer, so the row reads every value as it was
-  before the transaction (027-13, 1.4).
+  two KVs at one key, a user transaction's value transformations (005-01,
+  024-16, 026-06), and the maintenance that the record carries, planned
+  from the state before it, with the record's room (027-13, 1.2; 031-06).
+  The KVs reach the writer as **one batch**, one operation a key, in
+  strictly increasing key order: a put of a key with a value, or a delete
+  (a null value). Since 031-06 the batch is the action's KVs and the
+  maintenance's (a reclaim step's copies, its row, the table), merged in
+  key order (`Db.merge`; a key in both is a `Bug`, which fails the
+  database); to the writer a copy is a put. A record that carries a step:
+  its touch, and the row's and the table's value transformations
+  (`Kv.planned`, which read no previous value), run in `Db.putKvs` before
+  the batch reaches the writer, and the step's charge of the index nodes
+  on its paths is written into the row after the batch, before the record
+  is appended (`Db.chargeStep`; 027-13, 1.4).
 * **One writer**: at most one transaction writes at a time; readers read
   at lookup times before tt without taking the transaction write lock
   and see nothing of it, since a writer only appends klongs after a time
@@ -132,8 +141,8 @@ transaction; "a cut" here is a list cut into parts, not reclaim's cut
   byte key encodes as one segment, cv 0, and passes Dag's check. An empty
   batch changes nothing.
 * **The start's rerun** (027-11, 1.7) gives the writer a record's KVs in
-  their stored order, at the record's time; a record whose KVs are not
-  strictly increasing is refused there, an SFE (1.12).
+  their stored order, at the record's time, a copy as a put; a record
+  whose KVs are not strictly increasing is refused there, an SFE (1.12).
 
 ### 1.3. The transaction
 
@@ -449,7 +458,9 @@ of the rerun's marks (027-11, section 1.7).
 ### 1.11. What the record holds of it
 
 The writer's immediate stored nodes (027-03, section 8) are the value and
-delete nodes, one for each operation that is not a noop, in key order.
+delete nodes, one for each operation that is not a noop, in key order; a
+copy's value node has the copy mark (027-03, section 12; 031-06), which
+the writer does not read.
 The record also holds the completed got-dirty list (1.9). New top nodes
 and new key nodes are dirty index nodes, written by later takes (part 6).
 An old key node changed now can be taken now if it was already queued.
@@ -472,7 +483,9 @@ noops do not change a plan; without them a rerun may take the short way
 where the run took the plan, which changes only the order of the marks
 (1.10), and the rerun's D comes from the stored ids, not from its marks
 (027-11, 1.7). A record of format 7 is refused at a start: the same KVs
-make another tree under PE (027-03, section 8.2).
+make another tree under PE. A record of format 8, 2026.6's, means the
+same tree as one of format 9 and is refused too, since 031-06 (027-03,
+section 8.2).
 
 ### 1.13. What PE never does
 
@@ -681,7 +694,21 @@ segments, 579 by the estimate and 153 by the walk
 (`testKeyTransformationToDeeperKey`), and with the record limit lowered
 so that a record takes 42 nodes it is refused, its key as written, write
 hash and time given back (`testRefusedAfterKeyTransformations`).
-Reclaim's internal transactions are not checked (027-13, 1.4).
+
+The record's room (031-06's landing, step 2, 2026-11-27): the
+maintenance that a record carries is counted with its action's KVs before
+the go point, within `StoredTrans.dirtyLimit()`, 15/16 of the record
+limit (`Db.recordDirtyFits`: the cheap test over all the record's KVs,
+the copies, the row and the table as puts, then, if it is over, the walk
+of all their keys in one `Dag.dirtyNodeBound`); a plan that does not fit
+is made again with a smaller step (027-13, 1.2). Before the append, the
+record's got-dirty set, its own nodes and those that its take keeps
+dirty, each at its largest with its entry, is checked against
+`StoredTrans.takeRoom()`, the room of a later record with no KVs
+(`Db.checkTakeable`): over it, a `Bug` fails the database with nothing
+of the record written, as no later take could take the set whole. Gated
+(ReclaimRoomTester). The internal records of reclaim's settings and of
+the creation are not counted.
 
 
 ## 5. In the model
@@ -1007,3 +1034,12 @@ counted after its key transformations (RB-005).
 inner node appended to by counts from one pass into work arrays, and
 more than 4 operations are routed by the live cvs of that pass: no live
 list made for them; the same decisions and reports.
+
+2026-11-28. One record an action (031-06), checked against the code at
+8a0897cf: 1.2 (the maintenance planned before the go point, the batch of
+the action's and the maintenance's KVs merged, a copy a put to the writer
+and at the rerun, the step's charge after the batch), 1.11 (the copy
+mark), 1.12 (format 8 refused), 4.2 (the record's room: the maintenance
+counted with the action's KVs within 15/16, the check before the append;
+the action's 7/8 came with 917c6155). By an agent of lead-1127, on the
+branch `031-06-docs`.

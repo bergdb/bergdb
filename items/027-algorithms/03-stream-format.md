@@ -27,7 +27,9 @@ content is filled in; the rest is marked **To be written**.
 **Reference.** Release 2026.4: the tag `release-2026.4` (`76f66f89`),
 record format 6. `main` at `5b6efdd1` has the same `java/` but for
 `BuildInfo.java`, so every line number here is one of the tag's and of
-today's tree. The code was read, not changed or run.
+that tree. The code was read, not changed or run. The text added since,
+each change in the log (section 23), cites the code by name; a line
+number of 2026.4's tree may be off in today's.
 
 **What it builds on.** 012-02 describes the stream byte for byte as Java
 wrote it at `aa0f532` (2026-10-28), record format 5. No byte layout has
@@ -50,18 +52,20 @@ a specification, which may refuse what the code accepts.
   node header (9), the top node (10), the key node and the klong types
   (11), the value and delete nodes (12); the file names and sizes (4); the
   internal keys and their texts (15); the version numbers and refusals
-  (21.1). **To be written**: the writer's rules (what a record must hold:
+  (21.1); what a record of format 9 holds, one record an action (8.5).
+  **To be written**: the writer's rules (what a record must hold:
   the take, the got-dirty list, the tree rules of format 8's writer, PE,
   section 8.2 and 027-08), the start's rules
   in full (14), the directory rules, the encryption and Pub sections.
-* **Gaps found** (section 19): 21 places where the code accepts what a
+* **Gaps found** (section 19): 22 places where the code accepts what a
   specification should refuse, among them the time klong's bits 56 to 61
   (024's readme), a key klong's unused bits, the refs of time klongs,
   unchecked reserved bytes in every structure, the meta block's startup
-  distance, a value node longer than its content, no checksum over a
-  record's header; and 8 places where the result depends on Java rather
-  than on the bytes, first among them the line order of reclaim's table,
-  which is Java's `HashMap` order.
+  distance, a value node longer than its content, a delete node with the
+  copy mark, and, until 028-67, no checksum over a record's header; and
+  8 places where the result depends on Java rather than on the bytes, first
+  among them the line order of reclaim's table, which is Java's `HashMap`
+  order.
 * **Open format questions** (section 20): 024-01's CL2, CL4, PF2, OT4,
   CA1, PA5 and PA9, with OT1 (c), CL1 and 017-08's checksums, and 13 more
   found here; for each, whether it can come later without a break or must
@@ -169,8 +173,9 @@ there and skipped it), and the value node's own format stays 5. A start
 refuses a record of format 8 with a `VersioningStreamException` that
 names release 2026.6 (`StoredTrans.formatRefused`); release 2026.6
 refuses format 9 as a newer one's. No release has written format 9, so
-its meaning may still change before 2026.7 ships; its full description is
-a later step of 031-06's landing.
+its meaning may still change before 2026.7 ships. What a record of
+format 9 holds is section 8.5; the copy mark, section 12; the record's
+room, 8.3; the texts of reclaim's row and table, section 15.
 
 028-67's ties (Frans, 2026-11-27, C3; built on 2026-11-27) changed format
 9's header without a new number and the meta block with one: bytes 5 to
@@ -199,13 +204,18 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
 * A database's stream is in files `NNNNNNNNNNNNNN.bergdb`: 14 decimal
   digits, the file's first position divided by 100,000
   (`BYTES_PER_INDEX_UNIT`, :124; `indexToString`, :1141). The files hold
-  the stream from its first position to its end, without gaps.
+  the stream from its first position to its end, without gaps; since
+  028-66 the files before a gap are not the stream (the last bullet).
 * Capacities (`FILE_SIZES`, :137): 200,000, 1, 5, 20, 100 and 500 MB, 2,
   10, 50 and 200 GB (decimal). A file is filled to its capacity before
-  the next is made (`newFile`, :1230); the capacity is chosen by
-  `applyFileSizeChangeRules` (:1268) when a file is made, and at an open
-  by `determineFileSizeIndexFromFiles` (:1034), from the last two files'
-  lengths (012-02, section 9.2).
+  the next is made (`newFile`); the capacity is chosen by
+  `determineFileSizeIndex` when a file is made: since 2026-11-26 (028-62)
+  the largest that is at most a tenth of the stream the files hold, a
+  larger one than the last file's only at a length that is a multiple of
+  it (a quarter until then; `FileStream`'s class comment); and at an open
+  by `determineFileSizeIndexFromFiles`, from the last two files' lengths
+  (012-02, section 9.2). A start accepts files of any of the sizes beside
+  each other.
 * **The 2 GB limits.** Two different things. (1) `setMax2G` (:502), a
   setting off by default, keeps new files at 2·10^9 bytes or less, for
   file systems such as FAT32; it changes file sizes, not stream bytes, and
@@ -221,10 +231,13 @@ stream do not depend on it (012-02, section 9.3, C1 and C2).
   the version that created it and the database id; until 2026-11-27
   (028-69) also a crypto key line, which named the key of an encrypted
   stream (16).
-* The cut: `pretruncate` (:554) takes off every file that ends before
+* The cut: `pretruncate` takes off every file that ends before
   reclaim's decided cut; the first position becomes a file boundary, a
   multiple of 100,000, at or before the cut; it always keeps the last
-  file (015-31). Reads below the first position throw
+  file (015-31). The storage's thread deletes the files taken off, oldest
+  first, a batch at a time with one force of the directory after it
+  (`runCuts`; 028-66, 2026-11-27; until then the directory was forced
+  after each file). Reads below the first position throw
   `ReadBelowFirstPosException`.
 * Refused at an open (`handleExistingFiles`, :978; `checkDbFiles`,
   :1055): a name that is not a number from 0 to `Long.MAX_VALUE /
@@ -251,9 +264,9 @@ bytes from the decided cut, not the files.
 
 **Unused and reserved.** The lock file's bytes. `FileStream` ignores
 every file but `*.bergdb`; the Pub API's start reads `created.txt`'s
-crypto key line to refuse an encrypted database
-(`DatabaseBuilderImp.refuseEncrypted`, `pubimp/DatabaseBuilderImp.java`:376;
-section 16).
+crypto key line, if it has one (none since 028-69), to refuse a
+database that 2026.3 or earlier encrypted
+(`DatabaseBuilderImp.refuseEncrypted`; section 16).
 
 **Gaps.**
 
@@ -696,7 +709,23 @@ same offsets, with their own node checksums, passes it (028-67, Built).
 * A got-dirty pair whose id is not the node at its position: an SFE
   (`DbStarter.canonicalNode`, :494).
 
-### 8.2. The format number, 8
+### 8.2. The format number, 9
+
+Format 9 since 2026-11-27 (031-06, landing step 2;
+`StoredTrans.RECORD_FORMAT`'s Javadoc): format 8's layout and the same
+tree a record means; what changed is what a record holds, one record an
+action (8.5), and the copy mark of a value node (section 12). A start's
+rerun takes a copy as a put,
+as the writer PE did when the record was written; the mark is read by a
+start's reclaim (`Reclaim.isOwnRecord`, 8.5) and by the Pub layer's
+`transactionInfo()` (031-06, section 2, rule 7). Bytes 5 to 7 of the
+header hold its check since 028-67 (8.1), without a new number: a
+stream of format 9 written before that has meta blocks of version 155,
+which a start refuses first (section 6). A record of format 8 is
+release 2026.6's, or of a build of 2026.7 before 031-06; a start refuses
+it (`formatRefused` names release 2026.6 and says that there is no
+upgrade path), and since 028-67 the meta block of such a stream (version
+155) is refused before. Format 8, below, as it was:
 
 Format 8 since 2026-11-19 (026-25): format 7's record layout; what
 changed is the tree a record means. A start gives a record's KVs, in
@@ -741,8 +770,9 @@ deletes when a start reruns it, and so the tree the stream holds
   fault 12).
 
 History: 2 until 2026-10-15; 5 from then (topPos in the header, 011-11,
-M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
-6 is the only one 2026.4 reads, 7 the only one 2026.5 reads.
+M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 to 2026-11-27;
+9 since. Format 6 is the only one 2026.4 reads, 7 the only one 2026.5
+reads, 8 the only one 2026.6 reads.
 
 ### 8.3. The record limit
 
@@ -776,6 +806,36 @@ M18) to 2026-11-10; 6 to 2026-11-11; 7 to 2026-11-19; 8 since. Format
   transactions with deletes the count is tested, not proved. Checked by
   `DagTester.testDirtyNodeBoundOfPe` and the tree checker's C-T8 on
   every traced transaction, with the copy in lean/SIS/Tree/Bound.lean.
+* **The record's cap** (031-06, section 2, rule 5, and section 3): the
+  serializer refuses a record of more bytes than its cap, a `DbException`
+  in the go point, which fails the database with nothing appended
+  (`StoredTrans.Serializer`, the record's `Trans.recordCap`). The cap is
+  the record limit for a record that carries no maintenance, and
+  `recordCap()` for one that does (a commit's or a part's with a plan, 8.5):
+  min(`MAX_RECORD_SIZE`, the record limit + `stepRoom()`), where
+  `stepRoom()` is `maxValueNode()`, the largest value node that a user
+  transaction can store (a value of L4 at a key of L3, at most
+  `valueLimit()`), + `STEP_FIXED_ROOM`, 256 KiB (the step's other KVs, at
+  most 128 KiB, `Reclaim.MAX_COMMIT_STEP_SIZE`, and the row and the table,
+  assumed within the other 128 KiB), + the record limit / 16 (the
+  got-dirty entries of the step's index nodes). At the release's limits
+  `recordCap()` is `MAX_RECORD_SIZE`. The checks of the action alone
+  (`checkSize`, its index nodes within `actionDirtyLimit()`) do not count
+  the step's KVs, which come on top, their index nodes and the action's
+  within `dirtyLimit()` by `Db.recordDirtyFits`:
+  a plan whose record does not fit is made again with the step's first KV
+  to copy only, and a commit's that still does not fit with no step
+  (`Reclaim.plan`; 027-13).
+* **The take's room** (`StoredTrans.takeRoom()`; 031-06, review-main, R2
+  and R5): min(the record limit, `recordCap()` − `TABLE_ROOM`), less a
+  record's header and its two top nodes at their largest with their
+  got-dirty entries (`TOP_BYTES`): the got-dirty set that a later record
+  without an action's KVs takes whole, an empty commit or the part of
+  `maintain()` that takes D (M4), which holds the table. `Db.checkTakeable`,
+  in `store()` after the take and before the append, fails the database
+  (a `Bug`) with nothing of the record written if its set, each node
+  counted at its largest with its entry, is over it; the take keeps the
+  nodes it keeps dirty within it (`TransSeq.SetRoom`).
 * `recordLimit` (:69) is `static volatile`; tests lower it.
 
 The limit is a writer's rule; a reader refuses only a size beyond the
@@ -789,7 +849,9 @@ stream or the buffer.
 * **Value nodes' order**: in the order of the transaction's KVs: the
   builder's (`Trans.Builder.build`, a `TreeMap` in key order), or, when a
   key transformation ran, `Db.sortByKey` (`Db.java`:2998), one KV a key
-  (023-08, section 7). The rerun applies them in stored order
+  (023-08, section 7); since format 9 the action's KVs and its plan's
+  merged in key order, one KV a key (`Db.merge`, 8.5). The rerun applies
+  them in stored order
   (`DbStarter.rerunTransaction`, :373); since format 8 as one batch, the
   writer PE's (section 8.2), and a record whose KVs are not in strictly
   increasing key order, one a key, is refused there, an SFE (026-25).
@@ -826,6 +888,83 @@ then.
   specification should state the largest size as a number, and whether a
   reader must accept every size up to it.
 
+### 8.5. What a record holds: one record an action
+
+Since record format 9 (2026-11-27; 031-06, section 2, rules 1 to 4, and
+section 9; `Maintenance`, `Reclaim.plan`): every accepted action appends
+exactly one record, and nothing else appends but recovery's completion of
+a cut record (section 7). Nothing is written between two records, so a
+crash, a stop or a restart at a record boundary comes between two actions.
+The records, by their action:
+
+* **A commit** (`Db.execute` of a user transaction): its action's KVs, as
+  its key and value transformations made them, and the maintenance that
+  reclaim's plan gives it, decided from the stream before the record, the
+  record's time and the action's KVs (`Reclaim.planCommit`): B, an
+  iteration's begin, or S, a step, then P, the safe positions, and C, a
+  cut's decision (027-13). An empty commit appends a record too.
+* **A part of `maintain(budget)`**, an action of its own with its own time
+  (`Trans.part`; an internal transaction with no KV of its own): the first
+  that is due of M1 to M6 (`Reclaim.planPart`; 027-13); a part with nothing
+  due appends nothing. M4's record takes further index nodes of the
+  startup section (`Trans.maintainTakeTo`, `TransSeq.takeTo`); M5's table
+  is padded with spaces, so that its record passes the next meta block's
+  position (section 15).
+* **A setter** that changes its setting: `Db.setStartupDistance` (a user
+  transaction marked `Trans.noMaintenance`, the KV `/#i/-sd`) and
+  reclaim's settings (`Reclaim.setSettings`, an internal transaction, the
+  KV `/#i/dreclaim/-settings.txt`); a setter whose setting is in force
+  appends nothing. These carry no maintenance.
+* **The creation**: the primordial record, with no KV, and the creating
+  start's record of `/#i/-sd` (internal; section 14.2). No maintenance.
+
+The maintenance's KVs (`Maintenance.Plan.kvs`, in key order, one a key,
+none at a key of the action's):
+
+* **Copies**: each live value stored before the iteration's pCut that the
+  step's scan met at the state before the record, at its key with the same
+  value; its value node has the copy mark (section 12). A copy at a key
+  that the action writes, its key as transformed, is left out (031-06,
+  rule 7; the action's write leaves the key a value node of its own, or
+  none). A copy at the row's or the table's key is replaced by it.
+* **The row** at `/#i/dreclaim/-current.txt`, in a record that carries a
+  step, and **the table** at `/#i/dreclaim/-table.txt`, in a record whose
+  B, P or C changed it, or whose part is M1, M3, M4, M5 or M6 with
+  something due: made by value transformations after the touch
+  (`Kv.planned`), which read no previous value; not copies. The row's
+  `rewritten` is written after the record's batch, at its fixed width,
+  before the append (section 15; 031-06, landing step 3).
+* **The touch** of a record that carries a step: the index nodes on the
+  paths of its copies and its row (`Plan.touchKeys`, `Db.touchPaths`) get
+  dirty before the batch, and are among the record's got-dirty pairs; the
+  action's own keys are not touched.
+
+`Db.merge` puts the action's KVs and the plan's in key order into one
+batch; a key in both is a `Bug`, which fails the database before the
+append. The copies are no reads or writes of the action's transaction:
+the scan reads the state before the record, under the write lock, after
+the transaction's conflict check. A record that carries maintenance may
+take up to `recordCap()` bytes (8.3).
+
+**a and the start.** Every row that a record stores holds a, the
+position of the application's last record (031-04, R3): a commit's
+record stores its own position, a part's record a as it was. A start
+takes the stream's last record as reclaim's own only if it holds a value
+or delete node at one of reclaim's keys (under `/#i/dreclaim/`, but the
+settings)
+without the copy mark (`Reclaim.isOwnRecord`, the witness; 031-06,
+section 2, rule 6), and then reads a from the table's last row and the
+current row (the larger); for any other last record, a is its position.
+So an empty commit, which holds no such key, gives its own position, as
+the running database set it.
+
+**Tests.** UT: `Reclaim.Tester` (`testMaintenanceNone`,
+`testCopyAtAKeyTheActionWrites`, `testUserTransactionLeavesTimesForReclaim`),
+`StoredValueNode.testCopyMark`, `NodeStreamTester.testStartRefusesFormat8`.
+The trace checker's C-STEP and STEP-action check, on every traced record,
+that its operations other than copies are its action's as submitted and
+that its copies put back the values the scan read (027-02, section 4).
+
 
 ## 9. The node header and the checksum
 
@@ -843,8 +982,15 @@ in bytes 6 and 7, and the node formats 2, 2, 4, 4.
 | 0 | 4 | `i32` | size     | the node's bytes, these 12 included                   |
 | 4 | 1 | `u8`  | type     | 10 top, 20 key, 30 value, 40 delete (`dag/Node`, :35) |
 | 5 | 1 | `u8`  | format   | 3, 3, 5, 5                                            |
-| 6 | 2 | zero  | (unused) | written zero, not read; covered by the checksum       |
+| 6 | 1 | `u8`  | flags    | value or delete node: the copy mark, 0 or 1 (12)      |
+| 7 | 1 | zero  | (unused) | zero                                                  |
 | 8 | 4 | `u32` | checksum | CRC-32C of the node's bytes but these 4               |
+
+Bytes 6 and 7 are covered by the checksum. In a top or key node both are
+written zero and not read; in a value or delete node, since record format
+9 (031-06), byte 6 is the copy mark and byte 7 zero, and the parser
+refuses any other value (section 12); until then both were written zero
+and not read there too.
 
 **The checksum** (`NodeChecksum`): CRC-32C, the Castagnoli polynomial
 (`java.util.zip.CRC32C`; RFC 3720's, whose check value for the ASCII
@@ -881,8 +1027,9 @@ refused). Format values other than the type's one (refused).
   random change in 65,025. Still: a pointer that names a position inside
   a node or a record reads whatever bytes are there as a node; only the
   checksum, the type and the parser stand between them and a wrong node.
-  The record header, the got-dirty list and the meta block have no
-  checksum (Q12).
+  The got-dirty list and the meta block have no checksum; since 028-67
+  the record header has its check (8.1), and a meta block its own
+  position and the database id (section 6) (Q12).
 * `readNode` does not check that the node read has the type the pointer
   expects; its callers do: `NodeCollection.checkPointeeType` (:861;
   021-11), an SFE, when a pointer is followed (:513, :591, :633) and when
@@ -1130,6 +1277,7 @@ from the id on 4 bytes earlier until 024-25:
 | Off  | Size | Type  | Field       | Value and range                         |
 |---|---|---|---|---|
 | 0    | 12  |       | node header | size, type 30 or 40, format 5           |
+| 6    | 1   | `u8`  | flags       | the copy mark: 1 for a copy, else 0     |
 | 12   | 8   | `i64` | id          | the node's id (section 5)               |
 | 20   | 4   | `i32` | offset      | the node's offset in its record's bytes |
 | 24   | 4   | `i32` | L           | the value's length (type 30 only)       |
@@ -1143,19 +1291,40 @@ The size is 12 + 8 + 4 + 4 + L + 4 + 8·k for a value, 12 + 8 + 4 + 4 +
 record bytes; the node's distance from its record's start in the stream
 is longer by the meta blocks between them (005-34; 012-02, section 6.4).
 
+**The copy mark** (since record format 9, 2026-11-27; 031-06, section 2,
+rule 7; Codex's E1 there): byte 6 of the node header is 1 if the value
+node is one of reclaim's copies, a live value put again at its key by
+the maintenance its record carries (8.5), and 0 for every other value or
+delete node; byte 7 is zero. The serializer sets it from the record's
+copy keys (`TransNodes.copyKeys`, which Db sets from the plan before the
+append; `StoredValueNode.toBytes`), and the parser gives it as
+`StoredValueNode.isCopy()`. A start's rerun takes a copy as a put. Who
+reads it: a start's reclaim, which takes a record as its own only by a
+key of reclaim's that is not a copy (`Reclaim.isOwnRecord`, 8.5); the
+Pub layer's `ConnectionImp.transactionInfo()`, which follows a value back
+only through a copy and lists a record's KVs without its copies (031-06,
+rule 7; 028-34); the trace exporter (027-02, `OP C`). Format 8 wrote 0
+there and the parser skipped bytes 6 and 7.
+
 **Checked on reading** (`StoredValueNode.parse`): size 28 or more and
-within the buffer (:90); format 5; L from 0 to what is left less 4
+within the buffer (:90); format 5; byte 6 0 or 1 and byte 7 zero, else
+an SFE ("Bad flags of value node", since 031-06); L from 0 to what is
+left less 4
 (:125); the key size a positive multiple of 8 within the node (:139); the
 key a key as `Keys.toSegments` makes it (`isKey`, :178: bits 0 to 2, 62
 and 63 zero; every segment but the last of length 7, the last shorter;
 :149); the offset one that `RecoverableStream.getStartSpos` accepts
 (:158).
 
-**Tests.** UT: `StoredValueNode` (8: `testRefusesSizesBeyondTheNode`,
-`testRefusesBadKey`, `testOffsetFromTransAcrossMetaBlock`). CST. C:
-`nwrite.c` (`nw_value_to_bytes`), `snode.c` (`sn_parse_value`).
+**Tests.** UT: `StoredValueNode` (`testRefusesSizesBeyondTheNode`,
+`testRefusesBadKey`, `testOffsetFromTransAcrossMetaBlock`,
+`testCopyMark`: the mark set and parsed back, under the checksum, any
+other value of byte 6 or 7 refused). CST. C: `nwrite.c`
+(`nw_value_to_bytes`), `snode.c` (`sn_parse_value`), at format 5 of
+2026.4, without the mark.
 
-**Unused and reserved.** Bytes 6 and 7, and the padding.
+**Unused and reserved.** The padding. Byte 6's bits 1 to 7 and byte 7,
+refused if set since 031-06.
 
 **Gaps.**
 
@@ -1170,6 +1339,10 @@ and 63 zero; every segment but the last of length 7, the last shorter;
   record format 8 a start's rerun refuses a record of the startup section
   whose KVs are not in
   strictly increasing key order (`DbStarter.rerunTransaction`; 026-25).
+* G22. A delete node (type 40) with the copy mark is accepted at parse
+  (the check of byte 6 is the same for both types), and `isCopy()` is
+  true for it; no writer writes one, as a copy is a put of a live value.
+  A specification should refuse the mark on a delete node.
 
 
 ## 13. Keys and segments
@@ -1283,7 +1456,12 @@ The outline (`Db.startInner`, :888; 012-02, sections 4.3, 4.6 and 8.14):
    damaged (an SFE). A stream of the primordial record alone was refused
    at step 1 (028-18).
 7. Reclaim's table, current row and settings (`Reclaim.initFromDb`;
-   section 15).
+   section 15), and a, from the rows or from the last record (8.5). The
+   cut that the table marks: a start whose storage begins after it is
+   refused, before anything is deleted (`StreamAfterCutException`, a
+   `ReadBelowFirstPosException`, in a `StreamIoException`; 028-66); one
+   whose storage begins before it makes the cut, which deletes files and
+   appends nothing (027-13, section 1.9; 027-14).
 8. The creating start (the stream was empty; `Db.handleEmptyStream`
    wrote the primordial record): its first transaction, internal, puts
    the default startup distance, 50 MB, at its KV
@@ -1315,7 +1493,8 @@ docs/sis-model.md, section 8); what s may be (any record at or before
 the last, or only one that the take wrote, 015-73); the bound of the
 startup section (T3, 007-08), which is a writer's promise, not a
 reader's check; what a start appends (nothing but the creation, its two
-records, and recovery's fill; 012-02, section 8.14).
+records, and recovery's fill; 012-02, section 8.14; no record of
+reclaim's, 031-06, section 5).
 
 **Tests.** UT: `DbStarter`, `TransSeq` (17), `DbTesterRestart`
 (`testCorruptStartupPosRefused`). Level 2's scripts and the Lean
@@ -1353,10 +1532,15 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
 | Key                          | Written by                       | Value                   |
 |---|---|---|
 | `/#i/-sd`      | the creating start; `Db.setStartupDistance` | 4 bytes, `i32` |
-| `/#i/dreclaim/-table.txt`    | `Reclaim.storeTable`, :901       | the table's rows        |
-| `/#i/dreclaim/-current.txt`  | every step, `Reclaim.step`, :653 | the current row         |
-| `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`, :258      | two lines               |
-| `/#i/dreclaim/-fill.txt`     | `Reclaim.maintain` (024-32)      | zero bytes, then delete |
+| `/#i/dreclaim/-table.txt`    | a record's plan (8.5)            | the table's rows        |
+| `/#i/dreclaim/-current.txt`  | a record that carries a step     | the current row         |
+| `/#i/dreclaim/-settings.txt` | `Reclaim.setSettings`            | two lines               |
+| `/#i/dreclaim/-fill.txt`     | none since 2026-11-27            | reserved                |
+
+The table and the row are KVs of the maintenance that a commit's or a
+part's record carries (`Reclaim.finishPlan`, value transformations of
+the plan, `Kv.planned`; 031-06; 8.5); until 031-06 they were reclaim's
+internal transactions of their own (`storeTable`, `step`).
 
 * **`/#i/-sd`** (`DbConstants.SD_KEY`; 028-15; bkey
   01 25 6b 01 2f 75 66, 7 bytes, two segments; `/#i/-startup-distance`,
@@ -1383,22 +1567,25 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   `/#i/-dummy`, 200,000 zero bytes never read, to get a meta block with
   the new value written; no release since 2026.6 writes or reads that
   key.
-* **`/#i/dreclaim/-fill.txt`** (`Reclaim.MAINTAIN_FILL_KEY_NAME`; since
-  024-32, after this section's reference, so no line number):
-  `maintain()`'s filler (027-13, section 1.10, M5), a value of max(1,
-  `META_BLOCK_DISTANCE` - L mod `META_BLOCK_DISTANCE`) zero bytes, L the
-  stream length, put and deleted in the next transaction, so that a meta
-  block names a transaction at or after a cut position; never read. The
-  call that puts it deletes it, but a stop or a crash between the two
-  records leaves it live until the next filler (RB-010; 028-59,
-  2026-11-25).
-* **A row** (`Reclaim.IterationInfo.serialize`; every step puts its
-  row at `-current.txt`, by a value transformation that adds the bytes
-  of the index nodes the step made dirty, 027-13, section 1.4): a
+* **`/#i/dreclaim/-fill.txt`**: `maintain()`'s filler from 024-32 to
+  2026-11-27, a value of max(1, `META_BLOCK_DISTANCE` - L mod
+  `META_BLOCK_DISTANCE`) zero bytes, L the stream length, put and deleted
+  in the next transaction, so that a meta block names a transaction at or
+  after a cut position; never read; a stop or a crash between the two
+  records left it live until the next filler (RB-010; 028-59). Since
+  2026-11-27 (031-03, R2, built with 031-04's `maintain(int budget)` in
+  031-06's landing) the filler is the table itself, padded (below), in
+  one record, and nothing writes this key. It stays reserved (below), and
+  a start takes a record that holds it as reclaim's own
+  (`Reclaim.isOwnKey`, "2026.6's filler's"; 8.5).
+* **A row** (`Reclaim.IterationInfo.serialize`; the row at `-current.txt`
+  is put by every record that carries a step, 8.5): a
   `StringMap`, lines `name=value\n`, UTF-8 (`StringUtil.toBytes`), twelve
-  names:
+  names, and a thirteenth, a, in every row that a record stores (the row
+  at `-current.txt` and the table's last row; since 031-04, R2):
   pStart, pCut, tStart, tEnd, kvCount, lastKey, endKey, done, cut,
-  rewritten, pEnd, pSafe. Numbers by `"" + long`; done and cut `true` or
+  rewritten, pEnd, pSafe; a, the position of the application's last
+  record (8.5). Numbers by `"" + long`, but rewritten; done and cut `true` or
   `false`; lastKey `null` or the segments as signed decimals separated by
   spaces; endKey (since 026-05: P8, the last key live at tStart, which
   bounds the steps' scans) `none` if no key was live then, or the
@@ -1408,15 +1595,40 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   endKey line and was read with no bound, until 028-15: such a row is in
   a stream of meta version 154, which a start refuses first. endKey came
   with 026-05 without Q9, which Q8 (section 20) asked for first.
-* **The table** (`serialize`, :1356): the rows, each followed by
-  `----next----\n`; parsed by `split` (:1376), and a table with no row is
-  refused.
-* **Reading a row** (`deserialize`, :1202; `StringMap.parse`,
+* **rewritten at a fixed width** (since 2026-11-27, 031-06, landing step
+  3; `Reclaim.REWRITTEN_DIGITS`): 19 decimal digits, zeros first, in every
+  row's text, the table's too. In a record that carries a step, the row
+  and the table are made before the batch with nineteen nines
+  (`REWRITTEN_DUE`, no `long`) in place of the step's row's number; after
+  the batch the row's new rewritten (the step's copies' bytes and the
+  index nodes that the record makes dirty on the step's paths,
+  `Db.chargeStep`, added to it) is written over them in the row's bytes
+  and the table's, the same length, before the record is appended
+  (`Maintenance.Plan.charge`). So the record holds
+  the charge, and no value node changes its size. A reader refuses a
+  rewritten that is not a `long`, the nineteen nines among them
+  (`InternalDataException`, "Missing or non-long key"). Until then
+  rewritten was `"" + long` and the bytes that the batch made dirty after
+  the row were not charged (028-26's second record of the row from
+  2026-11-19 to 031-06).
+* **The table** (`Reclaim.serializeTable`): the rows, each followed by
+  `----next----\n`, the last with a; a table without rows, which a part's
+  M4 stores before a first iteration, is the line `a=<a>\n` alone (031-04).
+  The filler of M5 (031-03, R2) is the table's text followed by spaces
+  (0x20), max(1, `META_BLOCK_DISTANCE` - L0 mod `META_BLOCK_DISTANCE`) of
+  them, L0 the record's position, so that the record passes the next
+  meta block's position (027-13, section 1.10, M5); a reader trims them.
+  Parsed by `IterationTable.parse`: split at
+  `----next----`, each part trimmed, empty parts skipped; a single part
+  `a=` and a `long` is a table without rows; any other table with no row
+  is refused.
+* **Reading a row** (`deserialize`; `StringMap.parse`,
   `common/StringMap.java`:33): lenient. Lines trimmed; lines without `=`
   skipped; names in any order; unknown names ignored; pStart, tStart,
   tEnd, kvCount, lastKey, done and (since 028-15) endKey required; cut
-  (false unless `true`), rewritten (0), pEnd (pStart), pSafe (-1) and
-  pCut (pStart) have defaults.
+  (false unless `true`), rewritten (0), pEnd (pStart), pSafe (-1), pCut
+  (pStart) and a (none) have defaults; a start reads a off the table's
+  last row and the current row, the larger (`Reclaim.initFromDb`).
 * **The settings** (`serializeSettings`, :300; `parseSettings`, :314;
   015-87): exactly `retain=<long>\nfraction=<int>\n`; retain at least
   `Clock.UNITS_PER_SEC` (`Long.MAX_VALUE` is forever, the default without
@@ -1424,7 +1636,9 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   :184, :191). Any other bytes are refused with `InternalDataException`
   ("Bad value of /#i/dreclaim/-settings.txt"), and the start fails
   (`initFromDb`, :762 to :769). Strict on purpose: "the settings of a later
-  version, which this one must neither run without nor drop".
+  version, which this one must neither run without nor drop". Put by
+  `Reclaim.setSettings` in an internal record of its own, which carries
+  no maintenance, only when a setting changes (8.5).
 * **The reserved spaces** (020-22, section 4.1; key-encoding.md, :133 to
   :150): the Core's `/#i/dreclaim/` and `/#i/-sd`
   (`/#i/-dummy` until 028-15); the Pub layer's
@@ -1441,9 +1655,12 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   (028-18).
 
 **Tests.** UT: `DbTesterRestart` (554 to 867,
-`testMalformedSettingsRefusedAtStart`, :817), `StringMap`. C:
+`testMalformedSettingsRefusedAtStart`, :817), `StringMap`,
+`Reclaim.IterationInfo`'s (`testSerializeEndKey`), `DbTesterCoreKeys`
+(the reserved keys, `-fill.txt` among them). C:
 `reclaim.c` (`rc_row_text`, `rc_settings_parse`), `strmap.c`,
-`reclaim.txt`, `strmap.txt`.
+`reclaim.txt`, `strmap.txt`: the C clone's texts, without a and the
+fixed width.
 
 **Gaps.**
 
@@ -1452,8 +1669,12 @@ bkey `01 25 6b 01`; key-encoding.md, :153 to :172):
   lastKey, rewritten, pEnd, pSafe, done, kvCount (endKey since 026-05;
   the others' order unchanged), from `String.hashCode` and the
   JDK's `HashMap` since Java 8 (`c/src/strmap.h`, :1 to :20, copies it).
-  The bytes of every reclaim record depend on it. J2: the numbers' text is
-  `Long.toString`'s.
+  A row with a (031-04), 13 names, passes the map's 12 of 16 buckets and
+  is in the order of 32: a, pCut, cut, pSafe, done, tEnd, endKey, pStart,
+  tStart, lastKey, rewritten, pEnd, kvCount (by `String.hashCode` and
+  `HashMap`'s rule, not by a test). The bytes of every record that stores
+  a row or the table depend on it. J2: the numbers' text is
+  `Long.toString`'s, rewritten's 19 digits since 031-06.
 * G16 (reading). The row parser is lenient where the settings parser is
   strict: a row with a field of a later version is read, the field
   ignored, and dropped at the next store. The table's text has no version.
@@ -1606,6 +1827,7 @@ where the result depends on Java rather than on the bytes.
 | G19 | the node size given by the start             | 6       | `refuseOtherNodeSize`     |
 | G20 | nothing marks an encrypted stream            | 16      | 2026.3's streams          |
 | G21 | no Pub format version in the stream          | 17      | the Pub layer             |
+| G22 | a delete node with the copy mark (031-06)    | 12      | `StoredValueNode.parse`   |
 | J1  | a row's line order is `HashMap`'s            | 15      | `StringMap.serialize`     |
 | J2  | `Long.toString` and `Long.parseLong` texts   | 4, 15   | `StringMap`, `FileStream` |
 | J3  | -ea: refusals become assertions or go        | 14      | `checkLinkById`           |
@@ -1739,8 +1961,10 @@ found here:
   that a writer wrote: later and additive, if those bits are declared
   "must be zero" now and not kept for later fields (Q14).
 * **Q14.** For each reserved range (meta 54 to 126, top
-  node bytes 6 and 7, 12 to 15 and 17, key node 6, 7 and 15, value node 6
-  and 7, paddings): "ignored and copied", which
+  node bytes 6 and 7, 12 to 15 and 17, key node 6, 7 and 15, paddings;
+  a value node's 6 and 7 until 031-06, since when byte 6 is the copy mark
+  and both are refused unless 0 or the mark, section 12): "ignored and
+  copied", which
   lets a later release add a field without a new number (005-50's way), or
   "must be zero, refused", which makes every addition a new number. Before
   the freeze.
@@ -1784,7 +2008,10 @@ refuses 2026.5's databases and older (028-15, option A: meta version
 155). Whether 2026.6's format is a stable one is open: Frans chose 026-12's
 SF4 (a) on 2026-11-18 at 10:50 and set the stable format aside for 2026.6
 at 11:51 ("Let's forget about stable format for the stream. I decide to
-not focus on this for this release.").**
+not focus on this for this release."). 2026.7 refuses 2026.6's databases
+(031-06, section 8, A3, Frans, 2026-11-27: a new format version, refused
+with a clear message, no upgrade path): meta version 156 and record
+format 9.**
 
 ### 21.1. What is versioned today
 
@@ -1798,11 +2025,14 @@ not focus on this for this release.").**
 | index def. version=1 | an index definition (020-10)       | `IndexManager.start`           |
 
 * The refusals are `VersioningStreamException`s, an SFE. The meta
-  block's message names release 2026.5 for version 154, and tells a
-  newer version (`RecoverableStream.versionRefused`; 028-15). The record's
-  message tells an older format from a newer one (`formatRefused`); it
-  named the releases of formats 6, 5 and 2 until 028-15, since when a
-  database of 2026.5 or earlier is refused by its meta block first.
+  block's message names release 2026.5 for version 154, release 2026.6
+  and the builds of 2026.7 before 028-67 for 155, and tells a newer
+  version (`RecoverableStream.versionRefused`; 028-15, 028-67). The
+  record's message tells an older format from a newer one
+  (`formatRefused`); it named the releases of formats 6, 5 and 2 until
+  028-15, since when a database of 2026.5 or earlier is refused by its
+  meta block first; since 031-06 it names release 2026.6 for format 8,
+  which this version does not open, with no upgrade path.
 * A start parses every record from the one the last valid meta block
   names to the end, and the startup section, so a stream of another
   record format is refused at its start; a record outside those is
@@ -1820,9 +2050,11 @@ not focus on this for this release.").**
   older databases ("new databases only", F1-008-11's Q5). 2026.4 refuses
   2026.1 to 2026.3 (023-02, F9 (a)); 2026.5 need not open 2026.4's
   (Frans, 2026-11-10, 19:49); 2026.6 refuses 2026.5's and older, by the
-  meta version (028-15, option A; Frans, 2026-11-18, 10:50). The record
-  format would be raised with the compact nodes (026-12, SF8), if they
-  come in 2026.6.
+  meta version (028-15, option A; Frans, 2026-11-18, 10:50); 2026.7
+  refuses 2026.6's, by the meta version and the record format (031-06,
+  section 8, A3; 028-67). The compact nodes (026-12, SF8), for which the
+  record format would be raised, are in no release: 2026.6 has key node
+  format 3.
 * Not versioned: the file layout, the internal keys' texts (the settings
   are strict and refuse a later form; the rows are lenient and drop it),
   the Pub layer's keys and value encodings.
@@ -1832,9 +2064,12 @@ not focus on this for this release.").**
 * Each record carries its format byte, and each node its own. A reader
   can tell, record by record, which rules apply: the base of a mixed
   stream.
-* The meta block has a version for the framing and 81 reserved bytes that
-  an older reader copies whole: 005-50 added a field there without a new
-  number (`MetaBlock.CURRENT_VERSION`'s comment, :40 to :50).
+* The meta block has a version for the framing and reserved bytes that
+  an older reader copies whole, 77 since 028-67 (40 to 43 and 54 to 126;
+  81 at 46 to 126 when this was written): 005-50 added a field there
+  without a new number (`MetaBlock.CURRENT_VERSION`'s comment); 028-67's
+  position at 46 took a new number, as an older reader would neither write
+  nor check it (section 6).
 * The messages tell older from newer.
 
 ### 21.3. The options for 2026.5's rule
@@ -2012,3 +2247,19 @@ zeros only after a size field's missing bytes, and completes a size to 48
 or more (section 7, "A cut record" and "The completion"). A start no
 longer refuses what an earlier start's completion wrote. By an agent of
 lead-1127, on the branch `028-67-t1`.
+
+2026-11-28. Brought up to date with 031-06's landing (record format 9,
+one record an action; steps 2 to 4) and with 028-62, 028-66 and 028-69,
+from the code at `8a0897cf`: section 1 (8.5, G22); 2 (line numbers);
+3 (format 9 described in 8.5, 12, 8.3, 15); 4 (a new file a tenth, the
+cut's deletes a batch, the files before a gap, `created.txt`'s crypto
+line); 8.2 (format 9, the history); 8.3 (the record's cap, `stepRoom()`,
+the take's room, `checkTakeable`); 8.4 (the merge of the action's KVs and
+the plan's); 8.5, new (what a record holds, the copies, the row and the
+table, the touch, a and the witness); 9 (bytes 6 and 7, G13); 12 (the
+copy mark, G22); 14.2 (step 7: a, the cut at a start); 15 (the table and
+the row as the plan's KVs, `-fill.txt` no longer written, M5's padded
+table, a, rewritten at 19 digits, the table without rows, the HashMap
+order with a); 19 (G22); 20 (Q14); 21 (2026.7 refuses 2026.6's, the
+messages, the reserved bytes). By an agent of lead-1127, on the branch
+`031-06-docs`.

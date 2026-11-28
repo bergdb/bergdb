@@ -5,8 +5,10 @@ Frans to read.
 
 Part 7 of 027 (027-04, section 2.3; Levels 1 and 2): from the stream to a
 running database. The rule as `main` has it at c82bce56 (2026-11-13),
-read from the code. It replaces 027-01's `sis-model.md`, section 6.2, and
-`levels.md`, section 4 and the startup points of section 5. The bytes are
+read from the code; sections 1 to 4 and 6 to 8 checked against `main` at
+8a0897cf (2026-11-28) for the changes since release 2026.6. It replaces
+027-01's `sis-model.md`, section 6.2, and `levels.md`, section 4 and the
+startup points of section 5. The bytes are
 027-03's (sections 6, 7, 8 and 14); T1 to T4, the take, D, Rule A and the
 startup pos policy are part 6's (027-10; until it is written, 027-01's
 `sis-model.md`, sections 5 and 6.1); a first touch after a start is part
@@ -23,7 +25,12 @@ the section's index nodes, finds the super root at the startup time,
 reruns the section's transactions, rebuilds D from the stored got-dirty
 ids and links D's pointers (rule 4). Every other node is read at its
 first touch. A start appends nothing but a new database's creation and
-recovery's fill.
+recovery's fill; a cut that reclaim makes at a start (1.9) may delete
+stream files, and appends nothing. Since 031-06 (2026-11-27) each record's
+maintenance is decided from the stream before it and its action (031-06,
+section 2, rules 1 and 3), so a start has none of reclaim's work to
+complete: it reads reclaim's state off the stream (1.9) and writes
+nothing for it.
 
 ### 1.1. Terms and constants
 
@@ -51,8 +58,8 @@ In this order, under the write lock and `readSync`; from step 2 on, a
 refusal has written nothing:
 
 1. **An empty stream** is created: meta block 0 (lastTrans −1, the
-   node size, the builder's id or a random one, the time; sd too until
-   028-15) and the
+   node size, the builder's id or a random one, the time, its own
+   position 0 since 028-67; sd too until 028-15) and the
    primordial record, a super root and an empty key node: 272 bytes
    (`Db.CREATION_LENGTH`, asserted at the creation; 264 until 024-25,
    26c21000). The creation's second record, the startup distance's, is
@@ -85,12 +92,28 @@ refusal has written nothing:
    of another place or database (as an older stream file's or another
    database's bytes in the last file after a kill leave it, 035-02) is
    not valid and passed over. B's time must not be negative. None valid:
-   an SFE.
+   an SFE; for a stream whose first position is after 0 its message says
+   that the stream may lack bytes that the database needs, with the
+   storage's account of its front (028-66; for `FileStream` it names a
+   gap in the files, 027-14).
 4. **Its node size**: 0 or above 62 is a damaged block (0 was a stream
    before 2026-10-27 until 028-15, 005-50); another than the start's (30
    but in tests, 026-08) is refused.
 5. **Its lastTrans**: −1, or from max(128, the first position) to below
-   the block (019-34); else an SFE.
+   the block (019-34); else an SFE. One from 128 to below the first
+   position is refused as a stream that lacks bytes the database needs,
+   from that record on, with the storage's account (028-66,
+   `RecoverableStream.checkLastTransSpos`).
+6. **The files before a gap** (Frans, 2026-11-27; 028-66, section 6.2):
+   the bytes that the storage holds before its first position and deletes
+   at the next cut, `FileStream`'s files before a gap in its files (027-14),
+   are given to the start one by one, oldest first
+   (`AppendOnlyStream.checkLeftovers`); each one's first meta block must be
+   of this version, valid, with its own position and B's database id
+   (`RecoverableStream.leftoverProblem`), else the start is refused, a
+   `StreamIoException` whose cause, for `FileStream` a
+   `BadDirStateException`, names the file, what its block holds and the way
+   out. The storage deletes none of them before such a check has passed.
 
 ### 1.3. Recovery
 
@@ -204,7 +227,7 @@ holds its check, are not read: the record is completed and aborted.
     for each record R from B.lastTrans (128 if −1) to the end:
         refuse R's header unless its size is above 16 and at most the
             record limit, its last byte is 0 or 10, and, if 10, its
-            format byte is 7 (else a VersioningStreamException)
+            format byte is 9 (else a VersioningStreamException)
         the first R must be committed; skip R if not committed
         parse R whole, its header's check too        (028-67)
         refuse unless 0 <= R.startupPos < R's position, a multiple
@@ -232,6 +255,18 @@ stream only (`Db.readStartupPos`, `Db.readStartupDistanceKv`): `Db.start()` has 
 parameters. Until 028-10 (2026-11-14), the public `Db.start(StartParams)`
 took a caller's s and sd unchecked and skipped the walk above; an s
 after the stream's lost the keys before it for good, a bug by R5.
+
+The record format is 9 since 031-06 (2026-11-27;
+`StoredTrans.RECORD_FORMAT`; 027-03, section 8.2): release 2026.7 does not open a database of release
+2026.6 (Frans, 2026-11-27), and there is no upgrade path. A database of
+2026.6 has meta blocks of version 155 and is refused by its first block
+(1.2, step 3) before a record is read. A committed record of another
+format under a block of version 156 is refused by the walk before
+anything is written (1.3: the format if it is the first record walked,
+else the header's check, which covers the format byte), and here; for
+format 8 the message names release 2026.6 and says that release 2026.6
+still opens it (`StoredTrans.formatRefused`;
+`NodeStreamTester.testStartRefusesFormat8`).
 
 Then the section is validated (005-75), with or without `-ea`: record
 positions at least 128 and strictly increasing; times from 0 to 2^56 − 1
@@ -334,17 +369,26 @@ where only the id finds a canonical object (a damaged prevPos,
 ### 1.9. The end of a start
 
 Every value node in memory has a position and every key node passes its
-check (`postStartupCheck`, always on; an `AssertionError` otherwise); the
-cut back ends (M22); Rule R stays. The STM's first time is the last
-record's (after the validation, 005-75); `created.txt` is written if
-missing (015-01); the database is active; sd is read from its KV
-(`Db.readStartupDistanceKv`, 028-15: 4 bytes, 10 to 10^9, else an
-`InternalDataException`; no KV is an SFE unless this start created the
-stream, when the default sd, 50 MB, is kept); reclaim reads
-its settings and table, and makes a cut that a crash left pending
-(027-13, section 1.9); eviction takes in what the start made resident
-(015-68, 019-47). The creating start writes the creation's second
-record now: an internal transaction that puts the default sd, 50 MB
+check (`postStartupCheck`, always on; an `AssertionError` otherwise);
+the cut back ends (M22); Rule R stays. The STM's first time is the last
+record's (after the validation, 005-75); the database is active; sd is
+read from its KV (`Db.readStartupDistanceKv`, 028-15: 4 bytes, 10 to
+10^9, else an `InternalDataException`; no KV is an SFE unless this start
+created the stream, when the default sd, 50 MB, is kept); reclaim reads
+its settings, its table and its current row, and takes a, the position
+of the application's last record, off the stream's last record R(k):
+R(k)'s position, unless R(k) is reclaim's own, a record that holds a key
+of reclaim's that is not a copy (the witness), whose rows hold a as it
+was after R(k) (031-06, section 2, rule 6; 031-04, R3). It refuses a
+stream whose first position is after the newest cut (fp, 0 if none;
+1.10), and makes a cut that a crash or a power loss left pending
+(027-13, section 1.9; 028-66); it writes nothing. Then `created.txt` is
+written if missing (015-01; after reclaim's refusal since 2026-11-27,
+028-66's review, R2: before, a start so refused wrote a missing
+`created.txt` first); eviction takes in what the start made resident
+(015-68, 019-47). The creating start writes the creation's second record
+now: an internal transaction with no maintenance (`Trans.noMaintenance`;
+031-06, section 2, rule 11) that puts the default sd, 50 MB
 (`Db.DEFAULT_STARTUP_DISTANCE`), at the KV, the writer's first (027-03,
 section 14.2; the builder's sd until 028-13, when
 `DbBuilder.startupDistance` was removed: another sd is set by
@@ -352,10 +396,10 @@ section 14.2; the builder's sd until 028-13, when
 records are synced, and `created.txt` written, before the start returns
 (028-17, 028-18). A crash before that leaves a stream that the next
 start refuses (1.2, step 2); from 028-15 to 028-18 such a start wrote
-the record itself, with its own builder's sd. The
-start returns s as stored, sd, ts, the records read and R(k)'s last
-position (`StartInfo`). A start that throws closes the storage before
-the exception leaves (005-32).
+the record itself, with its own builder's sd. The start returns s as
+stored, sd, ts, the records read and R(k)'s last position (`StartInfo`).
+A start that throws closes the storage before the exception leaves
+(005-32).
 
 ### 1.10. A start after a cut
 
@@ -366,6 +410,24 @@ below the first position are not searched. A pointer below the first
 position names a version dead for every lookup time from fa on: rule 4
 and the writer's resolve leave it (M33); a read that meets it is
 027-13's, section 1.8.
+
+A start reads nothing before the newest cut fp that the table records:
+the last valid meta block names a record at or after it, the startup pos
+is at or after it, and every node and value of the latest state is
+stored at or after it (028-66, section 5.2; argued from Reclaim's class
+comment, and checked by the restarts on `CutStream`, which refuses a read
+below its cut). So the storage's first position may be before fp, as
+after a crash between the table and the cut, or a power loss that left a
+gap in `FileStream`'s files (027-14); the start then cuts at fp, which
+deletes what the storage holds before it, the files before a gap once
+1.2's step 6 has passed. A first position after fp means that the stream
+lacks bytes of the database (a file removed by hand, a copy that missed
+files): `Reclaim.initFromDb` refuses the start (a `StreamIoException`
+whose cause, a `ReadBelowFirstPosException`, names the first position,
+the cut and the storage's account), and a read below the first position
+during a start is refused the same way (`Db.refusalOfMissingBytes`);
+nothing is deleted (028-66, 2026-11-27; before, the start went on, and
+reads of those bytes failed the database later).
 
 ### 1.11. Level 1
 
@@ -390,7 +452,9 @@ whole stream" until 028-11.
   the take's queue of T(s+1), ..., T(k) with their got-dirty nodes; the
   meta block in memory, its lastTrans at R(k), so that the next block is
   the one a run without the restart writes; the clock's last time and
-  the STM's first time.
+  the STM's first time; reclaim's settings, rows, a and first available
+  position and time, as the running database had them after R(k) (1.9;
+  027-13, section 2).
 * **In the stream**: 027-03's meta blocks (section 6), frame and fill
   (7), startupPos, topPos and got-dirty pairs (8.1), prevPos (11) and
   references (14.1).
@@ -404,6 +468,16 @@ whole stream" until 028-11.
   5). Gated: CrashTest, CorruptStreamTester's truncations,
   `testCrash8InCreation`, PowerLossTest (T1); RestartInvariance, the
   stream byte for byte, `testLevel2SameStreamWithRestarts` (T2).
+* **A restart or a stop changes no byte** (since 031-06, 2026-11-27):
+  every record is decided by the stream before it and its action, and a
+  start's memory of what decides the next record, reclaim's settings,
+  rows, a and first available position and time among it, is the running
+  database's after R(k) (031-06, section 2, rules 3 and 6). Checked, not
+  gated: 031-06's probes, a crash, a failure before `apply` and a stop at
+  every record boundary of 23 runs, 27,741 interruptions, each continued
+  to the uninterrupted stream, with the start's memory the running
+  database's at each, and 570 torn records continued the same (031-06's
+  landing, step 3, after review 3).
 * **INV-1** (`sis-model.md`, section 8): each node at most once in D;
   the D rebuilt is the run's: proved (`T1_recovery`).
 * **Rule R is safe** (lemma M): a newer version serves every time an
@@ -419,8 +493,17 @@ whole stream" until 028-11.
   version, the node size and an incomplete creation
   (`testRecoverUnreadableWritesNothing`,
   `testRecoverOtherVersionWritesNothing`, `testOtherNodeSizeRefused`,
-  `testIsIncompleteCreation`); not so for a refusal after recovery's
-  fill, as of another record format (027-03, G18 and Q15).
+  `testIsIncompleteCreation`); since 028-67 for the walk's refusals, a
+  tail that is not the stream's records and another record format
+  (`DbTesterTail`, `NodeStreamTester.testStartRefusesFormat8`); since
+  028-66 for the files before a gap that are not the database's and a
+  stream whose first position is after its cut, which also delete
+  nothing (`FileStreamPowerLossTester`, the files compared byte for byte;
+  027-14). Not so for a refusal after recovery's fill: by a check of a
+  record before the walk's first or of the section, of the startup
+  distance's KV, of reclaim's settings or table, or of the first position
+  against the cut, a start may first have completed a torn tail (027-03,
+  G18 and Q15; 028-70, open).
 
 
 ## 4. Costs and bounds
@@ -433,7 +516,12 @@ T3 and T4 are part 6's; what they give a start:
   (TakeCheck). Left out: the record limit and the meta blocks. The
   search for s also parses the record B names and those after it: less
   than MD after B (2 MD after a crash in a block), plus the record over
-  B, up to the record limit: argued.
+  B, up to the record limit: argued. Since 028-67 recovery's walk (1.3)
+  reads those records' headers first and parses the last committed one
+  whole, which the search for s parses again: a start of a file database
+  whose last record is 106.6 MB, in a stream of 523 MB, took 4.8 to 5.0 s
+  on F53: measured (031-06's landing, step 2, the timing run of
+  2026-11-28, `bigtail.sh`).
 * **The transactions rerun**: fewer than 2 sd / 48 + 1, T(k) included:
   proved for records of at least m bytes (`T3_take_rerun`), and every
   Java record has at least 48 (`TransSeq.ownBytes`).
@@ -550,8 +638,14 @@ calls, `readStartupPos` and `readStartupDistanceKv` among them;
 `linkToCanonical`, `checkLinkById`); `NodeStream.TransIterator`,
 `readRecordHeader`; `TransSeq.TransInfo`, `ownBytes`; `KeyNode`
 (`toPreviousState`, `validateStreamNode`); `TopDs.findSuperRootAtTime`;
-`Reclaim.initFromDb`; `storage/RecoverableStream` (`recover` and its
-helpers, `isIncompleteCreation`) and `MetaBlock`. The Pub API:
+`Reclaim.initFromDb` (a, `isOwnRecord`; the first position against the
+cut, `StreamAfterCutException`); `Db.refusalOfMissingBytes`;
+`storage/RecoverableStream` (`recover` and its helpers, `walkTail`,
+`tornRecordIsOwn`, `checkLastTransSpos`, `checkLeftovers`,
+`leftoverProblem`, `isIncompleteCreation`), `RecoverableStream.RecordCheck`
+and the Core's, `StoredTrans.RECORD_CHECK` (`headerCheck`,
+`formatRefused`), `BadTailException` and `MetaBlock` (`isOwn`); the
+storage's `AppendOnlyStream.checkLeftovers`, `FileStream`'s. The Pub API:
 `Database.getStartupInfo()`. The C clone (012, 022): `starter.c`,
 `recover.c`, `meta.c`, `ncoll.c`, without the prevPos refusal and the
 cycle check (027-03, 14.2).
@@ -559,25 +653,36 @@ cycle check (027-03, 14.2).
 
 ## 7. Tests
 
-* **Gated by `before-commit.sh`**: `DbTesterRestart` (42, 6 of them f;
+* **Gated by `before-commit.sh`** (the counts of 2026-11-28):
+  `DbTesterRestart` (46, 6 of them f;
   the refusals of corrupt times, startupPos, got-dirty ids, an older
   topPos, a meta block's lastTrans, another or no node size; a crash
   inside `setStartupDistance` and a startupPos at its own record, 028-08
   and 028-09);
-  `DbStarter` (7); `RecoverableStream` (37: crashes in a header, a record
+  `DbStarter` (7); `RecoverableStream` (43: crashes in a header, a record
   and a meta block, the fill, an incomplete creation, refusals that
-  write nothing); `MetaBlock` (4); `NodeCollection`'s `testFollowRuleR`
+  write nothing, `testLeftoverProblem`); `MetaBlock` (5, its own position
+  and id among them); `NodeCollection`'s `testFollowRuleR`
   and five `testLinkToCanonical*`; `DbTester.testCrash8InCreation`;
-  CorruptStreamTester's sample and six `testFound*`; rule 4's `-ea`
-  check at every start; `DbTesterTail` (028-67: stale tails, zeros,
-  another database's bytes and an older stream file's, each started or
-  refused before a write and started after the cut at P; its f-tests on
-  every 512 bytes and on a file database's last file); `StoredTrans`'s
-  `testHeaderCheck` and `testRecordCheck`.
+  CorruptStreamTester's sample and seven `testFound*`; rule 4's `-ea`
+  check at every start; `DbTesterTail` (8 of its 11, 2 of them f; 028-67:
+  stale tails, zeros, another database's bytes and an older stream file's,
+  each started or refused before a write and started after the cut at P;
+  T1's `testCompletionTakenLater` and `testCompletionTakenLaterFiles`, the
+  stream after a start's completion cut, and zeroed, as a kill during it
+  leaves it, each started, and its completion the first start's byte for
+  byte; its f-tests on every 512 bytes and on a file database's last
+  file); `StoredTrans`'s `testHeaderCheck` and `testRecordCheck`;
+  `NodeStreamTester.testStartRefusesFormat8` (031-06); the gap's tests of
+  027-14 (028-66), `PubTesterJavadocNewUsers.testStartWithTheFirstFileDeleted`
+  among them.
 * **In the night**: `level2.sh` (RestartStress, RestartInvariance,
   CrashTest, C-L); `level3.sh` (with reclaim; PowerLossTest);
   `level4.sh` (with eviction); CorruptStreamTester's full set;
-  `kill-restart.sh`. By hand: `performance.sh`'s restarts; StartupBench.
+  `DbTesterTail`'s three night tests (every cut of a completion, a long
+  run of zeros in a header); `kill-restart.sh`. By hand:
+  `performance.sh`'s restarts; StartupBench; 031-06's probes of the
+  interruptions at every record boundary (`P2CrashProbe`, section 3).
 
 
 ## 8. Principles and rules
@@ -587,12 +692,16 @@ start's reads by `coldReads_*` (for Java reduced to `DropStep`; at
 the tag `proofs-2026-11-17`); the
 time measured, with no constant. **P2**: a restart changes no record
 (T2); the meta block in memory is set as the run without the restart
-has it. **P10**: sd is the start's one setting, in the stream. **P7**: a
+has it; since 031-06 a stop changes no byte either, and a start reads
+reclaim's state off the stream and writes nothing for it (1.9; section
+3). **P10**: sd is the start's one setting, in the stream. **P7**: a
 stream that breaks a check is refused with an SFE; damage the checks
-miss may fail a read later (014-01, section 7, point 3). **R1**: a
-refused start writes nothing, but recovery's fill before a refusal
-after it (G18). **R5**: a start takes s and sd from the stream only;
-no parameter gives them (1.4; 028-10). **P12**: keys and values are
+miss may fail a read later (014-01, section 7, point 3); a tail that is
+not the stream's records is refused before anything is written, with P
+and the way out (028-67). **R1**: a refused start writes nothing, but
+recovery's fill before a refusal after it (G18; 028-70). **R5**: a start
+takes s and sd from the stream only; no parameter gives them (1.4;
+028-10). **P12**: keys and values are
 bytes. **P1** is about a running database; a start holds both locks,
 and P5 bounds it.
 
@@ -649,7 +758,10 @@ validation); 007-01, 007-03 (step 6), 007-05 (warm and cold), 007-08
 (G3); 011-11 (8.3, M18); 014-01 (section 7); 015-01; 015-68, 019-47;
 015-73, 015-75; 019-21; 019-32, 021-11; 019-34; 019-45 (the heap);
 020-24-13 (U13-7); 020-28; 021-12; 024-05 (BD6); 024-21, 024-25 (format
-7); 026-08; 027-03 (sections 6 to 8, 14).
+7); 026-08; 027-03 (sections 6 to 8, 14); 028-60 (a tail of zeros);
+028-66 (the gap, the files before it, a stream that lacks bytes); 028-67
+(C1, C3, T1); 031-04 (R3, a); 031-06 (section 2, rules 1, 3, 6 and 11;
+record format 9; the sweep); 035-02 (another file's bytes after a kill).
 
 
 Log
@@ -723,3 +835,18 @@ header and zeros follow them; the completion writes zeros only after a
 cut size field's missing bytes, and completes a size to 48 or more; so
 every later start takes what a start's completion wrote (1.3). By an
 agent of lead-1127, on the branch `028-67-t1`.
+
+2026-11-28. Brought up to date with 031-06's landing and 028-66's option
+C, from the code at 8a0897cf: section 1 (a start has none of reclaim's
+work to complete, 031-06); 1.2 (meta block 0's own position; step 3's and
+step 5's refusals of a stream that lacks bytes; step 6, the files before
+a gap, 028-66); 1.4 (record format 9 and the refusal of 2026.6's
+databases, 031-06; the header's format byte 9, not 7); 1.9 (reclaim's a
+read off the last record by the witness, 031-06, rule 6; the refusal of a
+first position after the cut; `created.txt` after it; the creation's
+second record without maintenance); 1.10 (a start reads nothing before
+the cut; the gap; the refusals of a stream that lacks bytes); sections 2,
+3 (a restart or a stop changes no byte, checked by 031-06's probes; R1 and
+the walk's refusals), 4 (the walk's parse of the last record), 6, 7
+(the counts of 2026-11-28), 8 and 10. By an agent of lead-1127, on the
+branch `031-06-docs`.
