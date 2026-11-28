@@ -135,6 +135,15 @@ Released bugs fixed
   transactions. Every accepted action now appends one record, and a
   commit's record holds the maintenance that reclaim owes, so nothing
   lies between. No value was lost or changed.
+* **RB-014, S4. A creation that a kill left as zeros was not refused
+  as a creation** (bergdb 033; 028-80, 2026-11-28). After a kill during
+  a new database's creation that left the file storage holding zeros
+  only where the creation's first write should be, the start threw
+  `StreamFormatException`, not `DatabaseNotCreatedException`, so an
+  application that removes the files of a database that was not created
+  did not. Such a stream, zeros only and at most 200,000 bytes from 0,
+  is now refused as a creation that did not complete, and the start
+  writes nothing.
 
 
 Known released bugs

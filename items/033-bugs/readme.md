@@ -70,17 +70,17 @@ in the first published release that has it. Updated with each entry.
 
 | Release | S1 | S2 | S3 | S4 | All |
 |---|---|---|---|---|---|
-| 2026.5 | 0 | 3 | 2 | 8 | 13 |
+| 2026.5 | 0 | 3 | 2 | 9 | 14 |
 | 2026.6 | 0 | 0 | 0 | 0 | 0 |
 
 Released bugs in each release, each bug counted in every published
-release that has it (2026.6 has RB-005 to RB-013, first found in
+release that has it (2026.6 has RB-005 to RB-014, first found in
 2026.5):
 
 | Release | S1 | S2 | S3 | S4 | All | IDs |
 |---|---|---|---|---|---|---|
-| 2026.5 | 0 | 3 | 2 | 8 | 13 | RB-001 to RB-013 |
-| 2026.6 | 0 | 1 | 2 | 6 | 9 | RB-005 to RB-013 |
+| 2026.5 | 0 | 3 | 2 | 9 | 14 | RB-001 to RB-014 |
+| 2026.6 | 0 | 1 | 2 | 7 | 10 | RB-005 to RB-014 |
 
 
 Released bugs
@@ -456,6 +456,36 @@ RB-013. A stop between a transaction's record and reclaim's records after it cha
   `landing.md`, step 2: 27,720 interruptions at record boundaries, 0
   different). Fixed on `main` for 2026.7.
 
+RB-014. A creation that a kill left as zeros is not refused as a creation
+-------------------------------------------------------------------------
+
+* **What a user sees:** when the process is killed during a new
+  database's creation and the file storage is left holding zeros only
+  where the creation's first write should be (APFS, as RB-012's zeros),
+  the next start throws `StreamFormatException` ("Invalid magic bytes in
+  stream"; "Bad transaction size in db stream, 0" when part of the
+  creation was written and zeros follow it), not
+  `DatabaseNotCreatedException`, the exception of a creation that did
+  not complete. An application that removes the files of a database
+  that was not created and starts it again does not do so here, and the
+  database does not start until a person removes its files. No data:
+  the database was never created.
+* **Severity:** S4.
+* **Releases:** 2026.5 and 2026.6 (run on 2026.6; 2026.5 has the same
+  condition in `RecoverableStream.isIncompleteCreation`, by the
+  sources); fixed on `main` for 2026.7.
+* **Found:** 2026-11-28, by the review of the start and recovery path
+  (`reviews/2026-11-28-start.md`, F3; its `CreationZerosProbe`); shown
+  on release 2026.6, built from its tag, by an agent of lead-1127; not
+  known at the releases.
+* **Fix:** 028-80 (`d5aa1cf7`), 2026-11-28: a stream that begins at 0,
+  is at most a meta block distance (200,000 bytes, the file storage's
+  first file) long and holds zeros only is an incomplete creation; the
+  start refuses it with `DatabaseNotCreatedException` and writes
+  nothing. The same entry's second finding, the zero tail's bound and
+  the Core API's buffer size (F4), is not in 2026.6, which leaves no
+  zeros out.
+
 
 Log
 ===
@@ -590,3 +620,11 @@ The counts are unchanged: they count the bugs in the releases.
 a new file is at least 1 MB once 4 MB of stream are kept, so the disk's
 bound is a tenth, or 1 MB while 4 to 10 MB are kept. The counts are
 unchanged.
+
+2026-11-28. RB-014 registered and fixed on `main` for 2026.7 (028-80,
+`d5aa1cf7`), S4: a creation that a kill left as zeros is refused with
+a `StreamFormatException`, not as a creation that did not complete, in
+2026.5 and 2026.6. Found by the review of the start path of 2026-11-28
+(`reviews/2026-11-28-start.md`, F3). Named in the section "After the
+release" of 2026.6's and 2026.5's notes and in `releases/next.md`;
+counts updated.

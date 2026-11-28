@@ -111,7 +111,6 @@ Open
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 | [028-78](78-deleted-copy-passes-c3.md) | Decide | A deleted copy of the database's bytes in the tail pass C3 (a restore in place; 035-02's storage) | decision, with 028-77 | open |
 | [028-79](79-other-bytes-at-first-block.md) | Fix | Other bytes at a meta block's position, once taken, refuse a later start | none; by default 10:30 | open (on a branch) |
-| [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros is not refused as one; the zero tail's bound and the buffer | none | built on a branch, to land |
 
 
 Closed
@@ -119,6 +118,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [028-80](80-creation-zeros-zero-tail-bound.md) | Fix | A creation left as zeros now refused as one (RB-014); the zero tail's bound for every buffer | none | done | 2026-11-28 |
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A refused start wrote recovery's fill: now held until the last check | none | done | 2026-11-28 |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Large commits: a commit's step sized by its allowance; 18 times the live data at 1 MB commits | closed | done | 2026-11-28 |
 | [028-53](53-maintain-idle-rewrites/readme.md) | Investigate | Idle rewrites by M1; RB-007 fixed by 031-06; the rest is 028-75 | closed | done | 2026-11-28 |
@@ -735,3 +735,7 @@ bound, to an agent. 028-76 has the review's notes on its decided case.
 first write listed, six checks, each of what the start reads; the
 recovery's writes are held in memory until the last of them, and a
 refused start writes nothing. Moved to Closed.
+
+2026-11-28. 028-80 done: F3 and F4 of the review of the start, with
+028-70's follow-up, landed on `main` (`d5aa1cf7`, `929537b5`,
+`71cf993e`); F3 is RB-014 (033). Moved to Closed.

@@ -662,3 +662,8 @@ Added after 2026-11-24; the notes above are as published on that day.
   2026.5: a stop between a transaction's record and reclaim's records
   after it changes the stream's bytes after a restart; fixed on main for
   2026.7 (bergdb 031-06; [bergdb 033](../../items/033-bugs/readme.md)).
+* 2026-11-28. **RB-014, S4**, found after the release, in 2026.6 and
+  2026.5: a creation that a kill left as zeros is refused with a
+  `StreamFormatException`, not as a creation that did not complete;
+  fixed on main for 2026.7 (bergdb 028-80;
+  [bergdb 033](../../items/033-bugs/readme.md)).

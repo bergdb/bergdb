@@ -1,8 +1,9 @@
 028-80. Fix: a creation left as zeros is not refused as a creation; the zero tail's bound rests on the default buffer
 =====================================================================================================================
 
-Status: built and gated on the branch `start-fixes` (2026-11-28), to
-land. Kind: Fix. Frans: none.
+Status: done (2026-11-28): on `main` (`d5aa1cf7`, with 028-70's
+follow-up `929537b5` and the gates `71cf993e`); F3 is RB-014 (033).
+Kind: Fix. Frans: none.
 Created 2026-11-28 by Frans Lundberg.
 
 What: two findings of the review of the start path of 2026-11-28 (033,
@@ -161,6 +162,10 @@ follow-up (its review's three notes, the commit after 028-80's).
   chains no later refusal of F2 (028-79). `StaleFirstBlockProbe`, as on
   `main`: F2's refusals (028-79).
 
+On `main`'s tree at `8fe32468` with the three commits, as they landed
+(2026-11-28, the lead): `java/before-commit.sh`, BEFORE COMMIT OK (161
+s); `java/stress/level3.sh`, LEVEL 3 OK.
+
 
 Log
 ---
@@ -175,3 +180,7 @@ and `FileStream`'s writes of at most 5 MB; 2026.6 shows F3.
 2026-11-28. The gates passed (above). Release 2026.6 refuses a
 creation left as zeros with a `StreamFormatException`, so F3 is in it,
 for 033.
+
+2026-11-28. Landed on `main` (`d5aa1cf7`, `929537b5`, `71cf993e`)
+after the gates of the combined tree (above). F3 registered in 033 as
+RB-014, S4, in 2026.5 and 2026.6. Done.

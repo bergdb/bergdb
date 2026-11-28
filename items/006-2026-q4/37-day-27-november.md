@@ -806,6 +806,49 @@ The lead's overview (08:30), its conclusions:
     (recorded in 028-76).
   An agent (Opus, effort xhigh) starts on 028-80 and prepares 028-79's
   fix on a branch.
+* 2026-11-28 08:05 028-70 done on a branch: six checks of a start
+  came after the recovery's first write; all moved: the recovery's
+  writes are held in memory and written after the start's last check,
+  the same bytes in the same order, so a refused start writes nothing;
+  a committed record of another format is refused as a version, not as
+  a tail with advice to cut it. `BEFORE COMMIT OK`, `LEVEL 2 OK`,
+  `LEVEL 3 OK`, the sweep 0 different, `faults.sh` bad 0, the power-loss
+  tester. An independent review before it lands (Opus, effort xhigh,
+  until 09:15).
+* 2026-11-28 08:58 028-70's review: no finding against the change; the
+  files after 884 cuts identical to `main`'s, 333 cases with reclaim's
+  cuts identical but for 8 where `main` refused after writing, 6,810
+  starts of 033's `StartChain` with no failure; three notes of S4 (two
+  stale texts, a missing test), given to the agent of 028-80. 028-70
+  landed (`2b134c37`, `a5469731`). Started: 028-73 (b), 028-74 (a) and
+  031-07's follow-up (an agent, Opus, effort high).
+* 2026-11-28 09:30 Landed: 028-73 (b), new files of at least 1 MB from
+  4 MB kept (`68a26a38`, `1270ec3c`, `28a557fd`; the wait to be timed on
+  a quiet machine); 028-74 (a), the limit of `currentTime()` in the
+  Javadoc of `Connection`, `Database` and `Db` (`1a136a9c`); 031-07's
+  follow-up, 010-R6 cited in the Javadoc and 030-04 (`f51fa0b2`; 031-07
+  done). `LEVEL 3 OK`, `BEFORE COMMIT OK`. Started: O1 (b), the cap of
+  1,024 bytes on BergDB's own long keys (an agent, Opus, effort high,
+  until 11:30).
+* 2026-11-28 09:48 Frans asked that 031-02's apps be brought up to date,
+  run, and kept running: they are only in 031-02's directory, run by no
+  script, and no longer compile since `maintain()` takes a budget. An
+  agent (Opus, effort high, until 12:30) updates them, runs them on
+  `main` and moves them into `java/stress/apps.sh` (which `week.sh`
+  runs).
+* 2026-11-28 09:51 Frans away from BergDB until Monday 2026-11-30. The
+  plan of 2026-11-27 holds until then; class 3 waits for him.
+* 2026-11-28 10:00 028-72 A went ahead by default (section 4.4): an
+  agent at the next free slot.
+* 2026-11-28 10:16 028-80 landed (`d5aa1cf7`, with 028-70's follow-up
+  `929537b5`, and `71cf993e`): a creation that a kill left as zeros is
+  refused as a creation that did not complete, and `FileStream` writes
+  at most 5 MB at a time, so the zero tail's bound holds for every
+  buffer. On the combined tree `BEFORE COMMIT OK` and `LEVEL 3 OK`; on
+  the branch the sweep, `faults.sh`, the power-loss tester, 1,000 kills
+  of `kill-restart.sh` and 4,000 starts of `StartChain`. F3 is in
+  2026.5 and 2026.6: RB-014, S4 (033). 028-79's fix is built, in its
+  gates, with an independent review before it lands.
 
 ## 4. Waiting for Frans
 
