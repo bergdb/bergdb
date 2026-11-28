@@ -494,6 +494,7 @@ public class CountGates {
     /** G4's measures of one database at the end of its drive. */
     static final class G4M {
         long keptMax, reach, klongs, dead, objects, handles, slots, heap, userKeys;
+        long noTable, over16;   // maps without a table; slots above MIN_CAPACITY (028-87)
         long firstCut = -1, lag = -1, kept4R = -1;     // drive transactions; kept at 4 R
         // G5: the last call that returned true, the calls that wrote, the most bytes and
         // records of a call, the bytes of the drive.
@@ -613,6 +614,8 @@ public class CountGates {
             for (Object t : (Object[]) field(cache, "tables")) {
                 Object[] table = (Object[]) field(field(t, "map"), "table");
                 if (table != null) m.slots += table.length;
+                if (table == null) m.noTable++;
+                else m.over16 += Math.max(0, table.length - Cache3.Table.MIN_CAPACITY);
                 int len = table == null ? 0 : table.length;
                 int size = ((Map<?, ?>) field(t, "map")).size();
                 int[] a = byLength.get(len);
@@ -701,9 +704,26 @@ public class CountGates {
      * maps used after 40,000 transactions (G4's settings, R = 1,000) and 1,593 after 8,000
      * (g4sd=1000000 dt=50000, R = 200), so at those settings the emptied database at the
      * floor, 3,932 maps of 16 slots, was 2.47 times the twin's.
+     *
+     * <p>The count varies by run, the pass does not (bergdb 028-87). The capacity
+     * controller's eviction during the fill (the resident bytes over the default budget of
+     * 200 MB) runs in batches that end after 2 ms (Eviction.BATCH_NANOS), or, on the eviction
+     * thread, when the writer waits for the write lock; so which handles leave a map when,
+     * and so which maps are left with no table (0 slots, a shrink to no entries) rather than
+     * an empty one of 16, depends on the timing: G5's emptied database 58,608 to 59,008
+     * slots in 50 runs on 2026-11-28 (408 to 433 maps without a table), 63,072 in each run
+     * with that eviction off (-Devictbudget=10^12). A table is over Table.MIN_CAPACITY slots
+     * only while its map holds at least 1/8 of them (shrinkIfSparse after every removal), so
+     * the slots are at most the floor plus 8 times the handles; ST6 can fail only with fewer
+     * maps without a table than half the handles, under 9 where G5's M11 holds them to 18,
+     * against at least 408. Printed before the gate: the maps without a table and the slots
+     * above MIN_CAPACITY.</p>
      */
     void slotGate(String gate, G4M e, G4M t) {
         long floor = (long) Cache3.maps() * Cache3.Table.MIN_CAPACITY;
+        out("  " + gate + " ST6 emptied: " + e.noTable + " maps without a table, " + e.over16
+                + " slots above " + Cache3.Table.MIN_CAPACITY + " a map; twin: " + t.noTable
+                + ", " + t.over16);
         long slotLimit = Math.max((long) (d("g4slots", 2) * t.slots), floor);
         gate(gate, "ST6 cache table slots over the larger of " + d("g4slots", 2)
                 + " times the twin's and the tables' floor " + floor + " (" + e.slots + " / "
