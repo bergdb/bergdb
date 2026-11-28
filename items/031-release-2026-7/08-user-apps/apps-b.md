@@ -704,3 +704,36 @@ shows. Functional runs only; every app's own oracle decides.
   root.
 * **Kept**: the data and logs of the four FAILEDs on s1, in the run's
   directory, about 35 MB; nothing else of the runs is left there.
+* **Fixes of the apps** (2026-11-28; no product code changed; the runs
+  below with the release jar of `f5f22893`, the gates on main after
+  028-88):
+  - 2026-11-28, f2 KillBytes: after a random kill, K2 allows beyond the
+    action in flight only actions that wrote nothing in the ref and that
+    Db's Javadoc lets write nothing (a `maintain()` with nothing due, a
+    setting with the value in force; never a transaction), and the next
+    child's place is the first action that ends at the stream's end, as
+    the child finds it. Seed 112's chain 6 replayed on F53 through
+    `afterKill()` from the files the kill left on s1 (action 143 is
+    `maintain(4119)`): before, "the start holds 144 actions, the child
+    reported 142"; after, accepted. Seed 112 in full on F53 (800
+    actions, 250 kills): OK.
+  - 2026-11-28, g4 KillWriter: the DatabaseMissingException of `open()`
+    after a kill before the creation's first byte is taken as a creation
+    that did not happen, checked: no transaction recovered before, no
+    created.txt, the directory as before the refused start; the next
+    child's `create()` makes the database. Seed 181 (`-DearlyKill=true
+    -Didle=true`) failed at kill 0 before the fix on F53 (only
+    `bergdb.lock`) and on s1 (no directory); after it, OK on F53 (300
+    kills) and on s1 (20). Seed 162 (`-DearlyKill=true`): its kill 0
+    came after the creation on F53 and in a rerun on s1, so it passed
+    before too; after the fix, OK on F53 (300 kills) and on s1 (20).
+  - 2026-11-28, f5 LiveCopy: `cpr` copies with `cp -R DIR/. COPY/`,
+    which copies the directory's contents with both BSD's and GNU's cp.
+    Seed 101 (9 copies) on F53 with GNU cp (coreutils 9.12) first in
+    the PATH: before the fix, it failed at copy 2 as on s1 (the copy
+    held `db/`, "Is a directory"); after it, 9 copies accepted with GNU's
+    cp and 9 with macOS's.
+  - 2026-11-28, the gates on F53 with the three fixes, on main at
+    `d5bf7ba0` (after 028-88): `apps.sh quick` APPS OK; `ONLY=fg
+    apps.sh kill 30` APPS OK (f2 seeds 3002 to 3004 and 3020 with
+    `-Df1.big=true`, g4's three options, 100 kills each).
