@@ -43,6 +43,18 @@ public class ReclaimRoomTester {
         return Keys.toSegments(k.toString());
     }
 
+    /**
+     * The longest key of longKey(prefix, n) within L9, Db.MAX_OWN_KEY_BYTES (1,024 bytes,
+     * since 2026-11-28): the longest own key that Trans.Builder.putLongKey() takes.
+     */
+    static long[] longKeyAtL9(String prefix) {
+        int n = 1;
+        while (Trans.keyBytes(longKey(prefix, n + 1)) <= Db.MAX_OWN_KEY_BYTES) {
+            n++;
+        }
+        return longKey(prefix, n);
+    }
+
     /** What the hook saw of the records. */
     static final class Seen {
         long records;
@@ -313,9 +325,10 @@ public class ReclaimRoomTester {
 
     /**
      * A record whose index nodes no later record could take fails the database before it is
-     * appended (Db.checkTakeable). A key of 600 segments under "/#": at a record limit of
-     * 100 kB its transaction is refused by 005-31, with nothing written; admitted at the
-     * release's limit, and the limit lowered to 100 kB after the admission (in the hook before
+     * appended (Db.checkTakeable). A key under "/#" within L9 (1,023 bytes, 147 segments; until
+     * 2026-11-28 longKey()'s of 600, 3,597 bytes, at a record limit of 100 kB): at a record limit of
+     * 20 kB its transaction is refused by 005-31, with nothing written; admitted at the
+     * release's limit, and the limit lowered to 20 kB after the admission (in the hook before
      * the plan), its record's set passes StoredTrans.takeRoom(): the database fails with the
      * check's Bug, nothing of the record is in the stream, and a restart has the database as
      * before it. Until 031-06 nothing failed: the take stopped at that record for good (the
@@ -328,8 +341,8 @@ public class ReclaimRoomTester {
         try {
             run.tick(SEC / 20);
             run.exec(run.db.trans().put("/a", new byte[] {1}), new HashMap<String, byte[]>());
-            final long[] k = longKey("/#u", 600);
-            StoredTrans.recordLimit = 100 * 1000;
+            final long[] k = longKeyAtL9("/#u");
+            StoredTrans.recordLimit = 20 * 1000;
             final long length = run.stream.getLength();
             run.tick(SEC / 20);
             try {
@@ -343,7 +356,7 @@ public class ReclaimRoomTester {
 
             Db.testHooks = new Db.TestHooks() {
                 public void beforePlan(Db.ExecuteData x) {
-                    StoredTrans.recordLimit = 100 * 1000;
+                    StoredTrans.recordLimit = 20 * 1000;
                 }
                 public void transExecuted(Db.ExecuteData x) {}
                 public void valueNodeCreated(ValueNode node, long[] key) {}
@@ -443,9 +456,11 @@ public class ReclaimRoomTester {
     }
 
     /**
-     * The review's F6: a key of 6,000 segments (42 kB) under "/#", which the Core accepts
-     * through Trans.Builder.putLongKey (L2 is not checked for BergDB's own keys; L3 bounds
-     * it), at the release's limits and node size 8, is copied by a commit's step: its record
+     * The review's F6: longKey()'s key of 6,000 (35,997 bytes, 5,143 segments) under "/#",
+     * which the Core accepted through Trans.Builder.putLongKey until L9 (2026-11-28; L2 is
+     * not checked for BergDB's own keys) and a stream written before it may hold, put as
+     * such a stream holds it (DbTesterLongKeys.putBeforeL9()), at the release's limits and
+     * node size 8, is copied by a commit's step, which does not check L9: its record
      * makes more than 5,000 index nodes dirty, counted from the actual key (Db.recordDirtyFits),
      * within dirtyLimit(); the startup pos passes it, cuts are decided and cut the original
      * record away, and the value is right, also after a restart.
@@ -462,8 +477,8 @@ public class ReclaimRoomTester {
             final Map<String, byte[]> puts = new HashMap<String, byte[]>();
             puts.put("long", v);
             run.tick(SEC);
-            Assert.assertTrue("the long key", run.exec(run.db.trans().putLongKey(k, null, v,
-                    null), puts));
+            DbTesterLongKeys.putBeforeL9(run.db, k, v);
+            run.model.putAll(puts);
             final long first = run.db.getStreamLength();
             boolean copied = false;
             final Random r = new Random(2);

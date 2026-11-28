@@ -593,7 +593,9 @@ of 1.9; values are not in that set.
   2.6). With reclaim on, Java's databases measured 1.05 to 1.07 times
   the bytes a put (reclaim's pace, 026-25, section 7; 028-19).
 * **Stack**: the walk over the segments is a loop with a stack of frames
-  (a key of BergDB's own may have 8,193 segments, 024-17's L3); within a
+  (a key of BergDB's own that a stream written before 024-17's L9 of
+  2026-11-28 holds may have 8,193 segments, L3's; a new one at most 147,
+  L9's); within a
   segment tree the recursions are bounded by its height: gated
   (`DbTesterLongKeys.testOwnLongKeysSmallStack`, a 256 kB stack).
 

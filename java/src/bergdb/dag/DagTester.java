@@ -458,8 +458,10 @@ public class DagTester {
     
     /**
      * A key of 400,000 bytes, a level of key nodes per segment of 7 bytes: the walks of the
-     * nodes in memory reach every node, with the thread's default stack. Each was a
-     * recursion with a frame per level until bergdb 021-16, and threw StackOverflowError.
+     * nodes in memory reach every node, with the thread's default stack, and so does
+     * dirtyNodeBound() for a new key of 500,000 bytes with its start (since 2026-11-28, from
+     * DbTesterLongKeys). Each was a recursion with a frame per level until bergdb 021-16, and
+     * threw StackOverflowError.
      */
     @Nano
     public static void testLongKeyWalks() {
@@ -506,6 +508,17 @@ public class DagTester {
         
         Assert.assertArrayEquals(StringUtil.toBytes("long"),
                 dag.getOne(Long.MAX_VALUE, Keys.toSegments(longKey), gd(dag)));
+        
+        // dirtyNodeBound()'s walk of a new key with the long key's start: its path, then the
+        // new key's segment trees (freshTreeBound; bergdb 021-16, U5-2). Since L9 (bergdb
+        // 024-17, 2026-11-28) no transaction gives the Core a new key this long; the Core's
+        // tests (DbTesterLongKeys) walk the longer own keys that a stream may hold.
+        byte[] longer = java.util.Arrays.copyOf(longKey, 500 * 1000);
+        java.util.Arrays.fill(longer, longKey.length, longer.length, (byte) 'j');
+        final long[] longerKey = Keys.toSegments(longer);
+        final long bound = dag.dirtyNodeBound(Long.MAX_VALUE, new long[][] {longerKey},
+                new boolean[] {false}, gd(dag));
+        Assert.assertTrue("dirtyNodeBound(): " + bound, bound >= longerKey.length);
     }
     
     @Nano

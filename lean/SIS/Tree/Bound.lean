@@ -290,13 +290,19 @@ structure Limits where
   maxTxSegs : Nat := maxOps * maxSegs
   deriving Repr, DecidableEq, Inhabited
 
-/-- The limits of release 2026.5 as the Core sees them (bergdb 024-17, section
+/-- The limits of the release as the Core sees them (bergdb 024-17, section
 8; Java's `Db` constants, 024-24): L1 = 500 operations, and L3 = 56 KiB =
 57,344 bytes of keys a transaction, so 57,344 / 7 + 500 = 8,692 segments. A
 user's key has at most L2 = 111 bytes, 16 segments (`Limits.user`), but
-BergDB's own keys, the Pub layer's index entries, pass it and are bounded by L3
-alone, so the longest key the Core takes is L3's (024-17, 6.2 (a)). -/
-def Limits.release : Limits := { maxOps := 500, maxSegs := 57344 / 7 + 1, maxTxSegs := 57344 / 7 + 500 }
+BergDB's own keys, the Pub layer's index entries, pass it (024-17, 6.2 (a)):
+since 2026-11-28 each at most L9 = 1,024 bytes, 147 segments
+(`Db.MAX_OWN_KEY_BYTES`; bergdb 031-06, section 8, O1), until then bounded by
+L3 alone, 8,193 segments. The bound below does not change with it: the
+segments of a transaction are L3's sum either way (`Limits.segments`, the
+smaller of 8,692 and 500 x 147). A stream written before L9 may hold a longer
+own key, which reclaim copies; such a copy is not a transaction within these
+limits. -/
+def Limits.release : Limits := { maxOps := 500, maxSegs := 1024 / 7 + 1, maxTxSegs := 57344 / 7 + 500 }
 
 /-- The limits of release 2026.5 for a transaction of a user's keys alone:
 L1 and L2 (111 bytes, 16 segments); L3 does not bind (500 x 111 = 55,500 bytes,
@@ -312,6 +318,9 @@ def Tx.within (lim : Limits) (tx : Tx) : Bool :=
 /-- The segments of a transaction within the limits, at most: the sum's limit
 or every operation at the longest key, the smaller. -/
 def Limits.segments (lim : Limits) : Nat := min lim.maxTxSegs (lim.maxOps * lim.maxSegs)
+
+/-- L9 leaves the transaction's segments L3's sum, as before L9 (8,692). -/
+theorem release_segments : Limits.release.segments = 57344 / 7 + 500 := by decide
 
 /-- The count with q (bergdb 024-17, 5.2 and 5.2a; QL8 (a)): the key nodes that
 one level of an operation's path can dirty or create in record format 7. The

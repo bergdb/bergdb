@@ -18,7 +18,9 @@ measurements; no product code. Limits proposed are L1 to L8 (section
 for Frans's QL2 (a key at most 112 bytes, 14:45): sections 0, 3, 5, 6,
 7, 8 and 9. **Restated from 17:45 for the limits Frans decided at
 17:41** (section 8): L1 = 500, L2 = 111, L3 = 56 KiB, L4 = 8 MiB, L5 =
-32 MiB, L6 = 111; sections 0, 1, 3, 5.2a, 5.3, 6, 8 and 9.
+32 MiB, L6 = 111; sections 0, 1, 3, 5.2a, 5.3, 6, 8 and 9. **L9 added
+2026-11-28** (section 6.1): BergDB's own keys at most 1,024 bytes each,
+decided by Frans that day (031-06, section 8, O1).
 
 
 ## 0. Summary
@@ -889,6 +891,7 @@ on, as today's two refusals do.
 | L6 | an indexed value's levels     | 111      | Pub, at the put of the object          |
 | L7 | a record (internal)           | 2^31 - 9 | a theorem from L1 to L5; `Bug` if hit  |
 | L8 | nodes dirtied (internal)      | derived  | a theorem; 005-31's check as `Bug`     |
+| L9 | an own key's bytes (internal) | 1,024    | the internal calls, `Db.execute`       |
 
 * **L1, operations.** At most 500 (Frans, 17:41). The KVs put or
   deleted, as the Core gets them: after the builder's rule (one
@@ -969,6 +972,33 @@ on, as today's two refusals do.
   `Bug` (an internal error, a failure of BergDB) once the bound is
   proved, since a transaction within L1 to L5 cannot reach them.
   Until the proof, they stay refusals that tests show unreachable.
+* **L9, one of BergDB's own keys** (added 2026-11-28; decided by Frans
+  that day, option (b) of 031-06's O1, section 8). A key under "/#"
+  longer than L2, which only Trans.Builder's internal calls
+  `putLongKey` and `deleteLongKey` take, has at most 1,024 bytes, 147
+  segments (`Db.MAX_OWN_KEY_BYTES`, package-private: no user can put
+  such a key, and the Pub API does not change). Until then such a key
+  was bounded only by L3, 57,344 bytes, 8,193 segments. Checked at the
+  internal calls (`Trans.Builder.checkLongKey`,
+  `IllegalArgumentException`: "The key, one of BergDB's own, has N
+  bytes, more than 1024 (bergdb 024-17, L9)"), in `Db.checkLimits` for
+  a KV set in `Trans.kvs` and in `Db.transformKeys` for a key that a key
+  transformation gives (`DbException`), before the go point; not at
+  reclaim's copies or at a start, which take a longer own key that a
+  stream written before L9 holds. The longest own key BergDB writes is
+  a Pub index entry, 275 + L6 + L2 - 1 = 496 bytes, 71 segments (11 +
+  255 + 1 + 8 + 111 + 110; 6.2 (a) counted the file part as 111, 497
+  bytes: the file part of an ikey of 111 bytes has at most 110, its
+  first "/" being the root's), then a deletion's marker (284) and a
+  definition (266). **The rule**: a raise of L2, L6 or the index name's
+  255 bytes keeps 275 + L6 + L2 - 1 at most L9 (with L9 = 1,024, L2 and
+  L6 can each go to 375); `PubTesterIndexJobs.testLongestOwnKeysWithinL9`
+  puts such an entry and fails if the Core refuses it. With L9 one key's
+  index nodes are bounded by 147 segments, a 56th of L3's 8,193 (at
+  node size 8 about 25 MB in place of 1.39 GB, by 031-06's count), and
+  031-06's bound on a step's last KV holds by the check (its section
+  3). A transaction's segments stay L3's sum (5.2a; the Lean's
+  `Limits.release.segments`), so the bounds of section 5 do not change.
 
 ### 6.2 A 111-byte key, below the user's key
 

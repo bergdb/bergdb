@@ -21,8 +21,9 @@ public final class Kv {
     
     /**
      * BergDB's own KV, put by Trans.Builder's internal calls (putLongKey(), deleteLongKey()):
-     * its key may be longer than Db.MAX_KEY_BYTES (bergdb 024-17, L2), also after a key
-     * transformation (Db.transformKeys).
+     * its key may be longer than Db.MAX_KEY_BYTES (bergdb 024-17, L2), up to
+     * Db.MAX_OWN_KEY_BYTES (L9), also after a key transformation (Db.transformKeys); and
+     * reclaim's copies, which may be longer, from a stream written before L9.
      */
     boolean longKey;
     

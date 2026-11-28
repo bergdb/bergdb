@@ -19,11 +19,13 @@ import bergdb.stream.MemoryStream;
  * put of a key of 1,000,000 bytes after one of 100,000 with the same start failed the
  * database (Dag.freshTreeBound); a StackOverflowError each (020-24-05, U5-1 and U5-2). Since
  * release 2026.5 a user's key has at most Db.MAX_KEY_BYTES = 111 bytes (L2), and BergDB's own
- * keys, put through Trans.Builder's internal calls, at most what L3 leaves, 57,344 bytes in a
- * transaction: the tests put keys at those limits, at every node size, and check that one
- * byte more is refused with nothing written. Keys of 400 kB are walked below the Core's
- * checks in DagTester.testLongKeyWalks. Until 024-24 the tests put keys of 100,000 to
- * 1,000,000 bytes.
+ * keys, put through Trans.Builder's internal calls, since 2026-11-28 at most
+ * Db.MAX_OWN_KEY_BYTES = 1,024 bytes each (L9), until then at most what L3 leaves, 57,344
+ * bytes in a transaction: the tests put keys at those limits, at every node size, and check
+ * that one byte more is refused with nothing written. A stream written before L9 may hold
+ * longer own keys, which a start and reclaim take: putBeforeL9() writes them, as such a
+ * stream holds them. Keys of 400 kB are walked below the Core's checks in
+ * DagTester.testLongKeyWalks. Until 024-24 the tests put keys of 100,000 to 1,000,000 bytes.
  */
 public class DbTesterLongKeys {
 
@@ -46,6 +48,25 @@ public class DbTesterLongKeys {
         key[0] = 1;
         key[1] = 0x25;
         return key;
+    }
+
+    /**
+     * Puts one of BergDB's own keys of any length up to L3, as a stream written before L9
+     * (2026-11-28) may hold it, where Trans.Builder.putLongKey() took it: by an internal
+     * transaction, as the Core writes its own settings (Db.putStartupDistanceKv), on which
+     * no check of a user transaction runs, and with no maintenance in its record. Of the
+     * stream's bytes only the record's flags differ from what putLongKey() wrote.
+     */
+    static void putBeforeL9(Db db, long[] key, byte[] value) {
+        Assert.assertTrue("one of BergDB's own keys", Trans.ownKey(key));
+        Trans t = db.trans().build();
+        Kv kv = new Kv(key, value);
+        kv.longKey = true;
+        t.kvs = new Kv[] {kv};
+        t.writeKeyHashes = new long[] {Keys.hash(key)};
+        t.isInternal = true;
+        t.noMaintenance = true;
+        db.execute(t);
     }
 
     private static void assertValue(Db db, byte[] key, String value) {
@@ -158,20 +179,21 @@ public class DbTesterLongKeys {
 
     /**
      * U5-2 at the limits: at each node size, a put of a key of 111 bytes (L2) after one of 50
-     * with the same start; then BergDB's own keys, through Trans.Builder.putLongKey(), of
-     * 10,000 bytes and then of 57,344, L3's whole, with the same start: both values are there
-     * and the database goes on. A transaction of keys of 57,345 bytes in all is refused by
-     * execute() with DbException (L3), nothing written. The startup distance of 200 MB keeps
-     * the first key's nodes in memory, dirty, as in U5-2's test. (U5-2 itself, keys of
-     * 100,000 and 1,000,000 bytes, until bergdb 024-24.)
+     * with the same start; then BergDB's own keys, through Trans.Builder.putLongKey(), of 500
+     * bytes and then of 1,024, L9 (until 2026-11-28 of 10,000 and of 57,344, L3's whole),
+     * with the same start: both values are there and the database goes on. An own key of
+     * 1,025 bytes is refused by putLongKey() with IllegalArgumentException (L9), nothing
+     * written. The startup distance of 200 MB keeps the first key's nodes in memory, dirty,
+     * as in U5-2's test. (U5-2 itself, keys of 100,000 and 1,000,000 bytes, until bergdb
+     * 024-24.) L3 on own keys: DbTesterLimits.testTransKeyBytes.
      */
     @Nano
     public static void testLongKeyAfterItsStart() {
         for (int nodeSize : NODE_SIZES) {
             final byte[] first = key("/d/", 50);
             final byte[] second = key("/d/", Db.MAX_KEY_BYTES);
-            final byte[] own1 = ownKey(10 * 1000);
-            final byte[] own2 = ownKey(Db.MAX_TRANS_KEY_BYTES);
+            final byte[] own1 = ownKey(500);
+            final byte[] own2 = ownKey(Db.MAX_OWN_KEY_BYTES);
             Db db = builder(nodeSize, new MemoryStream())
                     .start();
             db.setStartupDistance(200 * 1000 * 1000);
@@ -187,12 +209,11 @@ public class DbTesterLongKeys {
                 assertValue(db, own1, "own1");
                 assertValue(db, own2, "own2");
                 final long count = db.getTransactionCount();
-                final byte[] over = ownKey(Db.MAX_TRANS_KEY_BYTES + 1);
-                String m = refused(bergdb.pub.util.DbException.class, () -> db.execute(
-                        db.trans().putLongKey(Keys.toSegments(over), null, new byte[0], null)
-                        .build()));
-                Assert.assertTrue(m, m.contains("57345 bytes, more than 57344 (bergdb 024-17, "
-                        + "L3)"));
+                final byte[] over = ownKey(Db.MAX_OWN_KEY_BYTES + 1);
+                String m = refused(IllegalArgumentException.class, () -> db.trans()
+                        .putLongKey(Keys.toSegments(over), null, new byte[0], null));
+                Assert.assertTrue(m, m.contains("1025 bytes, more than 1024 (bergdb 024-17, "
+                        + "L9)"));
                 Assert.assertEquals("node size " + nodeSize + ": transactions", count,
                         db.getTransactionCount());
                 Assert.assertEquals(null, DbUtil.get(db, over));
@@ -208,10 +229,13 @@ public class DbTesterLongKeys {
      * 021-16's depth through BergDB's own long keys (review rev24, R7): in a thread with a
      * stack of 256 kB, where a recursion with a frame a segment would overflow at these
      * 8,193 segments, a key of 10,000 bytes and then one of 57,344 (L3's whole) with the same
-     * start, through putLongKey(), and a start again from the stream (the start's check,
-     * Dag.visitMemoryNodes). The record limit is lowered to 30 MB so that execute()'s cheap
-     * count fails and Dag.dirtyNodeBound walks the new key's segment trees
-     * (freshTreeBound), as U5-2's put did.
+     * start, as a stream written before L9 holds them (putBeforeL9()), and a start again from
+     * the stream (the start's check, Dag.visitMemoryNodes), which takes them; then a put of
+     * an own key at L9 with the same start, through putLongKey(), and reclaim's iterations,
+     * which copy the long keys, with the record limit lowered to 30 MB so that the cheap
+     * counts fail and Dag.dirtyNodeBound walks the keys (freshTreeBound for the new one).
+     * Until 2026-11-28 the two long keys were put through putLongKey(), which L9 now
+     * refuses; the walk of a new key's 8,193 segment trees is in DagTester.testLongKeyWalks.
      */
     @Nano
     public static void testOwnLongKeysSmallStack() throws InterruptedException {
@@ -233,18 +257,21 @@ public class DbTesterLongKeys {
 
     private static void ownLongKeys() {
         final long saved = StoredTrans.recordLimit;
-        StoredTrans.recordLimit = 30 * 1000 * 1000;
         try {
             final byte[] first = ownKey(10 * 1000);
             final byte[] second = ownKey(Db.MAX_TRANS_KEY_BYTES);
+            final byte[] third = ownKey(Db.MAX_OWN_KEY_BYTES);
+            third[Db.MAX_OWN_KEY_BYTES - 1] = 'x';
+            final long sec = bergdb.pub.util.Clock.UNITS_PER_SEC;
+            final CoreTestClock clock = new CoreTestClock();
+            long time = sec;
+            clock.setTime(time);
             MemoryStream stream = new MemoryStream();
-            Db db = Db.builder().testSetup(stream).start();
+            Db db = Db.builder().testSetup(stream).clock(clock).start();
             db.setStartupDistance(200 * 1000 * 1000);
             try {
-                db.execute(db.trans().putLongKey(Keys.toSegments(first), null, 
-                        "first".getBytes(), null).build());
-                db.execute(db.trans().putLongKey(Keys.toSegments(second), null, 
-                        "second".getBytes(), null).build());
+                putBeforeL9(db, Keys.toSegments(first), "first".getBytes());
+                putBeforeL9(db, Keys.toSegments(second), "second".getBytes());
                 assertValue(db, first, "first");
                 assertValue(db, second, "second");
                 db.sync(SyncLevel.ORDINARY);
@@ -253,13 +280,42 @@ public class DbTesterLongKeys {
             } finally {
                 db.close();
             }
-            Db db2 = Db.builder().testSetup(stream).start();
+            time += sec;
+            clock.setTime(time);
+            StoredTrans.recordLimit = 30 * 1000 * 1000;
+            Db db2 = Db.builder().testSetup(stream).clock(clock).start();
             try {
                 assertValue(db2, first, "first");
                 assertValue(db2, second, "second");
                 db2.checkNodes();
+                db2.execute(db2.trans().putLongKey(Keys.toSegments(third), null,
+                        "third".getBytes(), null).build());
+                db2.setStartupDistance(2000);
+                db2.setRetainDuration(sec);
+                for (int i = 0; i < 3000 && db2.getReclaimIterationCount() < 2; i++) {
+                    time += sec / 20;
+                    clock.setTime(time);
+                    db2.execute(db2.trans().put("/k/" + (i % 20), new byte[300]).build());
+                }
+                Assert.assertTrue("reclaim's iterations: " + db2.getReclaimIterationCount(),
+                        db2.getReclaimIterationCount() >= 2);
+                assertValue(db2, first, "first");
+                assertValue(db2, second, "second");
+                assertValue(db2, third, "third");
+                db2.sync(SyncLevel.ORDINARY);
+                db2.checkNodes();
+                stream = stream.copy();
             } finally {
                 db2.close();
+            }
+            Db db3 = Db.builder().testSetup(stream).start();
+            try {
+                assertValue(db3, first, "first");
+                assertValue(db3, second, "second");
+                assertValue(db3, third, "third");
+                db3.checkNodes();
+            } finally {
+                db3.close();
             }
         } finally {
             StoredTrans.recordLimit = saved;

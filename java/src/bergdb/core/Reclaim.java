@@ -1330,7 +1330,9 @@ public class Reclaim implements Maintenance {
             }
             // Note, no mem copy of key and value. A live key may be BergDB's own, longer
             // than Db.MAX_KEY_BYTES (an index entry); no check of a user transaction runs on
-            // the KVs of a plan, which are within the limits by construction (bergdb 024-24).
+            // the KVs of a plan, which are within the limits by construction (bergdb 024-24),
+            // but for L9: a stream written before it may hold an own key longer than
+            // Db.MAX_OWN_KEY_BYTES, which is copied as any live KV (bergdb 024-17, L9).
             final Kv copy = new Kv(kvt.key, kvt.value);
             copy.longKey = true;
             copy.coreWrite = true;

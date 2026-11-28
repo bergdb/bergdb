@@ -276,25 +276,28 @@ code and the decision:
   1.47 GB at node size 8 (0.90, 0.91 and 1.33 GB at 14, 30 and 62). The
   step's KVs are a transaction of at most about 459 operations (024-17,
   5.5); its segments are at most 16,000 / 8 by the scan's count, and
-  those of one more KV, at most 60 (assumed below), so 2,060. By the
+  those of one more KV, at most 147 (L9, below), so 2,147. By the
   count with q, c (H + 2) nodes a segment and 14 an operation (c = 14,
   H = 61 at node size 8; 9 and 38 at 14; 8 and 21 at 30; 8 and 16 at
-  62), its dirty set is at most 1.82 M nodes, 350 MB at node size 8 (215,
-  210 and 320 MB at 14, 30 and 62). The count is a sum over operations,
+  62), its dirty set is at most 1.90 M nodes, 365 MB at node size 8 (225,
+  218 and 333 MB at 14, 30 and 62). The count is a sum over operations,
   so the record's transaction, the action's and the step's together, has
-  a dirty set of at most 1.82 GB at node size 8. The step's own bytes are
+  a dirty set of at most 1.84 GB at node size 8. The step's own bytes are
   at most one value node of 8 MiB at an L3 key, 16 kB, and the row and
   the table. A record that carries such a step then holds at most its own
-  bytes, about 42.3 MB, and one such dirty set taken whole: 1.87 GB,
-  86.9 % of 2^31 - 9 at node size 8 (1.16, 1.16 and 1.69 GB at 14, 30
-  and 62). So at the release's limits `recordCap()` is
+  bytes, about 42.3 MB, and one such dirty set taken whole: 1.88 GB,
+  87.6 % of 2^31 - 9 at node size 8 (1.17, 1.17 and 1.70 GB at 14, 30
+  and 62). Until 2026-11-28 the last KV was assumed at 60 segments:
+  2,060, 1.82 M nodes, 1.87 GB, 86.9 % at node size 8 (1.16, 1.16 and
+  1.69 GB). So at the release's limits `recordCap()` is
   `MAX_RECORD_SIZE`, as the record limit was, and the step's room is
   there without lowering the user's limits.
 * **A commit's step, up to 128 KiB since landing step 3: by the checks,
   not by this arithmetic** (2026-11-27; review 3, D1). The same count
   gives a step of 128 KiB 131,072 / 8 + 60 = 16,444 segments and a dirty
   set of 14.5 M nodes, 2.79 GB at node size 8 (1.71, 1.66 and 2.52 GB at
-  14, 30 and 62): over the limit by itself at node sizes 8 and 62, so
+  14, 30 and 62; with the last KV at L9's 147 segments, 16,531, half a
+  per cent more): over the limit by itself at node sizes 8 and 62, so
   the derivation above does not bound a record that carries a commit's
   step. Its own bytes are still bounded: one value node of 8 MiB, 128 KiB
   of the scan's other KVs and 128 KiB for the row and the table (assumed,
@@ -307,7 +310,7 @@ code and the decision:
   `checkTakeable`, before the append, the got-dirty set within
   `takeRoom()`, a Bug that fails the database with nothing written if not.
   The worst step by the cheap count: 16,444 segments are 1.78 M nodes at
-  a stream of 1 TB (height 36), within the 10.5 M nodes of `dirtyLimit()`
+  a stream of 1 TB (height 36; 16,531 are 1.79 M), within the 10.5 M nodes of `dirtyLimit()`
   at node size 8 (7.0, 3.7 and 1.9 M at 14, 30 and 62), so a step alone
   fits by the cheap count at a stream of up to 1 TB; where the cheap
   count is over (beside an action near its 7/8, or a longer stream at
@@ -320,12 +323,19 @@ code and the decision:
   and undo 028-71's pace for small values, so the check is the bound.
 * **Assumed there**, as 024-17 assumes: the count with q holds (a
   statement checked by runs, not proved: TP26 restated); H rests on V1
-  (TP30, not proved). And, here: the step's last KV has at most 60
-  segments (a user's key, L2, or an index entry of the Pub layer); the
-  longest index entry is 496 bytes, 71 segments (section 8, O1), which
-  gives 87.0 % in place of 86.9 % at node size 8, and BergDB's own keys
-  under "/#" are bounded only by L3 while the Core accepts them (O1);
-  by the Lean's count of nodes a level since 028-21 the figures are
+  (TP30, not proved). Not assumed since 2026-11-28: the step's last KV
+  has at most 147 segments by a check, L9 (024-17; O1, (b), section 8):
+  a user's key has at most 16 (L2), and one of BergDB's own at most
+  1,024 bytes, refused over it by `Trans.Builder.putLongKey` and
+  `deleteLongKey` and by `Db.execute` (`checkLimits`, `transformKeys`);
+  the longest that BergDB writes, a Pub index entry, has 496 bytes, 71
+  segments. Until then 60 segments were assumed and own keys were
+  bounded only by L3. A step copies keys that the stream holds and does
+  not check L9: a stream written before it (by `main` from 2026-11-27,
+  meta version 156 of 028-67, to 2026-11-28; older ones are refused at
+  the start) may hold a longer own key, which only tests wrote; for such a key
+  `Db.recordDirtyFits` and `checkTakeable` bound the record, as in (a).
+  By the Lean's count of nodes a level since 028-21 the figures are
   higher (028-72); the row and the table together are at most 128 KiB
   (`STEP_FIXED_ROOM` / 2; 240 kB until landing step 3), which the code
   does not bound: the table's rows are removed at cuts, and the serializer's check fails the database if a
@@ -793,7 +803,7 @@ Q1 is answered by this. Q4 to Q6 are steps of the landing (section 9).
   and 2026.6, S4 (033), fixed by this item's landing.
 
 Decided (Frans, 2026-11-28, 07:27): O1, (b), a cap of 1,024 bytes; to
-be built. O1 is BergDB's own long keys under "/#" (`landing.md`,
+be built. Built on 2026-11-28 as L9 (024-17, 6.1; the log). O1 is BergDB's own long keys under "/#" (`landing.md`,
 step 2, Options for Frans). What they are, from an investigation by an
 agent of lead-1127 (2026-11-27, 17:20 to 17:28, reading and arithmetic,
 nothing built):
@@ -1059,3 +1069,33 @@ comments it found and G22.
 
 2026-11-28. O1 decided by Frans, (b): a cap of 1,024 bytes on BergDB's own
 long keys, the limit L9 (section 8); to be built.
+
+2026-11-28. O1 built, (b): L9, `Db.MAX_OWN_KEY_BYTES` = 1,024 bytes (147
+segments), package-private, so the Pub API and the Core's public
+constants do not change. Checked by `Trans.Builder.putLongKey` and
+`deleteLongKey` (`IllegalArgumentException`), by `Db.checkLimits` for a
+KV in `Trans.kvs` and by `Db.transformKeys` for a key a key
+transformation gives (`DbException`); not at reclaim's copies or at a
+start. The plan's sketch held, with two corrections of figures: the
+longest entry is 496 bytes (024-17, 6.2 (a), had 497), and section 3's
+figures with the cap are 87.6 % at node size 8, as section 8 said. The
+rule 275 + L6 + L2 - 1 <= L9 is tested by putting such an entry through
+the Pub API (`PubTesterIndexJobs.testLongestOwnKeysWithinL9`). Tests:
+`DbTesterLimits.testOwnKeyBytes` (1,023, 1,024 and 1,025 bytes at each
+check); the tests that put longer own keys through `putLongKey` now put
+them at L9 (`DbTesterLimits.testTransKeyBytes`'s L3 by 56 own keys within
+L9, `DbTesterLongKeys.testLongKeyAfterItsStart`,
+`ReclaimRoomTester.testUntakeableRecordFails` at a key of 147 segments
+and a record limit of 20 kB) or as a stream written before L9 holds
+them (`DbTesterLongKeys.putBeforeL9`, an internal transaction:
+`testOwnLongKeysSmallStack`, keys of 10,000 and 57,344 bytes, a start,
+reclaim's iterations and a start again; `ReclaimRoomTester.
+testLongKeyCopiedByAStep`, 35,997 bytes copied by a commit's step);
+`DagTester.testLongKeyWalks` walks a new key of 500,000 bytes with
+`Dag.dirtyNodeBound`, which no transaction can give the Core now. The
+Lean: `Limits.release.maxSegs` 147 (`SIS/Tree/Bound.lean`), its
+`segments` still L3's 8,692 (`release_segments`), the theorems
+unchanged; the contract package (Mathlib) unchanged, as its PE theorems
+hold for keys of up to 8,193 segments, which covers the longer keys of
+an older stream. The review's `RvLong` (`review-probes/`) is refused by
+L9 for a key over 1,024 bytes; kept as the review's record.

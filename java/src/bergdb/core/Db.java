@@ -290,6 +290,13 @@ import bergdb.stream.ReadBelowFirstPosException;
  * execute() refuses one over them with a DbException. L3 binds only on BergDB's own keys,
  * which may be longer than a user's (the Pub API's index entries): 500 keys of 111 bytes are
  * 55,500 bytes.</li>
+ * <li><b>One of BergDB's own keys</b>, under "/#", which alone may pass L2, has at most
+ * MAX_OWN_KEY_BYTES = 1,024 bytes, 147 segments (L9, since 2026-11-28; not a user's limit:
+ * such a key is put only through Trans.Builder's internal calls putLongKey() and
+ * deleteLongKey(), which refuse a longer one with an IllegalArgumentException, and execute()
+ * refuses one in Trans.kvs or from a key transformation with a DbException). The longest
+ * that BergDB writes is a Pub index entry of 496 bytes. Reclaim's copies and a start take a
+ * longer own key that a stream written before L9 holds, as before.</li>
  * </ul>
  * <p>Larger work is split: transactions of at most 500 operations, with a marker key written
  * in the last one, which readers look at first; a larger value in chunks under keys of their
@@ -374,7 +381,8 @@ public class Db implements AutoCloseable {
      * bytes has b / 7 + 1 segments, so 112 bytes would be 17; bergdb 024-17, L2, F10). Checked
      * by the Trans.Builder call that takes the key, and by execute() for a key that a key
      * transformation gives. BergDB's own longer keys (the Pub API's index entries) are put
-     * through Trans.Builder's internal calls, which do not check it; L3 bounds them.
+     * through Trans.Builder's internal calls, which do not check it; L9 bounds each of them
+     * (MAX_OWN_KEY_BYTES), L3 their sum.
      */
     public static final int MAX_KEY_BYTES = 111;
     
@@ -398,6 +406,25 @@ public class Db implements AutoCloseable {
      * Checked by execute(), before the write lock.
      */
     public static final long MAX_TRANS_BYTES = 32L * 1024 * 1024;
+    
+    /**
+     * L9: the most bytes of one of BergDB's own keys as stored, a key under "/#" (the bytes
+     * 01 25) longer than L2, 1,024 bytes, 147 segments (bergdb 024-17, L9; decided by Frans on
+     * 2026-11-28, bergdb 031-06, section 8, O1). Internal, not API, as the calls that take
+     * such a key: a user's key is within L2. The longest own key that BergDB writes is a Pub
+     * index entry, 275 + L6 + L2 - 1 = 496 bytes, 71 segments: "/#i/dient/d" (11 bytes), an
+     * index name of up to 255 bytes, "/", the generation (8), the levels (L6, 111) and the
+     * object's file part (at most L2 - 1). The rule: a later raise of L2, L6 or the index
+     * name's 255 bytes keeps 275 + L6 + L2 - 1 at most this (with 1,024, L2 and L6 can each go
+     * to 375), as bergdb.pubimp.PubTesterIndexJobs.testLongestOwnKeysWithinL9 checks. Checked
+     * by Trans.Builder.putLongKey() and deleteLongKey(), with IllegalArgumentException, and
+     * by execute() for a KV in Trans.kvs (checkLimits()) and for a key that a key
+     * transformation gives (transformKeys()), with DbException, before the go point. Not at
+     * reclaim's copies or at a start: a stream written before L9 may hold a longer own key,
+     * up to L3, and reclaim copies it and a start reads it as before. With it a key's index
+     * nodes are bounded by its 147 segments, not by L3's 8,193 (bergdb 031-06, section 3).
+     */
+    static final int MAX_OWN_KEY_BYTES = 1024;
     
     private Dag dag;
     
@@ -3636,7 +3663,8 @@ public class Db implements AutoCloseable {
     /**
      * Refuses a user transaction over the limits L1, L3 and L5 (bergdb 024-17, section 6;
      * "Limits" in the class Javadoc): its operations, its keys' bytes, its keys' and values'
-     * bytes, as Trans.Builder.build() gave them, keys as written. Called by checkSize(),
+     * bytes, as Trans.Builder.build() gave them, keys as written; and over L2, L4 and L9 for
+     * each KV, also one set in Trans.kvs. Called by checkSize(),
      * before the write lock and the go point, so that a refused transaction leaves nothing,
      * and the refusal does not depend on what the database holds. L2 and L4 are checked by
      * the Trans.Builder calls that take a key or a value; a key transformation's keys by
@@ -3655,6 +3683,11 @@ public class Db implements AutoCloseable {
             if (k > MAX_KEY_BYTES && !(kv.longKey && Trans.ownKey(kv.getKey()))) {
                 throw new DbException("A key of the transaction has " + k + " bytes, more "
                         + "than " + MAX_KEY_BYTES + " (bergdb 024-17, L2).");
+            }
+            if (k > MAX_OWN_KEY_BYTES) {    // one of BergDB's own (bergdb 024-17, L9)
+                throw new DbException("A key of the transaction, one of BergDB's own, has "
+                        + k + " bytes, more than " + MAX_OWN_KEY_BYTES
+                        + " (bergdb 024-17, L9).");
             }
             if (kv.getValue() != null && kv.getValue().length > MAX_VALUE_BYTES) {
                 throw new DbException("A value of the transaction has " 
@@ -4274,7 +4307,8 @@ public class Db implements AutoCloseable {
      * fails the database (KeyTransformation).</p>
      *
      * @throws DbException  If two KVs have one key after the transformations; if a key that a
-     *      transformation gave has more than MAX_KEY_BYTES (L2), or the keys more than
+     *      transformation gave has more than MAX_KEY_BYTES (L2), or one of BergDB's own more
+     *      than MAX_OWN_KEY_BYTES (L9, since 2026-11-28), or the keys more than
      *      MAX_TRANS_KEY_BYTES (L3) (bergdb 024-24); if a transformation threw a
      *      RuntimeException (the cause; bergdb 026-06).
      * @throws DbFailedException  If the sort threw: a bug.
@@ -4335,9 +4369,9 @@ public class Db implements AutoCloseable {
                 throw new DbException(message);
             }
             // The limits on the keys as transformed (bergdb 024-17, 5.1; 024-24): L2 for each
-            // key a transformation gave, but for BergDB's own longer keys (Kv.longKey), and
-            // L3 for the keys of the transaction. The Pub API's key replace keeps a key's
-            // length, so it never meets them.
+            // key a transformation gave, but for BergDB's own longer keys (Kv.longKey), L9
+            // for those, and L3 for the keys of the transaction. The Pub API's key replace
+            // keeps a key's length, so it never meets them.
             long keyBytes = 0;
             for (int i = 0; i < kvs.length; i++) {
                 final long k = Trans.keyBytes(kvs[i].getKey());
@@ -4348,6 +4382,14 @@ public class Db implements AutoCloseable {
                             + " gave a key of " + k + " bytes, more than " + MAX_KEY_BYTES
                             + " (bergdb 024-17, L2). The transaction is refused; nothing of "
                             + "it is written, and the database goes on.";
+                    giveBack(t, before);
+                    throw new DbException(message);
+                }
+                if (written[i] != null && k > MAX_OWN_KEY_BYTES) {
+                    final String message = "The key transformation of " + shown(written[i])
+                            + " gave a key of BergDB's own of " + k + " bytes, more than "
+                            + MAX_OWN_KEY_BYTES + " (bergdb 024-17, L9). The transaction is "
+                            + "refused; nothing of it is written, and the database goes on.";
                     giveBack(t, before);
                     throw new DbException(message);
                 }

@@ -1363,6 +1363,43 @@ public class PubTesterIndexJobs {
     }
 
     /**
+     * L9 (bergdb 024-17, L9; since 2026-11-28; 031-06, section 8, O1): the longest of
+     * BergDB's own keys, a Pub index entry at every limit of its parts, is 275 + L6 + L2 - 1
+     * = 496 bytes: "/#i/dient/d" (11 bytes), an index name of 255 bytes, "/", the
+     * generation (8), levels of 111 bytes (L6: a string of 110) and the file part of an ikey
+     * of 111 bytes (L2) at the root, "-" and 109 letters. Its put commits, so the Core's L9
+     * (Db.MAX_OWN_KEY_BYTES, 1,024 bytes, which Trans.Builder.putLongKey() checks) takes it:
+     * the rule that a later raise of L2, L6 or the index name's 255 bytes must keep. So do
+     * the index's definition (266 bytes) and the marker of its deletion (284).
+     */
+    @Nano
+    public static void testLongestOwnKeysWithinL9() {
+        final String name = IndexKeysTester.repeat("n", IndexKeys.MAX_NAME);
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            JobStatus s = db.indexBuilder(name).dir("/").type("string").field("name")
+                    .start().join();
+            Assert.assertEquals(JobStatus.State.ACTIVE, s.state());
+            final String key = "/" + IndexKeysTester.repeat("k", Db.MAX_KEY_BYTES - 2);
+            Assert.assertEquals(Db.MAX_KEY_BYTES, bergdb.pub.Limits.keyBytes(key));
+            c.put(key, new Named(IndexKeysTester.repeat("v", IndexKeys.MAX_LEVEL_BYTES - 1)));
+            final long gen = manager(db).definition(name).gen();
+            final List<byte[]> e = manager(db).entries(name, gen, Long.MAX_VALUE);
+            Assert.assertEquals(1, e.size());
+            Assert.assertEquals(11 + IndexKeys.MAX_NAME + 1 + 8 + IndexKeys.MAX_LEVEL_BYTES
+                    + Db.MAX_KEY_BYTES - 1, e.get(0).length);
+            Assert.assertEquals(496, e.get(0).length);
+            Assert.assertEquals(11 + IndexKeys.MAX_NAME, IndexKeys.definitionKey(name).length);
+            Assert.assertEquals(284, IndexKeys.markerKey(name, gen).length);
+            db.deleteIndex(name);       // commits the marker
+            Assert.assertEquals(1, manager(db).markers(Long.MAX_VALUE).size());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
      * 015-39: a status is a snapshot: one read while building stays BUILDING, with its count,
      * after the build ends.
      */

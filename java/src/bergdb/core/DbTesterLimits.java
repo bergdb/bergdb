@@ -18,7 +18,8 @@ import bergdb.stream.MemoryStream;
  * L2, a key's bytes (more in DbTesterLongKeys); L3, the key bytes of a transaction; L4, a
  * value's bytes, and a value transformation's result over it, refused since bergdb 026-06
  * (QL6), as one that throws; L5, the keys and values of a transaction, with the results of
- * value transformations since 026-06.
+ * value transformations since 026-06; L9, one of BergDB's own keys (since 2026-11-28; the
+ * longer own keys of a stream written before it in DbTesterLongKeys and ReclaimRoomTester).
  */
 public class DbTesterLimits {
 
@@ -139,8 +140,9 @@ public class DbTesterLimits {
     /**
      * L3: keys of 57,344 bytes in all, BergDB's own longer keys through the internal call
      * Trans.Builder.putLongKey(), which does not check L2, are taken; 57,345 refused by
-     * execute() with DbException, nothing written. User keys of 111 bytes never meet it: 500
-     * of them, 55,500 bytes, are taken.
+     * execute() with DbException, nothing written: 56 own keys, each within L9 (until
+     * 2026-11-28 one own key of 57,343 bytes), and a delete of 2 bytes. User keys of 111
+     * bytes never meet it: 500 of them, 55,500 bytes, are taken.
      */
     @Nano
     public static void testTransKeyBytes() {
@@ -159,7 +161,7 @@ public class DbTesterLimits {
             Trans.Builder at = db.trans();
             int left = Db.MAX_TRANS_KEY_BYTES;
             for (int i = 0; left > 0; i++) {
-                byte[] k = new byte[Math.min(left, 497)];   // the largest index entry
+                byte[] k = new byte[Math.min(left, 496)];   // the largest index entry
                 Arrays.fill(k, (byte) 'e');
                 byte[] n = bytes(String.format("..%05d", i));
                 System.arraycopy(n, 0, k, 0, Math.min(n.length, k.length));
@@ -172,16 +174,116 @@ public class DbTesterLimits {
             final long count = db.getTransactionCount();
 
             Trans.Builder over = db.trans();
-            byte[] k = new byte[Db.MAX_TRANS_KEY_BYTES - 1];
-            Arrays.fill(k, (byte) 'o');
-            k[0] = 1;
-            k[1] = 0x25;
-            over.putLongKey(Keys.toSegments(k), null, new byte[0], null);
+            byte[] k = null;
+            for (int i = 0, overLeft = Db.MAX_TRANS_KEY_BYTES - 1; overLeft > 0; i++) {
+                k = own(Math.min(overLeft, Db.MAX_OWN_KEY_BYTES), 'o');
+                byte[] n = bytes(String.format("%05d", i));
+                System.arraycopy(n, 0, k, 2, n.length);
+                over.putLongKey(Keys.toSegments(k), null, new byte[0], null);
+                overLeft -= k.length;
+            }
             over.deleteLongKey(Keys.toSegments(new byte[] {'o', 'o'}));
             refused("57,345 bytes of keys", DbException.class, "57345 bytes, more than 57344 "
                     + "(bergdb 024-17, L3)", () -> db.execute(over.build()));
             Assert.assertNull(DbUtil.get(db, k));
             goesOn("L3", db, count);
+        } finally {
+            db.close();
+        }
+    }
+
+    /** One of BergDB's own keys, under "/#" (01 25), of 'length' bytes of 'fill'. */
+    private static byte[] own(int length, char fill) {
+        byte[] k = new byte[length];
+        Arrays.fill(k, (byte) fill);
+        k[0] = 1;
+        k[1] = 0x25;
+        return k;
+    }
+
+    /** A key transformation that gives 'key'. */
+    private static KeyTransformation toKey(final byte[] key) {
+        return new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                long[] k = Keys.toSegments(key);
+                trans.kvs[index].setKey(k);
+                trans.writeKeyHashes[index] = Keys.hash(k);
+            }
+        };
+    }
+
+    /** A transaction of the one KV 'kv' set in Trans.kvs, which is public. */
+    private static Trans throughKvs(Db db, Kv kv) {
+        Trans t = db.trans().put("/x", "x").build();
+        t.kvs = new Kv[] {kv};
+        t.writeKeyHashes = new long[] {Keys.hash(kv.getKey())};
+        return t;
+    }
+
+    /**
+     * L9 (since 2026-11-28; bergdb 031-06, section 8, O1): one of BergDB's own keys, under
+     * "/#" (01 25), of 1,023 and 1,024 bytes (147 segments) is taken at each place that
+     * checks it, one of 1,025 refused, nothing written: by Trans.Builder.putLongKey() and
+     * deleteLongKey() with IllegalArgumentException, which spoils the builder; by execute()
+     * with DbException for a KV set in Trans.kvs (Db.checkLimits), a put or a delete, and
+     * for a key transformation that gives one (Db.transformKeys), its key as written given
+     * back.
+     */
+    @Nano
+    public static void testOwnKeyBytes() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            final int cap = Db.MAX_OWN_KEY_BYTES;
+            Assert.assertEquals(1024, cap);
+            Assert.assertEquals(147, Keys.toSegments(own(cap, 'a')).length);
+            for (int n : new int[] {cap - 1, cap}) {
+                final String at = n + " bytes";
+                byte[] k = own(n, 'a');
+                db.execute(db.trans().putLongKey(Keys.toSegments(k), null, bytes("p"), null)
+                        .build());
+                Assert.assertEquals(at + ", putLongKey", "p", new String(DbUtil.get(db, k)));
+                db.execute(db.trans().deleteLongKey(Keys.toSegments(k)).build());
+                Assert.assertTrue(at + ", deleteLongKey", DbUtil.get(db, k) == null);
+                Kv kv = new Kv(Keys.toSegments(k), bytes("t"));
+                kv.longKey = true;
+                db.execute(throughKvs(db, kv));
+                Assert.assertEquals(at + ", Trans.kvs", "t", new String(DbUtil.get(db, k)));
+                byte[] q = own(n, 'q');
+                db.execute(db.trans().putLongKey(Keys.toSegments(own(10, 's')), toKey(q),
+                        bytes("q"), null).build());
+                Assert.assertEquals(at + ", a key transformation", "q",
+                        new String(DbUtil.get(db, q)));
+            }
+            final long count = db.getTransactionCount();
+            final byte[] over = own(cap + 1, 'o');
+            final String text = "1025 bytes, more than 1024 (bergdb 024-17, L9)";
+            final Trans.Builder b = db.trans().put("/b", "b");
+            refused("putLongKey", IllegalArgumentException.class, text,
+                    () -> b.putLongKey(Keys.toSegments(over), null, new byte[0], null));
+            refused("the spoiled builder", IllegalStateException.class, "putLongKey() was "
+                    + "refused", () -> b.build());
+            refused("deleteLongKey", IllegalArgumentException.class, text,
+                    () -> db.trans().deleteLongKey(Keys.toSegments(over)));
+            for (byte[] v : new byte[][] {bytes("o"), null}) {
+                Kv kv = new Kv(Keys.toSegments(over), v);
+                kv.longKey = true;
+                refused("Trans.kvs, " + (v == null ? "a delete" : "a put"), DbException.class,
+                        text, () -> db.execute(throughKvs(db, kv)));
+            }
+            final long[] written = Keys.toSegments(own(10, 's'));
+            final Trans t = db.trans().putLongKey(written, toKey(over), bytes("o"), null)
+                    .put("/u", "u").build();
+            refused("a key transformation to 1,025 bytes", DbException.class, text,
+                    () -> db.execute(t));
+            boolean givenBack = false;
+            for (Kv kv : t.kvs) {
+                givenBack |= kv.keyTransformation != null && Arrays.equals(written, kv.getKey());
+            }
+            Assert.assertTrue("the key as written, given back", givenBack);
+            Assert.assertNull(DbUtil.get(db, over));
+            Assert.assertNull(DbUtil.get(db, "/b"));
+            Assert.assertNull(DbUtil.get(db, "/u"));
+            goesOn("L9", db, count);
         } finally {
             db.close();
         }

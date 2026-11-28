@@ -423,6 +423,8 @@ public class Trans {
          * be longer than Db.MAX_KEY_BYTES (L2), but only BergDB's keys, those that start with
          * the bytes 01 25, the bkey of "/#" (Db, "Keys and the layers above"): the Pub API's
          * index entries, definitions and markers; and for reclaim's copies of live values.
+         * Such a key has at most Db.MAX_OWN_KEY_BYTES = 1,024 bytes (L9, since 2026-11-28;
+         * the longest that BergDB writes, a Pub index entry, has 496).
          * The value's length (L4) is not checked here: reclaim's step runs inside a user
          * transaction's go point, where a refusal would fail the database, and it copies what
          * a user transaction put, which Db.execute() checked (review rev24, R1). For a user
@@ -433,8 +435,9 @@ public class Trans {
          * (the class Javadoc; bergdb 024-37).
          * 
          * @throws IllegalArgumentException  If key or value is null, the key has no segment,
-         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25. The
-         *      call adds nothing and spoils the builder (the class Javadoc).
+         *      or it has more than Db.MAX_KEY_BYTES bytes and does not start with 01 25, or
+         *      more than Db.MAX_OWN_KEY_BYTES (L9). The call adds nothing and spoils the
+         *      builder (the class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder putLongKey(long[] key, KeyTransformation kt, byte[] value, 
@@ -458,11 +461,12 @@ public class Trans {
         
         /**
          * Internal, not API: as delete(long[]) for BergDB's own keys, which may be longer than
-         * Db.MAX_KEY_BYTES under "/#" (putLongKey()).
+         * Db.MAX_KEY_BYTES under "/#", up to Db.MAX_OWN_KEY_BYTES (putLongKey()).
          * 
          * @throws IllegalArgumentException  If key is null or has no segment, or it has more
-         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25. The call adds nothing
-         *      and spoils the builder (the class Javadoc).
+         *      than Db.MAX_KEY_BYTES bytes and does not start with 01 25, or more than
+         *      Db.MAX_OWN_KEY_BYTES (L9). The call adds nothing and spoils the builder (the
+         *      class Javadoc).
          * @throws IllegalStateException  If the builder is spoiled: an earlier call was refused.
          */
         public Builder deleteLongKey(long[] key) {
@@ -866,11 +870,16 @@ public class Trans {
         
         /**
          * The internal calls' key: over L2 only under BergDB's prefix "/#", the bytes 01 25
-         * (review rev24, R2): a Core user cannot put a long key through them.
+         * (review rev24, R2): a Core user cannot put a long key through them; and one of
+         * BergDB's own at most Db.MAX_OWN_KEY_BYTES (bergdb 024-17, L9).
          */
         private static void checkLongKey(long[] key) {
             if (!ownKey(key)) {
                 checkKeyBytes(keyBytes(key));
+            } else if (keyBytes(key) > Db.MAX_OWN_KEY_BYTES) {
+                throw new IllegalArgumentException("The key, one of BergDB's own, has "
+                        + keyBytes(key) + " bytes, more than " + Db.MAX_OWN_KEY_BYTES
+                        + " (bergdb 024-17, L9).");
             }
         }
         
