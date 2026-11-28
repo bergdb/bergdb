@@ -117,3 +117,8 @@ branch of 028-81 and 028-82.
   to 15): `testNewDatabaseWhereAStoppedOneWasDeleted`,
   `testDirectoryReplacedInTheWindowAfterStop` and
   `testDirectoryDeletedWhileTheDatabaseRuns`, 300 of 300 passed each.
+
+Gates, on the tree of the commit before this log's gate line, on main's
+`d75dec96` (2026-11-28, load average about 20 from other runs on F53):
+`BEFORE COMMIT OK (121 s)` (13:10 to 13:12); `LEVEL 3 OK` (13:12 to
+13:28; unit tests 1,771).
