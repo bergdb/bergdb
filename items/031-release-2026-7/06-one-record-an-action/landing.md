@@ -581,6 +581,9 @@ at `080c1f2f`:
     keys' length; (b) changes what the Core API accepts for no case that
     needs it now, and is worth it only if a formal bound of the record is
     wanted later.
+  * Decided (Frans, 2026-11-28): (b) with a cap of 1,024 bytes, as the
+    item's section 8 came to recommend after the investigation of
+    2026-11-27; to be built.
 * Not an option, a consequence of the reserve (Q3 (b), as the lead
   framed it): 005-31 admits an action within 7/8 of the record limit, no
   longer 15/16. At the release's limits that is 1.879 GB; a transaction

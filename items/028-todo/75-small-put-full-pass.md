@@ -1,7 +1,8 @@
 028-75. Decide: one small put, then maintain() calls rewrite the whole live data
 ==============================================================================
 
-Status: open. Kind: Decide. Frans: decision.
+Status: decided (2026-11-28): (c); not designed or built yet. Kind:
+Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: `Reclaim.passDue` (`Reclaim.java`, M1 of `planPart`) begins a
@@ -41,7 +42,8 @@ for large databases first (1M to 100M keys); a rewrite of everything
 for a byte is the worst case of write amplification. It belongs to the
 landing's step 3, the pace (031-06, section 9).
 
-Frans: decision. The rule is part of 031-04's design that A2 took; a
+Frans: decided, (c) (2026-11-28). The rule is part of 031-04's design
+that A2 took; a
 change of when a call begins a pass changes what `maintain(budget)`
 promises. The options:
 
@@ -83,12 +85,17 @@ keeps the calls' end by construction for an emptied database, and keeps
 the decision a function of the stream. Its k and floor are measured in
 step 3.
 
-Done when: Frans has chosen; for (b) or (c), the rule built in the
-landing's step 3 on `main`, with the probes above and `RmPassProbe`
+Decision: Frans, 2026-11-28, 07:27: (c). The landing's step 3 is on
+`main` since 2026-11-28 without it: the rule is designed and measured
+as work of its own, on `main` after it.
+
+Done when: Frans has chosen; for (b) or (c), the rule built on `main`
+(written before the decision: in the landing's step 3), with the probes above and `RmPassProbe`
 showing a small write's cost, and `before-commit.sh`, the level scripts
 and the item's sweep green; for (a), the Javadoc and 027-13 say the cost.
 
-First step: Frans's choice.
+First step: the design of (c): how each record keeps the live bytes up
+to date, k and the floor, with the probes named above.
 
 
 Log
@@ -96,3 +103,5 @@ Log
 
 2026-11-27. Registered by lead-1127, from the review of 031-06's landed
 diff (R4).
+
+2026-11-28. Frans decided (c) (07:27). Not designed or built yet.

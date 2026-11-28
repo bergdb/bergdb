@@ -1,7 +1,8 @@
 028-73. Decide: new stream files a tenth, the writer waits at a new database's first 10 MB
 =========================================================================================
 
-Status: open. Kind: Decide. Frans: decision.
+Status: decided (2026-11-28): (b); made on a branch, to be rebased and
+landed. Kind: Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: since 028-62 (`05fc573c`, the fix of RB-011), `FileStream` gives a
@@ -41,8 +42,8 @@ Why: not a correctness fault. P1's guide of no stop-the-world (010-01)
 is passed once per new database, at its first 10 MB, by a wait for the
 disk that 028-62's measurements did not look at.
 
-Frans: decision. 028-62's rule is Frans's ("a tenth", 2026-11-26), so a
-change of it waits for him. The options:
+Frans: decided, (b) (2026-11-28). 028-62's rule is Frans's ("a tenth",
+2026-11-26), so a change of it was his. The options:
 
 * **(a) Accept it.** No change. The wait is the disk's wait as 005-46
   counts it, once at a new database's first 10 MB; a database kept
@@ -68,13 +69,15 @@ Recommendation: (b). It removes the wait in the measured case, keeps
 RB-011's fix where the tenth matters (an emptied database's last file),
 and is made and gated.
 
+Decision: Frans, 2026-11-28, 07:27: (b).
+
 Done when: Frans has chosen; for (b) or (c), the change is on `main`
 with BEFORE COMMIT OK and the probe's load phase measured ABBA against
 `main`'s; 027-13, section 4, 027-14, 028-62, 033 (RB-011) and
 `releases/next.md` give the sizes that hold.
 
-First step: Frans's choice. For (b), rebase `loadwait-1mb-floor` onto
-`main`, the documents above, the gate.
+First step: rebase `loadwait-1mb-floor` onto `main`, the documents
+above, the gate.
 
 
 Log
@@ -82,3 +85,5 @@ Log
 
 2026-11-27. Registered by lead-1127, from the timing run on `main` of
 17:16 and the bisection of 18:22 to 18:41 (an agent of lead-1127).
+
+2026-11-28. Frans decided (b) (07:27). Not on `main` yet.

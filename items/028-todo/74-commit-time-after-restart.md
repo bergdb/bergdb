@@ -1,7 +1,8 @@
 028-74. Decide: a commit's time after a restart can be at or before a time a reader was given
 ==========================================================================================
 
-Status: open. Kind: Decide. Frans: decision.
+Status: decided (2026-11-28): (a); the text not written yet. Kind:
+Decide. Frans: decided.
 Created 2026-11-27 by Frans Lundberg.
 
 What: `DbClock.transactionBegin` gives a transaction the clock's time,
@@ -43,8 +44,8 @@ hold across a start; and P2's "nothing but the stream decides a byte"
 has an exception that its draft covers only by calling the time an
 input.
 
-Frans: decision. A change of `currentTime()`'s promise, or of its
-behaviour, is the public API's. The options:
+Frans: decided, (a) (2026-11-28). A change of `currentTime()`'s promise,
+or of its behaviour, is the public API's. The options:
 
 * **(a) State the limit.** No code. `currentTime()`'s Javadoc and P2's
   "Its time" say that a time `currentTime()` gave holds for the session
@@ -72,11 +73,13 @@ Recommendation: (a) for 2026.7: the reach is a test's clock or a clock
 set back, and the statement makes the promise exact; (b) as a study for a
 later release if a promise across starts is wanted.
 
+Decision: Frans, 2026-11-28, 07:27: (a) for 2026.7.
+
 Done when: Frans has chosen; for (a), the Javadoc of `currentTime()` and
 P2's draft say it; for (b), a study with its effects on reads, reclaim
 and the Pub API.
 
-First step: Frans's choice.
+First step: the sentence in `currentTime()`'s Javadoc and in P2's draft.
 
 
 Log
@@ -84,3 +87,6 @@ Log
 
 2026-11-27. Registered by lead-1127, from the review of 031-06's landed
 diff (R3).
+
+2026-11-28. Frans decided (a) (07:27). The Javadoc and P2's draft not
+changed yet.

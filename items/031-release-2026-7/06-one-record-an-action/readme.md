@@ -792,7 +792,8 @@ Q1 is answered by this. Q4 to Q6 are steps of the landing (section 9).
   record and reclaim's records after it, is a released bug of 2026.5
   and 2026.6, S4 (033), fixed by this item's landing.
 
-Open for Frans: O1, BergDB's own long keys under "/#" (`landing.md`,
+Decided (Frans, 2026-11-28, 07:27): O1, (b), a cap of 1,024 bytes; to
+be built. O1 is BergDB's own long keys under "/#" (`landing.md`,
 step 2, Options for Frans). What they are, from an investigation by an
 agent of lead-1127 (2026-11-27, 17:20 to 17:28, reading and arithmetic,
 nothing built):
@@ -830,6 +831,10 @@ nothing built):
 Recommended: (b), 1,024 bytes, in place of `landing.md`'s (a). It does
 not make the action's 7/8 provably sufficient: the worst action is set
 by L3's sum, not by one key (028-72).
+
+Decision: Frans, 2026-11-28, 07:27: (b), the cap of 1,024 bytes as the
+limit L9. Not built yet: until it is, section 3's 60 segments for the
+step's last KV stay an assumption.
 
 
 ## 9. The landing
@@ -1051,3 +1056,6 @@ up to 128 KiB, and two timing probes for the lead.
 tests that depended on the stream's layout made independent of it or
 checking it; Q4 to Q6 answered (section 6); after step 5, the stale
 comments it found and G22.
+
+2026-11-28. O1 decided by Frans, (b): a cap of 1,024 bytes on BergDB's own
+long keys, the limit L9 (section 8); to be built.

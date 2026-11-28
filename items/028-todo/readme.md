@@ -107,9 +107,9 @@ Open
 | [028-70](70-refused-start-after-recovery-wrote.md) | Investigate | A start refused after its recovery has written changes the stream | none | open |
 | [028-71](71-large-commits-stream-kept.md) | Investigate | Under sustained large commits the stream kept grows far past the live data | decision | open (on `main`; closing for Frans) |
 | [028-72](72-action-room-lean-count/readme.md) | Investigate | The action's 7/8: Java's count of the worst action 76.5 %, the Lean's 106 %; A to G | decision | open |
-| [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB | decision | open |
-| [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given | decision | open |
-| [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data | decision | open |
+| [028-73](73-new-files-a-tenth-writer-waits.md) | Decide | New files a tenth: the writer waits at a new database's first 10 MB: (b) | decided | open (made on a branch, to land) |
+| [028-74](74-commit-time-after-restart.md) | Decide | A commit's time after a restart at or before a time a reader was given: (a) | decided | open (the Javadoc to write) |
+| [028-75](75-small-put-full-pass.md) | Decide | One small put, then maintain() calls rewrite the whole live data: (c) | decided | open (to design and build) |
 | [028-76](76-first-block-a-fill.md) | Fix, Decide | A stream whose first meta block is recovery's fill: fixed; the files before a gap: (a) | decided | open |
 | [028-77](77-append-only-or-tail-rewrites.md) | Decide | Strict append-only storage, or tail rewrites at a start; the review is 035-03 | decision | open |
 
@@ -705,3 +705,9 @@ the stream's files stay strictly append-only, or a start may rewrite
 the tail, on a model of what the storage's provider gives (the review
 is 035-03); to be taken up after 2026.7's work is stable. 028-67's C2
 is held until it is decided (Frans).
+
+2026-11-28. Frans decided 028-73 (b), a floor of 1 MB for new files once
+the stream kept reaches 4 MB; 028-74 (a), the limit stated in
+`currentTime()`'s Javadoc and P2's draft; and 028-75 (c), a pass only
+when the stream kept is a share and a floor over the live bytes (07:27).
+None is on `main` yet.

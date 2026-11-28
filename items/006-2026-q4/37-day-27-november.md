@@ -193,6 +193,19 @@ Frans, 2026-11-28:
   granted from the storage (the review, 035-03). Taken up after 2026.7's
   work is stable. Until then a tail of zeros is cut as it is (028-60,
   part 2) and a tail of other bytes refused (028-67's C1).
+* **O1: (b), a cap of 1,024 bytes on BergDB's own long keys**
+  (07:27), a new limit L9 in 024-17, checked where a long key enters a
+  transaction, not at reclaim's copies or at a start (031-06, section
+  8). To be built.
+* **028-73: (b)** (07:27): new stream files of at least 1 MB once the
+  stream kept reaches 4 MB; the tenth unchanged above 10 MB. The fix is
+  the branch's (`loadwait-1mb-floor`), to be rebased and landed.
+* **028-74: (a)** (07:27): the limit stated in `currentTime()`'s Javadoc
+  and in P2's draft: a time given holds for the session that gave it.
+* **028-75: (c)** (07:27): a call begins a pass only when the stream
+  kept is more than about 1.5 times the live bytes and more than about
+  400 kB over them, the live bytes kept up to date by each record. To be
+  designed and measured.
 
 The lead's, 2026-11-28 (class 1, from the timing run of 01:38 to 02:50;
 section 3):
@@ -731,6 +744,10 @@ The lead's overview (08:30), its conclusions:
 * 2026-11-28 07:10 028-77 (Decide: strict append-only storage, or tail
   rewrites at a start) and 035-03 (the review, a stub, not started)
   registered; 028-67's C2 held (section 2).
+* 2026-11-28 07:30 Frans decided O1 (b), 028-73 (b), 028-74 (a) and
+  028-75 (c) at 07:27 (section 2). The work starts as agents become
+  free, at most four at a time: 028-73 with 028-74 first, then O1, then
+  028-75's design.
 
 ## 4. Waiting for Frans
 
@@ -742,75 +759,19 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 07:10)
+### Open now (2026-11-28 07:30)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
-17:26, and of 2026-11-28, 06:05 (section 2). The text of sections 4.0
-to 4.3 is left as it was written. New since 00:45: 028-71's closing
-and 028-77, the two points before the theme's wording. Answered since
-then: 028-76, (a). Settled by the lead: the warm-up's reading ahead
-(review 3's W1) stays, from the timing run; T1's rule for a cut record's
-own bytes is in the review of the start path that runs until 11:00.
+17:26, and of 2026-11-28, 06:05 to 07:27 (section 2). The text of
+sections 4.0 to 4.3 is left as it was written. New since 00:45: 028-71's
+closing and 028-77, the two points before the theme's wording. Answered
+since then: 028-76, (a); and at 07:27 O1, (b), 028-73, (b), 028-74, (a),
+and 028-75, (c), each to be built (section 2; the options are in
+031-06's section 8 and in the entries). Settled by the lead: the
+warm-up's reading ahead (review 3's W1) stays, from the timing run; T1's
+rule for a cut record's own bytes is in the review of the start path
+that runs until 11:00.
 
-* **O1. BergDB's own long keys under "/#"**, class 3 (a new limit;
-  031-06, section 8, with the investigation of 17:20 to 17:28). The
-  longest key BergDB writes itself is a Pub index entry of 496 bytes,
-  71 segments (275 + L6 + L2 - 1); only tests write longer own keys.
-  * (a) Keep what the Core accepts, as built: an own key up to L3,
-    57,344 bytes, 8,193 segments; the step's last KV in 031-06's
-    section 3 stays an assumption.
-  * (b) A cap of 1,024 bytes (147 segments), a new limit L9 in 024-17,
-    checked at the long-key calls, in `Db.checkLimits` and in
-    `Db.transformKeys`, not at reclaim's copies or at a start; with the
-    rule 275 + L6 + L2 - 1 <= the cap for any later raise; no change to
-    the Pub API, the stream format or the proofs; about 150 to 250
-    lines.
-  * (c) Every key within L2: not possible without a new index format.
-  * Recommended: (b), 1,024 bytes. Parked until Frans decides.
-* **028-73. New stream files a tenth: the writer waits at a new
-  database's first 10 MB** (Frans's rule of 028-62, 2026-11-26). The
-  timing run of 17:16 and its bisection: since `05fc573c` a new database
-  writes its first 10 MB in 200 kB files; with per-append forcing the
-  writer's thread drains about 20 MB/s, and a fast load waits 144 to
-  282 ms for room in the write buffer, once (2026.6: 0 to 16 ms). The
-  stream's bytes are the same.
-  * (a) Accept it: once a new database, the disk's wait.
-  * (b) A floor of 1 MB once the kept stream reaches 4 MB, as the
-    quarter gave; the tenth unchanged above 10 MB; RB-011's bound "a
-    tenth, or 1 MB for 4 to 10 MB kept". Made and gated on branch
-    `loadwait-1mb-floor` (`5731b6c9`): 1 wait of 7 to 21 ms against
-    `main`'s 145 to 169 ms.
-  * (c) (b), and a floor of 5 MB from 20 MB, for a faster writer;
-    RB-011's bound 5 MB for 20 to 50 MB kept.
-  * (d) Back to the quarter, which undoes RB-011's fix.
-  * Recommended: (b). Parked until Frans decides.
-* **028-74. A commit's time after a restart at or before a time a
-  reader was given** (the review's R3; the public API's promise of
-  `currentTime()`). A start does not rebuild the last time given to a
-  reader; with a clock that stands still or was set back, a read at that
-  time later sees a commit made after the start.
-  * (a) State the limit in `currentTime()`'s Javadoc and P2's draft: a
-    time given holds for the session that gave it.
-  * (b) `currentTime()` gives at most the last transaction's time, a
-    bound a start rebuilds from the stream; to be studied.
-  * (c) The times given kept in the stream; (d) a start waits for its
-    clock: not recommended.
-  * Recommended: (a) for 2026.7. Parked until Frans decides.
-* **028-75. One small put, then `maintain()` calls rewrite the whole
-  live data** (the review's R4; 031-04's rule, taken with A2). A put of
-  a byte led the calls to write 4.4 MB at 20,000 keys and 31.9 MB at
-  100,000.
-  * (a) Keep the rule and state the cost.
-  * (b) A threshold of released bytes again, 400 kB: brings back the
-    judgment that gave RB-006 and RB-007.
-  * (c) A pass only when the stream kept is more than k times the live
-    bytes (k about 1.5) and more than a floor over them (about 400 kB),
-    with the live bytes kept up to date by each record; designed and
-    measured in step 3.
-  * (d) A call's pass cutting at the iteration before's start: brings
-    back RB-007's cause.
-  * Recommended: (c). Parked until Frans decides; step 3 begins with
-    the review's fixes and the parts that do not depend on it.
 * **028-53. Idle rewrites by M1; RB-007** (in progress, Frans:
   decision): RB-007 is fixed on `main` (18:52); the entry also covers
   the idle rewrites, which 028-75 now holds. Whether 028-53 is done is
