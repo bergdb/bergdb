@@ -55,8 +55,8 @@ stream (1.9) and writes nothing for it.
 
 ### 1.2. The checks before recovery
 
-In this order, under the write lock and `readSync`; from step 2 on, a
-refusal has written nothing:
+In this order, under the write lock and `readSync`; from step 1's
+comparison with `created.txt` on, a refusal has written nothing:
 
 1. **An empty stream** is created: meta block 0 (lastTrans −1, the
    node size, the builder's id or a random one, the time, its own
@@ -67,7 +67,25 @@ refusal has written nothing:
    written at the end of the start (1.9); with `created.txt` (the Pub
    API) both are synced then, and `created.txt` written after the sync
    (015-01, 028-18; until 028-18 the primordial record was synced and
-   `created.txt` written here).
+   `created.txt` written here). A stream that is not empty is first
+   compared with `created.txt` (since 028-81, 2026-11-28; 031-08,
+   UB-3), before every other check: with `created.txt` (the Pub API's
+   directories, `DbBuilder.createdTxt`) that names an ID on its line
+   "database ID:", 32 hex digits, and a first meta block that is valid
+   and holds its own position (`RecoverableStream.readFirstValidMetaBlock`,
+   the block of step 3's database id), another id there is refused, a
+   `StreamIoException` whose cause, a `BadDirStateException`, names the
+   first stream file, both ids, `created.txt` and the way out, a restore
+   of the database's files from a backup (`Db.refuseCreatedTxtOfAnotherDatabase`).
+   The start takes nothing else from `created.txt`: the id it checks
+   blocks and records against is the first block's, compared with
+   `created.txt`'s again after recovery's walk; without `created.txt`, with
+   one that names no id, or with a first block that is not valid, the
+   start is as before. Until then another database's first file in place
+   of the database's own was refused at the database's own first record
+   after it (1.3, a `BadTailException`), whose way out, a cut there, left
+   a database of the other's values; another database's stream files
+   beside the database's `created.txt` were taken.
 2. **An incomplete creation** is refused (`DatabaseNotCreatedException`,
    005-33): a stream not cut and not longer than the creation, whose
    bytes begin as a meta block of this version; its block, if complete,
@@ -538,7 +556,10 @@ whole stream" until 028-11.
   `testOtherFormatRefusedFilesUnchanged`, the files compared byte for
   byte; `RecoverableStream`'s `testRecoveryHeld`; CorruptStreamTester
   fails a refused start that has written). Until then such a start
-  first completed a torn tail (027-03, G18).
+  first completed a torn tail (027-03, G18). Since 028-81 for stream
+  files and a `created.txt` of two databases
+  (`DbTesterStream.testFirstFileOfAnotherDatabaseRefused`,
+  `testCreatedTxtOfAnotherDatabaseRefused`, the files byte for byte).
 
 
 ## 4. Costs and bounds
@@ -665,7 +686,8 @@ T3 and T4 are part 6's; what they give a start:
 ## 6. In Java
 
 `core/Db` (`startInner`, the order of 1.2 to 1.9, and the methods it
-calls, `readStartupPos` and `readStartupDistanceKv` among them;
+calls, `refuseCreatedTxtOfAnotherDatabase`, `readStartupPos` and
+`readStartupDistanceKv` among them;
 `StartInfo`);
 `core/DbStarter` (1.4's validation to 1.9); `core/NodeCollection`
 (`setStartupSection`, `readVersion`,
@@ -675,8 +697,9 @@ calls, `readStartupPos` and `readStartupDistanceKv` among them;
 (`toPreviousState`, `validateStreamNode`); `TopDs.findSuperRootAtTime`;
 `Reclaim.initFromDb` (a, `isOwnRecord`; the first position against the
 cut, `StreamAfterCutException`); `Db.refusalOfMissingBytes`;
-`storage/RecoverableStream` (`recover` and its helpers, `walkTail`,
-`tornRecordIsOwn`, `checkLastTransSpos`, `checkLeftovers`,
+`storage/RecoverableStream` (`recover` and its helpers,
+`readFirstValidMetaBlock`, `walkTail`, `tornRecordIsOwn`,
+`checkLastTransSpos`, `checkLeftovers`,
 `leftoverProblem`, `isIncompleteCreation`, `writeRecovery` and `Hold`,
 the writes held; `NodeStream.writeRecovery`), `RecoverableStream.RecordCheck`
 and the Core's, `StoredTrans.RECORD_CHECK` (`headerCheck`,
@@ -713,7 +736,9 @@ cycle check (027-03, 14.2).
   `testOtherFormatRefusedFilesUnchanged`, refusals after the walk with a
   torn record after them, the stream and the files byte for byte as
   before); `StoredTrans`'s `testHeaderCheck` and `testRecordCheck`;
-  `NodeStreamTester.testStartRefusesFormat8` (031-06); the gap's tests of
+  `NodeStreamTester.testStartRefusesFormat8` (031-06); `DbTesterStream`'s
+  three tests of 028-81 (`created.txt`'s id against the first meta
+  block's, and a start without one as before); the gap's tests of
   027-14 (028-66), `PubTesterJavadocNewUsers.testStartWithTheFirstFileDeleted`
   among them.
 * **In the night**: `level2.sh` (RestartStress, RestartInvariance,
@@ -903,3 +928,8 @@ distance long, is refused as a creation that did not complete (1.2,
 step 2); `FileStream` writes at most 5 MB at a time, so the zero tail's
 bound holds for every buffer (1.3). By an agent of lead-1127, on the
 branch `start-fixes`.
+
+2026-11-28. 028-81 (031-08, UB-3): a start compares the database id of
+`created.txt` with the stream's first meta block's before every other
+check, and refuses another (1.2, step 1; sections 3, 6 and 7). By an
+agent of lead-1127, on the branch `028-81-82`.

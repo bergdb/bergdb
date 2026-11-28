@@ -43,6 +43,7 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
+import bergdb.stream.BadDirStateException;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
@@ -1254,7 +1255,15 @@ public class Db implements AutoCloseable {
      *          (Frans, 2026-11-27; bergdb 028-66): a file before a gap in a FileStream's
      *          files whose first meta block is not this database's, with its own position
      *          and this database's ID (RecoverableStream, recover()). The message names the
-     *          file and the way out; the start has deleted and written nothing.
+     *          file and the way out; the start has deleted and written nothing. With a
+     *          BadDirStateException as the cause, also if created.txt (DbBuilder.createdTxt,
+     *          the Pub API's directories) names another database ID than the stream's first
+     *          meta block (2026-11-28, bergdb 028-81): the stream files and created.txt are of
+     *          two databases, as when another database's first stream file is put in place
+     *          of the database's own. The message names the first stream file, both IDs,
+     *          created.txt and the way out, a restore of the database's files from a backup;
+     *          the start checks it before anything else of the stream, and has deleted and
+     *          written nothing.
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
      *          start, 30 but in BergDB's own tests (bergdb 026-08), or none (bergdb
@@ -1374,6 +1383,8 @@ public class Db implements AutoCloseable {
 
         storageManager.start();
         final boolean creating = handleEmptyStream();
+        // Before every other check of the stream (2026-11-28, bergdb 028-81).
+        final byte[] createdTxtId = creating ? null : refuseCreatedTxtOfAnotherDatabase();
         refuseIncompleteCreation(creating);
         
         try {
@@ -1390,6 +1401,13 @@ public class Db implements AutoCloseable {
                     + "is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted "
                     + "it, and this release cannot read it: it has no encryption (bergdb "
                     + "020-28). The start has written nothing.", e);
+        }
+        if (createdTxtId != null && !Util.areEqual(createdTxtId, nodeStream.databaseId())) {
+            // The ID that recover() took, which the meta blocks and the records are checked
+            // against from here on, is that of the first meta block, which created.txt's was
+            // compared with (RecoverableStream.readLastValidMetaBlock()); compared again
+            // here, so that the start never takes another ID than created.txt names.
+            throw createdTxtRefusal(createdTxtId, nodeStream.databaseId(), -1);
         }
         
         long startupPos = readStartupPos();
@@ -1822,6 +1840,135 @@ public class Db implements AutoCloseable {
         }
         writeCreatedTxt("unknown (created.txt written at a start on " + Util.today() + ")",
                 DatabaseId.createFromBytes(nodeStream.getMetaBlock().getId()));
+    }
+    
+    /**
+     * Refuses a stream whose first meta block holds another database ID than created.txt
+     * names (2026-11-28, bergdb 028-81; 031-08, UB-3): the stream files and created.txt are
+     * of two databases, as when another database's first stream file was put in place of the
+     * database's own, or the stream files of one database beside the created.txt of another.
+     * Before every other check of the stream, so that the start has written and deleted
+     * nothing, and with a StreamIoException whose cause, a BadDirStateException, names the
+     * first stream file, created.txt and the way out, as a file before a gap of another
+     * database is refused (bergdb 028-66). Until then the start took the ID from the first
+     * meta block alone: with another database's first file, the database's own records
+     * after it were refused as a tail that is not the stream's records (BadTailException),
+     * whose way out, a cut there, left a database of the other database's values; with
+     * another database's stream files, the start took them.
+     *
+     * <p>Only on a start with created.txt (DbBuilder.createdTxt(File), the Pub API's
+     * directories) that names an ID, and of a stream whose first meta block is valid and
+     * holds its own position (RecoverableStream.readFirstValidMetaBlock()). The start
+     * trusts created.txt for this refusal only: the ID that it takes, and checks every meta
+     * block and record against, is the first meta block's, as before. A start without
+     * created.txt (the Core API without createdTxt(File); a directory whose created.txt was
+     * lost, which the start writes again with the stream's ID, writeCreatedTxtIfMissing()),
+     * with a created.txt that names no ID that reads as one, or of a stream whose first
+     * meta block is not valid or not of this version, which recover() refuses, is as
+     * before. The start that creates the database does not call it.</p>
+     *
+     * @return  created.txt's ID, if it names one, else null
+     * @throws StreamIoException
+     */
+    private byte[] refuseCreatedTxtOfAnotherDatabase() {
+        final byte[] txtId = readCreatedTxtId();
+        if (txtId != null) {
+            final MetaBlock first = nodeStream.readFirstValidMetaBlock();
+            if (first != null && !Util.areEqual(txtId, first.getId())) {
+                throw createdTxtRefusal(txtId, first.getId(), first.getStoredPos());
+            }
+        }
+        return txtId;
+    }
+    
+    /**
+     * The database ID that created.txt names on its line "database ID:" (writeCreatedTxt()),
+     * or null if there is no created.txt, no such line, or no ID on it, 32 hex digits not
+     * all zero (bergdb 028-81). Read as ISO-8859-1, as DatabaseBuilderImp reads the line
+     * "crypto key:" (bergdb 020-28).
+     *
+     * @throws StreamIoException  if created.txt cannot be read
+     */
+    private byte[] readCreatedTxtId() {
+        if (createdTxtDir == null) {
+            return null;
+        }
+        final File file = new File(createdTxtDir, "created.txt");
+        if (!file.isFile()) {
+            return null;
+        }
+        final byte[] bytes;
+        try {
+            bytes = java.nio.file.Files.readAllBytes(file.toPath());
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        final String label = "database ID:";
+        for (String line : new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                .split("\\r?\\n")) {
+            if (line.startsWith(label)) {
+                final String hex = line.substring(label.length()).trim();
+                if (hex.length() != 32) {
+                    return null;
+                }
+                try {
+                    final byte[] id = StringUtil.hexStringToBytes(hex);
+                    return Util.hasOnlyZeros(id) ? null : id;
+                } catch (IllegalArgumentException e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * The refusal of stream files and a created.txt of two databases (bergdb 028-81):
+     * 'streamId', the ID of the stream's first meta block, at 'blockPos' (-1: not named),
+     * is not 'txtId', created.txt's.
+     */
+    private StreamIoException createdTxtRefusal(byte[] txtId, byte[] streamId, long blockPos) {
+        final String file = blockPos < 0 ? null : streamFileAt(blockPos);
+        return new StreamIoException(new BadDirStateException("The stream's first meta block"
+                + (blockPos < 0 ? "" : ", at " + blockPos) + (file == null ? ""
+                : ", in the stream file " + file + ",") + " holds the database ID "
+                + StringUtil.toHex(streamId) + ", and created.txt in " + createdTxtDir.getPath()
+                + " names the database ID " + StringUtil.toHex(txtId) + ": the stream files"
+                + " and created.txt are of two databases, and either may be another"
+                + " database's, as when another database's first stream file is put in place"
+                + " of the database's own, or the stream files of one database beside the"
+                + " created.txt of another (bergdb 028-81). The start, which checks this"
+                + " before it reads the rest of the stream, has written and deleted nothing."
+                + " To start the database, restore its own files from a backup, the stream"
+                + " files (*.bergdb) and created.txt all together, and keep the files that"
+                + " are there now: they may be another database's."));
+    }
+    
+    /**
+     * For a refusal's message: the name of the stream file in createdTxtDir that holds
+     * stream position 'pos', by FileStream's names, 14 digits and ".bergdb", the number
+     * times 100,000 the file's first position: the one of the largest first position at or
+     * before 'pos'; null if there is none, or the directory cannot be listed.
+     */
+    private String streamFileAt(long pos) {
+        final String[] names = createdTxtDir.list();
+        if (names == null) {
+            return null;
+        }
+        String found = null;
+        long foundStart = -1;
+        for (String name : names) {
+            if (name.length() != 21 || !name.endsWith(".bergdb")
+                    || !name.substring(0, 14).chars().allMatch(c -> c >= '0' && c <= '9')) {
+                continue;
+            }
+            final long start = Long.parseLong(name.substring(0, 14)) * 100000L;
+            if (start <= pos && start > foundStart) {
+                found = name;
+                foundStart = start;
+            }
+        }
+        return found;
     }
     
     /**

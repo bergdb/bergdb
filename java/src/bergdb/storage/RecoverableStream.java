@@ -1368,6 +1368,24 @@ public class RecoverableStream {
     }
 
     /**
+     * The stream's first meta block, which recover() takes the stream's database ID from
+     * (readFirstMetaBlock()): the first valid block at or after the first position, if it
+     * holds its own position; null if there is none, or if a block before it is not of this
+     * version or not BergDB's, which recover() then refuses as before. Reads only; for a
+     * start's comparison of the ID with created.txt's before recover() (2026-11-28, bergdb
+     * 028-81).
+     *
+     * @throws StreamIoException
+     */
+    public MetaBlock readFirstValidMetaBlock() {
+        try {
+            return readFirstMetaBlock();
+        } catch (StreamFormatException e) {
+            return null;        // recover() refuses the stream with it.
+        }
+    }
+
+    /**
      * The database ID of the stream: the one recover() read in the stream's first meta block,
      * or before recover(), the in-memory block's (bergdb 028-67).
      */

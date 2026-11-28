@@ -382,6 +382,11 @@ public class DbBuilder {
     /**
      * If called, the database will (of possible) create a created.txt file in the
      * database directory. It has no line "crypto key:" since 2026-11-27 (bergdb 028-69).
+     * A start compares the database ID that the file names with the stream's first meta
+     * block's, before anything else of the stream, and refuses another (2026-11-28, bergdb
+     * 028-81; Db.start()): the stream files and created.txt are of two databases. It takes
+     * nothing else from the file; a missing created.txt, or one that names no ID, is not
+     * compared, and the start writes a missing one again.
      * 
      * @param dir  The directory to create the file in.
      * @throws IllegalArgumentException  If dir is null (bergdb 020-27, Q2: it was taken, as no

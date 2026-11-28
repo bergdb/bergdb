@@ -174,6 +174,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         return rstream.readLastValidMetaBlock();
     }
 
+    /** RecoverableStream.readFirstValidMetaBlock() (bergdb 028-81). */
+    public MetaBlock readFirstValidMetaBlock() {
+        return rstream.readFirstValidMetaBlock();
+    }
+
     public final long getNextPos() {
         return rstream.getNextSpos();
     }

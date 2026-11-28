@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -887,6 +888,171 @@ public class DbTesterStream {
         String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
         Assert.assertTrue(s, s.contains("database ID:   "));
         Assert.assertFalse(s, s.toLowerCase().contains("crypto key"));
+    }
+    
+    /**
+     * Bergdb 028-81 (031-08, part B, UB-3; its ForeignFileProbe's mode first): another
+     * database's first stream file in place of the database's own. A and B are made by the
+     * same puts, with other IDs and created.txt (the Pub API's setting), the values beginning
+     * with their database's name; B's first file is put in A's directory. The start is
+     * refused, a StreamIoException whose cause, a BadDirStateException, names the first
+     * file, both IDs and created.txt, and no file has changed; with A's own first file back,
+     * A starts with its values. Before, a BadTailException at the first of A's records ("is
+     * not one of this database's records at its place"), whose way out, a cut there, left a
+     * database of B's values.
+     */
+    @Nano
+    private static void testFirstFileOfAnotherDatabaseRefused(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File a = env.createTempDir();
+        File b = env.createTempDir();
+        DatabaseId idA = madeForCreatedTxt(a, "A");
+        DatabaseId idB = madeForCreatedTxt(b, "B");
+        final String first = "00000000000000.bergdb";
+        Assert.assertTrue("several files", new File(a, "00000000000004.bergdb").isFile());
+        byte[] own = java.nio.file.Files.readAllBytes(new File(a, first).toPath());
+        java.nio.file.Files.copy(new File(b, first).toPath(), new File(a, first).toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        refusedAsTwoDatabases(a, first, idB, idA);
+        java.nio.file.Files.write(new File(a, first).toPath(), own);
+        checkValuesOf(a, "A");
+    }
+    
+    /**
+     * Bergdb 028-81: the stream files of one database, B, beside the created.txt of another,
+     * A, refused as files of two databases, no file changed; before, the start took them as
+     * B's. With B's created.txt, B starts with its values.
+     */
+    @Nano
+    private static void testCreatedTxtOfAnotherDatabaseRefused(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File a = env.createTempDir();
+        File b = env.createTempDir();
+        DatabaseId idA = madeForCreatedTxt(a, "A");
+        DatabaseId idB = madeForCreatedTxt(b, "B");
+        File txtB = new File(b, "created.txt");
+        byte[] ownTxt = java.nio.file.Files.readAllBytes(txtB.toPath());
+        java.nio.file.Files.copy(new File(a, "created.txt").toPath(), txtB.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        refusedAsTwoDatabases(b, "00000000000000.bergdb", idB, idA);
+        java.nio.file.Files.write(txtB.toPath(), ownTxt);
+        checkValuesOf(b, "B");
+    }
+    
+    /**
+     * Bergdb 028-81: a start without an ID from created.txt is as before. A directory
+     * without created.txt starts, and the start writes created.txt with the stream's ID; one
+     * whose created.txt names no ID (no such line, or a damaged one) starts and leaves it as
+     * it is; and a start without createdTxt(File), as the Core API's, of A's stream files
+     * beside B's created.txt starts, as it reads no created.txt.
+     */
+    @Nano
+    private static void testStartWithoutCreatedTxtIdAsBefore(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File a = env.createTempDir();
+        File b = env.createTempDir();
+        DatabaseId idA = madeForCreatedTxt(a, "A");
+        madeForCreatedTxt(b, "B");
+        File txtA = new File(a, "created.txt");
+        Assert.assertTrue(txtA.delete());
+        checkValuesOf(a, "A");
+        String written = new String(java.nio.file.Files.readAllBytes(txtA.toPath()), "UTF-8");
+        Assert.assertTrue(written, written.contains("database ID:   " + idA.idToString())
+                && written.contains("creation date: unknown"));
+        for (String text : new String[] {"This directory contains a BergDB database.\n",
+                "database ID:   0123\n", "database ID:   zz" + idA.idToString().substring(2)
+                + "\n", "database ID:   00000000000000000000000000000000\n"}) {
+            java.nio.file.Files.write(txtA.toPath(), text.getBytes("UTF-8"));
+            checkValuesOf(a, "A");
+            Assert.assertEquals(text,
+                    new String(java.nio.file.Files.readAllBytes(txtA.toPath()), "UTF-8"));
+        }
+        java.nio.file.Files.copy(new File(b, "created.txt").toPath(), txtA.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        try (Db db = Db.builder().testSetup(new FileStream(a, new NoForceIo())).start()) {
+            Assert.assertTrue(StringUtil.toString(DbUtil.get(db, Long.MAX_VALUE, "k3"))
+                    .startsWith("A:3:"));
+        }
+    }
+    
+    /**
+     * Makes a database of 'tag' in 'dir', with a random ID and created.txt, of 30 puts of
+     * 20,000 bytes, so several stream files, each value beginning with the tag and its
+     * number; returns its ID (bergdb 028-81).
+     */
+    private static DatabaseId madeForCreatedTxt(File dir, String tag) throws IOException {
+        DatabaseId id = DatabaseId.createRandom();
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo())).id(id)
+                .createdTxt(dir).start()) {
+            for (int i = 0; i < 30; i++) {
+                byte[] value = new byte[20000];
+                byte[] head = StringUtil.toBytes(tag + ":" + i + ":");
+                System.arraycopy(head, 0, value, 0, head.length);
+                db.execute(db.trans().put("k" + i, value));
+            }
+            db.sync(SyncLevel.ORDINARY);
+        }
+        return id;
+    }
+    
+    /** Starts 'dir' with created.txt, and checks that every value is the database tag's. */
+    private static void checkValuesOf(File dir, String tag) throws IOException {
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                .createdTxt(dir).start()) {
+            for (int i = 0; i < 30; i++) {
+                byte[] value = DbUtil.get(db, Long.MAX_VALUE, "k" + i);
+                Assert.assertTrue(tag + i, value != null && value.length == 20000
+                        && StringUtil.toString(Arrays.copyOf(value, 8)).startsWith(tag + ":"
+                        + i + ":"));
+            }
+        }
+    }
+    
+    /**
+     * Starts 'dir' with created.txt, which must be refused as files of two databases (bergdb
+     * 028-81): the message names the stream file 'file', the stream's ID and created.txt's,
+     * and the way out; no file in 'dir' changes.
+     */
+    private static void refusedAsTwoDatabases(File dir, String file, DatabaseId streamId,
+            DatabaseId txtId) throws IOException {
+        java.util.Map<String, byte[]> before = filesOf(dir);
+        try (Db db = Db.builder().testSetup(new FileStream(dir, new NoForceIo()))
+                .createdTxt(dir).start()) {
+            throw new AssertionError("started");
+        } catch (StreamIoException e) {
+            String m = e.getMessage();
+            Assert.assertTrue(m, e.getCause() instanceof bergdb.stream.BadDirStateException
+                    && m.contains("in the stream file " + file + ", holds the database ID "
+                    + streamId.idToString()) && m.contains("created.txt in " + dir.getPath()
+                    + " names the database ID " + txtId.idToString())
+                    && m.contains("are of two databases") && m.contains("restore its own"
+                    + " files from a backup") && m.contains("has written and deleted nothing"));
+        }
+        java.util.Map<String, byte[]> after = filesOf(dir);
+        Assert.assertEquals(before.keySet(), after.keySet());
+        for (String name : before.keySet()) {
+            Assert.assertArrayEquals(name, before.get(name), after.get(name));
+        }
+    }
+    
+    /** The bytes of each file in 'dir' but bergdb.lock, by name. */
+    private static java.util.Map<String, byte[]> filesOf(File dir) throws IOException {
+        java.util.Map<String, byte[]> files = new java.util.TreeMap<String, byte[]>();
+        for (File f : dir.listFiles()) {
+            if (!f.getName().equals("bergdb.lock")) {
+                files.put(f.getName(), java.nio.file.Files.readAllBytes(f.toPath()));
+            }
+        }
+        return files;
     }
     
     public static void testOverwriteAndRestart() {

@@ -57,7 +57,11 @@ import bergdb.pub.util.SyncLevel;
  * the old files that reclaim's cut deletes, are not the stream: the start deletes them if
  * each one is the database's, by its first meta block, and else refuses, with a
  * StreamIoException that names the file, having deleted and written nothing (bergdb
- * 028-66). So leave the files alone while the database is stopped, as while it runs, and
+ * 028-66). created.txt names the database's ID: a start whose first stream file holds
+ * another, as another database's file put in place of the database's own, or the stream
+ * files of one database beside the created.txt of another, is refused in the same way, with
+ * a message that names the files and says to restore them from a backup (bergdb 028-81).
+ * So leave the files alone while the database is stopped, as while it runs, and
  * copy, move or restore a stopped database's files all together: the stream's files and
  * created.txt.</p>
  * 

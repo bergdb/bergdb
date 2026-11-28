@@ -134,7 +134,9 @@ at the same offsets passes the checks, and with two databases of
 identical layout a start took the other database's value of one key
 (028-67, "Found, not covered by C3"). Node checksums that include the
 position and the database's ID would close it: a change of the format,
-decided with this review, not in 2026.7.
+decided with this review, not in 2026.7. The same gap gives 031-08's
+UB-4 (part B, 2026-11-28): another database's stream file in the middle,
+of the same name and length, is accepted, and reads give its values.
 
 Also with this entry (2026-11-28): 028-78, a deleted copy of the
 database's own later bytes in the tail (a restore in place on a storage
