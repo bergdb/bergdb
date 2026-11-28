@@ -32,6 +32,9 @@ import java.util.concurrent.TimeUnit;
  *       least to the last synced, and its writes leave the bytes before the cut as they were;
  *   K3  a chain whose starts all found the stream at an action's end ends, after all the
  *       actions, with the ref's files, byte for byte (a kill and a restart change no byte);
+ *   K5  after such a kill, children that only start the database are killed 0 to 200 ms after
+ *       they begin to start, one to three times; a start then holds the same state, and the stream
+ *       is that of a start that no kill cut (027-11, section 1.3);
  *   K4  after a start that wrote (a torn end completed), two copies of the files as the kill
  *       left them, each started and given the same next actions, end with the same bytes:
  *       the recovery's bytes too are decided by the stream so far. The chain then ends.
@@ -45,11 +48,24 @@ public class KillBytes {
     static File base;
     static SameBytes.Result ref;
     static long kills, betweenKills, randomKills, boundaryStarts, writingStarts, chains, chainsWhole,
-            zeroTails, k4Checks, childEnds, notCreated, deadDeleted, layoutNotes;
+            zeroTails, k4Checks, childEnds, notCreated, deadDeleted, layoutNotes, k5Checks, k5Kills;
 
     public static void main(String[] a) throws Exception {
         if (a[0].equals("child")) {
             child(a);
+            return;
+        }
+        if (a[0].equals("recover")) {
+            // A start and a close only: the parent kills it during the start (K5).
+            SameBytes.Run x = new SameBytes.Run();
+            x.name = "recover";
+            x.r = new Random(1);
+            x.dir = new File(a[3]);
+            System.out.println("U");
+            System.out.flush();
+            SameBytes.start(x);
+            x.db.close();
+            System.out.println("D");
             return;
         }
         seed = Long.parseLong(a[0]);
@@ -80,7 +96,8 @@ public class KillBytes {
         Common.rmrf(base);
         System.out.println("OK KillBytes seed " + seed + ", " + nActs + " actions, " + kills + " kills (" + betweenKills
                 + " between actions, " + randomKills + " random), " + boundaryStarts + " starts at an action's end, "
-                + writingStarts + " starts that completed a torn end (" + k4Checks + " K4 checks), " + zeroTails
+                + writingStarts + " starts that completed a torn end (" + k4Checks + " K4 checks, " + k5Checks + " K5 checks after "
+                + k5Kills + " kills during the completion, " + invalidBlocks + " meta blocks completed as invalid ones), " + zeroTails
                 + " zero tails, " + deadDeleted + " files of a decided cut deleted by a start, " + layoutNotes
                 + " chains with other files (NOTE), " + notCreated + " kills before the creation was durable, " + chains + " chains, " + chainsWhole + " whole chains equal to the ref, "
                 + (System.currentTimeMillis() - t0) / 1000 + " s");
@@ -109,6 +126,8 @@ public class KillBytes {
             int pause = done + 1 + r.nextInt(Math.max(1, Math.min(nActs - done, 120)));
             if (pause >= nActs) pause = -1;   // run to the end
             if (mode == 2) pause = -1;
+            new File(dir.getPath() + ".progress").delete();
+            Files.write(new File(dir.getPath() + ".progress").toPath(), new byte[0]);
             Process p = spawn(dir, mode == 2 ? -1 : pause, mode == 0);
             BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
             int lastA = done - 1, lastS = done - 1;    // the actions before the child's start are synced (a close)
@@ -143,6 +162,12 @@ public class KillBytes {
             }
             p.destroyForcibly();
             p.waitFor(60, TimeUnit.SECONDS);
+            // The child's progress file: every line it wrote before the kill (a write per line).
+            for (String line : Files.readAllLines(new File(dir.getPath() + ".progress").toPath())) {
+                // A line cut by the kill has fewer digits: max() leaves it out.
+                if (line.startsWith("A ")) lastA = Math.max(lastA, parse(line.substring(2)));
+                else if (line.startsWith("S ")) lastS = Math.max(lastS, parse(line.substring(2)));
+            }
             if (!paused && mode != 2) {
                 throw new Common.Fail("chain " + chains + ": the child ended without END or P (exit " + p.exitValue()
                         + "):\n" + out);
@@ -161,6 +186,18 @@ public class KillBytes {
             done = after;
         }
         Common.rmrf(dir);
+    }
+
+    static int parse(String s) {
+        try { return Integer.parseInt(s.trim()); } catch (NumberFormatException e) { return -1; }
+    }
+
+    static Process spawnRecover(File dir) throws IOException {
+        String java = System.getProperty("java.home") + "/bin/java";
+        ProcessBuilder pb = new ProcessBuilder(java, "-ea", "-Xmx1g", "-cp", System.getProperty("java.class.path"), "KillBytes",
+                "recover", "" + seed, "" + nActs, dir.getPath(), "" + nKeys);
+        pb.redirectErrorStream(true);
+        return pb.start();
     }
 
     static Process spawn(File dir, int pause, boolean syncPause) throws IOException {
@@ -219,10 +256,13 @@ public class KillBytes {
         // K2: the start.
         File before = new File(base, "torn");
         SameBytes.copyFiles(dir, before);
-        if (files.isEmpty()) {
+        if (files.isEmpty() || end == 0) {
+            // Killed before the creation's first byte (no file, or an empty one): a start on an
+            // empty stream creates the database (Db.start()); the next child does.
             notCreated++;
+            for (File f : SameBytes.listStreamFiles(dir)) Files.delete(f.toPath());
             Common.rmrf(before);
-            return 0;                 // killed before the creation's first byte: the next child creates
+            return 0;
         }
         Db db;
         try {
@@ -254,6 +294,10 @@ public class KillBytes {
         }
         String d2 = diffFiles(afterStart, readFiles(dir));
         if (d2 != null) throw new Common.Fail("K2: chain " + chains + ": a second start changed the files: " + d2);
+        if (k < 0) {
+            throw new Common.Fail("K2: chain " + chains + ": the start took a stream that ends inside the creation (" + kept
+                    + " of " + ref.createdLen + " bytes, " + zeros + " zeros after); Db.start(): DatabaseNotCreatedException");
+        }
         if (k < synced + 1) {
             throw new Common.Fail("K2: chain " + chains + ": the start holds " + k + " actions, the child synced action " + synced);
         }
@@ -285,6 +329,47 @@ public class KillBytes {
         writingStarts++;
         log("chain " + chains + ": a kill inside " + actionAt(kept) + ": files end " + end + ", zeros " + zeros
                 + "; the start wrote (" + wrote + "), the stream now " + len + "; K4");
+        // K5: kills during the start that completes the torn end (a child that only starts and
+        // closes, killed 0 to 200 ms after it begins the start); then a start here must take what
+        // the killed completion wrote, and end with the bytes of a completion that no kill cut
+        // (027-11, section 1.3: "Every later start takes what a start's completion wrote").
+        {
+            File plain = new File(base, "k5plain");
+            SameBytes.copyFiles(before, plain);
+            Db pd = startParent(plain);
+            pd.close();
+            TreeMap<String, byte[]> want = readFiles(plain);
+            for (int t = 0; t < 3; t++) {
+                File kd = new File(base, "k5");
+                SameBytes.copyFiles(before, kd);
+                int kills5 = 0;
+                for (int u = 0; u < 1 + r.nextInt(3); u++) {
+                    Process cp = spawnRecover(kd);
+                    BufferedReader cin = new BufferedReader(new InputStreamReader(cp.getInputStream()));
+                    String l;
+                    while ((l = cin.readLine()) != null && !l.equals("U")) { }
+                    Thread.sleep(r.nextInt(200));
+                    cp.destroyForcibly();
+                    cp.waitFor(60, TimeUnit.SECONDS);
+                    kills5++;
+                }
+                k5Kills += kills5;
+                Db kdb = startParent(kd);
+                try {
+                    checkState(kdb, k, "K5: chain " + chains + ": a start after " + kills5 + " kills during the completion");
+                } finally {
+                    kdb.close();
+                }
+                // The same bytes but in meta blocks: "but for a meta block that the kill cut, completed
+                // as an invalid block" (027-11, section 1.3), the magic and the version, zeros after.
+                String d5 = diffStreamsButMetaBlocks(readFiles(kd), want);
+                if (d5 != null) throw new Common.Fail("K5: chain " + chains + ": after " + kills5 + " kills during the start that"
+                        + " completes the torn end, the stream is not that of a completion with no kill: " + d5);
+                k5Checks++;
+                Common.rmrf(kd);
+            }
+            Common.rmrf(plain);
+        }
         // K4: two copies, each started and given the next actions, end the same.
         int next = Math.min(nActs, k + 25 + r.nextInt(40));
         File c1 = new File(base, "k4a"), c2 = new File(base, "k4b");
@@ -400,6 +485,42 @@ public class KillBytes {
         return null;
     }
 
+    /**
+     * As diffStreams(), but a difference inside a meta block (the 128 bytes at each multiple of
+     * 200,000) is taken where a's block is an invalid one: the 5 bytes of the magic and the
+     * version as b's, zeros after (027-11, section 1.3).
+     */
+    static String diffStreamsButMetaBlocks(TreeMap<String, byte[]> a, TreeMap<String, byte[]> b) {
+        long ea = 0, eb = 0;
+        for (Map.Entry<String, byte[]> e : a.entrySet()) ea = SameBytes.fileStart(e.getKey()) + e.getValue().length;
+        for (Map.Entry<String, byte[]> e : b.entrySet()) eb = SameBytes.fileStart(e.getKey()) + e.getValue().length;
+        if (ea != eb) return "the streams end at " + ea + " and " + eb;
+        for (Map.Entry<String, byte[]> e : a.entrySet()) {
+            long s0 = SameBytes.fileStart(e.getKey());
+            byte[] x = e.getValue();
+            byte[] y = b.get(e.getKey());
+            if (y == null) continue;
+            int n = Math.min(x.length, y.length);
+            for (int i = 0; i < n; i++) {
+                if (x[i] == y[i]) continue;
+                long pos = s0 + i;
+                long block = pos - pos % 200_000;
+                if (pos - block >= 128) return "the streams differ at " + pos + ", outside a meta block";
+                int bi = (int) (block - s0);
+                for (int j = 0; j < 128 && bi + j < x.length; j++) {
+                    if (j < 5 ? x[bi + j] != y[bi + j] : x[bi + j] != 0) {
+                        return "the meta block at " + block + " differs and is not an invalid block";
+                    }
+                }
+                invalidBlocks++;
+                i = bi + 127;
+            }
+        }
+        return null;
+    }
+
+    static long invalidBlocks;
+
     /** Two directories' streams: the same length and the same bytes where both have files. */
     static String diffStreams(TreeMap<String, byte[]> a, TreeMap<String, byte[]> b) {
         long ea = 0, eb = 0;
@@ -461,20 +582,26 @@ public class KillBytes {
             System.exit(3);
         }
         System.out.println("R " + from);
+        java.io.FileOutputStream progress = new java.io.FileOutputStream(dir.getPath() + ".progress", false);
         Random r = new Random(s * 7 + from);
         for (int i = from; i < n; i++) {
             SameBytes.Act act = SameBytes.acts.get(i);
             x.clock.t.set(act.time);
             SameBytes.apply(x, act);
+            progress.write(("A " + i + "\n").getBytes());
             System.out.println("A " + i);
             if (i == pause) {
-                if (syncPause) x.db.sync(SyncLevel.ORDINARY);
+                if (syncPause) {
+                    x.db.sync(SyncLevel.ORDINARY);
+                    progress.write(("S " + i + "\n").getBytes());
+                }
                 System.out.println("P " + i);
                 System.out.flush();
                 Thread.sleep(600_000);
             }
             if (r.nextInt(6) == 0) {
                 x.db.sync(SyncLevel.ORDINARY);
+                progress.write(("S " + i + "\n").getBytes());
                 System.out.println("S " + i);
             }
         }

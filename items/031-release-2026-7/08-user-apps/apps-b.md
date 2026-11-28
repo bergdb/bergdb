@@ -84,6 +84,12 @@ action list and file helpers.
     part "an action of its own ... with its own time from the clock and
     one record ... planned under the write lock from the stream before the
     record");
+  * `stoptx`: one transaction in three executed in another thread and a
+    `stop()` 0 to 2 ms after it began, then a start: the transaction must
+    be in the stream whole (its commit had begun: `Database.stop()`, "a
+    transaction whose commit has begun completes") or not at all (refused),
+    and a refused one is executed again at the same clock (RB-013's case,
+    a stop between a transaction's record and reclaim's work);
   * `stopmid` against `quietbig`: each `maintain(budget)` a call of
     `maintain(100000)` in another thread, a `stop()` 0 to 3 ms after it
     began, a start, then calls of `maintain(100)` until quiet;
@@ -150,7 +156,7 @@ action list and file helpers.
   that the app knows where each transaction's records end; every value
   begins with its database's tag and its transaction's number), and R
   with reclaim (a retain duration of 1 s on a `TestClock`), written until
-  its first file begins at 1 MB or more, with a copy taken when it had
+  its first file begins at 1 MB or more, with a copy taken before its
   first cut. About 65 cases a seed, each on a copy: the last file cut at
   0, 1 and 7 bytes, at record ends and one byte off them, at and near each
   200,000-byte block, at random places; a file but the last cut to a
@@ -162,7 +168,11 @@ action list and file helpers.
   second half; B's bytes, random bytes, 100 zeros and 9 MB of zeros after
   A's last record; B's stream files with A's `created.txt`; an older copy
   of a file put back, the older copy over the newer files, the older copy
-  alone; every stream file read-only, the directory read-only; before a
+  alone; a `.DS_Store` and a `notes.txt` beside the files, a copy of the
+  first file as Finder names it ("00000000000000 copy.bergdb"), an empty
+  file, a file of zeros, A's first and A's last file under a name after a
+  gap after the last file, an empty file where the last ends; every
+  stream file read-only, the directory read-only; before a
   gap in R's files, B's first file, R's file under an earlier name, an
   empty file, R's own old files (from its earlier copy); R's second file
   missing; a database of release 2026.6 (made by the jar built from the
@@ -193,7 +203,13 @@ action list and file helpers.
 
 ## 3. The runs
 
-(Filled in as the runs end.)
+On the release jar of the clone at `ee8a8165` (`main` of 2026-11-28,
+06:05), JDK 27 on F53 (macOS, APFS), beside week.sh's runs and other
+sessions' (load averages of 10 to 15 on 10 cores); at most two of the
+apps' JVMs at a time, heaps of at most 2 GB. The logs are not in the
+repository; the counts below are from them.
+
+RUNS-PLACEHOLDER
 
 
 ## 4. Findings
@@ -317,7 +333,7 @@ refusal whose diagnosis and way out are wrong (UB-3).
   031-07's review of the checksums: a node checksum seeded with the
   database's ID and the node's position would refuse such a read.
 * **UB-5 (document and messages, minor). Read-only files cannot be read,
-  and three refusals name no way out or no file.** (a) Every stream file
+  and four refusals name no way out or no file.** (a) Every stream file
   read-only (a copy on a read-only medium, an archive): `open()`'s start
   is refused, `StreamIoException`: ".../00000000000320.bergdb (Permission
   denied)", though a start of a cleanly stopped database writes nothing;
@@ -334,7 +350,10 @@ refusal whose diagnosis and way out are wrong (UB-3).
   .../00000000000100.bergdb has a filename with an index value that does
   not match the previous file sizes": the file, no way out (restore the
   file from a backup, as `DatabaseMissingException`'s message says for a
-  missing stream). Every refusal changed no file, and after the cause was
+  missing stream). (d) The first file missing: "The start needs bytes of
+  the stream before its first position, 200000: the stream lacks bytes
+  of the database. The start has deleted nothing (bergdb 028-66)": no
+  file named (a gap in the middle is named, with its files), no way out. Every refusal changed no file, and after the cause was
   removed every start was accepted with every transaction. Judgment:
   document (`open()` needs write access to the directory and the last
   file) and messages.

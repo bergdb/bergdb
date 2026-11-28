@@ -117,8 +117,8 @@ public class FileHandling {
         int n = reclaim ? 6000 : 500 + shape.nextInt(200);
         for (int i = 0; i < n; i++) {
             if (reclaim && i > 200 && i % 50 == 0 && firstFileStart(s.dir) >= 1_000_000) break;
-            if (reclaim && rMid == null && i % 10 == 0 && firstFileStart(s.dir) > 0) {
-                // A copy of R as it was once it had cut, for its own files that later cuts delete.
+            if (reclaim && rMid == null && i % 10 == 0 && streamEnd(s.dir) >= 3_000_000) {
+                // A copy of R before its first cut, for its own files that the cuts delete.
                 db.close();
                 rMid = new File(base, "src-R-mid");
                 copyDir(s.dir, rMid);
@@ -288,6 +288,28 @@ public class FileHandling {
                 Expect.ACCEPT, A.ends.size(), null);
         runCase("9 MB of zero bytes appended to the last file", A, dir -> append(new File(dir, lastA.getName()),
                 new byte[9_000_000]), Expect.REFUSE_TAIL, -1, null);
+        // The bound of the zeros left out: at most 8 MB (FileStream, "A tail of zeros": ZERO_TAIL_MAX).
+        runCase("8,000,000 zero bytes appended to the last file", A, dir -> append(new File(dir, lastA.getName()),
+                new byte[8_000_000]), Expect.ACCEPT, A.ends.size(), null);
+        runCase("8,000,001 zero bytes appended to the last file", A, dir -> append(new File(dir, lastA.getName()),
+                new byte[8_000_001]), Expect.REFUSE_TAIL, -1, null);
+        // Zeros where a torn record ends: "as a cut tail where its zeros begin inside the last record".
+        {
+            long l0 = SameBytes.fileStart(lastA.getName());
+            long inside = -1;
+            for (Long e : A.ends) if (e > l0 + 1000 && e < l0 + lastA.length()) { inside = e - l0 - 500; break; }
+            if (inside > 0) {
+                final long at = inside;
+                runCase("the last file cut inside a record and 9 MB of zeros appended", A, dir -> {
+                    truncate(new File(dir, lastA.getName()), at);
+                    append(new File(dir, lastA.getName()), new byte[9_000_000]);
+                }, Expect.ACCEPT, txBefore(A, l0 + at), null);
+            }
+        }
+        runCase("every stream file replaced by one file of 200,000 zero bytes", A, dir -> {
+            for (File f : files(dir)) del(f);
+            Files.write(new File(dir, "00000000000000.bergdb").toPath(), new byte[200_000]);
+        }, Expect.REFUSE, -1, null);
         // B's whole directory's stream files in A's directory with A's created.txt.
         runCase("B's stream files with A's created.txt", A, dir -> {
             for (File f : files(dir)) del(f);
@@ -360,6 +382,30 @@ public class FileHandling {
         // A file of zeros far after the last.
         runCase("200,000 zero bytes as " + far + ", after a gap", A,
                 dir -> Files.write(new File(dir, far).toPath(), new byte[200_000]), Expect.EITHER, A.ends.size(), null);
+        // The same with the last file cut to a multiple of 100,000 first (alone, a cut tail that the
+        // start takes): the files before the gap are then all of the database's files.
+        long s0 = SameBytes.fileStart(lastA.getName());
+        long cut = lastA.length() >= 100_000 ? 100_000 : 0;
+        if (cut > 0) {
+            int m = txBefore(A, s0 + cut);
+            runCase("the last file cut to 100,000 and an empty file " + far + " after a gap", A, dir -> {
+                truncate(new File(dir, lastA.getName()), cut);
+                Files.write(new File(dir, far).toPath(), new byte[0]);
+            }, Expect.EITHER, m, null);
+            runCase("the last file cut to 100,000 and 200,000 zero bytes as " + far + " after a gap", A, dir -> {
+                truncate(new File(dir, lastA.getName()), cut);
+                Files.write(new File(dir, far).toPath(), new byte[200_000]);
+            }, Expect.EITHER, m, null);
+            runCase("the last file cut to 100,000 and A's first file copied as " + far + " after a gap", A, dir -> {
+                truncate(new File(dir, lastA.getName()), cut);
+                copy(new File(dir, fa.get(0).getName()), new File(dir, far));
+            }, Expect.EITHER, m, null);
+            runCase("the last file cut to 100,000 and B's last file as " + far + " after a gap", A, dir -> {
+                truncate(new File(dir, lastA.getName()), cut);
+                List<File> fb = files(new File(base, "src-B"));
+                copy(fb.get(fb.size() - 1), new File(dir, far));
+            }, Expect.EITHER, m, null);
+        }
     }
 
     static void readOnly(Src A) throws Exception {
@@ -410,12 +456,12 @@ public class FileHandling {
                 File o = old.get(0);
                 boolean contiguous = SameBytes.fileStart(o.getName()) + o.length() == first;
                 runCase("R's own old file " + o.getName() + " put back (" + (contiguous ? "right before its first file" : "before a gap")
-                        + ")", R, dir -> copy(o, new File(dir, o.getName())), Expect.ACCEPT, R.ends.size(), null);
+                        + "), from a copy before its first cut", R, dir -> copy(o, new File(dir, o.getName())), Expect.ACCEPT, R.ends.size(), null);
                 runCase("R's own " + old.size() + " old files put back (the last right before its first file: "
                         + (SameBytes.fileStart(old.get(old.size() - 1).getName()) + old.get(old.size() - 1).length() == first) + ")", R,
                         dir -> { for (File f : old) copy(f, new File(dir, f.getName())); }, Expect.ACCEPT, R.ends.size(), null);
             } else {
-                notes.add("R's copy made once it had cut has no file before R's first file now");
+                notes.add("R's early copy has no file before R's first file now");
             }
         }
         runCase("R as it is", R, dir -> {}, Expect.ACCEPT, R.ends.size(), null);
@@ -449,8 +495,18 @@ public class FileHandling {
         boolean ok = true;
         Throwable refusal = null;
         int got = -1;
-        try (Database db = Factory.database().open(dir.getPath()).start()) {
-            got = checkState(db, src, m, name);
+        try {
+            try (Database db = Factory.database().open(dir.getPath()).start()) {
+                got = checkState(db, src, m, name);
+            }
+            // A stop and a start again: the same state, and the second start writes nothing.
+            Map<String, String> once = snapshot(dir);
+            try (Database db = Factory.database().open(dir.getPath()).start()) {
+                int again = checkState(db, src, m == -3 ? -3 : got, name + ", the second start");
+                if (again != got) throw new Common.Fail(name + ": the second start holds " + again + ", the first " + got);
+            }
+            String d2 = diff(once, snapshot(dir));
+            if (d2 != null) throw new Common.Fail(name + ": the second start changed the files: " + d2);
             outcome = "accepted, " + got + " of " + src.ends.size() + " transactions";
             accepted++;
         } catch (Common.Fail f) {
