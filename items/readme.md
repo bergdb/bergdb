@@ -237,4 +237,5 @@ Index
   examined on their own, with programs that use no BergDB code: the
   operating system, file system, disk and JVM, for correctness and
   performance; F53 and s1 first. 035-01: zeros within a file's length
-  after a kill (macOS); 035-02: a deleted file's bytes there.
+  after a kill (macOS); 035-02: a deleted file's bytes there; 035-03:
+  append-only storage, what BergDB may take for granted (not started).

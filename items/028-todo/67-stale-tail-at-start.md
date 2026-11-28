@@ -2,7 +2,8 @@
 =======================================================================
 
 Status: decided; C1 and C3 built (2026-11-27, below), T1 of 031-06's
-review 3 fixed (2026-11-28, below), open: C2. Kind: Fix. Frans: decided.
+review 3 fixed (2026-11-28, below), open: C2, held (Frans, 2026-11-28)
+until 028-77 is decided. Kind: Fix. Frans: decided.
 Created 2026-11-26 by Frans Lundberg.
 
 What: on APFS, a write cut by a kill of the process (or one that fails
@@ -106,7 +107,10 @@ open a database of 2026.6 (031-06, section 8, A3).
 * **C2 is not decided**: such a tail left out at the open and cut at the
   first append, as zeros are since 028-60's part 2 (old bytes at the
   tail are a third face of a partial append). It is decided after C3 is
-  in and tested. **C4 is not taken.**
+  in and tested. Held since 2026-11-28 (Frans): C2 would be a second
+  rewrite of the tail at a start, and whether a start may rewrite the
+  tail at all is 028-77's question; C2 is decided with it, and not built
+  before. **C4 is not taken.**
 
 Why three bytes suffice: a stale record is taken only if it begins
 exactly where a record of the stream ends, passes the 24-bit check (1 in
@@ -367,3 +371,7 @@ built in 031-06's landing; C2 after C3 is in and tested; C4 not taken.
 
 2026-11-28. T1 of 031-06's review 3 fixed by an agent of lead-1127 on
 the branch `028-67-t1` (section Built).
+
+2026-11-28. C2 held (Frans) until 028-77 is decided: strictly
+append-only files, or rewrites of the tail at a start. A tail that is
+not the stream's own stays refused, with the way out named.

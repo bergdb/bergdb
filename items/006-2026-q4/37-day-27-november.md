@@ -187,6 +187,12 @@ Frans, 2026-11-28:
   studied with 031-07's review of the stream's checks.
 * **The usage limit is 90 % of the week** (06:10), from 50 %; the
   weekend's work need not be kept light.
+* **028-67's C2 is held, and 028-77 registered** (07:07): whether the
+  stream's files stay strictly append-only, or a start may rewrite the
+  tail, is a decision of its own, on a model of what BergDB may take for
+  granted from the storage (the review, 035-03). Taken up after 2026.7's
+  work is stable. Until then a tail of zeros is cut as it is (028-60,
+  part 2) and a tail of other bytes refused (028-67's C1).
 
 The lead's, 2026-11-28 (class 1, from the timing run of 01:38 to 02:50;
 section 3):
@@ -722,6 +728,9 @@ The lead's overview (08:30), its conclusions:
   has written (an agent, until 10:00); and a round of user apps against
   2026.7's changes, 031-08, in two parts (until 11:30). `week.sh` still
   runs its long lanes; `night.sh` on the current `main` follows it.
+* 2026-11-28 07:10 028-77 (Decide: strict append-only storage, or tail
+  rewrites at a start) and 035-03 (the review, a stub, not started)
+  registered; 028-67's C2 held (section 2).
 
 ## 4. Waiting for Frans
 
@@ -733,15 +742,15 @@ with a time: one is open, 028-72's A.
 public API, a release's scope, the principles, an item closed). The
 details are in the items, cited by ID and section.
 
-### Open now (2026-11-28 06:15)
+### Open now (2026-11-28 07:10)
 
 What is open for Frans after the decisions of 2026-11-27, 16:09 to
 17:26, and of 2026-11-28, 06:05 (section 2). The text of sections 4.0
-to 4.3 is left as it was written. New since 00:45: 028-71's closing,
-the last point but three. Answered since then: 028-76, (a). Settled by
-the lead: the warm-up's reading ahead (review 3's W1) stays, from the
-timing run; T1's rule for a cut record's own bytes is in the review of
-the start path that runs until 11:00.
+to 4.3 is left as it was written. New since 00:45: 028-71's closing
+and 028-77, the two points before the theme's wording. Answered since
+then: 028-76, (a). Settled by the lead: the warm-up's reading ahead
+(review 3's W1) stays, from the timing run; T1's rule for a cut record's
+own bytes is in the review of the start path that runs until 11:00.
 
 * **O1. BergDB's own long keys under "/#"**, class 3 (a new limit;
   031-06, section 8, with the investigation of 17:20 to 17:28). The
@@ -827,12 +836,21 @@ the start path that runs until 11:00.
   the same offsets, still passes: with two databases of identical
   layout, a start took the other database's value of one key. Node
   checksums that include the position and the ID would close it; not
-  decided, with 031-07's N1. 028-67's C2 is still open.
+  decided, with 031-07's N1. 028-67's C2 is held (2026-11-28) until
+  028-77 is decided.
 * **028-71: whether it is done** (class 3: an item done). The step
   sized by the commit's allowance landed with step 3 (2026-11-28). Under
   commits of 1 MB the stream kept is 18 times the live data, steady, by
   the cap of 128 KiB a step (115.7 times and growing before); under
   commits of 20 kB to 300 kB, 7 to 8 times.
+* **028-77: strict append-only storage, or tail rewrites at a start**
+  (class 3: the storage contract; not for today). Three tails after a
+  crash are known: a cut record (the start appends zeros), a tail of
+  zeros (`FileStream` cuts it at the first append, the one rewrite) and
+  other bytes (refused; the automatic cut, C2, held). Options: (A)
+  strictly append-only files, (B) the provider may rewrite the tail,
+  (C) as today. No recommendation before the review, 035-03; taken up
+  after 2026.7's work is stable.
 * **The theme's wording for 2026.7** (Frans's; section 2, 11:37).
 * **Codex's stop by the content filter** (section 3, 14:24), known to
   Frans.
