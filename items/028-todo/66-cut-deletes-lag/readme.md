@@ -140,7 +140,7 @@ starts the database. The change was therefore measured and kept out of
 ### 4. For Frans
 
 Frans's decision, 2026-11-27, 17:26, on option C as designed (on the
-branch `028-66c`, `e6900401`, section 5, not on `main`), as the lead
+branch `028-66c`, `e6900401`, section 5, then not on `main`; on `main` as `75796b84` since 2026-11-28), as the lead
 recommended:
 
 1. A start deletes the files before a gap only if their first meta

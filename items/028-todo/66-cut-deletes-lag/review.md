@@ -1,7 +1,7 @@
 028-66, review (rev66)
 ======================
 
-An independent review of the branch `028-66-c-rule`, head `9e7dd5e3`, on
+An independent review of the branch `028-66-c-rule`, head `9e7dd5e3` (on `main` as `fa1df303`), on
 `main`'s `734f05a2`: option C (the cut's deletes a batch with one
 directory force; the open takes a gap in the files; a start refuses a
 stream whose first position is after reclaim's cut) and Frans's rule of
