@@ -1567,7 +1567,10 @@ public final class Eviction {
     /**
      * Reclaim with misses: cuts on a CutStream, which refuses reads below the cut; slots
      * unswizzled to versions above the cut are loaded again, and restarts from the cut
-     * stream.
+     * stream. Each run goes on past its 100 (quick) or 200 transactions until reclaim has
+     * cut, at most 400: where the first cut comes depends on the stream's layout (it waits
+     * for the stream's first meta block, which one record an action, bergdb 031-06, reached
+     * at about the 100th transaction; the test ran 100, then 150 in the quick run).
      */
     @Nano
     public static void testReclaimWithMisses() {
@@ -1586,10 +1589,8 @@ public final class Eviction {
         long cuts = 0;
         for (int s : schedules) {
             Twin w = new Twin(SCHEDULES[s], 1 + s, 1, quick);
-            // 150 in the quick run since bergdb 031-06 (100 before): with one record an
-            // action the stream reaches its first meta block, which the first cut waits for,
-            // at about the 100th transaction.
-            for (int i = 0; i < (quick ? 150 : 200); i++) {
+            // Until the first cut, which the layout places (above), at most 400.
+            for (int i = 0; i < (quick ? 100 : 200) || w.s2.getCut() == 0 && i < 400; i++) {
                 w.trans("k" + (i * 7 % 40) + "=" + i + big, i % 9 == 0 ? "-k" + (i % 40) : "c=" + i);
                 if (i % 50 == 49) w.restart();
                 w.check(i % 25 == 24);

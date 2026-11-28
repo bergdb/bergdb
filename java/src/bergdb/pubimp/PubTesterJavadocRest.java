@@ -309,11 +309,11 @@ public class PubTesterJavadocRest {
      * Clock and DbException: a clock time outside 0 to 2^56 - 1 refuses the transaction
      * with a DbException that is not a DbFailedException: nothing is written, and the
      * database goes on; a start that creates a database with the clock out of range throws
-     * a DbException (an existing one's: testStartWithTheClockOutOfRange). The last
-     * 1024 clock units are kept for the database's own transactions: a user transaction
-     * needs a time of 2^56 - 1025 or less (bergdb 015-55), so a TestClock at Time.MAX
-     * refuses it, in the same way. A clock that goes back gives the next unit after the
-     * last transaction's time.
+     * a DbException (an existing one's: testStartWithTheClockOutOfRange). A transaction
+     * may take the last time, 2^56 - 1, and the next is refused, in the same way, also with
+     * a TestClock at Time.MAX (since bergdb 031-06; from 015-55 a user transaction needed a
+     * time of 2^56 - 1025 or less, the last 1024 units kept for the database's own). A clock
+     * that goes back gives the next unit after the last transaction's time.
      */
     @Nano
     public static void testClockOutOfRangeRefused() {
@@ -345,13 +345,13 @@ public class PubTesterJavadocRest {
         }
 
         final TestClock testClock = new TestClock();
-        final long lastUser = Time.MAX.units() - 1024;
+        final long last = Time.MAX.units();
         // The creation takes two times, its record of the startup distance the second
         // (bergdb 028-15).
-        testClock.setTime(Time.units(lastUser - 2));
+        testClock.setTime(Time.units(last - 2));
         try (Database db = Factory.database().memory().clock(testClock).start()) {
             final Connection c = db.connection();
-            Assert.assertEquals(lastUser, c.put("/a.txt", "a").getTime().units());
+            Assert.assertEquals(last, c.put("/a.txt", "a").getTime().units());
             DbException e = assertThrows("no time left", DbException.class,
                     () -> c.put("/b.txt", "b"));
             Assert.assertFalse(e.toString(), e instanceof DbFailedException);

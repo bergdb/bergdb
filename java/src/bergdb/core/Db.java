@@ -20,6 +20,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
+import bergdb.dag.Klong;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.PutData;
 import bergdb.dag.Spos;
@@ -748,9 +749,9 @@ public class Db implements AutoCloseable {
      * Commits the transaction that puts 'distance' at the startup distance's KV,
      * DbConstants.SD_KEY (bergdb 028-15): by setStartupDistance(), as a user transaction is
      * (as its dummy value was until then), and by the start that creates the database, an
-     * internal transaction ('internal'), as reclaim's settings are put: it takes a time
-     * after the primordial record's also when no user transaction has one left (DbClock,
-     * bergdb 015-55), and reclaim does not count it. The caller holds writeLock.
+     * internal transaction ('internal'), as reclaim's settings are put, which reclaim does
+     * not count. Its time is after the primordial record's: writePrimordialTransaction()
+     * leaves one. The caller holds writeLock.
      */
     private void putStartupDistanceKv(int distance, boolean internal) {
         byte[] value = new byte[4];
@@ -913,7 +914,8 @@ public class Db implements AutoCloseable {
      * @throws IllegalDbStateException, DbStoppingException, DbFailedException  On a
      *      database that is not active, as a transaction (and setRetainDuration()).
      * @throws DbException  If the database has used its top node ordinals, or has no time
-     *      left for a user transaction (bergdb 005-02, 015-55): as a transaction is refused.
+     *      left after the last one's, Klong.MAX_TIME (bergdb 005-02, 015-55): as a
+     *      transaction is refused.
      *      Nothing more is written then.
      * @throws StreamIoException  If the sync is interrupted, or the database is stopping.
      */
@@ -993,8 +995,8 @@ public class Db implements AutoCloseable {
     /**
      * One part of maintain(budget) (bergdb 031-06): an action of its own, through the same
      * path as a commit, executeLocked(): an empty internal transaction (Trans.part) with its
-     * own time from the clock (DbClock.transactionBegin, refused as a user transaction is
-     * after DbClock.LAST_USER_TIME, and after the top node ordinals), whose record carries
+     * own time from the clock (DbClock.transactionBegin, refused as any transaction is
+     * after Klong.MAX_TIME, and after the top node ordinals), whose record carries
      * the part's maintenance (Reclaim.planPart), the first of M1 to M6 that is due. A part
      * with nothing due writes nothing and gives its time back. The caller holds the write
      * lock and has checked that the database is active.
@@ -1897,7 +1899,19 @@ public class Db implements AutoCloseable {
         
         // transactionBegin() before the try (bergdb 005-18): when it throws, no transaction
         // has begun, and there is none to end.
-        long tt = dbClock.transactionBegin(true);
+        long tt = dbClock.transactionBegin();
+        // The creation writes two records, each at a time of its own (bergdb 028-15): at the
+        // last time, Klong.MAX_TIME, none would be left for the second, and the next start
+        // would refuse the stream as a creation that did not complete (028-18). Refused here,
+        // before anything is written. Until bergdb 031-06 the primordial record took a user
+        // transaction's time, and the times kept for reclaim's internal transactions left
+        // the room (031-06, Q4).
+        if (tt >= Klong.MAX_TIME) {
+            dbClock.transactionCancel();
+            throw new DbException("No database time is left for the creation's two records: "
+                    + "the first one's would be " + tt + ", the largest. No transaction is "
+                    + "executed.");
+        }
         dbClock.transactionEnd();
         
         // The root's id first, and canonical: the super root's pointer holds the root's
@@ -2956,8 +2970,8 @@ public class Db implements AutoCloseable {
      *             give, and its KVs are left as they were (bergdb 028-50); its key
      *             transformations make two of its keys one
      *             key, and its KVs are left as they were (bergdb 024-16; Trans.Builder); the
-     *             clock's time is out of range (005-18), or in the last 1,024 database
-     *             times, kept for reclaim (015-55); or the database has used its top node
+     *             clock's time is out of range (005-18), or no database time is left after
+     *             the last one's, Klong.MAX_TIME; or the database has used its top node
      *             ordinals, after about 2^48 changes of the space root, and then every later
      *             transaction is refused too; reads go on (bergdb item 005-02).
      */
@@ -3011,27 +3025,19 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * The top node ordinals below the bound, TopNode.MAX_TOP_NODE_ID_VALUE, that are left
-     * when user transactions are refused (bergdb item 005-02): room for the internal
-     * transactions that ran after a user transaction, reclaim's, at most five; none since
-     * bergdb 031-06, where the margin is kept for now (031-06, Q4).
-     */
-    private static final long TOP_ORDINAL_MARGIN = 1024;
-    
-    /** The super root's ordinal from which user transactions are refused. */
-    static final long LAST_TOP_ORDINAL = TopNode.MAX_TOP_NODE_ID_VALUE - TOP_ORDINAL_MARGIN;
-    
-    /**
-     * Refuses a user transaction, or a call of a setter that commits reclaim's settings
-     * (bergdb 015-87), once the top node ordinals are used up to LAST_TOP_ORDINAL. The
-     * caller holds the write lock.
+     * Refuses a transaction once the super root's ordinal is the bound,
+     * TopNode.MAX_TOP_NODE_ID_VALUE (bergdb item 005-02): a record makes at most one top
+     * node, and the next would be above the bound. The caller holds the write lock.
+     * From 005-02 to bergdb 031-06 user transactions were refused 1,024 ordinals below the
+     * bound, kept for reclaim's internal transactions after a user transaction; since 031-06
+     * nothing runs after a transaction's record, and the margin is gone (031-06, Q4).
      * 
      * @throws DbException
      */
-    void refuseIfTopOrdinalsUsed() {
-        if (dag.getTopDs().getSuperRoot().topNodeId >= LAST_TOP_ORDINAL) {
+    private void refuseIfTopOrdinalsUsed() {
+        if (dag.getTopDs().getSuperRoot().topNodeId >= TopNode.MAX_TOP_NODE_ID_VALUE) {
             throw new DbException("The database has used its top node ordinals (up to "
-                    + LAST_TOP_ORDINAL + "); it takes no more transactions.");
+                    + TopNode.MAX_TOP_NODE_ID_VALUE + "); it takes no more transactions.");
         }
     }
     
@@ -3103,15 +3109,14 @@ public class Db implements AutoCloseable {
             assertDbStateIsActive("execute");
 
             // The end of the top node ordinals (bergdb item 005-02, register M46): checked
-            // before the transaction changes anything. A transaction makes at most one top
-            // node. A user transaction and a part of maintain() are refused at the bound,
-            // and a setter of reclaim's settings, which Reclaim.setSettings refuses before it
-            // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
-            // where TopNode throws. Since bergdb 031-06 nothing runs after a user transaction.
-            // A database that ends here can still be read and restarted.
-            if (!t.isInternal() || t.part) {
-                refuseIfTopOrdinalsUsed();
-            }
+            // before the transaction changes anything. A record makes at most one top node.
+            // Every transaction is refused at the bound, a user's, a part of maintain() and
+            // a setter's (refuseIfTopOrdinalsUsed); so none passes the bound, where TopNode
+            // throws. Until bergdb 031-06 only user transactions, parts and reclaim's
+            // settings were, 1,024 ordinals below it, which reclaim's internal transactions
+            // after a user transaction used (031-06, Q4). A database that ends here can still
+            // be read and restarted.
+            refuseIfTopOrdinalsUsed();
             if (!t.isInternal()) {
                 checkDirtyNodes(t);
             }
@@ -3119,12 +3124,13 @@ public class Db implements AutoCloseable {
 
             stmCheckConflicts(t);
 
-            // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
-            // transaction in the times kept for reclaim's internal transactions after it
-            // (bergdb 015-55); before the try, so that nothing has begun or changed when it
-            // throws. A part of maintain() takes its time as a user transaction does (bergdb
-            // 031-06; Frans, 2026-11-27, 11:16).
-            t.tt = dbClock.transactionBegin(!t.isInternal() || t.part);
+            // transactionBegin() refuses a clock out of range (bergdb 005-18), and any
+            // transaction when no time is left after the last one's, Klong.MAX_TIME (since
+            // bergdb 031-06, Q4; from 015-55 a user transaction after Klong.MAX_TIME - 1024);
+            // before the try, so that nothing has begun or changed when it throws. A part of
+            // maintain() takes its time as a user transaction does (bergdb 031-06; Frans,
+            // 2026-11-27, 11:16).
+            t.tt = dbClock.transactionBegin();
         } catch (Error e) {
             // Recorded before the lock is released, as fail() does after the go point
             // (bergdb 019-40): a writer that waits for the lock then finds the database

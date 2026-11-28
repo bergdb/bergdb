@@ -337,8 +337,8 @@ public class Reclaim implements Maintenance {
      * SETTINGS_KEY_NAME with both, and the fields are set after it is committed, so the next
      * transaction uses them; if they are those in force, nothing is written. A value out of
      * range is refused with an IllegalArgumentException before anything is written, and a
-     * change once the top node ordinals are used up as a user transaction is
-     * (Db.refuseIfTopOrdinalsUsed). If the commit throws, the settings in force stay as
+     * change once the top node ordinals or the times are used up as every transaction is
+     * (Db.executeLocked). If the commit throws, the settings in force stay as
      * they were: refused before its go point, it wrote nothing; failed after it, it failed
      * the database, and a restart takes what the stream holds. The caller holds Db's write
      * lock and has checked that the database is active (Db.setRetainDuration,
@@ -351,8 +351,6 @@ public class Reclaim implements Maintenance {
         if (retainDuration == this.retainDuration && internalFraction == this.internalFraction) {
             return;     // In force: nothing is written.
         }
-        db.refuseIfTopOrdinalsUsed();   // As a user transaction is refused.
-        
         Trans t = db.trans()
                 .putCore(settingsKey, serializeSettings(retainDuration, internalFraction)).build();
         t.isInternal = true;
@@ -2788,13 +2786,16 @@ public class Reclaim implements Maintenance {
         /**
          * Regression test for bergdb 015-55 (016-06's R7-F6): a user transaction at the last
          * database time, Klong.MAX_TIME, was taken; the reclaim step it allowed then found no
-         * time left, inside the transaction's go point, and the database failed. Now a user
-         * transaction after DbClock.LAST_USER_TIME is refused and the database goes on; one
-         * at LAST_USER_TIME is taken, and its step runs in the times kept for it. Since bergdb
-         * 031-06 the step is in the transaction's own record, at its time: one record.
+         * time left, inside the transaction's go point, and the database failed. From 015-55
+         * to bergdb 031-06 a user transaction after Klong.MAX_TIME - 1024 was refused, and
+         * those times were kept for reclaim's. Since 031-06 the step is in the transaction's
+         * own record, at its time, and nothing runs after it (031-06, Q4): a put at
+         * Klong.MAX_TIME is taken with its step in one record, and the next transaction, a
+         * user's, a part of maintain() or a setter's, is refused before its go point, with
+         * nothing written, and the database goes on.
          */
         @Nano
-        public static void testUserTransactionLeavesTimesForReclaim() {
+        public static void testTransactionAtTheLastTime() {
             final long[] now = {Clock.UNITS_PER_SEC};
             Clock clock = new Clock() {         // Can go back, as CoreTestClock cannot.
                 public long getTime() {
@@ -2821,23 +2822,9 @@ public class Reclaim implements Maintenance {
                 }
                 Assert.assertTrue("no step was armed", armed);
                 
-                // The next put makes a step. At Klong.MAX_TIME it is refused before its go
-                // point, and the database goes on.
+                // The next put makes a step. At Klong.MAX_TIME it is taken, with its step in
+                // its record (031-06).
                 now[0] = bergdb.dag.Klong.MAX_TIME;
-                try {
-                    db.execute(db.trans().put("/last", "a").build());
-                    throw new AssertionError("a user transaction at Klong.MAX_TIME was taken");
-                } catch (bergdb.pub.util.DbFailedException e) {
-                    throw new AssertionError("the database failed", e);
-                } catch (bergdb.pub.util.DbException e) {
-                    Assert.assertTrue(e.getMessage(), 
-                            e.getMessage().contains("for a user transaction"));
-                }
-                Assert.assertEquals(null, db.getOne(Long.MAX_VALUE, Keys.toSegments("/last"), 
-                        db.newGetData()));
-                
-                // At the last user time it is taken, with its step in its record (031-06).
-                now[0] = DbClock.LAST_USER_TIME;
                 long count = db.getTransactionCount();
                 final IterationInfo before = rc.currentIteration().copy();
                 db.execute(db.trans().put("/last", "b").build());
@@ -2850,6 +2837,36 @@ public class Reclaim implements Maintenance {
                         && (after.kvCount > before.kvCount || after.done));
                 Assert.assertEquals("b", StringUtil.toString(db.getOne(Long.MAX_VALUE, 
                         Keys.toSegments("/last"), db.newGetData())));
+                
+                // No time is left: every later action is refused before its go point, the
+                // database goes on, and nothing is written.
+                final long length = db.getStreamLength();
+                for (int i = 0; i < 3; i++) {
+                    try {
+                        if (i == 0) db.execute(db.trans().put("/last", "c").build());
+                        if (i == 1) db.setRetainDuration(2 * Clock.UNITS_PER_SEC);
+                        if (i == 2) db.setStartupDistance(3000);
+                        throw new AssertionError("action " + i + " after Klong.MAX_TIME taken");
+                    } catch (bergdb.pub.util.DbFailedException e) {
+                        throw new AssertionError("the database failed", e);
+                    } catch (bergdb.pub.util.DbException e) {
+                        Assert.assertTrue(e.getMessage(), 
+                                e.getMessage().contains("No database time is left"));
+                    }
+                }
+                try {
+                    db.maintain(MAINTAIN_MIN_BUDGET);       // A part due is refused.
+                } catch (bergdb.pub.util.DbFailedException e) {
+                    throw new AssertionError("the database failed", e);
+                } catch (bergdb.pub.util.DbException e) {
+                    Assert.assertTrue(e.getMessage(), 
+                            e.getMessage().contains("No database time is left"));
+                }
+                Assert.assertEquals("nothing written", length, db.getStreamLength());
+                Assert.assertEquals("one record in all", count + 1, db.getTransactionCount());
+                Assert.assertEquals("b", StringUtil.toString(db.getOne(Long.MAX_VALUE, 
+                        Keys.toSegments("/last"), db.newGetData())));
+                Assert.assertTrue("active", db.internal().isActive());
             } finally {
                 db.close();
             }

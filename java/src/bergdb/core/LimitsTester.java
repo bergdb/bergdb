@@ -21,8 +21,9 @@ import bergdb.stream.CutStream;
  * Harness 6.4 of release 2026.3, sizes and times at their limits (bergdb 018-01, section
  * 6.4; bergdb 018-06). Random transactions of the Core Layer at the edge of every limit:
  * values whose nodes take StoredTrans.valueLimit() and a few bytes more or less, alone and
- * together, long keys, value transformations that grow a value, times at the last user
- * time and past it, a clock out of range or going back, and settings at their bounds;
+ * together, long keys, value transformations that grow a value, times at the last time
+ * (Klong.MAX_TIME; the last user time until bergdb 031-06) and past it, a clock out of
+ * range or going back, and settings at their bounds;
  * with reclaim (a retain duration of one second) and eviction (small budgets) on, and
  * restarts. The record limit is lowered, as StoredTrans's own tests do, so that a value at
  * the limit is a few hundred kB.
@@ -178,7 +179,8 @@ public class LimitsTester {
             cacheIndicator = cacheSize;
             // A new super root comes only when the tree grows a level, some tens in a run:
             // 1 to 3 before the last ordinal, the end comes within the run.
-            secondOrdinal = r.nextInt(8) == 0 ? Db.LAST_TOP_ORDINAL - 1 - r.nextInt(3) : 0;
+            secondOrdinal = r.nextInt(8) == 0
+                    ? bergdb.dag.TopNode.MAX_TOP_NODE_ID_VALUE - 1 - r.nextInt(3) : 0;
         }
 
         long valueLimit() {
@@ -322,12 +324,13 @@ public class LimitsTester {
 
         /**
          * True if a transaction may find no time left: the clock, a read's time or the last
-         * user transaction's is near the last user time (DbClock.LAST_USER_TIME), with room
-         * for the internal transactions after each user one.
+         * user transaction's is near the last time, Klong.MAX_TIME, with room for the
+         * setters' records (since bergdb 031-06, Q4, every transaction may take a time up to
+         * it; until then user transactions stopped 1,024 earlier).
          */
         boolean nearEnd() {
             long t = Math.max(Math.max(now.get(), maxClock), lastUserTime + 1);
-            return t > DbClock.LAST_USER_TIME - 4096;
+            return t > Klong.MAX_TIME - 4096;
         }
 
         /** A setter's refusal at the end of the times or of the top node ordinals. */
@@ -465,8 +468,8 @@ public class LimitsTester {
                     + valueLimit());
             check(t.tt > lastUserTime, what + ": its time " + t.tt + " not after the last, "
                     + lastUserTime);
-            check(t.tt <= DbClock.LAST_USER_TIME, what + ": taken at " + t.tt
-                    + ", after the last user time");
+            check(t.tt <= Klong.MAX_TIME, what + ": taken at " + t.tt
+                    + ", after the last time");
             lastUserTime = t.tt;
             check(!callers, what + ": a transformation's result above the value limit was "
                     + "taken (bergdb 026-06)");
@@ -860,11 +863,14 @@ public class LimitsTester {
             cacheIndicator = v;
         }
 
-        /** The clock goes to the last user times, and stays there (bergdb 015-55). */
+        /**
+         * The clock goes to the last times, and stays there (bergdb 015-55; since 031-06, Q4,
+         * the last is Klong.MAX_TIME for every transaction).
+         */
         void enterEndPhase() {
             endPhase = true;
-            long[] at = {DbClock.LAST_USER_TIME - r.nextInt(2000), DbClock.LAST_USER_TIME,
-                    DbClock.LAST_USER_TIME + 1, Klong.MAX_TIME - r.nextInt(5), Klong.MAX_TIME};
+            long[] at = {Klong.MAX_TIME - r.nextInt(2000), Klong.MAX_TIME - 2,
+                    Klong.MAX_TIME - 1, Klong.MAX_TIME - r.nextInt(5), Klong.MAX_TIME};
             now.set(at[r.nextInt(at.length)]);
             maxClock = Math.max(maxClock, now.get());
             note("the end phase: clock " + now.get());

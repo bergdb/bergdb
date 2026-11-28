@@ -25,16 +25,17 @@ public interface Clock {
      * on. A start that creates a database throws the DbException too, as it writes the
      * database's first transaction; a start of an existing database does not read the
      * clock, and succeeds, and its transactions are refused while the clock is outside the
-     * range (bergdb 020-23). The last 1024 units of the range are kept for the database's own
-     * transactions, which may follow a user's: a user transaction needs a time of 2^56-1025
-     * or less, and is refused in the same way when the clock, or the last transaction's
-     * time, leaves it none (bergdb 005-18, 015-55, 020-25).</p>
+     * range (bergdb 020-23). A transaction may take any time of the range, up to 2^56-1, and
+     * is refused in the same way when the clock, or the last transaction's time, leaves it
+     * none; a creation takes two times, so a start that creates a database with the clock at
+     * 2^56-1 throws too (bergdb 005-18, 015-55, 020-25; until bergdb 031-06 the last 1024
+     * units were kept for the database's own transactions after a user's).</p>
      *
      * <p>The time may go back: a transaction's time is the clock's, or, when that is not
      * after the last transaction's time or the last time that currentTime() gave, the next
      * unit after it, so the transactions' times are unique and increasing
      * (Transaction.getTime()). The time that currentTime() gives (Connection, Database) is
-     * the clock's, or, when that is earlier, or after 2^56-1025, the last time it gave or the
+     * the clock's, or, when that is earlier, or after 2^56-1, the last time it gave or the
      * last transaction's time, so its times never decrease, and every later transaction's
      * time is after them; a currentTime() while the clock is out of range does not keep the
      * transactions refused after the clock is back (bergdb 020-23, 021-26).</p>

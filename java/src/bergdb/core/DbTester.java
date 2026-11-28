@@ -2657,6 +2657,50 @@ public class DbTester {
         }
     }
     
+    /**
+     * bergdb 031-06, Q4: the creation writes two records, each at a time of its own, so a
+     * start that creates a database with the clock at the last time, Klong.MAX_TIME, is
+     * refused with nothing written; one time before it, the creation takes both, and the
+     * database then takes no transaction. Until 031-06 the creation's first record took a
+     * user transaction's time, refused after Klong.MAX_TIME - 1024.
+     */
+    @Nano
+    public static void testCreationAtTheLastTimes() {
+        final long[] now = {Klong.MAX_TIME};
+        Clock clock = new Clock() {
+            public long getTime() {
+                return now[0];
+            }
+        };
+        MemoryStream stream = new MemoryStream();
+        try {
+            Db.builder().testSetup(stream).clock(clock).start();
+            throw new AssertionError("a database created at the last time");
+        } catch (bergdb.pub.util.DbException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("No database time is left"));
+        }
+        assertEquals(0L, stream.getLength());
+        
+        now[0] = Klong.MAX_TIME - 1;
+        stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        try {
+            assertTrue("the second record", db.getStreamLength() > Db.CREATION_LENGTH);
+            try {
+                db.execute(db.trans().put("/a", "v").build());
+                throw new AssertionError("a transaction after the last time");
+            } catch (bergdb.pub.util.DbException e) {
+                assertTrue(e.getMessage(), e.getMessage().contains("No database time is left"));
+            }
+            assertEquals(null, DbUtil.get(db, Long.MAX_VALUE, "/a"));
+        } finally {
+            db.stop();
+        }
+        db = Db.builder().testSetup(stream.copy()).clock(clock).start();
+        assertEquals(Db.DEFAULT_STARTUP_DISTANCE, db.getStartupDistance());
+        db.stop();
+    }
+    
     /** bergdb 005-20: Jmx's retain duration in days was computed in int. */
     @Nano
     public static void testJmxRetainDurationInDays() {

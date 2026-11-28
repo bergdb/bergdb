@@ -1339,9 +1339,15 @@ public class DbTesterFailure {
             db.sync(SyncLevel.ORDINARY);
             // bergdb 031-06: the iteration begins in the record after /a's, at its position;
             // an empty commit is that record, so that reclaim's cut is before /target's
-            // record, as main's begin record after /a's put it.
+            // record, as main's begin record after /a's put it. The layout the test needs,
+            // checked here, so that a change of it fails with its reason.
             clock.setTime(3 * Clock.UNITS_PER_SEC / 2);
+            final long emptyPos = db.getStreamLength();
             db.execute(db.trans().build());
+            final Reclaim.IterationInfo begun = db.internal().reclaim().currentIteration();
+            Assert.assertTrue("the layout: an iteration begun by the empty commit's record, at "
+                    + emptyPos + ": " + (begun == null ? null : begun.pStart), begun != null
+                    && begun.pStart <= emptyPos);
             clock.setTime(2 * Clock.UNITS_PER_SEC);
             db.execute(db.trans().put("/target", value).build());
             db.sync(SyncLevel.ORDINARY);

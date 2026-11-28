@@ -1227,16 +1227,18 @@ public class DbTesterRestart {
     }
     
     /**
-     * Bergdb 015-87: once the top node ordinals are used up to Db.LAST_TOP_ORDINAL, a setter
-     * call that would write is refused as a user transaction is (bergdb 005-02), and
-     * changes nothing; a call with the value in force writes nothing and is not refused.
+     * Bergdb 015-87: once the top node ordinals are used up to the bound,
+     * TopNode.MAX_TOP_NODE_ID_VALUE, a setter call that would write is refused as every
+     * transaction is (bergdb 005-02; since 031-06, Q4, at the bound, not 1,024 below it),
+     * and changes nothing; a call with the value in force writes nothing and is not
+     * refused.
      */
     @Nano private static void testReclaimSettingAtEndOfOrdinals() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+        Db db = startOrdinalTest(s, clock, "sd1000", TopNode.MAX_TOP_NODE_ID_VALUE - 10);
         int n = 0;
-        while (db.internal().superRoot().topNodeId < Db.LAST_TOP_ORDINAL) {
+        while (db.internal().superRoot().topNodeId < TopNode.MAX_TOP_NODE_ID_VALUE) {
             Assert.assertTrue("transactions " + n, n < 1000);
             clock.setTime(10L * (n + 1));
             db.execute(db.trans().put("/hot", "v" + n).build());
@@ -1259,7 +1261,7 @@ public class DbTesterRestart {
         db.setRetainDuration(Long.MAX_VALUE);       // In force: not refused.
         db.setReclaimInternalFraction(0.25);
         Assert.assertEquals("nothing written", length, db.getStreamLength());
-        Assert.assertEquals("super root", Db.LAST_TOP_ORDINAL,
+        Assert.assertEquals("super root", TopNode.MAX_TOP_NODE_ID_VALUE,
                 db.internal().superRoot().topNodeId);
         db.stop();
     }
@@ -2043,18 +2045,19 @@ public class DbTesterRestart {
 
     /**
      * The end of the top node ordinals (bergdb item 005-02): once the super root's ordinal is
-     * Db.LAST_TOP_ORDINAL, 1,024 below the bound, 2^48 - 1, a user transaction is refused
-     * before it changes anything. The keys keep their values, no node is left in the writer's
-     * list, the history is right, and the database restarts and refuses again. An internal
-     * transaction is not refused: reclaim runs its transactions after a user transaction has
-     * committed, in the margin below the bound.
+     * the bound, TopNode.MAX_TOP_NODE_ID_VALUE, 2^48 - 1, a transaction is refused before it
+     * changes anything. The keys keep their values, no node is left in the writer's list,
+     * the history is right, and the database restarts and refuses again. An internal
+     * transaction and a setter are refused too, and nothing is written: since bergdb 031-06
+     * nothing runs after a user transaction's record, and the margin of 1,024 ordinals below
+     * the bound that reclaim's internal transactions used until then is gone (031-06, Q4).
      */
     @Nano private static void testEndOfOrdinals() {
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        Db db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+        Db db = startOrdinalTest(s, clock, "sd1000", TopNode.MAX_TOP_NODE_ID_VALUE - 10);
         int n = 0;
-        while (db.internal().superRoot().topNodeId < Db.LAST_TOP_ORDINAL) {
+        while (db.internal().superRoot().topNodeId < TopNode.MAX_TOP_NODE_ID_VALUE) {
             Assert.assertTrue("transactions " + n, n < 1000);
             clock.setTime(10L * (n + 1));
             db.execute(db.trans().put("/hot", "v" + n).build());
@@ -2064,7 +2067,7 @@ public class DbTesterRestart {
             String what = round == 0 ? "before the restart" : "after the restart";
             assertRefused(db, db.trans().put("/hot", "x").build(), what);
             assertRefused(db, db.trans().put("/other", "x").put("/hot", "x").build(), what);
-            Assert.assertEquals(what + ", super root", Db.LAST_TOP_ORDINAL,
+            Assert.assertEquals(what + ", super root", TopNode.MAX_TOP_NODE_ID_VALUE,
                     db.internal().superRoot().topNodeId);
             Assert.assertEquals(what + ", nodes in the writer's list", 0,
                     db.internal().x().transNodes.size());
@@ -2075,15 +2078,26 @@ public class DbTesterRestart {
             db.sync(SyncLevel.ORDINARY);
             db.stop();
             s = s.copy();
-            db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+            db = startOrdinalTest(s, clock, "sd1000", TopNode.MAX_TOP_NODE_ID_VALUE - 10);
         }
         clock.setTime(10L * (n + 1));
+        final long length = db.getStreamLength();
         Trans internal = db.trans().put("/internal", "i").build();
         internal.isInternal = true;
-        db.execute(internal);
-        Assert.assertArrayEquals("an internal transaction", StringUtil.toBytes("i"),
-                DbUtil.get(db, Long.MAX_VALUE, "/internal"));
-        assertRefused(db, db.trans().put("/hot", "x").build(), "after an internal transaction");
+        assertRefused(db, internal, "an internal transaction");
+        Assert.assertTrue("an internal transaction", DbUtil.get(db, Long.MAX_VALUE,
+                "/internal") == null);
+        String message = null;
+        try {
+            db.setStartupDistance(2000);
+        } catch (DbException e) {
+            message = e.getMessage();
+        }
+        Assert.assertTrue("setStartupDistance refused: " + message, message != null
+                && message.startsWith("The database has used its top node ordinals"));
+        Assert.assertEquals("the startup distance", 1000, db.getStartupDistance());
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        assertRefused(db, db.trans().put("/hot", "x").build(), "after the setter");
         db.stop();
     }
 
@@ -2096,12 +2110,16 @@ public class DbTesterRestart {
      * cuts the front of the stream, from about transaction 900 on, with the first top node
      * and the second, whose skip pointers name the first. A restart every 150 transactions;
      * after each, both keys are checked at every transaction's time from the first available
-     * time on. Near the end, reclaim's internal transactions are not refused; their top nodes
-     * stay within Db.TOP_ORDINAL_MARGIN, at most five above Db.LAST_TOP_ORDINAL.
+     * time on. Near the end, a transaction is refused once the super root's ordinal is the
+     * bound, TopNode.MAX_TOP_NODE_ID_VALUE, and the super root is at the bound: a record
+     * makes at most one top node, and since bergdb 031-06 a commit's maintenance is in its
+     * own record. Until 031-06 user transactions were refused 1,024 ordinals below the
+     * bound, and reclaim's internal transactions after them made at most five more top
+     * nodes (031-06, Q4).
      */
     @Nano private static void testOrdinalsWithReclaim() {
         runOrdinalsWithReclaim((1L << 32) - 150, (1L << 32) + 100);
-        runOrdinalsWithReclaim(Db.LAST_TOP_ORDINAL - 150, Long.MAX_VALUE);
+        runOrdinalsWithReclaim(TopNode.MAX_TOP_NODE_ID_VALUE - 150, Long.MAX_VALUE);
     }
 
     /** Runs until the super root's ordinal is 'until' or a transaction is refused. */
@@ -2129,7 +2147,7 @@ public class DbTesterRestart {
                 db.execute(b.build());
             } catch (DbException e) {
                 Assert.assertTrue(what + ", " + e.getMessage(), until == Long.MAX_VALUE
-                        && db.internal().superRoot().topNodeId >= Db.LAST_TOP_ORDINAL);
+                        && db.internal().superRoot().topNodeId >= TopNode.MAX_TOP_NODE_ID_VALUE);
                 refused = true;
                 continue;
             }
@@ -2156,8 +2174,7 @@ public class DbTesterRestart {
         long superRoot = db.internal().superRoot().topNodeId;
         if (until == Long.MAX_VALUE) {
             Assert.assertTrue(what + ", refused", refused);
-            Assert.assertTrue(what + ", super root " + superRoot, superRoot >= Db.LAST_TOP_ORDINAL
-                    && superRoot <= Db.LAST_TOP_ORDINAL + 5);
+            Assert.assertEquals(what + ", super root", TopNode.MAX_TOP_NODE_ID_VALUE, superRoot);
             assertRefused(db, db.trans().put("/hot", "x").build(), what);
         }
         checkModel(db, model, times, what + ", at the end");
