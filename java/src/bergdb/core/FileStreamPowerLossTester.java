@@ -23,6 +23,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.RecoverableStream;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
@@ -801,6 +802,102 @@ public class FileStreamPowerLossTester {
             }
             Assert.assertFalse("the refused start wrote created.txt", created.exists());
             Assert.assertTrue("the start changed the files", sameFiles(files, streamFiles(dir)));
+        } finally { remove(dir); }
+    }
+    
+    /**
+     * A database whose stream a cut makes begin at a meta block that is not valid starts
+     * (2026-11-28, week.sh's apps-kill-cc on 8a0897cf, Kill seed 2078503, db 4). A kill ends
+     * the stream at a meta block's position, the start of a stream file, after the bytes of
+     * a record that reaches over it: here, after the first cut, the files from the block's
+     * on are removed after a close, which leaves the stream as such a kill does, as no cut
+     * deleted a file after the record. The next start's recovery
+     * completes the block as one that is not valid (RecoverableStream; bergdb 005-27), the
+     * magic bytes, the version and zeros, and aborts the record; the database goes on, and
+     * a cut deletes the files before the block's, which makes it the stream's first block.
+     * Since bergdb 028-67, C3, until the fix, the next start refused the database, "Could
+     * not find *any* valid meta block"; it starts now, and every key reads as before.
+     */
+    @Nano
+    public static void testStartOnACutStreamThatBeginsAtAnInvalidBlock() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-invalid-first-").toFile();
+        try {
+            CoreTestClock clock = new CoreTestClock();
+            clock.setTime(SEC);
+            Map<String, byte[]> model = new TreeMap<String, byte[]>();
+            Random random = new Random(2078503);
+            long time = SEC;
+            long block = -1;        // the position of the kill, after the first cut
+            FileStream stream = new FileStream(dir);
+            Db db = start(stream, clock);
+            long firstAtKill;
+            try {
+                long end = 0;
+                for (int i = 0; ; i++) {
+                    Assert.assertTrue("no record over " + block, i < 3000);
+                    time += SEC / 10; clock.setTime(time);
+                    if (block < 0 && stream.getFirstPos() > 0) {
+                        final long d = RecoverableStream.META_BLOCK_DISTANCE;
+                        block = (end / d + 2) * d;
+                    }
+                    // The record over the block holds a value of 20,000 random bytes, the
+                    // block more than 8,000 bytes into it, so that its bytes before the block
+                    // are not zero: FileStream's open leaves a tail of zeros of the last file
+                    // out of the stream (bergdb 028-60).
+                    boolean over = block > 0 && end + 15000 > block;
+                    byte[] value = new byte[over ? 20000 : 1000 + random.nextInt(1000)];
+                    random.nextBytes(value);
+                    Trans t = db.trans().put(key(i % 12), value).build();
+                    db.execute(t);
+                    end = t.nextPos;
+                    if (over) {
+                        Assert.assertTrue(t.tpos + " " + t.lastPos, t.tpos < block - 8000
+                                && t.lastPos > block + 4000);
+                        break;          // Aborted by the kill: not in the model.
+                    }
+                    model.put(key(i % 12), value);
+                }
+                firstAtKill = stream.getFirstPos();
+                db.sync(SyncLevel.ORDINARY);
+            } finally { db.close(); }
+            // No cut after the kill's moment deleted a file.
+            Assert.assertEquals(firstAtKill, stream.getFirstPos());
+            // The kill: the stream ends at the block's position.
+            final String blockFile = String.format("%014d.bergdb", block / 100000);
+            for (String name : streamFiles(dir).keySet()) {
+                if (name.compareTo(blockFile) >= 0) {
+                    Assert.assertTrue(new File(dir, name).delete());
+                }
+            }
+            
+            time += SEC; clock.setTime(time);
+            stream = new FileStream(dir);
+            db = start(stream, clock);
+            try {
+                for (int i = 0; stream.getFirstPos() < block; i++) {
+                    Assert.assertTrue("no cut to " + block + ": " + stream.getFirstPos(), i < 5000);
+                    time += SEC / 10; clock.setTime(time);
+                    byte[] value = new byte[1000 + random.nextInt(1000)]; random.nextBytes(value);
+                    db.execute(db.trans().put(key(i % 12), value).build());
+                    model.put(key(i % 12), value);
+                }
+                Assert.assertEquals(block, stream.getFirstPos());
+                db.sync(SyncLevel.ORDINARY);
+            } finally { db.close(); }
+            Assert.assertEquals(blockFile, streamFiles(dir).keySet().iterator().next());
+            // The stream's first block, as recovery completed it: not valid.
+            byte[] head = Arrays.copyOf(Files.readAllBytes(new File(dir, blockFile).toPath()), 128);
+            Assert.assertTrue(head[0] == 'b' && head[1] == 'e' && head[2] == 'r' && head[3] == 'g'
+                    && Bytes.bytesToIntLE(head, 4) == 156 && head[127] == 0);
+            
+            time += SEC; clock.setTime(time);
+            db = start(new FileStream(dir), clock);
+            try {
+                for (Map.Entry<String, byte[]> e : model.entrySet()) {
+                    Assert.assertTrue(e.getKey(), Arrays.equals(e.getValue(),
+                            DbUtil.get(db, Long.MAX_VALUE, e.getKey())));
+                }
+            } finally { db.close(); }
         } finally { remove(dir); }
     }
     
